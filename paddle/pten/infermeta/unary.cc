@@ -74,6 +74,12 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
+DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
+                              const DataType out_dtype) {
+  DenseTensorMeta out_meta(out_dtype, x_meta.dims, x_meta.layout);
+  return out_meta;
+}
+
 DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
                                    DataType dtype,
                                    DataLayout layout) {

@@ -19,6 +19,9 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
+namespace pten {
+namespace tests {
+
 // TODO(chenweihang): add more unittests later
 
 TEST(KernelName, ConstructAndOStream) {
@@ -45,3 +48,6 @@ TEST(KernelKey, ConstructAndOStream) {
   // EXPECT_EQ(oss.str(), "scale.host");
   oss.flush();
 }
+
+}  // namespace tests
+}  // namespace pten
