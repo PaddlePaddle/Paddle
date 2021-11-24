@@ -339,6 +339,7 @@ class ElasticManager(object):
         if not self.args.elastic_pre_hook:
             logger.info("skip pre_hook")
             return
+        logger.info("execute pre_hook...")
         current_env = copy.copy(os.environ.copy())
         out, err = subprocess.Popen(
             self.args.elastic_pre_hook,
@@ -434,6 +435,7 @@ class ElasticManager(object):
 
     def _update_fault_tolrance(self):
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
+        logger.debug(f"self.curr_host={self.curr_host}, self.dist_endpoints={self.dist_endpoints}")
         if self.curr_host in self.dist_endpoints:
             os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
             os.environ['PADDLE_TRAINERS'] = self.trainers

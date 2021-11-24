@@ -165,6 +165,12 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
     collective_group.add_argument(
+        "--cluster_topo_path",
+        type=str,
+        default=None,
+        help="A json format file will be stored in this path which is used"
+        "to represent the cluster topology information for auto parallel.")
+    collective_group.add_argument(
         "--rank_mapping_file",
         type=argparse.FileType('r'),
         default=sys.stdin,
