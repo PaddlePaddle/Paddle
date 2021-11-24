@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "Eigen/Core"
+#include "paddle/fluid/platform/eigen_ext.h"
 namespace paddle {
 namespace platform {
 using bfloat16 = Eigen::bfloat16;
