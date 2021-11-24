@@ -178,7 +178,7 @@ function run_op_benchmark_test {
     LOG "[INFO] Uninstall Paddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install Paddle ..."
-    pip install build_whl/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
@@ -221,7 +221,7 @@ function check_op_benchmark_result {
     fi
     # check current result and update the file to benchmark test
     python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
-        --develop_logs_dir $(pwd)/logs-develop \
+        --develop_logs_dir $(pwd)/logs-dev_whl \
         --pr_logs_dir $(pwd)/logs-test_pr \
         --api_info_file ${api_info_file}
     check_status_code=$?

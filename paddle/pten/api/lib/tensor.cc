@@ -19,6 +19,8 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
@@ -105,9 +107,21 @@ std::vector<int64_t> Tensor::shape() const {
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The reshape operation is not supported now, "
-      "and it will be implemented by calling the reshape kernel later."));
+  LOG(WARNING) << "The function of resetting the shape of the uninitialized "
+                  "Tensor of the `reshape` method is deprecated since version "
+                  "2.3, and will be removed in version 2.4, please use "
+                  "`paddle::experimental::full` method to create a new Tensor "
+                  "instead. "
+                  "reason: `reshape` means changing the tensor shape without "
+                  "touching underlying data, this requires the total size of "
+                  "the tensor to remain constant.";
+  if (detail::IsDenseTensor(impl_)) {
+    std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
+        pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only support reshape operation on DenseTensor now."));
+  }
 }
 
 DataType Tensor::dtype() const { return impl_->dtype(); }
@@ -247,7 +261,7 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
             end_idx))));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Only supported slice operation on DenseTensor now."));
+        "Only support slice operation on DenseTensor now."));
   }
 }
 
@@ -267,10 +281,12 @@ gpuStream_t Tensor::stream() const {
 
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The copy_to operation is not supported now, "
-      "and it will be implemented by calling the copy kernel later."));
-  return Tensor();
+  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
+                  "2.3, and will be removed in version 2.4, please use "
+                  "`copy_to` method without template argumentinstead. "
+                  "reason: copying a Tensor to another device does not need "
+                  "to specify the data type template argument.";
+  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
 }
 
 template PD_DLL_DECL Tensor
@@ -296,30 +312,22 @@ template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
 template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
 
-Tensor Tensor::to(const PlaceType &target_place) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The to operation is not supported now, "
-      "and it will be implemented by calling the copy kernel later."));
-  return Tensor();
+Tensor Tensor::copy_to(Backend backend, bool blocking) const {
+  return experimental::copy_to(*this, backend, blocking);
 }
 
-Tensor Tensor::cast(const DataType &target_type) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The cast operation is not supported now, "
-      "and it will be implemented by calling the cast kernel later."));
-  return Tensor();
+Tensor Tensor::cast(DataType target_type) const {
+  return experimental::cast(*this, target_type);
 }
 
 /* Part 6: Status utils methods */
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
-bool Tensor::initialized() const {
-  return impl_ != nullptr && impl_->initialized();
-}
+bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
-  return impl_ != nullptr && impl_->initialized();
+  return defined() && impl_->initialized();
 }
 
 void Tensor::reset() { impl_.reset(); }

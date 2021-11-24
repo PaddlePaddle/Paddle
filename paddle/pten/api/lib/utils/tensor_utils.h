@@ -55,9 +55,11 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
  */
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
+                           const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
@@ -67,6 +69,9 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
 void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
                                   const pten::TensorArgDef& arg_def,
                                   pten::DenseTensor* dst);
+
+void MakeVariableFromPtenTensor(pten::DenseTensor* src,
+                                framework::Variable* variable);
 
 }  // namespace experimental
 }  // namespace paddle

@@ -26,7 +26,7 @@ void Flatten(const XPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -47,7 +47,8 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims), x.meta().lod);
+  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
+  xshape->ResetLoD(x.lod());
 }
 
 void ReshapeFromVectorVal(const XPUContext& dev_ctx,
@@ -59,7 +60,7 @@ void ReshapeFromVectorVal(const XPUContext& dev_ctx,
     out->Resize(out_meta.dims);
     return;
   }
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
 }
 
