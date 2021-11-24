@@ -118,6 +118,11 @@ def _in_amp_guard():
         return False
 
 
+def _in_pure_fp16_guard():
+    tracer = _dygraph_tracer()
+    return tracer and tracer._amp_level == core.AmpLevel.O2
+
+
 @dygraph_only
 def pure_fp16_initialize(models):
     for idx in range(len(models)):

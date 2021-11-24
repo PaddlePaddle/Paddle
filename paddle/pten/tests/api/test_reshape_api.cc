@@ -27,7 +27,7 @@ PT_DECLARE_MODULE(ManipulationCPU);
 PT_DECLARE_MODULE(ManipulationCUDA);
 #endif
 
-namespace pten {
+namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
@@ -86,4 +86,4 @@ TEST(Tensor, old_reshape) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle
