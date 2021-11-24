@@ -18,16 +18,23 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/registry.h"
+#include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infershape.h"
+
+PT_DECLARE_MODULE(CreationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(CreationCUDA);
+#endif
 
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
+PD_DLL_DECL Tensor full(const ScalarArray& shape,
                         const Scalar& value,
                         DataType dtype,
                         Backend backend,
@@ -35,14 +42,15 @@ PD_DLL_DECL Tensor full(const std::vector<int64_t>& shape,
   // 1. Get kernel signature and kernel
   pten::KernelKey kernel_key{backend, layout, dtype};
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "fill_constant.scalar", kernel_key);
+      "fill_constant", kernel_key);
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
   auto kernel_context = pten::KernelContext(dev_ctx);
 
   // 3. Auto data transform
-  kernel_context.EmplaceBackAttr(value);
+  kernel_context.EmplaceBackAttr(pten::ScalarArray(shape));
+  kernel_context.EmplaceBackAttr(pten::Scalar(value));
 
   // 4. InferShape
   auto out_meta = pten::FullInferShape(shape, dtype, layout);
@@ -87,7 +95,7 @@ PD_DLL_DECL Tensor full_like(const Tensor& x,
 
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
-  kernel_context.EmplaceBackAttr(value);
+  kernel_context.EmplaceBackAttr(pten::Scalar(value));
 
   // 4. InferShape
   auto out_meta = FullLikeInferShape(dense_x->meta(), dtype, layout);

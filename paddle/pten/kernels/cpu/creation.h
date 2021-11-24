@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
@@ -32,5 +33,11 @@ template <typename T>
 void FillConstant(const CPUContext& dev_ctx,
                   const Scalar& val,
                   DenseTensor* out);
+
+template <typename T>
+void FillConstantDynamicShape(const CPUContext& dev_ctx,
+                              const ScalarArray& shape,
+                              const Scalar& val,
+                              DenseTensor* out);
 
 }  // namespace pten

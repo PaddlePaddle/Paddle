@@ -254,7 +254,10 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
-    type_ = tensor.type_;
+    // NOTE(chenfeiyu): when sharing buffer, by definition only holder
+    // to the memory allocation and offset should be shared. Shape,
+    // data type, layout, and other metadata associated with a Tensor
+    // should not be copied.
   }
 
   bool IsSharedBufferWith(const Tensor& src) const {
@@ -271,7 +274,9 @@ class Tensor {
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                           const proto::VarType::Type type);
+                           const proto::VarType::Type& type);
+
+  void set_type(const proto::VarType::Type& type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;

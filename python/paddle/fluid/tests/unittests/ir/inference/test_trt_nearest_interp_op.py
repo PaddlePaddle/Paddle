@@ -61,9 +61,9 @@ class TRTNearestInterpTest(InferencePassTest):
 
     def set_params(self):
         self.bs = 4
-        self.scale = 1
+        self.scale = 0
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
+        self.origin_shape = (4, 4)  # HW
         self.resize_shape = (64, 64)  # HW
         self.align_corners = True
         self.data_layout = 'NCHW'
@@ -114,7 +114,7 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
 class TRTNearestInterpTest3(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
-        self.scale = -1
+        self.scale = 0
         self.channels = 3
         self.origin_shape = (32, 32)  # HW
         self.resize_shape = (64, 64)  # HW
