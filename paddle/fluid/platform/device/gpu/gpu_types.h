@@ -20,11 +20,6 @@
 #include <hip/hip_runtime.h>
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
-// MIOPEN only support NCHW, just for compatibility with CUDNN API
-typedef enum {
-  MIOPEN_TENSOR_NCHW = 0,
-  MIOPEN_TENSOR_NHWC = 1,
-} miopenTensorFormat_t;
 
 #else
 #include <cuda_runtime.h>
