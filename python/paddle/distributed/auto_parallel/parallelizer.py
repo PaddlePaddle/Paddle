@@ -100,28 +100,6 @@ class AutoParallelizer:
 
         return params_grads
 
-    def _apply_serial_passes_and_backward(self,
-                                          main_program,
-                                          startup_program,
-                                          loss,
-                                          parameter_list=None,
-                                          no_grad_set=None,
-                                          callbacks=None):
-        """
-        generate serial backward program.
-        apply user defined serial calc optimizaiton pass (by now, only AMP and Recompute are supported). 
-        """
-
-        # forward pass
-        self._apply_serial_forward_pass(main_program, startup_program)
-
-        # backward pass
-        params_grads = self._generate_backward(main_program, startup_program,
-                                               loss, parameter_list,
-                                               no_grad_set, callbacks)
-
-        return params_grads
-
     def _apply_optimize(self, main_program, startup_program, params_grads):
 
         if self._dist_strategy.sharding:
@@ -159,9 +137,13 @@ class AutoParallelizer:
         completed_main_program = complete_annotation(main_program,
                                                      self._dist_context)
 
-        params_grads = self._apply_serial_passes_and_backward(
+        # serial forward pass
+        self._apply_serial_forward_pass(completed_main_program, startup_program)
+
+        # serial backward pass
+        params_grads = self._generate_backward(
             completed_main_program, startup_program, loss, parameter_list,
-            no_grad_set)
+            no_grad_set, callbacks)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
