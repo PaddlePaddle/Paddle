@@ -24,23 +24,10 @@ template <typename DeviceContext, typename T>
 class PriorBoxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "PriorBoxNPUKernel";
-    LOG(WARNING) << "op type: " << ctx.Type();
-
     auto* input = ctx.Input<Tensor>("Input");
     auto* image = ctx.Input<Tensor>("Image");
     auto* boxes = ctx.Output<Tensor>("Boxes");
     auto* variances = ctx.Output<Tensor>("Variances");
-
-    // LOG(WARNING) << "input.numel: " << input->numel();
-    // LOG(WARNING) << "image.numel: " << image->numel();
-    // LOG(WARNING) << "boxes.numel: " << boxes->numel();
-    // LOG(WARNING) << "variances.numel: " << variances->numel();
-
-    // LOG(WARNING) << "input.dims: " << input->dims();
-    // LOG(WARNING) << "image.dims: " << image->dims();
-    // LOG(WARNING) << "boxes.dims: " << boxes->dims();
-    // LOG(WARNING) << "variances.dims: " << variances->dims();
 
     PADDLE_ENFORCE_EQ(boxes->dims(), variances->dims(),
                       platform::errors::Unimplemented(
@@ -58,30 +45,13 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     float step_w = ctx.Attr<float>("step_w");
     float step_h = ctx.Attr<float>("step_h");
     float offset = ctx.Attr<float>("offset");
-    bool min_max_aspect_ratios_order =
-        ctx.Attr<bool>("min_max_aspect_ratios_order");
-
-    if (!min_max_aspect_ratios_order) {
-      LOG(WARNING) << "When attr min_max_aspect_ratios_order=False, the "
-                      "precision of the npu kernel of prior_box only have "
-                      "atol=1e-1.";
-    }
-
-    // PADDLE_ENFORCE_EQ(
-    //     min_max_aspect_ratios_order, true,
-    //     platform::errors::Unimplemented(
-    //         "min_max_aspect_ratios_order=False is not supported in "
-    //         "the npu kernel of prior_box."));
 
     auto place = ctx.GetPlace();
-    boxes->mutable_data<T>(place);
 
     Tensor out(input->type());
-    // out.Resize(framework::make_ddim({2, 32, 32, 12, 4}));
     auto out_dims = framework::vectorize(boxes->dims());
     out_dims.insert(out_dims.begin(), 2);
     out.Resize(framework::make_ddim(out_dims));
-    LOG(WARNING) << "out_dims: " << outputVector(out_dims);
     out.mutable_data<T>(place);
 
     framework::NPUAttributeMap attr_input = {{"min_size", min_sizes},
@@ -100,22 +70,17 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
 
     const auto& runner =
         NpuOpRunner("PriorBox", {*input, *image}, {out}, attr_input);
-    // const auto& runner =
-    //     NpuOpRunner("PriorBox", {*input, *image}, {*boxes}, attr_input);
-    // const auto& runner =
-    //     NpuOpRunner("PriorBox", {*input, *image}, {*variances}, attr_input);
     runner.Run(stream);
 
     out.Resize(framework::make_ddim({out.numel()}));
-    // LOG(WARNING) << "here";
     Tensor out_boxes = out.Slice(0, boxes->numel());
-    // LOG(WARNING) << "here";
     Tensor out_variances = out.Slice(boxes->numel(), out.numel());
-    // LOG(WARNING) << "here";
 
     out_boxes.Resize(boxes->dims());
     out_variances.Resize(variances->dims());
-    // LOG(WARNING) << "here";
+
+    boxes->mutable_data<T>(place);
+    variances->mutable_data<T>(place);
 
     framework::TensorCopy(
         out_boxes, place,
@@ -123,11 +88,6 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     framework::TensorCopy(
         out_variances, place,
         ctx.template device_context<platform::NPUDeviceContext>(), variances);
-
-    // LOG(WARNING) << "out_boxes: ";
-    // PrintTensor<T>(out_boxes, ctx);
-    // LOG(WARNING) << "out_variances: ";
-    // PrintTensor<T>(out_variances, ctx);
   }
 };
 

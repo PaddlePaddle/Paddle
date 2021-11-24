@@ -22,11 +22,9 @@ import math
 
 from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
 
-# _set_use_system_allocator(False)
 paddle.enable_static()
 
 
-@unittest.skipIf(False, "Tmp")
 class TestNPUPriorBox(OpTest):
     def setUp(self):
         self.op_type = "prior_box"
@@ -193,13 +191,11 @@ class TestNPUPriorBox(OpTest):
         self.out_var = out_var.astype('float32')
 
 
-@unittest.skipIf(False, "Tmp")
 class TestNPUPriorBoxWithoutMaxSize(TestNPUPriorBox):
     def set_max_sizes(self):
         self.max_sizes = []
 
 
-@unittest.skipIf(False, "Tmp")
 class TestNPUPriorBoxWithoutSpecifiedOutOrder(TestNPUPriorBox):
     def set_min_max_aspect_ratios_order(self):
         self.min_max_aspect_ratios_order = False
