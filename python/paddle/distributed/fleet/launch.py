@@ -310,50 +310,36 @@ def get_cluster_info(args):
 
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-    # auto mapping between processes and devices for auto-parallel
-    if args.enable_auto_mapping == True:
-        assert args.cluster_topo_path is not None, \
-            "The cluster topology must be provied when enabling auto mapping."
-        rank_mapping_path = args.rank_mapping_path or os.getenv("PADDLE_RANK_MAPPING_PATH")
-        if rank_mapping_path is None:
-            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
-            os.environ["PADDLE_ENABLE_ELASTIC"] = str(enable_elastic(args, device_mode))
-            cwd = pathlib.Path().resolve()
-            rank_mapping_path = os.path.join(cwd,
-                                             "auto_parallel_rank_mapping.json")
-            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
-
-            original_args = sys.argv[1:]
-            os.environ["PADDLE_ORIGINAL_CMD_ARGS"] = " ".join(original_args)
-            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
-            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
-                args.enable_auto_mapping)
-            cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
-                args, device_mode)
-        else:
-            os.environ["PADDLE_RANK_MAPPING_EXISTS"] = str(False)
-            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
-            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
-            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
-                args.enable_auto_mapping)
-            cluster, pod = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
-                args, device_mode)
+       
+    #if args.enable_auto_mapping == True:
+    #    assert args.cluster_topo_path is not None, \
+    #        "The cluster topology must be provied when enabling auto mapping."
+    #    rank_mapping_path = args.rank_mapping_path or os.getenv("PADDLE_RANK_MAPPING_PATH")
+    #    if rank_mapping_path is None:
+    #        os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
+    #        os.environ["PADDLE_ENABLE_ELASTIC"] = str(enable_elastic(args, device_mode))
+    #        cwd = pathlib.Path().resolve()
+    #        rank_mapping_path = os.path.join(cwd,
+    #                                         "auto_parallel_rank_mapping.json")
+    #        os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
+    #
+    #    else:
+    #        os.environ["PADDLE_RANK_MAPPING_EXISTS"] = str(False)
+    # for ascend
+    if device_mode == DeviceMode.ASCEND_NPU:
+        cluster, pod = ascend_utils.get_cloud_cluster(
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            start_port=start_port)
+    elif cloud_utils.use_paddlecloud() and trainers_num != 1:
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, device_mode, devices_per_proc, start_port)
+        logger.debug("get cluster from cloud:{}".format(cluster))
     else:
-        # for ascend
-        if device_mode == DeviceMode.ASCEND_NPU:
-            cluster, pod = ascend_utils.get_cloud_cluster(
-                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-                device_mode=device_mode,
-                start_port=start_port)
-        elif cloud_utils.use_paddlecloud() and trainers_num != 1:
-            cluster, pod = cloud_utils.get_cloud_cluster(
-                args.ips, device_mode, devices_per_proc, start_port)
-            logger.debug("get cluster from cloud:{}".format(cluster))
-        else:
-            # trainers_num = 1 or not use paddlecloud ips="a,b"
-            cluster, pod = get_cluster_from_args(args, device_mode,
-                                                 devices_per_proc)
-            logger.debug("get cluster from args:{}".format(cluster))
+        # trainers_num = 1 or not use paddlecloud ips="a,b"
+        cluster, pod = get_cluster_from_args(args, device_mode,
+                                                devices_per_proc)
+        logger.debug("get cluster from args:{}".format(cluster))
     return cluster, pod
 
 
