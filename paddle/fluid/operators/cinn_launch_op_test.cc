@@ -226,28 +226,6 @@ TEST(CinnLaunchContextTest, TestGetInternalVariableNames) {
   EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
 }
 
-TEST(CinnLaunchContextTest, TestMutableTensorData) {
-  platform::CPUPlace place;
-  framework::Scope scope;
-  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
-
-  auto launch_context =
-      std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
-  // mutable_data on external variable
-  ASSERT_NO_THROW(launch_context->MutableTensorData("var1", place, tensor1));
-  ASSERT_TRUE(tensor1->IsInitialized());
-  ASSERT_EQ(tensor1->dims(), framework::make_ddim({3, 4}));
-  ASSERT_THROW(launch_context->MutableTensorData("not_exist", place, tensor1),
-               paddle::platform::EnforceNotMet);
-
-  // mutable_data on internal variable
-  ASSERT_NO_THROW(
-      launch_context->MutableTensorData("cinn_var2", place, tensor2, true));
-  ASSERT_TRUE(tensor2->IsInitialized());
-  ASSERT_EQ(tensor2->dims(), framework::make_ddim({6, 7, 8}));
-}
-
 TEST(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   auto launch_context =
       std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
@@ -256,11 +234,11 @@ TEST(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
 
   // CheckTensorEquivalent: tensor is not initialized
-  ASSERT_THROW(launch_context->AssignExternalVariable("var1", tensor1),
+  ASSERT_THROW(launch_context->AssignExternalVariable("var1", place, tensor1),
                paddle::platform::EnforceNotMet);
   // CheckTensorEquivalent: tensor dimension not equivalent
   tensor1->mutable_data<float>(framework::make_ddim({3, 5}), place);
-  ASSERT_THROW(launch_context->AssignExternalVariable("var1", tensor1),
+  ASSERT_THROW(launch_context->AssignExternalVariable("var1", place, tensor1),
                paddle::platform::EnforceNotMet);
 }
 
@@ -272,11 +250,12 @@ TEST(CinnLaunchContextTest, TestAssignVariablePreCondition) {
   auto* tensor4 = scope.Var("var4")->GetMutable<LoDTensor>();
 
   // not used
-  ASSERT_THROW(launch_context->AssignExternalVariable("var4", tensor4),
+  ASSERT_THROW(launch_context->AssignExternalVariable("var4", place, tensor4),
                paddle::platform::EnforceNotMet);
   // not found
-  ASSERT_THROW(launch_context->AssignExternalVariable("cinn_var4", tensor4),
-               paddle::platform::EnforceNotMet);
+  ASSERT_THROW(
+      launch_context->AssignExternalVariable("cinn_var4", place, tensor4),
+      paddle::platform::EnforceNotMet);
 }
 
 TEST(CinnLaunchContextTest, TestSetArgument) {
@@ -292,16 +271,19 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
   data1[10] = 19.99f;
 
   // assign external variable
-  ASSERT_NO_THROW(launch_context->AssignExternalVariable("var1", tensor1));
+  ASSERT_NO_THROW(
+      launch_context->AssignExternalVariable("var1", place, tensor1));
   auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
   tensor2->mutable_data<float>(framework::make_ddim({6, 7, 8}), place);
-  ASSERT_NO_THROW(launch_context->AssignInternalVariable("cinn_var2", tensor2));
+  ASSERT_NO_THROW(
+      launch_context->AssignInternalVariable("cinn_var2", place, tensor2));
   // FinalizeArguments not missed check
   ASSERT_THROW(launch_context->FinalizeArguments(),
                paddle::platform::EnforceNotMet);
   auto* tensor3 = scope.Var("var3")->GetMutable<LoDTensor>();
   tensor3->mutable_data<float>(framework::make_ddim({10, 16}), place);
-  ASSERT_NO_THROW(launch_context->AssignExternalVariable("var3", tensor3));
+  ASSERT_NO_THROW(
+      launch_context->AssignExternalVariable("var3", place, tensor3));
 
   auto name2argument = launch_context->FinalizeArguments();
   ASSERT_EQ(name2argument.size(), 3);
