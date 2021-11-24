@@ -20,22 +20,22 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
+using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
 
-using MKLDNNStream = mkldnn::stream;
-using MKLDNNEngine = mkldnn::engine;
-using MKLDNNMemory = mkldnn::memory;
-using MKLDNNMemoryDescriptor = mkldnn::memory::desc;
-using MKLDNNPrimitive = mkldnn::primitive;
-using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
+using MKLDNNStream = dnnl::stream;
+using MKLDNNEngine = dnnl::engine;
+using MKLDNNMemory = dnnl::memory;
+using MKLDNNMemoryDescriptor = dnnl::memory::desc;
+using MKLDNNPrimitive = dnnl::primitive;
+using MKLDNNPrimitiveDesc = dnnl::handle<dnnl_primitive_desc_t>;
 
 typedef std::unique_ptr<MKLDNNStream> MKLDNNStreamPtr;
 typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
@@ -62,7 +62,7 @@ using tf_pd = typename Type::primitive_desc;
 template <typename Type, typename Engine, typename... Args>
 std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
                                                     Args&&... args) {
-  auto desc = tf_desc<Type>(mkldnn::prop_kind::forward, (args)...);
+  auto desc = tf_desc<Type>(dnnl::prop_kind::forward, (args)...);
   auto pd = new tf_pd<Type>(desc, e);
   return std::shared_ptr<tf_pd<Type>>(pd);
 }
@@ -129,10 +129,10 @@ struct mkldnn_dummy_primitive {
   struct desc {};
 };
 
-inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
-                                          mkldnn::memory::data_type data_type,
-                                          MKLDNNMemoryFormat format) {
-  return mkldnn::memory::desc({dims}, data_type, format);
+inline dnnl::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
+                                        dnnl::memory::data_type data_type,
+                                        MKLDNNMemoryFormat format) {
+  return dnnl::memory::desc({dims}, data_type, format);
 }
 
 inline void ClearMKLDNNCache(const platform::Place& place,
@@ -159,36 +159,35 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
 }
 
 template <typename Type>
-mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_type::undef;
+dnnl::memory::data_type MKLDNNGetDataType() {
+  return dnnl::memory::data_type::undef;
 }
 
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
-  return mkldnn::memory::data_type::f32;
+inline dnnl::memory::data_type MKLDNNGetDataType<float>() {
+  return dnnl::memory::data_type::f32;
 }
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<int32_t>() {
-  return mkldnn::memory::data_type::s32;
+inline dnnl::memory::data_type MKLDNNGetDataType<int32_t>() {
+  return dnnl::memory::data_type::s32;
 }
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<int8_t>() {
-  return mkldnn::memory::data_type::s8;
+inline dnnl::memory::data_type MKLDNNGetDataType<int8_t>() {
+  return dnnl::memory::data_type::s8;
 }
 template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
-  return mkldnn::memory::data_type::u8;
+inline dnnl::memory::data_type MKLDNNGetDataType<uint8_t>() {
+  return dnnl::memory::data_type::u8;
 }
 
 template <>
-inline mkldnn::memory::data_type
-MKLDNNGetDataType<paddle::platform::bfloat16>() {
-  return mkldnn::memory::data_type::bf16;
+inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
+  return dnnl::memory::data_type::bf16;
 }
 
-inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
-                    const mkldnn::engine& engine) {
-  auto reorder_prim = mkldnn::reorder(src, dst);
+inline void Reorder(dnnl::memory src, dnnl::memory dst,
+                    const dnnl::engine& engine) {
+  auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::EventRole::kUniqueOp);
@@ -196,8 +195,7 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
   astream.wait();
 }
 
-inline mkldnn::memory::format_tag GetMKLDNNFormat(
-    mkldnn::memory::desc mem_desc) {
+inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
   auto ndims = mem_desc.data.ndims;
   auto strides = mem_desc.data.format_desc.blocking.strides;
   auto inner_nblks = mem_desc.data.format_desc.blocking.inner_nblks;
@@ -205,62 +203,65 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   auto inner_idxs = mem_desc.data.format_desc.blocking.inner_idxs;
 
   if (ndims == 1) {
-    return mkldnn::memory::format_tag::x;
+    return dnnl::memory::format_tag::x;
   } else if (ndims == 2) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1]) {
-        return mkldnn::memory::format_tag::nc;
+        return dnnl::memory::format_tag::nc;
       } else {
-        return mkldnn::memory::format_tag::cn;
+        return dnnl::memory::format_tag::cn;
       }
     }
   } else if (ndims == 3) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2]) {
-        return mkldnn::memory::format_tag::ncw;
+        return dnnl::memory::format_tag::ncw;
       } else if (strides[1] >= strides[0] && strides[0] >= strides[2]) {
-        return mkldnn::memory::format_tag::ntc;
+        return dnnl::memory::format_tag::ntc;
       } else {
-        return mkldnn::memory::format_tag::nwc;
+        return dnnl::memory::format_tag::nwc;
       }
     }
   } else if (ndims == 4) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3]) {
-        return mkldnn::memory::format_tag::nchw;
+        return dnnl::memory::format_tag::nchw;
       } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
                  strides[1] >= strides[0]) {
-        return mkldnn::memory::format_tag::cdba;
+        return dnnl::memory::format_tag::cdba;
+      } else if (strides[3] >= strides[2] && strides[2] >= strides[0] &&
+                 strides[0] >= strides[1]) {
+        return dnnl::memory::format_tag::dcab;
       } else {
-        return mkldnn::memory::format_tag::nhwc;
+        return dnnl::memory::format_tag::nhwc;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw16c;
+        return dnnl::memory::format_tag::nChw16c;
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw8c;
+        return dnnl::memory::format_tag::nChw8c;
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdb8a;
+          return dnnl::memory::format_tag::Acdb8a;
         }
       } else if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw4c;
+        return dnnl::memory::format_tag::nChw4c;
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdb16a;
+          return dnnl::memory::format_tag::Acdb16a;
         }
       }
     } else if (inner_nblks == 2) {
       if (inner_blks[0] == 16 && inner_blks[1] == 16) {
         if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return mkldnn::memory::format_tag::OIhw16i16o;
+          return dnnl::memory::format_tag::OIhw16i16o;
         }
       } else if (inner_blks[0] == 8 && inner_blks[1] == 8) {
         if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return mkldnn::memory::format_tag::OIhw8i8o;
+          return dnnl::memory::format_tag::OIhw8i8o;
         }
       }
     }
@@ -268,38 +269,38 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3] && strides[3] >= strides[4]) {
-        return mkldnn::memory::format_tag::ncdhw;
+        return dnnl::memory::format_tag::ncdhw;
       } else {
-        return mkldnn::memory::format_tag::ndhwc;
+        return dnnl::memory::format_tag::ndhwc;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdeb8a;
+          return dnnl::memory::format_tag::Acdeb8a;
         }
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::Abcde8a;
+          return dnnl::memory::format_tag::Abcde8a;
         }
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::aBcde8b;
+          return dnnl::memory::format_tag::aBcde8b;
         }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdeb16a;
+          return dnnl::memory::format_tag::Acdeb16a;
         }
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::Abcde16a;
+          return dnnl::memory::format_tag::Abcde16a;
         }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::aBcde16b;
+          return dnnl::memory::format_tag::aBcde16b;
         }
       }
     }
@@ -308,7 +309,7 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3] && strides[3] >= strides[4] &&
           strides[4] >= strides[5]) {
-        return mkldnn::memory::format_tag::abcdef;
+        return dnnl::memory::format_tag::abcdef;
       }
     }
   }
@@ -325,10 +326,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   // for (int i=0;i<inner_nblks;++i) {
   //   std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
   // }
-  return mkldnn::memory::format_tag::undef;
+  return dnnl::memory::format_tag::undef;
 }
 
-inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
+inline dnnl::memory::format_tag GetMKLDNNFormat(const dnnl::memory memory) {
   auto mem_desc = memory.get_desc();
   return GetMKLDNNFormat(mem_desc);
 }
@@ -441,24 +442,24 @@ inline void AppendKey(std::string* key, const T& num) {
 
 template <>
 inline void AppendKey(std::string* key,
-                      const mkldnn::memory::format_tag& format) {
+                      const dnnl::memory::format_tag& format) {
   key->append(std::to_string(static_cast<int>(format)));
 }
 
 template <>
 inline void AppendKey(std::string* key,
-                      const mkldnn::memory::data_type& data_type) {
+                      const dnnl::memory::data_type& data_type) {
   key->append(std::to_string(static_cast<int>(data_type)));
 }
 
 template <>
-inline void AppendKey(std::string* key, const mkldnn::algorithm& algorithm) {
+inline void AppendKey(std::string* key, const dnnl::algorithm& algorithm) {
   key->append(std::to_string(static_cast<int>(algorithm)));
 }
 
 template <>
 inline void AppendKey(std::string* key,
-                      const mkldnn::normalization_flags& flags) {
+                      const dnnl::normalization_flags& flags) {
   key->append(std::to_string(static_cast<int>(flags)));
 }
 

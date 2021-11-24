@@ -14,6 +14,8 @@
 
 STATIC_MODE_TESTING_LIST = [
     'test_affine_channel_op',
+    'test_transfer_dtype_op',
+    'test_transfer_layout_op',
     'test_concat_op',
     'test_elementwise_add_op',
     'test_elementwise_sub_op',
