@@ -2455,9 +2455,7 @@ function build_pr_and_develop() {
         rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
-    echo 111
-    pwd
-    #git checkout .
+
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     generate_api_spec "$1" "DEV"
