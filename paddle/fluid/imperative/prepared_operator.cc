@@ -21,7 +21,7 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_op_list.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
