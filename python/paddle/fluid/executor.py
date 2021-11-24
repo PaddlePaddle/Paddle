@@ -1331,6 +1331,10 @@ class Executor(object):
             scope = global_scope()
 
         def _can_use_interpreter_core(program, place):
+            # TODO(zhiqiu): support cuda graph
+            if core.is_cuda_graph_capturing():
+                return False
+
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): only single card compiled program is supported 
             if compiled:
@@ -1385,7 +1389,16 @@ class Executor(object):
                         [lr_value]).astype(convert_dtype(lr_var.dtype))
                     tensor = core.get_variable_tensor(scope,
                                                       lr_sheduler._var_name)
-                    tensor.set(data, self.place)
+                    # NOTE(zhiqiu): tensor.set use cudaMemcpy, which uses stream 0 (legacy stream).
+                    # And it may result in "CUDA error(906), operation would make the legacy 
+                    # stream depend on a capturing blocking stream" when run with cuda graph.
+                    if not core.is_cuda_graph_capturing():
+                        tensor.set(data, self.place)
+                    else:
+                        warnings.warn(
+                            "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                            "take any effect! Please set the learning rate manually before each batch!"
+                        )
 
                 return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
 
