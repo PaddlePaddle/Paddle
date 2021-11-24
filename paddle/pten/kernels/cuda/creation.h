@@ -18,6 +18,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
@@ -35,6 +36,12 @@ template <typename T>
 void FillConstant(const CUDAContext& dev_ctx,
                   const Scalar& val,
                   DenseTensor* out);
+
+template <typename T>
+void FillConstantDynamicShape(const CUDAContext& dev_ctx,
+                              const ScalarArray& shape,
+                              const Scalar& val,
+                              DenseTensor* out);
 
 }  // namespace pten
 
