@@ -86,7 +86,9 @@ void show_var(const Scope& scope, const std::string& var_name,
       char name[512];
       auto matched = fscanf(names_file, "%s", name);
       if (matched == 1){
-        to_show_names.push_back(name);
+        if (name.c_str()[0] != '#'){
+          to_show_names.push_back(name);
+        }
       }else{
         fclose(names_file);
         break;
