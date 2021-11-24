@@ -73,6 +73,30 @@ void print_data(const std::vector<T>& vec, std::stringstream& sstr) {
 
 void show_var(const Scope& scope, const std::string& var_name,
               const platform::DeviceContext* ctx) {
+
+  static std::vector<std::string> to_show_names(0);
+  if (to_show_names.size() == 0){
+    FILE* names_file = fopen("/var/tmp/var_names.txt", "r");
+    while(true){
+      char name[512];
+      auto matched = fscanf(names_file, "%s", name);
+      if (matched == 1){
+        to_show_names.push_back(name);
+      }else{
+        break;
+      }
+    }
+  }
+  auto it = to_show_names.begin();
+  for (; it != to_show_names.end(); it ++){
+    if ( strcmp(it->c_str(), var_name.c_str()) == 0 ){
+      break;
+    }
+  }
+  if (it == to_show_names.end()){
+    return;
+  }
+
   auto* var = scope.FindVar(var_name);
   std::stringstream sstr;
   VLOG(0) << "try to find: " << var_name;
