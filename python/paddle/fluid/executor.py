@@ -1813,9 +1813,9 @@ class Executor(object):
         if program._pipeline_opt is None:
             if program._heter_pipeline_opt is None:
                 self._dump_debug_info(program=program, trainer=trainer)
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         if program._heter_pipeline_opt is None:
@@ -1948,9 +1948,9 @@ class Executor(object):
         # NOTE: only for debug, very slow
         # self._dump_debug_info(program=program, trainer=trainer)
 
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache
