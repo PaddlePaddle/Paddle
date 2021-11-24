@@ -111,8 +111,7 @@ void MessageBus::ListenPort() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
-  InterceptorMessageServiceImpl interceptor_message_service;
-  PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service,
+  PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service_,
                                        brpc::SERVER_DOESNT_OWN_SERVICE),
                     0, platform::errors::Unavailable(
                            "Message bus: init brpc service error."));
