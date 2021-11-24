@@ -92,7 +92,6 @@ function load_CHANGE_OP_FILES {
     fi
   done
   [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
-  echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt && \
   exit 0
 }
 
@@ -244,7 +243,7 @@ function check_CHANGE_OP_MAP {
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
     LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
-    exit $exit_code
+    exit ${exit_code}
   fi
 }
 

@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/imperative/hccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -1627,15 +1628,10 @@ void BindImperative(py::module *m_ptr) {
                      "stop "
                      "gradient or without gradient."));
              auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
-             VLOG(1) << 111;
              auto grad_node = self.MutableGradVarBase()->GradNode();
-             VLOG(1) << 222;
-             VLOG(1) << (grad_node == nullptr);
              for (auto &cur_op : *grad_node) {
-               VLOG(1) << 333;
                cur_op.AddVoidFunctionPostHook(
                    std::make_shared<std::function<void()>>(py_func));
-               VLOG(1) << 444;
              }
            })
       .def("_register_backward_hook",
@@ -2330,6 +2326,18 @@ void BindImperative(py::module *m_ptr) {
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HCCLParallelContext>>(
+      m, "HCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::NPUPlace &>())
+      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
 
