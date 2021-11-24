@@ -188,18 +188,4 @@ egr::EagerTensor EagerUtils::GetOutput(
   return EagerTensor((*(out.get())));
 }
 
-AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
-  auto* p_autograd_meta = target.get_autograd_meta();
-  PADDLE_ENFORCE(p_autograd_meta,
-                 paddle::platform::errors::Fatal(
-                     "Null autograd_meta gotten from unsafe_autograd_meta(), "
-                     "if you are using unsafe_autograd_meta, please make sure "
-                     "your tensor's autograd_meta is set"));
-  return static_cast<AutogradMeta*>(p_autograd_meta);
-}
-
-std::pair<size_t, size_t> EagerUtils::OutRankInfo(
-    const egr::EagerTensor& target) {
-  return unsafe_autograd_meta(target)->OutRankInfo();
-}
 }  // namespace egr

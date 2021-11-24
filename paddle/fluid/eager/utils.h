@@ -130,9 +130,6 @@ class EagerUtils {
     iter.SetStopGradient(stop_gradient);
     iter.apply(std::forward<Args>(args)...);
   }
-  static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
-  // This method will return an AutogradMeta pointer unsafely.
-  static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
 
   // Intermidate needed remove this once we don't need legacy
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
