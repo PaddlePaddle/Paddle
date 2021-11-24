@@ -131,7 +131,7 @@ class Momentum(Optimizer):
                  multi_precision=False,
                  rescale_grad=1.0,
                  name=None,
-                 multi_tensor=False):
+                 use_multi_tensor=False):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         if momentum is None:
@@ -172,8 +172,8 @@ class Momentum(Optimizer):
             'regularization_method': self._regularization_method,
             'regularization_coeff': self._regularization_coeff,
         }
-        self._multi_tensor = multi_tensor
-        if self._multi_tensor:
+        self._use_multi_tensor = use_multi_tensor
+        if self._use_multi_tensor:
             self.param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
             self.velocity_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
             self.master_weight_dict = {
@@ -372,7 +372,7 @@ class Momentum(Optimizer):
         # But if current block is in control flow, append optimize op in the
         # grad block of current block
 
-        if self._multi_tensor:
+        if self._use_multi_tensor:
             global_block = framework.default_main_program().global_block()
             target_block = global_block
             current_block = framework.default_main_program().current_block()
@@ -561,15 +561,15 @@ class Momentum(Optimizer):
                 if len(self.param_dict[key]) > 0:
                     if key == 'FP32_LODTensor':
                         self._multi_precision = False
-                    _, _, _ = _C_ops.multi_tensor_momentum(
+                    _, _, _ = _C_ops.merged_momentum(
                         self.param_dict[key], self.grad_dict[key],
                         self.velocity_dict[key], self.lr_dict[key],
                         self.master_weight_dict[key], self.param_dict[key],
                         self.velocity_dict[key], self.master_weight_dict[key],
                         'mu', self._momentum, 'use_nesterov',
-                        self._use_nesterov, 'regularization_methods',
+                        self._use_nesterov, 'regularization_method',
                         self.regularization_method_dict[key],
-                        'regularization_coeffs',
+                        'regularization_coeff',
                         self.regularization_coeff_dict[key], 'multi_precision',
                         self._multi_precision)
             return None
