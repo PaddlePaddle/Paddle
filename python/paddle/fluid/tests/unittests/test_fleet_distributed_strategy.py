@@ -264,6 +264,15 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.sparse_table_configs = configs
         self.assertEqual(strategy.sparse_table_configs.accessor.embed_sgd_param.
                          adagrad.learning_rate, 0.05)
+        strategy.adam_d2sum = True
+        self.assertEqual(strategy.adam_d2sum, True)
+        strategy.fs_client_param = {
+            "uri": "123",
+            "user": "456",
+            "passwd": "789",
+            "hadoop_bin": "hadoop"
+        }
+        self.assertEqual(strategy.fs_client_param.user, "456")
 
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
