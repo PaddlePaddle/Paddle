@@ -587,7 +587,13 @@ class TheOnePSRuntime(RuntimeBase):
 
         proto_txt = str(worker) + "\n" + str(server)
 
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+
+        if debug:
+            print("worker: \n{}".format(proto_txt))
+
         endpoints = self.compiled_strategy.get_ps_endpoints()
+
         string_hosts = []
         for idx, ep in enumerate(endpoints):
             host, port = ep.split(":")
