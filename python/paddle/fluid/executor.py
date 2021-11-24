@@ -1362,10 +1362,8 @@ class Executor(object):
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
 
-                # NPTE(zhiqiu): Construct standalone_executor first, so 
-                # the scope is binded with the variable_scope of standalone_executor
-                new_exe = self._executor_cache._get_exe_from_cache(
-                    inner_program, scope, feed, fetch_list)
+                key = _get_strong_program_cache_key(inner_program, feed,
+                                                    fetch_list)
 
                 program = self._add_feed_fetch_ops(
                     program=inner_program,
@@ -1374,6 +1372,16 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name,
                     use_fetch_v2=True)
+
+                # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
+                # while use program to geet _StandaloneExecutor
+                if key not in self._executor_cache._cached_executors:
+                    new_program = program.clone()
+                    new_exe = _StandaloneExecutor(self.place, new_program,
+                                                  scope)
+                    self._executor_cache._cached_executors[key] = new_exe
+
+                new_exe = self._executor_cache._cached_executors[key]
 
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
