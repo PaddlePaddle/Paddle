@@ -981,3 +981,58 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             complete_shape))
     split_indices_list = [sorted(x) for x in split_indices_list]
     return split_indices_list
+
+
+def set_grad_var_shape(program, dist_context):
+    from .operators.common import infer_shape
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+    block = program.global_block()
+    vars = block.vars
+    for op in block.ops:
+        if op.type == "sum":
+            continue
+        if int(op.attr('op_role')) == int(OpRole.Backward):
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            assert op_dist_attr is not None
+
+            for var_name in op.output_arg_names:
+                assert "@GRAD" in var_name
+                forward_var_name = var_name[:var_name.find("@GRAD")]
+                if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
+                    forward_var_name = op.input_arg_names[0]
+
+                need_set_shape_list = [
+                    "reshape2_grad", "softmax_with_cross_entropy_grad",
+                    "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
+                    "dropout_grad"
+                ]
+                forward_list = [
+                    "reshape2", "softmax_with_cross_entropy", "transpose2",
+                    "softmax", "cross_entropy2", "dropout"
+                ]
+                if op.type in need_set_shape_list:
+                    for forward_op in block.ops:
+                        assert int(forward_op.attr('op_role')) != int(
+                            OpRole.Backward)
+                        idx = need_set_shape_list.index(op.type)
+                        forward_op_name = forward_list[idx]
+                        if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
+                            op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                                forward_op)
+                            break
+
+                forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                    forward_var_name)
+                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                forward_var = vars[forward_var_name]
+                forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    forward_var)
+                assert forward_var_dist_attr is not None
+                grad_var = vars[var_name]
+                ref_shape = infer_shape(block, forward_var,
+                                        forward_var_dist_attr,
+                                        forward_input_dist_attr)
+
+                if list(grad_var.shape) != ref_shape:
+                    grad_var.desc.set_shape(ref_shape)
