@@ -44,6 +44,8 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
       InterceptorMessage msg;
       msg.set_message_type(STOP);
       Send(interceptor_id_, msg);
+    } else if (msg.message_type() == STOP) {
+      stop_ = true;
     }
   }
 }
@@ -91,13 +93,14 @@ void Interceptor::PoolTheMailbox() {
     VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
             << " from interceptor " << interceptor_message.src_id()
             << " with message: " << message_type << ".";
-    if (message_type == STOP) {
+
+    Handle(interceptor_message);
+
+    if (stop_) {
       // break the pooling thread
       VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
       break;
     }
-
-    Handle(interceptor_message);
   }
 }
 

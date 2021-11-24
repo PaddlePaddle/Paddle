@@ -35,6 +35,7 @@ void ComputeInterceptor::PrepareDeps() {
 
   for (auto up_id : upstream) {
     in_readys_.emplace(up_id, std::make_pair(in_buff_size, 0));
+    in_stops_.emplace(up_id, false);
   }
   for (auto down_id : downstream) {
     out_buffs_.emplace(down_id, std::make_pair(out_buff_size, 0));
@@ -144,6 +145,38 @@ void ComputeInterceptor::Run() {
   }
 }
 
+void ComputeInterceptor::ReceivedStop(int64_t up_id) {
+  received_stop_ = true;
+
+  // source node has no upstream, stop is send by carrier or others
+  if (up_id == -1) return;
+
+  auto it = in_stops_.find(up_id);
+  PADDLE_ENFORCE_NE(it, in_stops_.end(),
+                    platform::errors::NotFound(
+                        "Cannot find upstream=%lld in in_stops.", up_id));
+  PADDLE_ENFORCE_EQ(
+      it->second, false,
+      platform::errors::AlreadyExists("Already received stop from %lld, stop "
+                                      "cannot be send more than once."));
+  it->second = true;
+}
+
+bool ComputeInterceptor::CanStop() const {
+  if (!received_stop_) return false;
+
+  // can stop only when all upstream is stop and
+  // downstream complete
+  for (auto& in_stop : in_stops_) {
+    if (!in_stop.second) return false;
+  }
+  for (auto& out_buff : out_buffs_) {
+    auto used_size = out_buff.second.second;
+    if (used_size != 0) return false;
+  }
+  return true;
+}
+
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
     IncreaseReady(msg.src_id());
@@ -151,7 +184,11 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   } else if (msg.message_type() == DATE_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
+  } else if (msg.message_type() == STOP) {
+    ReceivedStop(msg.src_id());
   }
+
+  if (CanStop()) stop_ = true;
 }
 
 REGISTER_INTERCEPTOR(Compute, ComputeInterceptor);
