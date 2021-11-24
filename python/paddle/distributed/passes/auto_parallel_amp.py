@@ -446,7 +446,7 @@ class AMPBackwardPass(PassBase):
     def _scale_loss(self):
 
         main_block = paddle.static.default_main_program().global_block()
-
+        main_block._sync_with_cpp()
         loss_op = get_loss_op(main_block)
         loss = main_block.var(loss_op.output_arg_names[0])
 
@@ -455,6 +455,8 @@ class AMPBackwardPass(PassBase):
 
         if self.get_attr("use_dynamic_loss_scaling") or self.get_attr(
                 "init_loss_scaling") != 1.0:
+
+            loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
             self._scaled_loss = main_block.create_var(
                 name=unique_name.generate("scaled_loss"),
@@ -465,7 +467,8 @@ class AMPBackwardPass(PassBase):
                               global_process_mesh)
 
             OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-            elementwise_mul_op = main_block.append_op(
+            elementwise_mul_op = main_block._insert_op(
+                loss_op_idx + 1,
                 type='elementwise_mul',
                 inputs={'X': [loss],
                         'Y': [self._loss_scaling]},
