@@ -525,6 +525,24 @@ def rot90(x, k, dims):
           out = paddle.flip(tmp,-1)
           print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
     """
+
+    helper = LayerHelper("rot90", **locals())
+    check_type(x, 'X', (Variable), 'rot90')
+    dtype = helper.input_dtype('x')
+    check_dtype(dtype, 'X',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+                'rot90')
+    check_type(dims, 'dims', (list, tuple), 'rot90')
+
+    total_dims = len(x.shape), total_rot_dims = len(dims)
+    if total_rot_dims != 2:
+        raise ValueError("expected total rotation dims == 2, but got dims = {}".
+                         format(total_rot_dims))
+    if total_dims < 2:
+        raise ValueError("expected total dims >= 2, but got total dims = {}".
+                         format(total_dims))
+
+    #dims[0] != dims[1] and    
     #const int64_t total_dims = self.dim(), total_rot_dims = dims.size();
     #TORCH_CHECK(total_rot_dims == 2, "expected total rotation dims == 2, but got dims = ", total_rot_dims);
     #TORCH_CHECK(total_dims >= 2, "expected total dims >= 2, but got total dims = ", total_dims);
@@ -532,8 +550,10 @@ def rot90(x, k, dims):
     #// check range of dims
     #TORCH_CHECK(dims[0] < total_dims && dims[0] >= -total_dims, "Rotation dim0 out of range, dim0 = ", dims[0]);
     #TORCH_CHECK(dims[1] < total_dims && dims[1] >= -total_dims,"Rotation dim1 out of range, dim1 = ", dims[1]);
-    #// handle modulo with negative k
-    #k = (4 + (k % 4)) % 4;
+
+    # handle modulo with negative k
+    k = (4 + (k % 4)) % 4
+
     #switch(k) {
     #  case 1:
     #    return self.flip({dims[1]}).transpose_(dims[0], dims[1]);
