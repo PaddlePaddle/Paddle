@@ -1001,3 +1001,20 @@ def is_backward_op(op):
 def is_recompute_op(op):
     return OP_ROLE_KEY in op.attr_names and \
             int(op.all_attrs()[OP_ROLE_KEY]) == 9
+
+
+def is_loss_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
+
+
+def get_loss_op(block):
+    loss_ops = []
+    for op in block.ops:
+        if is_loss_op(op):
+            assert len(op.desc.output_arg_names(
+            )) == 1, "loss op should only output loss var"
+            loss_ops.append(op)
+
+    assert len(loss_ops) == 1, "num of loss op is not equal to one"
+    return loss_ops[0]

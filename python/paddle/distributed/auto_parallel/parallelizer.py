@@ -16,6 +16,7 @@ import paddle
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from paddle.fluid import program_guard
+from paddle.distributed.passes import new_pass, PassContext
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
@@ -24,6 +25,8 @@ from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .utils import make_data_unshard
 from .reshard import reshard
+
+import copy
 
 
 class AutoParallelizer:
@@ -58,18 +61,21 @@ class AutoParallelizer:
 
         # apply amp forward pass
         if self._dist_strategy.amp:
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp_pass",
-                                              self._dist_strategy.amp_configs)
-            auto_parallel_amp_pass.apply_forward(main_program, startup_program,
-                                                 self._pass_context)
+            config = copy.deepcopy(self._dist_strategy.amp_configs)
+            config["dist_context"] = self._dist_context
+            auto_parallel_amp_pass = new_pass("auto_parallel_amp_forward",
+                                              config)
+            auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                         self._pass_context)
 
         # apply recompute forward pass
         if self._dist_strategy.recompute:
+            config = copy.deepcopy(self._dist_strategy.recompute_configs)
+            config["dist_context"] = self._dist_context
             auto_parallel_recompute_pass = new_pass(
-                "auto_parallel_recompute_pass",
-                self._dist_strategy.recompute_configs)
-            auto_parallel_recompute_pass.apply_forward(
-                main_program, startup_program, self._pass_context)
+                "auto_parallel_recompute_forward", config)
+            auto_parallel_recompute_pass.apply(
+                [main_program], [startup_program], self._pass_context)
 
     def _generate_backward(self, main_program, startup_program, loss,
                            parameter_list, no_grad_set, callbacks):
@@ -77,9 +83,14 @@ class AutoParallelizer:
         # apply recompute backward pass
         if self._dist_strategy.recompute:
             assert auto_parallel_recompute_pass
-            auto_parallel_recompute_pass.apply_forward(
-                main_program, startup_program, parameter_list, no_grad_set,
-                self._pass_context)
+            config = copy.deepcopy(self._dist_strategy.recompute_configs)
+            config["dist_context"] = self._dist_context
+            config["parameter_list"] = copy.deepcopy(parameter_list)
+            config["no_grad_set"] = copy.deepcopy(no_grad_set)
+            auto_parallel_recompute_pass = new_pass(
+                "auto_parallel_recompute_backward", config)
+            auto_parallel_recompute_pass.apply(
+                [main_program], [startup_program], self._pass_context)
         else:
             from paddle.fluid.backward import append_backward
             with program_guard(main_program, startup_program):
@@ -94,9 +105,13 @@ class AutoParallelizer:
 
         # apply amp forward pass
         if self._dist_strategy.amp:
-            assert auto_parallel_amp_pass
-            auto_parallel_amp_pass.apply_backward(main_program, startup_program,
-                                                  self._pass_context)
+            config = copy.deepcopy(self._dist_strategy.amp_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            auto_parallel_amp_pass = new_pass("auto_parallel_amp_backward",
+                                              config)
+            auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                         self._pass_context)
 
         return params_grads
 

@@ -102,22 +102,17 @@ class Partitioner(object):
         partitioned_startup_prog = fluid.Program()
         ref_block = serial_main_program.global_block()
         target_block = partitioned_startup_prog.global_block()
-        param2shape = {}
+        var2shape = {}
         temp_varname_map = {}
 
         # tensors
         for var in serial_startup_program.list_vars():
-            if isinstance(var, Parameter):
-                # TODO if var not belong to this rank, should be filtered
-                serial_main_var = ref_block.var(var.name)
-                dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                    serial_main_var)
-                target_shape = _get_dist_shape(serial_main_var, dist_attr)
-                new_name = var.name + self._dist_varname_suffix
-                temp_varname_map[var.name] = new_name
-                _partition_parameter(self._dist_context, serial_main_var,
-                                     target_block, new_name, target_shape)
-                param2shape[new_name] = target_shape
+            assert var.persistable
+            new_name = var.name + self._dist_varname_suffix
+            temp_varname_map[var.name] = new_name
+            target_shape = _partition_var(self._dist_context, ref_block,
+                                          target_block, var.name, new_name)
+            var2shape[new_name] = target_shape
 
         # ops
         for op in serial_startup_program.global_block().ops:
@@ -128,14 +123,14 @@ class Partitioner(object):
             ) == 1, "initializer should output only ONE variable, but got [{}]".format(
                 str(op.desc))
             assert temp_varname_map[output_vars[
-                0]] in param2shape, "try to initialize [{}] which is not a Parameter".format(
+                0]] in var2shape, "try to initialize [{}] which is not a persistable var".format(
                     output_vars[0])
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op_desc._rename_output(output_vars[0],
                                        temp_varname_map[output_vars[0]])
             new_op_desc._set_attr("shape",
-                                  param2shape[temp_varname_map[output_vars[0]]])
+                                  var2shape[temp_varname_map[output_vars[0]]])
             target_block._sync_with_cpp()
 
             # set distribute atrribute
@@ -351,6 +346,7 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
             name=dst_varname,
             persistable=True,
             stop_gradient=True)
+        target_shape = None
     else:
         dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
         target_shape = _get_dist_shape(src_var, dist_attr)
@@ -361,6 +357,7 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
         else:
             _partition_intermediate_var(dist_context, src_var, dst_block,
                                         dst_varname, target_shape)
+    return target_shape
 
 
 def _get_dist_op_backward_implement(backward_op, dist_context,

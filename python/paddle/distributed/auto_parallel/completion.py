@@ -710,6 +710,7 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
             # op dist attr
             forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
                 forward_op)
+            assert forward_op_dist_attr is not None
             forward_op_process_mesh = forward_op_dist_attr.process_mesh
             grad_op_dist_attr = OperatorDistributedAttribute()
             grad_op_dist_attr.process_mesh = forward_op_process_mesh
