@@ -59,6 +59,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
+    int8_teller_set.insert("reshape");
+    int8_teller_set.insert("reshape2");
 #endif
   }
 
@@ -74,24 +76,54 @@ struct SimpleOpTypeSetTeller : public Teller {
  private:
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{"mul",
-                                                  "conv2d",
                                                   "matmul",
-                                                  "stack",
+                                                  "conv2d",
                                                   "conv2d_fusion",
                                                   "pool2d",
                                                   "relu",
-                                                  "depthwise_conv2d",
                                                   "softmax",
                                                   "sigmoid",
+                                                  "hard_swish",
+                                                  "depthwise_conv2d",
                                                   "batch_norm",
+                                                  "concat",
+                                                  "tanh",
+                                                  "pad",
                                                   "elementwise_add",
+                                                  "elementwise_mul",
+                                                  "dropout",
+                                                  "prelu",
+                                                  "conv2d_transpose",
+                                                  "depthwise_conv2d_transpose",
                                                   "leaky_relu",
                                                   "fc",
-                                                  "concat",
+                                                  "shuffle_channel",
+                                                  "swish",
+                                                  "split",
+                                                  "instance_norm",
+                                                  "gelu",
+                                                  "layer_norm",
                                                   "scale",
-                                                  "elementwise_mul",
-                                                  "conv2d_transpose",
-                                                  "hard_swish"};
+                                                  "stack",
+                                                  "transpose2",
+                                                  "transpose",
+                                                  "flatten2",
+                                                  "flatten",
+                                                  "gather",
+                                                  "gather_nd",
+                                                  "yolo_box",
+                                                  "roi_align",
+                                                  "affine_channel",
+                                                  "nearest_interp",
+                                                  "anchor_generator",
+                                                  "reduce_sum",
+                                                  "reduce_mean",
+                                                  "conv3d",
+                                                  "conv3d_transpose",
+                                                  "mish",
+                                                  "nearest_interp_v2",
+                                                  "pool3d",
+                                                  "deformable_conv"};
   std::unordered_set<std::string> teller_set{"mul",
                                              "matmul",
                                              "conv2d",
@@ -152,13 +184,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "depthwise_conv2d") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
-      if (paddings.size() > 2) return false;
-    }
-
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
         op_type == "sigmoid") {
       auto* block = desc.Block();

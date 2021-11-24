@@ -37,7 +37,13 @@ def elu(x, alpha=1.0, name=None):
 
     .. math::
 
-        elu(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        elu(x)=
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -80,6 +86,7 @@ def elu_(x, alpha=1.0, name=None):
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
+    assert alpha >= 0., "elu_ only support alpha >= 0, please use elu instead."
     return _C_ops.elu_(x, 'alpha', alpha)
 
 

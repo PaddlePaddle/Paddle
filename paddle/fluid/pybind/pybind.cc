@@ -1966,7 +1966,8 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetWorkerScope(thread_id);
            },
            py::return_value_policy::reference)
-      .def("finalize", &TrainerBase::Finalize);
+      .def("finalize", &TrainerBase::Finalize)
+      .def("ResetDataset", &TrainerBase::ResetDataset);
 
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 

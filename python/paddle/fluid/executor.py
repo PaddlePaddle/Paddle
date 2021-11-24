@@ -681,6 +681,7 @@ class Executor(object):
             self.place = framework._get_paddle_place(place)
         self.program_caches = dict()
         self.ctx_caches = dict()
+        self.trainer_caches = dict()
         self.scope_caches = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
@@ -704,6 +705,9 @@ class Executor(object):
     def _get_ctx_cache(self, program_cache_key):
         return self.ctx_caches.get(program_cache_key, None)
 
+    def _get_trainer_cache(self, program_cache_key):
+        return self.trainer_caches.get(program_cache_key, None)
+
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
@@ -724,6 +728,9 @@ class Executor(object):
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
+
+    def _add_trainer_cache(self, trainer_cache_key, ctx):
+        self.trainer_caches[trainer_cache_key] = ctx
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
@@ -986,8 +993,11 @@ class Executor(object):
               exe.close()
         """
         if not self._closed:
-            self._default_executor.close()
             self._closed = True
+            for k, trainer_instance in self.trainer_caches.items():
+                self._default_executor.release_trainer(trainer_instance)
+                del trainer_instance
+            self._default_executor.close()
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
@@ -1271,6 +1281,18 @@ class Executor(object):
                     program,
                     fetch_list=fetch_list,
                     use_program_cache=use_program_cache)
+
+        if isinstance(program, Program) and program._heter_pipeline_opt:
+            ## change default executor 
+            heter_place = program._heter_pipeline_opt["heter_place"]
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
+            # TODO(zhangminxu): support heterps pipeline training using exe.run
+            if "startup_program" in program._heter_pipeline_opt:
+                program = program._heter_pipeline_opt["startup_program"]
+
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
@@ -1569,6 +1591,9 @@ class Executor(object):
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
                     program._pipeline_opt)
+            elif program._heter_pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program._heter_pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
@@ -1579,6 +1604,9 @@ class Executor(object):
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
                     program.program._pipeline_opt)
+            elif program._heter_pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program.program._heter_pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(
                     program.program._fleet_opt)
@@ -1631,6 +1659,39 @@ class Executor(object):
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
             dataset.set_use_var(data_vars)
+        elif program._heter_pipeline_opt is not None:
+            stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            heter_place = program._heter_pipeline_opt["heter_place"]
+            if stage_id != 0:
+                import paddle
+                if dataset is not None:
+                    raise RuntimeError(
+                        "dataset should be None for heter pipeline mode")
+                # The following fake dataset is created to call 
+                # the _prepare_trainer api, and it is meaningless.
+                data_vars = []
+                for var in program.global_block().vars.values():
+                    if var.is_data:
+                        data_vars.append(var)
+                if core.is_compiled_with_npu():
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'InMemoryDataset')
+                else:
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'FileInstantDataset')
+                dataset.set_batch_size(1)
+                dataset.set_thread(1)
+                dataset.set_filelist(['None'])
+                dataset.set_use_var(data_vars)
+            else:
+                if dataset is None:
+                    raise RuntimeError(
+                        "dataset is need and should be initialized")
+            ## change default executor
+            heter_place = framework._get_paddle_place(heter_place)
+            p = core.Place()
+            p.set_place(heter_place)
+            self._default_executor = core.Executor(p)
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")
@@ -1662,7 +1723,6 @@ class Executor(object):
                         'op_role',
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -1677,14 +1737,28 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         if program._pipeline_opt is None:
-            self._dump_debug_info(program=program, trainer=trainer)
+            if program._heter_pipeline_opt is None:
+                self._dump_debug_info(program=program, trainer=trainer)
         # in case of calling _set_use_ps_gpu explicitly
         if dataset.use_ps_gpu is False:
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        trainer_instance = self._default_executor.init_for_dataset(
-            program.desc, trainer._desc(), scope, dataset.dataset)
+        if program._heter_pipeline_opt is None:
+            trainer_instance = self._default_executor.init_for_dataset(
+                program.desc, trainer._desc(), scope, dataset.dataset)
+        else:
+            # cache trainer instance for heterps pipeline training
+            if fetch_list == None:
+                fetch_list = []
+            cache_key = _get_strong_program_cache_key(program, None, fetch_list)
+            trainer_instance = self._get_trainer_cache(cache_key)
+            if trainer_instance is None:
+                trainer_instance = self._default_executor.init_for_dataset(
+                    program.desc, trainer._desc(), scope, dataset.dataset)
+                self._add_trainer_cache(cache_key, trainer_instance)
+            else:
+                trainer_instance.ResetDataset(dataset.dataset)
 
         if fetch_handler is not None:
             scope0 = trainer_instance.get_worker_scope(0)
@@ -1692,11 +1766,12 @@ class Executor(object):
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            self._default_executor.release_trainer(trainer_instance)
+            if program._heter_pipeline_opt is None:
+                self._default_executor.release_trainer(trainer_instance)
         else:
-
             self._default_executor.run_from_dataset(trainer_instance)
-            self._default_executor.release_trainer(trainer_instance)
+            if program._heter_pipeline_opt is None:
+                self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()

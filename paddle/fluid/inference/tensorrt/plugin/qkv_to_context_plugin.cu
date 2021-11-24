@@ -229,7 +229,9 @@ template <typename T>
 __global__ void apply_scale(T *data, T scale, int n) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  data[tid] = data[tid] * scale;
+  if (tid < n) {
+    data[tid] = data[tid] * scale;
+  }
 #endif
 }
 
