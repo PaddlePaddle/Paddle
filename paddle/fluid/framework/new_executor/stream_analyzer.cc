@@ -101,10 +101,10 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
     const OpFuncNode& op_func_node) {
   auto& op_type = op_func_node.operator_base_->Type();
   auto* dev_ctx = op_func_node.dev_ctx_;
-  if (op_type == interpretercore::kMemcpyH2D) {
+  if (op_type == interpreter::kMemcpyH2D) {
     VLOG(3) << "Get dev_ctx from d2h_context_pool_";
     dev_ctx = d2h_ctx_pool_.Get(place_);
-  } else if (op_type == interpretercore::kMemcpyD2H) {
+  } else if (op_type == interpreter::kMemcpyD2H) {
     VLOG(3) << "Get dev_ctx from h2d_context_pool_";
     dev_ctx = h2d_ctx_pool_.Get(place_);
   }
@@ -122,8 +122,8 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
   return (&cur_instr.DeviceContext() == &next_instr.DeviceContext() ||
-          interpretercore::IsMemcpyD2H(cur_instr) ||
-          interpretercore::IsMemcpyH2D(next_instr));
+          interpreter::IsMemcpyD2H(cur_instr) ||
+          interpreter::IsMemcpyH2D(next_instr));
 }
 
 platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {

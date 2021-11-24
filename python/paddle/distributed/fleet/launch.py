@@ -200,6 +200,11 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="",
         help="User defined heter workers ip:port")
+    ps_group.add_argument(
+        "--heter_devices",
+        type=str,
+        default="",
+        help="User defined heter devices")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
@@ -353,11 +358,11 @@ def launch_ps(args, distribute_mode):
     if cloud_flag and distribute_mode == DistributeMode.PS:
         direct_start(args)
         return
-    elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
-        cloud_ps_heter_env_set(args)
-        args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
-        args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
+    #elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
+    #    cloud_ps_heter_env_set(args)
+    #    args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+    #    args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
+    #    args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
 
     ps_launcher = ParameterServerLauncher(args, distribute_mode)
     ps_launcher.start_ps()
@@ -390,11 +395,11 @@ def which_distributed_mode(args):
 
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_workers', '--http_port'
+        '--workers', '--heter_workers', '--heter_devices', '--http_port'
     ]
     collective_args = ['--ips']
 
-    ps_heter_args = ["--heter_worker_num", "--heter_workers"]
+    ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
 
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])

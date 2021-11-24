@@ -352,12 +352,12 @@ HOSTDEVICE inline bool operator>=(const complex<T>& a, const complex<T>& b) {
 }
 
 template <typename T>
-HOSTDEVICE inline complex<T> max(const complex<T>& a, const complex<T>& b) {
+HOSTDEVICE inline complex<T>(max)(const complex<T>& a, const complex<T>& b) {
   return (a.real >= b.real) ? a : b;
 }
 
 template <typename T>
-HOSTDEVICE inline complex<T> min(const complex<T>& a, const complex<T>& b) {
+HOSTDEVICE inline complex<T>(min)(const complex<T>& a, const complex<T>& b) {
   return (a.real < b.real) ? a : b;
 }
 
@@ -507,13 +507,13 @@ struct numeric_limits<paddle::platform::complex<T>> {
   static const bool traps = false;
   static const bool tinyness_before = false;
 
-  static paddle::platform::complex<T> min() {
+  static paddle::platform::complex<T>(min)() {
     return paddle::platform::complex<T>(0.0, 0.0);
   }
   static paddle::platform::complex<T> lowest() {
     return paddle::platform::complex<T>(0.0, 0.0);
   }
-  static paddle::platform::complex<T> max() {
+  static paddle::platform::complex<T>(max)() {
     return paddle::platform::complex<T>(0.0, 0.0);
   }
   static paddle::platform::complex<T> epsilon() {

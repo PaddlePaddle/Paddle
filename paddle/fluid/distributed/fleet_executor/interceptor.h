@@ -15,6 +15,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <functional>
 #include <map>
 #include <memory>
 #include <queue>
@@ -22,6 +23,8 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -31,18 +34,31 @@ class TaskNode;
 
 class Interceptor {
  public:
+  using MsgHandle = std::function<void(const InterceptorMessage&)>;
+
+ public:
   Interceptor() = delete;
 
-  Interceptor(int64_t interceptor_id_, TaskNode* node);
+  Interceptor(int64_t interceptor_id, TaskNode* node);
 
-  virtual ~Interceptor() = default;
+  virtual ~Interceptor();
+
+  // register interceptor handle
+  void RegisterMsgHandle(MsgHandle handle);
+
+  void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
   int64_t GetInterceptorId() const;
 
+  // return the conditional var
+  std::condition_variable& GetCondVar();
+
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   bool EnqueueRemoteInterceptorMessage(
       const InterceptorMessage& interceptor_message);
+
+  void Send(int64_t dst_id, std::unique_ptr<InterceptorMessage> msg);
 
   DISABLE_COPY_AND_ASSIGN(Interceptor);
 
@@ -59,6 +75,9 @@ class Interceptor {
 
   // node need to be handled by this interceptor
   TaskNode* node_;
+
+  // interceptor handle which process message
+  MsgHandle handle_{nullptr};
 
   // mutex to control read/write conflict for remote mailbox
   std::mutex remote_mailbox_mutex_;

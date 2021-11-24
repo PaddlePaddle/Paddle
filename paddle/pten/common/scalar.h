@@ -34,6 +34,18 @@ class Scalar {
 
   Scalar(bool val) : tag(Tag::HAS_B) { data_.b = val; }  // NOLINT
 
+  Scalar(const std::string& str_value) : tag(Tag::HAS_D) {  // NOLINT
+    if (str_value == "inf") {
+      data_.d = std::numeric_limits<double>::infinity();
+    } else if (str_value == "-inf") {
+      data_.d = -std::numeric_limits<double>::infinity();
+    } else if (str_value == "nan") {
+      data_.d = std::numeric_limits<double>::quiet_NaN();
+    } else {
+      data_.d = std::stod(str_value);
+    }
+  }
+
   template <typename T>
   inline T to() const {
     switch (tag) {
