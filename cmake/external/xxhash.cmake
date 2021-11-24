@@ -43,7 +43,6 @@ if(WIN32)
       GIT_REPOSITORY   ${XXHASH_REPOSITORY}
       GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND   ""
       PATCH_COMMAND    ""
       CONFIGURE_COMMAND
@@ -67,7 +66,6 @@ else()
       GIT_REPOSITORY   ${XXHASH_REPOSITORY}
       GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND    ""
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE   1

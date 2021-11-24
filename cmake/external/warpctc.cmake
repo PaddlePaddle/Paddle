@@ -19,7 +19,6 @@ IF(WITH_ROCM)
 ENDIF()
 
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
-SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 # in case of low internet speed  
 #set(WARPCTC_REPOSITORY  https://gitee.com/tianjianhe/warp-ctc.git)

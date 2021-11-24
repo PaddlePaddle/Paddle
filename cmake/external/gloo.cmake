@@ -29,7 +29,7 @@ INCLUDE_DIRECTORIES(${GLOO_INCLUDE_DIR})
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
   ExternalProject_Add(
-      extern_gloo
+      ${GLOO_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
       GIT_REPOSITORY        ${GLOO_REPOSITORY}
@@ -46,7 +46,7 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
   )
 else()
   ExternalProject_Add(
-      extern_gloo
+      ${GLOO_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
       GIT_REPOSITORY        ${GLOO_REPOSITORY}

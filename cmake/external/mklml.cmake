@@ -13,12 +13,9 @@
 # limitations under the License.
 
 INCLUDE(ExternalProject)
-SET(MKLML_DST_DIR       "mklml")
-SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
-SET(MKLML_INSTALL_DIR   ${MKLML_INSTALL_ROOT}/${MKLML_DST_DIR})
-SET(MKLML_ROOT          ${MKLML_INSTALL_DIR})
-SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
-SET(MKLML_LIB_DIR       ${MKLML_ROOT}/lib)
+SET(MKLML_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/mklml)
+SET(MKLML_INC_DIR       ${MKLML_INSTALL_DIR}/include)
+SET(MKLML_LIB_DIR       ${MKLML_INSTALL_DIR}/lib)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
 
 IF(WIN32)
@@ -56,7 +53,6 @@ ExternalProject_Add(
     URL                   ${MKLML_URL}
     URL_MD5               ${MKLML_URL_MD5}
     PREFIX                ${MKLML_PREFIX_DIR}
-    DOWNLOAD_DIR          ${MKLML_SOURCE_DIR}
     DOWNLOAD_NO_PROGRESS  1
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
