@@ -29,7 +29,7 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 ```
 # CPU
 pip install paddlepaddle
-test
+atest
 # GPU
 pip install paddlepaddle-gpu
 
