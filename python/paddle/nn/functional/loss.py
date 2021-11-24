@@ -2051,3 +2051,38 @@ def sigmoid_focal_loss(logit,
         loss = paddle.sum(loss, name=name)
 
     return loss
+
+
+def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
+    """
+
+    Returns:
+
+    """
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
+            "but received {}.".format(reduction))
+
+    if not paddle.fluid.framework.in_dygraph_mode():
+        paddle.fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'hinge_embedding_loss')
+        paddle.fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'hinge_embedding_loss')
+
+    if (label == 1.).all():
+        loss = input
+    elif (label == -1.).all():
+        loss = paddle.maximum(paddle.to_tensor(0.), delta - input)
+    else:
+        raise ValueError("'label' should contain 1. or -1., "
+                         "but received label containing {}.".format(
+                             label.unique()))
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss

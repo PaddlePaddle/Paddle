@@ -1203,3 +1203,23 @@ class SmoothL1Loss(Layer):
             reduction=self.reduction,
             delta=self.delta,
             name=self.name)
+
+
+class HingeEmbeddingLoss(Layer):
+    """
+
+    """
+
+    def __init__(self, delta=1.0, reduction="mean", name=None):
+        super(HingeEmbeddingLoss, self).__init__()
+        self.delta = delta
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        return F.hinge_embedding_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            delta=self.delta,
+            name=self.name)

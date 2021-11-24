@@ -31,24 +31,12 @@ import warnings
 from paddle import _C_ops
 
 __all__ = [
-    'center_loss',
-    'bpr_loss',
-    'cross_entropy',
-    'square_error_cost',
-    'edit_distance',
-    'warpctc',
-    'nce',
-    'hsigmoid',
-    'sampled_softmax_with_cross_entropy',
-    'softmax_with_cross_entropy',
-    'rank_loss',
-    'margin_rank_loss',
-    'sigmoid_cross_entropy_with_logits',
-    'teacher_student_sigmoid_loss',
-    'huber_loss',
-    'kldiv_loss',
-    'npair_loss',
-    'mse_loss',
+    'center_loss', 'bpr_loss', 'cross_entropy', 'square_error_cost',
+    'edit_distance', 'warpctc', 'nce', 'hsigmoid',
+    'sampled_softmax_with_cross_entropy', 'softmax_with_cross_entropy',
+    'rank_loss', 'margin_rank_loss', 'sigmoid_cross_entropy_with_logits',
+    'teacher_student_sigmoid_loss', 'huber_loss', 'kldiv_loss', 'npair_loss',
+    'mse_loss', 'hinge_embedding_loss'
 ]
 
 kIgnoreIndex = -100
@@ -1763,3 +1751,37 @@ def mse_loss(input, label):
     check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
     check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
     return nn.reduce_mean(square_error_cost(input, label))
+
+
+def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
+    """
+
+    Returns:
+
+    """
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
+            "but received {}.".format(reduction))
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'hinge_embedding_loss')
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'hinge_embedding_loss')
+
+    if (label == 1.).all():
+        loss = input
+    elif (label == -1.).all():
+        loss = paddle.maximum(paddle.to_tensor(0.), delta - input)
+    else:
+        raise ValueError("'label' should contain 1. or -1., "
+                         "but received label containing {}.".format(
+                             label.unique()))
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss
