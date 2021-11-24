@@ -1,3 +1,6 @@
 set(eager_deps pten pten_api)
+if(WITH_MKLDNN)
+    set(eager_deps ${eager_deps} mkldnn)
+endif(WITH_MKLDNN)
 add_subdirectory(data_structure_tests)
 add_subdirectory(task_tests)
