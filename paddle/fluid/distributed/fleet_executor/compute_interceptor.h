@@ -40,7 +40,7 @@ class ComputeInterceptor : public Interceptor {
 
   void HandleStop(const InterceptorMessage& msg) override;
   void ReceivedStop(int64_t up_id);
-  bool CanStop() const;
+  void TryStop();
 
  private:
   // FIXME(wangxi): if use step_ and max_steps_, how to restart step_ from 0

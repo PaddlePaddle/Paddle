@@ -28,7 +28,13 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
   });
 }
 
-Interceptor::~Interceptor() { interceptor_thread_.join(); }
+Interceptor::~Interceptor() { Join(); }
+
+void Interceptor::Join() {
+  if (interceptor_thread_.joinable()) {
+    interceptor_thread_.join();
+  }
+}
 
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 

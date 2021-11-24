@@ -162,25 +162,33 @@ void ComputeInterceptor::ReceivedStop(int64_t up_id) {
   it->second = true;
 }
 
-bool ComputeInterceptor::CanStop() const {
-  if (!received_stop_) return false;
+void ComputeInterceptor::TryStop() {
+  if (!received_stop_) return;
 
   // can stop only when all upstream is stop and
   // downstream complete
   for (auto& in_stop : in_stops_) {
-    if (!in_stop.second) return false;
+    if (!in_stop.second) return;
   }
   for (auto& out_buff : out_buffs_) {
     auto used_size = out_buff.second.second;
-    if (used_size != 0) return false;
+    if (used_size != 0) return;
   }
-  return true;
+
+  // send stop to downstream
+  for (auto& out : out_buffs_) {
+    auto down_id = out.first;
+    InterceptorMessage stop;
+    stop.set_message_type(STOP);
+    Send(down_id, stop);
+  }
+  stop_ = true;
 }
 
 void ComputeInterceptor::HandleStop(const InterceptorMessage& msg) {
   ReceivedStop(msg.src_id());
 
-  if (CanStop()) stop_ = true;
+  TryStop();
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
@@ -192,7 +200,7 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
     Run();
   }
 
-  if (CanStop()) stop_ = true;
+  TryStop();
 }
 
 REGISTER_INTERCEPTOR(Compute, ComputeInterceptor);
