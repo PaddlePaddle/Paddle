@@ -14,12 +14,13 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/cuda/math.h"
 
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/pten/kernels/functions/cuda/elementwise/elementwise.h"
+#include "paddle/pten/kernels/functions/cuda/reduce/reduce.h"
 #include "paddle/pten/kernels/functions/eigen/mean.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
-
 #include "paddle/pten/kernels/functions/general/reduce_impl.h"
 
 #ifdef __NVCC__
@@ -186,7 +187,7 @@ void Sum(const CUDAContext& dev_ctx,
          DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out) {
-  pten::general::Reduce<CUDAContext, T, pten::eigen::SumFunctor>(
+  pten::Reduce<T, paddle::operators::CustomSum>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
