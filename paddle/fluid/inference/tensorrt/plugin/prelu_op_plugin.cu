@@ -69,7 +69,7 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
   }
 
   if (mode_ == "channel") {
-    bool channel_last = data_layout_ == "NHWC";
+    bool channel_last = data_format_ == "NHWC";
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
     prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
@@ -169,7 +169,7 @@ int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   }
 
   if (mode_ == "channel") {
-    bool channel_last = data_layout_ == "NHWC";
+    bool channel_last = data_format_ == "NHWC";
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
     prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],

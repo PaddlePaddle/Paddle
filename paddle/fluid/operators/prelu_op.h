@@ -33,14 +33,14 @@ class PReluKernel : public framework::OpKernel<T> {
 
     const T* alpha_ptr = alpha->data<T>();
     auto& mode = context.Attr<std::string>("mode");
-    auto& data_layout = context.Attr<std::string>("data_layout");
+    auto& data_format = context.Attr<std::string>("data_format");
 
     int numel = x->numel();
     auto dim = x->dims();
     int index = 0;
     int i = 0;
     if (mode == "channel") {
-      if (data_layout == "NCHW") {
+      if (data_format == "NCHW") {
         int temp = 1;
         for (int j = 2; j < dim.size(); j++) {
           temp *= dim[j];
@@ -85,7 +85,7 @@ class PReluGradKernel : public framework::OpKernel<T> {
     const T* x_ptr = x->data<T>();
     const T* dout_ptr = dout->data<T>();
     std::string mode = context.Attr<std::string>("mode");
-    auto& data_layout = context.Attr<std::string>("data_layout");
+    auto& data_format = context.Attr<std::string>("data_format");
     int numel = x->numel();
     auto dim = x->dims();
     int index = 0;
@@ -93,7 +93,7 @@ class PReluGradKernel : public framework::OpKernel<T> {
     if (dx) {
       T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
       if (mode == "channel") {
-        if (data_layout == "NCHW") {
+        if (data_format == "NCHW") {
           int temp = 1;
           for (int j = 2; j < dim.size(); j++) {
             temp *= dim[j];
@@ -133,7 +133,7 @@ class PReluGradKernel : public framework::OpKernel<T> {
       memset(dalpha_ptr, 0, sizeof(T) * dalpha->numel());
 
       if (mode == "channel") {
-        if (data_layout == "NCHW") {
+        if (data_format == "NCHW") {
           int temp = 1;
           for (int j = 2; j < dim.size(); j++) {
             temp *= dim[j];

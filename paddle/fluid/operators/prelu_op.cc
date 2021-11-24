@@ -45,15 +45,15 @@ class PReluOp : public framework::OperatorWithKernel {
                             "equal or larger than 2. But recevied X's "
                             "rank: %d",
                             x_rank));
-      const std::string data_layout_str =
-          ctx->Attrs().Get<std::string>("data_layout");
-      PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
+      const std::string data_format_str =
+          ctx->Attrs().Get<std::string>("data_format");
+      PADDLE_ENFORCE_EQ(data_format_str == "NCHW" || data_format_str == "NHWC",
                         true,
                         platform::errors::InvalidArgument(
-                            "For mode 'channel', data_layout must be one of "
-                            "NCHW and NHWC. But recevied data_layout: %s",
-                            data_layout_str));
-      if (data_layout_str == "NCHW") {
+                            "For mode 'channel', data_format must be one of "
+                            "NCHW and NHWC. But recevied data_format: %s",
+                            data_format_str));
+      if (data_format_str == "NCHW") {
         PADDLE_ENFORCE_EQ(
             product(ctx->GetInputDim("Alpha")) == x_dim[1], true,
             platform::errors::InvalidArgument(
@@ -155,7 +155,7 @@ There are modes:
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
-    AddAttr<std::string>("data_layout",
+    AddAttr<std::string>("data_format",
                          "Data format that specifies the layout of input")
         .SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",

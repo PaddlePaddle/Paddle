@@ -412,8 +412,8 @@ class PReLU(Layer):
                  num_parameters=1,
                  init=0.25,
                  weight_attr=None,
-                 name=None,
-                 data_format="NCHW"):
+                 data_format="NCHW",
+                 name=None):
         super(PReLU, self).__init__()
         self._num_parameters = num_parameters
         self._init = init

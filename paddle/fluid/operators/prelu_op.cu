@@ -42,7 +42,7 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
 
     const T* alpha_ptr = alpha->data<T>();
     auto& mode = context.Attr<std::string>("mode");
-    auto& data_layout = context.Attr<std::string>("data_layout");
+    auto& data_format = context.Attr<std::string>("data_format");
 
     int numel = x->numel();
     auto dim = x->dims();
@@ -52,7 +52,7 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
             << x_rank - 1 << "]:" << dim[x_rank - 1] << ", numel:" << numel;
 
     if (mode == "channel") {
-      bool channel_last = data_layout == "NHWC";
+      bool channel_last = data_format == "NHWC";
       size_t channel = channel_last ? dim[x_rank - 1] : dim[1];
       math::PreluChannelWiseDirectCUDAFunctor<T> prelu_channel_wise;
       prelu_channel_wise(context.cuda_device_context().stream(), x_ptr,
@@ -150,7 +150,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
     if (!dx && !dalpha) return;
 
     auto& mode = context.Attr<std::string>("mode");
-    auto& data_layout = context.Attr<std::string>("data_layout");
+    auto& data_format = context.Attr<std::string>("data_format");
 
     int numel = x->numel();
     auto dim = x->dims();
@@ -173,7 +173,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
     if (mode == "element") {
       m = Element;
     } else if (mode == "channel") {
-      channel_last = data_layout == "NHWC";
+      channel_last = data_format == "NHWC";
       m = channel_last ? ChannelLast : ChannelFirst;
     } else {
       m = Scalar;

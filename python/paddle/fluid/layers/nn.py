@@ -9791,7 +9791,7 @@ def swish(x, beta=1.0, name=None):
 
 
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
-def prelu(x, mode, param_attr=None, name=None, data_format="NCHW"):
+def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
     prelu activation.
 
@@ -9886,7 +9886,7 @@ def prelu(x, mode, param_attr=None, name=None, data_format="NCHW"):
         inputs={"X": x,
                 'Alpha': alpha},
         attrs={"mode": mode,
-               "data_layout": data_format},
+               "data_format": data_format},
         outputs={"Out": out})
     return out
 

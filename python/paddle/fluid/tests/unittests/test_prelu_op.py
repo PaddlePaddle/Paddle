@@ -165,15 +165,15 @@ class PReluTest(OpTest):
 
         if self.attrs == {
                 'mode': "all",
-                "data_layout": "NCHW"
+                "data_format": "NCHW"
         } or self.attrs == {
                 'mode': "all",
-                "data_layout": "NHWC"
+                "data_format": "NHWC"
         }:
             alpha_np = np.random.uniform(-1, -0.5, (1))
-        elif self.attrs == {'mode': "channel", "data_layout": "NCHW"}:
+        elif self.attrs == {'mode': "channel", "data_format": "NCHW"}:
             alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
-        elif self.attrs == {'mode': "channel", "data_layout": "NHWC"}:
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
             alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
         else:
             alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
@@ -184,11 +184,11 @@ class PReluTest(OpTest):
         # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
         # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1) 	
         reshaped_alpha = self.inputs['Alpha']
-        if self.attrs == {'mode': "channel", "data_layout": "NCHW"}:
+        if self.attrs == {'mode': "channel", "data_format": "NCHW"}:
             reshaped_alpha = np.reshape(
                 self.inputs['Alpha'],
                 [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]))
-        elif self.attrs == {'mode': "channel", "data_layout": "NHWC"}:
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
             reshaped_alpha = np.reshape(
                 self.inputs['Alpha'],
                 [1] + [1] * len(self.x_shape[1:-1]) + [self.x_shape[-1]])
@@ -204,7 +204,7 @@ class PReluTest(OpTest):
         self.x_shape = [2, 100, 3, 4]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel", "data_layout": "NCHW"}
+        self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
         self.check_output()
@@ -221,7 +221,7 @@ class TestModeAll(PReluTest):
         self.x_shape = [2, 3, 4, 5]
 
     def init_attr(self):
-        self.attrs = {'mode': "all", "data_layout": "NCHW"}
+        self.attrs = {'mode': "all", "data_format": "NCHW"}
 
 
 class TestModeAllNHWC(PReluTest):
@@ -229,7 +229,7 @@ class TestModeAllNHWC(PReluTest):
         self.x_shape = [2, 3, 4, 50]
 
     def init_attr(self):
-        self.attrs = {'mode': "all", "data_layout": "NHWC"}
+        self.attrs = {'mode': "all", "data_format": "NHWC"}
 
 
 class TestModeElt(PReluTest):
@@ -237,7 +237,7 @@ class TestModeElt(PReluTest):
         self.x_shape = [3, 2, 5, 10]
 
     def init_attr(self):
-        self.attrs = {'mode': "element", "data_layout": "NCHW"}
+        self.attrs = {'mode': "element", "data_format": "NCHW"}
 
 
 class TestModeEltNHWC(PReluTest):
@@ -245,7 +245,7 @@ class TestModeEltNHWC(PReluTest):
         self.x_shape = [3, 2, 5, 10]
 
     def init_attr(self):
-        self.attrs = {'mode': "element", "data_layout": "NHWC"}
+        self.attrs = {'mode': "element", "data_format": "NHWC"}
 
 
 @skip_check_grad_ci(
@@ -256,7 +256,7 @@ class TestModeAllRank3(PReluTest):
         self.x_shape = [1, 200, 3]
 
     def init_attr(self):
-        self.attrs = {'mode': "all", "data_layout": "NCHW"}
+        self.attrs = {'mode': "all", "data_format": "NCHW"}
 
 
 class TestModeAllRank3NHWC(PReluTest):
@@ -264,7 +264,7 @@ class TestModeAllRank3NHWC(PReluTest):
         self.x_shape = [1, 200, 3]
 
     def init_attr(self):
-        self.attrs = {'mode': "all", "data_layout": "NHWC"}
+        self.attrs = {'mode': "all", "data_format": "NHWC"}
 
 
 @skip_check_grad_ci(
@@ -275,7 +275,7 @@ class TestModeAllRank6(PReluTest):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
     def init_attr(self):
-        self.attrs = {'mode': "all", "data_layout": "NCHW"}
+        self.attrs = {'mode': "all", "data_format": "NCHW"}
 
 
 class TestModeAllRank6NHWC(PReluTest):
@@ -283,7 +283,7 @@ class TestModeAllRank6NHWC(PReluTest):
         self.x_shape = [1, 2, 3, 4, 5, 6]
 
     def init_attr(self):
-        self.attrs = {'mode': "all", "data_layout": "NHWC"}
+        self.attrs = {'mode': "all", "data_format": "NHWC"}
 
 
 class TestModeChannelRank3(PReluTest):
@@ -291,7 +291,7 @@ class TestModeChannelRank3(PReluTest):
         self.x_shape = [1, 200, 3]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel", "data_layout": "NCHW"}
+        self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
 
 class TestModeChannelRank3NHWC(PReluTest):
@@ -299,7 +299,7 @@ class TestModeChannelRank3NHWC(PReluTest):
         self.x_shape = [1, 3, 100]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel", "data_layout": "NHWC"}
+        self.attrs = {'mode': "channel", "data_format": "NHWC"}
 
 
 class TestModeChannelRank6(PReluTest):
@@ -307,7 +307,7 @@ class TestModeChannelRank6(PReluTest):
         self.x_shape = [1, 100, 2, 2, 2, 2]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel", "data_layout": "NCHW"}
+        self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
 
 class TestModeChannelRank6NHWC(PReluTest):
@@ -315,7 +315,7 @@ class TestModeChannelRank6NHWC(PReluTest):
         self.x_shape = [1, 2, 2, 2, 2, 100]
 
     def init_attr(self):
-        self.attrs = {'mode': "channel", "data_layout": "NHWC"}
+        self.attrs = {'mode': "channel", "data_format": "NHWC"}
 
 
 class TestModeElementRank3(PReluTest):
@@ -323,7 +323,7 @@ class TestModeElementRank3(PReluTest):
         self.x_shape = [3, 10, 10]
 
     def init_attr(self):
-        self.attrs = {'mode': "element", "data_layout": "NCHW"}
+        self.attrs = {'mode': "element", "data_format": "NCHW"}
 
 
 class TestModeElementRank3NHWC(PReluTest):
@@ -331,7 +331,7 @@ class TestModeElementRank3NHWC(PReluTest):
         self.x_shape = [3, 10, 10]
 
     def init_attr(self):
-        self.attrs = {'mode': "element", "data_layout": "NHWC"}
+        self.attrs = {'mode': "element", "data_format": "NHWC"}
 
 
 class TestModeElementRank6(PReluTest):
@@ -339,7 +339,7 @@ class TestModeElementRank6(PReluTest):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
     def init_attr(self):
-        self.attrs = {'mode': "element", "data_layout": "NCHW"}
+        self.attrs = {'mode': "element", "data_format": "NCHW"}
 
 
 class TestModeElementRank6NHWC(PReluTest):
@@ -347,7 +347,7 @@ class TestModeElementRank6NHWC(PReluTest):
         self.x_shape = [3, 2, 2, 4, 5, 2]
 
     def init_attr(self):
-        self.attrs = {'mode': "element", "data_layout": "NHWC"}
+        self.attrs = {'mode': "element", "data_format": "NHWC"}
 
 
 def create_test_fp16_class(parent,
@@ -411,7 +411,7 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         inputs={"X": x,
                 'Alpha': alpha},
         attrs={"mode": mode,
-               'data_layout': data_format},
+               'data_format': data_format},
         outputs={"Out": out})
     return out
 

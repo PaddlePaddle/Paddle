@@ -442,7 +442,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     return out
 
 
-def prelu(x, weight, name=None, data_format="NCHW"):
+def prelu(x, weight, data_format="NCHW", name=None):
     """
     prelu activation.
 
@@ -519,7 +519,7 @@ def prelu(x, weight, name=None, data_format="NCHW"):
         mode = 'channel'
 
     if in_dygraph_mode():
-        return _C_ops.prelu(x, weight, 'mode', mode, 'data_layout', data_format)
+        return _C_ops.prelu(x, weight, 'mode', mode, 'data_format', data_format)
 
     helper = LayerHelper('prelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -529,7 +529,7 @@ def prelu(x, weight, name=None, data_format="NCHW"):
                 "Alpha": weight},
         outputs={"Out": out},
         attrs={"mode": mode,
-               "data_layout": data_format})
+               "data_format": data_format})
     return out
 
 

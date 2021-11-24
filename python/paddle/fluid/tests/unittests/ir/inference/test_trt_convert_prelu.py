@@ -40,7 +40,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
             if attrs[0]["mode"] == "all":
                 return np.random.random(size=(1)).astype(np.float32)
             elif attrs[0]["mode"] == "channel" and attrs[0][
-                    "data_layout"] == "NCHW":
+                    "data_format"] == "NCHW":
                 shape = [1]
                 if dim1 != 0:
                     shape.append(dim1)
@@ -50,7 +50,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                     shape.append(1)
                 return np.random.random(size=shape).astype(np.float32)
             elif attrs[0]["mode"] == "channel" and attrs[0][
-                    "data_layout"] == "NHWC":
+                    "data_format"] == "NHWC":
                 shape = [1]
                 if dim1 != 0:
                     shape.append(1)
@@ -83,14 +83,14 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                             continue
 
                         for mode in ["all", "channel", "element"]:
-                            for data_layout in ['NCHW', 'NHWC']:
-                                if mode == "channel" and dim1 == 0 and data_layout == "NCHW":
+                            for data_format in ['NCHW', 'NHWC']:
+                                if mode == "channel" and dim1 == 0 and data_format == "NCHW":
                                     continue
-                                if mode == "channel" and dim3 == 0 and data_layout == "NHWC":
+                                if mode == "channel" and dim3 == 0 and data_format == "NHWC":
                                     continue
                                 dics = [{
                                     "mode": mode,
-                                    "data_layout": data_layout
+                                    "data_format": data_format
                                 }]
                                 ops_config = [{
                                     "op_type": "prelu",
