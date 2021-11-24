@@ -178,13 +178,15 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def create_inference_config(self,
                                 passes: Optional[List[str]]=None,
+                                disable_passes: Optional[List[str]]=None,
                                 use_gpu: bool=False,
                                 use_mkldnn: bool=False,
                                 ir_optim: Optional[bool]=None):
         config = paddle_infer.Config()
         config.switch_ir_debug(True)
         config.set_optim_cache_dir(self.cache_dir)
-        config.disable_glog_info()
+        if int(os.getenv("GLOG_v", "1")) < 4:
+            config.disable_glog_info()
         if ir_optim is not None:
             config.switch_ir_optim(ir_optim)
         if use_gpu:
@@ -194,6 +196,9 @@ class AutoScanTest(unittest.TestCase):
         if passes is not None:
             config.pass_builder().set_passes(passes)
             self.passes = passes
+        if disable_passes is not None:
+            for pass_name in disable_passes:
+                config.delete_pass(pass_name)
         return config
 
 
@@ -483,12 +488,11 @@ class PassAutoScanTest(AutoScanTest):
 
     def create_trt_inference_config(self) -> paddle_infer.Config:
         config = paddle_infer.Config()
-        config.disable_glog_info()
+        if int(os.getenv("GLOG_v", "1")) < 4:
+            config.disable_glog_info()
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
         config.switch_ir_debug()
-        # for assert_op_size.
-        self.passes = ['transpose_flatten_concat_fuse_pass']
         return config
 
 
@@ -537,7 +541,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
-        config.disable_glog_info()
+        if int(os.getenv("GLOG_v", "1")) < 4:
+            config.disable_glog_info()
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
         if use_trt:

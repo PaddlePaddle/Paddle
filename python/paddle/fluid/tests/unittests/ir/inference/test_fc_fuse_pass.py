@@ -46,6 +46,17 @@ class TestFcFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ["fc"], (1e-5, 1e-5)
 
+        # trt static_shape
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=8,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
+        yield config, ['fc'], (1e-5, 1e-5)
+
     def add_skip_pass_case(self):
         # Here we put some skip rules to avoid known bugs
         def teller1(program_config, predictor_config):
@@ -53,8 +64,7 @@ class TestFcFusePass(PassAutoScanTest):
             x_shape = list(program_config.inputs["mul_x"].shape)
             y_shape = list(program_config.weights["mul_y"].shape)
             bias_shape = program_config.weights["bias"].shape
-            if (bias_shape != [y_shape[-1], ] and
-                    bias_shape != [1, y_shape[-1]]):
+            if bias_shape != [1, y_shape[-1]]:
                 return True
             return False
 
@@ -164,7 +174,7 @@ class TestFcFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=300, passes=["fc_fuse_pass"])
+            quant=False, max_examples=1300, passes=["fc_fuse_pass"])
 
 
 if __name__ == "__main__":
