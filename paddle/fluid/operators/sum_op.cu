@@ -99,8 +99,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   if (!in_place) {
     auto *out_ptr = out->mutable_data<T>(context.GetPlace());
-    if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>() &&
-        in_vars[0]->Get<framework::LoDTensor>().IsInitialized()) {
+    if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
       auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
       if (in_0_tensor.numel() > 0) {
         in_place = (in_0_tensor.data<T>() == out_ptr);
@@ -110,9 +109,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   // Sum of two tensors
   if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
-      in_vars[1]->IsType<framework::LoDTensor>() &&
-      in_vars[0]->Get<framework::LoDTensor>().IsInitialized() &&
-      in_vars[1]->Get<framework::LoDTensor>().IsInitialized()) {
+      in_vars[1]->IsType<framework::LoDTensor>()) {
     auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
     auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
     int64_t length_0 = in_0.numel();
