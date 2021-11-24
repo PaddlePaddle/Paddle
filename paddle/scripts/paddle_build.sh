@@ -797,7 +797,7 @@ function generate_api_spec() {
 
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
-    virtualenv .${spec_kind}_env
+    virtualenv -p `which python` .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
 
     if [ "$spec_kind" == "DEV" ]; then
@@ -805,7 +805,6 @@ function generate_api_spec() {
     else
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
-    pip --version
     pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
