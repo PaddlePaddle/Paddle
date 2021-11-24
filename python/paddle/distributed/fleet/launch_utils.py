@@ -1088,8 +1088,6 @@ class ParameterServerLauncher(object):
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
-                    if self.heter_worker_endpoints != "":
-                        self.heter_worker_endpoints += ","
                     heter_worker_endpoints = heter_worker_endpoints_list[
                         i].split(",")
                     self.stage_heter_trainer_num.append(
