@@ -454,7 +454,6 @@ class ElasticManager(object):
         hosts = ','.join([host_port.split(":")[0] for host_port in self.hosts])
         self.args.ips = hosts
         os.environ['PADDLE_TRAINERS'] = hosts
-<<<<<<< HEAD
 
     def _update_elastic_scale_out(self):
         host_endpoints = copy.deepcopy(self.trainer_endpoints_list)
@@ -483,36 +482,6 @@ class ElasticManager(object):
             f"elastic scale in, from {self.np} to {len(self.hosts)}, hosts={self.hosts}, host_endpoints={host_endpoints}"
         )
 
-=======
-
-    def _update_elastic_scale_out(self):
-        host_endpoints = copy.deepcopy(self.trainer_endpoints_list)
-        logger.info(
-            f"elastic scale out, from {len(self.hosts)} to {self.np}, hosts={self.hosts}, host_endpoints={host_endpoints}"
-        )
-
-        for curr_host_port in self.hosts:
-            if curr_host_port not in host_endpoints:
-                host_endpoints.append(curr_host_port)
-
-        os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
-            host_endpoints.index(self.curr_host))
-        hosts = ','.join(
-            [host_port.split(":")[0] for host_port in host_endpoints])
-        self.args.ips = hosts
-        os.environ['PADDLE_TRAINERS'] = hosts
-        self.np = len(host_endpoints)
-        os.environ['PADDLE_TRAINER_ENDPOINTS'] = ','.join(host_endpoints)
-        os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
-        self.trainer_endpoints_list = host_endpoints
-
-    def _update_elastic_scale_in(self):
-        host_endpoints = copy.deepcopy(self.trainer_endpoints_list)
-        logger.info(
-            f"elastic scale in, from {self.np} to {len(self.hosts)}, hosts={self.hosts}, host_endpoints={host_endpoints}"
-        )
-
->>>>>>> 0f24de8320181c0b83f382813f9da4d9ef5e94fe
         # If scale in node from the first of the rank list, you need to minimize the movement of the rank
         # eg: 
         #   the source trainers is:10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3
