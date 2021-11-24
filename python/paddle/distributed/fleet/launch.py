@@ -65,6 +65,8 @@ import os
 import time
 import six
 import copy
+import shlex
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -164,25 +166,17 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
     collective_group.add_argument(
-        "--rank_mapping_file",
-        type=argparse.FileType('r'),
-        default=sys.stdin,
-        help="This rank mapping information in json format is used specifically "
-        "for lazy launch for auto parallel. Some of the ranks in each node "
-        "may not be used, and the indices of rank should be kept the same "
-        "as the indices of sub-task splited by auto parallel. "
-        " { "
-        "   \"ip_ranks\": [ "
-        "     { "
-        "       \"ip\": \"127.0.0.1\", "
-        "       \"ranks\": [0,1] "
-        "     }, "
-        "     { "
-        "       \"ip\": \"127.0.0.2\", "
-        "       \"ranks\": [2,3,4] "
-        "     } "
-        "   ] "
-        " } ")
+        "--cluster_topo_path",
+        type=str,
+        default=None,
+        help="A json format file will be stored in this path which is used"
+        "to represent the cluster topology information for auto parallel.")
+    collective_group.add_argument(
+        "--rank_mapping_path",
+        type=str,
+        default=None,
+        help="A json format file will be stored in this path which is used"
+        "to map processes to machines for auto parallel.")
     collective_group.add_argument(
         "--enable_auto_mapping",
         type=bool,
@@ -295,6 +289,8 @@ def get_cluster_info(args):
     logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
         trainers_num, device_mode, devices_per_proc))
 
+    cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+
     cluster = None
     pod = None
     start_port = 6170
@@ -305,8 +301,17 @@ def get_cluster_info(args):
     if args.enable_auto_mapping == True:
         assert args.cluster_topo_path is not None, \
             "The cluster topology must be provied when enabling auto mapping."
-        if args.rank_mapping_path is None:
-            # original_args = [shlex.quote(c) for c in sys.argv[1:]]
+        rank_mapping_path = args.rank_mapping_path or os.getenv(
+            "PADDLE_RANK_MAPPING_PATH")
+        if rank_mapping_path is None:
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(
+                enable_elastic(args, device_mode))
+            cwd = pathlib.Path().resolve()
+            rank_mapping_path = os.path.join(cwd,
+                                             "auto_parallel_rank_mapping.json")
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
+
             original_args = sys.argv[1:]
             os.environ["PADDLE_ORIGINAL_CMD_ARGS"] = " ".join(original_args)
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
@@ -315,8 +320,9 @@ def get_cluster_info(args):
             cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
                 args, device_mode)
         else:
+            os.environ["PADDLE_RANK_MAPPING_EXISTS"] = str(False)
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
-            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(args.rank_mapping_path)
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
             os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
                 args.enable_auto_mapping)
             cluster, pod = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
@@ -477,7 +483,7 @@ def which_distributed_mode(args):
             if args.servers:
                 logger.warning(
                     "Not found distinct arguments and not compiled with cuda or xpu. \
-But found args.servers not empty, default use ps mode")
+                     But found args.servers not empty, default use ps mode")
                 return DistributeMode.PS
             else:
                 return DistributeMode.COLLECTIVE
