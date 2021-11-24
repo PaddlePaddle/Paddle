@@ -138,7 +138,6 @@ void TensorAddImpl(const std::shared_ptr<pten::DenseTensor>& src,
   paddle::platform::DeviceContext* ctx = pool.Get(place);
   auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
   paddle::operators::math::ElementwiseAddTo<DeviceContext, T> func;
-  // pten::DenseTensor* p_src = src.get();
   func(dev_ctx, *(src.get()), dst);
 }
 
