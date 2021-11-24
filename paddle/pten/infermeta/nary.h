@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
@@ -28,6 +28,10 @@ namespace pten {
 //  not only can infer shape, but alse need infer lod or other useful data.
 
 DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
+                               DataType dtype,
+                               DataLayout layout);
+
+DenseTensorMeta FullInferShape(const ScalarArray& shape,
                                DataType dtype,
                                DataLayout layout);
 
