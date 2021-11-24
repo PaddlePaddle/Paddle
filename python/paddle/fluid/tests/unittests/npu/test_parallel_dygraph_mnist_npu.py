@@ -70,7 +70,7 @@ class TestParallelDygraphMnistNPU(TestDistBase):
             f.write(rank_table_file)
         if fluid.core.is_compiled_with_npu():
             self.check_with_place(
-                os.path.dirname(__file__) + '../parallel_dygraph_mnist.py',
+                './parallel_dygraph_mnist_npu.py',
                 delta=1e-3,
                 check_error_log=True,
                 need_envs=need_envs,
