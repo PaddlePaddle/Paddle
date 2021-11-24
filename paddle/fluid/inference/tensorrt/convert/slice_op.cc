@@ -69,48 +69,38 @@ class SliceOpConverter : public OpConverter {
       }
     }
 
-    nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-      if (engine_->use_oss() && engine_->with_ernie()) {
-        std::vector<nvinfer1::ITensor*> plugin_inputs;
-        // plugin_inputs.emplace_back(trans_layer->getOutput(0));
-        plugin_inputs.emplace_back(input);
-
-        std::string pos_name;
-        if (engine_->Has("ernie_pos_name")) {
-          pos_name = engine_->Get<std::string>("ernie_pos_name");
-        } else {
-          // hard code for compatibility
-          pos_name = engine_->network()->getInput(2)->getName();
-        }
-        plugin_inputs.emplace_back(
-            engine_->GetITensor(pos_name));  // cu_seqlens, eval_placeholder_2
-
-        // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
-        plugin::SpecialSlicePluginDynamic* plugin =
-            new plugin::SpecialSlicePluginDynamic();
-        layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
-                                          plugin_inputs.size(), plugin);
-      } else {
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::SlicePluginDynamic* plugin =
-            new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
-        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
-      }
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
-    } else {
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::SlicePlugin* plugin =
-          new plugin::SlicePlugin(starts, ends, axes, with_fp16);
-      layer = engine_->AddPlugin(&input, 1, plugin);
+    std::unordered_map<int, std::pair<int, int>> axes_starts_ends;
+    for (size_t i = 0; i < axes.size(); i++) {
+      axes_starts_ends[axes[i]] = std::make_pair(starts[i], ends[i]);
     }
+
+    const auto in_dims = input->getDimensions();
+    const int input_nbdims = in_dims.nbDims;
+    nvinfer1::Dims start_dims;
+    start_dims.nbDims = input_nbdims;
+    nvinfer1::Dims size_dims;
+    size_dims.nbDims = input_nbdims;
+    nvinfer1::Dims stride_dims;
+    stride_dims.nbDims = input_nbdims;
+
+    for (int i = 0; i < input_nbdims; i++) {
+      stride_dims.d[i] = 1;
+    }
+
+    const int offset = engine_->with_dynamic_shape() ? 0 : 1;
+    for (int i = 0; i < input_nbdims; i++) {
+      auto iter = axes_starts_ends.find(i + offset);
+      if (iter != axes_starts_ends.end()) {
+        start_dims.d[i] = iter->second.first;
+        size_dims.d[i] = iter->second.second - iter->second.first;
+      } else {
+        start_dims.d[i] = 0;
+        size_dims.d[i] = in_dims.d[i];
+      }
+    }
+
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start_dims,
+                                       size_dims, stride_dims);
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
