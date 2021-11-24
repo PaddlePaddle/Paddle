@@ -463,6 +463,7 @@ class AMPBackwardPass(PassBase):
 
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
+            # forward
             self._scaled_loss = main_block.create_var(
                 name=unique_name.generate("scaled_loss"),
                 shape=loss.shape,
@@ -491,6 +492,55 @@ class AMPBackwardPass(PassBase):
                 self._scaled_loss.name, [-1])
             self._dist_context.set_op_dist_attr_for_program(
                 elementwise_mul_op, elementwise_mul_op_dist_attr)
+
+            # backward
+            first_backward_op = main_block.ops[loss_op_idx + 2]
+            assert first_backward_op.type == "fill_constant" and int(
+                first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
+            self._scaled_loss_grad = main_block.create_var(
+                name=unique_name.generate("scaled_loss") + "@GRAD",
+                shape=loss.shape,
+                dtype=loss.dtype,
+                persistable=loss.persistable)
+            set_var_dist_attr(self._dist_context, self._scaled_loss_grad, [-1],
+                              global_process_mesh)
+            pre_grad_name = first_backward_op.output_arg_names[0]
+            first_backward_op._rename_output(pre_grad_name,
+                                             self._scaled_loss_grad.name)
+
+            main_block._sync_with_cpp()
+            elementwise_mul_grad_op_desc = main_block.desc._insert_op(
+                loss_op_idx + 3)
+            elementwise_mul_grad_op_desc.set_type("elementwise_mul_grad")
+            elementwise_mul_grad_op_desc.set_input(
+                'Out@GRAD', [self._scaled_loss_grad.name])
+            elementwise_mul_grad_op_desc.set_input('X', [loss.name])
+            elementwise_mul_grad_op_desc.set_input('Y',
+                                                   [self._loss_scaling.name])
+            elementwise_mul_grad_op_desc.set_output('X@GRAD', [pre_grad_name])
+            elementwise_mul_grad_op_desc.set_output('Y@GRAD', [])
+            elementwise_mul_grad_op_desc._set_attr(
+                OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward)
+            main_block.ops.insert(loss_op_idx + 3, op)
+            elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
+            assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
+            main_block._sync_with_cpp()
+            elementwise_mul_grad_op_dist_attr = OperatorDistributedAttribute()
+            elementwise_mul_grad_op_dist_attr.process_mesh = global_process_mesh
+            elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
+                self._dist_context.get_tensor_dist_attr_for_graph(loss))
+            elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
+                self._dist_context.get_tensor_dist_attr_for_graph(
+                    self._loss_scaling))
+            elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
+                self._dist_context.get_tensor_dist_attr_for_graph(
+                    self._scaled_loss_grad))
+            elementwise_mul_grad_op_dist_attr.set_output_dist_attr(
+                self._dist_context.get_tensor_dist_attr_for_graph(
+                    main_block.var(pre_grad_name)))
+            self._dist_context.set_op_dist_attr_for_program(
+                elementwise_mul_grad_op, elementwise_mul_grad_op_dist_attr)
+
         else:
             self._scaled_loss = loss
 
