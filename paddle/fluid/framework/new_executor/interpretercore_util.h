@@ -51,7 +51,6 @@ namespace framework {
 namespace interpreter {
 
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
-static constexpr char kFetchVarName[] = "fetch";
 
 class AsyncWorkQueue {
  public:
