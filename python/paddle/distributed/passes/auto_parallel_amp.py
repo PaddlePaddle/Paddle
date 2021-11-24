@@ -35,6 +35,7 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
     # TODO get global mesh group
     tensor_dist_attr.process_mesh = process_mesh
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
+    return tensor_dist_attr
 
 
 def _mark_black_white_ops(main_prog, amp_lists):
@@ -140,13 +141,12 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, dist_context):
             if in_var.dtype == src_dtype:
                 cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
                 out_var = block.vars.get(cast_name)
+                consume_op_attr = dist_context.get_op_dist_attr_for_program(op)
+                assert consume_op_attr is not None
                 if out_var is None or out_var.dtype != dest_dtype:
 
                     # NOTE we make the cast op and var's dist attr as the op that consume the
                     # cast var instead of the op which generates the var
-                    consume_op_attr = dist_context.get_op_dist_attr_for_program(
-                        op)
-                    assert consume_op_attr is not None
                     ref_mesh = consume_op_attr.process_mesh
                     ref_mapping = consume_op_attr.get_input_dims_mapping(
                         in_var.name)
@@ -157,8 +157,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, dist_context):
                         dtype=dest_dtype,
                         persistable=False,
                         stop_gradient=in_var.stop_gradient)
-                    set_var_dist_attr(dist_context, out_var, ref_mapping,
-                                      ref_mesh)
+                    out_var_dist_attr = set_var_dist_attr(dist_context, out_var,
+                                                          ref_mapping, ref_mesh)
 
                     cast_op = block._insert_op_without_sync(
                         idx,
@@ -179,7 +179,12 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, dist_context):
                                                               cast_op_dist_attr)
 
                     num_cast_ops += 1
+                else:
+                    out_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                        out_var)
                 _rename_arg(op, in_var.name, out_var.name)
+                consume_op_attr.set_input_dist_attr(out_var.name,
+                                                    out_var_dist_attr)
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
