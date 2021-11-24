@@ -1361,6 +1361,12 @@ class Executor(object):
                         "feed requires dict as its Parameter. But you passed in %s"
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
+
+                # NPTE(zhiqiu): Construct standalone_executor first, so 
+                # the scope is binded with the variable_scope of standalone_executor
+                new_exe = self._executor_cache._get_exe_from_cache(
+                    inner_program, scope, feed, fetch_list)
+
                 program = self._add_feed_fetch_ops(
                     program=inner_program,
                     feed=feed,
@@ -1368,11 +1374,6 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name,
                     use_fetch_v2=True)
-
-                # NPTE(zhiqiu): Construct standalone_executor first, so 
-                # the scope is binded with the variable_scope of standalone_executor
-                new_exe = self._executor_cache._get_exe_from_cache(
-                    program, scope, feed, fetch_list)
 
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
