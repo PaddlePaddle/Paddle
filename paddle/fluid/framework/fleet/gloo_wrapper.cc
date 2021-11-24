@@ -278,7 +278,6 @@ void ParallelConnectContext::connectFullMesh(
             std::string ip = getCharIpAddr(sa->sin_addr.s_addr);
             VLOG(0) << "peer " << i << " ip addr: " << ip
                     << ", port: " << sa->sin_port;
-
             transportContext->getPair(i)->connect(addr);
           }
           VLOG(0) << "peer connected success";
