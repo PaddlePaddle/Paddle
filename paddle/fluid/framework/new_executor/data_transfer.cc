@@ -123,9 +123,10 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
-  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-          << ptr << "Variable Type " << var_type;
-  var_scope->SetVarDesc(var_name, nullptr);
+  VLOG(3) << "Create Variable " << *new_var_name
+          << " locally, which pointer is " << ptr << "Variable Type "
+          << var_type;
+  var_scope->SetVarDesc(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -156,9 +157,10 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
-  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-          << ptr << "Variable Type " << var_type;
-  var_scope->SetVarDesc(var_name, nullptr);
+  VLOG(3) << "Create Variable " << *new_var_name
+          << " locally, which pointer is " << ptr << "Variable Type "
+          << var_type;
+  var_scope->SetVarDesc(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -194,9 +196,10 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
-  VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-          << ptr << "Variable Type " << var_type;
-  var_scope->SetVarDesc(var_name, nullptr);
+  VLOG(3) << "Create Variable " << *new_var_name
+          << " locally, which pointer is " << ptr << "Variable Type "
+          << var_type;
+  var_scope->SetVarDesc(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
