@@ -255,6 +255,16 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.a_sync_configs = configs
         self.assertEqual(strategy.a_sync_configs["k_steps"], 1000)
 
+    def test_sparse_table_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {
+            "table_parameters.accessor.embed_sgd_param.adagrad.learning_rate":
+            0.05
+        }
+        strategy.sparse_table_configs = configs
+        self.assertEqual(strategy.sparse_table_configs.accessor.embed_sgd_param.
+                         adagrad.learning_rate, 0.05)
+
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {
