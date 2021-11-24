@@ -155,7 +155,7 @@ class ShowClickEntry(EntryAttr):
 
             entry = paddle.distributed.ShowClickEntry("show", "click")
 
-            emb = paddle.static.nn.sparse_embedding((
+            emb = paddle.static.nn.sparse_embedding(
                 input=input,
                 size=[sparse_feature_dim, embedding_size],
                 is_test=False,
