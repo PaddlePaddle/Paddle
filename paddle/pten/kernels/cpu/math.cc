@@ -89,13 +89,13 @@ void ElementwiseDiv(const CPUContext& dev_ctx,
 }
 
 // Create the definition of ElementwiseAdd
-DEFINE_ELEMENTWISE_OP(Add)
+DEFINE_CPU_ELEMENTWISE_OP(Add)
 
 // Create the definition of ElementwiseSub
-DEFINE_ELEMENTWISE_OP(Sub)
+DEFINE_CPU_ELEMENTWISE_OP(Sub)
 
 // Create the definition of ElementwiseMul
-DEFINE_ELEMENTWISE_OP(Mul)
+DEFINE_CPU_ELEMENTWISE_OP(Mul)
 
 }  // namespace pten
 

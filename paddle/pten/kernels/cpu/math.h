@@ -74,3 +74,28 @@ void ElementwiseMul(const CPUContext& dev_ctx,
                     int axis,
                     DenseTensor* out);
 }  // namespace pten
+
+#define DEFINE_CPU_ELEMENTWISE_OP(name)                                      \
+  template <typename T>                                                      \
+  void Elementwise##name(const CPUContext& dev_ctx,                          \
+                         const DenseTensor& x,                               \
+                         const DenseTensor& y,                               \
+                         int axis,                                           \
+                         DenseTensor* out) {                                 \
+    out->mutable_data<T>();                                                  \
+    if (x.dims() == y.dims()) {                                              \
+      SameDimsElementwiseCompute<                                            \
+          general::SameDims##name##Functor<CPUContext, T>>()(                \
+          dev_ctx, x, y, out);                                               \
+    } else {                                                                 \
+      auto x_dims = x.dims();                                                \
+      auto y_dims = y.dims();                                                \
+      if (x_dims.size() >= y_dims.size()) {                                  \
+        ElementwiseCompute<general::name##Functor<T>, T>(                    \
+            dev_ctx, x, y, axis, general::name##Functor<T>(), out);          \
+      } else {                                                               \
+        ElementwiseCompute<general::Inverse##name##Functor<T>, T>(           \
+            dev_ctx, x, y, axis, general::Inverse##name##Functor<T>(), out); \
+      }                                                                      \
+    }                                                                        \
+  }

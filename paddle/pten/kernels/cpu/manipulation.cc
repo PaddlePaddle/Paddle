@@ -185,3 +185,32 @@ PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mid",
                                 CPU,
                                 ANY,
                                 pten::ReshapeFromVectorValWithXShape) {}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.host",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromDT) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.host.mid",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromDTWithXShape) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+// PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mulhost",
+//                                 CPU,
+//                                 ANY,
+//                                 pten::ReshapeFromVectorDT) {
+//   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+// }
+
+// PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mulhost.mid",
+//                                 CPU,
+//                                 ANY,
+//                                 pten::ReshapeFromVectorDTWithXShape) {
+//   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+// }

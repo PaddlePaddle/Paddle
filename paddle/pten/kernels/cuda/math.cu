@@ -125,13 +125,13 @@ void ScaleHost(const CUDAContext& dev_ctx,
 }
 
 // Create the definition of ElementwiseAdd
-DEFINE_ELEMENTWISE_OP(Add)
+DEFINE_CUDA_ELEMENTWISE_OP(Add)
 // Create the definition of ElementwiseSub
-DEFINE_ELEMENTWISE_OP(Sub)
+DEFINE_CUDA_ELEMENTWISE_OP(Sub)
 // Create the definition of ElementwiseMul
-DEFINE_ELEMENTWISE_OP(Mul)
+DEFINE_CUDA_ELEMENTWISE_OP(Mul)
 // Create the definition of ElementwiseDiv
-DEFINE_ELEMENTWISE_OP(Div)
+DEFINE_CUDA_ELEMENTWISE_OP(Div)
 
 }  // namespace pten
 
