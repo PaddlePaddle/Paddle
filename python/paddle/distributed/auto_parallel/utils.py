@@ -1004,19 +1004,24 @@ def set_grad_var_shape(program, dist_context):
 
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
-                    "transpose2_grad", "softmax_grad"
+                    "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
+                    "dropout_grad"
+                ]
+                forward_list = [
+                    "reshape2", "softmax_with_cross_entropy", "transpose2",
+                    "softmax", "cross_entropy2", "dropout"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
                         assert int(forward_op.attr('op_role')) != int(
                             OpRole.Backward)
                         idx = need_set_shape_list.index(op.type)
-                        forward_op_name = need_set_shape_list[idx][:-5]
+                        forward_op_name = forward_list[idx]
                         if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
                             op_dist_attr = dist_context.get_op_dist_attr_for_program(
                                 forward_op)
                             break
-
+                print(op_dist_attr)
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
                 assert forward_input_dist_attr is not None, f"{forward_var_name}"
