@@ -114,6 +114,10 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
+inline bool VarIsTensor(const Variable& var) {
+  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+}
+
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
@@ -586,8 +590,10 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to pten lib */
   void ChoosePtenKernel(const ExecutionContext& ctx) const;
 
-  pten::KernelContext BuildPtenKernelContext(
-      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx) const;
+
+  void WriteBackToOutputs(RuntimeContext* ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -605,6 +611,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_pten_kernel_ = false;
   mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

@@ -48,6 +48,50 @@ void ScaleHost(const CUDAContext& dev_ctx,
                bool bias_after_scale,
                DenseTensor* out);
 
+template <typename T>
+void ElementwiseAdd(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
+template <typename T>
+void ElementwiseSub(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
+template <typename T>
+void ElementwiseDiv(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
+
+template <typename T>
+void ElementwiseMul(const CUDAContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out);
 }  // namespace pten
+
+#define DEFINE_CUDA_ELEMENTWISE_OP(name)                               \
+  template <typename T>                                                \
+  void Elementwise##name(const CUDAContext& dev_ctx,                   \
+                         const DenseTensor& x,                         \
+                         const DenseTensor& y,                         \
+                         int axis,                                     \
+                         DenseTensor* out) {                           \
+    std::vector<const DenseTensor*> inputs;                            \
+    std::vector<DenseTensor*> outputs;                                 \
+    inputs.emplace_back(&x);                                           \
+    inputs.emplace_back(&y);                                           \
+    outputs.emplace_back(out);                                         \
+    out->mutable_data<T>();                                            \
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(       \
+        dev_ctx, inputs, &outputs, axis, general::name##Functor<T>()); \
+  }
 
 #endif

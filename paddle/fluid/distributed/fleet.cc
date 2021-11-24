@@ -135,13 +135,15 @@ uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 
 std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
   VLOG(3) << "Going to get client info";
-  return pserver_ptr_->get_client_info();
-  return std::vector<uint64_t>();
+  auto* communicator = Communicator::GetInstance();
+  std::vector<uint64_t> res = communicator->GetClientInfo();
+  return res;
 }
 
 void FleetWrapper::CreateClient2ClientConnection() {
-  VLOG(3) << "Going to create client2client connection";
-  pserver_ptr_->create_client2client_connection(
+  VLOG(1) << "Going to create client2client connection";
+  auto* communicator = Communicator::GetInstance();
+  communicator->_worker_ptr->create_client2client_connection(
       client2client_request_timeout_ms_, client2client_connect_timeout_ms_,
       client2client_max_retry_);
 }
@@ -370,12 +372,26 @@ void FleetWrapper::PushDenseVarsAsync(
     const std::vector<std::string>& var_names,
     std::vector<std::future<int32_t>>* push_sparse_status, float scale_datanorm,
     int batch_size) {
-  auto* communicator = Communicator::GetInstance();
-  PADDLE_ENFORCE_EQ(
-      communicator->Check(table_id), true,
-      platform::errors::InvalidArgument(
-          "can not find table: %s, please check your config", table_id));
-  communicator->Send(var_names, scope);
+  auto place = platform::CPUPlace();
+  std::vector<paddle::distributed::Region> regions;
+  for (auto& t : var_names) {
+    Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    float* g = tensor->mutable_data<float>(place);
+    paddle::distributed::Region reg(g, tensor->numel());
+    regions.emplace_back(std::move(reg));
+    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
+            << table_id << " Temp_data[0] " << g[0] << " Temp_data[-1] "
+            << g[tensor->numel() - 1];
+  }
+
+  auto* communicator =
+      dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
+  auto push_status = communicator->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
+
+  communicator->PushDensePostProcessing();
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -417,10 +433,140 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   return;
 }
 
-void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {
+void FleetWrapper::PushSparseFromTensorAsync(
+    const uint64_t table_id, int fea_dim, uint64_t padding_id,
+    platform::Place place, std::vector<const LoDTensor*>* inputs,
+    const LoDTensor* shows, const LoDTensor* clks,
+    std::vector<LoDTensor*>* outputs) {
+  int batch_size = -1;
+  for (auto* input : *inputs) {
+    int cur_batch_size =
+        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+    if (batch_size == -1) {
+      batch_size = cur_batch_size;
+    } else {
+      CHECK(batch_size == cur_batch_size);  // NOLINT
+    }
+  }
+  CHECK(batch_size > 0);  // NOLINT
+
+  int show_size =
+      shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
+  CHECK(show_size == batch_size || show_size == 1);
+  int clk_size =
+      clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
+  CHECK(clk_size == batch_size || clk_size == 1);
+
+  std::vector<float> g;
+  for (framework::LoDTensor* g_tensor : *outputs) {
+    float* g_ori = g_tensor->data<float>();
+    // no cvm
+    if (true) {  // TODO(zhaocaibei123): add config
+                 // scale_sparse_gradient_with_batch_size_
+      Eigen::Map<
+          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+          g_mat(g_ori, g_tensor->numel() / fea_dim, fea_dim);
+      g_mat.rightCols(fea_dim) *= batch_size;
+    }
+
+    size_t origin = g.size();
+    size_t add = g_tensor->numel();
+    g.resize(origin + add);
+
+    memcpy(g.data() + origin, g_tensor->data<float>(), add * sizeof(float));
+  }
+
+  std::vector<uint64_t> push_keys;
+  push_keys.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<std::vector<float>> push_values;
+  push_values.reserve(MAX_FEASIGN_NUM / 100);
+  size_t output_len = 0;
+  size_t input_idx = 0;
+
+  VLOG(2) << "fleet.cc::emb_dim: " << fea_dim;
+
+  // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
+  // const long int* show_tensor = shows->data<int64_t>();
+  // const long int* clk_tensor = clks->data<int64_t>();
+  const int64_t* show_tensor = shows->data<int64_t>();
+  const int64_t* clk_tensor = clks->data<int64_t>();
+
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    const framework::LoDTensor* tensor = inputs->at(index);
+    const int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+
+    if (tensor->lod().size() > 0) {
+      for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
+        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+             ++j, output_len += fea_dim) {
+          uint64_t real_id = static_cast<uint64_t>(ids[j]);
+          if (real_id == padding_id) {
+            continue;
+          }
+          push_keys.emplace_back(real_id);
+          push_values.emplace_back(fea_dim + 3);
+          // slot show clk grad... consistent with CtrCommonPushValue defined in
+          // ctr_accessor.h
+          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[1] =
+              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          push_values.back()[2] =
+              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+
+          float* data = push_values.back().data() + 3;
+
+          memcpy(data, g.data() + output_len, sizeof(float) * fea_dim);
+
+          ++input_idx;
+        }
+      }
+    } else {
+      for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+        uint64_t real_id = static_cast<uint64_t>(ids[i]);
+        if (real_id == padding_id) {
+          continue;
+        }
+        push_keys.emplace_back(real_id);
+        push_values.emplace_back(fea_dim + 3);
+        // slot show clk grad... consistent with CtrCommonPushValue defined in
+        // ctr_accessor.h
+        push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+        push_values.back()[1] =
+            (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+        push_values.back()[2] =
+            (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+
+        float* data = push_values.back().data() + 3;
+
+        memcpy(data, g.data() + output_len, sizeof(float) * fea_dim);
+
+        ++input_idx;
+      }
+    }
+  }
+  VLOG(1) << "output_len: " << output_len << " g.size(): " << g.size();
+  CHECK(output_len == g.size());
+
+  std::vector<float*> push_g_vec(input_idx, nullptr);
+
+  for (auto i = 0u; i < push_keys.size(); ++i) {
+    push_g_vec[i] = push_values.at(i).data();
+  }
+
   auto* communicator = Communicator::GetInstance();
-  auto ret = communicator->_worker_ptr->load(path, mode);
-  // auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
+  PADDLE_ENFORCE_EQ(
+      communicator->Check(table_id), true,
+      platform::errors::InvalidArgument(
+          "can not find table: %s, please check your config", table_id));
+  auto status = communicator->_worker_ptr->push_sparse(
+      table_id, push_keys.data(), (const float**)push_g_vec.data(),
+      push_keys.size());
+}
+
+void FleetWrapper::LoadModel(const std::string& path, const int mode) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret = communicator->_worker_ptr->load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
@@ -562,16 +708,23 @@ void FleetWrapper::ClientFlush() {
 
 int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
                                                    MsgHandlerFunc handler) {
-  VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
-  VLOG(3) << "pserver_ptr_=" << pserver_ptr_;
-  VLOG(3) << "_worker_ptr=" << pserver_ptr_->_worker_ptr;
-  return pserver_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
-                                                                      handler);
+  VLOG(1) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
+  auto* communicator = Communicator::GetInstance();
+  // for unittest which does not call fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler communicator is "
+               "null";
+    return -1;
+  } else {
+    return communicator->_worker_ptr->registe_client2client_msg_handler(
+        msg_type, handler);
+  }
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
-  return pserver_ptr_->_worker_ptr->send_client2client_msg(msg_type,
+  auto* communicator = Communicator::GetInstance();
+  return communicator->_worker_ptr->send_client2client_msg(msg_type,
                                                            to_client_id, msg);
 }
 

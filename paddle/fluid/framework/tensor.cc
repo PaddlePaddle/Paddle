@@ -204,10 +204,12 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
 }
 
 void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                                 const proto::VarType::Type type) {
-  ResetHolder(holder);
+                                 const proto::VarType::Type& type) {
   type_ = type;
+  ResetHolder(holder);
 }
+
+void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 }  // namespace framework
 }  // namespace paddle

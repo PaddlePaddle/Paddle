@@ -205,7 +205,6 @@ class ConvMKLDNNHandlerT
     PADDLE_ENFORCE_NE(
         input->format(), MKLDNNMemoryFormat::undef,
         platform::errors::InvalidArgument("Wrong format set for Input tensor"));
-
     PADDLE_ENFORCE_EQ(
         filter->layout(), framework::DataLayout::kMKLDNN,
         platform::errors::InvalidArgument(
