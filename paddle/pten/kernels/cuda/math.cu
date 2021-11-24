@@ -139,7 +139,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Div)
 template <typename T>
 void Sum(const CUDAContext& dev_ctx,
          const DenseTensor& x,
-         std::vector<int64_t> dims,
+         const std::vector<int64_t>& dims,
          bool keep_dim,
          bool reduce_all,
          DataType in_dtype,
