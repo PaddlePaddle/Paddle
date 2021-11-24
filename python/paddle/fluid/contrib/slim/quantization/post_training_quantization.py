@@ -149,6 +149,7 @@ class PostTrainingQuantization(object):
                  weight_quantize_type='channel_wise_abs_max',
                  optimize_model=False,
                  is_use_cache_file=False,
+                 quant_blocks=-1,
                  cache_dir=None):
         '''
         Constructor.
@@ -221,6 +222,8 @@ class PostTrainingQuantization(object):
                 be different. In address this problem, fuse the pattern before
                 quantization. Default False.
             is_use_cache_file(bool, optional): This param is deprecated.
+            quant_blocks(int|list, optional): The bolck id list with quantiazaion.
+                Default is -1, it will quant all blocks. And it can be set [0, 1] etc.
             cache_dir(str, optional): This param is deprecated.
         Returns:
             None
@@ -309,6 +312,7 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._is_full_quantize = is_full_quantize
+        self._quant_blocks = quant_blocks
         if is_full_quantize:
             self._quantizable_op_type = self._support_quantize_op_type
         else:
@@ -451,10 +455,6 @@ class PostTrainingQuantization(object):
                                     model_filename=self._model_filename,
                                     params_filename=self._params_filename)
 
-        if self._program.num_blocks > 1:
-            _logger.error("The post training quantization requires that the "
-                          "program only has one block.")
-
         if self._optimize_model:
             self._optimize_fp32_model()
 
@@ -505,23 +505,30 @@ class PostTrainingQuantization(object):
                     self._quantized_act_var_name.add(var_name)
 
         persistable_var_names = _all_persistable_var_names(self._program)
-        for op in self._program.global_block().ops:
-            op_type = op.type
-            if self._is_full_quantize and \
-                op_type not in self._quantizable_op_type:
-                _logger.warning(op_type + " is not supported for quantization.")
-            # For quantized ops, sample inputs and outputs
-            if op_type in self._quantizable_op_type:
-                collect_var_name(
-                    _get_op_input_var_names(op), persistable_var_names, op_type)
-                collect_var_name(
-                    _get_op_output_var_names(op), persistable_var_names,
-                    op_type)
-            # For other op, only sample output scale
-            elif op_type in self._out_scale_op_list:
-                collect_var_name(
-                    _get_op_output_var_names(op), persistable_var_names,
-                    op_type)
+        for block_id in range(len(self._program.blocks)):
+            if self._quant_blocks != -1 and isinstance(
+                    self._quant_blocks,
+                    list) and block_id not in self._quant_blocks:
+                continue
+            for op in self._program.blocks[block_id].ops:
+                op_type = op.type
+                if self._is_full_quantize and \
+                    op_type not in self._quantizable_op_type:
+                    _logger.warning(op_type +
+                                    " is not supported for quantization.")
+                # For quantized ops, sample inputs and outputs
+                if op_type in self._quantizable_op_type:
+                    collect_var_name(
+                        _get_op_input_var_names(op), persistable_var_names,
+                        op_type)
+                    collect_var_name(
+                        _get_op_output_var_names(op), persistable_var_names,
+                        op_type)
+                # For other op, only sample output scale
+                elif op_type in self._out_scale_op_list:
+                    collect_var_name(
+                        _get_op_output_var_names(op), persistable_var_names,
+                        op_type)
 
     def _set_activation_persistable(self):
         '''
@@ -696,16 +703,21 @@ class PostTrainingQuantization(object):
         '''
         assert self._algo == "min_max", \
             "The algo should be min_max to save input threshold."
-        for op in self._program.global_block().ops:
-            if op.type in self._quantizable_op_type:
-                for var_name in _get_op_input_var_names(op):
-                    assert var_name in self._quantized_var_min
-                    assert var_name in self._quantized_var_max
-                    op._set_attr(var_name + ".min",
-                                 self._quantized_var_min[var_name])
-                    op._set_attr(var_name + ".max",
-                                 self._quantized_var_max[var_name])
-                    op._set_attr("with_quant_attr", True)
+        for block_id in range(len(self._program.blocks)):
+            if self._quant_blocks != -1 and isinstance(
+                    self._quant_blocks,
+                    list) and block_id not in self._quant_blocks:
+                continue
+            for op in self._program.blocks[block_id].ops:
+                if op.type in self._quantizable_op_type:
+                    for var_name in _get_op_input_var_names(op):
+                        assert var_name in self._quantized_var_min
+                        assert var_name in self._quantized_var_max
+                        op._set_attr(var_name + ".min",
+                                     self._quantized_var_min[var_name])
+                        op._set_attr(var_name + ".max",
+                                     self._quantized_var_max[var_name])
+                        op._set_attr("with_quant_attr", True)
 
     def _collect_activation_abs_min_max(self):
         '''
@@ -795,7 +807,13 @@ class PostTrainingQuantization(object):
             activation_quantize_type=self._activation_quantize_type,
             weight_quantize_type=self._weight_quantize_type,
             quantizable_op_type=major_quantizable_op_types)
-        transform_pass.apply(graph)
+
+        for i, sub_graph in enumerate(graph.all_sub_graphs()):
+            if self._quant_blocks != -1 and isinstance(
+                    self._quant_blocks, list) and i not in self._quant_blocks:
+                continue
+            sub_graph._for_test = True
+            transform_pass.apply(sub_graph)
 
         # use AddQuantDequantPass to insert fake_quant_dequant op
         minor_quantizable_op_types = []
@@ -806,7 +824,13 @@ class PostTrainingQuantization(object):
             scope=self._scope,
             place=self._place,
             quantizable_op_type=minor_quantizable_op_types)
-        add_quant_dequant_pass.apply(graph)
+
+        for i, sub_graph in enumerate(graph.all_sub_graphs()):
+            if self._quant_blocks != -1 and isinstance(
+                    self._quant_blocks, list) and i not in self._quant_blocks:
+                continue
+            sub_graph._for_test = True
+            add_quant_dequant_pass.apply(sub_graph)
 
         # save threshold to scale var node
         if self._algo in ["KL", "hist"]:
@@ -836,7 +860,14 @@ class PostTrainingQuantization(object):
             activation_bits=self._activation_bits,
             weight_quantize_type=self._weight_quantize_type,
             quantizable_op_type=major_quantizable_op_types)
-        freeze_pass.apply(graph)
+
+        for i, sub_graph in enumerate(graph.all_sub_graphs()):
+            if self._quant_blocks != -1 and isinstance(
+                    self._quant_blocks, list) and i not in self._quant_blocks:
+                continue
+            sub_graph._for_test = True
+            freeze_pass.apply(sub_graph)
+
         self._program = graph.to_program()
 
     def _save_output_threshold(self):
@@ -888,13 +919,19 @@ class PostTrainingQuantization(object):
                 save_info(op_node, out_var_name, self._quantized_var_max,
                           "out_max", "post_min_max")
 
-        for op in self._program.global_block().ops:
-            if op.type in (self._quantizable_op_type + self._out_scale_op_list):
-                out_var_names = _get_op_output_var_names(op)
-                assert len(out_var_names) == 1, "Post training " + \
-                    "quantization only support one output for " + op.type
-                for var_name in out_var_names:
-                    analysis_and_save_info(op, var_name)
+        for block_id in range(len(self._program.blocks)):
+            if self._quant_blocks != -1 and isinstance(
+                    self._quant_blocks,
+                    list) and block_id not in self._quant_blocks:
+                continue
+            for op in self._program.blocks[block_id].ops:
+                if op.type in (
+                        self._quantizable_op_type + self._out_scale_op_list):
+                    out_var_names = _get_op_output_var_names(op)
+                    assert len(out_var_names) == 1, "Post training " + \
+                        "quantization only support one output for " + op.type
+                    for var_name in out_var_names:
+                        analysis_and_save_info(op, var_name)
 
     def _collect_dynamic_quantize_op_threshold(self, target_ops_type):
         """

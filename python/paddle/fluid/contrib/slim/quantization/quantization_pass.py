@@ -582,7 +582,8 @@ class QuantizationTransformPass(object):
                     attrs={
                         'step': 1.0,
                         'op_role':
-                        core.op_proto_and_checker_maker.OpRole.Forward
+                        core.op_proto_and_checker_maker.OpRole.Forward,
+                        'op_device': ''
                     },
                     inputs={'X': global_step_in},
                     outputs={'Out': global_step_out})
@@ -632,7 +633,8 @@ class QuantizationTransformPass(object):
             op_type='fake_quantize_abs_max',
             attrs={
                 'bit_length': quant_bits,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'op_device': ''
             },
             inputs={'X': var_node},
             outputs={'Out': quant_var_node,
@@ -694,7 +696,8 @@ class QuantizationTransformPass(object):
             'window_size': self._window_size,
             'bit_length': quant_bits,
             'is_test': self._is_test,
-            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+            'op_device': ''
         }
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_range_abs_max',
@@ -778,7 +781,8 @@ class QuantizationTransformPass(object):
             'bit_length': quant_bits,
             'moving_rate': self._moving_rate,
             'is_test': self._is_test,
-            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+            'op_device': ''
         }
 
         quant_op_node = graph.create_op_node(
@@ -831,7 +835,8 @@ class QuantizationTransformPass(object):
                 'bit_length': quant_bits,
                 'quant_axis': quant_axis,
                 'is_test': self._is_test,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'op_device': ''
             },
             inputs={'X': var_node},
             outputs={'Out': quant_var_node,
@@ -857,7 +862,8 @@ class QuantizationTransformPass(object):
             op_type='fake_dequantize_max_abs',
             attrs={
                 'max_range': float(max_range),
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'op_device': ''
             },
             inputs={'X': var_node,
                     'Scale': scale_var_node},
@@ -884,7 +890,8 @@ class QuantizationTransformPass(object):
             attrs={
                 'quant_bits': quant_bits,
                 'quant_axis': quant_axis,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'op_device': ''
             },
             inputs={'X': var_node,
                     'Scales': scale_var_nodes},
@@ -1303,7 +1310,8 @@ class QuantizationFreezePass(object):
                 'quant_bits': [self._weight_bits, self._activation_bits],
                 'quant_axis': quant_axis,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
-                'x_num_col_dims': x_num_col_dims
+                'x_num_col_dims': x_num_col_dims,
+                'op_device': ''
             },
             inputs={
                 'X': output_var_node,
@@ -1359,7 +1367,8 @@ class QuantizationFreezePass(object):
             op_type='fake_dequantize_max_abs',
             attrs={
                 'max_range': float(max_range),
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'op_device': ''
             },
             inputs={'X': output_var_node,
                     'Scale': scale_var_node},
@@ -1707,7 +1716,8 @@ class OutScaleForTrainingPass(object):
                 attrs = {
                     'moving_rate': self._moving_rate,
                     'is_test': self._is_test,
-                    'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                    'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                    'op_device': ''
                 }
                 scale_op_node = graph.create_op_node(
                     op_type='moving_average_abs_max_scale',
@@ -1987,7 +1997,8 @@ class AddQuantDequantPass(object):
             'bit_length': quant_bits,
             'moving_rate': self._moving_rate,
             'is_test': self._is_test,
-            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+            'op_device': ''
         }
 
         quant_op_node = graph.create_op_node(
