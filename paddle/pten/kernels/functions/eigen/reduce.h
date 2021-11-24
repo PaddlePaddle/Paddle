@@ -154,7 +154,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto x = EigenVector<OutT>::Flatten(input);
-    auto out = EigenVector<OutT>::From(*output);
+    auto out = EigenScalar<OutT>::From(*output);
     auto& dev = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
 
