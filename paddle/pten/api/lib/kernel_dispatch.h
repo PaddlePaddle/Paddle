@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/backend_set.h"
+#include "paddle/pten/api/lib/data_type_set.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
@@ -51,6 +52,8 @@ struct KernelKeySet {
   BackendSet backend_set{Backend::UNDEFINED};
   DataLayout layout{DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
+  DataTypeSet dtype_set{DataType::UNDEFINED};
+  int key_num = 0;
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
   pten::KernelKey GetHigestPriorityKernelKey() {
@@ -96,6 +99,11 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // TODO(chenweihang): selecte multi layout and dtype
     key_set.layout = x.layout();
     key_set.dtype = x.type();
+    key_set.dtype_set = key_set.dtype_set | DataTypeSet(x.dtype());
+    auto promote_result = PromoteTypesIfComplexExists(key_set.dtype_set);
+    if (promote_result != DataType::UNDEFINED) {
+      key_set.dtype = promote_result;
+    }
   }
 
   void operator()(const std::vector<Tensor>& x) {
