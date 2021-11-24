@@ -36,7 +36,7 @@ class NCCLCommunicator;
 #include "paddle/fluid/platform/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/framework/details/bkcl_op_handle.h"
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {

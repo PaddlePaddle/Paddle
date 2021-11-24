@@ -21,11 +21,8 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -157,3 +154,6 @@ TEST(API, full) {
     ASSERT_NEAR(actual_result[i], val, 1e-6f);
   }
 }
+
+}  // namespace tests
+}  // namespace paddle

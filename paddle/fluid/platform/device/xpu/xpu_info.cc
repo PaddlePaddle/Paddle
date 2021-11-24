@@ -8,14 +8,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 
 #include <algorithm>
 #include <cstdlib>
 #include <string>
 #include "gflags/gflags.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/xpu/xpu_header.h"
 #include "paddle/fluid/string/split.h"
 
 PADDLE_DEFINE_EXPORTED_string(
