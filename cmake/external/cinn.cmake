@@ -27,7 +27,7 @@ add_definitions(-w)
 include(ExternalProject)
 set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
 # TODO(zhhsplendid): Modify git tag after we have release tag
-set(CINN_GIT_TAG develop)
+set(CINN_GIT_TAG 6ffa22f9577bc2e817a47c6cb6f2f11c65ed82b9)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}
@@ -40,7 +40,7 @@ set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY   "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_REPOSITORY   "${GIT_URL}/zhhsplendid/CINN.git"
   GIT_TAG          ${CINN_GIT_TAG}
   PREFIX           ${CINN_SOURCE_DIR}
   BUILD_COMMAND    ${CINN_BUILD_COMMAND}

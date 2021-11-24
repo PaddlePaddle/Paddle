@@ -79,10 +79,12 @@ class CinnLaunchContext {
 
   // Share the buffer of a Paddle tensor to CINN by delivering memory address
   // to a cinn_buffer_t object
-  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(LoDTensor* tensor);
+  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(
+      LoDTensor* tensor, bool free_mem_callback);
 
   // Set an argument with (cinn name)->(paddle tensor) pair
-  void SetArgument(const std::string& cinn_name, LoDTensor* paddle_tensor);
+  void SetArgument(const std::string& cinn_name, LoDTensor* paddle_tensor,
+                   bool free_mem_callback);
 
  private:
   // a variable name map from paddle to cinn

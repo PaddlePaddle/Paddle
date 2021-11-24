@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
 
+#include <functional>
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(cudnn_deterministic);
@@ -177,18 +178,23 @@ std::unique_ptr<cinn_buffer_t> CinnLaunchContext::ShareTensorWithCinnBuffer(
   // assign size and memory
   cinn_buffer->resize(cinn_dims.data(), cinn_dims.size());
 
-  cinn_buffer->external_malloc =
-      [&](void* ctx) {
-        cinn_buffer->memory =
-            reinterpret_cast<uint8_t*>(tensor->mutable_data<float>());
-      }
+  cinn_buffer->external_malloc = [&](void* ctx, cinn_buffer_t* buffer) {
+    cinn_buffer->memory = reinterpret_cast<uint8_t*>(tensor->data<float>());
+    return 0;
+  };
 
   if (free_mem_callback) {
-    cinn_buffer->external_free = [&](void* ctx) { tensor->clear(); };
+    cinn_buffer->external_free = [&](void* ctx, cinn_buffer_t* buffer) {
+      tensor->clear();
+      return 0;
+    };
     return cinn_buffer;
   }
 
-  cinn_buffer->external_free = [&](void* ctx) { /* Do nothing */ };
+  cinn_buffer->external_free = [&](void* ctx,
+                                   cinn_buffer_t* buffer) { /* Do nothing */
+                                                            return 0;
+  };
   return cinn_buffer;
 }
 
