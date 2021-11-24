@@ -2611,3 +2611,58 @@ def atan2(x, y, name=None):
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
+
+
+def angle(x, name=None):
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
+    for negative real numbers, the angle is :math:`-\pi`.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            z = x + 1j * y
+            print(z.numpy())
+            # [[-2.-2.j -2.-1.j -2.+0.j -2.+1.j]
+            #  [-1.-2.j -1.-1.j -1.+0.j -1.+1.j]
+            #  [ 0.-2.j  0.-1.j  0.+0.j  0.+1.j]
+            #  [ 1.-2.j  1.-1.j  1.+0.j  1.+1.j]]
+
+            theta = paddle.angle(z)
+            print(theta.numpy())
+            # [[-2.3561945 -2.6779451  3.1415927  2.6779451]
+            #  [-2.0344439 -2.3561945  3.1415927  2.3561945]
+            #  [-1.5707964 -1.5707964  0.         1.5707964]
+            #  [-1.1071488 -0.7853982  0.         0.7853982]]
+            
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.angle(x)
+
+    check_variable_and_dtype(x, 'x',
+        ['float32', 'float64', 'complex64', 'complex128'], 'angle')
+    op_type = "angle"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(x.dtype))
+    outputs = {"Out": out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out

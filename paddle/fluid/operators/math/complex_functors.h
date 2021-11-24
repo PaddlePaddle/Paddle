@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdio>
 #include <type_traits>
-
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -363,6 +363,78 @@ struct ConjFunctor<T, DisableComplex<T>> {
   T* output_;
 };
 
+template <typename T, typename Enable = void>
+struct AngleFunctor;
+
+// angel function for complex
+template <typename T>
+struct AngleFunctor<T, Complex<T, Real<T>>> {
+  AngleFunctor(const T* input, Real<T>* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = arg(input_[idx]);
+  }
+
+  const T* input_;
+  Real<T>* output_;
+  int64_t numel_;
+};
+
+// angel function for real
+template <typename T>
+struct AngleFunctor<T, NoComplex<T, Real<T>>> {
+  AngleFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = input_[idx] < static_cast<T>(0) ? M_PI : 0;
+  }
+
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T, typename Enable = void>
+struct AngleGradFunctor;
+
+// angle grad for complex
+template <typename T>
+struct AngleGradFunctor<T, Complex<T, Real<T>>> {
+  AngleGradFunctor(const math::Real<T>* dout, const T* x, T* dx, int64_t numel)
+      : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == T(0)) {
+      dx_[idx] = T(0);
+    } else {
+      const math::Real<T> r_square =
+          x_[idx].real * x_[idx].real + x_[idx].imag * x_[idx].imag;
+      dx_[idx] = T(-dout_[idx] * x_[idx].imag / r_square,
+                   dout_[idx] * x_[idx].real / r_square);
+    }
+  }
+
+  const math::Real<T>* dout_;
+  const T* x_;
+  T* dx_;
+  int64_t numel_;
+};
+
+// angle grad for real
+template <typename T>
+struct AngleGradFunctor<T, NoComplex<T, Real<T>>> {
+  AngleGradFunctor(const math::Real<T>* dout, const T* x, T* dx, int64_t numel)
+      : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const { dx_[idx] = 0; }
+
+  const math::Real<T>* dout_;
+  const T* x_;
+  T* dx_;
+  int64_t numel_;
+};
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
