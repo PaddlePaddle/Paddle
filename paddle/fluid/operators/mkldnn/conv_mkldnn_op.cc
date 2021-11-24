@@ -182,8 +182,6 @@ std::shared_ptr<std::tuple<float, std::vector<float>>> get_scales<int8_t>(
   return scale_tuple;
 }
 
-using paddle::platform::errors;
-
 template <typename T, typename K, typename T_out>
 class ConvMKLDNNHandlerT
     : public platform::MKLDNNHandlerNoCachingT<
@@ -241,12 +239,12 @@ class ConvMKLDNNHandlerT
     if (bias) {
       PADDLE_ENFORCE_EQ(
           bias->layout(), framework::DataLayout::kMKLDNN,
-          errors::InvalidArgument(
+          paddle::platform::errors::InvalidArgument(
               "The Bias tensor's layout should be %d, but got %d.",
               framework::DataLayout::kMKLDNN, bias->layout()));
-      PADDLE_ENFORCE_NE(
-          bias->format(), dnnl::memory::format_tag::undef,
-          errors::InvalidArgument("Got wrong format for Bias tensor."));
+      PADDLE_ENFORCE_NE(bias->format(), dnnl::memory::format_tag::undef,
+                        paddle::platform::errors::InvalidArgument(
+                            "Got wrong format for Bias tensor."));
 
       PADDLE_ENFORCE_EQ(
           bias->dims().size(), 1,
