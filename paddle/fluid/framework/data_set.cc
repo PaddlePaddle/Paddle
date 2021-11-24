@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/data_set.h"
 #include "google/protobuf/text_format.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #endif
 #include "paddle/fluid/framework/data_feed_factory.h"
@@ -550,7 +550,7 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
                                  const uint16_t start_sample_layer,
                                  const bool with_hierachy, const uint16_t seed_,
                                  const uint16_t sample_slot) {
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
   // init tdm tree
   auto wrapper_ptr = paddle::distributed::IndexWrapper::GetInstance();
   wrapper_ptr->insert_tree_index(tree_name, tree_path);
