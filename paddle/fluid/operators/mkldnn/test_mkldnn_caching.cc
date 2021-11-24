@@ -132,17 +132,15 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
   pool.Get(place)->Wait();
 }
 
-using paddle::platform::errors;
-
 TEST(test_conv2d_reuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
   platform::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
-  PADDLE_ENFORCE_EQ(
-      ct.Analyze(3), true,
-      errors::InvalidArgument("Invalid amount of cached oneDNN objects"));
+  PADDLE_ENFORCE_EQ(ct.Analyze(3), true,
+                    paddle::platform::errors::InvalidArgument(
+                        "Invalid amount of cached oneDNN objects"));
 }
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
@@ -151,9 +149,9 @@ TEST(test_conv2d_noreuse_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");
-  PADDLE_ENFORCE_EQ(
-      ct.Analyze(6), true,
-      errors::InvalidArgument("Invalid amount of cached oneDNN objects"));
+  PADDLE_ENFORCE_EQ(ct.Analyze(6), true,
+                    paddle::platform::errors::InvalidArgument(
+                        "Invalid amount of cached oneDNN objects"));
 }
 
 }  // namespace operators
