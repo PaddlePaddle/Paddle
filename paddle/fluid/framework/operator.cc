@@ -76,8 +76,7 @@ void show_var(const Scope& scope, const std::string& var_name,
 
   static std::vector<std::string> to_show_names(0);
   if (to_show_names.size() == 0){
-    char *var_name_path == nullptr;
-    var_name_path = std::getenv("VAR_NAME_LIST_FILE");
+    char *var_name_path = std::getenv("VAR_NAME_LIST_FILE");
     if (var_name_path == nullptr){
       return;
     }
