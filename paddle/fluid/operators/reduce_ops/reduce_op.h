@@ -240,7 +240,6 @@ class ReduceKernel : public framework::OpKernel<T> {
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
     auto* input = context.Input<Tensor>("X");
-    VLOG(0) << "Begin to Executee ReduceKernel";
     /*
         // The dims has full dim, set the reduce_all is True
         const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
