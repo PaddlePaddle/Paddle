@@ -76,16 +76,23 @@ void show_var(const Scope& scope, const std::string& var_name,
 
   static std::vector<std::string> to_show_names(0);
   if (to_show_names.size() == 0){
-    FILE* names_file = fopen("/var/tmp/var_names.txt", "r");
-    while(true){
+    char *var_name_path == nullptr;
+    var_name_path = std::getenv("VAR_NAME_LIST_FILE");
+    if (var_name_path == nullptr){
+      return;
+    }
+    FILE* names_file = fopen(var_name_path, "r");
+    while(names_file){
       char name[512];
       auto matched = fscanf(names_file, "%s", name);
       if (matched == 1){
         to_show_names.push_back(name);
       }else{
+        fclose(names_file);
         break;
       }
     }
+    
   }
   auto it = to_show_names.begin();
   for (; it != to_show_names.end(); it ++){
