@@ -222,13 +222,13 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=ON
+set ON_INFER=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-call :test_inference || goto test_inference_error
+:: call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -256,11 +256,14 @@ set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
+set WITH_TESTING=ON
+set WITH_TENSORRT=ON
+set WITH_INFERENCE_API_TEST=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-:: call :test_unit || goto test_unit_error
+call :test_unit || goto test_unit_error
 ::call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
@@ -317,6 +320,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
+rem set vs language to english to block showIncludes, this need vs has installed English language package.
+set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1

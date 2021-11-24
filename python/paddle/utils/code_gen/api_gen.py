@@ -333,8 +333,8 @@ def license():
 def header_include():
     return """
 #include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 """
 
 
@@ -382,7 +382,8 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(namespace[0])
 
     source_file.write(license())
-    source_file.write(source_include(header_file_path))
+    include_header_file = "paddle/pten/api/include/api.h"
+    source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
     for api in apis:
