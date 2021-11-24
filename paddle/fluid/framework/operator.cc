@@ -61,7 +61,8 @@ namespace framework {
 template <typename T>
 void print_data(const std::vector<T>& vec, std::stringstream& sstr) {
   auto& vec1 = vec;
-  size_t step = vec1.size() / 1;
+  // size_t step = vec1.size() / 1;
+  size_t step = 1;
   step = step < 1 ? 1 : step;
   for (size_t i = 0; i < vec1.size(); i += step) {
     sstr << vec1[i] << " ";
