@@ -1330,13 +1330,26 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
+        def _can_use_interpreter_core(program, place):
+            compiled = isinstance(program, compiler.CompiledProgram)
+            # NOTE(zhiqiu): only single card compiled program is supported 
+            if compiled:
+                if program._is_data_parallel and len(
+                        program._get_places(place, program._places)) == 1:
+                    return True
+                else:
+                    return False
+            else:
+                assert isinstance(program, Program)
+                return True
+
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core:
-            inner_program_ = program._program if isinstance(
+        if self._enable_interpreter_core and _can_use_interpreter_core(
+                program, self.place):
+            inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
-            assert isinstance(inner_program_, framework.Program)
-            if not inner_program_._is_start_up_program_:
+            if not inner_program._is_start_up_program_:
                 if feed is None:
                     feed = {}
                 elif isinstance(feed, (list, tuple)):
@@ -1348,7 +1361,7 @@ class Executor(object):
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
                 program = self._add_feed_fetch_ops(
-                    program=inner_program_,
+                    program=inner_program,
                     feed=feed,
                     fetch_list=fetch_list,
                     feed_var_name=feed_var_name,
@@ -1800,9 +1813,9 @@ class Executor(object):
         if program._pipeline_opt is None:
             if program._heter_pipeline_opt is None:
                 self._dump_debug_info(program=program, trainer=trainer)
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         if program._heter_pipeline_opt is None:
@@ -1935,9 +1948,9 @@ class Executor(object):
         # NOTE: only for debug, very slow
         # self._dump_debug_info(program=program, trainer=trainer)
 
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache
