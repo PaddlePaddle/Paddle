@@ -283,7 +283,7 @@ template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
   LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
                   "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argumentinstead. "
+                  "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
   return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
