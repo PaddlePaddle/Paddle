@@ -125,7 +125,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
