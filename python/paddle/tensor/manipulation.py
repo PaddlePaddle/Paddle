@@ -553,8 +553,7 @@ def rot90(x, k, dims, name=None):
     if not (dims[1] < total_dims and dims[1] >= -total_dims):
         raise ValueError("Rotation dim1 out of range, dim1 =".format(dims[1]))
 
-    # handle modulo with negative k
-    k = (4 + (k % 4)) % 4
+    k = k % 4 if k >= 0 else 4 - (-k % 4)
     if name is None:
         out = helper.create_variable_for_type_inference(dtype)
     else:
