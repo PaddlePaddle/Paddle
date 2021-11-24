@@ -177,6 +177,12 @@ bool ComputeInterceptor::CanStop() const {
   return true;
 }
 
+void ComputeInterceptor::HandleStop(const InterceptorMessage& msg) {
+  ReceivedStop(msg.src_id());
+
+  if (CanStop()) stop_ = true;
+}
+
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
     IncreaseReady(msg.src_id());
@@ -184,8 +190,6 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   } else if (msg.message_type() == DATE_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
-  } else if (msg.message_type() == STOP) {
-    ReceivedStop(msg.src_id());
   }
 
   if (CanStop()) stop_ = true;

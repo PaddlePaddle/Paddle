@@ -46,6 +46,8 @@ class Interceptor {
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
+  virtual void HandleStop(const InterceptorMessage& msg);
+
   void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
