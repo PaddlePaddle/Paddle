@@ -904,8 +904,8 @@ def get_mapped_cluster_from_args(args, device_mode):
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
                 x
-                for x in range(start_port, start_port + len(node_ranks_mapping[
-                    node_rank]))
+                for x in range(start_port,
+                               start_port + len(node_ranks_mapping[node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
@@ -1088,8 +1088,6 @@ class ParameterServerLauncher(object):
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
-                    if self.heter_worker_endpoints != "":
-                        self.heter_worker_endpoints += ","
                     heter_worker_endpoints = heter_worker_endpoints_list[
                         i].split(",")
                     self.stage_heter_trainer_num.append(
@@ -1160,6 +1158,9 @@ class ParameterServerLauncher(object):
                 self.node_ips.append(ip)
 
         if self.distribute_mode == DistributeMode.PS_HETER:
+            print(
+                len(self.heter_worker_endpoints.split(",")),
+                self.heter_worker_endpoints.split(","))
             self.heter_worker_endpoints_ips = [
                 x.strip().split(":")[0]
                 for x in self.heter_worker_endpoints.split(",")
