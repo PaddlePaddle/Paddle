@@ -15,5 +15,6 @@ limitations under the License. */
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/infershape/binary.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/binary.h"
+#include "paddle/pten/infermeta/nary.h"
+#include "paddle/pten/infermeta/unary.h"

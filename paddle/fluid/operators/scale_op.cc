@@ -73,13 +73,19 @@ class ScaleOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasInput("ScaleTensor")) {
-      return framework::KernelSignature("scale.host", {"X", "ScaleTensor"},
-                                        {"bias", "bias_after_scale"}, {"Out"});
-    } else {
-      return framework::KernelSignature(
-          "scale", {"X"}, {"scale", "bias", "bias_after_scale"}, {"Out"});
+    if (ctx.InputVar("X")->IsType<framework::LoDTensor>() ||
+        ctx.InputVar("X")->IsType<framework::Tensor>()) {
+      if (ctx.HasInput("ScaleTensor")) {
+        return framework::KernelSignature("scale.host", {"X", "ScaleTensor"},
+                                          {"bias", "bias_after_scale"},
+                                          {"Out"});
+      } else {
+        return framework::KernelSignature(
+            "scale", {"X"}, {"scale", "bias", "bias_after_scale"}, {"Out"});
+      }
     }
+    // TODO(chenweihang): support other cases after selected rows added
+    return framework::KernelSignature("scale.unregistered", {}, {}, {});
   }
 };
 

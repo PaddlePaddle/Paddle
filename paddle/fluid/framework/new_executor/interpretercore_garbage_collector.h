@@ -35,6 +35,8 @@ class InterpreterCoreGarbageCollector {
  public:
   InterpreterCoreGarbageCollector();
 
+  ~InterpreterCoreGarbageCollector();
+
   void Add(std::shared_ptr<memory::Allocation> garbage,  // NOLINT
            paddle::platform::DeviceEvent& event,         // NOLINT
            const platform::DeviceContext* ctx);

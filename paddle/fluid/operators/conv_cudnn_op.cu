@@ -298,11 +298,12 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     miopenConvFwdAlgorithm_t algo{};
     using search = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
     workspace_size = search::GetWorkspaceSize(args);
-    algo = search::Find<T>(args, exhaustive_search, false, workspace_size, ctx);
+    algo = search::Find<T>(args, exhaustive_search, deterministic,
+                           workspace_size, ctx);
 #else
     cudnnConvolutionFwdAlgo_t algo{};
     using search = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-    algo = search::Find<T>(args, exhaustive_search, false, ctx);
+    algo = search::Find<T>(args, exhaustive_search, deterministic, ctx);
     workspace_size = search::GetWorkspaceSize(args, algo);
 #endif
 
