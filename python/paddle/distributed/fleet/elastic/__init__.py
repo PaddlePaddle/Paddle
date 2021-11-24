@@ -18,12 +18,19 @@ import os, sys
 from .manager import ElasticManager
 from .manager import ElasticStatus
 from .manager import ELASTIC_EXIT_CODE
+from .manager import ElasticLevel
 from .collective import CollectiveLauncher
 
 from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
 def enable_elastic(args, distribute_mode):
+
+    #elastic_level = os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL')
+    #if not elastic_level and (elastic_level != ElasticLevel.FAULT_TOLERANCE and
+    #                          elastic_level != ElasticLevel.ELASTIC):
+    #    return False
+
     if distribute_mode != DistributeMode.COLLECTIVE:
         return False
 

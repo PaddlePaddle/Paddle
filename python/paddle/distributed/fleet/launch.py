@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -283,23 +284,54 @@ def cpuonly_check(args):
     return True
 
 
-def launch_collective(args):
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
-    (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
+    if args.enable_auto_mapping:
+        (device_mode, devices_per_proc) = (DeviceMode.GPU, [])
+    else:
+        (device_mode,
+         devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
         trainers_num, device_mode, devices_per_proc))
 
+    cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+
     cluster = None
     pod = None
-
     start_port = 6170
+
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-    # lazy launch for auto-parallel
+    # auto mapping between processes and devices for auto-parallel
     if args.enable_auto_mapping == True:
-        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
+        assert args.cluster_topo_path is not None, \
+            "The cluster topology must be provied when enabling auto mapping."
+        rank_mapping_path = args.rank_mapping_path or os.getenv("PADDLE_RANK_MAPPING_PATH")
+        if rank_mapping_path is None:
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(enable_elastic(args, device_mode))
+            cwd = pathlib.Path().resolve()
+            rank_mapping_path = os.path.join(cwd,
+                                             "auto_parallel_rank_mapping.json")
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
+
+            original_args = sys.argv[1:]
+            os.environ["PADDLE_ORIGINAL_CMD_ARGS"] = " ".join(original_args)
+            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
+            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
+                args.enable_auto_mapping)
+            cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
+                args, device_mode)
+        else:
+            os.environ["PADDLE_RANK_MAPPING_EXISTS"] = str(False)
+            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
+            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
+                args.enable_auto_mapping)
+            cluster, pod = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
+                args, device_mode)
     else:
         # for ascend
         if device_mode == DeviceMode.ASCEND_NPU:
@@ -316,14 +348,23 @@ def launch_collective(args):
             cluster, pod = get_cluster_from_args(args, device_mode,
                                                  devices_per_proc)
             logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
 
+
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -352,8 +393,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):
