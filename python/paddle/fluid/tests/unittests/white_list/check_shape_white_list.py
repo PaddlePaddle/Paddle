@@ -29,5 +29,4 @@ NEED_TO_FIX_OP_LIST = [
     'cudnn_lstm',
     'rnn',
     'multi_dot',
-    'prelu',
 ]

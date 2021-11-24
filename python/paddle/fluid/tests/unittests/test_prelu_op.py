@@ -224,6 +224,9 @@ class TestModeAll(PReluTest):
         self.attrs = {'mode': "all", "data_format": "NCHW"}
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
 class TestModeAllNHWC(PReluTest):
     def init_input_shape(self):
         self.x_shape = [2, 3, 4, 50]
@@ -259,6 +262,9 @@ class TestModeAllRank3(PReluTest):
         self.attrs = {'mode': "all", "data_format": "NCHW"}
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
 class TestModeAllRank3NHWC(PReluTest):
     def init_input_shape(self):
         self.x_shape = [1, 200, 3]
@@ -278,6 +284,9 @@ class TestModeAllRank6(PReluTest):
         self.attrs = {'mode': "all", "data_format": "NCHW"}
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
 class TestModeAllRank6NHWC(PReluTest):
     def init_input_shape(self):
         self.x_shape = [1, 2, 3, 4, 5, 6]
