@@ -2085,7 +2085,10 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
             is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
             The shape of labelis the same as the shape of input.
-        delta (float, optional): Has a default value of `1`.
+        delta (float, optional): Specifies the hyperparameter delta to be used.
+            The value determines how large the input need to be to calculate in
+            hinge_embedding_loss. When label is -1, Input smaller than delta are minimized with hinge_embedding_loss.
+            Default = 1.0
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;

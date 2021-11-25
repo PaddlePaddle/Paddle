@@ -1232,7 +1232,10 @@ class HingeEmbeddingLoss(Layer):
     where :math:`L = \{l_1,\dots,l_N\}^\top`.
 
     Parameters:
-        delta (float, optional): Has a default value of `1`.
+        delta (float, optional): Specifies the hyperparameter delta to be used.
+            The value determines how large the input need to be to calculate in
+            hinge_embedding_loss. When label is -1, Input smaller than delta are minimized with hinge_embedding_loss.
+            Default = 1.0
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
