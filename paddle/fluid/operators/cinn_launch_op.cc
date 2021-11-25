@@ -16,10 +16,6 @@
 #include <vector>
 #include "paddle/fluid/string/string_helper.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
-
 DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
@@ -208,36 +204,6 @@ CinnLaunchContext::FinalizeArguments() const {
                 });
   return name2argument_;
 }
-
-#ifdef PADDLE_WITH_CUDA
-void CUDART_CB ReleaseScope(void* data) {
-  auto* temp_scope = static_cast<framework::Scope*>(data);
-  delete temp_scope;
-}
-
-void CUDART_CB ReleaseBuffers(void* data) {
-  auto* buffers =
-      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(data);
-  delete buffers;
-}
-
-template <>
-void ReleaseResource<platform::CUDADeviceContext>(
-    const std::vector<void*>& resources, void* stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
-      static_cast<gpuStream_t>(stream), ReleaseScope, resources[0]));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
-      static_cast<gpuStream_t>(stream), ReleaseBuffers, resources[1]));
-}
-
-template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx) {
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  return dev_ctx.stream();
-}
-#endif
 
 }  // namespace details
 
