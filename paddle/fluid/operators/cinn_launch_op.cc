@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
+#include <vector>
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(cudnn_deterministic);
@@ -65,8 +66,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 }
 
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context) {
-  compiled_obj.runtime_program->Execute(&context.FinalizeArguments());
+                         const CinnLaunchContext& context, void* stream) {
+  compiled_obj.runtime_program->Execute(&context.FinalizeArguments(), stream);
 }
 
 void SetCinnRuntimeFlags() {
