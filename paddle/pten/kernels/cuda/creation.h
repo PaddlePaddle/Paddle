@@ -38,12 +38,6 @@ void FillConstant(const CUDAContext& dev_ctx,
                   const Scalar& val,
                   DenseTensor* out);
 
-template <typename T>
-void FillConstantDynamicShape(const CUDAContext& dev_ctx,
-                              const ScalarArray& shape,
-                              const Scalar& val,
-                              DenseTensor* out);
-
 }  // namespace pten
 
 #endif

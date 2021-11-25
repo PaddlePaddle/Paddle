@@ -60,15 +60,6 @@ void FillConstant(const CUDAContext& dev_ctx,
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 
-template <typename T>
-void FillConstantDynamicShape(const CUDAContext& dev_ctx,
-                              const ScalarArray& shape,
-                              const Scalar& val,
-                              DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
-  eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
-}
-
 }  // namespace pten
 
 PT_REGISTER_MODULE(CreationCUDA);
@@ -88,21 +79,6 @@ PT_REGISTER_KERNEL("fill_constant",
                    CUDA,
                    ANY,
                    pten::FillConstant,
-                   float,
-                   double,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
-
-PT_REGISTER_KERNEL("fill_constant",
-                   CUDA,
-                   ANY,
-                   pten::FillConstantDynamicShape,
                    float,
                    double,
                    uint8_t,
