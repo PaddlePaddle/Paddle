@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/pten/kernels/functions/cuda/elementwise/elementwise.h"
 #include "paddle/pten/kernels/functions/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/functions/eigen/mean.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
@@ -65,37 +64,16 @@ void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 template <typename T>
-void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  auto size_prob = x.numel();
-  const T* x_data = x.data<T>();
-  T* out_data = out->mutable_data<T>();
-  auto stream = dev_ctx.stream();
-
-  DivideFunctor<T> transformer(size_prob);
-  cub::TransformInputIterator<T, DivideFunctor<T>, const T*> trans_x(
-      x_data, transformer);
-  size_t temp_storage_bytes = 0;
-
-  auto err = cub::DeviceReduce::Sum(
-      nullptr, temp_storage_bytes, trans_x, out_data, size_prob, stream);
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
-
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-      dev_ctx.GetPlace());
-  pten::DenseTensor tmp(
-      alloc,
-      DenseTensorMeta(x.dtype(),
-                      paddle::framework::make_ddim(
-                          {static_cast<int64_t>(temp_storage_bytes)}),
-                      x.layout()));
-  void* temp_storage = tmp.mutable_data<T>();
-  err = cub::DeviceReduce::Sum(static_cast<uint8_t*>(temp_storage),
-                               temp_storage_bytes,
-                               trans_x,
-                               out_data,
-                               size_prob,
-                               stream);
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
+void Mean(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          const std::vector<int64_t>& dims,
+          bool keep_dim,
+          bool reduce_all,
+          DataType in_dtype,
+          DataType out_dtype,
+          DenseTensor* out) {
+  pten::Reduce<T, paddle::operators::CustomMean>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T>
@@ -159,7 +137,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, float16) {}
+PT_REGISTER_KERNEL("reduce_mean", CUDA, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CUDA,
                    ANY,
