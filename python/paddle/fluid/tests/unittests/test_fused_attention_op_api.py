@@ -166,14 +166,27 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
 
 class TestFusedAttentionAPI(unittest.TestCase):
     def setUp(self):
+        self.setXType()
+        self.setPreLn()
+        self.setAttnMask()
+        self.setBiasAttr()
         self.config()
         self.generate_input_data()
 
-    def config(self):
-        self.x_type = np.float32
-        self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
+    def setAttnMask(self):
         self.has_attn_mask = True
+
+    def setBiasAttr(self):
+        self.bias_attr = None
+
+    def setPreLn(self):
+        self.pre_layer_norm = False
+
+    def setXType(self):
+        self.x_type = np.float32
+
+    def config(self):
+        self.attn_mask_type = np.float64
         self.training = True
         self.need_weight = False
 
@@ -186,7 +199,6 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.dropout_prob = 0.0
         self.attn_dropout_prob = 0.0
         self.weight_attr = None
-        self.bias_attr = None
 
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
         self.key_length, self.value_length = self.query_length, self.query_length
@@ -228,12 +240,11 @@ class TestFusedAttentionAPI(unittest.TestCase):
             paddle.to_tensor(self.query),
             paddle.to_tensor(self.query), attn_mask_tensor)
 
-        if self.bias_attr is False:
-            fused_attn_qkv_bias = None
-            fused_attn_linear_bias = None
-            fused_attn_pre_ln_bias = None
-            fused_attn_ln_bias = None
-        else:
+        fused_attn_qkv_bias = None
+        fused_attn_linear_bias = None
+        fused_attn_pre_ln_bias = None
+        fused_attn_ln_bias = None
+        if self.bias_attr is not False:
             fused_attn_qkv_bias = fused_attn.qkv_bias.numpy()
             fused_attn_linear_bias = fused_attn.linear_bias.numpy()
             fused_attn_pre_ln_bias = fused_attn.pre_ln_bias.numpy()
@@ -245,7 +256,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
             fused_attn.ln_scale.numpy(), fused_attn_ln_bias,
             fused_attn.qkv_weight.numpy(), fused_attn_qkv_bias,
             fused_attn.linear_weight.numpy(), fused_attn_linear_bias)
-        np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5, atol=1e-4)
 
     def run_static(self):
         fused_attn = FusedMultiHeadAttention(
@@ -330,7 +341,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     self.attn_mask, ln_scale, ln_bias,
                                     ln_2_scale, ln_2_bias, qkv_weight, qkv_bias,
                                     linear_weight, linear_bias)
-        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-4)
 
     def test_dynamic_api(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -338,51 +349,16 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
 
 class TestFusedAttentionAPINoneAttnMask(TestFusedAttentionAPI):
-    def config(self):
-        self.x_type = np.float32
-        self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
+    def setAttnMask(self):
         self.has_attn_mask = False
-        self.training = True
-        self.need_weight = False
 
-        self.batch_size = 1
-        self.query_length = 2
-        self.head_dim = 2
-        self.num_heads = 2
-        self.embed_dim = self.head_dim * self.num_heads
-
-        self.dropout_prob = 0.0
-        self.attn_dropout_prob = 0.0
-        self.weight_attr = None
-        self.bias_attr = None
-
-        self.kdim, self.vdim = self.embed_dim, self.embed_dim
-        self.key_length, self.value_length = self.query_length, self.query_length
+    def setPreLn(self):
+        self.pre_layer_norm = True
 
 
 class TestFusedAttentionAPIBiasIsNone(TestFusedAttentionAPI):
-    def config(self):
-        self.x_type = np.float32
-        self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
-        self.has_attn_mask = False
-        self.training = True
-        self.need_weight = False
-
-        self.batch_size = 1
-        self.query_length = 2
-        self.head_dim = 2
-        self.num_heads = 2
-        self.embed_dim = self.head_dim * self.num_heads
-
-        self.dropout_prob = 0.0
-        self.attn_dropout_prob = 0.0
-        self.weight_attr = None
+    def setBiasAttr(self):
         self.bias_attr = False
-
-        self.kdim, self.vdim = self.embed_dim, self.embed_dim
-        self.key_length, self.value_length = self.query_length, self.query_length
 
 
 if __name__ == "__main__":
