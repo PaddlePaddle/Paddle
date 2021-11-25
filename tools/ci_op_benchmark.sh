@@ -236,8 +236,9 @@ function check_CHANGE_OP_MAP {
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
-      exit_code=8
-      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      # Disable the check of missing op benchmark script temporarily.
+      # exit_code=8
+      LOG "[WARNING] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
   if [ $exit_code -ne 0 ]; then
