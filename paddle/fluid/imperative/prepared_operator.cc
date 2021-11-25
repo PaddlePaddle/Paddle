@@ -396,7 +396,7 @@ static void BuildDygraphPtenKernelContext(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "unsupported cast op attribute `%s` to VectorTensor when "
+              "Unsupported cast op attribute `%s` to VectorTensor when "
               "construct KernelContext.",
               attr_names[i]));
         }
@@ -433,7 +433,7 @@ static void BuildDygraphPtenKernelContext(
               std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "unsupported cast op attribute `%s` to Scalar when construct "
+              "Unsupported cast op attribute `%s` to Scalar when construct "
               "KernelContext in dygraph.",
               attr_names[i]));
         }
