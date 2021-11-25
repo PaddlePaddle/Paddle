@@ -2091,7 +2091,7 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-            Default is ``'sum'``. Default: ``'mean'``
+            Default: ``'mean'``
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
