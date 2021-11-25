@@ -1720,8 +1720,8 @@ def cross_entropy(input,
                     raise ValueError(
                         "input's class_dimension({}) must equal to "
                         "weight's class_dimension({}) "
-                            "when weight is provided"\
-                        .format(input.shape[axis], weight.shape[-1]))
+                        "when weight is provided" \
+                            .format(input.shape[axis], weight.shape[-1]))
 
                 ignore_weight_mask = paddle.cast((label != ignore_index),
                                                  out.dtype)
@@ -1732,7 +1732,7 @@ def cross_entropy(input,
                                                         axis)
                 if axis != -1 and axis != valid_label.ndim - 1:
                     temp_perm = list(range(axis % valid_label.ndim)) \
-                                + list(range((axis % valid_label.ndim + 1) , valid_label.ndim)) \
+                                + list(range((axis % valid_label.ndim + 1), valid_label.ndim)) \
                                 + [axis % valid_label.ndim]
                     weight_gather = _C_ops.gather_nd(
                         weight, valid_label.transpose(temp_perm))
@@ -1834,8 +1834,8 @@ def cross_entropy(input,
         else:
             if input.shape[axis] != weight.shape[-1]:
                 raise ValueError("input's class_dimension({}) must equal to "
-                        "weight's class_dimension({}) "
-                            "when weight is provided"\
+                                 "weight's class_dimension({}) "
+                                 "when weight is provided" \
                                  .format(input.shape[axis], weight.shape[-1]))
 
             valid_label = paddle.where(label == ignore_index,
@@ -2054,10 +2054,72 @@ def sigmoid_focal_loss(logit,
 
 
 def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
-    """
+    r"""
+    This operator calculates hinge_embedding_loss. Measures the loss given an input
+    tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    This is usually used for measuring whether two inputs are similar or
+    dissimilar, e.g. using the L1 pairwise distance as :math:`x`, and is typically
+    used for learning nonlinear embeddings or semi-supervised learning.
+
+    The loss function for :math:`n`-th sample in the mini-batch is
+
+    .. math::
+        l_n = \begin{cases}
+            x_n, & \text{if}\; y_n = 1,\\
+            \max \{0, \Delta - x_n\}, & \text{if}\; y_n = -1,
+        \end{cases}
+
+    and the total loss functions is
+
+    .. math::
+        \ell(x, y) = \begin{cases}
+            \operatorname{mean}(L), & \text{if reduction} = \text{'mean';}\\
+            \operatorname{sum}(L),  & \text{if reduction} = \text{'sum'.}
+        \end{cases}
+
+    where :math:`L = \{l_1,\dots,l_N\}^\top`.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
+            (N, C), where C is number of classes, and if shape is more than 2D, this
+            is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
+            The shape of labelis the same as the shape of input.
+        delta (float, optional): Has a default value of `1`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+            ``'mean'``: the sum of the output will be divided by the number of
+            elements in the output, ``'sum'``: the output will be summed. Note: :attr:`size_average`
+            and :attr:`reduce` are in the process of being deprecated, and in the meantime,
+            specifying either of those two args will override :attr:`reduction`. Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is
+            None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions,
+            available dtype is float32, float64.. The sum operationoperates over all the elements.
+        label: N-D Tensor, same shape as the input.
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
     Returns:
+        The tensor variable storing the hinge_embedding_loss of input and label.
 
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import bumpy as np
+            import paddle.nn.functional as F
+
+            input_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
+            # get label with elements in {1., -1.}
+            label_np = 2 * np.random.randint(0, 2, size=(10, 10, 5)) - 1.
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np, dtype=paddle.float32)
+            loss = F.hinge_embedding_loss(input, label, delta=1.0, reduction='mean')
+            print(loss)
     """
 
     if reduction not in ['sum', 'mean', 'none']:
@@ -2071,14 +2133,14 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         paddle.fluid.data_feeder.check_variable_and_dtype(
             label, 'label', ['float32', 'float64'], 'hinge_embedding_loss')
 
-    if (label == 1.).all():
-        loss = input
-    elif (label == -1.).all():
-        loss = paddle.maximum(paddle.to_tensor(0.), delta - input)
+    if set(label.unique().numpy()) <= {1., -1.}:
+        loss = paddle.where(
+            label == 1., input,
+            paddle.maximum(paddle.to_tensor(0.), delta - input))
     else:
         raise ValueError("'label' should contain 1. or -1., "
                          "but received label containing {}.".format(
-                             label.unique()))
+                             label.unique().numpy()))
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
