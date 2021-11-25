@@ -78,8 +78,8 @@ TEST(InterceptorTest, PingPong) {
 
     Carrier& carrier = Carrier::Instance();
 
-    Interceptor* a = carrier.SetInterceptor(
-        0, InterceptorFactory::Create("PingPong", 1, nullptr));
+    carrier.SetInterceptor(0,
+                           InterceptorFactory::Create("PingPong", 1, nullptr));
     carrier.SetCreatingFlag(false);
   }
 }
