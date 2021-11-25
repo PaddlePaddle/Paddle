@@ -97,7 +97,7 @@ Java_com_baidu_paddle_inference_Config_paramsFile(JNIEnv *, jobject, jlong);
 /*
  * Class:     com_baidu_paddle_inference_Config
  * Method:    setCpuMathLibraryNumThreads
- * Signature: (I)V
+ * Signature: (JI)V
  */
 JNIEXPORT void JNICALL
 Java_com_baidu_paddle_inference_Config_setCpuMathLibraryNumThreads(JNIEnv *,
@@ -217,7 +217,7 @@ Java_com_baidu_paddle_inference_Config_irOptim(JNIEnv *, jobject, jlong);
 /*
  * Class:     com_baidu_paddle_inference_Config
  * Method:    switchIrDebug
- * Signature: (J)Z
+ * Signature: (JZ)V
  */
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_switchIrDebug(
     JNIEnv *, jobject, jlong, jboolean);
@@ -225,7 +225,7 @@ JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_switchIrDebug(
 /*
  * Class:     com_baidu_paddle_inference_Config
  * Method:    enableMemoryOptim
- * Signature: (J)V
+ * Signature: (JZ)V
  */
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_enableMemoryOptim(
     JNIEnv *, jobject, jlong, jboolean);

@@ -23,6 +23,15 @@ extern "C" {
 #endif
 /*
  * Class:     com_baidu_paddle_inference_Predictor
+ * Method:    cppPredictorDestroy
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Predictor_cppPredictorDestroy(JNIEnv *, jobject,
+                                                              jlong);
+
+/*
+ * Class:     com_baidu_paddle_inference_Predictor
  * Method:    predictorTryShrinkMemory
  * Signature: (J)V
  */

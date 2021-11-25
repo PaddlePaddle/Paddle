@@ -20,6 +20,10 @@ public class Predictor {
         return predictor;
     }
 
+    public void destroyNativePredictor() {
+        cppPredictorDestroy(cppPaddlePredictorPointer);
+    }
+
     public String getInputNameById(long id){
         return getInputNameByIndex(this.cppPaddlePredictorPointer, id);
     }
@@ -38,11 +42,11 @@ public class Predictor {
         return new Tensor(tensorPointer);
     }
 
-    public void ClearIntermediateTensor(){
+    public void clearIntermediateTensor(){
         predictorClearIntermediateTensor(this.cppPaddlePredictorPointer);
     }
 
-    public void TryShrinkMemory(){
+    public void tryShrinkMemory(){
         predictorTryShrinkMemory(this.cppPaddlePredictorPointer);
     }
 
@@ -62,6 +66,8 @@ public class Predictor {
     public long getOutputNum() {
         return outputNum;
     }
+
+    private native void cppPredictorDestroy(long cppPaddleConfigPointer);
 
     private native void predictorTryShrinkMemory(long cppPaddleConfigPointer);
 

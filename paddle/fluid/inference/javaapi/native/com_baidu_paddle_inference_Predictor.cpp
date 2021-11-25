@@ -17,6 +17,13 @@
 #include "pd_inference_api.h"  // NOLINT
 
 JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Predictor_cppPredictorDestroy(
+    JNIEnv*, jobject, jlong cppPaddlePredictorPointer) {
+  PD_PredictorDestroy(
+      reinterpret_cast<PD_Predictor*>(cppPaddlePredictorPointer));
+}
+
+JNIEXPORT void JNICALL
 Java_com_baidu_paddle_inference_Predictor_predictorTryShrinkMemory(
     JNIEnv* env, jobject obj, jlong cppPaddlePredictorPointer) {
   PD_PredictorTryShrinkMemory(
@@ -56,8 +63,6 @@ Java_com_baidu_paddle_inference_Predictor_getInputNameByIndex(
                                                     cppPaddlePredictorPointer))
                           ->data[static_cast<int>(index)];
   return env->NewStringUTF(c_str);
-  //    return (jstring) (PD_PredictorGetInputNames((PD_Predictor*)
-  //    cppPaddleConfigPointer)->data[(int) index]);
 }
 
 JNIEXPORT jstring JNICALL

@@ -118,8 +118,8 @@ public class Config {
         return irOptim(this.cppPaddleConfigPointer);
     }
 
-    public boolean switchIrDebug(boolean flag){
-        return switchIrDebug(this.cppPaddleConfigPointer, flag);
+    public void switchIrDebug(boolean flag){
+        switchIrDebug(this.cppPaddleConfigPointer, flag);
     }
 
     public void enableMemoryOptim(boolean flag){
@@ -241,7 +241,7 @@ public class Config {
 
     private native boolean irOptim(long cppPaddleConfigPointer);
 
-    private native boolean switchIrDebug(long cppPaddleConfigPointer, boolean flag);
+    private native void switchIrDebug(long cppPaddleConfigPointer, boolean flag);
 
     // 9. enable memory optimization
 

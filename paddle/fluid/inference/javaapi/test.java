@@ -24,7 +24,7 @@ public class test {
         }
         config.getCpuMathLibraryNumThreads();
         config.getFractionOfGpuMemoryForPool();
-        config.switchIrDebug(true);
+        config.switchIrDebug(false);
         System.out.println(config.summary());
 
         Predictor predictor = Predictor.createPaddlePredictor(config);
@@ -45,13 +45,14 @@ public class test {
         float[] outData = new float[outHandle.getSize()];
         outHandle.copyToCpu(outData);
 
-        predictor.TryShrinkMemory();
-        predictor.ClearIntermediateTensor();
+        predictor.tryShrinkMemory();
+        predictor.clearIntermediateTensor();
 
         System.out.println(outData[0]);
         System.out.println(outData.length);
 
         outHandle.destroyNativeTensor();
         inHandle.destroyNativeTensor();
+        predictor.destroyNativePredictor();
     }
 }
