@@ -90,9 +90,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format_tag format() const { return format_; }
+  inline dnnl::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format_tag format) {
+  inline void set_format(const dnnl::memory::format_tag format) {
     format_ = format;
   }
 
@@ -106,7 +106,7 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
  public:
@@ -254,7 +254,10 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
-    type_ = tensor.type_;
+    // NOTE(chenfeiyu): when sharing buffer, by definition only holder
+    // to the memory allocation and offset should be shared. Shape,
+    // data type, layout, and other metadata associated with a Tensor
+    // should not be copied.
   }
 
   bool IsSharedBufferWith(const Tensor& src) const {
@@ -271,7 +274,9 @@ class Tensor {
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                           const proto::VarType::Type type);
+                           const proto::VarType::Type& type);
+
+  void set_type(const proto::VarType::Type& type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;
