@@ -31,29 +31,32 @@ class MHAOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("QO_KV_Seqlen"), "Input", "QO_KV_Seqlen", "MHA");
 
+    // CUDNN_SEQDATA_DIM_COUNT = 4, mins 1 = 3 due to omit beam_dim currently to have
+    // a same inputs with Paddle's original MHA Layer.
+    int QKV_dims_size = CUDNN_SEQDATA_DIM_COUNT - 1;
     auto q_dims = ctx->GetInputDim("Q");
-    PADDLE_ENFORCE_EQ(q_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
+    PADDLE_ENFORCE_EQ(q_dims.size(), QKV_dims_size,
                       platform::errors::InvalidArgument(
                           "The input tensor Q's dimensions of MHAOp "
                           "should be equal to %d . But received Q's "
                           "dimensions = %d.",
-                          CUDNN_SEQDATA_DIM_COUNT, q_dims.size()));
+                          QKV_dims_size, q_dims.size()));
 
     auto k_dims = ctx->GetInputDim("K");
-    PADDLE_ENFORCE_EQ(k_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
+    PADDLE_ENFORCE_EQ(k_dims.size(), QKV_dims_size,
                       platform::errors::InvalidArgument(
                           "The input tensor K's dimensions of MHAOp "
                           "should be equal to %d . But received K's "
                           "dimensions = %d.",
-                          CUDNN_SEQDATA_DIM_COUNT, k_dims.size()));
+                          QKV_dims_size, k_dims.size()));
 
     auto v_dims = ctx->GetInputDim("V");
-    PADDLE_ENFORCE_EQ(v_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
+    PADDLE_ENFORCE_EQ(v_dims.size(), QKV_dims_size,
                       platform::errors::InvalidArgument(
                           "The input tensor V's dimensions of MHAOp "
                           "should be equal to %d . But received V's "
                           "dimensions = %d.",
-                          CUDNN_SEQDATA_DIM_COUNT, v_dims.size()));
+                          QKV_dims_size, v_dims.size()));
 
     auto qo_kv_slen_dims = ctx->GetInputDim("QO_KV_Seqlen");
     if (ctx->IsRuntime()) { 
@@ -130,7 +133,7 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("attn_o_proj_size", "");
     AddAttr<int>("attn_max_qo_seq_len", "");
     AddAttr<int>("attn_max_kv_seq_len", "");
-    AddAttr<int>("attn_beam_size", "");
+    AddAttr<int>("attn_beam_size", "Not supported currently.");
 
     AddComment(R"DOC(MHA OP Test)DOC");
   }

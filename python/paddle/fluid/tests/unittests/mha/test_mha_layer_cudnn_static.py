@@ -41,11 +41,11 @@ def compare(ref, res, atol, rtol):
 
 def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     Q = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     K = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
     W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
 
@@ -108,9 +108,9 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
         self.cudnn_startup_prog = paddle.static.Program()
 
         with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
-            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
-            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
-            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
+            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
+            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
+            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
             attn_mask_input = paddle.static.data(name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
 
             q_input.stop_gradient = False
@@ -144,9 +144,9 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
             return
 
         ref_out = self.exe.run(self.ref_main_prog,
-                        feed={"q_input_3dim": self.Q.reshape((self.batch_size, self.seq_len, self.vec_size)),
-                            "k_input_3dim": self.K.reshape((self.batch_size, self.seq_len, self.vec_size)),
-                            "v_input_3dim": self.V.reshape((self.batch_size, self.seq_len, self.vec_size)),
+                        feed={"q_input_3dim": self.Q,
+                            "k_input_3dim": self.K,
+                            "v_input_3dim": self.V,
                             "attn_mask_4dim": self.attn_mask_for_ori},
                         fetch_list=[self.ref_mha_loss.name])
 
@@ -167,9 +167,9 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
         q_input_3dim_grad, k_input_3dim_grad, v_input_3dim_grad, \
         wq_grad, wk_grad, wv_grad, wo_grad, \
         bq_grad, bk_grad, bv_grad, bo_grad, = self.exe.run(self.ref_main_prog,
-                    feed={"q_input_3dim": self.Q.reshape((self.batch_size, self.seq_len, self.vec_size)),
-                        "k_input_3dim": self.K.reshape((self.batch_size, self.seq_len, self.vec_size)),
-                        "v_input_3dim": self.V.reshape((self.batch_size, self.seq_len, self.vec_size)),
+                    feed={"q_input_3dim": self.Q,
+                        "k_input_3dim": self.K,
+                        "v_input_3dim": self.V,
                         "attn_mask_4dim": self.attn_mask_for_ori},
                     fetch_list=["q_input_3dim@GRAD", "k_input_3dim@GRAD", "v_input_3dim@GRAD",
                                 "{}.w_0@GRAD".format(self.ref_mha.q_proj.full_name()),
@@ -278,9 +278,9 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
         self.cudnn_startup_prog = paddle.static.Program()
 
         with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
-            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
-            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
-            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
+            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
+            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
+            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
             attn_mask_input = paddle.static.data(name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
 
             q_input.stop_gradient = False
@@ -314,9 +314,9 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
             return
 
         ref_out = self.exe.run(self.ref_main_prog,
-                        feed={"q_input_3dim": self.Q.reshape((self.batch_size, self.seq_len, self.vec_size)),
-                            "k_input_3dim": self.K.reshape((self.batch_size, self.seq_len, self.vec_size)),
-                            "v_input_3dim": self.V.reshape((self.batch_size, self.seq_len, self.vec_size)),
+                        feed={"q_input_3dim": self.Q,
+                            "k_input_3dim": self.K,
+                            "v_input_3dim": self.V,
                             "attn_mask_4dim": self.attn_mask_for_ori},
                         fetch_list=[self.ref_mha_loss.name])
 

@@ -41,11 +41,11 @@ def compare(ref, res, atol, rtol):
 
 def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     Q = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     K = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
     W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
 
@@ -90,20 +90,11 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.q_3dim_tensor = paddle.to_tensor(
-            self.Q.reshape((batch_size, seq_len, vec_size)),
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.Q, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.k_3dim_tensor = paddle.to_tensor(
-            self.K.reshape((batch_size, seq_len, vec_size)),
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.K, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.v_3dim_tensor = paddle.to_tensor(
-            self.V.reshape((batch_size, seq_len, vec_size)),
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         attn_mask = paddle.to_tensor(np.ones((batch_size, seq_len)), place=self.place)
         seq_infer = CUDNNSeqInfoInfer()
@@ -262,20 +253,11 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.q_3dim_tensor = paddle.to_tensor(
-            self.Q.reshape((batch_size, seq_len, vec_size)),
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.Q, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.k_3dim_tensor = paddle.to_tensor(
-            self.K.reshape((batch_size, seq_len, vec_size)),
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.K, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.v_3dim_tensor = paddle.to_tensor(
-            self.V.reshape((batch_size, seq_len, vec_size)),
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
     def init_dtype_type(self):
         self.dtype = np.float32

@@ -232,8 +232,8 @@ class MHAKernel : public framework::OpKernel<T> {
     axes[3] = CUDNN_SEQDATA_VECT_DIM;
 
     int dimA[CUDNN_SEQDATA_DIM_COUNT];
-    dimA[CUDNN_SEQDATA_VECT_DIM] = q->dims()[3];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = q->dims()[2];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = q->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = q->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = q->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
@@ -241,8 +241,8 @@ class MHAKernel : public framework::OpKernel<T> {
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         qo_kv_slen_data_host, nullptr));
 
-    dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[3];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = k->dims()[2];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = k->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
@@ -250,8 +250,8 @@ class MHAKernel : public framework::OpKernel<T> {
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         qo_kv_slen_data_host+batch_size, nullptr));
 
-    dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[3];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = v->dims()[2];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = v->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
@@ -259,8 +259,8 @@ class MHAKernel : public framework::OpKernel<T> {
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         qo_kv_slen_data_host+batch_size, nullptr));
 
-    dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[3];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = o->dims()[2];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = o->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(

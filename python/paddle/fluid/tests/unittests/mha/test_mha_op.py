@@ -60,16 +60,16 @@ def _get_attn_output(q, k, v, wq, wk, wv, wo,
     h_bar = np.matmul(alpha, v_bar).transpose((0, 2, 1, 3)).reshape(
         (-1, seq_len, vec_size))
     out = np.matmul(h_bar, wo) + bo
-    return out.reshape((-1, seq_len, 1, vec_size)).astype(origin_dtype)
+    return out.reshape((-1, seq_len, vec_size)).astype(origin_dtype)
 
 
 def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     Q = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     K = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
     B =  np.random.uniform(low=-0.01, high=0.01, size=(4 * vec_size,)).astype(dtype)
     W = np.concatenate((W, B), dtype=dtype)
@@ -96,11 +96,11 @@ def _generate_varlen_data(seq_lens, vec_size, dtype):
 
     assert len(seq_lens) > 0, "batch size should be greater than 0"
 
-    Qs = [(np.random.random((1, seq_len, 1, vec_size)) - .5).astype(dtype)
+    Qs = [(np.random.random((1, seq_len, vec_size)) - .5).astype(dtype)
           for seq_len in seq_lens]
-    Ks = [(np.random.random((1, seq_len, 1, vec_size)) - .5).astype(dtype)
+    Ks = [(np.random.random((1, seq_len, vec_size)) - .5).astype(dtype)
           for seq_len in seq_lens]
-    Vs = [(np.random.random((1, seq_len, 1, vec_size)) - .5).astype(dtype)
+    Vs = [(np.random.random((1, seq_len, vec_size)) - .5).astype(dtype)
           for seq_len in seq_lens]
 
     Q = np.concatenate(Qs, axis=1)
@@ -382,9 +382,9 @@ class TestMHAOpVarLenFP16(OpTest):
         O = None
         for sid, slen in enumerate(qo_slen):
             sub_o = _get_attn_output(
-                                     Q[0, offset[sid]:offset[sid + 1], :, :],
-                                     K[0, offset[sid]:offset[sid + 1], :, :],
-                                     V[0, offset[sid]:offset[sid + 1], :, :],
+                                     Q[0, offset[sid]:offset[sid + 1], :],
+                                     K[0, offset[sid]:offset[sid + 1], :],
+                                     V[0, offset[sid]:offset[sid + 1], :],
                                      WQ, WK, WV, WO, BQ, BK, BV, BO, np.ones((1, nheads, slen, slen)),
                                      slen, nheads, vec_size,
                                      self.attrs["attn_sm_scaler"])

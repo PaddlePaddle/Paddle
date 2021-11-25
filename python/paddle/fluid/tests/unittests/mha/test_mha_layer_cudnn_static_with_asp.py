@@ -26,11 +26,11 @@ from paddle import fluid
 
 def _generate_data(batch_size, max_seq_len, vec_size):
     Q = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(np.single)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(np.single)
     K = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(np.single)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(np.single)
     V = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(np.single)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(np.single)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
     W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
 
@@ -57,9 +57,9 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
         self.cudnn_startup_prog = paddle.static.Program()
 
         with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
-            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
-            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
-            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, 1, self.vec_size], dtype='float32')
+            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
+            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
+            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
             attn_mask_input = paddle.static.data(name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
 
             q_input.stop_gradient = False

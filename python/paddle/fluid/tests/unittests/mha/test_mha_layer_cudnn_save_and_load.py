@@ -42,11 +42,11 @@ def compare(ref, res, atol, rtol):
 
 def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     Q = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     K = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
-        (batch_size, max_seq_len, 1, vec_size)) - .5).astype(dtype)
+        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
     W = np.concatenate((W, np.zeros((4 * vec_size, ))), dtype=np.single)
 
@@ -68,9 +68,9 @@ class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
 
     @paddle.jit.to_static(input_spec=[
         InputSpec(
-            shape=[None, 4, 1, 8], dtype='float32'), InputSpec(
-                shape=[None, 4, 1, 8], dtype='float32'), InputSpec(
-                    shape=[None, 4, 1, 8], dtype='float32'), InputSpec(
+            shape=[None, 4, 8], dtype='float32'), InputSpec(
+                shape=[None, 4, 8], dtype='float32'), InputSpec(
+                    shape=[None, 4, 8], dtype='float32'), InputSpec(
                         shape=[None, 4], dtype='int32')
     ])
     def forward(self, query, key, value, attn_mask):
@@ -110,17 +110,17 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.q_3dim_tensor = paddle.to_tensor(
-            self.Q.reshape((batch_size, seq_len, vec_size)),
+            self.Q,
             dtype=self.dtype,
             place=self.place,
             stop_gradient=False)
         self.k_3dim_tensor = paddle.to_tensor(
-            self.K.reshape((batch_size, seq_len, vec_size)),
+            self.K,
             dtype=self.dtype,
             place=self.place,
             stop_gradient=False)
         self.v_3dim_tensor = paddle.to_tensor(
-            self.V.reshape((batch_size, seq_len, vec_size)),
+            self.V,
             dtype=self.dtype,
             place=self.place,
             stop_gradient=False)
@@ -269,15 +269,15 @@ class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
                                          self.cudnn_startup_prog):
             self.q_input = paddle.static.data(
                 name="q_input",
-                shape=[-1, self.seq_len, 1, self.vec_size],
+                shape=[-1, self.seq_len, self.vec_size],
                 dtype='float32')
             self.k_input = paddle.static.data(
                 name="k_input",
-                shape=[-1, self.seq_len, 1, self.vec_size],
+                shape=[-1, self.seq_len, self.vec_size],
                 dtype='float32')
             self.v_input = paddle.static.data(
                 name="v_input",
-                shape=[-1, self.seq_len, 1, self.vec_size],
+                shape=[-1, self.seq_len, self.vec_size],
                 dtype='float32')
             self.attn_mask_input = paddle.static.data(
                 name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
@@ -311,16 +311,12 @@ class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
         self.rtol = 1e-3
 
     def test_jit_save_and_load(self):
-
         ref_out = self.ref_exe.run(
             self.ref_main_prog,
             feed={
-                "q_input_3dim": self.Q.reshape(
-                    (self.batch_size, self.seq_len, self.vec_size)),
-                "k_input_3dim": self.K.reshape(
-                    (self.batch_size, self.seq_len, self.vec_size)),
-                "v_input_3dim": self.V.reshape(
-                    (self.batch_size, self.seq_len, self.vec_size)),
+                "q_input_3dim": self.Q,
+                "k_input_3dim": self.K,
+                "v_input_3dim": self.V,
                 "attn_mask_4dim": self.attn_mask_for_ori
             },
             fetch_list=[self.ref_mha_loss.name])
