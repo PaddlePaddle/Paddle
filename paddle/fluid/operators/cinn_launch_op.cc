@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
+#include <vector>
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(cudnn_deterministic);
@@ -65,8 +66,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 }
 
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context) {
-  compiled_obj.runtime_program->Execute(&context.FinalizeArguments());
+                         const CinnLaunchContext& context, void* stream) {
+  compiled_obj.runtime_program->Execute(&context.FinalizeArguments(), stream);
 }
 
 void SetCinnRuntimeFlags() {
@@ -98,13 +99,13 @@ CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& var_name) {
   return cinn_scope_->GetTensor(var_name);
 }
 
-std::vector<std::string> CinnLaunchContext::GetInternalVariableNames() {
+std::unordered_set<std::string> CinnLaunchContext::GetInternalVariableNames() {
   std::unordered_set<std::string> all_parameters(cinn_variable_names_);
   std::for_each(name2argument_.begin(), name2argument_.end(),
                 [&all_parameters](const auto& name2arg) {
                   all_parameters.erase(name2arg.first);
                 });
-  return {all_parameters.begin(), all_parameters.end()};
+  return all_parameters;
 }
 
 void CinnLaunchContext::MutableTensorData(const std::string& var_name,
@@ -121,6 +122,7 @@ void CinnLaunchContext::MutableTensorData(const std::string& var_name,
 
   auto cinn_tensor = GetCinnTensor(cinn_name);
   // TODO(CtfGo): support mutable corresponding c++ type after CINN ready
+  VLOG(4) << "Only support float in cinn_launch op now.";
   paddle_tensor->mutable_data<float>(
       framework::make_ddim(cinn_tensor->shape().data()), place);
 }

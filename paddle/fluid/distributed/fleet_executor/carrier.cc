@@ -21,6 +21,8 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Compute);
+
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
@@ -28,6 +30,15 @@ void Carrier::Init(
   interceptor_id_to_node_ = interceptor_id_to_node;
   CreateInterceptors();
   is_init_ = true;
+}
+
+Carrier::~Carrier() {
+  // NOTE(wangxi): must join before `Derived Interceptor` destruct,
+  // otherwise Derived object will be destructed before thread complete.
+  // TODO(wangxi): Maybe need a better to use thread.
+  for (auto& interceptor : interceptor_idx_to_interceptor_) {
+    interceptor.second->Join();
+  }
 }
 
 bool Carrier::EnqueueInterceptorMessage(

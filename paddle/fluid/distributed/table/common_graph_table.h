@@ -80,10 +80,14 @@ enum LRUResponse { ok = 0, blocked = 1, err = 2 };
 struct SampleKey {
   uint64_t node_key;
   size_t sample_size;
-  SampleKey(uint64_t _node_key, size_t _sample_size)
-      : node_key(_node_key), sample_size(_sample_size) {}
+  bool is_weighted;
+  SampleKey(uint64_t _node_key, size_t _sample_size, bool _is_weighted)
+      : node_key(_node_key),
+        sample_size(_sample_size),
+        is_weighted(_is_weighted) {}
   bool operator==(const SampleKey &s) const {
-    return node_key == s.node_key && sample_size == s.sample_size;
+    return node_key == s.node_key && sample_size == s.sample_size &&
+           is_weighted == s.is_weighted;
   }
 };
 
@@ -360,7 +364,7 @@ class GraphTable : public SparseTable {
   virtual int32_t random_sample_neighbors(
       uint64_t *node_ids, int sample_size,
       std::vector<std::shared_ptr<char>> &buffers,
-      std::vector<int> &actual_sizes);
+      std::vector<int> &actual_sizes, bool need_weight);
 
   int32_t random_sample_nodes(int sample_size, std::unique_ptr<char[]> &buffers,
                               int &actual_sizes);

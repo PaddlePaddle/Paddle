@@ -1365,6 +1365,46 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     return out
 
 
+def zeropad2d(x, padding, data_format="NCHW", name=None):
+    """
+    Pads the input tensor boundaries with zero according to 'pad'.
+
+    Args:
+        x(Tensor): The input tensor with data type float16/float32/float64/int32/int64.
+        padding(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            The input dimension should be 4 and pad has the form (pad_left, pad_right,
+            pad_top, pad_bottom).
+        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
+            the input data. Default: "NCHW".
+        name(str, optional): The default value is None. Normally there is no need for user
+            to set this property.
+
+    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn.functional as F
+
+            x_shape = (1, 1, 2, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.zeropad2d(x, [1, 2, 1, 1])
+            # [[[[0. 0. 0. 0. 0. 0.]
+            #    [0. 1. 2. 3. 0. 0.]
+            #    [0. 4. 5. 6. 0. 0.]
+            #    [0. 0. 0. 0. 0. 0.]]]]
+    """
+
+    return pad(x,
+               pad=padding,
+               mode='constant',
+               value=0,
+               data_format=data_format,
+               name=name)
+
+
 def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     """
     Compute cosine similarity between x1 and x2 along axis.

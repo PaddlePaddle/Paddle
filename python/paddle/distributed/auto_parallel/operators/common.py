@@ -111,37 +111,27 @@ def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
     return best_compatible_impl, idx
 
 
-def copy_distributed_attr_for_var(dist_context, dst_var, src_var):
-    """
-    copy src var's dist_attr to dst var
-    """
-    dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
-    dist_context.set_tensor_dist_attr_for_program(dst_var, dist_attr)
+def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
+    var_shape = block.var(src_var.name).shape
+    var_topoloy = src_var_dist_attr.process_mesh.topology
+    var_dims_mapping = src_var_dist_attr.dims_mapping
 
+    complete_shape = []
+    for idx, shape in enumerate(var_shape):
+        if var_dims_mapping[idx] == -1:
+            complete_shape.append(shape)
+        else:
+            new_shape = shape * var_topoloy[var_dims_mapping[idx]]
+            complete_shape.append(new_shape)
 
-def copy_distributed_attr_for_dist_op(dist_context, dist_op, dst_block,
-                                      src_op_dist_attr):
-    """
-    copy src op's dist_attr to dst dist op
-    """
-    from ..dist_attribute import OperatorDistributedAttribute
-    # need check dist op attr and its inputs and outputs
+    exact_shape = []
+    input_topology = op_input_dist_attr.process_mesh.topology
+    input_dims_mapping = op_input_dist_attr.dims_mapping
+    for idx, shape in enumerate(complete_shape):
+        if input_dims_mapping[idx] == -1:
+            exact_shape.append(shape)
+        else:
+            new_shape = shape // input_topology[input_dims_mapping[idx]]
+            exact_shape.append(new_shape)
 
-    op_dist_attr = OperatorDistributedAttribute()
-    op_dist_attr.process_mesh = src_op_dist_attr.process_mesh
-    op_dist_attr.impl_idx = src_op_dist_attr.impl_idx
-
-    for input_varname in dist_op.desc.input_arg_names():
-        input_var = dst_block.var(input_varname)
-        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-            input_var)
-        op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
-
-    for output_varname in dist_op.desc.output_arg_names():
-        output_var = dst_block.var(output_varname)
-        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-            output_var)
-        op_dist_attr.set_output_dist_attr(output_varname, tensor_dist_attr)
-
-    dist_context.set_op_dist_attr_for_program(dist_op, op_dist_attr)
-    op_dist_attr = dist_context.get_op_dist_attr_for_program(dist_op)
+    return exact_shape

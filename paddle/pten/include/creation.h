@@ -31,7 +31,7 @@ DenseTensor FillAnyLike(
     DataType dtype = DataType::UNDEFINED,
     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
     DataLayout layout = DataLayout::UNDEFINED) {
-  auto out_meta = FullLikeInferShape(x.meta(), dtype, layout);
+  auto out_meta = FullLikeInferMeta(x.meta(), dtype, layout);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());

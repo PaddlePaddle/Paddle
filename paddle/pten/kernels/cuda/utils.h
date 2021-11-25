@@ -28,7 +28,7 @@ using CUDAContext = paddle::platform::CUDADeviceContext;
 
 void Copy(const CUDAContext& dev_ctx,
           const DenseTensor& src,
-          bool is_sync,
+          bool blocking,
           DenseTensor* dst);
 
 }  // namespace pten
