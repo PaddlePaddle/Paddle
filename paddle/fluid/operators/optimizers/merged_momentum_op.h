@@ -242,6 +242,7 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
           functor(params[idx], grads[idx], velocitys[idx], lr_temp, mu,
                   use_nesterov, regularization_flag, regularization_coeff,
                   params_out[idx], velocitys_out[idx]);
+          VLOG(10) << "Launch MergedMomentum cpu kernel.";
         } else if (platform::is_gpu_place(ctx.GetPlace())) {
           platform::ForRange<DeviceContext> for_range(
               static_cast<const DeviceContext &>(ctx.device_context()),
@@ -258,17 +259,24 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
             if (regularization_flag == RegularizationType::kL2DECAY) {
               PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
                   UseNesterov, RegularizationType::kL2DECAY);
+              VLOG(10)
+                  << "Launch MergedMomentum gpu kernel use_nesterov kL2DECAY.";
             } else {
               PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(UseNesterov,
                                                     RegularizationType::kNONE);
+              VLOG(10)
+                  << "Launch MergedMomentum gpu kernel use_nesterov kNONE.";
             }
           } else {
             if (regularization_flag == RegularizationType::kL2DECAY) {
               PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
                   NoNesterov, RegularizationType::kL2DECAY);
+              VLOG(10)
+                  << "Launch MergedMomentum gpu kernel no_nesterov kL2DECAY.";
             } else {
               PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(NoNesterov,
                                                     RegularizationType::kNONE);
+              VLOG(10) << "Launch MergedMomentum gpu kernel no_nesterov kNONE.";
             }
           }
         }

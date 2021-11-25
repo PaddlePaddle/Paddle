@@ -139,7 +139,8 @@ def run_momentum_op2(params,
                      multi_precision,
                      mu=0.9,
                      rescale_grad=0.01,
-                     use_merged=False):
+                     use_merged=False,
+                     use_nesterov=True):
     assert len(params) == len(grads)
     assert len(params) == len(velocitys)
     if multi_precision:
@@ -218,7 +219,7 @@ def run_momentum_op2(params,
                     'mu': mu,
                     'multi_precision': multi_precision,
                     'rescale_grad': rescale_grad,
-                    'use_nesterov': True,
+                    'use_nesterov': use_nesterov,
                     'regularization_method': 'l2_decay',
                     'regularization_coeff': 2.0,
                 }
@@ -239,7 +240,7 @@ def run_momentum_op2(params,
                 'mu': mu,
                 'multi_precision': multi_precision,
                 'rescale_grad': rescale_grad,
-                'use_nesterov': True,
+                'use_nesterov': use_nesterov,
                 'regularization_method':
                 ['l2_decay' for i in range(len(param_vars))],
                 'regularization_coeff': [2.0 for i in range(len(param_vars))],
@@ -344,7 +345,7 @@ class TestMergedMomentum2(unittest.TestCase):
         params, grads, velocitys, master_params, learning_rate = self.prepare_data(
             self.shapes, multi_precision, self.seed, place)
 
-        def run_op(use_merged):
+        def run_op(use_nesterov, use_merged):
             # FIXME(zengjinle): CPU Momentum Op does not support rescale_grad 
             rescale_grad = 1.0 if isinstance(place, paddle.CPUPlace) else 0.01
             return run_momentum_op2(
@@ -356,16 +357,26 @@ class TestMergedMomentum2(unittest.TestCase):
                 place,
                 multi_precision,
                 rescale_grad=rescale_grad,
-                use_merged=use_merged)
+                use_merged=use_merged,
+                use_nesterov=use_nesterov)
 
-        outs1 = run_op(True)
-        outs2 = run_op(False)
+        outs1 = run_op(use_nesterov=True, use_merged=True)
+        outs2 = run_op(use_nesterov=True, use_merged=False)
         self.assertEqual(len(outs1), len(outs2))
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
             if isinstance(place, paddle.CUDAPlace):
                 self.assertTrue(np.array_equal(out1, out2))
             else:
                 self.assertTrue(np.allclose(out1, out2, atol=1e-7))
+
+        outs3 = run_op(use_nesterov=False, use_merged=True)
+        outs4 = run_op(use_nesterov=False, use_merged=False)
+        self.assertEqual(len(outs3), len(outs4))
+        for j, (out3, out4) in enumerate(zip(outs3, outs4)):
+            if isinstance(place, paddle.CUDAPlace):
+                self.assertTrue(np.array_equal(out3, out4))
+            else:
+                self.assertTrue(np.allclose(out3, out4, atol=1e-7))
 
     def get_places(self):
         places = [paddle.CPUPlace()]
