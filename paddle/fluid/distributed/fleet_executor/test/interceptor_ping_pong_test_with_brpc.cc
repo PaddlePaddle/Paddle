@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <time.h>
 #include <iostream>
 #include <unordered_map>
 
@@ -55,12 +56,20 @@ class PingPongInterceptor : public Interceptor {
 REGISTER_INTERCEPTOR(PingPong, PingPongInterceptor);
 
 TEST(InterceptorTest, PingPong) {
+  std::cout << "Ping pong test through brpc";
+  unsigned int seed = time(0);
+  // random generated two ports in from 6000 to 9000
+  int port0 = 6000 + rand_r(&seed) % 3000;
+  int port1 = port0;
+  while (port1 == port0) {
+    port1 = 6000 + rand_r(&seed) % 3000;
+  }
+  std::string ip0 = "127.0.0.1:" + std::to_string(port0);
+  std::string ip1 = "127.0.0.1:" + std::to_string(port1);
   int pid = fork();
   if (pid == 0) {
     MessageBus& msg_bus = MessageBus::Instance();
-    msg_bus.Init({{0, 0}, {1, 1}},
-                 {{0, "127.0.0.1:6781"}, {1, "127.0.0.1:7032"}},
-                 "127.0.0.1:6781");
+    msg_bus.Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip0);
 
     Carrier& carrier = Carrier::Instance();
 
@@ -72,9 +81,7 @@ TEST(InterceptorTest, PingPong) {
     a->Send(1, msg);
   } else {
     MessageBus& msg_bus = MessageBus::Instance();
-    msg_bus.Init({{0, 0}, {1, 1}},
-                 {{0, "127.0.0.1:6781"}, {1, "127.0.0.1:7032"}},
-                 "127.0.0.1:7032");
+    msg_bus.Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip1);
 
     Carrier& carrier = Carrier::Instance();
 
