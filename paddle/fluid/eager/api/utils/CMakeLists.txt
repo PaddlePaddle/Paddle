@@ -1,5 +1,1 @@
-if(WITH_MKLDNN)
-    cc_library(global_utils SRCS global_utils.cc DEPS enforce mkldnn)
-elseif(WITH_MKLDNN)
-    cc_library(global_utils SRCS global_utils.cc DEPS enforce)
-endif(WITH_MKLDNN)
+cc_library(global_utils SRCS global_utils.cc DEPS place)

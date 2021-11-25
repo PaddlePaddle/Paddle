@@ -129,6 +129,7 @@ template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    VLOG(10) << "start sum kernel";
     auto in_vars = context.MultiInputVar("X");
     size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
@@ -138,7 +139,8 @@ class SumKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
-      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>() &&
+          in_vars[0]->Get<framework::LoDTensor>().IsInitialized()) {
         auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
         if (in_0_tensor.numel() > 0) {
           in_place = (in_0_tensor.data<T>() == out_ptr);
@@ -151,7 +153,9 @@ class SumKernel : public framework::OpKernel<T> {
       int start = in_place ? 1 : 0;
       if (!in_place) {
         if ((in_num >= 2) && in_vars[0]->IsType<framework::LoDTensor>() &&
-            in_vars[1]->IsType<framework::LoDTensor>()) {
+            in_vars[1]->IsType<framework::LoDTensor>() &&
+            in_vars[0]->Get<framework::LoDTensor>().IsInitialized() &&
+            in_vars[1]->Get<framework::LoDTensor>().IsInitialized()) {
           auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
           auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
           if (in_0.numel() && in_1.numel()) {
@@ -162,6 +166,7 @@ class SumKernel : public framework::OpKernel<T> {
           }
         }
         if (start != 2) {
+          VLOG(10) << "Fill with constant = 0 in sum kernel.";
           math::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
                            out, static_cast<T>(0));
@@ -173,7 +178,7 @@ class SumKernel : public framework::OpKernel<T> {
       for (size_t i = start; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
-          if (in_t.numel() == 0) {
+          if (!in_t.IsInitialized() || in_t.numel() == 0) {
             continue;
           }
           auto in = EigenVector<T>::Flatten(in_t);
@@ -200,6 +205,7 @@ class SumKernel : public framework::OpKernel<T> {
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
+    VLOG(10) << "end sum kernel";
   }
 };
 }  // namespace operators
