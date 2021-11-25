@@ -16,7 +16,7 @@ INCLUDE(ExternalProject)
 
 SET(GLOO_PROJECT       "extern_gloo")
 SET(GLOO_PREFIX_DIR    ${THIRD_PARTY_PATH}/gloo)
-SET(GLOO_SOURCE_DIR    ${THIRD_PARTY_PATH}/gloo/src/extern_gloo/gloo)
+SET(GLOO_SOURCE_DIR    ${THIRD_PARTY_PATH}/gloo/src/extern_gloo)
 SET(GLOO_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gloo)
 SET(GLOO_INCLUDE_DIR   "${GLOO_INSTALL_DIR}/include" CACHE PATH "gloo include directory." FORCE)
 SET(GLOO_LIBRARY_DIR   "${GLOO_INSTALL_DIR}/lib" CACHE PATH "gloo library directory." FORCE)
@@ -29,13 +29,12 @@ INCLUDE_DIRECTORIES(${GLOO_INCLUDE_DIR})
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
   ExternalProject_Add(
-      extern_gloo
+      ${GLOO_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
       GIT_REPOSITORY        ${GLOO_REPOSITORY}
       GIT_TAG               ${GLOO_TAG}
       PREFIX                "${GLOO_PREFIX_DIR}"
-      SOURCE_DIR            "${GLOO_SOURCE_DIR}"
       UPDATE_COMMAND        ""
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
@@ -47,13 +46,12 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
   )
 else()
   ExternalProject_Add(
-      extern_gloo
+      ${GLOO_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
       GIT_REPOSITORY        ${GLOO_REPOSITORY}
       GIT_TAG               ${GLOO_TAG}
       PREFIX                "${GLOO_PREFIX_DIR}"
-      SOURCE_DIR            "${GLOO_SOURCE_DIR}"
       UPDATE_COMMAND        ""
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build

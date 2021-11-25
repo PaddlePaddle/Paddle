@@ -66,7 +66,7 @@ CinnCompiler* CinnCompiler::GetInstance() {
 const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) {
+    const Target& target, void* stream) {
   VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
   bool exist = false;
@@ -77,7 +77,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
   if (!exist) {
     std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
     auto compiled_res =
-        CompileGraph(graph, input_tensors, target, compiled_num);
+        CompileGraph(graph, input_tensors, target, compiled_num, stream);
     AutoWRLock w_guard{&rwlock_};
     if (!cache_.count(cur_key)) {
       cache_[cur_key] = std::move(compiled_res);
@@ -91,9 +91,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
 const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) {
+    const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
-  return Compile(graph, input_tensors, target);
+  return Compile(graph, input_tensors, target, stream);
 }
 
 std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
@@ -189,7 +189,7 @@ void CinnCompiler::Clear() {
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target, std::int64_t compiled_num) const {
+    const Target& target, std::int64_t compiled_num, void* stream) const {
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
