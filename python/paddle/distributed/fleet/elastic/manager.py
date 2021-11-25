@@ -236,6 +236,7 @@ class ElasticManager(object):
                 six.ensure_str(i[0])
                 for i in self.etcd.get_prefix(self.node_prefix)
             ]
+            self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
             logger.info(
                 f"host_call_back curr_host={self.curr_host}, hosts:{self.hosts}")
             self.need_sync = True
@@ -255,6 +256,7 @@ class ElasticManager(object):
                         six.ensure_str(i[0])
                         for i in self.etcd.get_prefix(self.node_prefix)
                     ]
+                    hosts = list(set(hosts)) if hosts else hosts
                     logger.info(
                         f"[lease_heartbeat] curr_host={self.curr_host}, hosts={hosts}"
                     )
@@ -396,6 +398,7 @@ class ElasticManager(object):
                 six.ensure_str(i[0])
                 for i in self.etcd.get_prefix(self.node_prefix)
             ]
+        self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
 
         if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
             if len(self.hosts) == self.np:

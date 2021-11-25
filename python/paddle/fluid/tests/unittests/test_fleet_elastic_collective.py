@@ -124,6 +124,15 @@ class TestCollectiveLauncher(unittest.TestCase):
             args.rank_mapping_path = "./rank_mapping"
             launch.launch()
             launch.stop()
+
+            args.backend = "nccl"
+            launch.launch()
+            launch.stop()
+
+            args.backend = "npu"
+            args.enable_auto_mapping = True
+            launch.launch()
+            launch.stop()
         except Exception as e:
             pass
 
