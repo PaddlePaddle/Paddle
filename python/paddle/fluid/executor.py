@@ -1332,13 +1332,14 @@ class Executor(object):
 
         def _can_use_interpreter_core(program, place):
             compiled = isinstance(program, compiler.CompiledProgram)
-            # NOTE(zhiqiu): only single card compiled program is supported 
+            # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                if program._is_data_parallel and len(
-                        program._get_places(place, program._places)) == 1:
-                    return True
-                else:
-                    return False
+                return False
+                # if program._is_data_parallel and len(
+                #         program._get_places(place, program._places)) == 1:
+                #     return True
+                # else:
+                #     return False
             else:
                 assert isinstance(program, Program)
                 return True
