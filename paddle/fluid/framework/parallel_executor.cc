@@ -956,8 +956,14 @@ void ParallelExecutor::SkipMemoryReuse(
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
+  FeedTensorsIntoLocalScopesImpl(tensors.data(), tensors.size());
+}
+
+void ParallelExecutor::FeedTensorsIntoLocalScopesImpl(
+    const std::unordered_map<std::string, LoDTensor> *tensors, size_t n) {
   if (platform::IsCUDAGraphCapturing()) {
-    for (auto &tensor : tensors) {
+    for (size_t i = 0; i < n; ++i) {
+      auto &tensor = tensors[i];
       PADDLE_ENFORCE_EQ(
           tensor.empty(), true,
           platform::errors::PermissionDenied(
@@ -967,7 +973,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
   }
 
   if (!member_->AllowPartialFeed()) {
-    PADDLE_ENFORCE_EQ(tensors.size(), member_->local_scopes_.size(),
+    PADDLE_ENFORCE_EQ(n, member_->local_scopes_.size(),
                       platform::errors::Unimplemented(
                           "The feed data number %d does not match the device "
                           "number %d. If you are using DataLoader to feed "
@@ -975,15 +981,15 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
                           "in training network. Currently, drop_last=False for "
                           "DataLoader is not supported for training network. "
                           "Please set drop_last=True when defining DataLoader.",
-                          tensors.size(), member_->local_scopes_.size()));
+                          n, member_->local_scopes_.size()));
   } else {
-    PADDLE_ENFORCE_GE(member_->local_scopes_.size(), tensors.size(),
+    PADDLE_ENFORCE_GE(member_->local_scopes_.size(), n,
                       platform::errors::InvalidArgument(
                           "The feed tensor number exceeds the device number"));
   }
 
   size_t feed_num = 0;
-  for (size_t i = 0; i < tensors.size(); ++i) {
+  for (size_t i = 0; i < n; ++i) {
     auto &map = tensors[i];
     if (map.empty()) {
       continue;
@@ -1021,6 +1027,11 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
+  if (member_->places_.size() == 1) {
+    FeedTensorsIntoLocalScopesImpl(&tensors, 1);
+    return;
+  }
+
   if (platform::IsCUDAGraphCapturing()) {
     PADDLE_ENFORCE_EQ(
         tensors.empty(), true,

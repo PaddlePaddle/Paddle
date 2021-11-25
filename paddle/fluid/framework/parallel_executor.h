@@ -102,6 +102,9 @@ class ParallelExecutor {
                        const std::vector<std::string> &skip_vars);
 
  private:
+  void FeedTensorsIntoLocalScopesImpl(
+      const std::unordered_map<std::string, LoDTensor> *tensors, size_t n);
+
   // broadcast the parameters from the 0th device.
   // trainer_id the trainer index in nccl distributed training.
   void BCastParamsToDevices(const std::vector<std::string> &vars,
