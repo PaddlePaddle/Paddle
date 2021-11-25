@@ -109,8 +109,6 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
 
 def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
     no_batch_jacobian = _compute_numerical_jacobian(func, xs, delta, np_dtype)
-    # current shape (num_outs, num_ins, [bs, out_shape], [bs, in_shape])
-    # target shape (num_outs, num_ins, [out_shape], [bs, in_shape])
     xs = _tensors(xs, "xs")
     ys = _tensors(func(*xs), "ys")
     fin_size = len(xs)
@@ -139,22 +137,46 @@ def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
 
 def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
     xs = _tensors(xs, "xs")
-    # ys = _tensors(func(*xs), "ys")
     batch_size = xs[0].shape[0]
     fin_size = len(xs)
     hessian = []
     for b in range(batch_size):
         x_l = []
         for j in range(fin_size):
-            x_l.append(xs[j][b])
-        print('x_l: ', x_l)
-        x_b = paddle.stack(x_l, axis=0)
-        # x_b = paddle.reshape(paddle.stack(x_l, axis=0).T, shape=[-1])
-        hes_b = _compute_numerical_hessian(func, x_b, delta, np_dtype)
-        # print("hes_b:", hes_b)
-        hessian.append(hes_b)
-    print("numerical_hessian:", hessian)
-    return hessian
+            x_l.append(paddle.reshape(xs[j][b], shape=[1, -1]))
+        hes_b = _compute_numerical_hessian(func, x_l, delta, np_dtype)
+        if fin_size == 1:
+            hessian.append(hes_b[0][0])
+        else:
+            hessian.append(hes_b)
+       
+    hessian_res = []
+    if fin_size == 1:
+        x_reshape = paddle.reshape(xs[0], shape=[batch_size, -1]) 
+        for i in range(x_reshape.shape[1]):
+            tmp = []
+            for j in range(batch_size):
+                tmp.extend(hessian[j][i])
+            hessian_res.append(tmp)
+    else:
+        for index in range(fin_size):
+            x_reshape = paddle.reshape(xs[index], shape=[batch_size, -1])
+            for index_ in range(fin_size):
+                for i in range(x_reshape.shape[1]):
+                    tmp = []
+                    for j in range(batch_size):
+                        tmp.extend(hessian[j][i][index_][index])
+                    hessian_res.append(tmp)
+
+        hessian_result = []
+        mid = len(hessian_res) // 2
+        for i in range(mid):
+            hessian_result.append(np.stack(
+                              (hessian_res[i], 
+                              hessian_res[mid + i]), axis = 0))
+        return hessian_result
+
+    return hessian_res
 
 
 def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
