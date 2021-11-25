@@ -67,7 +67,7 @@ class CinnLaunchContext {
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
 
-  std::vector<std::unique_ptr<cinn_buffer_t>> ReleaseBuffers() {
+  std::vector<std::unique_ptr<cinn_buffer_t>> HandoverBuffers() {
     return std::move(hold_buffers_);
   }
 
@@ -246,7 +246,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     // Step 6. Release some resources, such as `temp_scope` and cinn_buffers.
     auto* buffers_holder = new std::vector<std::unique_ptr<cinn_buffer_t>>{
-        launch_context->ReleaseBuffers()};
+        launch_context->HandoverBuffers()};
     details::ReleaseResource<DeviceContext>({temp_scope, buffers_holder},
                                             stream);
   }

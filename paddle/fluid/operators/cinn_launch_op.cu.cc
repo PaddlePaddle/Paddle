@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn_launch_op.h"
 #include <memory>
 #include <vector>
-#include "cinn/include/cinn/runtime/cinn_runtime.h"
+#include "cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
