@@ -24,4 +24,11 @@ DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
   return {dtype, out_dims, layout};
 }
 
+DenseTensorMeta FullInferShape(const ScalarArray& shape,
+                               DataType dtype,
+                               DataLayout layout) {
+  const auto& out_dims = paddle::framework::make_ddim(shape.GetData());
+  return {dtype, out_dims, layout};
+}
+
 }  // namespace pten
