@@ -133,6 +133,8 @@ class TestCollectiveLauncher(unittest.TestCase):
             args.enable_auto_mapping = True
             launch.launch()
             launch.stop()
+
+            paddle.distributed.fleet.launch.launch_collective(args)
         except Exception as e:
             pass
 
