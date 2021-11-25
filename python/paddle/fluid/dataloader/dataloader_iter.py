@@ -214,7 +214,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # However, it is not thread-safe if using only one global kernel context in
         # dynamic graph. If the pten op of paddle is used in the DataLoader thread,
         # it may cause access errors. We temporarily do not execute pten kernel
-        # in this scenariowe andwe will find a better solution later and remove
+        # in this scenario and will find a better solution later and remove
         # this setting.
         set_flags({'FLAGS_run_pten_kernel': False})
 
