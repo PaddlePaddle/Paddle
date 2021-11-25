@@ -222,7 +222,7 @@ class PostTrainingQuantization(object):
                 be different. In address this problem, fuse the pattern before
                 quantization. Default False.
             is_use_cache_file(bool, optional): This param is deprecated.
-            quant_blocks(int|list, optional): The bolck id list with quantiazaion.
+            quant_blocks(int|list, optional): The bolck id list with quantization.
                 Default is -1, it will quant all blocks. And it can be set [0, 1] etc.
             cache_dir(str, optional): This param is deprecated.
         Returns:
