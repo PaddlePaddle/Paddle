@@ -50,8 +50,8 @@ PD_DLL_DECL Tensor mean(const Tensor& x) {
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
 
-  // 4. InferShape
-  auto out_meta = ReductionInferShape(dense_x->meta());
+  // 4. InferMeta
+  auto out_meta = ReductionInferMeta(dense_x->meta());
 
   // 5. Prepare outputs
   Tensor out;
@@ -104,7 +104,7 @@ PD_DLL_DECL Tensor sum(const Tensor& x,
   kernel_context.EmplaceBackAttr(out_dtype);
 
   // 4. InferShape
-  auto out_meta = ReduceInferShape(dense_x->meta(), axis, keep_dim);
+  auto out_meta = ReduceInferMeta(dense_x->meta(), axis, keep_dim);
 
   // 5. Prepare outputs
   Tensor out;
@@ -139,8 +139,8 @@ PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;
@@ -174,8 +174,8 @@ PD_DLL_DECL Tensor subtract(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;
@@ -209,8 +209,8 @@ PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;
@@ -244,8 +244,8 @@ PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;

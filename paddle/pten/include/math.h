@@ -24,7 +24,7 @@ namespace pten {
 
 template <typename T, typename ContextT>
 DenseTensor Sign(const ContextT& dev_ctx, const DenseTensor& x) {
-  auto out_meta = UnchangedInferShape(x.meta());
+  auto out_meta = UnchangedInferMeta(x.meta());
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -35,7 +35,7 @@ DenseTensor Sign(const ContextT& dev_ctx, const DenseTensor& x) {
 
 template <typename T, typename ContextT>
 DenseTensor Mean(const ContextT& dev_ctx, const DenseTensor& x) {
-  auto out_meta = ReductionInferShape(x.meta());
+  auto out_meta = ReductionInferMeta(x.meta());
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -76,7 +76,7 @@ DenseTensor Scale(const ContextT& dev_ctx,
                   float scale,
                   float bias,
                   bool bias_after_scale) {
-  auto out_meta = UnchangedInferShape(x.meta());
+  auto out_meta = UnchangedInferMeta(x.meta());
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -91,7 +91,7 @@ DenseTensor Scale(const ContextT& dev_ctx,
                   const DenseTensor& scale,
                   float bias,
                   bool bias_after_scale) {
-  auto out_meta = UnchangedInferShape(x.meta());
+  auto out_meta = UnchangedInferMeta(x.meta());
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -105,7 +105,7 @@ DenseTensor Add(const ContextT& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y,
                 int axis) {
-  auto out_meta = ElementwiseInferShape(x.meta(), y.meta(), axis);
+  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), axis);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -119,7 +119,7 @@ DenseTensor Subtract(const ContextT& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      int axis) {
-  auto out_meta = ElementwiseInferShape(x.meta(), y.meta(), axis);
+  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), axis);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -133,7 +133,7 @@ DenseTensor Divide(const ContextT& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    int axis) {
-  auto out_meta = ElementwiseInferShape(x.meta(), y.meta(), axis);
+  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), axis);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -147,7 +147,7 @@ DenseTensor Multiply(const ContextT& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      int axis) {
-  auto out_meta = ElementwiseInferShape(x.meta(), y.meta(), axis);
+  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), axis);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());

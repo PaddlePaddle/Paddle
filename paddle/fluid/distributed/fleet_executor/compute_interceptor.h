@@ -38,6 +38,10 @@ class ComputeInterceptor : public Interceptor {
   void Run();
   void Compute(const InterceptorMessage& msg);
 
+  void HandleStop(const InterceptorMessage& msg) override;
+  void ReceivedStop(int64_t up_id);
+  void TryStop();
+
  private:
   // FIXME(wangxi): if use step_ and max_steps_, how to restart step_ from 0
   int64_t step_{0};
@@ -45,6 +49,9 @@ class ComputeInterceptor : public Interceptor {
   std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
   // downstream_id-->(max_buffer_size, used_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> out_buffs_{};
+
+  bool received_stop_{false};
+  std::map<int64_t, bool> in_stops_{};
 };
 
 }  // namespace distributed
