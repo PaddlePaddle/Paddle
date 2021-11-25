@@ -611,6 +611,11 @@ class TheOnePSRuntime(RuntimeBase):
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("worker: \n{}".format(proto_txt))
+            print("communicator send_ctx:")
+            for key in send_ctx:
+                print("{}: {}".format(key, send_ctx[key]))
+            for key in dense_map:
+                print("{}: {}".format(key, dense_map[key]))
 
         kwargs = {}
         kwargs['need_global_step'] = "0"
@@ -1253,8 +1258,10 @@ class TheOnePSRuntime(RuntimeBase):
             values.extend(names)
         return values
 
-    def _load_distributed_persistables(self, dirname, main_program=None,
-                                       mode=0):
+    def _ps_inference_load_inference_model(self,
+                                           dirname,
+                                           mode=0,
+                                           main_program=None):
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
@@ -1305,6 +1312,8 @@ class TheOnePSRuntime(RuntimeBase):
     def load_model(self, path, mode):
         if mode == 0 or mode == 3:
             self._load_distributed_persistables(path, mode)
+        else:
+            self._ps_inference_load_inference_model(path, mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet
