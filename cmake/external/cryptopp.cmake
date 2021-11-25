@@ -59,7 +59,6 @@ ExternalProject_Add(
     GIT_REPOSITORY  ${CRYPTOPP_REPOSITORY}
     GIT_TAG         ${CRYPTOPP_TAG}
     PREFIX          ${CRYPTOPP_PREFIX_DIR}
-    SOURCE_DIR      ${CRYPTOPP_SOURCE_DIR}
     UPDATE_COMMAND  ""
     PATCH_COMMAND
     COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"
