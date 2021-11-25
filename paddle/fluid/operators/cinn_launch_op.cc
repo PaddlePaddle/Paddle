@@ -122,9 +122,17 @@ void CinnLaunchContext::MutableTensorData(const std::string& var_name,
 
   auto cinn_tensor = GetCinnTensor(cinn_name);
   // TODO(CtfGo): support mutable corresponding c++ type after CINN ready
-  VLOG(4) << "Only support float in cinn_launch op now.";
-  paddle_tensor->mutable_data<float>(
-      framework::make_ddim(cinn_tensor->shape().data()), place);
+  if (cinn_tensor->type().is_bool()) {
+    paddle_tensor->mutable_data<bool>(
+        framework::make_ddim(cinn_tensor->shape().data()), place);
+  } else if (cinn_tensor->type().is_float()) {
+    paddle_tensor->mutable_data<float>(
+        framework::make_ddim(cinn_tensor->shape().data()), place);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "cinn_launch_op only supports float and bool now, but received %s.",
+        cinn_tensor->type()));
+  }
 }
 
 void CinnLaunchContext::CheckTensorEquivalent(const std::string& paddle_name,
@@ -177,7 +185,15 @@ std::unique_ptr<cinn_buffer_t> CinnLaunchContext::ShareTensorWithCinnBuffer(
   auto cinn_buffer = std::make_unique<cinn_buffer_t>();
   // assign size and memory
   cinn_buffer->resize(cinn_dims.data(), cinn_dims.size());
-  cinn_buffer->memory = reinterpret_cast<uint8_t*>(tensor->data<float>());
+  if (tensor->type() == framework::proto::VarType::BOOL) {
+    cinn_buffer->memory = reinterpret_cast<uint8_t*>(tensor->data<bool>());
+  } else if (tensor->type() == framework::proto::VarType::FP32) {
+    cinn_buffer->memory = reinterpret_cast<uint8_t*>(tensor->data<float>());
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "cinn_launch_op only supports float and bool now, but received %s.",
+        tensor->type()));
+  }
   return cinn_buffer;
 }
 

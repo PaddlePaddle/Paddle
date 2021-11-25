@@ -51,6 +51,9 @@ OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
 
   auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
   info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
+  VLOG(4) << "tensor.type=" << tensor.type()
+          << ", cinn_var_type=" << static_cast<int>(cinn_var_type)
+          << ", feed_info.type=" << info.type;
   return info;
 }
 }  // namespace utils
@@ -127,7 +130,8 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
     cinn_tensor->set_type(feed_info.type);
     cinn_tensor->Resize(::cinn::hlir::framework::Shape(feed_info.shape));
     VLOG(4) << "add paddle param var [" << param_name
-            << "] info cinn scope var[" << valid_name << "]";
+            << "] info cinn scope var[" << valid_name
+            << "], data_type=" << feed_info.type;
     var_model_to_program_map_[param_name] = valid_name;
   }
 

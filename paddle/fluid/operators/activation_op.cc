@@ -402,6 +402,44 @@ $$out = \tan^{-1}(x)$$
   }
 };
 
+class ReluOpMaker : public ::paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "(LoDTensor), an N-D Tensor, with data type float32, "
+             "float64 or float16.");
+    AddOutput("Out", "(LoDTensor), a Tensor with shape same as input.");
+    AddOutput("Mask", "(LoDTensor), a Tensor with shape same as input.")
+        .AsDispensable()
+        .AsExtra();
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default false) Only used in cudnn kernel, need "
+                  "install cudnn")
+        .SetDefault(false)
+        .AsExtra();
+    AddComment(ReluDoc);
+  }
+};
+
+template <typename T>
+class ReluGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("relu_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Mask", this->Output("Mask"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -787,7 +825,7 @@ REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Expm1, Expm1Doc);
-REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
+// REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
@@ -1399,14 +1437,11 @@ REGISTER_OP_CPU_KERNEL(
                              ops::TanhTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
-/* ==========================    relu register  ============================= */
-REGISTER_OPERATOR(
-    relu, ops::ActivationOp, ops::ReluOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(relu, ops::ActivationOp, ops::ReluOpMaker,
+                  ops::ActivationOpInferVarType,
+                  ops::ReluGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ReluGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,

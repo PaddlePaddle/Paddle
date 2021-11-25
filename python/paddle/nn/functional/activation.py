@@ -548,7 +548,11 @@ def relu(x, name=None):
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
     helper = LayerHelper('relu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(type='relu', inputs={'X': x}, outputs={'Out': out})
+    mask = helper.create_variable_for_type_inference(dtype='bool')
+    mask.stop_gradient = True
+    helper.append_op(
+        type='relu', inputs={'X': x}, outputs={'Out': out,
+                                               'Mask': mask})
     return out
 
 
