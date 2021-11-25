@@ -384,7 +384,6 @@ class TestDropoutFAPI(unittest.TestCase):
                 x=input, p=0.7, axis=1, training=True, mode='upscale_in_train')
 
             in_np = np.ones([40, 40]).astype("float32")
-            in_np2 = np.ones([1, 250000000]).astype("float32")
             res_np = in_np
             res_np2 = np.zeros_like(in_np)
 
@@ -403,11 +402,8 @@ class TestDropoutFAPI(unittest.TestCase):
                                fetch_list=[res10])
             self.assertTrue(np.allclose(fetches2[0], res_np2))
             fetches3 = exe.run(fluid.default_main_program(),
-                               feed={"input": in_np2},
+                               feed={"input": in_np},
                                fetch_list=[res13])
-            self.assertTrue(
-                np.isclose(
-                    np.sum(fetches3[0] == 0) / np.sum(in_np2), 0.7, atol=1e-04))
 
     def test_static(self):
         for place in self.places:
