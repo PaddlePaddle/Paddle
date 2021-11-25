@@ -158,23 +158,6 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
-// todo: Hip need support bfloat16
-PT_REGISTER_KERNEL("cast",
-                   CUDA,
-                   ANY,
-                   pten::Cast,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
 
 PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
                                 CUDA,
