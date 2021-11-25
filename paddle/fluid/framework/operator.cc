@@ -1066,8 +1066,9 @@ bool OperatorWithKernel::SupportsMKLDNN(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  bool use_mkldnn_ctx =
-      ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
+  bool use_mkldnn_ctx = ctx.HasAttr("use_mkldnn") &&
+                        ctx.Attr<bool>("use_mkldnn") &&
+                        platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
