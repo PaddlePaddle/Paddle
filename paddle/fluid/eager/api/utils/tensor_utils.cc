@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/utils.h"
 
 #include "paddle/pten/api/all.h"
 
@@ -27,7 +28,7 @@
 namespace egr {
 
 bool IsLeafTensor(const egr::EagerTensor& target) {
-  std::shared_ptr<GradNodeBase> grad_node = grad_node(target);
+  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
   if (std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
     return true;
   }
@@ -46,7 +47,7 @@ egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
 
   egr::EagerTensor out = egr::EagerTensor();
   out.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensor));
-  auto meta = autograd_meta(&out);
+  auto meta = EagerUtils::autograd_meta(&out);
 
   if (is_leaf) {
     auto accumulation_node = std::make_shared<GradNodeAccumulation>();

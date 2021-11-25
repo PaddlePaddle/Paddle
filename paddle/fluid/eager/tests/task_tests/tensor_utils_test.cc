@@ -28,6 +28,8 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
+namespace eager_test {
+
 TEST(TensorUtils, Test) {
   // Prepare Device Contexts
   InitEnv(paddle::platform::CPUPlace());
@@ -55,3 +57,5 @@ TEST(TensorUtils, Test) {
 
   CompareGradTensorWithValue<float>(t, 1.0);
 }
+
+}  // namespace eager_test
