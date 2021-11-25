@@ -1,1 +1,1 @@
-cc_library(global_utils SRCS global_utils.cc DEPS enforce)
+cc_library(global_utils SRCS global_utils.cc DEPS place)

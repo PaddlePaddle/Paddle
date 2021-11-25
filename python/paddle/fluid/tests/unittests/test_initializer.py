@@ -915,5 +915,118 @@ class TestOrthogonalInitializer6(TestOrthogonalInitializer4):
         self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(36), atol=1.e-6))
 
 
+# initialize Conv1D weight
+class TestDiracInitializer1(unittest.TestCase):
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Dirac())
+        self.dtype = "float64"
+        self.in_channels = 3
+        self.out_channels = 2
+        self.kernel_size = 3
+        self.input_shape = [8, self.in_channels, 10]
+        self.conv_layer = paddle.nn.Conv1D
+        self.num_ops = 8  #fill_constant*2, reshape*2, assign_value*2, scatter, cast
+
+    def check_result(self, w_dygraph, w_static, conv_in, conv_out):
+        self.assertTrue(np.array_equal(w_dygraph, w_static))
+        self.assertTrue(np.array_equal(conv_out, conv_in[:, 0:2, 1:9]))
+
+    def test_dirac(self):
+        self.config()
+        paddle.set_default_dtype(self.dtype)
+
+        paddle.disable_static()
+        conv = self.conv_layer(
+            self.in_channels,
+            self.out_channels,
+            self.kernel_size,
+            weight_attr=self.weight_attr)
+        weight_dygraph = conv.weight.numpy()
+
+        paddle.enable_static()
+        start_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            inp = paddle.rand(self.input_shape)
+            conv = self.conv_layer(
+                self.in_channels,
+                self.out_channels,
+                self.kernel_size,
+                weight_attr=self.weight_attr)
+
+            output = conv(inp)
+            block = start_prog.global_block()
+            self.assertEqual(len(block.ops), self.num_ops)
+            self.assertEqual(block.ops[0].type, 'fill_constant')
+            self.assertEqual(block.ops[1].type, 'reshape')
+            self.assertEqual(block.ops[2].type, 'assign_value')
+            self.assertEqual(block.ops[3].type, 'assign_value')
+            self.assertEqual(block.ops[4].type, 'scatter')
+            self.assertEqual(block.ops[5].type, 'reshape')
+
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            fetch = exe.run(main_prog, fetch_list=[inp, output, conv.weight])
+            conv_input = fetch[0]
+            conv_output = fetch[1]
+            weight_static = fetch[2]
+
+        self.check_result(weight_dygraph, weight_static, conv_input,
+                          conv_output)
+
+
+# initialize Conv2D weight
+class TestDiracInitializer2(TestDiracInitializer1):
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Dirac(groups=1))
+        self.dtype = "float64"
+        self.in_channels = 4
+        self.out_channels = 8
+        self.kernel_size = (3, 3)
+        self.input_shape = [8, self.in_channels, 10, 10]
+        self.conv_layer = paddle.nn.Conv2D
+        self.num_ops = 8
+
+    def check_result(self, w_dygraph, w_static, conv_in, conv_out):
+        self.assertTrue(np.array_equal(w_dygraph, w_static))
+        self.assertTrue(
+            np.array_equal(conv_out[:, 0:4, :, :], conv_in[:, :, 1:9, 1:9]))
+        self.assertTrue(
+            np.array_equal(conv_out[:, 4:8, :, :], np.zeros([8, 4, 8, 8])))
+
+
+# initialize Conv3D weight
+class TestDiracInitializer3(TestDiracInitializer1):
+    def config(self):
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Dirac(groups=2))
+        self.dtype = "float32"
+        self.in_channels = 5
+        self.out_channels = 10
+        self.kernel_size = (3, 3, 3)
+        self.input_shape = [8, self.in_channels, 10, 10, 10]
+        self.conv_layer = paddle.nn.Conv3D
+        self.num_ops = 7
+
+    def check_result(self, w_dygraph, w_static, conv_in, conv_out):
+        self.assertTrue(np.array_equal(w_dygraph, w_static))
+        self.assertTrue(
+            np.array_equal(conv_out[:, 0:5, :, :, :], conv_in[:, :, 1:9, 1:9, 1:
+                                                              9]))
+        self.assertTrue(
+            np.array_equal(conv_out[:, 5:10, :, :, :], conv_in[:, :, 1:9, 1:9,
+                                                               1:9]))
+
+    def test_error(self):
+        self.config()
+        with self.assertRaises(AssertionError):
+            paddle.nn.Linear(10, 10, weight_attr=self.weight_attr)
+
+        with self.assertRaises(AssertionError):
+            paddle.nn.Conv2D(5, 9, (3, 3), weight_attr=self.weight_attr)
+
+
 if __name__ == '__main__':
     unittest.main()
