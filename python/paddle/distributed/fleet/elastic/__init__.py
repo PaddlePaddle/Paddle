@@ -30,8 +30,8 @@ def enable_elastic(args, distribute_mode):
     #                          elastic_level != ElasticLevel.ELASTIC):
     #    return False
 
-    if distribute_mode != DistributeMode.COLLECTIVE:
-        return False
+    #if distribute_mode != DistributeMode.COLLECTIVE:
+    #    return False
 
     if not args.elastic_server and not os.getenv('PADDLE_ELASTIC_SERVER'):
         return False
