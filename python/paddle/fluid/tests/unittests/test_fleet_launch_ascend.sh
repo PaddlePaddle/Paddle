@@ -48,7 +48,7 @@ export RANK_TABLE_FILE="${PWD}/${RANK_TABLE_FILE_NAME}"
 # use ascend
 echo "begin test use ascend npu"
 
-distributed_args="--run_mode=collective --log_dir=testlog"
+distributed_args="--backend=hccl --run_mode=collective --log_dir=testlog"
 python -m paddle.distributed.fleet.launch ${distributed_args} ascend_multi_process_collective.py fleetlaunchascend
 
 str1="selected_accelerators:0 selected_npus:0 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171 trainers_num:2 current_endpoint:127.0.0.1:6170 trainer_id:0 device_ids:0,1 device_id:0"
