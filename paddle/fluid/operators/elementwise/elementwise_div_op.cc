@@ -22,31 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VDIV(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-// use default div function for int32/int64 type because of divison zero
-// checking.
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
-  }
-};
-
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }

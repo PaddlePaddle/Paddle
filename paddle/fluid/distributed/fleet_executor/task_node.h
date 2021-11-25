@@ -15,8 +15,10 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -33,6 +35,7 @@ class TaskNode final {
   TaskNode(int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
            int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
+
   int64_t rank() const { return rank_; }
   int64_t task_id() const { return task_id_; }
   int32_t role() const { return role_; }
@@ -40,9 +43,12 @@ class TaskNode final {
   int64_t max_slot_nums() const { return max_slot_nums_; }
   const std::unordered_set<int64_t>& upstream() const { return upstream_; }
   const std::unordered_set<int64_t>& downstream() const { return downstream_; }
+  const std::string& type() const { return type_; }
+
   void AddUpstreamTask(int64_t task_id);
   void AddDownstreamTask(int64_t task_id);
   std::string DebugString() const;
+
   static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int32_t role,
                                                        int64_t rank,
                                                        int64_t task_id,
@@ -63,6 +69,8 @@ class TaskNode final {
   int64_t task_id_;
   int64_t max_run_times_;
   int64_t max_slot_nums_;
+
+  std::string type_;
 };
 
 }  // namespace distributed

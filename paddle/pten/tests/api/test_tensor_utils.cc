@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 
 namespace paddle {
-namespace experimental {
 namespace tests {
 
 using DDim = paddle::framework::DDim;
@@ -34,7 +33,8 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   const std::vector<std::vector<size_t>> lod{{0, 2}};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto alloc = std::make_shared<DefaultAllocator>(platform::CPUPlace());
+  auto alloc =
+      std::make_shared<experimental::DefaultAllocator>(platform::CPUPlace());
 
   DenseTensor dense_tensor(alloc, meta);
   float* data = dense_tensor.mutable_data<float>();
@@ -42,7 +42,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   data[1] = 2.1f;
 
   framework::LoDTensor lod_tensor;
-  MovesStorage(&dense_tensor, &lod_tensor);
+  experimental::MovesStorage(&dense_tensor, &lod_tensor);
 
   CHECK(dense_tensor.lod().size() == lod_tensor.lod().size());
   CHECK(dense_tensor.lod()[0] ==
@@ -55,7 +55,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   CHECK(lod_tensor.data<float>()[0] == 1.0f);
   CHECK(lod_tensor.data<float>()[1] == 2.1f);
 
-  auto dense_tensor_1 = MakePtenDenseTensor(lod_tensor);
+  auto dense_tensor_1 = experimental::MakePtenDenseTensor(lod_tensor);
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->dtype() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
@@ -72,7 +72,8 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   const DataLayout layout{DataLayout::NCHW};
   DenseTensorMeta meta(dtype, dims, layout);
 
-  auto alloc = std::make_shared<DefaultAllocator>(platform::CPUPlace());
+  auto alloc =
+      std::make_shared<experimental::DefaultAllocator>(platform::CPUPlace());
 
   DenseTensor dense_tensor(alloc, meta);
   float* data = dense_tensor.mutable_data<float>();
@@ -80,7 +81,7 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   data[1] = 2.1f;
 
   framework::Tensor tensor;
-  MovesStorage(&dense_tensor, &tensor);
+  experimental::MovesStorage(&dense_tensor, &tensor);
 
   CHECK(dense_tensor.dtype() == pten::TransToPtenDataType(tensor.type()));
   CHECK(dense_tensor.layout() == pten::TransToPtenDataLayout(tensor.layout()));
@@ -89,7 +90,7 @@ TEST(tensor_utils, dense_tensor_to_tensor) {
   CHECK(tensor.data<float>()[0] == 1.0f);
   CHECK(tensor.data<float>()[1] == 2.1f);
 
-  auto dense_tensor_1 = MakePtenDenseTensor(tensor);
+  auto dense_tensor_1 = experimental::MakePtenDenseTensor(tensor);
   CHECK(dense_tensor_1->dims() == dims);
   CHECK(dense_tensor_1->dtype() == dtype);
   CHECK(dense_tensor_1->layout() == layout);
@@ -114,11 +115,10 @@ TEST(PtenUtils, VarToPtTensor) {
   auto tensor_def = pten::TensorArgDef(
       expect_backend, pten::DataLayout::NCHW, pten::DataType::INT32);
   // 2. test API
-  auto tensor_x = MakePtenTensorBaseFromVar(v, tensor_def);
+  auto tensor_x = experimental::MakePtenTensorBaseFromVar(v, tensor_def);
   // 3. check result
   ASSERT_EQ(tensor_x->dtype(), pten::DataType::INT32);
 }
 
 }  // namespace tests
-}  // namespace experimental
 }  // namespace paddle

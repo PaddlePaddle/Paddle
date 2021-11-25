@@ -91,7 +91,13 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
                                                ctx.GetPlace(), x);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p = is_inplaced ? src_memory_p : handler.AcquireDstMemory(y);
+  std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
+  if (is_inplaced) {
+    dst_memory_p = src_memory_p;
+    y->mutable_data<T>(ctx.GetPlace());
+  } else {
+    dst_memory_p = handler.AcquireDstMemory(y);
+  }
   auto activation_p = handler.AcquireForwardPrimitive();
 
   auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();

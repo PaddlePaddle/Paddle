@@ -41,8 +41,13 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
         x);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p =
-        is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
+    std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
+    if (is_inplaced) {
+      dst_memory_p = src_memory_p;
+      out->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dst_memory_p = handler.AcquireDstMemory(out);
+    }
     auto activation_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
