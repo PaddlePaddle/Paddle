@@ -15,8 +15,11 @@
 
 #pragma once
 
-#include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/platform/enforce.h"
+#include <atomic>
+#include <memory>
+#include "paddle/fluid/platform/place.h"
+
+namespace egr {
 
 class UniqueNameGenerator {
  public:
@@ -56,3 +59,5 @@ class Controller {
   std::unique_ptr<UniqueNameGenerator> generator_{new UniqueNameGenerator()};
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
+
+}  // namespace egr

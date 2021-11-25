@@ -68,7 +68,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names, false);
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-  return core->Run();
+  return core->Run(feed_names);
 }
 
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(

@@ -90,10 +90,11 @@ paddle::framework::FetchList InterpreterCore::Run(
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
-paddle::framework::FetchList InterpreterCore::Run() {
+paddle::framework::FetchList InterpreterCore::Run(
+    const std::vector<std::string>& feed_names) {
   if (!is_build_) {
     if (create_local_scope_ &&
         global_scope_->GetMutableLocalScope() !=
@@ -113,6 +114,7 @@ paddle::framework::FetchList InterpreterCore::Run() {
     paddle::framework::interpreter::build_op_func_list(
         place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
     is_build_ = true;
+    SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
 
@@ -122,7 +124,7 @@ paddle::framework::FetchList InterpreterCore::Run() {
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
 void InterpreterCore::BuildOperatorDependences() {
@@ -260,6 +262,13 @@ void InterpreterCore::BuildInplace() {
     for (auto& pair : in_to_outs) {
       auto iter = inputs.find(pair.first);
       if (iter != inputs.end() && !iter->second.empty()) {
+        auto in_var_desc = global_scope_->VarDesc(iter->second[0]);
+        if (in_var_desc && in_var_desc->Persistable()) {
+          continue;
+        }
+        if (global_scope_->GetVarSikpInplace(iter->second[0])) {
+          continue;
+        }
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
           if (iterout != outputs.end() && !iterout->second.empty()) {
@@ -334,7 +343,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   Scope* local_scope = create_local_scope_
                            ? global_scope_->GetMutableLocalScope()
                            : global_scope_->GetMutableScope();
-
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     platform::RecordEvent infershape_event("InferShape");
@@ -345,8 +353,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (op_with_kernel != nullptr &&
       FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
-                                         // base support
-                                         // inplace ?
+                                         // base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
@@ -578,6 +585,7 @@ void InterpreterCore::Prepare(
     paddle::framework::interpreter::build_op_func_list(
         place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
     is_build_ = true;
+    SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
   }
@@ -602,6 +610,13 @@ interpreter::CostInfo InterpreterCore::DryRun(
   }
 
   return cost_info;
+}
+
+void InterpreterCore::SetFeedVarsInplaceSkip(
+    const std::vector<std::string>& feed_names) {
+  for (auto& feed_name : feed_names) {
+    global_scope_->SetVarSikpInplace(feed_name, true);
+  }
 }
 
 }  // namespace framework

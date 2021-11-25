@@ -15,4 +15,8 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 
+namespace egr {
+
 Controller* Controller::controller_ = new Controller();
+
+}  // namespace egr

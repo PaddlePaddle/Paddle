@@ -580,26 +580,6 @@ class _ExecutorCache(object):
         self._place = place
         self._cached_executors = {}
 
-    def run(self, program, scope, feed, fetch_list, return_numpy=True):
-        new_exe = self._get_exe_from_cache(program, scope)
-        return new_exe.run(feed, fetch_list, return_numpy)
-
-    def _get_exe_from_cache(self, program, scope):
-        """
-        Return cached _StandaloneExecutor instance. If not found, create associated 
-        _StandaloneExecutor instance with given program and cache it.
-        """
-        assert isinstance(
-            program, Program), "Required type(Program), but received {}".format(
-                type(program).__name__)
-
-        if str(program) not in self._cached_executors:
-            new_program = program.clone()
-            new_exe = _StandaloneExecutor(self._place, new_program, scope)
-            self._cached_executors[str(program)] = new_exe
-
-        return self._cached_executors[str(program)]
-
 
 class Executor(object):
     """
@@ -1332,13 +1312,14 @@ class Executor(object):
 
         def _can_use_interpreter_core(program, place):
             compiled = isinstance(program, compiler.CompiledProgram)
-            # NOTE(zhiqiu): only single card compiled program is supported 
+            # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                if program._is_data_parallel and len(
-                        program._get_places(place, program._places)) == 1:
-                    return True
-                else:
-                    return False
+                return False
+                # if program._is_data_parallel and len(
+                #         program._get_places(place, program._places)) == 1:
+                #     return True
+                # else:
+                #     return False
             else:
                 assert isinstance(program, Program)
                 return True
@@ -1360,6 +1341,10 @@ class Executor(object):
                         "feed requires dict as its Parameter. But you passed in %s"
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
+
+                key = _get_strong_program_cache_key(inner_program, feed,
+                                                    fetch_list)
+
                 program = self._add_feed_fetch_ops(
                     program=inner_program,
                     feed=feed,
@@ -1368,10 +1353,15 @@ class Executor(object):
                     fetch_var_name=fetch_var_name,
                     use_fetch_v2=True)
 
-                # NPTE(zhiqiu): Construct standalone_executor first, so 
-                # the scope is binded with the variable_scope of standalone_executor
-                new_exe = self._executor_cache._get_exe_from_cache(program,
-                                                                   scope)
+                # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
+                # while use program to geet _StandaloneExecutor
+                if key not in self._executor_cache._cached_executors:
+                    new_program = program.clone()
+                    new_exe = _StandaloneExecutor(self.place, new_program,
+                                                  scope)
+                    self._executor_cache._cached_executors[key] = new_exe
+
+                new_exe = self._executor_cache._cached_executors[key]
 
                 self._feed_data(program, feed, feed_var_name, scope)
                 if hasattr(program, 'lr_sheduler'):
@@ -1813,9 +1803,9 @@ class Executor(object):
         if program._pipeline_opt is None:
             if program._heter_pipeline_opt is None:
                 self._dump_debug_info(program=program, trainer=trainer)
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         if program._heter_pipeline_opt is None:
@@ -1948,9 +1938,9 @@ class Executor(object):
         # NOTE: only for debug, very slow
         # self._dump_debug_info(program=program, trainer=trainer)
 
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache

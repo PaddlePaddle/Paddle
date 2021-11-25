@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-namespace pten {
+namespace paddle {
 namespace tests {
 
 TEST(Tensor, slice) {
@@ -41,4 +41,4 @@ TEST(Tensor, slice) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle
