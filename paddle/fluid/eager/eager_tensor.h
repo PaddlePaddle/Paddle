@@ -14,7 +14,6 @@
 
 #pragma once
 // framework deps
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"

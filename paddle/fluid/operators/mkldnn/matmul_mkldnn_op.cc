@@ -108,7 +108,7 @@ template <typename XT, typename YT, typename OT>
 class MatMulMKLDNNHandler
     : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulMKLDNNHandler(const mkldnn::engine engine,
+  MatMulMKLDNNHandler(const dnnl::engine engine,
                       paddle::platform::Place cpu_place, Tensor* x,
                       bool trans_x, Tensor* y, bool trans_y, Tensor* out,
                       float scale)
@@ -148,7 +148,7 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
   // Constructor for FWD MatMul
-  MatMulMKLDNNHandler(const mkldnn::engine engine, const ExecutionContext& ctx,
+  MatMulMKLDNNHandler(const dnnl::engine engine, const ExecutionContext& ctx,
                       float scale)
       : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(
             engine, ctx.GetPlace()),
@@ -202,9 +202,9 @@ class MatMulMKLDNNHandler
       weights_memory_p->set_data_handle(y_ptr);
       dst_memory_p->set_data_handle(out_ptr);
       matmul_p->execute(astream, {
-                                     {MKLDNN_ARG_SRC, *src_memory_p},
-                                     {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
-                                     {MKLDNN_ARG_DST, *dst_memory_p},
+                                     {DNNL_ARG_SRC, *src_memory_p},
+                                     {DNNL_ARG_WEIGHTS, *weights_memory_p},
+                                     {DNNL_ARG_DST, *dst_memory_p},
                                  });
       x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
       y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
@@ -218,7 +218,7 @@ class MatMulMKLDNNHandler
     out->set_layout(DataLayout::kMKLDNN);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
       paddle::framework::Tensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
@@ -548,7 +548,7 @@ void MatMulGradMKLDNNKernel<T>::Compute(const ExecutionContext& ctx) const {
 template <typename T>
 void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
     const ExecutionContext& ctx, const MKLDNNDeviceContext& dev_ctx,
-    const mkldnn::engine& engine, Tensor* x, bool trans_x,
+    const dnnl::engine& engine, Tensor* x, bool trans_x,
     bool is_fold_init_dims_x, Tensor* y, bool trans_y, bool is_fold_init_dims_y,
     Tensor* out) const {
   // gradient is calculated in a different way when broadcasting is used
