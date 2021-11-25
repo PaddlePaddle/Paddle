@@ -28,7 +28,13 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
   });
 }
 
-Interceptor::~Interceptor() { interceptor_thread_.join(); }
+Interceptor::~Interceptor() { Join(); }
+
+void Interceptor::Join() {
+  if (interceptor_thread_.joinable()) {
+    interceptor_thread_.join();
+  }
+}
 
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
@@ -74,6 +80,9 @@ bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
   return MessageBus::Instance().Send(msg);
 }
 
+// maybe need a better method for interceptor base
+void Interceptor::HandleStop(const InterceptorMessage& msg) { stop_ = true; }
+
 void Interceptor::PoolTheMailbox() {
   // pool the local mailbox, parse the Message
   for (;;) {
@@ -91,13 +100,18 @@ void Interceptor::PoolTheMailbox() {
     VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
             << " from interceptor " << interceptor_message.src_id()
             << " with message: " << message_type << ".";
+
     if (message_type == STOP) {
+      HandleStop(interceptor_message);
+    } else {
+      Handle(interceptor_message);
+    }
+
+    if (stop_) {
       // break the pooling thread
       VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
       break;
     }
-
-    Handle(interceptor_message);
   }
 }
 
