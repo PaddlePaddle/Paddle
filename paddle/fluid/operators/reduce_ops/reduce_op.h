@@ -240,45 +240,6 @@ class ReduceKernel : public framework::OpKernel<T> {
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
     auto* input = context.Input<Tensor>("X");
-    /*
-        // The dims has full dim, set the reduce_all is True
-        const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
-        std::set<int> dims_set(dims.begin(), dims.end());
-        bool full_dim = true;
-        for (auto i = 0; i < input_dim_size; i++) {
-          if (dims_set.find(i) == dims_set.end()) {
-            full_dim = false;
-            break;
-          }
-        }
-        reduce_all = (reduce_all || full_dim);
-
-        if (out_dtype < 0) {
-          auto* cast_input = context.Input<Tensor>("X");
-          cast_out_dtype =
-              static_cast<framework::proto::VarType::Type>(cast_input->type());
-          framework::VisitDataType(
-              cast_out_dtype,
-              ReduceKernelFunctor<DeviceContext, T, Functor>(
-                  cast_input, output, dims, keep_dim, reduce_all, context));
-        } else {
-          Tensor tmp_tensor;
-          cast_out_dtype =
-       static_cast<framework::proto::VarType::Type>(out_dtype);
-          auto* input = context.Input<Tensor>("X");
-
-          tmp_tensor.Resize(input->dims());
-          framework::VisitDataType(
-              cast_out_dtype,
-              CastOpFunctor<DeviceContext, T>(
-                  input, &tmp_tensor,
-                  context.template device_context<DeviceContext>()));
-          framework::VisitDataType(
-              cast_out_dtype,
-              ReduceKernelFunctor<DeviceContext, T, Functor>(
-                  &tmp_tensor, output, dims, keep_dim, reduce_all, context));
-        }
-    */
 
     if (out_dtype < 0) {
       cast_out_dtype =
@@ -297,7 +258,7 @@ class ReduceKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
-    /// new kernel
+    // call new kernel
     pten::general::Reduce<DeviceContext, T, Functor>(
         dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());

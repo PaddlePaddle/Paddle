@@ -107,11 +107,9 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   std::vector<int64_t> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
-  // TODO(chentianyu03): init out densetensor
   shuffled_input->Resize(shuffled_dims);
   shuffled_input->mutable_data<OutT>();
 
-  // todo transposeNormal
   pten::math::TransposeNormal<DeviceContext, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }

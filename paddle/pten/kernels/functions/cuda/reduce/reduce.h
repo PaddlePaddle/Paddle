@@ -51,7 +51,6 @@ static inline std::vector<int64_t> GetReduceDim(
   return reduce_dims;
 }
 
-// TODO(chentianyu03): Some args may not be used in cuda kernel
 template <typename T, template <typename, typename> class ReduceFunctor>
 void Reduce(const CUDAContext& dev_ctx,
             const DenseTensor& x,
