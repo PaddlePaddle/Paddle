@@ -524,38 +524,29 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
-    def test_input_formate_exception(self):
-        def test_model_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                opt = paddle.optimizer.SGD(parameters=model.parameters())
-                paddle.amp.decorate(models=None, optimizers=opt, level='O2')
-
-        self.assertRaises(TypeError, test_model_error)
-
-        def test_optimizer_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                paddle.amp.decorate(models=model, optimizers=None, level='O2')
-
-        self.assertRaises(TypeError, test_optimizer_error)
-
     def test_input_type_exception(self):
-        def test_error_model_optimizer():
+        def test_error_model():
             class MyModel(object):
                 def __init__(self):
                     print("A fake Model")
 
+            model = MyModel()
+            with fluid.dygraph.guard():
+                paddle.amp.decorate(models=model, optimizers=None, level='O2')
+
+        self.assertRaises(TypeError, test_error_model)
+
+        def test_error_optimizer():
             class MyOptimizer(object):
                 def __init__(self):
                     print("A fake Optimizer")
 
-            model = MyModel()
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
             opt = MyOptimizer()
             with fluid.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
 
-        self.assertRaises(TypeError, test_error_model_optimizer)
+        self.assertRaises(TypeError, test_error_optimizer)
 
     def test_set_master_weight(self):
         model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
@@ -893,8 +884,7 @@ class TestResnet2(unittest.TestCase):
             train_reader = train_loader
 
         if enable_amp and (level == 'O2'):
-            resnet, optimizer = paddle.amp.decorate(
-                models=resnet, optimizers=optimizer, level='O2')
+            resnet = paddle.amp.decorate(models=resnet, level='O2')
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
