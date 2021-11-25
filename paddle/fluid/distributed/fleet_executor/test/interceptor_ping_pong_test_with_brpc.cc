@@ -56,7 +56,7 @@ class PingPongInterceptor : public Interceptor {
 REGISTER_INTERCEPTOR(PingPong, PingPongInterceptor);
 
 TEST(InterceptorTest, PingPong) {
-  std::cout << "Ping pong test through brpc";
+  std::cout << "Ping pong test through brpc" << std::endl;
   unsigned int seed = time(0);
   // random generated two ports in from 6000 to 9000
   int port0 = 6000 + rand_r(&seed) % 3000;
@@ -66,6 +66,8 @@ TEST(InterceptorTest, PingPong) {
   }
   std::string ip0 = "127.0.0.1:" + std::to_string(port0);
   std::string ip1 = "127.0.0.1:" + std::to_string(port1);
+  std::cout << "ip0: " << ip0 << std::endl;
+  std::cout << "ip1: " << ip1 << std::endl;
   int pid = fork();
   if (pid == 0) {
     MessageBus& msg_bus = MessageBus::Instance();
