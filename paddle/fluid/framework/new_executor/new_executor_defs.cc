@@ -598,6 +598,16 @@ paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   return vec_meta_info_[id].var_desc_;
 }
 
+void VariableScope::SetVarSikpInplace(const std::string& name, bool skip) {
+  CheckExist(name);
+  vec_meta_info_[VarId(name)].sikp_inplace_ = skip;
+}
+
+bool VariableScope::GetVarSikpInplace(int id) const {
+  CheckExist(id);
+  return vec_meta_info_[id].sikp_inplace_;
+}
+
 void VariableScope::CheckExist(int id) const {
   PADDLE_ENFORCE_LT(id, var_list_.size(),
                     platform::errors::PreconditionNotMet(
