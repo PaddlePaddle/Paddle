@@ -31,5 +31,10 @@ PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y);
 
 PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y);
 
+PD_DLL_DECL Tensor sum(const Tensor& x,
+                       const std::vector<int64_t>& axis,
+                       DataType dtype,
+                       bool keep_dim);
+
 }  // namespace experimental
 }  // namespace paddle
