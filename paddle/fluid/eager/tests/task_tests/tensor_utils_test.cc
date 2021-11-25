@@ -39,20 +39,20 @@ TEST(TensorUtils, Test) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor t = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+      pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
 
-  egr::EagerTensor t_grad = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor t_grad = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
 
-  CHECK_EQ(IsLeafTensor(tensor), true);
+  CHECK_EQ(IsLeafTensor(t), true);
 
   // Test Utils
   CompareTensorWithValue<float>(t, 5.0);
 
-  egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(t);
+  egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(&t);
   *meta->MutableGrad() = t_grad;
 
   CompareGradTensorWithValue<float>(t, 1.0);
