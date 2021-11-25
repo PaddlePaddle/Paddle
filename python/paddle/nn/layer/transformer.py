@@ -108,10 +108,11 @@ def _convert_attention_mask(attn_mask, dtype):
 
 
 class CUDNNSeqInfo:
-    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen):
+    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen, attn_mask):
         self.max_seq_len = max_seq_len
         self.low_hi_win_idx = paddle.concat([low_win_idx, hi_win_idx], axis=0)
         self.qo_kv_seqlen = paddle.concat([qo_seqlen, kv_seqlen], axis=0)
+        self.attn_mask = attn_mask
         # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
         # converting dygraph to static. Since to_static would build ParallelExecutor which 
         # would run ops async if there is no dependence. Moreover, static.save_inference_model 
@@ -134,12 +135,17 @@ class CUDNNSeqInfoInfer(Layer):
         max_seq_len = attention_mask.shape[1]
         low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
         hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
-        qo_seqlen = paddle.sum(attention_mask == 1,
-                                      axis=1,
-                                      dtype='int32')
+        if (len(attention_mask.shape) == 4):
+            qo_seqlen = paddle.sum(attention_mask[:, 0, 0,:] == 1,
+                                        axis=1,
+                                        dtype='int32')
+        else:
+            qo_seqlen = paddle.sum(attention_mask == 1,
+                                        axis=1,
+                                        dtype='int32')
         kv_seqlen = qo_seqlen
         
-        seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen)
+        seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen, attention_mask)
         if self.enable_cache:
             # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
             # converting dygraph to static. Since to_static would build ParallelExecutor which 
