@@ -108,7 +108,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default="auto",
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto. Default value is auto which perfers nccl or bkcl."
+        help="Specifize the backend, can be gloo|nccl|bkcl|hccl|auto. Default value is auto which perfers nccl or bkcl."
     )
     base_group.add_argument(
         "--nproc_per_node",
@@ -379,7 +379,7 @@ def infer_backend(args):
     if fluid.core.is_compiled_with_cuda():
         args.backend = 'nccl'
     elif fluid.core.is_compiled_with_npu():
-        args.backend = 'unknown'
+        args.backend = 'hccl'
     elif fluid.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
     else:
@@ -641,7 +641,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    assert args.backend in ['gloo', 'nccl', 'bkcl', 'unknown']
+    assert args.backend in ['gloo', 'nccl', 'bkcl', 'hccl']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

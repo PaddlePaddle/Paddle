@@ -1530,10 +1530,10 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
+    if backend not in ['nccl', 'gloo', 'bkcl', 'hccl', 'auto']:
         raise ValueError(
             "paddle.distributed initialize error, "
-            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
+            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'hccl', 'auto', but got %s"
             % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
@@ -1546,6 +1546,12 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend == 'hccl' and not fluid.core.is_compiled_with_npu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with npu but you assign 'hccl' as backend."
         )
 
 
