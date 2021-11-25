@@ -13,7 +13,7 @@ public class test {
 
         config.setCppModel(args[0], args[1]);
         config.enableMemoryOptim(true);
-        //config.enableProfile();
+        config.enableProfile();
         config.enableMKLDNN();
         try {
             System.out.println(config.getCppModelDir());
@@ -24,7 +24,7 @@ public class test {
         }
         config.getCpuMathLibraryNumThreads();
         config.getFractionOfGpuMemoryForPool();
-        //config.switchIrDebug(true);
+        config.switchIrDebug(true);
         System.out.println(config.summary());
 
         Predictor predictor = Predictor.createPaddlePredictor(config);
@@ -35,20 +35,23 @@ public class test {
 
         Tensor inHandle = predictor.getInputHandle(inNames);
 
-        inHandle.Reshape(4, new int[]{1, 3, 224, 224});
+        inHandle.reshape(4, new int[]{1, 3, 224, 224});
 
         float[] inData = new float[1*3*224*224];
-        inHandle.CopyFromCpu(inData);
+        inHandle.copyFromCpu(inData);
         predictor.run();
         String outNames = predictor.getOutputNameById(0);
         Tensor outHandle = predictor.getOutputHandle(outNames);
-        float[] outData = new float[outHandle.GetSize()];
-        outHandle.CopyToCpu(outData);
+        float[] outData = new float[outHandle.getSize()];
+        outHandle.copyToCpu(outData);
 
         predictor.TryShrinkMemory();
         predictor.ClearIntermediateTensor();
 
         System.out.println(outData[0]);
         System.out.println(outData.length);
+
+        outHandle.destroyNativeTensor();
+        inHandle.destroyNativeTensor();
     }
 }

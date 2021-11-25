@@ -23,120 +23,135 @@ extern "C" {
 #endif
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorReshape
+ * Method:    cppTensorDestroy
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Tensor_cppTensorDestroy(
+    JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_baidu_paddle_inference_Tensor
+ * Method:    cppTensorReshape
  * Signature: (JI[I)V
  */
-JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Tensor_TensorReshape(
+JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Tensor_cppTensorReshape(
     JNIEnv *, jobject, jlong, jint, jintArray);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorGetShape
+ * Method:    cppTensorGetShape
  * Signature: (J)[I
  */
 JNIEXPORT jintArray JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorGetShape(JNIEnv *, jobject, jlong);
+Java_com_baidu_paddle_inference_Tensor_cppTensorGetShape(JNIEnv *, jobject,
+                                                         jlong);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorGetName
+ * Method:    cppTensorGetName
  * Signature: (J)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorGetName(JNIEnv *, jobject, jlong);
+Java_com_baidu_paddle_inference_Tensor_cppTensorGetName(JNIEnv *, jobject,
+                                                        jlong);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyFromCpuFloat
+ * Method:    cppTensorCopyFromCpuFloat
  * Signature: (J[F)V
  */
 JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyFromCpuFloat(JNIEnv *, jobject,
-                                                              jlong,
-                                                              jfloatArray);
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyFromCpuFloat(JNIEnv *,
+                                                                 jobject, jlong,
+                                                                 jfloatArray);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyFromCpuInt
+ * Method:    cppTensorCopyFromCpuInt
  * Signature: (J[I)V
  */
 JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyFromCpuInt(JNIEnv *, jobject,
-                                                            jlong, jintArray);
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyFromCpuInt(JNIEnv *,
+                                                               jobject, jlong,
+                                                               jintArray);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyFromCpuLong
+ * Method:    cppTensorCopyFromCpuLong
  * Signature: (J[J)V
  */
 JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyFromCpuLong(JNIEnv *, jobject,
-                                                             jlong, jlongArray);
-
-/*
- * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyFromCpuByte
- * Signature: (J[B)V
- */
-JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyFromCpuByte(JNIEnv *, jobject,
-                                                             jlong, jbyteArray);
-
-/*
- * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyFromCpuBoolean
- * Signature: (J[Z)V
- */
-JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyFromCpuBoolean(JNIEnv *,
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyFromCpuLong(JNIEnv *,
                                                                 jobject, jlong,
-                                                                jbooleanArray);
+                                                                jlongArray);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyToCpuFloat
- * Signature: (J[F)V
- */
-JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyToCpuFloat(JNIEnv *, jobject,
-                                                            jlong, jfloatArray);
-
-/*
- * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyToCpuInt
- * Signature: (J[I)V
- */
-JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyToCpuInt(JNIEnv *, jobject,
-                                                          jlong, jintArray);
-
-/*
- * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyToCpuLong
- * Signature: (J[J)V
- */
-JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyToCpuLong(JNIEnv *, jobject,
-                                                           jlong, jlongArray);
-
-/*
- * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyToCpuByte
+ * Method:    cppTensorCopyFromCpuByte
  * Signature: (J[B)V
  */
 JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyToCpuByte(JNIEnv *, jobject,
-                                                           jlong, jbyteArray);
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyFromCpuByte(JNIEnv *,
+                                                                jobject, jlong,
+                                                                jbyteArray);
 
 /*
  * Class:     com_baidu_paddle_inference_Tensor
- * Method:    TensorCopyToCpuBoolean
+ * Method:    cppTensorCopyFromCpuBoolean
  * Signature: (J[Z)V
  */
 JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Tensor_TensorCopyToCpuBoolean(JNIEnv *, jobject,
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyFromCpuBoolean(
+    JNIEnv *, jobject, jlong, jbooleanArray);
+
+/*
+ * Class:     com_baidu_paddle_inference_Tensor
+ * Method:    cppTensorCopyToCpuFloat
+ * Signature: (J[F)V
+ */
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyToCpuFloat(JNIEnv *,
+                                                               jobject, jlong,
+                                                               jfloatArray);
+
+/*
+ * Class:     com_baidu_paddle_inference_Tensor
+ * Method:    cppTensorCopyToCpuInt
+ * Signature: (J[I)V
+ */
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyToCpuInt(JNIEnv *, jobject,
+                                                             jlong, jintArray);
+
+/*
+ * Class:     com_baidu_paddle_inference_Tensor
+ * Method:    cppTensorCopyToCpuLong
+ * Signature: (J[J)V
+ */
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyToCpuLong(JNIEnv *, jobject,
                                                               jlong,
-                                                              jbooleanArray);
+                                                              jlongArray);
+
+/*
+ * Class:     com_baidu_paddle_inference_Tensor
+ * Method:    cppTensorCopyToCpuByte
+ * Signature: (J[B)V
+ */
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyToCpuByte(JNIEnv *, jobject,
+                                                              jlong,
+                                                              jbyteArray);
+
+/*
+ * Class:     com_baidu_paddle_inference_Tensor
+ * Method:    cppTensorCopyToCpuBoolean
+ * Signature: (J[Z)V
+ */
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Tensor_cppTensorCopyToCpuBoolean(JNIEnv *,
+                                                                 jobject, jlong,
+                                                                 jbooleanArray);
 
 #ifdef __cplusplus
 }

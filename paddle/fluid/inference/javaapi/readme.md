@@ -49,6 +49,7 @@ git clone github.com/paddlepaddle/paddle/paddle/fluid/inference/javaapi
 
 ./test.sh {c预测库目录} {.pdmodel文件目录} {.pdiparams文件目录}
 
+以笔者的目录结构为例
 ./test.sh "/root/paddle_c/paddle_inference_c_2.2/paddle_inference_c"  "/root/paddle_c/resnet50/inference.pdmodel" "/root/paddle_c/resnet50/inference.pdiparams"
 ```
 
