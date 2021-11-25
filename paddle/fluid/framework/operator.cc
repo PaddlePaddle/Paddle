@@ -59,12 +59,12 @@ DECLARE_bool(run_pten_kernel);
 namespace paddle {
 namespace framework {
 template <typename T>
-void print_data(const std::vector<T>& vec, std::stringstream& sstr) {
+void print_data(const std::vector<T>& vec, std::stringstream& sstr, bool whole = false) {
   auto& vec1 = vec;
   // size_t step = vec1.size() / 1;
   size_t step = 1;
   step = step < 1 ? 1 : step;
-  for (size_t i = 0; i < vec1.size() && i < 100; i += step) {
+  for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
     sstr << vec1[i] << " ";
   }
   // if (vec1.size() > 0) {
@@ -96,7 +96,7 @@ void show_var(const Scope& scope, const std::string& var_name,
     }
     
   }
-
+  
   char* show_var_key = std::getenv("SHOW_VAR_KEY");
   if (show_var_key == nullptr){
     auto it = to_show_names.begin();
@@ -114,7 +114,6 @@ void show_var(const Scope& scope, const std::string& var_name,
       return;
     }
   }
-
   auto* var = scope.FindVar(var_name);
   std::stringstream sstr;
   VLOG(0) << "try to find: " << var_name;
@@ -164,11 +163,13 @@ void show_var(const Scope& scope, const std::string& var_name,
         }
       }
     }
-
-    print_data<int64_t>(vec_int64, sstr);
-    print_data<int>(vec_int, sstr);
-    print_data<float>(vec_float, sstr);
-    print_data<paddle::platform::float16>(vec_fp16, sstr);
+    char * whole_data_name = std::getenv("VAR_TO_SHOW_WHOLE_DATA");
+    bool show_whole = false;
+    show_whole = (whole_data_name != nullptr && strcmp(var_name.c_str(), whole_data_name) == 0);
+    print_data<int64_t>(vec_int64, sstrm, show_whole);
+    print_data<int>(vec_int, sstr, show_whole);
+    print_data<float>(vec_float, sstr, show_whole);
+    print_data<paddle::platform::float16>(vec_fp16, sstr, show_whole);
     VLOG(0) << sstr.str();
   }
 }
