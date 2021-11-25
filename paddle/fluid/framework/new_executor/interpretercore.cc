@@ -122,6 +122,16 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    auto vars = local_scope_->LocalVars();
+    for (auto var : vars) {
+      if (var->IsType<LoDTensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+        lod_tensor_arr->clear();
+      }
+    }
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
