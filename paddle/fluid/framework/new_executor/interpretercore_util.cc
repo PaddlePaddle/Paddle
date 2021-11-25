@@ -305,11 +305,18 @@ void build_op_func_list(const platform::Place& place,
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
-      InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-      // TODO(Aurelius84): In case of control flow ops, they are NOT inheritted
-      // from OperatorWithKernel.
-      static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
-          &infer_shape_ctx);
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        // TODO(Aurelius84): In case of control flow ops, they are NOT
+        // inheritted
+        // from OperatorWithKernel.
+        static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
+            &infer_shape_ctx);
+      }
+
       auto kernels_iter = all_op_kernels.find(op->Type());
       PADDLE_ENFORCE_NE(
           kernels_iter, all_op_kernels.end(),
@@ -404,6 +411,7 @@ void build_op_func_list(const platform::Place& place,
         for (auto& t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
+        lod_tensor_arr->clear();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Type %s of variable %s is not supported eager deletion.",
