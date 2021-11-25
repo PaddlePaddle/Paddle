@@ -149,10 +149,10 @@ def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
             hessian.append(hes_b[0][0])
         else:
             hessian.append(hes_b)
-       
+
     hessian_res = []
     if fin_size == 1:
-        x_reshape = paddle.reshape(xs[0], shape=[batch_size, -1]) 
+        x_reshape = paddle.reshape(xs[0], shape=[batch_size, -1])
         for i in range(x_reshape.shape[1]):
             tmp = []
             for j in range(batch_size):
@@ -171,9 +171,9 @@ def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
         hessian_result = []
         mid = len(hessian_res) // 2
         for i in range(mid):
-            hessian_result.append(np.stack(
-                              (hessian_res[i], 
-                              hessian_res[mid + i]), axis = 0))
+            hessian_result.append(
+                np.stack(
+                    (hessian_res[i], hessian_res[mid + i]), axis=0))
         return hessian_result
 
     return hessian_res
