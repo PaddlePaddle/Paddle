@@ -96,14 +96,23 @@ void show_var(const Scope& scope, const std::string& var_name,
     }
     
   }
-  auto it = to_show_names.begin();
-  for (; it != to_show_names.end(); it ++){
-    if ( strcmp(it->c_str(), var_name.c_str()) == 0 ){
-      break;
+
+  char* show_var_key = std::getenv("SHOW_VAR_KEY");
+  if (show_var_key == nullptr){
+    auto it = to_show_names.begin();
+    for (; it != to_show_names.end(); it ++){
+      if ( strcmp(it->c_str(), var_name.c_str()) == 0 ){
+        break;
+      }
     }
-  }
-  if (it == to_show_names.end()){
-    return;
+    
+    if (it == to_show_names.end()){
+      return;
+    }
+  }else{
+    if (var_name.find(show_var_key) == std::string::npos){
+      return;
+    }
   }
 
   auto* var = scope.FindVar(var_name);
