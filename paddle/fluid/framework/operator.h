@@ -114,6 +114,10 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
+inline bool VarIsTensor(const Variable& var) {
+  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+}
+
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 

@@ -234,9 +234,14 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
                                   const pten::TensorArgDef& arg_def,
                                   pten::DenseTensor* dst) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);
-
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
+    // check input dtype before ReMakePtenDenseTensor
+    PADDLE_ENFORCE(
+        (arg_def.dtype == pten::TransToPtenDataType(tensor.type())),
+        paddle::platform::errors::InvalidArgument(
+            "The type of input data is diffrent from the type of the "
+            "argument's definition in kernel."));
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
@@ -248,6 +253,11 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
     // TODO(chenweihang): now we don't deal with row and height
     // by xiaowei's advice
     const auto& tensor = variable.Get<framework::SelectedRows>();
+    PADDLE_ENFORCE(
+        (arg_def.dtype == pten::TransToPtenDataType(tensor.value().type())),
+        paddle::platform::errors::InvalidArgument(
+            "The type of input data is diffrent from the type of the "
+            "argument's definition in kernel."));
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
       framework::Tensor tmp_tensor;
       TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
