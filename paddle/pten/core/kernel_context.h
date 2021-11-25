@@ -99,9 +99,17 @@ class KernelContext {
     attrs_.emplace_back(std::move(attr));
   }
 
+  void SetOutput(std::shared_ptr<TensorBase> output, size_t idx) {
+    outputs_[idx] = output;
+  }
+
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
+  }
+
+  const std::shared_ptr<TensorBase> InputPtrAt(size_t idx) const {
+    return inputs_.at(idx);
   }
 
   template <typename TensorType>
