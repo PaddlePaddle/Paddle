@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
@@ -29,6 +30,8 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
+namespace eager_test {
+
 TEST(Forward, SingleNode) {
   // Prepare Device Contexts
   InitEnv(paddle::platform::CPUPlace());
@@ -38,7 +41,7 @@ TEST(Forward, SingleNode) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor t = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
@@ -91,7 +94,7 @@ TEST(Forward, LinearNodes) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor t = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
@@ -186,7 +189,7 @@ TEST(Forward, BranchedNodes) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor t = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
@@ -300,3 +303,5 @@ TEST(Forward, BranchedNodes) {
         paddle::platform::errors::Fatal("Node2's edge should point to Node 0"));
   }
 }
+
+}  // namespace eager_test

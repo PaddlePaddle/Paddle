@@ -55,9 +55,10 @@ egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
   // TODO(zhanlve): which one is more efficient:
   //                1. construct a vector of pointers
   //                2. call "ComputeRequireGrad" multiple times
-  bool require_any_grad = ComputeRequireGrad(trace_backward, p_autograd_in);
+  bool require_any_grad =
+      EagerUtils::ComputeRequireGrad(trace_backward, p_autograd_in);
   if (require_any_grad) {
-    PassStopGradient(false /*generate_grad*/, p_autograd_out);
+    EagerUtils::PassStopGradient(false /*generate_grad*/, p_autograd_out);
 
     // 2.2.2 Set OutRankInfo for outputs this needs to be as same as Edges's
     // input_rank_
