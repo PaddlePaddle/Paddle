@@ -35,19 +35,14 @@ else()
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
 endif ()
 
-cache_third_party(extern_xxhash
-    REPOSITORY    ${XXHASH_REPOSITORY}
-    TAG           ${XXHASH_TAG}
-    DIR           XXHASH_SOURCE_DIR)
-
 if(WIN32)
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
-      "${XXHASH_DOWNLOAD_CMD}"
+      GIT_REPOSITORY   ${XXHASH_REPOSITORY}
+      GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND   ""
       PATCH_COMMAND    ""
       CONFIGURE_COMMAND
@@ -68,9 +63,9 @@ else()
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      "${XXHASH_DOWNLOAD_CMD}"
+      GIT_REPOSITORY   ${XXHASH_REPOSITORY}
+      GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND    ""
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE   1
