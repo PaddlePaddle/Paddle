@@ -1181,8 +1181,8 @@ class ParameterServerLauncher(object):
             else:
                 self.current_node_ip = pod_ip
             if not self.distribute_mode == DistributeMode.PS_HETER:
-               assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                    % (self.current_node_ip, self.node_ips) 
+                assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
+                      % (self.current_node_ip, self.node_ips)
         if self.current_node_ip in self.node_ips:
             self.node_rank = self.node_ips.index(self.current_node_ip)
             logger.debug(
