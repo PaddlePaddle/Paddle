@@ -580,27 +580,6 @@ class _ExecutorCache(object):
         self._place = place
         self._cached_executors = {}
 
-    def run(self, program, scope, feed, fetch_list, return_numpy=True):
-        new_exe = self._get_exe_from_cache(program, scope)
-        return new_exe.run(feed, fetch_list, return_numpy)
-
-    def _get_exe_from_cache(self, program, scope, feed, fetch_list):
-        """
-        Return cached _StandaloneExecutor instance. If not found, create associated 
-        _StandaloneExecutor instance with given program and cache it.
-        """
-        assert isinstance(
-            program, Program), "Required type(Program), but received {}".format(
-                type(program).__name__)
-
-        key = _get_strong_program_cache_key(program, feed, fetch_list)
-        if key not in self._cached_executors:
-            new_program = program.clone()
-            new_exe = _StandaloneExecutor(self._place, new_program, scope)
-            self._cached_executors[key] = new_exe
-
-        return self._cached_executors[key]
-
 
 class Executor(object):
     """
