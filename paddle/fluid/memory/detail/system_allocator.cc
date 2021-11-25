@@ -27,8 +27,8 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

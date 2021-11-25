@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/rocm/rocm_device_function.h"
 #else
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_device_function.h"
+#endif
+
 #endif

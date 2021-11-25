@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/rocm/rocm_helper.h"
@@ -21,3 +22,5 @@
 #endif
 
 #define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
+
+#endif
