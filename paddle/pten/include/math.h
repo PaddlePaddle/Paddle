@@ -50,16 +50,15 @@ DenseTensor Sum(const ContextT& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DataType dtype,
                 bool keep_dim) {
-  auto out_meta = ReductionInferShape(x.meta());
+  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
 
+  // The real value of reduce_all will be get in kernel
+  // so use default value(false) is OK.
   bool reduce_all = false;
-  if (axis.size() == 0 || axis.size() == static_cast<size_t>(x.dims().size())) {
-    reduce_all = true;
-  }
 
   if (x.dtype() == pten::DataType::BOOL || x.dtype() == pten::DataType::INT32 ||
       x.dtype() == pten::DataType::INT64) {
