@@ -34,7 +34,7 @@ PT_DECLARE_MODULE(UtilsCUDA);
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor to(const Tensor& x, Backend backend, bool blocking) {
+PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
@@ -55,7 +55,7 @@ PD_DLL_DECL Tensor to(const Tensor& x, Backend backend, bool blocking) {
   kernel_context.EmplaceBackAttr(blocking);
 
   // 4. InferMeta
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  auto out_meta = UnchangedInferMeta(dense_x->meta());
 
   // 5. Prepare outputs
   const auto allocator =
