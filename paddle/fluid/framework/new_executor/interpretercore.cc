@@ -343,7 +343,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   Scope* local_scope = create_local_scope_
                            ? global_scope_->GetMutableLocalScope()
                            : global_scope_->GetMutableScope();
-
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     platform::RecordEvent infershape_event("InferShape");
@@ -354,8 +353,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (op_with_kernel != nullptr &&
       FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
-                                         // base support
-                                         // inplace ?
+                                         // base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
