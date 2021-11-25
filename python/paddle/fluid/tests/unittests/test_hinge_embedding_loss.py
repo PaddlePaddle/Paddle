@@ -80,79 +80,10 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
-    def run_static_label_1(self, use_gpu=False):
-        input = paddle.fluid.data(
-            name='input', shape=self.shape, dtype='float32')
-        label = paddle.fluid.data(
-            name='label', shape=self.shape, dtype='float32')
-        result0 = paddle.nn.functional.hinge_embedding_loss(input, label)
-        result1 = paddle.nn.functional.hinge_embedding_loss(
-            input, label, reduction='sum')
-        result2 = paddle.nn.functional.hinge_embedding_loss(
-            input, label, reduction='none')
-        y = paddle.nn.functional.hinge_embedding_loss(input, label, name='aaa')
-
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np,
-                  "label": self.label_np_1},
-            fetch_list=[result0, result1, result2])
-
-        expected = np.mean(self.input_np)
-        self.assertTrue(np.allclose(static_result[0], expected))
-        expected = np.sum(self.input_np)
-        self.assertTrue(np.allclose(static_result[1], expected))
-        expected = self.input_np
-        self.assertTrue(np.allclose(static_result[2], expected))
-
-        self.assertTrue('aaa' in y.name)
-
-    def run_static_label_2(self, use_gpu=False):
-        input = paddle.fluid.data(
-            name='input', shape=self.shape, dtype='float32')
-        label = paddle.fluid.data(
-            name='label', shape=self.shape, dtype='float32')
-        result0 = paddle.nn.functional.hinge_embedding_loss(
-            input, label, name="label 2, mean")
-        result1 = paddle.nn.functional.hinge_embedding_loss(
-            input, label, reduction='sum')
-        result2 = paddle.nn.functional.hinge_embedding_loss(
-            input, label, reduction='none')
-        y = paddle.nn.functional.hinge_embedding_loss(input, label, name='aaa')
-
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np,
-                  "label": self.label_np_1},
-            fetch_list=[result0, result1, result2])
-
-        expected = np.mean(np.maximum(0., self.delta - self.input_np))
-        self.assertTrue(np.allclose(static_result[0], expected))
-        expected = np.sum(np.maximum(0., self.delta - self.input_np))
-        self.assertTrue(np.allclose(static_result[1], expected))
-        expected = np.maximum(0., self.delta - self.input_np)
-        self.assertTrue(np.allclose(static_result[2], expected))
-
-        self.assertTrue('aaa' in y.name)
-
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())
         self.run_dynamic_label_1()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_1()
-
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
         self.run_dynamic_label_2()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_2()
 
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
@@ -160,17 +91,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
 
         paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
         self.run_dynamic_label_1()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_1(use_gpu=True)
-
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
         self.run_dynamic_label_2()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_2(use_gpu=True)
 
     # test case the raise message
     def test_reduce_errors(self):
@@ -254,86 +175,10 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
-    def run_static_label_1(self, use_gpu=False):
-        input = paddle.fluid.data(
-            name='input', shape=self.shape, dtype='float32')
-        label = paddle.fluid.data(
-            name='label', shape=self.shape, dtype='float32')
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
-        result0 = hinge_embedding_loss(input, label)
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
-            reduction='sum')
-        result1 = hinge_embedding_loss(input, label)
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
-            reduction='none')
-        result2 = hinge_embedding_loss(input, label)
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(name='aaa')
-        result3 = hinge_embedding_loss(input, label)
-
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np,
-                  "label": self.label_np_1},
-            fetch_list=[result0, result1, result2])
-
-        expected = np.mean(self.input_np)
-        self.assertTrue(np.allclose(static_result[0], expected))
-        expected = np.sum(self.input_np)
-        self.assertTrue(np.allclose(static_result[1], expected))
-        expected = self.input_np
-        self.assertTrue(np.allclose(static_result[2], expected))
-        self.assertTrue('aaa' in result3.name)
-
-    def run_static_label_2(self, use_gpu=False):
-        input = paddle.fluid.data(
-            name='input', shape=self.shape, dtype='float32')
-        label = paddle.fluid.data(
-            name='label', shape=self.shape, dtype='float32')
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
-        result0 = hinge_embedding_loss(input, label)
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
-            reduction='sum')
-        result1 = hinge_embedding_loss(input, label)
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
-            reduction='none')
-        result2 = hinge_embedding_loss(input, label)
-        hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(name='aaa')
-        result3 = hinge_embedding_loss(input, label)
-
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np,
-                  "label": self.label_np_2},
-            fetch_list=[result0, result1, result2])
-
-        expected = np.mean(np.maximum(0., self.delta - self.input_np))
-        self.assertTrue(np.allclose(static_result[0], expected))
-        expected = np.sum(np.maximum(0., self.delta - self.input_np))
-        self.assertTrue(np.allclose(static_result[1], expected))
-        expected = np.maximum(0., self.delta - self.input_np)
-        self.assertTrue(np.allclose(static_result[2], expected))
-        self.assertTrue('aaa' in result3.name)
-
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())
         self.run_dynamic_label_1()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_1()
-
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
         self.run_dynamic_label_2()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_2()
-
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
 
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
@@ -341,19 +186,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
 
         paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
         self.run_dynamic_label_1()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_1(use_gpu=True)
-
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
         self.run_dynamic_label_2()
-        paddle.enable_static()
-
-        with fluid.program_guard(fluid.Program()):
-            self.run_static_label_2(use_gpu=True)
-
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
 
     # test case the raise message
     def test_reduce_errors(self):
