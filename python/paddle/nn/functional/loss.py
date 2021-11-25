@@ -2113,16 +2113,24 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import bumpy as np
-            import paddle.nn.functional as F
+            import numpy as np
+            import paddle.nn as nn
 
-            input_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
-            # get label with elements in {1., -1.}
-            label_np = 2 * np.random.randint(0, 2, size=(10, 10, 5)) - 1.
-            input = paddle.to_tensor(input_np)
-            label = paddle.to_tensor(label_np, dtype=paddle.float32)
-            loss = F.hinge_embedding_loss(input, label, delta=1.0, reduction='mean')
+            input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+            # label elements in {1., -1.}
+            label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
+
+            hinge_embedding_loss = nn.HingeEmbeddingLoss(delta=1.0, reduction='none')
+            loss = hinge_embedding_loss(input, label)
             print(loss)
+            # Tensor([[0., -2., 0.],
+            #         [0., -1., 2.],
+            #         [1., 1., 1.]])
+
+            hinge_embedding_loss = nn.HingeEmbeddingLoss(delta=1.0, reduction='mean')
+            loss = hinge_embedding_loss(input, label)
+            print(loss)
+            # Tensor([0.22222222])
     """
 
     if reduction not in ['sum', 'mean', 'none']:
