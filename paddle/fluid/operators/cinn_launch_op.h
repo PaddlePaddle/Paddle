@@ -49,16 +49,13 @@ class CinnLaunchContext {
   // Return whether a Paddle variable used on compiled kernels
   bool IsVariableUsed(const std::string& var_name);
 
-  // Allocate buffer to a Paddle tensor with assginment information from CINN
-  void MutableTensorData(const std::string& var_name,
-                         const platform::Place& place, LoDTensor* paddle_tensor,
-                         bool is_internal_var = false);
-
   // Assign tensor buffer to input or output variables
-  void AssignExternalVariable(const std::string& var_name, LoDTensor* tensor);
+  void AssignExternalVariable(const std::string& var_name,
+                              const platform::Place& place, LoDTensor* tensor);
 
   // Assign tensor buffer to internal variables
-  void AssignInternalVariable(const std::string& var_name, LoDTensor* tensor);
+  void AssignInternalVariable(const std::string& var_name,
+                              const platform::Place& place, LoDTensor* tensor);
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
@@ -79,10 +76,12 @@ class CinnLaunchContext {
 
   // Share the buffer of a Paddle tensor to CINN by delivering memory address
   // to a cinn_buffer_t object
-  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(LoDTensor* tensor);
+  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(
+      const platform::Place& place, bool free_mem_callback, LoDTensor* tensor);
 
   // Set an argument with (cinn name)->(paddle tensor) pair
-  void SetArgument(const std::string& cinn_name, LoDTensor* paddle_tensor);
+  void SetArgument(const std::string& cinn_name, const platform::Place& place,
+                   bool free_mem_callback, LoDTensor* paddle_tensor);
 
  private:
   // a variable name map from paddle to cinn
@@ -168,7 +167,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       }
 
       launch_context->AssignExternalVariable(
-          var_name, scope.GetVar(var_name)->GetMutable<LoDTensor>());
+          var_name, place, scope.GetVar(var_name)->GetMutable<LoDTensor>());
     }
 
     // 3.2 Prepare output variables: all output variables should
@@ -185,11 +184,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                             "Output variable(%s) not used by cinn", var_name));
 
       auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      if (!tensor->IsInitialized()) {
-        launch_context->MutableTensorData(var_name, place, tensor);
-      }
       launch_context->AssignExternalVariable(
-          var_name, scope.GetVar(var_name)->GetMutable<LoDTensor>());
+          var_name, place, scope.GetVar(var_name)->GetMutable<LoDTensor>());
     }
 
     // 3.3 Prepare internal or temporary variables: Create a temporary
@@ -202,10 +198,12 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     auto temp_scope = scope.NewTmpScope();
     for (const auto& var_name : internal_variable_names) {
       auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
-      launch_context->MutableTensorData(var_name, place, tensor, true);
-      launch_context->AssignInternalVariable(var_name, tensor);
+      launch_context->AssignInternalVariable(var_name, place, tensor);
     }
 
+    VLOG(1) << "Variable size:(input:" << input_variable_names.size()
+            << ", output:" << output_variable_names.size()
+            << ", internal:" << internal_variable_names.size() << ")";
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
