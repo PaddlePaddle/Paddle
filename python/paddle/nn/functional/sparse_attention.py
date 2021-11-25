@@ -25,6 +25,8 @@ def sparse_attention(query,
                      value,
                      sparse_csr_offset,
                      sparse_csr_columns,
+                     key_padding_mask=None,
+                     attn_mask=None,
                      name=None):
     r"""
     This operator sparsify the Attention matrix in Transformer module
@@ -119,8 +121,16 @@ def sparse_attention(query,
             #       [1.99830270, 2.99830270]]]]
     """
     if in_dygraph_mode():
-        result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
-            query, key, value, sparse_csr_offset, sparse_csr_columns)
+        if key_padding_mask is None and attn_mask is None:
+            result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
+                query, key, value, sparse_csr_offset, sparse_csr_columns)
+        else:
+            result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
+                query, key, value, sparse_csr_offset, sparse_csr_columns,
+                key_padding_mask, attn_mask)
+        # result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
+        #         query, key, value, sparse_csr_offset, sparse_csr_columns,
+        #         key_padding_mask, attn_mask)
         return result_attention
 
     helper = LayerHelper('sparse_attention', **locals())
@@ -128,13 +138,24 @@ def sparse_attention(query,
     out = helper.create_variable_for_type_inference(dtype)
     result_sdd = helper.create_variable_for_type_inference(dtype)
     result_softmax = helper.create_variable_for_type_inference(dtype)
-    inputs = {
-        'Q': query,
-        'K': key,
-        'V': value,
-        'Offset': sparse_csr_offset,
-        'Columns': sparse_csr_columns
-    }
+    if key_padding_mask is None and attn_mask is None:
+        inputs = {
+            'Q': query,
+            'K': key,
+            'V': value,
+            'Offset': sparse_csr_offset,
+            'Columns': sparse_csr_columns
+        }
+    else:
+        inputs = {
+            'Q': query,
+            'K': key,
+            'V': value,
+            'Offset': sparse_csr_offset,
+            'Columns': sparse_csr_columns,
+            'KeyPaddingMask': key_padding_mask,
+            'AttnMask': attn_mask,
+        }
     outputs = {
         'Out': out,
         'SparseDotSdd': result_sdd,
