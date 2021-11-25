@@ -19,6 +19,8 @@ import paddle.fluid as fluid
 import numpy as np
 import unittest
 
+np.random.seed(42)
+
 
 class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
     def setUp(self):
@@ -29,8 +31,8 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
             np.float32)  # 1.
         self.label_np_2 = 0. - np.ones(shape=self.input_np.shape).astype(
             np.float32)  # -1.
-        self.wrong_label = np.zeros(shape=self.shape).astype(
-            np.float32)  # not 1. and not -1.
+        self.wrong_label = paddle.zeros(shape=self.shape).astype(
+            paddle.float32)  # not 1. and not -1.
 
     def run_dynamic_label_1(self):
         """
@@ -62,19 +64,19 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         input = paddle.to_tensor(self.input_np)
         label = paddle.to_tensor(self.label_np_2)
         dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
-        expected = np.mean(np.maximum(0., self.delta - input))
+        expected = np.mean(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='sum')
-        expected = np.sum(np.maximum(0., self.delta - input))
+        expected = np.sum(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='none')
-        expected = np.maximum(0., self.delta - input)
+        expected = np.maximum(0., self.delta - self.input_np)
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
@@ -112,7 +114,8 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
             name='input', shape=self.shape, dtype='float32')
         label = paddle.fluid.data(
             name='label', shape=self.shape, dtype='float32')
-        result0 = paddle.nn.functional.hinge_embedding_loss(input, label)
+        result0 = paddle.nn.functional.hinge_embedding_loss(
+            input, label, name="label 2, mean")
         result1 = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='sum')
         result2 = paddle.nn.functional.hinge_embedding_loss(
@@ -124,14 +127,14 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         static_result = exe.run(
             feed={"input": self.input_np,
-                  "label": self.label_np_2},
+                  "label": self.label_np_1},
             fetch_list=[result0, result1, result2])
 
-        expected = np.mean(self.input_np)
+        expected = np.mean(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(static_result[0], expected))
-        expected = np.sum(self.input_np)
+        expected = np.sum(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(static_result[1], expected))
-        expected = self.input_np
+        expected = np.maximum(0., self.delta - self.input_np)
         self.assertTrue(np.allclose(static_result[2], expected))
 
         self.assertTrue('aaa' in y.name)
@@ -178,9 +181,11 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.assertRaises(ValueError, test_value_error)
 
     def test_label_errors(self):
+        paddle.disable_static()
+
         def test_value_error():
-            loss = paddle.nn.functional.hinge_embedding_loss(self.input_np,
-                                                             self.wrong_label)
+            loss = paddle.nn.functional.hinge_embedding_loss(
+                paddle.to_tensor(self.input_np), self.wrong_label)
 
         self.assertRaises(ValueError, test_value_error)
 
@@ -194,8 +199,8 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
             np.float32)  # 1.
         self.label_np_2 = 0. - np.ones(shape=self.input_np.shape).astype(
             np.float32)  # -1.
-        self.wrong_label = np.zeros(shape=self.shape).astype(
-            np.float32)  # not 1. and not -1.
+        self.wrong_label = paddle.zeros(shape=self.shape).astype(
+            paddle.float32)  # not 1. and not -1.
 
     def run_dynamic_label_1(self):
         """
@@ -228,24 +233,24 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         when label is full of -1.
         """
         input = paddle.to_tensor(self.input_np)
-        label = paddle.to_tensor(self.label_np_1)
+        label = paddle.to_tensor(self.label_np_2)
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.mean(np.maximum(0., self.delta - input))
+        expected = np.mean(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='sum')
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.sum(np.maximum(0., self.delta - input))
+        expected = np.sum(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='none')
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.maximum(0., self.delta - input)
+        expected = np.maximum(0., self.delta - self.input_np)
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
@@ -305,11 +310,11 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
                   "label": self.label_np_2},
             fetch_list=[result0, result1, result2])
 
-        expected = np.mean(np.maximum(0., self.delta - input))
+        expected = np.mean(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(static_result[0], expected))
-        expected = np.sum(np.maximum(0., self.delta - input))
+        expected = np.sum(np.maximum(0., self.delta - self.input_np))
         self.assertTrue(np.allclose(static_result[1], expected))
-        expected = np.maximum(0., self.delta - input)
+        expected = np.maximum(0., self.delta - self.input_np)
         self.assertTrue(np.allclose(static_result[2], expected))
         self.assertTrue('aaa' in result3.name)
 
@@ -327,6 +332,8 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             self.run_static_label_2()
+
+        paddle.disable_static(place=paddle.fluid.CPUPlace())
 
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
@@ -346,18 +353,24 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
             self.run_static_label_2(use_gpu=True)
 
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+
     # test case the raise message
     def test_reduce_errors(self):
         def test_value_error():
-            loss = paddle.nn.functional.hinge_embedding_loss(
-                self.input_np, self.label_np_1, reduction='reduce_mean')
+            hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
+                reduction='reduce_mean')
+            loss = hinge_embedding_loss(self.input_np, self.label_np_1)
 
         self.assertRaises(ValueError, test_value_error)
 
     def test_label_errors(self):
+        paddle.disable_static()
+
         def test_value_error():
-            loss = paddle.nn.functional.hinge_embedding_loss(self.input_np,
-                                                             self.wrong_label)
+            hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
+            loss = hinge_embedding_loss(
+                paddle.to_tensor(self.input_np), self.wrong_label)
 
         self.assertRaises(ValueError, test_value_error)
 
