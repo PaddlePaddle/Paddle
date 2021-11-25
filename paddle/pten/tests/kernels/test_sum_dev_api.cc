@@ -46,7 +46,7 @@ TEST(DEV_API, sum) {
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
-  std::vector<int64_t> axis = {1, 2};
+  std::vector<int64_t> axis = {0, 1};
   // 2. test API
   auto out = pten::Sum<float>(
       *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
