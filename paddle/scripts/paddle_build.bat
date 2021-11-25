@@ -661,6 +661,10 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 
+python python/paddle/fluid/tests/unittests/test_poisson_op.py
+
+exit /b 0
+
 if "%WITH_GPU%"=="ON" (
     goto:parallel_test_base_gpu
 ) else (

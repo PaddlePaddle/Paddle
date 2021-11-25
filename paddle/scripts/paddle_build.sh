@@ -568,7 +568,8 @@ EOF
         export http_proxy=
         export https_proxy=
         set -x
-
+        python3.7 python/paddle/fluid/tests/unittests/test_poisson_op.py
+        exit 0
         set +ex
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
@@ -1163,6 +1164,8 @@ function parallel_test_base_gpu() {
 EOF
 
 set -x
+        python3.7 python/paddle/fluid/tests/unittests/test_poisson_op.py
+        exit 0
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""

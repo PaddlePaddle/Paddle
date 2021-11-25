@@ -34,6 +34,7 @@ inline void UniformRealDistribution(T *data, const int64_t &size,
   auto engine = paddle::framework::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
+    // VLOG(0) << "===========i: " << i << (*engine)();
     data[i] = dist(*engine);
   }
 }
@@ -55,7 +56,7 @@ inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
-// implement uniform random.
+// implement uniform random.p
 template <typename T>
 class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
