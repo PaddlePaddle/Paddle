@@ -174,5 +174,48 @@ struct InverseDivFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
 };
 
+// Multiply
+template <typename DevCtx, typename T, class Enable = void>
+struct SameDimsMulFunctor {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z);
+};
+
+template <typename DevCtx, typename T>
+struct SameDimsMulFunctor<
+    DevCtx,
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    blas::ElementwiseMul<DevCtx, T>(dev_ctx, x, y, z);
+  }
+};
+
+template <typename DevCtx, typename T>
+struct SameDimsMulFunctor<
+    DevCtx,
+    T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const DevCtx& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* z) {
+    eigen::ElementwiseMul<DevCtx, T>(dev_ctx, x, y, z);
+  }
+};
+template <typename T>
+struct MulFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+};
+template <typename T>
+struct InverseMulFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b * a; }
+};
+
 }  // namespace general
 }  // namespace pten

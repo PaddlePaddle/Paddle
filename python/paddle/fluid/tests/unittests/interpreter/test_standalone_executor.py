@@ -261,7 +261,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
     def test_compiled_program(self):
         data = np.ones([2, 2], dtype="float32")
-        feed = {"a": data, 'fake_input': data}
+        feed = {"a": data}
 
         res = self.run_new_executor(feed, use_compiled=True)
         gt = self.run_raw_executor(feed, use_compiled=True)

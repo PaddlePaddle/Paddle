@@ -52,6 +52,7 @@ from .common import dropout3d  # noqa: F401
 from .common import alpha_dropout  # noqa: F401
 from .common import label_smooth  # noqa: F401
 from .common import pad  # noqa: F401
+from .common import zeropad2d  # noqa: F401
 from .common import cosine_similarity  # noqa: F401
 from .common import unfold  # noqa: F401
 from .common import interpolate  # noqa: F401
@@ -163,6 +164,7 @@ __all__ = [     #noqa
            'label_smooth',
            'linear',
            'pad',
+           'zeropad2d',
            'unfold',
            'interpolate',
            'upsample',
