@@ -103,8 +103,8 @@ class TensorAddFunctor : public boost::static_visitor<> {
 #ifdef PADDLE_WITH_XPU
   void operator()(const paddle::platform::XPUPlace& place) {
     paddle::platform::XPUDeviceContext* ctx =
-        dynamic_cast<platform::XPUDeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
+        dynamic_cast<paddle::platform::XPUDeviceContext*>(
+            paddle::platform::DeviceContextPool::Instance().Get(place));
     xpu::add<T>(ctx->x_context(), x_, y_, y_, static_cast<int>(numel_));
   }
 #else
@@ -138,7 +138,6 @@ void TensorAddImpl(const std::shared_ptr<pten::DenseTensor>& src,
   paddle::platform::DeviceContext* ctx = pool.Get(place);
   auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
   paddle::operators::math::ElementwiseAddTo<DeviceContext, T> func;
-  // pten::DenseTensor* p_src = src.get();
   func(dev_ctx, *(src.get()), dst);
 }
 

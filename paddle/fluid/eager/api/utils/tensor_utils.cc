@@ -15,6 +15,8 @@
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/grad_node_info.h"
 
 #include "paddle/pten/api/all.h"
 
@@ -24,8 +26,8 @@
 
 namespace egr {
 
-bool EagerUtils::IsLeafTensor(const egr::EagerTensor& target) {
-  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
+bool IsLeafTensor(const egr::EagerTensor& target) {
+  std::shared_ptr<GradNodeBase> grad_node = grad_node(target);
   if (std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
     return true;
   }
@@ -33,10 +35,11 @@ bool EagerUtils::IsLeafTensor(const egr::EagerTensor& target) {
   return false;
 }
 
-egr::EagerTensor EagerUtils::CreateTensorWithValue(
-    const pten::DDim& ddim, const paddle::platform::Place& place,
-    const pten::DataType& dtype, const pten::DataLayout& layout, float value,
-    bool is_leaf) {
+egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
+                                       const paddle::platform::Place& place,
+                                       const pten::DataType& dtype,
+                                       const pten::DataLayout& layout,
+                                       float value, bool is_leaf) {
   paddle::experimental::Tensor tensor = paddle::experimental::full(
       paddle::framework::vectorize(ddim), paddle::experimental::Scalar(value),
       dtype, pten::TransToPtenBackend(place), layout);

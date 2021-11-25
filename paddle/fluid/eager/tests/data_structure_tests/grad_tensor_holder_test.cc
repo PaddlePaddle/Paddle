@@ -26,31 +26,25 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
-TEST(GradTensorHolder, ConstructorAndAssignment) {
-  {
-    GradSlotMeta slot_meta;
-    slot_meta.Init(2);
-    GradTensorHolder grad_tensor_holder = GradTensorHolder({slot_meta});
-    GradTensorHolder grad_tensor_holder2 = GradTensorHolder(grad_tensor_holder);
-    GradTensorHolder grad_tensor_holder3 = grad_tensor_holder2;
-  }
+TEST(GradTensorHolder, Constructor) {
+  GradSlotMeta slot_meta;
+  slot_meta.Init(1);
+  GradTensorHolder grad_tensor_holder = GradTensorHolder({slot_meta});
+  GradTensorHolder grad_tensor_holder2 = GradTensorHolder(grad_tensor_holder);
 
-  {
-    // Construct Eager Tensor
-    pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-        pten::DataType::FLOAT32, paddle::framework::make_ddim({2, 2}));
-    std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace()),
-        meta);
-    EagerTensor et = EagerTensor(dt);
+  // Construct Eager Tensor
+  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
+      pten::DataType::FLOAT32, paddle::framework::make_ddim({2, 2}));
+  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace()),
+      meta);
+  EagerTensor et = EagerTensor(dt);
 
-    std::vector<std::vector<EagerTensor>> inputs(1);
-    inputs[0].reserve(1);
-    inputs[0][0] = et;
+  std::vector<std::vector<EagerTensor>> inputs;
+  inputs.push_back({et});
 
-    GradTensorHolder grad_tensor_holder3 = GradTensorHolder(std::move(inputs));
-  }
+  GradTensorHolder grad_tensor_holder4 = GradTensorHolder(std::move(inputs));
 }
 
 TEST(GradTensorHolder, Interfaces) {

@@ -15,6 +15,7 @@
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include <pybind11/stl.h>
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace py = pybind11;
@@ -23,12 +24,19 @@ namespace paddle {
 namespace pybind {
 
 using paddle::distributed::FleetExecutor;
+using paddle::distributed::TaskNode;
 
 void BindFleetExecutor(py::module* m) {
   py::class_<FleetExecutor>(*m, "FleetExecutor")
       .def(py::init<const std::string&>())
       .def("init", &FleetExecutor::Init)
       .def("run", &FleetExecutor::Run);
+
+  py::class_<TaskNode>(*m, "TaskNode")
+      .def(py::init<const framework::ProgramDesc&, int64_t, int64_t, int64_t>())
+      .def("task_id", &TaskNode::task_id)
+      .def("add_upstream_task", &TaskNode::AddUpstreamTask)
+      .def("add_downstream_task", &TaskNode::AddDownstreamTask);
 }
 }  // namespace pybind
 }  // namespace paddle

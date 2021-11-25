@@ -27,22 +27,23 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
-TEST(AccumulationNode, Interfaces) {
+TEST(AccumulationNode, EagerTensor) {
   // Construct Eager Tensor
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
+      pten::DataType::FLOAT16, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace()),
       meta);
-  dt0->mutable_data<float>()[0] = 10.0;
+  dt0->mutable_data<paddle::platform::float16>()[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace()),
       meta);
-  dt1->mutable_data<float>()[0] = 20.0;
+
+  dt1->mutable_data<paddle::platform::float16>()[0] = 20.0;
   EagerTensor et1 = EagerTensor(dt1);
 
   std::shared_ptr<pten::DenseTensor> grad_dt =
@@ -74,18 +75,18 @@ TEST(AccumulationNode, Interfaces) {
   EagerTensor ret_et0 = node({{et0}})[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(ret_et0.impl())
-          ->data<float>();
-  CHECK_EQ(ret_et0_ptr[0], 10.0f);
+          ->data<paddle::platform::float16>();
+  CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
   EagerTensor ret_et1 = node({{et1}})[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(ret_et1.impl())
-          ->data<float>();
-  CHECK_EQ(ret_et1_ptr[0], 30.0f);
+          ->data<paddle::platform::float16>();
+  CHECK_EQ(ret_et1_ptr[0], paddle::platform::float16(30.0f));
 
   // Retain Grad
   auto* ret_grad_et_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
-          ->data<float>();
-  CHECK_EQ(ret_grad_et_ptr[0], 30.0f);
+          ->data<paddle::platform::float16>();
+  CHECK_EQ(ret_grad_et_ptr[0], paddle::platform::float16(30.0f));
 }
