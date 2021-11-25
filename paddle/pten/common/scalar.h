@@ -214,6 +214,7 @@ class ScalarBase {
     double f64;
     complex64 c64;
     complex128 c128;
+    data() { new (&bf16) bfloat16(); }
   } data_;
 };
 
