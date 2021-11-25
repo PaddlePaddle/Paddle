@@ -38,13 +38,27 @@ else
 fi
 
 # check added ut
-if [ ${WITH_GPU:-OFF} == "ON" ];then
-    set +e
-    cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
-    bash $PADDLE_ROOT/tools/check_added_ut_win.sh
-    rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
-    set -e
+
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+if [ -f "$PADDLE_ROOT/added_ut" ];then
+    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+    ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    rm -f $PADDLE_ROOT/added_ut
+    if [ "$added_ut_error" != 0 ];then
+        echo "========================================"
+        echo "Added UT should pass three additional executions"
+        echo "========================================"
+        exit 8;
+    fi
+    if nvcc --version | grep 11.2; then
+        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+        exit 0;
+    fi
 fi
+set -e
 
 # /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
 # TODO: fix these unittest that is bound to fail
@@ -304,21 +318,6 @@ set +e
 
 export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
-    if [ -f "$PADDLE_ROOT/added_ut" ];then
-        added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-        ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
-        rm -f $PADDLE_ROOT/added_ut
-        if [ "$added_ut_error" != 0 ];then
-            echo "========================================"
-            echo "Added UT should pass three additional executions"
-            echo "========================================"
-            exit 8;
-        fi
-        if nvcc --version | grep 11.2; then
-            echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-            exit 0;
-        fi
-    fi
     run_unittest_gpu $cpu_parallel_job 10
     run_unittest_gpu $tetrad_parallel_job 4
     run_unittest_gpu $two_parallel_job 2

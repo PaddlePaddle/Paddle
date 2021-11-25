@@ -273,6 +273,7 @@ message DistributedStrategy {
   optional bool fuse_grad_merge = 34 [ default = false ];
   optional bool semi_auto = 35 [ default = false ];
   optional bool adam_d2sum = 36 [ default = true ];
+  optional bool auto_search = 37 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

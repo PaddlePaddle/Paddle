@@ -66,6 +66,17 @@ class DistributedTensor:
                 return False
         return True
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == "_serial_tensor":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
     def __str__(self):
         str = "{{tensor name: {}, tensor id: {}".format(
             self.serial_tensor.desc.name(), self.serial_tensor.desc.id())
