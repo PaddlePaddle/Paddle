@@ -4,12 +4,6 @@ if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
 endif(WITH_GPU)
 
-if(WITH_XPU)
-  set(XPU_CTX_DEPS xpulib ssl crypto rt z resolv dl)
-ELSE()
-  set(XPU_CTX_DEPS)
-endif(WITH_XPU)
-
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
