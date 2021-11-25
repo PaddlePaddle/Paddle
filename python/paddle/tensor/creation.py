@@ -1243,3 +1243,7 @@ def _memcpy(input, place=None, output=None):
         outputs={'Out': [output]},
         attrs=attrs)
     return output
+
+
+def complex(real, imag, name=None):
+    return real + 1j * imag

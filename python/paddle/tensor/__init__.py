@@ -16,6 +16,10 @@ from .attribute import rank  # noqa: F401
 from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
+from .attribute import is_complex  # noqa: F401
+from .attribute import is_floating_point  # noqa: F401
+from .attribute import is_integer  # noqa: F401
+
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -33,6 +37,8 @@ from .creation import tril  # noqa: F401
 from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
+from .creation import complex  # noqa: F401
+
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import norm  # noqa: F401
@@ -110,6 +116,9 @@ from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
+from .manipulation import view_as_complex  # noqa: F401
+from .manipulation import view_as_real  # noqa: F401
+
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -401,7 +410,13 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
-           'triangular_solve'
+           'triangular_solve',
+           'is_complex',
+           'is_floating_point',
+           'is_integer',
+           'view_as_complex',
+           'view_as_real',
+           'angle',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

@@ -2423,7 +2423,3 @@ def view_as_real(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
-
-
-def complex(real, imag, name=None):
-    return real + 1j * imag

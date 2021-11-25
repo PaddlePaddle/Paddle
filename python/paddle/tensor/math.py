@@ -24,6 +24,7 @@ from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
 
 from paddle.tensor import cast
+from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable, convert_np_dtype_to_dtype_
@@ -2616,7 +2617,7 @@ def atan2(x, y, name=None):
 def angle(x, name=None):
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
-    for negative real numbers, the angle is :math:`-\pi`.
+    for negative real numbers, the angle is :math:`\pi`.
 
     Equation:
         .. math::
