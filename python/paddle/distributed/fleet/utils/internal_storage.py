@@ -20,17 +20,9 @@ import time
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
 from ..meta_parallel.sharding.sharding_utils import Type, device_guard
-
-# Set global device id
-global dev_id
-if core.is_compiled_with_cuda():
-    dev_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-elif core.is_compiled_with_npu():
-    dev_id = int(os.environ.get('FLAGS_selected_npus', 0))
-else:
-    raise ValueError("This device doesn't support.")
 
 
 class InternalStorage:
@@ -68,7 +60,7 @@ class ParamStorage(InternalStorage):
         super().__init__(size, dtype, device, convert_cpu=True)
         self.param2align = None
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def add_rank_params(self, trainable_params, param2align):
         """
         Add new parameters to the InternalStorage. Params becomes a view of this InternalStorage buffer.
@@ -87,6 +79,7 @@ class ParamStorage(InternalStorage):
             cpu_param_shape.append(p_shape)
 
         # buffer covert from cpu to cuda
+        dev_id = int(paddle.get_device().split(":")[1])
         self.buffer = self.buffer.cuda(dev_id)
         self._fill = 0
 
@@ -96,7 +89,7 @@ class ParamStorage(InternalStorage):
             self._params.append(param)
             self._param_ids.append(id(param))
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def _add_param_as_view(self, param, align):
 
         assert (
@@ -116,6 +109,7 @@ class ParamStorage(InternalStorage):
         param.stop_gradient = origin_state
 
         # Copy the current param value
+        dev_id = int(paddle.get_device().split(":")[1])
         with device_guard(dev_id, "cpu"):
             tmp_var = core.VarBase(tensor=self.buffer._slice(self._fill,
                                                              var_end))
@@ -126,7 +120,7 @@ class ParamStorage(InternalStorage):
         self._fill = offset
         return p_shape
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def _convert_buffer(self, param, p_shape, align):
 
         var_end = self._fill + np.prod(p_shape)
@@ -177,7 +171,7 @@ class GradStorage(InternalStorage):
             param.shape) + align <= self._max_size and id(
                 param) not in self._param_ids
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def add_grad(self, param, align):
         """
         Add a new parameter gradient to the InternalStorage. Param.grad becomes a view of this InternalStorage buffer.
@@ -191,7 +185,7 @@ class GradStorage(InternalStorage):
         self._params.append(param)
         self._param_ids.append(id(param))
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def manumal_relase(self):
         """
         Release the buffer from InternalStorage. The InternalStorage will need to be rebuilt before use.
@@ -207,7 +201,7 @@ class GradStorage(InternalStorage):
             self.params_checked_in = 0
             self._release = True
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def rebuild(self):
         """
         Given the parameter gradients which have been registered previously, rebuild the whole InternalStorage.
@@ -223,7 +217,7 @@ class GradStorage(InternalStorage):
 
             self._release = False
 
-    @paddle.no_grad()
+    @fluid.dygraph.no_grad
     def _add_grad_as_view(self, param, align):
         assert np.prod(
             self.buffer.shape
