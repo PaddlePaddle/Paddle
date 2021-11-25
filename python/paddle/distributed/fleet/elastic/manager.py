@@ -435,7 +435,9 @@ class ElasticManager(object):
 
     def _update_fault_tolrance(self):
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
-        logger.debug(f"self.curr_host={self.curr_host}, self.dist_endpoints={self.dist_endpoints}")
+        logger.debug(
+            f"self.curr_host={self.curr_host}, self.dist_endpoints={self.dist_endpoints}"
+        )
         if self.curr_host in self.dist_endpoints:
             os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
             os.environ['PADDLE_TRAINERS'] = self.trainers
@@ -556,7 +558,6 @@ class ElasticManager(object):
                                                                    self.hosts))
             idx += 1
             time.sleep(2)
-
         return
 
     def run(self, launcher):

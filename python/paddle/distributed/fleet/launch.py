@@ -310,7 +310,7 @@ def get_cluster_info(args):
 
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-       
+
     #if args.enable_auto_mapping == True:
     #    assert args.cluster_topo_path is not None, \
     #        "The cluster topology must be provied when enabling auto mapping."
@@ -325,6 +325,7 @@ def get_cluster_info(args):
     #
     #    else:
     #        os.environ["PADDLE_RANK_MAPPING_EXISTS"] = str(False)
+
     # for ascend
     if device_mode == DeviceMode.ASCEND_NPU:
         cluster, pod = ascend_utils.get_cloud_cluster(
@@ -338,7 +339,7 @@ def get_cluster_info(args):
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
-                                                devices_per_proc)
+                                             devices_per_proc)
         logger.debug("get cluster from args:{}".format(cluster))
     return cluster, pod
 

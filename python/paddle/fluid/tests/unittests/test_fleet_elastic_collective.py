@@ -83,11 +83,11 @@ cluster_json = """
 
 
 class TestCollectiveLauncher(unittest.TestCase):
-
     def setUp(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
 
-        self.cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        self.cluster_json_path = os.path.join(file_dir,
+                                              "auto_parallel_cluster.json")
         cluster_json_object = json.loads(cluster_json)
         with open(self.cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -110,7 +110,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             servers = None
             cluster_topo_path = self.cluster_json_path
             rank_mapping_path = None
-            training_script = "python -h"   
+            training_script = "python -h"
             training_script_args = ["--use_amp false"]
             log_dir = None
 
@@ -126,7 +126,6 @@ class TestCollectiveLauncher(unittest.TestCase):
             launch.stop()
         except Exception as e:
             pass
-
 
     def test_stop(self):
         class Argument:
@@ -149,7 +148,6 @@ class TestCollectiveLauncher(unittest.TestCase):
             training_script = "python -h"
             training_script_args = ["--use_amp false"]
             log_dir = None
-
 
         args = Argument()
         try:

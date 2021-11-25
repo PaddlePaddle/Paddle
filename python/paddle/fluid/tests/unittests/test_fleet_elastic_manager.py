@@ -363,6 +363,7 @@ class TestElasticManager(unittest.TestCase):
             force = None
             backend = 'gloo'
             elastic_pre_hook = None
+
         class ElasticLauncher:
             def watch(self):
                 return ELASTIC_AUTO_PARALLEL_EXIT_CODE

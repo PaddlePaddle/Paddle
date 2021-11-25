@@ -31,7 +31,6 @@ class CollectiveLauncher(LauncherInterface):
         logger.info("collective lauchner launch ...")
         args = self.args
         self.tmp_dir = tempfile.mkdtemp()
-
         global_envs = paddle.distributed.fleet.launch.get_global_envs(
             args, self.tmp_dir)
         cluster, pod = paddle.distributed.fleet.launch.get_cluster_info(args)
