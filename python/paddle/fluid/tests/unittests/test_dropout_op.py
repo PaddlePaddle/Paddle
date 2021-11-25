@@ -481,6 +481,12 @@ class TestDropoutFAPI(unittest.TestCase):
                     axis=(0, 1),
                     training=False,
                     mode='upscale_in_train')
+                res13 = paddle.nn.functional.dropout(
+                    x=input,
+                    p=0.5,
+                    axis=1,
+                    training=True,
+                    mode='upscale_in_train')
 
             res_list = [
                 res1, res2, res3, res4, res5, res6, res7, res8, res9, res11,
