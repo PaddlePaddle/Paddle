@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle
-import paddle.fluid as fluid
 import numpy as np
 import unittest
 
@@ -59,14 +58,14 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.assertTrue(dy_result.shape, self.shape)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.CPUPlace())
         self.run_dynamic_check()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not paddle.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_dynamic_check()
 
     # test case the raise message
@@ -127,14 +126,14 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         self.assertTrue(dy_result.shape, self.shape)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.CPUPlace())
         self.run_dynamic_check()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not paddle.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_dynamic_check()
 
     # test case the raise message

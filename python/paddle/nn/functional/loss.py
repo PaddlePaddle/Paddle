@@ -2086,12 +2086,12 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
             The shape of labelis the same as the shape of input.
         delta (float, optional): Has a default value of `1`.
-        reduction (string, optional): Specifies the reduction to apply to the output:
-            ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
-            ``'mean'``: the sum of the output will be divided by the number of
-            elements in the output, ``'sum'``: the output will be summed. Note: :attr:`size_average`
-            and :attr:`reduce` are in the process of being deprecated, and in the meantime,
-            specifying either of those two args will override :attr:`reduction`. Default: ``'mean'``
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'sum'``. Default: ``'mean'``
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2128,10 +2128,10 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
             "but received {}.".format(reduction))
 
     if not paddle.fluid.framework.in_dygraph_mode():
-        paddle.fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'hinge_embedding_loss')
-        paddle.fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'hinge_embedding_loss')
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'hinge_embedding_loss')
+        check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                                 'hinge_embedding_loss')
 
     if set(label.unique().numpy()) <= {1., -1.}:
         loss = paddle.where(
