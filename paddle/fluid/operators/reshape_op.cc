@@ -376,13 +376,15 @@ class ReshapeKernel {
     // framework::DDim out_dims = out->dims();
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
 
-    // we can't MakePtenDenseTensor by out, because reshape will realloc memory
-    // and this will throw error(can't realloc shared memory) in current
-    // DenseTensor
-    // design. So, codes below create a tmp densetensor for output.
-    // TODO(YuanRisheng) we can use MakePtenDenseTensor after #36916 merge.
+    // we can't MakePtenDenseTensor by out, because the out of reshape may have
+    // multiple states, some can MakePtenDenseTensor but other's cannot:
+    // 1. out tensor is not initialized
+    // 2. out tensor is input (complete inplace)
+    // 3. out tensor is view of input
+    // We can't MakePtenDenseTensor for case 2, so we solve this case by
+    // creating a temporary tensor here:
     const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-        paddle::platform::CPUPlace());
+        ctx.GetPlace());
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
                                in->dims(),
                                pten::TransToPtenDataLayout(in->layout())};
