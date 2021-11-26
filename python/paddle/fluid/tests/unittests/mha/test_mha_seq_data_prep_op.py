@@ -22,18 +22,19 @@ import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 import paddle
 
+
 class TestMHASeqDataPrepOp(OpTest):
     def setUp(self):
         self.op_type = "mha_seq_data_prep"
         self.init_dtype_type()
 
         batch_size = 128
-        qo_slen = np.full((batch_size,), 128, dtype=np.int32)
-        kv_slen = np.full((batch_size,), 128, dtype=np.int32)
+        qo_slen = np.full((batch_size, ), 128, dtype=np.int32)
+        kv_slen = np.full((batch_size, ), 128, dtype=np.int32)
 
         seq_len = 128
-        lo_windows = np.full((seq_len,), 0, dtype=np.int32)
-        high_windows = np.full((seq_len,), seq_len, dtype=np.int32)
+        lo_windows = np.full((seq_len, ), 0, dtype=np.int32)
+        high_windows = np.full((seq_len, ), seq_len, dtype=np.int32)
 
         qkvo_seqlen_ref = np.concatenate((qo_slen, kv_slen))
         self.inputs = {
@@ -41,9 +42,7 @@ class TestMHASeqDataPrepOp(OpTest):
             'lo_hi_windows': np.concatenate((lo_windows, high_windows))
         }
 
-        self.attrs = {
-            'cache_key': str(id(type(self)))
-        }
+        self.attrs = {'cache_key': str(id(type(self)))}
 
         # The op donot set False value to output, we rely on compilers (NVCC) to do so.
         # That could save about 20 mu seconds.
@@ -54,4 +53,3 @@ class TestMHASeqDataPrepOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(place=paddle.CUDAPlace(0), atol=0.1)
-        print(f'MHASeqDataPrep passed.')

@@ -110,20 +110,11 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.q_3dim_tensor = paddle.to_tensor(
-            self.Q,
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.Q, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.k_3dim_tensor = paddle.to_tensor(
-            self.K,
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.K, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.v_3dim_tensor = paddle.to_tensor(
-            self.V,
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.q_tensor.stop_gradient = False
         self.k_tensor.stop_gradient = False
@@ -311,15 +302,14 @@ class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
         self.rtol = 1e-3
 
     def test_jit_save_and_load(self):
-        ref_out = self.ref_exe.run(
-            self.ref_main_prog,
-            feed={
-                "q_input_3dim": self.Q,
-                "k_input_3dim": self.K,
-                "v_input_3dim": self.V,
-                "attn_mask_4dim": self.attn_mask_for_ori
-            },
-            fetch_list=[self.ref_mha_loss.name])
+        ref_out = self.ref_exe.run(self.ref_main_prog,
+                                   feed={
+                                       "q_input_3dim": self.Q,
+                                       "k_input_3dim": self.K,
+                                       "v_input_3dim": self.V,
+                                       "attn_mask_4dim": self.attn_mask_for_ori
+                                   },
+                                   fetch_list=[self.ref_mha_loss.name])
 
         path = '/tmp/paddle_mha_save_inference'
         paddle.static.save_inference_model(

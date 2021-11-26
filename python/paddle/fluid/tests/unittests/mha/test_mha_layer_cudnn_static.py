@@ -47,7 +47,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     V = (np.random.random(
         (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
-    W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
+    W = np.concatenate((W, np.zeros((4 * vec_size, ))), dtype=np.single)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
@@ -56,6 +56,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     return (Q, K, V, W, WQ, WK, WV, WO)
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
@@ -79,11 +80,24 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
         self.ref_main_prog = paddle.static.Program()
         self.ref_startup_prog = paddle.static.Program()
 
-        with paddle.static.program_guard(self.ref_main_prog, self.ref_startup_prog):
-            q_input_3dim = paddle.static.data(name="q_input_3dim", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            k_input_3dim = paddle.static.data(name="k_input_3dim", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            v_input_3dim = paddle.static.data(name="v_input_3dim", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            attn_mask_4dim = paddle.static.data(name="attn_mask_4dim", shape=[-1, self.nheads, self.seq_len, self.seq_len], dtype="int32")
+        with paddle.static.program_guard(self.ref_main_prog,
+                                         self.ref_startup_prog):
+            q_input_3dim = paddle.static.data(
+                name="q_input_3dim",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            k_input_3dim = paddle.static.data(
+                name="k_input_3dim",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            v_input_3dim = paddle.static.data(
+                name="v_input_3dim",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            attn_mask_4dim = paddle.static.data(
+                name="attn_mask_4dim",
+                shape=[-1, self.nheads, self.seq_len, self.seq_len],
+                dtype="int32")
 
             q_input_3dim.stop_gradient = False
             k_input_3dim.stop_gradient = False
@@ -91,13 +105,15 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
 
             self.ref_mha = MultiHeadAttention(self.vec_size, self.nheads)
             with paddle.static.amp.fp16_guard():
-                ref_mha_output = self.ref_mha(q_input_3dim, k_input_3dim, v_input_3dim, attn_mask_4dim)
+                ref_mha_output = self.ref_mha(q_input_3dim, k_input_3dim,
+                                              v_input_3dim, attn_mask_4dim)
                 self.ref_mha_loss = paddle.mean(ref_mha_output)
 
                 paddle.static.append_backward(loss=self.ref_mha_loss)
 
         self.exe.run(self.ref_startup_prog)
-        with paddle.static.program_guard(self.ref_main_prog, self.ref_startup_prog):
+        with paddle.static.program_guard(self.ref_main_prog,
+                                         self.ref_startup_prog):
             self.ref_mha.q_proj.weight.set_value(self.WQ)
             self.ref_mha.k_proj.weight.set_value(self.WK)
             self.ref_mha.v_proj.weight.set_value(self.WV)
@@ -107,11 +123,22 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
         self.cudnn_main_prog = paddle.static.Program()
         self.cudnn_startup_prog = paddle.static.Program()
 
-        with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
-            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            attn_mask_input = paddle.static.data(name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
+        with paddle.static.program_guard(self.cudnn_main_prog,
+                                         self.cudnn_startup_prog):
+            q_input = paddle.static.data(
+                name="q_input",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            k_input = paddle.static.data(
+                name="k_input",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            v_input = paddle.static.data(
+                name="v_input",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            attn_mask_input = paddle.static.data(
+                name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
 
             q_input.stop_gradient = False
             k_input.stop_gradient = False
@@ -121,17 +148,22 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
             self.cudnn_mha = CUDNNMultiHeadAttention(self.vec_size, self.nheads)
             with paddle.static.amp.fp16_guard():
                 seq_info = seq_info_infer(attn_mask_input)
-                cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input, seq_info)
+                cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input,
+                                                  seq_info)
                 self.cudnn_mha_loss = paddle.mean(cudnn_mha_output)
 
                 paddle.static.append_backward(loss=self.cudnn_mha_loss)
 
         self.exe.run(self.cudnn_startup_prog)
-        with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
+        with paddle.static.program_guard(self.cudnn_main_prog,
+                                         self.cudnn_startup_prog):
             self.cudnn_mha.weight.set_value(self.W)
 
-        self.attn_mask_for_ori = np.ones((self.batch_size, self.nheads, self.seq_len, self.seq_len), dtype=np.int32)
-        self.attn_mask_for_cudnn = np.ones((self.batch_size, self.seq_len), dtype=np.int32)
+        self.attn_mask_for_ori = np.ones(
+            (self.batch_size, self.nheads, self.seq_len, self.seq_len),
+            dtype=np.int32)
+        self.attn_mask_for_cudnn = np.ones(
+            (self.batch_size, self.seq_len), dtype=np.int32)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -144,23 +176,27 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
             return
 
         ref_out = self.exe.run(self.ref_main_prog,
-                        feed={"q_input_3dim": self.Q,
-                            "k_input_3dim": self.K,
-                            "v_input_3dim": self.V,
-                            "attn_mask_4dim": self.attn_mask_for_ori},
-                        fetch_list=[self.ref_mha_loss.name])
+                               feed={
+                                   "q_input_3dim": self.Q,
+                                   "k_input_3dim": self.K,
+                                   "v_input_3dim": self.V,
+                                   "attn_mask_4dim": self.attn_mask_for_ori
+                               },
+                               fetch_list=[self.ref_mha_loss.name])
 
         cudnn_out = self.exe.run(self.cudnn_main_prog,
-                        feed={"q_input": self.Q,
-                            "k_input": self.K,
-                            "v_input": self.V,
-                            "attn_mask": self.attn_mask_for_cudnn},
-                        fetch_list=[self.cudnn_mha_loss.name])
+                                 feed={
+                                     "q_input": self.Q,
+                                     "k_input": self.K,
+                                     "v_input": self.V,
+                                     "attn_mask": self.attn_mask_for_cudnn
+                                 },
+                                 fetch_list=[self.cudnn_mha_loss.name])
 
-        self.assertTrue(compare(np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayer-Static] outputs are miss-matched.")
-        print(f'CUDNNMultiHeadAttention Layer [Static] {self.dtype} fwd passed.')
-
+        self.assertTrue(
+            compare(
+                np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
+            "[Test*CUDNNMHALayer-Static] outputs are miss-matched.")
 
     def test_grads(self):
 
@@ -191,41 +227,53 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
                             "{}.w_0@GRAD".format(self.cudnn_mha.full_name())])
 
         ref_weight_grad = np.concatenate(
-                            (np.array(wq_grad).flatten(), np.array(wk_grad).flatten(), 
-                             np.array(wv_grad).flatten(), np.array(wo_grad).flatten(),
-                             np.array(bq_grad).flatten(), np.array(bk_grad).flatten(), 
-                             np.array(bv_grad).flatten(), np.array(bo_grad).flatten(),),
-                            axis=0)
+            (
+                np.array(wq_grad).flatten(),
+                np.array(wk_grad).flatten(),
+                np.array(wv_grad).flatten(),
+                np.array(wo_grad).flatten(),
+                np.array(bq_grad).flatten(),
+                np.array(bk_grad).flatten(),
+                np.array(bv_grad).flatten(),
+                np.array(bo_grad).flatten(), ),
+            axis=0)
 
-        self.assertTrue(compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
+        self.assertTrue(
+            compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
             "[Test*CUDNNMHALayer-Static] weight_grads are miss-matched.")
         self.assertTrue(
             compare(q_input_3dim_grad, q_input_grad, self.atol, self.rtol),
-                    "[Test*CUDNNMHALayer-Static] Q_grads are miss-matched.")
+            "[Test*CUDNNMHALayer-Static] Q_grads are miss-matched.")
         self.assertTrue(
             compare(k_input_3dim_grad, k_input_grad, self.atol, self.rtol),
-                    "[Test*CUDNNMHALayer-Static] K_grads are miss-matched.")
+            "[Test*CUDNNMHALayer-Static] K_grads are miss-matched.")
         self.assertTrue(
             compare(v_input_3dim_grad, v_input_grad, self.atol, self.rtol),
-                    "[Test*CUDNNMHALayer-Static] V_grads are miss-matched.")
+            "[Test*CUDNNMHALayer-Static] V_grads are miss-matched.")
 
-        print(f'CUDNNMultiHeadAttention [Static] Layer {self.dtype} bwd passed.')
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16CUDNNMHALayerStatic(TestFP32CUDNNMHALayerStatic):
     def setUp(self):
         super().setUp()
-        ori_fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.ref_main_prog)
-        paddle.static.amp.cast_parameters_to_fp16(self.place, self.ref_main_prog, to_fp16_var_names=ori_fp16_var_list)
+        ori_fp16_var_list = paddle.static.amp.cast_model_to_fp16(
+            self.ref_main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place, self.ref_main_prog, to_fp16_var_names=ori_fp16_var_list)
 
-        cudnn_fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.cudnn_main_prog)
-        paddle.static.amp.cast_parameters_to_fp16(self.place, self.cudnn_main_prog, to_fp16_var_names=cudnn_fp16_var_list)
+        cudnn_fp16_var_list = paddle.static.amp.cast_model_to_fp16(
+            self.cudnn_main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place,
+            self.cudnn_main_prog,
+            to_fp16_var_names=cudnn_fp16_var_list)
 
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-3
         self.rtol = 1e-2
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
@@ -249,11 +297,24 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
         self.ref_main_prog = paddle.static.Program()
         self.ref_startup_prog = paddle.static.Program()
 
-        with paddle.static.program_guard(self.ref_main_prog, self.ref_startup_prog):
-            q_input_3dim = paddle.static.data(name="q_input_3dim", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            k_input_3dim = paddle.static.data(name="k_input_3dim", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            v_input_3dim = paddle.static.data(name="v_input_3dim", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            attn_mask_4dim = paddle.static.data(name="attn_mask_4dim", shape=[-1, self.nheads, self.seq_len, self.seq_len], dtype="int32")
+        with paddle.static.program_guard(self.ref_main_prog,
+                                         self.ref_startup_prog):
+            q_input_3dim = paddle.static.data(
+                name="q_input_3dim",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            k_input_3dim = paddle.static.data(
+                name="k_input_3dim",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            v_input_3dim = paddle.static.data(
+                name="v_input_3dim",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            attn_mask_4dim = paddle.static.data(
+                name="attn_mask_4dim",
+                shape=[-1, self.nheads, self.seq_len, self.seq_len],
+                dtype="int32")
 
             q_input_3dim.stop_gradient = False
             k_input_3dim.stop_gradient = False
@@ -261,13 +322,15 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
 
             self.ref_mha = MultiHeadAttention(self.vec_size, self.nheads)
             with paddle.static.amp.fp16_guard():
-                ref_mha_output = self.ref_mha(q_input_3dim, k_input_3dim, v_input_3dim, attn_mask_4dim)
+                ref_mha_output = self.ref_mha(q_input_3dim, k_input_3dim,
+                                              v_input_3dim, attn_mask_4dim)
                 self.ref_mha_loss = paddle.mean(ref_mha_output)
 
                 paddle.static.append_backward(loss=self.ref_mha_loss)
 
         self.exe.run(self.ref_startup_prog)
-        with paddle.static.program_guard(self.ref_main_prog, self.ref_startup_prog):
+        with paddle.static.program_guard(self.ref_main_prog,
+                                         self.ref_startup_prog):
             self.ref_mha.q_proj.weight.set_value(self.WQ)
             self.ref_mha.k_proj.weight.set_value(self.WK)
             self.ref_mha.v_proj.weight.set_value(self.WV)
@@ -277,31 +340,48 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
         self.cudnn_main_prog = paddle.static.Program()
         self.cudnn_startup_prog = paddle.static.Program()
 
-        with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
-            q_input = paddle.static.data(name="q_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            k_input = paddle.static.data(name="k_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            v_input = paddle.static.data(name="v_input", shape=[-1, self.seq_len, self.vec_size], dtype='float32')
-            attn_mask_input = paddle.static.data(name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
+        with paddle.static.program_guard(self.cudnn_main_prog,
+                                         self.cudnn_startup_prog):
+            q_input = paddle.static.data(
+                name="q_input",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            k_input = paddle.static.data(
+                name="k_input",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            v_input = paddle.static.data(
+                name="v_input",
+                shape=[-1, self.seq_len, self.vec_size],
+                dtype='float32')
+            attn_mask_input = paddle.static.data(
+                name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
 
             q_input.stop_gradient = False
             k_input.stop_gradient = False
             v_input.stop_gradient = False
 
             seq_info_infer = CUDNNSeqInfoInfer()
-            self.cudnn_mha = CUDNNMultiHeadAttention(self.vec_size, self.nheads, seq_data_infer=seq_info_infer)
+            self.cudnn_mha = CUDNNMultiHeadAttention(
+                self.vec_size, self.nheads, seq_data_infer=seq_info_infer)
             with paddle.static.amp.fp16_guard():
                 seq_info = seq_info_infer(attn_mask_input)
-                cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input, seq_info)
+                cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input,
+                                                  seq_info)
                 self.cudnn_mha_loss = paddle.mean(cudnn_mha_output)
 
                 paddle.static.append_backward(loss=self.cudnn_mha_loss)
 
         self.exe.run(self.cudnn_startup_prog)
-        with paddle.static.program_guard(self.cudnn_main_prog, self.cudnn_startup_prog):
+        with paddle.static.program_guard(self.cudnn_main_prog,
+                                         self.cudnn_startup_prog):
             self.cudnn_mha.weight.set_value(self.W)
 
-        self.attn_mask_for_ori = np.ones((self.batch_size, self.nheads, self.seq_len, self.seq_len), dtype=np.int32)
-        self.attn_mask_for_cudnn = np.ones((self.batch_size, self.seq_len), dtype=np.int32)
+        self.attn_mask_for_ori = np.ones(
+            (self.batch_size, self.nheads, self.seq_len, self.seq_len),
+            dtype=np.int32)
+        self.attn_mask_for_cudnn = np.ones(
+            (self.batch_size, self.seq_len), dtype=np.int32)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -314,23 +394,28 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
             return
 
         ref_out = self.exe.run(self.ref_main_prog,
-                        feed={"q_input_3dim": self.Q,
-                            "k_input_3dim": self.K,
-                            "v_input_3dim": self.V,
-                            "attn_mask_4dim": self.attn_mask_for_ori},
-                        fetch_list=[self.ref_mha_loss.name])
+                               feed={
+                                   "q_input_3dim": self.Q,
+                                   "k_input_3dim": self.K,
+                                   "v_input_3dim": self.V,
+                                   "attn_mask_4dim": self.attn_mask_for_ori
+                               },
+                               fetch_list=[self.ref_mha_loss.name])
 
         cudnn_out = self.exe.run(self.cudnn_main_prog,
-                        feed={"q_input": self.Q,
-                            "k_input": self.K,
-                            "v_input": self.V,
-                            "attn_mask": self.attn_mask_for_cudnn},
-                        fetch_list=[self.cudnn_mha_loss.name])
+                                 feed={
+                                     "q_input": self.Q,
+                                     "k_input": self.K,
+                                     "v_input": self.V,
+                                     "attn_mask": self.attn_mask_for_cudnn
+                                 },
+                                 fetch_list=[self.cudnn_mha_loss.name])
 
-        self.assertTrue(compare(np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
-                "[Test*CUDNNMHALayerWithSeqDataCache-Static] outputs are miss-matched.")
-        print(f'CUDNNMHALayerStaticWithSeqDataCache Layer [Static] {self.dtype} fwd passed.')
-
+        self.assertTrue(
+            compare(
+                np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
+            "[Test*CUDNNMHALayerWithSeqDataCache-Static] outputs are miss-matched."
+        )
 
     def test_grads(self):
 
@@ -361,35 +446,51 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
                             "{}.w_0@GRAD".format(self.cudnn_mha.full_name())])
 
         ref_weight_grad = np.concatenate(
-                            (np.array(wq_grad).flatten(), np.array(wk_grad).flatten(), 
-                             np.array(wv_grad).flatten(), np.array(wo_grad).flatten(),
-                             np.array(bq_grad).flatten(), np.array(bk_grad).flatten(), 
-                             np.array(bv_grad).flatten(), np.array(bo_grad).flatten(),),
-                            axis=0)
-        self.assertTrue(compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayerWithSeqDataCache-Static] weight_grads are miss-matched.")
+            (
+                np.array(wq_grad).flatten(),
+                np.array(wk_grad).flatten(),
+                np.array(wv_grad).flatten(),
+                np.array(wo_grad).flatten(),
+                np.array(bq_grad).flatten(),
+                np.array(bk_grad).flatten(),
+                np.array(bv_grad).flatten(),
+                np.array(bo_grad).flatten(), ),
+            axis=0)
+        self.assertTrue(
+            compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
+            "[Test*CUDNNMHALayerWithSeqDataCache-Static] weight_grads are miss-matched."
+        )
         self.assertTrue(
             compare(q_input_3dim_grad, q_input_grad, self.atol, self.rtol),
-                    "[Test*CUDNNMHALayerWithSeqDataCache-Static] Q_grads are miss-matched.")
+            "[Test*CUDNNMHALayerWithSeqDataCache-Static] Q_grads are miss-matched."
+        )
         self.assertTrue(
             compare(k_input_3dim_grad, k_input_grad, self.atol, self.rtol),
-                    "[Test*CUDNNMHALayerWithSeqDataCache-Static] K_grads are miss-matched.")
+            "[Test*CUDNNMHALayerWithSeqDataCache-Static] K_grads are miss-matched."
+        )
         self.assertTrue(
             compare(v_input_3dim_grad, v_input_grad, self.atol, self.rtol),
-                    "[Test*CUDNNMHALayerWithSeqDataCache-Static] V_grads are miss-matched.")
+            "[Test*CUDNNMHALayerWithSeqDataCache-Static] V_grads are miss-matched."
+        )
 
-        print(f'UDNNMHALayerStaticWithSeqDataCache [Static] Layer {self.dtype} bwd passed.')
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFP16CUDNNMHALayerStaticWithSeqDataCache(TestFP32CUDNNMHALayerStaticWithSeqDataCache):
+class TestFP16CUDNNMHALayerStaticWithSeqDataCache(
+        TestFP32CUDNNMHALayerStaticWithSeqDataCache):
     def setUp(self):
         super().setUp()
-        ori_fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.ref_main_prog)
-        paddle.static.amp.cast_parameters_to_fp16(self.place, self.ref_main_prog, to_fp16_var_names=ori_fp16_var_list)
+        ori_fp16_var_list = paddle.static.amp.cast_model_to_fp16(
+            self.ref_main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place, self.ref_main_prog, to_fp16_var_names=ori_fp16_var_list)
 
-        cudnn_fp16_var_list = paddle.static.amp.cast_model_to_fp16(self.cudnn_main_prog)
-        paddle.static.amp.cast_parameters_to_fp16(self.place, self.cudnn_main_prog, to_fp16_var_names=cudnn_fp16_var_list)
+        cudnn_fp16_var_list = paddle.static.amp.cast_model_to_fp16(
+            self.cudnn_main_prog)
+        paddle.static.amp.cast_parameters_to_fp16(
+            self.place,
+            self.cudnn_main_prog,
+            to_fp16_var_names=cudnn_fp16_var_list)
 
     def init_dtype_type(self):
         self.dtype = np.float16

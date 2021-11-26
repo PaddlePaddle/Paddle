@@ -1,4 +1,4 @@
- # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,20 +103,11 @@ class TestCUDNNMHALayerWithJitToStatic(unittest.TestCase):
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.q_3dim_tensor = paddle.to_tensor(
-            self.Q,
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.Q, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.k_3dim_tensor = paddle.to_tensor(
-            self.K,
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.K, dtype=self.dtype, place=self.place, stop_gradient=False)
         self.v_3dim_tensor = paddle.to_tensor(
-            self.V,
-            dtype=self.dtype,
-            place=self.place,
-            stop_gradient=False)
+            self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
         self.attn_mask = paddle.to_tensor(
             np.ones((batch_size, seq_len)), place=self.place)

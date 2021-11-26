@@ -53,30 +53,6 @@ def reset_excluded_layers(main_program=None):
     ASPHelper.reset_excluded_layers(main_program=main_program)
 
 
-# def add_supported_layer(layer, pruning_func=None):
-#     r"""
-#     Add supported layers and its corresponding pruning functino.
-
-#     Args:
-#         name (string|Layer): The name or type of layer, needed to support. If layer is `Layer` then 
-#         it would be turn to string internally. ASP would use this name to match parameter's name and call 
-#         its the corresponding pruning function.
-#         pruning_func (function, optional): a function type which receives five argument (weight_nparray,
-#         m, n, func_name, param_name), weight_nparray is a nparray of weight, param_name is the name of weight,
-#         m, n, and func_name, please see `prune_model` for details.
-#     """
-#     name = None
-#     if isinstance(layer, str):
-#         name = layer
-#     elif issubclass(layer, paddle.fluid.dygraph.layers.Layer):
-#         name = paddle.fluid.dygraph.layers._convert_camel_to_snake(
-#             layer.__name__)
-#     else:
-#         assert "The type of layer should be string of Layer, but got {}!".format(
-#             type(layer))
-#     ASPHelper.add_supported_layer(name, pruning_func)
-
-
 def decorate(optimizer):
     r"""
     Wrap the given optimizer as a OptimizerWithSparsityGuarantee, 
@@ -315,7 +291,8 @@ class ASPHelper(object):
 
                 weight_pruned_nparray, weight_sparse_mask = \
                     prune_func(weight_nparray, m, n, func_name, param.name)
-                weight_pruned_nparray = weight_pruned_nparray.astype(weight_nparray.dtype)
+                weight_pruned_nparray = weight_pruned_nparray.astype(
+                    weight_nparray.dtype)
                 weight_tensor.set(weight_pruned_nparray, place)
 
                 if with_mask:
@@ -326,33 +303,11 @@ class ASPHelper(object):
                         ' and initialization (exe.run(startup_program)) first!'.format(ASPHelper._get_mask_name(param.name))
                     weight_mask_tensor = weight_mask_param.get_tensor()
                     weight_sparse_mask = weight_sparse_mask.astype(
-                                        np.array(weight_mask_tensor).dtype)
+                        np.array(weight_mask_tensor).dtype)
                     weight_mask_tensor.set(weight_sparse_mask, place)
                 asp_info.update_masks(param.name, weight_sparse_mask)
         return asp_info.masks.copy()
 
-    @staticmethod
-    def _default_pruning(weight_nparray, m, n, func_name, param_name):
-
-        checked_func_name = sparsity.CheckMethod.get_checking_method(func_name)
-
-        # The double transpose ops here make sure pruning direction consistent with cuSparseLt.
-        # SPMMA in cuSparseLt: D = (AxB) + C, where matrix A (mxk) is sparse matrix.
-        # cuSparseLt would prune matrix A along k dimension.
-        # In sparse training, layer weight matriices is viewed sparse matrix A, so
-        # the math fomula should be 'Act(WX + b)'. However, default fomula in PaddlePaddle
-        #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed 
-        # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension 
-        # of W^T, which is m dimension of W. Moreove, all mask generating functions in 
-        # sparsity/utils is row-major pruning. That is the reason we have to transpose weight 
-        # matrices beforce invoking create_mask. Then we transpose the result maks to make 
-        # sure its shape to be the same as the input weight.
-        weight_sparse_mask = sparsity.create_mask(
-            weight_nparray.T, func_name=func_name, n=n, m=m).T
-        weight_pruned_nparray = np.multiply(weight_nparray, weight_sparse_mask)
-        assert sparsity.check_sparsity(weight_pruned_nparray.T,  n=n, m=m, func_name=checked_func_name), \
-                        'Pruning {} weight matrix failure!!!'.format(param_name)
-        return weight_pruned_nparray, weight_sparse_mask
 
     @staticmethod
     def _get_mask_name(param_name):

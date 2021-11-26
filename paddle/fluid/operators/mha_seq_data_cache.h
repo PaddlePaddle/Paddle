@@ -14,31 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <vector>
 #include <unordered_map>
+#include <vector>
 namespace paddle {
 
 class MHASeqData {
-public:
-    memory::allocation::AllocationPtr qkvo_seq_len = nullptr;
-    memory::allocation::AllocationPtr lo_hi_windows = nullptr;
+ public:
+  memory::allocation::AllocationPtr qkvo_seq_len = nullptr;
+  memory::allocation::AllocationPtr lo_hi_windows = nullptr;
 };
 
 class MHASeqDataSingleton {
-public:
-    static MHASeqDataSingleton& Instance() {
-        static MHASeqDataSingleton instance;
-        return instance;
-    }
+ public:
+  static MHASeqDataSingleton& Instance() {
+    static MHASeqDataSingleton instance;
+    return instance;
+  }
 
-    MHASeqDataSingleton(MHASeqDataSingleton const&) = delete;
-    void operator=(MHASeqDataSingleton const&) = delete;
+  MHASeqDataSingleton(MHASeqDataSingleton const&) = delete;
+  void operator=(MHASeqDataSingleton const&) = delete;
 
-    MHASeqData& Data(std::string key) { return map_[key]; }
+  MHASeqData& Data(std::string key) { return map_[key]; }
 
-private:
-    MHASeqDataSingleton() {}
-    std::unordered_map<std::string, MHASeqData> map_;
+ private:
+  MHASeqDataSingleton() {}
+  std::unordered_map<std::string, MHASeqData> map_;
 };
 
-} // namespace paddle
+}  // namespace paddle

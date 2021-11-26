@@ -18,8 +18,8 @@ limitations under the License. */
 #include <cudnn.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/operators/mha_seq_data_cache.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +33,7 @@ class MHAMetaData {
   cudnnSeqDataDescriptor_t o_desc = nullptr;
   cudnnHandle_t cudnn_handle = nullptr;
 
-//   cudaStream_t memcpy_stream = nullptr;
+  //   cudaStream_t memcpy_stream = nullptr;
   cudaEvent_t memcpy_event = nullptr;
 
   memory::allocation::AllocationPtr workspace = nullptr;
@@ -133,7 +133,7 @@ class MHAKernel : public framework::OpKernel<T> {
 
     const Tensor* qo_kv_slen = context.Input<Tensor>("QO_KV_Seqlen");
     const int* qo_kv_slen_data = qo_kv_slen->data<int>();
-    int *qo_kv_slen_data_host;
+    int* qo_kv_slen_data_host;
     memory::allocation::AllocationPtr qo_kv_slen_allc_ptr = nullptr;
 
     const Tensor* low_high_windows = context.Input<Tensor>("low_high_windows");
@@ -141,37 +141,43 @@ class MHAKernel : public framework::OpKernel<T> {
     memory::allocation::AllocationPtr low_high_windows_ptr = nullptr;
 
     if (seq_data_key.length() > 0) {
-        qo_kv_slen_data_host = reinterpret_cast<int*>(MHASeqDataSingleton::Instance().Data(seq_data_key).qkvo_seq_len->ptr());
-        low_high_windows_data_host = reinterpret_cast<int*>(MHASeqDataSingleton::Instance().Data(seq_data_key).lo_hi_windows->ptr());
+      qo_kv_slen_data_host =
+          reinterpret_cast<int*>(MHASeqDataSingleton::Instance()
+                                     .Data(seq_data_key)
+                                     .qkvo_seq_len->ptr());
+      low_high_windows_data_host =
+          reinterpret_cast<int*>(MHASeqDataSingleton::Instance()
+                                     .Data(seq_data_key)
+                                     .lo_hi_windows->ptr());
     } else {
-        platform::Place host_pinned_place = platform::CUDAPinnedPlace();
+      platform::Place host_pinned_place = platform::CUDAPinnedPlace();
 
-        size_t qkvo_seqlen_size = qo_kv_slen->dims()[0] * sizeof(int);
-        qo_kv_slen_allc_ptr = memory::Alloc(host_pinned_place, qkvo_seqlen_size);
+      size_t qkvo_seqlen_size = qo_kv_slen->dims()[0] * sizeof(int);
+      qo_kv_slen_allc_ptr = memory::Alloc(host_pinned_place, qkvo_seqlen_size);
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaMemcpy(qo_kv_slen_allc_ptr->ptr(),
+                     reinterpret_cast<const void*>(qo_kv_slen_data),
+                     qkvo_seqlen_size, cudaMemcpyDeviceToHost));
+      qo_kv_slen_data_host = reinterpret_cast<int*>(qo_kv_slen_allc_ptr->ptr());
+
+      size_t low_high_windows_size = 2 * seq_len * sizeof(int);
+      low_high_windows_ptr =
+          memory::Alloc(host_pinned_place, low_high_windows_size);
+      if (low_high_windows) {
+        const int* low_high_windows_data = low_high_windows->data<int>();
         PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaMemcpy(qo_kv_slen_allc_ptr->ptr(),
-                    reinterpret_cast<const void*>(qo_kv_slen_data),
-                    qkvo_seqlen_size,
-                    cudaMemcpyDeviceToHost));
-        qo_kv_slen_data_host = reinterpret_cast<int*>(qo_kv_slen_allc_ptr->ptr());
-
-        size_t low_high_windows_size = 2*seq_len * sizeof(int);
-        low_high_windows_ptr = memory::Alloc(host_pinned_place, low_high_windows_size);
-        if (low_high_windows) {
-            const int* low_high_windows_data = low_high_windows->data<int>();
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                cudaMemcpy(low_high_windows_ptr->ptr(),
-                        reinterpret_cast<const void*>(low_high_windows_data),
-                        low_high_windows_size,
-                        cudaMemcpyDeviceToHost));
-        } else {
-            int *lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
-            for (int i=0; i<seq_len; ++i) {
-                lo_hi_ptr[i] = 0;
-                lo_hi_ptr[i+seq_len] = INT_MAX;
-            }
+            cudaMemcpy(low_high_windows_ptr->ptr(),
+                       reinterpret_cast<const void*>(low_high_windows_data),
+                       low_high_windows_size, cudaMemcpyDeviceToHost));
+      } else {
+        int* lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
+        for (int i = 0; i < seq_len; ++i) {
+          lo_hi_ptr[i] = 0;
+          lo_hi_ptr[i + seq_len] = INT_MAX;
         }
-        low_high_windows_data_host = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
+      }
+      low_high_windows_data_host =
+          reinterpret_cast<int*>(low_high_windows_ptr->ptr());
     }
 
     auto dtype = platform::CudnnDataType<T>::type;
@@ -233,7 +239,7 @@ class MHAKernel : public framework::OpKernel<T> {
 
     int dimA[CUDNN_SEQDATA_DIM_COUNT];
     dimA[CUDNN_SEQDATA_VECT_DIM] = q->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = q->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = q->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
@@ -242,25 +248,25 @@ class MHAKernel : public framework::OpKernel<T> {
         qo_kv_slen_data_host, nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = k->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).k_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        qo_kv_slen_data_host+batch_size, nullptr));
+        qo_kv_slen_data_host + batch_size, nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = v->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).v_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        qo_kv_slen_data_host+batch_size, nullptr));
+        qo_kv_slen_data_host + batch_size, nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1; // not support beam_dim currently.
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
     dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = o->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
@@ -279,10 +285,10 @@ class MHAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
-        low_high_windows_data_host, low_high_windows_data_host+seq_len, 
-        qo_kv_slen_data, qo_kv_slen_data+batch_size,
-        MHASingleton::Instance().Data(key).q_desc, q_data,
-        residuals, MHASingleton::Instance().Data(key).k_desc, k_data,
+        low_high_windows_data_host, low_high_windows_data_host + seq_len,
+        qo_kv_slen_data, qo_kv_slen_data + batch_size,
+        MHASingleton::Instance().Data(key).q_desc, q_data, residuals,
+        MHASingleton::Instance().Data(key).k_desc, k_data,
         MHASingleton::Instance().Data(key).v_desc, v_data,
         MHASingleton::Instance().Data(key).o_desc, o_data,
         MHASingleton::Instance().Data(key).weights_size, w_data,
@@ -323,27 +329,31 @@ class MHAGradKernel : public framework::OpKernel<T> {
     int* low_high_windows_data_host;
     memory::allocation::AllocationPtr low_high_windows_ptr = nullptr;
     if (seq_data_key.length() > 0) {
-        low_high_windows_data_host = reinterpret_cast<int*>(MHASeqDataSingleton::Instance().Data(seq_data_key).lo_hi_windows->ptr());
+      low_high_windows_data_host =
+          reinterpret_cast<int*>(MHASeqDataSingleton::Instance()
+                                     .Data(seq_data_key)
+                                     .lo_hi_windows->ptr());
     } else {
-        platform::Place host_pinned_place = platform::CUDAPinnedPlace();
+      platform::Place host_pinned_place = platform::CUDAPinnedPlace();
 
-        size_t low_high_windows_size = 2*seq_len * sizeof(int);
-        low_high_windows_ptr = memory::Alloc(host_pinned_place, low_high_windows_size);
-        if (low_high_windows) {
-            const int* low_high_windows_data = low_high_windows->data<int>();
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                cudaMemcpy(low_high_windows_ptr->ptr(),
-                        reinterpret_cast<const void*>(low_high_windows_data),
-                        low_high_windows_size,
-                        cudaMemcpyDeviceToHost));
-        } else {
-            int *lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
-            for (int i=0; i<seq_len; ++i) {
-                lo_hi_ptr[i] = 0;
-                lo_hi_ptr[i+seq_len] = INT_MAX;
-            }
+      size_t low_high_windows_size = 2 * seq_len * sizeof(int);
+      low_high_windows_ptr =
+          memory::Alloc(host_pinned_place, low_high_windows_size);
+      if (low_high_windows) {
+        const int* low_high_windows_data = low_high_windows->data<int>();
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaMemcpy(low_high_windows_ptr->ptr(),
+                       reinterpret_cast<const void*>(low_high_windows_data),
+                       low_high_windows_size, cudaMemcpyDeviceToHost));
+      } else {
+        int* lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
+        for (int i = 0; i < seq_len; ++i) {
+          lo_hi_ptr[i] = 0;
+          lo_hi_ptr[i + seq_len] = INT_MAX;
         }
-        low_high_windows_data_host = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
+      }
+      low_high_windows_data_host =
+          reinterpret_cast<int*>(low_high_windows_ptr->ptr());
     }
 
     const T* dout_data = dout->data<T>();
@@ -390,8 +400,8 @@ class MHAGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnMultiHeadAttnBackwardData(
             cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-            low_high_windows_data_host, low_high_windows_data_host+seq_len,
-            qo_kv_slen_data, qo_kv_slen_data+q->dims()[0],
+            low_high_windows_data_host, low_high_windows_data_host + seq_len,
+            qo_kv_slen_data, qo_kv_slen_data + q->dims()[0],
             MHASingleton::Instance().Data(key).o_desc, dout_data,
             MHASingleton::Instance().Data(key).q_desc, dq_data, q_data,
             MHASingleton::Instance().Data(key).k_desc, dk_data, k_data,

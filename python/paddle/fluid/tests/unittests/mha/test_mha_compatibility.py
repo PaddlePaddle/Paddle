@@ -71,6 +71,7 @@ class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
         seq_data_info = self.seq_info_infer(attn_mask)
         return self.cudnn_mha(query, key, value, seq_data_info)
 
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
@@ -98,14 +99,13 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
         self.v_tensor = paddle.to_tensor(
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
-        self.attn_mask = np.ones((batch_size, nheads, seq_len, seq_len), dtype=np.int32)
+        self.attn_mask = np.ones(
+            (batch_size, nheads, seq_len, seq_len), dtype=np.int32)
         self.attn_mask_tensor = paddle.to_tensor(
-                self.attn_mask,
-                dtype=np.int32,
-                place=self.place)
+            self.attn_mask, dtype=np.int32, place=self.place)
 
-        self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor)
-
+        self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor,
+                                         self.v_tensor, self.attn_mask_tensor)
 
         paddle.enable_static()
 
@@ -115,9 +115,12 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
         main_prog, startup_prog, inputs, outputs = \
             CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
                 self.cudnn_mha, self.exe, [self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor])
-        paddle.static.save_inference_model(self.path_with_coverting,
-                                       inputs,
-                                       outputs, self.exe, program=main_prog)
+        paddle.static.save_inference_model(
+            self.path_with_coverting,
+            inputs,
+            outputs,
+            self.exe,
+            program=main_prog)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -129,14 +132,17 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
             paddle.static.load_inference_model(self.path_with_coverting, self.exe)
 
         loaded_output = self.exe.run(inference_program,
-                feed={feed_target_names[0]: self.Q,
-                        feed_target_names[1]: self.K,
-                        feed_target_names[2]: self.V,
-                        feed_target_names[3]: self.attn_mask},
-                fetch_list=fetch_targets)
+                                     feed={
+                                         feed_target_names[0]: self.Q,
+                                         feed_target_names[1]: self.K,
+                                         feed_target_names[2]: self.V,
+                                         feed_target_names[3]: self.attn_mask
+                                     },
+                                     fetch_list=fetch_targets)
 
         self.assertTrue(
-            compare(self.output_ref.numpy(), loaded_output[0], self.atol, self.rtol),
+            compare(self.output_ref.numpy(), loaded_output[0], self.atol,
+                    self.rtol),
             "[TestCUDNNMHALayerConvertToPaddleMHA] outputs are miss-matched.")
 
     def test_with_converting_and_paddle_inference(self):
@@ -220,13 +226,13 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
         self.v_tensor = paddle.to_tensor(
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
-        self.attn_mask = np.ones((batch_size, nheads, seq_len, seq_len), dtype=np.int32)
+        self.attn_mask = np.ones(
+            (batch_size, nheads, seq_len, seq_len), dtype=np.int32)
         self.attn_mask_tensor = paddle.to_tensor(
-                self.attn_mask,
-                dtype=np.int32,
-                place=self.place)
+            self.attn_mask, dtype=np.int32, place=self.place)
 
-        self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor)
+        self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor,
+                                         self.v_tensor, self.attn_mask_tensor)
 
         paddle.enable_static()
 
@@ -236,9 +242,12 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
         main_prog, startup_prog, inputs, outputs = \
             CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
                 self.cudnn_mha, self.exe, [self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor])
-        paddle.static.save_inference_model(self.path_with_coverting,
-                                       inputs,
-                                       outputs, self.exe, program=main_prog)
+        paddle.static.save_inference_model(
+            self.path_with_coverting,
+            inputs,
+            outputs,
+            self.exe,
+            program=main_prog)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -250,15 +259,19 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
             paddle.static.load_inference_model(self.path_with_coverting, self.exe)
 
         loaded_output = self.exe.run(inference_program,
-                feed={feed_target_names[0]: self.Q,
-                        feed_target_names[1]: self.K,
-                        feed_target_names[2]: self.V,
-                        feed_target_names[3]: self.attn_mask},
-                fetch_list=fetch_targets)
+                                     feed={
+                                         feed_target_names[0]: self.Q,
+                                         feed_target_names[1]: self.K,
+                                         feed_target_names[2]: self.V,
+                                         feed_target_names[3]: self.attn_mask
+                                     },
+                                     fetch_list=fetch_targets)
 
         self.assertTrue(
-            compare(self.output_ref.numpy(), loaded_output[0], self.atol, self.rtol),
-            "[TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic] outputs are miss-matched.")
+            compare(self.output_ref.numpy(), loaded_output[0], self.atol,
+                    self.rtol),
+            "[TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic] outputs are miss-matched."
+        )
 
     def test_with_converting_and_paddle_inference(self):
         model_file = self.path_with_coverting + ".pdmodel"
@@ -292,7 +305,8 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
         output_data = output_handle.copy_to_cpu()
         self.assertTrue(
             compare(self.output_ref.numpy(), output_data, self.atol, self.rtol),
-            "[TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic] outputs are miss-matched.")
+            "[TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic] outputs are miss-matched."
+        )
 
 
 if __name__ == "__main__":

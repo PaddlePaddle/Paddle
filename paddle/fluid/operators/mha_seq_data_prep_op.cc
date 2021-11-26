@@ -26,8 +26,10 @@ class MHASeqDataPrepOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("QKVO_seqlen"), "Input", "QKVO_seqlen", "MHASeqDataPrep");
-    OP_INOUT_CHECK(ctx->HasInput("lo_hi_windows"), "Input", "lo_hi_windows", "MHASeqDataPrep");
+    OP_INOUT_CHECK(ctx->HasInput("QKVO_seqlen"), "Input", "QKVO_seqlen",
+                   "MHASeqDataPrep");
+    OP_INOUT_CHECK(ctx->HasInput("lo_hi_windows"), "Input", "lo_hi_windows",
+                   "MHASeqDataPrep");
 
     auto qkvo_input_dims = ctx->GetInputDim("QKVO_seqlen");
 
@@ -44,9 +46,12 @@ class MHASeqDataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("QKVO_seqlen", "(Tensor), QKVO_seqlen");
     AddInput("lo_hi_windows", "(Tensor), lo_hi_windows");
 
-    // This is for connecting computing graphs with MHA Op when converting dygraph to static.
-    // Since to_static would build ParallelExecutor which would run ops async if there is 
-    // no dependence. Moreover, static.save_inference_model would prune graphs. If the nodes is 
+    // This is for connecting computing graphs with MHA Op when converting
+    // dygraph to static.
+    // Since to_static would build ParallelExecutor which would run ops async if
+    // there is
+    // no dependence. Moreover, static.save_inference_model would prune graphs.
+    // If the nodes is
     // not related the data flow from inputs to outputs, it would be removed.
     AddOutput("fake_output", "(bool), fake_output");
 
@@ -60,11 +65,11 @@ class MHASeqDataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mha_seq_data_prep, ops::MHASeqDataPrepOp, ops::MHASeqDataPrepOpMaker);
+REGISTER_OPERATOR(mha_seq_data_prep, ops::MHASeqDataPrepOp,
+                  ops::MHASeqDataPrepOpMaker);
 
 namespace plat = paddle::platform;
 
 REGISTER_OP_CPU_KERNEL(
     mha_seq_data_prep,
     ops::MHASeqDataPrepKernel<paddle::platform::CPUDeviceContext, int32_t>);
-

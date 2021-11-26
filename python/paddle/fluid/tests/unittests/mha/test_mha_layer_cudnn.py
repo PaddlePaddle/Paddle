@@ -47,7 +47,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     V = (np.random.random(
         (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
-    W = np.concatenate((W, np.zeros((4*vec_size,))), dtype=np.single)
+    W = np.concatenate((W, np.zeros((4 * vec_size, ))), dtype=np.single)
 
     stride = vec_size * vec_size
     WQ = W[0:stride].reshape((vec_size, vec_size))
@@ -96,7 +96,8 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         self.v_3dim_tensor = paddle.to_tensor(
             self.V, dtype=self.dtype, place=self.place, stop_gradient=False)
 
-        attn_mask = paddle.to_tensor(np.ones((batch_size, seq_len)), place=self.place)
+        attn_mask = paddle.to_tensor(
+            np.ones((batch_size, seq_len)), place=self.place)
         seq_infer = CUDNNSeqInfoInfer()
         self.seq_data = seq_infer(attn_mask)
 
@@ -124,9 +125,10 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
                                       self.v_3dim_tensor, self.attn_tensor)
             cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
                                           self.v_tensor, self.seq_data)
-        self.assertTrue(compare(ref_output.numpy(), cudnn_output.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayer] outputs are miss-matched.")
-        print(f'CUDNNMultiHeadAttention Layer {self.dtype} fwd passed.')
+        self.assertTrue(
+            compare(ref_output.numpy(),
+                    cudnn_output.numpy(), self.atol, self.rtol),
+            "[Test*CUDNNMHALayer] outputs are miss-matched.")
 
     def test_full_grads(self):
         self.q_tensor.stop_gradient = False
@@ -137,9 +139,6 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         self.v_3dim_tensor.stop_gradient = False
 
         self._cehck_grads()
-        print(
-            f'CUDNNMultiHeadAttention Layer {self.dtype} bwd with stop_gradient passed.'
-        )
 
     def test_weight_grads_only(self):
         self.q_tensor.stop_gradient = True
@@ -150,7 +149,6 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         self.v_3dim_tensor.stop_gradient = True
 
         self._cehck_grads(False)
-        print(f'CUDNNMultiHeadAttention Layer {self.dtype} bwd passed.')
 
     def _cehck_grads(self, check_data_grads=True):
 
@@ -176,20 +174,22 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         ref_weight_grad = self._get_grads_from_ref()
         cudnn_weight_grad = self.cudnn_mha.weight.grad.numpy()
 
-        self.assertTrue(compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
+        self.assertTrue(
+            compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
             "[Test*CUDNNMHALayer] weight_grads are miss-matched.")
         if check_data_grads:
             self.assertTrue(
-                compare(self.q_3dim_tensor.grad.numpy(), self.q_tensor.grad.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayer] Q_grads are miss-matched.")
+                compare(self.q_3dim_tensor.grad.numpy(),
+                        self.q_tensor.grad.numpy(), self.atol, self.rtol),
+                "[Test*CUDNNMHALayer] Q_grads are miss-matched.")
             self.assertTrue(
-                compare(self.k_3dim_tensor.grad.numpy(), self.k_tensor.grad.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayer] K_grads are miss-matched.")
+                compare(self.k_3dim_tensor.grad.numpy(),
+                        self.k_tensor.grad.numpy(), self.atol, self.rtol),
+                "[Test*CUDNNMHALayer] K_grads are miss-matched.")
             self.assertTrue(
-                compare(self.v_3dim_tensor.grad.numpy(), self.v_tensor.grad.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayer] V_grads are miss-matched.")
-
-            
+                compare(self.v_3dim_tensor.grad.numpy(),
+                        self.v_tensor.grad.numpy(), self.atol, self.rtol),
+                "[Test*CUDNNMHALayer] V_grads are miss-matched.")
 
     def _get_grads_from_ref(self):
         return np.concatenate(
@@ -211,6 +211,7 @@ class TestFP16CUDNNMHALayer(TestFP32CUDNNMHALayer):
         self.dtype = np.float16
         self.atol = 1e-3
         self.rtol = 1e-2
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
@@ -238,11 +239,13 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
             dtype=np.bool,
             place=self.place)
 
-        attn_mask = paddle.to_tensor(np.ones((batch_size, seq_len)), place=self.place)
+        attn_mask = paddle.to_tensor(
+            np.ones((batch_size, seq_len)), place=self.place)
         seq_infer = CUDNNSeqInfoInfer()
         self.seq_data = seq_infer(attn_mask)
 
-        self.cudnn_mha = CUDNNMultiHeadAttention(vec_size, nheads, seq_data_infer=seq_infer)
+        self.cudnn_mha = CUDNNMultiHeadAttention(
+            vec_size, nheads, seq_data_infer=seq_infer)
         self.cudnn_mha.weight.set_value(self.W)
 
         self.q_tensor = paddle.to_tensor(
@@ -279,9 +282,10 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
             cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
                                           self.v_tensor, self.seq_data)
 
-        self.assertTrue(compare(ref_output.numpy(), cudnn_output.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayerWithSeqDataCache] outputs are miss-matched.")
-        print(f'TestFP32CUDNNMHALayerWithSeqDataCache Layer {self.dtype} fwd passed.')
+        self.assertTrue(
+            compare(ref_output.numpy(),
+                    cudnn_output.numpy(), self.atol, self.rtol),
+            "[Test*CUDNNMHALayerWithSeqDataCache] outputs are miss-matched.")
 
     def test_full_grads(self):
         self.q_tensor.stop_gradient = False
@@ -292,9 +296,6 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
         self.v_3dim_tensor.stop_gradient = False
 
         self._cehck_grads()
-        print(
-            f'TestFP32CUDNNMHALayerWithSeqDataCache Layer {self.dtype} bwd with stop_gradient passed.'
-        )
 
     def test_weight_grads_only(self):
         self.q_tensor.stop_gradient = True
@@ -305,7 +306,6 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
         self.v_3dim_tensor.stop_gradient = True
 
         self._cehck_grads(False)
-        print(f'TestFP32CUDNNMHALayerWithSeqDataCache Layer {self.dtype} bwd passed.')
 
     def _cehck_grads(self, check_data_grads=True):
 
@@ -330,18 +330,23 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
 
         ref_weight_grad = self._get_grads_from_ref()
         cudnn_weight_grad = self.cudnn_mha.weight.grad.numpy()
-        self.assertTrue(compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayerWithSeqDataCache] weight_grads are miss-matched.")
+        self.assertTrue(
+            compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
+            "[Test*CUDNNMHALayerWithSeqDataCache] weight_grads are miss-matched."
+        )
         if check_data_grads:
             self.assertTrue(
-                compare(self.q_3dim_tensor.grad.numpy(), self.q_tensor.grad.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayerWithSeqDataCache] Q_grads are miss-matched.")
+                compare(self.q_3dim_tensor.grad.numpy(),
+                        self.q_tensor.grad.numpy(), self.atol, self.rtol),
+                "[Test*CUDNNMHALayerWithSeqDataCache] Q_grads are miss-matched.")
             self.assertTrue(
-                compare(self.k_3dim_tensor.grad.numpy(), self.k_tensor.grad.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayerWithSeqDataCache] K_grads are miss-matched.")
+                compare(self.k_3dim_tensor.grad.numpy(),
+                        self.k_tensor.grad.numpy(), self.atol, self.rtol),
+                "[Test*CUDNNMHALayerWithSeqDataCache] K_grads are miss-matched.")
             self.assertTrue(
-                compare(self.v_3dim_tensor.grad.numpy(), self.v_tensor.grad.numpy(), self.atol, self.rtol),
-                        "[Test*CUDNNMHALayerWithSeqDataCache] V_grads are miss-matched.")
+                compare(self.v_3dim_tensor.grad.numpy(),
+                        self.v_tensor.grad.numpy(), self.atol, self.rtol),
+                "[Test*CUDNNMHALayerWithSeqDataCache] V_grads are miss-matched.")
 
     def _get_grads_from_ref(self):
         return np.concatenate(
@@ -355,13 +360,16 @@ class TestFP32CUDNNMHALayerWithSeqDataCache(unittest.TestCase):
              self.ref_mha.out_proj.bias.grad.numpy().flatten()),
             axis=0)
 
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFP16CUDNNMHALayerWithSeqDataCache(TestFP32CUDNNMHALayerWithSeqDataCache):
+class TestFP16CUDNNMHALayerWithSeqDataCache(
+        TestFP32CUDNNMHALayerWithSeqDataCache):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-3
         self.rtol = 1e-2
+
 
 if __name__ == "__main__":
     unittest.main()

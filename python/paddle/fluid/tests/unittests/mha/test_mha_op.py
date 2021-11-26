@@ -29,9 +29,8 @@ def _softmax(x):
     return e_x / e_x.sum(axis=-1, keepdims=True)
 
 
-def _get_attn_output(q, k, v, wq, wk, wv, wo,
-                               bq, bk, bv, bo, attn_mask,
-                               seq_len, nheads, vec_size, sm_scaler):
+def _get_attn_output(q, k, v, wq, wk, wv, wo, bq, bk, bv, bo, attn_mask,
+                     seq_len, nheads, vec_size, sm_scaler):
 
     origin_dtype = q.dtype
     np_compute_dtype = np.double if origin_dtype == np.double else np.single
@@ -54,7 +53,7 @@ def _get_attn_output(q, k, v, wq, wk, wv, wo,
         (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
 
     beta = np.matmul(q_bar, k_bar.transpose((0, 1, 3, 2))) * sm_scaler
-    beta = beta + ((attn_mask-1.0) * 1e9)
+    beta = beta + ((attn_mask - 1.0) * 1e9)
     alpha = _softmax(beta)
 
     h_bar = np.matmul(alpha, v_bar).transpose((0, 2, 1, 3)).reshape(
@@ -70,8 +69,10 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
         (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
         (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
-    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
-    B =  np.random.uniform(low=-0.01, high=0.01, size=(4 * vec_size,)).astype(dtype)
+    W = np.random.uniform(
+        low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
+    B = np.random.uniform(
+        low=-0.01, high=0.01, size=(4 * vec_size, )).astype(dtype)
     W = np.concatenate((W, B), dtype=dtype)
 
     stride = vec_size * vec_size
@@ -81,10 +82,10 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     bias_start = 4 * stride
-    BQ = W[bias_start: bias_start + vec_size]
-    BK = W[bias_start + vec_size:bias_start + 2*vec_size]
-    BV = W[bias_start + 2*vec_size: bias_start + 3*vec_size]
-    BO = W[bias_start + 3*vec_size: bias_start + 4*vec_size]
+    BQ = W[bias_start:bias_start + vec_size]
+    BK = W[bias_start + vec_size:bias_start + 2 * vec_size]
+    BV = W[bias_start + 2 * vec_size:bias_start + 3 * vec_size]
+    BO = W[bias_start + 3 * vec_size:bias_start + 4 * vec_size]
 
     return (Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO)
 
@@ -106,8 +107,10 @@ def _generate_varlen_data(seq_lens, vec_size, dtype):
     Q = np.concatenate(Qs, axis=1)
     K = np.concatenate(Ks, axis=1)
     V = np.concatenate(Vs, axis=1)
-    W = np.random.uniform(low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
-    B =  np.random.uniform(low=-0.01, high=0.01, size=(4 * vec_size,)).astype(dtype)
+    W = np.random.uniform(
+        low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
+    B = np.random.uniform(
+        low=-0.01, high=0.01, size=(4 * vec_size, )).astype(dtype)
     W = np.concatenate((W, B), dtype=dtype)
 
     stride = vec_size * vec_size
@@ -117,10 +120,10 @@ def _generate_varlen_data(seq_lens, vec_size, dtype):
     WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
 
     bias_start = 4 * stride
-    BQ = W[bias_start: bias_start + vec_size]
-    BK = W[bias_start + vec_size:bias_start + 2*vec_size]
-    BV = W[bias_start + 2*vec_size: bias_start + 3*vec_size]
-    BO = W[bias_start + 3*vec_size: bias_start + 4*vec_size]
+    BQ = W[bias_start:bias_start + vec_size]
+    BK = W[bias_start + vec_size:bias_start + 2 * vec_size]
+    BV = W[bias_start + 2 * vec_size:bias_start + 3 * vec_size]
+    BO = W[bias_start + 3 * vec_size:bias_start + 4 * vec_size]
     return (Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO)
 
 
@@ -167,7 +170,7 @@ class TestMHAOpFP16(OpTest):
             'K': K,
             'V': V,
             'W': W,
-            'QO_KV_Seqlen': np.concatenate((qo_slen,kv_slen))
+            'QO_KV_Seqlen': np.concatenate((qo_slen, kv_slen))
         }
 
         self.attrs = {
@@ -186,7 +189,8 @@ class TestMHAOpFP16(OpTest):
         }
 
         O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, BQ, BK, BV, BO, attn_mask,
-                             seq_len, nheads, vec_size, self.attrs["attn_sm_scaler"])
+                             seq_len, nheads, vec_size,
+                             self.attrs["attn_sm_scaler"])
         self.outputs = {'O': O}
 
     def init_dtype_type(self):
@@ -199,7 +203,6 @@ class TestMHAOpFP16(OpTest):
                 self.place):
             return
         self.check_output_with_place(self.place, atol=self.atol)
-        print(f'MHA {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -209,7 +212,6 @@ class TestMHAOpFP16(OpTest):
             self.place, ['Q', 'K', 'V', 'W'],
             'O',
             max_relative_error=self.grad_rtol)
-        print(f'MHA {self.dtype} bwd passed.')
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -260,7 +262,7 @@ class TestMHAOpPadVarLenFP16(OpTest):
             'K': K,
             'V': V,
             'W': W,
-            'QO_KV_Seqlen': np.concatenate((qo_slen,kv_slen))
+            'QO_KV_Seqlen': np.concatenate((qo_slen, kv_slen))
         }
 
         self.attrs = {
@@ -279,7 +281,8 @@ class TestMHAOpPadVarLenFP16(OpTest):
         }
 
         O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, BQ, BK, BV, BO, attn_mask,
-                             max_seq_len, nheads, vec_size, self.attrs["attn_sm_scaler"])
+                             max_seq_len, nheads, vec_size,
+                             self.attrs["attn_sm_scaler"])
 
         # The output of padding part does not need to care.
         # Here we set output projection's bias to make reference be the same as cuDNN's output.
@@ -298,7 +301,6 @@ class TestMHAOpPadVarLenFP16(OpTest):
                 self.place):
             return
         self.check_output_with_place(self.place, atol=self.atol)
-        print(f'MHA padded varlen {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -308,7 +310,6 @@ class TestMHAOpPadVarLenFP16(OpTest):
             self.place, ['Q', 'K', 'V', 'W'],
             'O',
             max_relative_error=self.grad_rtol)
-        print(f'MHA padded varlen {self.dtype} bwd passed.')
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -345,7 +346,7 @@ class TestMHAOpVarLenFP16(OpTest):
         max_seq_len = 4
         vec_size = 8
         proj_size = vec_size // nheads
-        
+
         qo_slen, kv_slen, lo_win, hi_win = _generate_seq_len(
             batch_size, min_seq_len=1, max_seq_len=max_seq_len, is_pad=False)
         Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO = \
@@ -381,13 +382,13 @@ class TestMHAOpVarLenFP16(OpTest):
         offset = np.insert(np.cumsum(qo_slen), 0, 0)
         O = None
         for sid, slen in enumerate(qo_slen):
-            sub_o = _get_attn_output(
-                                     Q[0, offset[sid]:offset[sid + 1], :],
+            sub_o = _get_attn_output(Q[0, offset[sid]:offset[sid + 1], :],
                                      K[0, offset[sid]:offset[sid + 1], :],
-                                     V[0, offset[sid]:offset[sid + 1], :],
-                                     WQ, WK, WV, WO, BQ, BK, BV, BO, np.ones((1, nheads, slen, slen)),
-                                     slen, nheads, vec_size,
-                                     self.attrs["attn_sm_scaler"])
+                                     V[0, offset[sid]:offset[sid + 1], :], WQ,
+                                     WK, WV, WO, BQ, BK, BV, BO,
+                                     np.ones(
+                                         (1, nheads, slen, slen)), slen, nheads,
+                                     vec_size, self.attrs["attn_sm_scaler"])
             if O is not None:
                 O = np.concatenate((O, sub_o), axis=1)
             else:
@@ -404,7 +405,6 @@ class TestMHAOpVarLenFP16(OpTest):
                 self.place):
             return
         self.check_output_with_place(self.place, atol=self.atol)
-        print(f'MHA varlen {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -414,7 +414,6 @@ class TestMHAOpVarLenFP16(OpTest):
             self.place, ['Q', 'K', 'V', 'W'],
             'O',
             max_relative_error=self.grad_rtol)
-        print(f'MHA varlen {self.dtype} bwd passed.')
 
 
 class TestMHAOpVarLenFP32(TestMHAOpVarLenFP16):

@@ -18,14 +18,12 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    mha,
-    ops::MHAKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::MHAKernel<plat::CUDADeviceContext, float>,
-    ops::MHAKernel<plat::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(mha,
+                        ops::MHAKernel<plat::CUDADeviceContext, plat::float16>,
+                        ops::MHAKernel<plat::CUDADeviceContext, float>,
+                        ops::MHAKernel<plat::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    mha_grad,
-    ops::MHAGradKernel<plat::CUDADeviceContext, plat::float16>,
+    mha_grad, ops::MHAGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::MHAGradKernel<plat::CUDADeviceContext, float>,
     ops::MHAGradKernel<plat::CUDADeviceContext, double>);

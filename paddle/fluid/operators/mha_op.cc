@@ -25,13 +25,15 @@ class MHAOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "MHA");
-    OP_INOUT_CHECK(ctx->HasInput("QO_KV_Seqlen"), "Input", "QO_KV_Seqlen", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("QO_KV_Seqlen"), "Input", "QO_KV_Seqlen",
+                   "MHA");
 
-    // CUDNN_SEQDATA_DIM_COUNT = 4, mins 1 = 3 due to omit beam_dim currently to have
+    // CUDNN_SEQDATA_DIM_COUNT = 4, mins 1 = 3 due to omit beam_dim currently to
+    // have
     // a same inputs with Paddle's original MHA Layer.
     int QKV_dims_size = CUDNN_SEQDATA_DIM_COUNT - 1;
     auto q_dims = ctx->GetInputDim("Q");
@@ -59,8 +61,8 @@ class MHAOp : public framework::OperatorWithKernel {
                           QKV_dims_size, v_dims.size()));
 
     auto qo_kv_slen_dims = ctx->GetInputDim("QO_KV_Seqlen");
-    if (ctx->IsRuntime()) { 
-      PADDLE_ENFORCE_EQ(qo_kv_slen_dims[0], 2*q_dims[0],
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(qo_kv_slen_dims[0], 2 * q_dims[0],
                         platform::errors::InvalidArgument(
                             "The number of sequence length should be equal"
                             " to 2*(batch size)."));
@@ -68,8 +70,8 @@ class MHAOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("low_high_windows")) {
       auto low_windows = ctx->GetInputDim("low_high_windows");
-      if (ctx->IsRuntime()) { 
-        PADDLE_ENFORCE_EQ(low_windows[0], 2*q_dims[1],
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(low_windows[0], 2 * q_dims[1],
                           platform::errors::InvalidArgument(
                               "The number of low_high_windows should be equal"
                               " to 2*(sequence length)."));
@@ -87,7 +89,7 @@ class MHAOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext &ctx) const {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
@@ -98,8 +100,8 @@ class MHAOp : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
-                                    expected_kernel_type.place_,
-                                    tensor.layout());
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
@@ -111,10 +113,14 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "(Tensor), V");
     AddInput("W", "(Tensor), V");
     AddInput("QO_KV_Seqlen", "(Tensor), QO_KV_Seqlen");
-    AddInput("low_high_windows", "(Tensor), low_windows and high_windows").AsDispensable();
-    // This is for connecting computing graphs with MHA_SEQ_DATA_Prep Op when converting dygraph to static.
-    // Since to_static would build ParallelExecutor which would run ops async if there is 
-    // no dependence. Moreover, static.save_inference_model would prune graphs. If the nodes is 
+    AddInput("low_high_windows", "(Tensor), low_windows and high_windows")
+        .AsDispensable();
+    // This is for connecting computing graphs with MHA_SEQ_DATA_Prep Op when
+    // converting dygraph to static.
+    // Since to_static would build ParallelExecutor which would run ops async if
+    // there is
+    // no dependence. Moreover, static.save_inference_model would prune graphs.
+    // If the nodes is
     // not related the data flow from inputs to outputs, it would be removed.
     AddInput("fake_input", "(bool)").AsDispensable();
 
@@ -141,7 +147,7 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class MHAOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string> &GetInputOutputWithSameType()
       const override {
     static std::unordered_map<std::string, std::string> m{{"Q", /*->*/ "O"}};
     return m;
@@ -152,11 +158,10 @@ class MHAGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("O")), "Input",
                    "O@GRAD", "mha");
     OP_INOUT_CHECK(ctx->HasInput("QO_KV_Seqlen"), "Input", "QO_Seqlen", "mha");
-
 
     std::string var_names[4] = {"Q", "K", "V", "W"};
     for (auto s : var_names) {
@@ -171,7 +176,7 @@ class MHAGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext &ctx) const {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
@@ -182,8 +187,8 @@ class MHAGradOp : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
-                                    expected_kernel_type.place_,
-                                    tensor.layout());
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
