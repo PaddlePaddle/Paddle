@@ -80,8 +80,8 @@ class Carrier final {
       interceptor_idx_to_interceptor_;
 
   std::vector<InterceptorMessage> message_tmp_{};
-  bool creating_interceptors_{true};
   bool is_init_{false};
+  bool creating_interceptors_{true};
 };
 
 }  // namespace distributed
