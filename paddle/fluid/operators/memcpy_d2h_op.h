@@ -41,17 +41,7 @@ class MemcpyD2HFunctor {
 
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
-
-    if (dst_place_type_ == 1) {
-      framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
-                            &out_tensor);
-    } else if (dst_place_type_ == 0) {
-      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
-    }
-    out_tensor.set_lod(lod_tensor.lod());
+    CopyLoDTensor(lod_tensor, out_tensor);
   }
 
   void operator()(const framework::LoDTensorArray &array) const {
@@ -60,20 +50,7 @@ class MemcpyD2HFunctor {
     out_array.resize(array.size());
 
     for (size_t i = 0; i < array.size(); i++) {
-      auto &lod_tensor = array[i];
-      auto &out_tensor = out_array[i];
-      if (dst_place_type_ == 1) {
-        framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
-                              &out_tensor);
-      } else if (dst_place_type_ == 0) {
-        framework::TensorCopySync(lod_tensor, platform::CPUPlace(),
-                                  &out_tensor);
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "memcpy dst_place_type: %d is not supported yet.",
-            dst_place_type_));
-      }
-      out_tensor.set_lod(lod_tensor.lod());
+      CopyLoDTensor(array[i], out_array[i]);
     }
   }
 
@@ -92,6 +69,19 @@ class MemcpyD2HFunctor {
   }
 
  private:
+  void CopyLoDTensor(const framework::LoDTensor &src,
+                     framework::LoDTensor &dst) {  // NOLINT
+    if (dst_place_type_ == 1) {
+      framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
+    } else if (dst_place_type_ == 0) {
+      framework::TensorCopySync(src, platform::CPUPlace(), &dst);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
+    }
+    dst.set_lod(src.lod());
+  }
+
   framework::Variable *out_;
   const platform::DeviceContext &dev_ctx_;
   const int dst_place_type_;
