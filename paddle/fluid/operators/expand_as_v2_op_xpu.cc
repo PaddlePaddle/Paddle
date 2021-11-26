@@ -66,11 +66,11 @@ class ExpandAsV2XPUKernel : public framework::OpKernel<T> {
                 vec_in_dims[i], target_shape[i]));
       }
     }
+
     auto* out0 = context.Output<framework::Tensor>("Out");
-
     framework::DDim out_dims = framework::make_ddim(target_shape);
-
     out0->Resize(out_dims);
+
     auto out0_data = out0->mutable_data<T>(context.GetPlace());
     auto in0_data = in0->data<T>();
 
