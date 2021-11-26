@@ -71,7 +71,7 @@ class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<bool>("use_nesterov",
                   "(bool, default false) "
-                  "Use Nesterov Momentum")
+                  "Use Nesterov Momentum or not.")
         .SetDefault(false);
     AddAttr<std::vector<std::string>>(
         "regularization_method",

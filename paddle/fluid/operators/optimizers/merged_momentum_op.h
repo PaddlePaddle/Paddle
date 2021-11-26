@@ -86,33 +86,43 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     auto params = ctx.MultiInput<framework::Tensor>("Param");
     auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
     size_t n = params.size();
-    PADDLE_ENFORCE_EQ(
-        n, params_out.size(),
-        platform::errors::InvalidArgument(
-            "Output(ParamOut) number must be equal to Input(Param) number."));
+    PADDLE_ENFORCE_EQ(n, params_out.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Output(ParamOut) must be equal to "
+                          "Input(Param), but got the size of Output(ParamOut) "
+                          "is %d, the size of Input(Param) is %d.",
+                          params_out.size(), n));
     for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_EQ(
-          params[i], params_out[i],
-          platform::errors::InvalidArgument(
-              "Input(Param) and Output(ParamOut) must be the same Tensors."));
+      PADDLE_ENFORCE_EQ(params[i], params_out[i],
+                        platform::errors::InvalidArgument(
+                            "The size of Input(Param) and Output(ParamOut) "
+                            "must be the same Tensors."));
     }
 
     auto grads = ctx.MultiInput<framework::Tensor>("Grad");
     PADDLE_ENFORCE_EQ(
         n, grads.size(),
         platform::errors::InvalidArgument(
-            "Input(Grad) number must be equal to Input(Param) number."));
+            "The size of Input(Grad) must be equal to Input(Param), but got "
+            "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
+            grads.size(), n));
 
     auto velocitys = ctx.MultiInput<framework::Tensor>("Velocity");
     PADDLE_ENFORCE_EQ(n, velocitys.size(),
                       platform::errors::InvalidArgument(
-                          "Input(Velocity) number and Input(Param) number."));
+                          "The size of Input(Velocity) must be equal to "
+                          "Input(Param), but got the size of Input(Velocity) "
+                          "is %d, the size of Input(Param) is %d.",
+                          velocitys.size(), n));
 
     auto velocitys_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
     PADDLE_ENFORCE_EQ(
         n, velocitys_out.size(),
-        platform::errors::InvalidArgument("Output(VelocityOut) number must be "
-                                          "equal to Input(Param) number."));
+        platform::errors::InvalidArgument(
+            "The size of Output(VelocityOut) must be "
+            "equal to Input(Param), but got the size of Output(VelocityOut) is "
+            "%d, the size of Input(Param) is %d.",
+            velocitys_out.size(), n));
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_EQ(velocitys[i], velocitys_out[i],
                         platform::errors::InvalidArgument(
@@ -127,12 +137,18 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     if (multi_precision) {
       PADDLE_ENFORCE_EQ(
           n, master_params.size(),
-          platform::errors::InvalidArgument("Input(MasterParam) number must be "
-                                            "equal to Input(Param) number."));
-      PADDLE_ENFORCE_EQ(n, master_params_out.size(),
-                        platform::errors::InvalidArgument(
-                            "Output(MasterParamOut) number must be equal to "
-                            "Input(MasterParam) number."));
+          platform::errors::InvalidArgument(
+              "The size of Input(MasterParam) must be "
+              "equal to Input(Param), but got the size of Input(MasterParam) "
+              "is %d, the size of Input(Param) is %d.",
+              master_params.size(), n));
+      PADDLE_ENFORCE_EQ(
+          n, master_params_out.size(),
+          platform::errors::InvalidArgument(
+              "The size of Output(MasterParamOut) must be equal to "
+              "Input(MasterParam), but got the size of Output(MasterParamOut) "
+              "is %d, the size of Input(Param) is %d.",
+              master_params_out.size(), n));
       for (size_t i = 0; i < n; ++i) {
         PADDLE_ENFORCE_EQ(master_params[i], master_params_out[i],
                           platform::errors::InvalidArgument(
@@ -152,9 +168,14 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     auto rescale_grad = ctx.Attr<float>("rescale_grad");
     auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
     if (lrs.size() != 1) {
-      PADDLE_ENFORCE_EQ(n, lrs.size(), platform::errors::InvalidArgument(
-                                           "Input(LearningRate) number must be "
-                                           "equal to Input(Param) number."));
+      PADDLE_ENFORCE_EQ(
+          n, lrs.size(),
+          platform::errors::InvalidArgument(
+              "If the size of Input(LearningRate) is not 1, the size of "
+              "Input(LearningRate) must be "
+              "equal to Input(Param), but got the size of Input(LearningRate) "
+              "is %d, the size of Input(Param) is %d.",
+              lrs.size(), n));
     }
     auto use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto regularization_methods =
@@ -162,16 +183,27 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     auto regularization_coeffs =
         ctx.Attr<std::vector<float>>("regularization_coeff");
     if (regularization_methods.size() != 0) {
-      PADDLE_ENFORCE_EQ(n, regularization_methods.size(),
-                        platform::errors::InvalidArgument(
-                            "Attr(regularization_method) number must be equal "
-                            "to Input(Param) number."));
-      PADDLE_ENFORCE_EQ(n, regularization_coeffs.size(),
-                        platform::errors::InvalidArgument(
-                            "Attr(regularization_coeff) number must be equal "
-                            "to Input(Param) number."));
+      PADDLE_ENFORCE_EQ(
+          n, regularization_methods.size(),
+          platform::errors::InvalidArgument(
+              "The size of Attr(regularization_method) must be equal "
+              "to Input(Param), but got the size of "
+              "Attr(regularization_method) is %d, the size of Input(Param) is "
+              "%d.",
+              regularization_methods.size(), n));
+      PADDLE_ENFORCE_EQ(
+          n, regularization_coeffs.size(),
+          platform::errors::InvalidArgument(
+              "The size of Attr(regularization_coeff) must be equal "
+              "to Input(Param), but got the size of Attr(regularization_coeff) "
+              "is %d, the size of Input(Param) is %d.",
+              regularization_coeff.size(), n));
     }
-    VLOG(1) << use_nesterov << regularization_methods.size()
+
+    VLOG(5) << "use_nesterov: " << use_nesterov
+            << ",  regularization_methods.size(): "
+            << regularization_methods.size()
+            << ",  regularization_coeffs.size(): "
             << regularization_coeffs.size();
 
     using MPType = typename operators::details::MPTypeTrait<T>::Type;
@@ -216,7 +248,7 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
 #undef PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL
     } else {
       for (size_t idx = 0; idx < n; idx++) {
-        std::string regularization_method = " ";
+        std::string regularization_method = "";
         if (regularization_methods.size() != 0) {
           regularization_method = regularization_methods[idx];
         }
