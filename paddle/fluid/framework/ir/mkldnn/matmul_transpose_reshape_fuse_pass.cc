@@ -149,10 +149,12 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
 
   gpd(graph, handler);
   AddStatis(found_matmul_transpose_reshape_count);
-  std::stringstream msg_ss;
-  msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
-         << " MatmulTransposeReshape patterns";
-  paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+    std::stringstream msg_ss;
+    msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
+           << " MatmulTransposeReshape patterns";
+    paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+  }
 }
 }  // namespace ir
 }  // namespace framework

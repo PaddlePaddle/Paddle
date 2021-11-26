@@ -388,6 +388,34 @@ class TestBertTokenizerOp(unittest.TestCase):
         exe.run(paddle.static.default_main_program(), feed={'x': self.text})
         paddle.disable_static()
 
+    def test_data_parallel(self):
+        self.max_seq_len = 128
+        self.pad_to_max_seq_len = True
+        self.is_split_into_words = False
+
+        model = paddle.DataParallel(self.faster_tokenizer)
+        input_ids, token_type_ids = model(
+            text=self.text_tensor,
+            do_lower_case=self.bert_tokenizer.do_lower_case,
+            max_seq_len=self.max_seq_len,
+            pad_to_max_seq_len=self.pad_to_max_seq_len,
+            is_split_into_words=self.is_split_into_words)
+        input_ids = input_ids.numpy()
+        token_type_ids = token_type_ids.numpy()
+
+        encoded_inputs = self.bert_tokenizer(
+            self.text,
+            max_seq_len=self.max_seq_len,
+            pad_to_max_seq_len=self.pad_to_max_seq_len,
+            is_split_into_words=self.is_split_into_words)
+        py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
+        py_token_type_ids = np.array(encoded_inputs[0][
+            "token_type_ids"]).reshape([1, -1])
+        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
+        self.assertTrue(
+            np.allclose(
+                token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+
 
 if __name__ == '__main__':
     unittest.main()

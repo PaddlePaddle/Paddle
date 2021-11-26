@@ -94,6 +94,7 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -553,6 +554,7 @@ py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_stat
 py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
     FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
