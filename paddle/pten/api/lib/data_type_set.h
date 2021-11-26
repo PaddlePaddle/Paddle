@@ -62,13 +62,13 @@ class DataTypeSet final {
 };
 
 // Now only supports promotion of complex type
-inline DataType PromoteTypesIfComplexExists(const DataTypeSet& dtype_set) {
+inline DataType PromoteTypes(const DataTypeSet& dtype_set) {
   constexpr auto f8 = 1ULL << (static_cast<uint8_t>(DataType::FLOAT64) - 1);
   constexpr auto c4 = 1ULL << (static_cast<uint8_t>(DataType::COMPLEX64) - 1);
   constexpr auto c8 = 1ULL << (static_cast<uint8_t>(DataType::COMPLEX128) - 1);
   DataType promote_type = DataType::UNDEFINED;
-  // Use if-else to support multi-input (The table used before only support two
-  // inputs)
+
+  // kernel dtype need promote when meet input dtype with more precision
   if ((dtype_set.bitset() & c8) == c8) {
     promote_type = DataType::COMPLEX128;
   } else if ((dtype_set.bitset() & c4) == c4) {
@@ -77,8 +77,6 @@ inline DataType PromoteTypesIfComplexExists(const DataTypeSet& dtype_set) {
     } else {
       promote_type = DataType::COMPLEX64;
     }
-  } else if ((dtype_set.bitset() & f8) == f8) {
-    promote_type = DataType::FLOAT64;
   }
   return promote_type;
 }

@@ -52,8 +52,6 @@ struct KernelKeySet {
   BackendSet backend_set{Backend::UNDEFINED};
   DataLayout layout{DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
-  DataTypeSet dtype_set{DataType::UNDEFINED};
-  int key_num = 0;
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
   pten::KernelKey GetHigestPriorityKernelKey() {
@@ -91,6 +89,9 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
+  // this dtype_set is used for cache multi-inputs dtype and used for
+  // data_promote
+  DataTypeSet dtype_set{DataType::UNDEFINED};
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
@@ -99,8 +100,8 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // TODO(chenweihang): selecte multi layout and dtype
     key_set.layout = x.layout();
     key_set.dtype = x.type();
-    key_set.dtype_set = key_set.dtype_set | DataTypeSet(x.dtype());
-    auto promote_result = PromoteTypesIfComplexExists(key_set.dtype_set);
+    dtype_set = dtype_set | DataTypeSet(x.dtype());
+    auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
     }

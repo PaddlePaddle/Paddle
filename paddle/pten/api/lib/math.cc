@@ -175,7 +175,7 @@ PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y) {
 
 PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
-  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x, y);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
       "elementwise_mul", kernel_key);
