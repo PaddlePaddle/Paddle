@@ -23,6 +23,7 @@ import tempfile
 from warnings import catch_warnings
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
+from paddle.distributed.fleet.launch import launch_collective
 
 cluster_json = """
 {
@@ -148,7 +149,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             os.environ['TRAINER_PORTS_NUM'] = "2"
             os.environ['PADDLE_TRAINER_ID'] = "0"
 
-            paddle.distributed.fleet.launch.launch_collective(args)
+            launch_collective(args)
         except Exception as e:
             pass
 
