@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace distributed {
@@ -136,7 +137,10 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
-    // TODO(wangxi): add op run
+
+    for (auto op : node_->ops()) {
+      op->Run(*root_scope_, place_);
+    }
 
     // send to downstream and increase buff used
     SendDataReadyToDownStream();
