@@ -979,8 +979,6 @@ class ParameterServerLauncher(object):
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
-                    if self.heter_worker_endpoints != "":
-                        self.heter_worker_endpoints += ","
                     heter_worker_endpoints = heter_worker_endpoints_list[
                         i].split(",")
                     self.stage_heter_trainer_num.append(
@@ -1073,15 +1071,18 @@ class ParameterServerLauncher(object):
                 _, self.current_node_ip = get_host_name_ip()
             else:
                 self.current_node_ip = pod_ip
-            assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (self.current_node_ip, self.node_ips)
-        self.node_rank = self.node_ips.index(self.current_node_ip)
-
-        logger.debug(
-            "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
-            format(self.node_ips, self.current_node_ip, self.node_rank))
+            if not self.distribute_mode == DistributeMode.PS_HETER:
+                assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
+                      % (self.current_node_ip, self.node_ips)
+        if self.current_node_ip in self.node_ips:
+            self.node_rank = self.node_ips.index(self.current_node_ip)
+            logger.debug(
+                "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
+                format(self.node_ips, self.current_node_ip, self.node_rank))
 
     def start_ps(self):
+        if not self.current_node_ip in self.node_ips:
+            return
         cluster = Cluster(hdfs=None)
         server_rank = 0
         worker_rank = 0

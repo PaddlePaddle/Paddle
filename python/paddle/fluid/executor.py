@@ -1673,12 +1673,8 @@ class Executor(object):
                 for var in program.global_block().vars.values():
                     if var.is_data:
                         data_vars.append(var)
-                if core.is_compiled_with_npu():
-                    dataset = paddle.fluid.DatasetFactory().create_dataset(
-                        'InMemoryDataset')
-                else:
-                    dataset = paddle.fluid.DatasetFactory().create_dataset(
-                        'FileInstantDataset')
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'InMemoryDataset')
                 dataset.set_batch_size(1)
                 dataset.set_thread(1)
                 dataset.set_filelist(['None'])
