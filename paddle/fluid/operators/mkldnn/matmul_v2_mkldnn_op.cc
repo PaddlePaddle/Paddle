@@ -149,7 +149,7 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
                      std::vector<int64_t>& x_dims, bool trans_x,
                      const Tensor* y, std::vector<int64_t>& y_dims,
                      bool trans_y, Tensor* out, std::vector<int64_t>& out_dims,
-                     int execution_number = 0) const {
+                     int execution_number = 0) {
   MatMulV2MKLDNNHandler<T> handler(onednn_engine, ctx.GetPlace(), x_dims,
                                    trans_x, y_dims, trans_y,
                                    IsOutputFused(ctx));
