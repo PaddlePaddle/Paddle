@@ -153,7 +153,6 @@ void Carrier::HandleTmpMessages() {
   // `HandleTmpMessages` method, the creating_interceptors_ flag
   // must be false, therefore, there won't have conflict with the
   // lock on the tmp_message_mutex_ inside `EnqueueInterceptorMessage`
-  // on the same thread.
   std::unique_lock<std::mutex> lock(tmp_message_mutex_);
   VLOG(3) << "Carrier has received " << message_tmp_.size()
           << " messages during creating interceptors.";
