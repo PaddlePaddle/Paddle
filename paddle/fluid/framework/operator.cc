@@ -92,50 +92,53 @@ void show_var(const Scope& scope, const std::string& var_name,
 
   static std::vector<std::string> to_show_names(0);
   static bool inited_var_name_list = false;
-  char* var_name_list = std::getenv("VAR_NAMES");
-  if (var_name_list != nullptr && !inited_var_name_list){
-    to_show_names = split_str(var_name_list, ',');
+  char* show_all = std::getenv("SHOW_ALL_VAR");
+  if (show_all == nullptr || strcmp(show_all, "0") == 0){
+    char* var_name_list = std::getenv("VAR_NAMES");
+    if (var_name_list != nullptr && !inited_var_name_list){
+      to_show_names = split_str(var_name_list, ',');
+    }
+
+    if (!inited_var_name_list){
+      inited_var_name_list = true;
+      char *var_name_path = std::getenv("VAR_NAME_LIST_FILE");
+      if (var_name_path == nullptr){
+        return;
+      }
+      FILE* names_file = fopen(var_name_path, "r");
+      while(names_file){
+        char name[512];
+        auto matched = fscanf(names_file, "%s", name);
+        if (matched == 1){
+          if (name[0] != '#'){
+            to_show_names.push_back(name);
+          }
+        }else{
+          fclose(names_file);
+          break;
+        }
+      }
+    }
+    
+    char* show_var_key = std::getenv("SHOW_VAR_KEY");
+    if (show_var_key == nullptr){
+      auto it = to_show_names.begin();
+      for (; it != to_show_names.end(); it ++){
+        if ( strcmp(it->c_str(), var_name.c_str()) == 0 ){
+          break;
+        }
+      }
+      
+      if (it == to_show_names.end()){
+        return;
+      }
+    }else{
+      if (var_name.find(show_var_key) == std::string::npos){
+        return;
+      }
+    }
   }
 
-  if (!inited_var_name_list){
-    inited_var_name_list = true;
-    char *var_name_path = std::getenv("VAR_NAME_LIST_FILE");
-    if (var_name_path == nullptr){
-      return;
-    }
-    FILE* names_file = fopen(var_name_path, "r");
-    while(names_file){
-      char name[512];
-      auto matched = fscanf(names_file, "%s", name);
-      if (matched == 1){
-        if (name[0] != '#'){
-          to_show_names.push_back(name);
-        }
-      }else{
-        fclose(names_file);
-        break;
-      }
-    }
-    
-  }
-  
-  char* show_var_key = std::getenv("SHOW_VAR_KEY");
-  if (show_var_key == nullptr){
-    auto it = to_show_names.begin();
-    for (; it != to_show_names.end(); it ++){
-      if ( strcmp(it->c_str(), var_name.c_str()) == 0 ){
-        break;
-      }
-    }
-    
-    if (it == to_show_names.end()){
-      return;
-    }
-  }else{
-    if (var_name.find(show_var_key) == std::string::npos){
-      return;
-    }
-  }
   auto* var = scope.FindVar(var_name);
   std::stringstream sstr;
   VLOG(0) << "try to find: " << var_name;
