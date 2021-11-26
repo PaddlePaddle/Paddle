@@ -16,8 +16,8 @@
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/functions/cuda/cast_kernel_impl.h"
 #include "paddle/pten/kernels/functions/general/manipulation.h"
-#include "paddle/pten/kernels/functions/math/cast_func.h"
 
 namespace pten {
 
@@ -123,8 +123,7 @@ void Cast(const CUDAContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                       math::CastKernelImpl<CUDAContext, T, data_t>(
-                           dev_ctx, x, out);
+                       detail::CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
                      }));
 }
 
@@ -158,7 +157,6 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
-// todo: Hip need support bfloat16
 PT_REGISTER_KERNEL("cast",
                    CUDA,
                    ANY,
@@ -171,6 +169,7 @@ PT_REGISTER_KERNEL("cast",
                    bool,
                    uint8_t,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
