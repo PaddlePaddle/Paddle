@@ -1311,6 +1311,38 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
+        # use_prune can be overrided by putting optimize_ops in fetch_list
+        _origin_fetch_list = fetch_list
+        _origin_program = program
+        fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
+            fetch_list)
+        if optimize_ops:
+            use_prune = True
+        if use_prune:
+            cache_key = _get_strong_program_cache_key(program, feed,
+                                                      _origin_fetch_list)
+            cached_pruned_program = self._get_pruned_program_cache(cache_key)
+            if cached_pruned_program is None:
+                if isinstance(program, compiler.CompiledProgram):
+                    program_scope_cache = self._get_pruned_program_scope_cache(
+                        str(id(_origin_program)))
+                    # copy the original program, so it can be cached.
+                    program = copy.copy(program)
+                    # share the local scopes for same original CompiledProgram.
+                    program._share_vars_from = program_scope_cache
+                    if self._get_pruned_program_scope_cache(
+                            str(id(_origin_program))) is None:
+                        self._add_pruned_program_scope_cache(
+                            str(id(_origin_program)), program)
+                pruned_program = self._prune_program(program, feed, fetch_list,
+                                                     optimize_ops)
+                self._add_pruned_program_cache(cache_key, pruned_program)
+            else:
+                pruned_program = cached_pruned_program
+
+            feed = self._update_feed(pruned_program, feed)
+            program = pruned_program
+
         def _can_use_interpreter_core(program, place):
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): do not support compiled program now
@@ -1379,38 +1411,6 @@ class Executor(object):
                     tensor.set(data, self.place)
 
                 return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
-
-        # use_prune can be overrided by putting optimize_ops in fetch_list
-        _origin_fetch_list = fetch_list
-        _origin_program = program
-        fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
-            fetch_list)
-        if optimize_ops:
-            use_prune = True
-        if use_prune:
-            cache_key = _get_strong_program_cache_key(program, feed,
-                                                      _origin_fetch_list)
-            cached_pruned_program = self._get_pruned_program_cache(cache_key)
-            if cached_pruned_program is None:
-                if isinstance(program, compiler.CompiledProgram):
-                    program_scope_cache = self._get_pruned_program_scope_cache(
-                        str(id(_origin_program)))
-                    # copy the original program, so it can be cached.
-                    program = copy.copy(program)
-                    # share the local scopes for same original CompiledProgram.
-                    program._share_vars_from = program_scope_cache
-                    if self._get_pruned_program_scope_cache(
-                            str(id(_origin_program))) is None:
-                        self._add_pruned_program_scope_cache(
-                            str(id(_origin_program)), program)
-                pruned_program = self._prune_program(program, feed, fetch_list,
-                                                     optimize_ops)
-                self._add_pruned_program_cache(cache_key, pruned_program)
-            else:
-                pruned_program = cached_pruned_program
-
-            feed = self._update_feed(pruned_program, feed)
-            program = pruned_program
 
         compiled = isinstance(program, compiler.CompiledProgram)
 

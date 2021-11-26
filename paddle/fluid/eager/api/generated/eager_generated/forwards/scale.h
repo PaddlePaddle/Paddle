@@ -11,8 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 #pragma once
 
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
-#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/eager_tensor.h"
+namespace egr {
+
+egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
+                       bool bias_after_scale, bool trace_backward);
+
+}  // namespace egr
