@@ -418,7 +418,14 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
         be a tuple of Tensors. If both of inputs and outputs are Tensor
         list/tuple, then the Jacobian will be a tuple of tuple of Tensors.
         Noted that the first dimension of inputs is batch size.
-
+        
+        For example,
+        the inputs shape and outputs shape of function ``func` is [batch_size, num] 
+        and [batch_size, num] respectively, then the Jacobian will be a Tensor with
+        a shape of [num, batch_size * num], where ``Jacobian[i][j]`` will contain 
+        the Jacobian matrix of the ``i``th column output and the ``j``th input and 
+        will have same dtype and device as the corresponding input.
+        Other situations can be deduced by analogy.
 
     Examples 1:
         .. code-block:: python
@@ -487,9 +494,11 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
     outputs = _tensors(func(*inputs), "outputs")
     batch_size = inputs[0].shape[0]
     for input in inputs:
-        assert input.shape[0] == batch_size
+        assert input.shape[
+            0] == batch_size, "The first dimension of input should equals to the same batch size!"
     for output in outputs:
-        assert output.shape[0] == batch_size
+        assert output.shape[
+            0] == batch_size, "The first dimension of output should equals to the same batch size!"
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(
@@ -555,6 +564,22 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
         is batch size and the execution step is to obtain the result of the 
         first order differentiation, and then differentiate the batch input.
 
+        For example,
+        the inputs shape and outputs shape of function ``func` is [batch_size, num] 
+        and [batch_size, 1] respectively, then the batched Hessian will be a Tensor with
+        a shape of [num, batch_size * num].
+        
+        Why the final shape in this case is that?
+        because batch_hessian will create a inner func(the wrapper of paddle.grad() func)
+        to computes the sum of gradients of `outputs` with respect to each `inputs`,
+        this inner func will get the first order differentiation and shape is [batch_size, num], 
+        then call batch_jacobian to compute jacobian between the first order differentiation
+        and the origin inputs. The final result ``Hessian[i][j]`` will contain the Jacobian 
+        matrix of the ``i``th column output(Noted that this output means the first order 
+        differentiation) and the ``j``th input and will have same dtype and device as the 
+        corresponding input. Other situations can be deduced by analogy.
+    
+
     Examples 1:
         .. code-block:: python
 
@@ -593,11 +618,14 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
             print(batch_hessian)
             # ((Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             #        [[2., 0., 2., 0., 2., 0., 2., 0.],
-            #         [0., 2., 0., 2., 0., 2., 0., 2.]]), Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            #         [0., 2., 0., 2., 0., 2., 0., 2.]]), 
+            #   Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             #        [[4., 0., 4., 0., 4., 0., 4., 0.],
-            #         [0., 4., 0., 4., 0., 4., 0., 4.]])), (Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            #         [0., 4., 0., 4., 0., 4., 0., 4.]])), 
+            #  (Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             #        [[4., 0., 4., 0., 4., 0., 4., 0.],
-            #         [0., 4., 0., 4., 0., 4., 0., 4.]]), Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            #         [0., 4., 0., 4., 0., 4., 0., 4.]]), 
+            #   Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             #        [[2., 0., 2., 0., 2., 0., 2., 0.],
             #         [0., 2., 0., 2., 0., 2., 0., 2.]])))
             
@@ -627,7 +655,8 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
     outputs = func(*inputs)
     batch_size = inputs[0].shape[0]
     for input in inputs:
-        assert input.shape[0] == batch_size
+        assert input.shape[
+            0] == batch_size, "The first dimension of input should equals to the same batch size!"
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         batch_size, 1
     ], "The function to compute batched Hessian matrix should return a Tensor of shape [batch_size, 1]"

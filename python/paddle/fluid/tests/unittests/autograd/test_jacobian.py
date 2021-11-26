@@ -169,7 +169,6 @@ class TestJacobianBatch(unittest.TestCase):
         self.numerical_delta = 1e-4
         self.rtol = 1e-3
         self.atol = 1e-3
-        paddle.seed(123)
         self.x = paddle.rand(shape=self.x_shape, dtype=self.dtype)
         self.weight = paddle.rand(shape=self.weight_shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)

@@ -142,12 +142,11 @@ class TestBatchHessian(unittest.TestCase):
         self.x_shape = (5, 2)
         self.weight_shape = (2, 4)
         self.y_shape = (5, 2)
-        self.dtype = 'float64'
-        self.np_dtype = np.float64
-        self.numerical_delta = 1e-4
-        self.rtol = 1e-5
-        self.atol = 1e-5
-        paddle.seed(123)
+        self.dtype = 'float32'
+        self.np_dtype = np.float32
+        self.numerical_delta = 1e-2
+        self.rtol = 1e-3
+        self.atol = 1e-3
         self.x = paddle.rand(shape=self.x_shape, dtype=self.dtype)
         self.weight = paddle.rand(shape=self.weight_shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)
@@ -242,6 +241,22 @@ class TestBatchHessian(unittest.TestCase):
                            self.atol)
         triple_grad = paddle.grad(hessian, self.x)
         assert triple_grad is not None
+
+
+class TestBatchHessianFloat64(TestBatchHessian):
+    @classmethod
+    def setUpClass(self):
+        self.x_shape = (5, 2)
+        self.weight_shape = (2, 4)
+        self.y_shape = (5, 2)
+        self.dtype = 'float64'
+        self.np_dtype = np.float64
+        self.numerical_delta = 1e-4
+        self.rtol = 1e-5
+        self.atol = 1e-5
+        self.x = paddle.rand(shape=self.x_shape, dtype=self.dtype)
+        self.weight = paddle.rand(shape=self.weight_shape, dtype=self.dtype)
+        self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)
 
 
 if __name__ == "__main__":
