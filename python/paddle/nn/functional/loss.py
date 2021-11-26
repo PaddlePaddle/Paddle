@@ -2151,7 +2151,7 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
     else:
         raise ValueError("'label' should contain 1. or -1., "
                          "but received label containing {}.".format(
-                             label.flatten().numpy()))
+                             set(label.flatten().numpy())))
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
