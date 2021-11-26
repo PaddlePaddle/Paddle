@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -79,6 +80,7 @@ class Carrier final {
 
   std::vector<InterceptorMessage> message_tmp_{};
   bool creating_interceptors_{true};
+  std::mutex creating_flag_mutex_;
   bool is_init_{false};
 };
 
