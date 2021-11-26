@@ -99,6 +99,7 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
         *dense_tensor.get(), *dev_ctx, scale, bias, bias_after_scale,
         dense_out.get());
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (expected_kernel_place == paddle::platform::CUDAPlace()) {
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
         pool.Get(expected_kernel_place));
@@ -108,7 +109,7 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
     ScaleDeviceDispatch<paddle::platform::CUDADeviceContext>(
         *dense_tensor.get(), *dev_ctx, scale, bias, bias_after_scale,
         dense_out.get());
-
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Only CPU and CUDA Backend are supported for now"));
