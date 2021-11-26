@@ -548,12 +548,12 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
 inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
                                   const int groups) {
   if (groups > 1) {
-    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
-    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    // if (is_conv3d) [o, i, d, h, w]->[g, o, i/g, d, h, w]
+    // else [o, i, h, w] -> [g, o, i/g, h, w]
     weights_tz.push_back(0);
     std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
     weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
+    weights_tz[2] = weights_tz[2] / groups;
   }
 }
 
