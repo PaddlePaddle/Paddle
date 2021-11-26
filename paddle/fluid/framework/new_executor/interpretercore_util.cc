@@ -305,11 +305,18 @@ void build_op_func_list(const platform::Place& place,
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
-      InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-      // TODO(Aurelius84): In case of control flow ops, they are NOT inheritted
-      // from OperatorWithKernel.
-      static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
-          &infer_shape_ctx);
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        // TODO(Aurelius84): In case of control flow ops, they are NOT
+        // inheritted
+        // from OperatorWithKernel.
+        static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
+            &infer_shape_ctx);
+      }
+
       auto kernels_iter = all_op_kernels.find(op->Type());
       PADDLE_ENFORCE_NE(
           kernels_iter, all_op_kernels.end(),
@@ -328,20 +335,14 @@ void build_op_func_list(const platform::Place& place,
               ->GetExpectedKernelType(
                   ExecutionContext(*op, scope, *dev_ctx, runtime_context));
 
-      // consider device_guard()
-      apply_device_guard(
-          op, place,
-          &expected_kernel_key);  // change device by the device_guard()
+      // change device by the device_guard()
+      apply_device_guard(op, place, &expected_kernel_key);
       VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
-      std::vector<OpFuncNode> new_op_func_nodes;
       ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, &new_op_func_nodes, use_local_scope);
-      for (auto& item : new_op_func_nodes) {
-        vec_func_list->emplace_back(std::move(item));
-      }
+                         &op_func_node, vec_func_list, use_local_scope);
       // step 4. Run op kernel
       VLOG(3) << op->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
@@ -370,6 +371,14 @@ void build_op_func_list(const platform::Place& place,
 
       op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
       op_func_node.kernel_func_(exec_ctx);
+
+      // post-process grad_op.outputs if need cast complex grad into real grad.
+      // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
+      if (framework::IsComplexType(expected_kernel_key.data_type_)) {
+        interpreter::HandleComplexGradToRealGrad(
+            op_func_node, place, outputs_names, &runtime_context.outputs,
+            var_scope, vec_func_list, local_scope);
+      }
     }
 
     vec_func_list->emplace_back(op_func_node);
@@ -402,6 +411,7 @@ void build_op_func_list(const platform::Place& place,
         for (auto& t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
+        lod_tensor_arr->clear();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Type %s of variable %s is not supported eager deletion.",
