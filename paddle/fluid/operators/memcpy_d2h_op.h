@@ -70,7 +70,7 @@ class MemcpyD2HFunctor {
 
  private:
   void CopyLoDTensor(const framework::LoDTensor &src,
-                     framework::LoDTensor &dst) {  // NOLINT
+                     framework::LoDTensor &dst) const {  // NOLINT
     if (dst_place_type_ == 1) {
       framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
     } else if (dst_place_type_ == 0) {
