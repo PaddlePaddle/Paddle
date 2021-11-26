@@ -124,16 +124,25 @@ class TestCollectiveLauncher(unittest.TestCase):
             args.rank_mapping_path = "./rank_mapping"
             launch.launch()
             launch.stop()
+        except Exception as e:
+            pass
 
+        try:
             args.backend = "nccl"
             launch.launch()
             launch.stop()
+        except Exception as e:
+            pass
 
-            args.backend = "npu"
+        try:
+            args.backend = "unknown"
             args.enable_auto_mapping = True
             launch.launch()
             launch.stop()
+        except Exception as e:
+            pass
 
+        try:
             paddle.distributed.fleet.launch.launch_collective(args)
         except Exception as e:
             pass
