@@ -41,9 +41,22 @@ void ComputeInterceptor::PrepareDeps() {
   for (auto down_id : downstream) {
     out_buffs_.emplace(down_id, std::make_pair(out_buff_size, 0));
   }
+
+  // source compute node, should we add a new SourceInterceptor?
+  if (upstream.empty()) {
+    is_source_ = true;
+    PADDLE_ENFORCE_GT(node_->max_run_times(), 0,
+                      platform::errors::InvalidArgument(
+                          "Source ComputeInterceptor must run at least one "
+                          "times, but now max_run_times=%ld",
+                          node_->max_run_times()));
+  }
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
+  // source node has no upstream, data_is_ready is send by carrier or others
+  if (is_source_ && up_id == -1) return;
+
   auto it = in_readys_.find(up_id);
   PADDLE_ENFORCE_NE(it, in_readys_.end(),
                     platform::errors::NotFound(
@@ -94,6 +107,12 @@ bool ComputeInterceptor::CanWriteOutput() {
   return true;
 }
 
+// only source node need reset
+bool ComputeInterceptor::ShouldReset() {
+  if (is_source_ && step_ == node_->max_run_times()) return true;
+  return false;
+}
+
 void ComputeInterceptor::SendDataReadyToDownStream() {
   for (auto& outs : out_buffs_) {
     auto down_id = outs.first;
@@ -135,12 +154,27 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::Run() {
-  while (IsInputReady() && CanWriteOutput()) {
+  // If there is no limit, source interceptor can be executed
+  // an unlimited number of times.
+  // Now source node can only run
+  if (ShouldReset()) {
+    for (auto& out_buff : out_buffs_) {
+      // buffer is using
+      if (out_buff.second.second != 0) return;
+    }
+    step_ = 0;  // reset
+    return;
+  }
+
+  while (IsInputReady() && CanWriteOutput() && !ShouldReset()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
+    // step_ %= node_->max_run_times();
     for (auto op : node_->ops()) {
-      op->Run(*root_scope_, place_);
+      auto* scope = microbatch_scopes_[step_ % node_->max_slot_nums()];
+      op->Run(*scope, place_);
     }
+    ++step_;
 
     // send to downstream and increase buff used
     SendDataReadyToDownStream();
@@ -153,7 +187,7 @@ void ComputeInterceptor::ReceivedStop(int64_t up_id) {
   received_stop_ = true;
 
   // source node has no upstream, stop is send by carrier or others
-  if (up_id == -1) return;
+  if (is_source_ && up_id == -1) return;
 
   auto it = in_stops_.find(up_id);
   PADDLE_ENFORCE_NE(it, in_stops_.end(),
