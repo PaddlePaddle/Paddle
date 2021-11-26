@@ -81,7 +81,6 @@ class Carrier final {
       interceptor_idx_to_interceptor_;
 
   std::vector<InterceptorMessage> message_tmp_{};
-  std::mutex tmp_message_mutex_;
   bool creating_interceptors_{true};
   std::mutex creating_flag_mutex_;
   bool is_init_{false};

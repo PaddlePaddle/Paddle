@@ -52,7 +52,6 @@ bool Carrier::EnqueueInterceptorMessage(
     if (creating_interceptors_) {
       // Cannot handle the message to interceptor since interceptors
       // are still under creating. Will enqueue into a tmp stack.
-      std::unique_lock<std::mutex> lock(tmp_message_mutex_);
       VLOG(3) << "Receiving message while creating interceptors.";
       message_tmp_.emplace_back(interceptor_message);
       return true;
@@ -137,11 +136,10 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
 
 void Carrier::SetCreatingFlag(bool flag) {
   // set the creating flag
-  creating_flag_mutex_.lock();
+  std::unique_lock<std::mutex> lock(creating_flag_mutex_);
   VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
           << " to " << flag << ".";
   creating_interceptors_ = flag;
-  creating_flag_mutex_.unlock();
   if (!flag) {
     // finish create interceptors outside, handle tmp messsages
     HandleTmpMessages();
@@ -149,7 +147,6 @@ void Carrier::SetCreatingFlag(bool flag) {
 }
 
 void Carrier::HandleTmpMessages() {
-  std::unique_lock<std::mutex> lock(tmp_message_mutex_);
   VLOG(3) << "Carrier has received " << message_tmp_.size()
           << " messages during creating interceptors.";
   for (const auto& msg : message_tmp_) {
@@ -175,9 +172,8 @@ void Carrier::CreateInterceptors() {
     }
     // The carrier will be always waiting for outside initializer
     // since there is no interceptor has been created during auto init
-    creating_flag_mutex_.lock();
+    std::unique_lock<std::mutex> lock(creating_flag_mutex_);
     creating_interceptors_ = false;
-    creating_flag_mutex_.unlock();
     HandleTmpMessages();
   }
 }
