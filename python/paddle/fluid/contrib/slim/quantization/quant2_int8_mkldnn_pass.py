@@ -62,7 +62,9 @@ class Quant2Int8MkldnnPass(object):
         self._ops_to_quantize = _ops_to_quantize
         self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
             [-1])
-        self._scale_immutable_ops = ['transpose2', 'reshape2', 'pool2d']
+        self._scale_immutable_ops = [
+            'transpose2', 'reshape2', 'pool2d', 'slice'
+        ]
         self._scale_ops = ['scale']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._pool_ops = ['pool2d']
@@ -241,7 +243,10 @@ class Quant2Int8MkldnnPass(object):
             waiting_for_scale = set()
             for op in graph.all_op_nodes():
                 if op.name() in self._scale_immutable_ops:
-                    input_name = op.input("X")[0]
+                    if op.name() == 'slice':
+                        input_name = op.input("Input")[0]
+                    else:
+                        input_name = op.input("X")[0]
                     output_name = op.output("Out")[0]
                     tensor_names = [input_name, output_name]
 

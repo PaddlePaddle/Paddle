@@ -134,6 +134,16 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
           scales_[var_name] = scales_[input_var_name];
         }
         compute_scale = false;
+      } else if (op->Type() == "slice") {
+        auto input_var_name = op->Input("Input")[0];
+        PADDLE_ENFORCE_NE(scales_.find(input_var_name), scales_.end(),
+                          platform::errors::PreconditionNotMet(
+                              "Input scales must be calculated before the "
+                              "output scales to infer if output is unsigned."));
+        if (scales_.find(input_var_name) != scales_.end()) {
+          scales_[var_name] = scales_[input_var_name];
+        }
+        compute_scale = false;
       } else if (op->Type() == "concat") {
         // output of ops with unsigned input must be unsigned
         is_unsigned = true;
