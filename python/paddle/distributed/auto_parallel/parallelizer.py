@@ -20,6 +20,7 @@ import copy
 import pathlib
 import subprocess
 import logging
+import pickle
 import paddle
 from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
@@ -36,7 +37,7 @@ from .utils import set_grad_var_shape
 from .reshard import reshard
 from .cluster import Cluster
 from .mapper import mapping
-# from .auto_search import auto_search
+from .auto_search import auto_search
 
 _logger = get_logger(logging.INFO)
 
@@ -79,12 +80,20 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _get_dist_program(self, dist_context, rank):
-        # Annotation completion
-        completed_main_program = complete_annotation(self._main_program,
-                                                     dist_context)
+    def _get_dist_program(self, rank, dist_context=None):
+        completed_main_program = None
+        if dist_context is None:
+            # Annotation completion
+            self._dist_context = DistributedContext()
+            _logger.info("Start annotation dist attr.")
+            completed_main_program = complete_annotation(self._main_program,
+                                                         self._dist_context)
+        else:
+            completed_main_program = self._main_program
+            self._dist_context = copy.deepcopy(dist_context)
+
         # Logical partition
-        partitioner = Partitioner(self._dist_strategy, dist_context, rank)
+        partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
         dist_main_prog, dist_startup_prog = partitioner.transpile_forward(
             completed_main_program, self._startup_program)
         dist_params_grads = partitioner.apply_backward(
@@ -94,9 +103,11 @@ class AutoParallelizer:
             copy.deepcopy(self._optimizer), dist_params_grads, dist_main_prog,
             dist_startup_prog)
 
-        make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
+        set_grad_var_shape(dist_main_prog, self._dist_context)
 
-        reshard(dist_main_prog, dist_startup_prog, rank, dist_context)
+        make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
+
+        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
 
         return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog
 
@@ -118,10 +129,15 @@ class AutoParallelizer:
                 "The cluster must not be none when using auto mapping."
             dist_programs = {}
             world_process_group = get_world_process_groups()
+            dist_context = None
+            # auto_search
+            if self._dist_strategy.auto_search:
+                _logger.info("Start search dist attr.")
+                dist_context, _ = auto_search(self._main_program, self._startup_program, loss, self._optimizer)
+            
             for rank in world_process_group.ranks:
-                dist_context = DistributedContext()
                 dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog = self._get_dist_program(
-                    dist_context, rank)
+                    rank, dist_context)
                 dist_programs[rank] = dist_main_prog
 
             # Do the mapping between the distributed program graph and the cluster graph
@@ -134,6 +150,14 @@ class AutoParallelizer:
                                              "auto_parallel_rank_mapping.json")
             with open(rank_mapping_path, "w") as rank_mapping_file:
                 json.dump(rank_mapping, rank_mapping_file)
+
+            # serialize the dist_context by planner
+            if dist_context is not None:
+                searched_dist_context_path = os.path.join(cwd, f"searched_dist_context_{time.time()}.pkl")
+                with open(searched_dist_context_path, "wb") as dist_context_file:
+                    pickle.dump(dist_context, dist_context_file)
+                    os.environ['PADDLE_SEARCHED_DIST_CONTEXT_PATH'] = searched_dist_context_path
+
             original_cmd_args = os.getenv("PADDLE_ORIGINAL_CMD_ARGS")
             rank_mapping_args = " ".join(
                 ["--rank_mapping_path", rank_mapping_path])
@@ -149,9 +173,16 @@ class AutoParallelizer:
         else:
             # Parallelization after the mapping pass
             rank = paddle.distributed.get_rank()
-
-            dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog = self._get_dist_program(
-                self._dist_context, rank)
+            dist_context = None
+            searched_dist_context_path = os.getenv("PADDLE_SEARCHED_DIST_CONTEXT_PATH", None)
+            if searched_dist_context_path is not None:
+                with open(searched_dist_context_path, "rb") as dist_context_file:
+                    dist_context = pickle.load(dist_context_file)
+            else:
+                if self._dist_strategy.auto_search:
+                    _logger.info("Start search dist attr.")
+                    dist_context, _ = auto_search(self._main_program, self._startup_program, loss, self._optimizer)
+            dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog = self._get_dist_program(rank, dist_context)
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
