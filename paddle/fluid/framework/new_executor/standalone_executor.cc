@@ -24,23 +24,28 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       startup_prog_(startup_prog),
       main_prog_(main_prog),
       global_scope_(VariableScope(scope)) {
+  // NOTE(zhiqiu): it is needed to sync thhe variables in scope to
+  // variable_scope,
+  // since the some variable only exists in startup program, e.g,
+  // lod_tensor_blocking_queue_0 used in dataloader.
+  // These variables may be created in scope during runing startup program with
+  // original executor.
+  if (scope) {
+    auto name_list = scope->LocalVarNames();
+    for (auto name : name_list) {
+      auto v = scope->Var(name);
+      if (!global_scope_.HasVar(name)) {
+        global_scope_.AddVar(name, *v);
+      }
+    }
+  }
+
   // NOTE(zhiqiu): for startup_program, initialize scope and run once
   // if startup_program is empty, the scope is initialize during first run
   if (startup_prog.Block(0).AllOps().size() > 0) {
     VLOG(4) << "Run startup program";
     // init scope
     BuildVariableScope(startup_prog, &global_scope_);
-
-    if (scope != nullptr) {
-      auto name_list = scope->LocalVarNames();
-      for (auto name : name_list) {
-        auto v = scope->Var(name);
-        if (!global_scope_.HasVar(name)) {
-          global_scope_.AddVar(name, *v);
-        }
-      }
-    }
-
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     // No need to use_local_scope for startup_program, its variables are
     // persistable
@@ -63,7 +68,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names, false);
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-  return core->Run();
+  return core->Run(feed_names);
 }
 
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(

@@ -31,23 +31,22 @@ ENDIF()
 
 if (WIN32)
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
+  set(XXHASH_CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4710 /wd4711")
+  set(XXHASH_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4710 /wd4711")
 else()
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
+  set(XXHASH_CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  set(XXHASH_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 endif ()
-
-cache_third_party(extern_xxhash
-    REPOSITORY    ${XXHASH_REPOSITORY}
-    TAG           ${XXHASH_TAG}
-    DIR           XXHASH_SOURCE_DIR)
 
 if(WIN32)
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
       ${SHALLOW_CLONE}
-      "${XXHASH_DOWNLOAD_CMD}"
+      GIT_REPOSITORY   ${XXHASH_REPOSITORY}
+      GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND   ""
       PATCH_COMMAND    ""
       CONFIGURE_COMMAND
@@ -60,6 +59,12 @@ if(WIN32)
                       -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
                       -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
                       -DBUILD_SHARED_LIBS=OFF
+                      -DCMAKE_CXX_FLAGS=${XXHASH_CMAKE_CXX_FLAGS}
+                      -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                      -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                      -DCMAKE_C_FLAGS=${XXHASH_CMAKE_C_FLAGS}
+                      -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                      -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                       ${OPTIONAL_CACHE_ARGS}
       TEST_COMMAND      ""
       BUILD_BYPRODUCTS ${XXHASH_LIBRARIES}
@@ -68,9 +73,9 @@ else()
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      "${XXHASH_DOWNLOAD_CMD}"
+      GIT_REPOSITORY   ${XXHASH_REPOSITORY}
+      GIT_TAG          ${XXHASH_TAG}
       PREFIX           ${XXHASH_PREFIX_DIR}
-      SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND    ""
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE   1

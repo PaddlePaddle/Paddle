@@ -15,7 +15,6 @@
 INCLUDE(ExternalProject)
 
 SET(GLOG_PREFIX_DIR  ${THIRD_PARTY_PATH}/glog)
-SET(GLOG_SOURCE_DIR  ${THIRD_PARTY_PATH}/glog/src/extern_glog)
 SET(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 SET(GLOG_INCLUDE_DIR "${GLOG_INSTALL_DIR}/include" CACHE PATH "glog include directory." FORCE)
 SET(GLOG_REPOSITORY ${GIT_URL}/google/glog.git)
@@ -40,7 +39,6 @@ ExternalProject_Add(
     GIT_TAG         ${GLOG_TAG}
     DEPENDS         gflags
     PREFIX          ${GLOG_PREFIX_DIR}
-    SOURCE_DIR      ${GLOG_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
