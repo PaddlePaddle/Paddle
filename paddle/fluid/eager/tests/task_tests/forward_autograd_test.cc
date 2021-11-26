@@ -63,17 +63,10 @@ TEST(Forward, SingleNode) {
     AutogradMeta* meta = EagerUtils::autograd_meta(&out);
     GradNodeBase* grad_node = meta->GradNode();
     GradNodeScale* scale_node = dynamic_cast<GradNodeScale*>(grad_node);
-    PADDLE_ENFORCE(
-        scale_node != nullptr,
-        paddle::platform::errors::Fatal("AutogradMeta should have held "
-                                        "grad_node with type GradNodeScale*"));
-    PADDLE_ENFORCE(
-        (meta->OutRankInfo().first == 0) && (meta->OutRankInfo().second == 0),
-        paddle::platform::errors::Fatal(
-            "OutRankInfo in AutogradMeta should have been 0"));
 
-    // 2. TensorWrapper: No TensorWrapper for ScaleNode
-    // 3. NextEdges: No NextEdges for Single Node Case
+    CHECK_NOTNULL(scale_node);
+    CHECK_EQ(static_cast<int>(meta->OutRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(meta->OutRankInfo().second), 0);
   }
 }
 
@@ -127,47 +120,28 @@ TEST(Forward, LinearNodes) {
     AutogradMeta* meta0 = EagerUtils::autograd_meta(&out0);
     GradNodeBase* grad_node0 = meta0->GradNode();
     GradNodeScale* scale_node0 = dynamic_cast<GradNodeScale*>(grad_node0);
-    PADDLE_ENFORCE(
-        scale_node0 != nullptr,
-        paddle::platform::errors::Fatal("AutogradMeta should have held "
-                                        "grad_node with type GradNodeScale*"));
-    PADDLE_ENFORCE(
-        (meta0->OutRankInfo().first == 0) && (meta0->OutRankInfo().second == 0),
-        paddle::platform::errors::Fatal(
-            "OutRankInfo in AutogradMeta should have been 0"));
+
+    CHECK_NOTNULL(scale_node0);
+    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().second), 0);
 
     // Node 1
     AutogradMeta* meta1 = EagerUtils::autograd_meta(&out1);
     GradNodeBase* grad_node1 = meta1->GradNode();
     GradNodeScale* scale_node1 = dynamic_cast<GradNodeScale*>(grad_node1);
-    PADDLE_ENFORCE(
-        scale_node1 != nullptr,
-        paddle::platform::errors::Fatal("AutogradMeta should have held "
-                                        "grad_node with type GradNodeScale*"));
-    PADDLE_ENFORCE(
-        (meta1->OutRankInfo().first == 0) && (meta1->OutRankInfo().second == 0),
-        paddle::platform::errors::Fatal(
-            "OutRankInfo in AutogradMeta should have been 0"));
+
+    CHECK_NOTNULL(scale_node1);
+    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().second), 0);
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges: Node 1 -> Node 0
     const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
-    PADDLE_ENFORCE(node1_edges.size() == 1,
-                   paddle::platform::errors::Fatal(
-                       "Node 1 should have exactly 1 edge slot "));
-
     const auto& node1_edge = node1_edges[0];
-    PADDLE_ENFORCE(node1_edge.size() == 1,
-                   paddle::platform::errors::Fatal(
-                       "Node 1 should have exactly 1 edge in slot 0"));
-    PADDLE_ENFORCE((node1_edge[0].GetEdgeRankInfo().first == 0) &&
-                       (node1_edge[0].GetEdgeRankInfo().second == 0),
-                   paddle::platform::errors::Fatal(
-                       "Node1's edge should have input rank of 0"));
 
-    PADDLE_ENFORCE(
-        node1_edge[0].GetGradNode() == grad_node0,
-        paddle::platform::errors::Fatal("Node1's edge should point to Node 0"));
+    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().second), 0);
+    CHECK_EQ(node1_edge[0].GetGradNode(), grad_node0);
   }
 }
 
@@ -231,76 +205,46 @@ TEST(Forward, BranchedNodes) {
     AutogradMeta* meta0 = EagerUtils::autograd_meta(&out0);
     GradNodeBase* grad_node0 = meta0->GradNode();
     GradNodeScale* scale_node0 = dynamic_cast<GradNodeScale*>(grad_node0);
-    PADDLE_ENFORCE(
-        scale_node0 != nullptr,
-        paddle::platform::errors::Fatal("AutogradMeta should have held "
-                                        "grad_node with type GradNodeScale*"));
-    PADDLE_ENFORCE(
-        (meta0->OutRankInfo().first == 0) && (meta0->OutRankInfo().second == 0),
-        paddle::platform::errors::Fatal(
-            "OutRankInfo in AutogradMeta should have been 0"));
+
+    CHECK_NOTNULL(scale_node0);
+    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().second), 0);
 
     // Node 1
     AutogradMeta* meta1 = EagerUtils::autograd_meta(&out1);
     GradNodeBase* grad_node1 = meta1->GradNode();
     GradNodeScale* scale_node1 = dynamic_cast<GradNodeScale*>(grad_node1);
-    PADDLE_ENFORCE(
-        scale_node1 != nullptr,
-        paddle::platform::errors::Fatal("AutogradMeta should have held "
-                                        "grad_node with type GradNodeScale*"));
-    PADDLE_ENFORCE(
-        (meta1->OutRankInfo().first == 0) && (meta1->OutRankInfo().second == 0),
-        paddle::platform::errors::Fatal(
-            "OutRankInfo in AutogradMeta should have been 0"));
+
+    CHECK_NOTNULL(scale_node1);
+    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().second), 0);
 
     // Node 2
     AutogradMeta* meta2 = EagerUtils::autograd_meta(&out2);
     GradNodeBase* grad_node2 = meta2->GradNode();
     GradNodeScale* scale_node2 = dynamic_cast<GradNodeScale*>(grad_node2);
-    PADDLE_ENFORCE(
-        scale_node2 != nullptr,
-        paddle::platform::errors::Fatal("AutogradMeta should have held "
-                                        "grad_node with type GradNodeScale*"));
-    PADDLE_ENFORCE(
-        (meta2->OutRankInfo().first == 0) && (meta2->OutRankInfo().second == 0),
-        paddle::platform::errors::Fatal(
-            "OutRankInfo in AutogradMeta should have been 0"));
+
+    CHECK_NOTNULL(scale_node2);
+    CHECK_EQ(static_cast<int>(meta2->OutRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(meta2->OutRankInfo().second), 0);
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges
     // Node 1 -> Node 0
     const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
-    PADDLE_ENFORCE(node1_edges.size() == 1,
-                   paddle::platform::errors::Fatal(
-                       "Node 1 should have exactly 1 edge slot"));
-    PADDLE_ENFORCE(node1_edges[0].size() == 1,
-                   paddle::platform::errors::Fatal(
-                       "Node 1 should have exactly 1 edge in slot 0"));
     const Edge& node1_edge = node1_edges[0][0];
-    PADDLE_ENFORCE((node1_edge.GetEdgeRankInfo().first == 0) &&
-                       (node1_edge.GetEdgeRankInfo().second == 0),
-                   paddle::platform::errors::Fatal(
-                       "Node1's edge should have input rank of 0"));
-    PADDLE_ENFORCE(
-        node1_edge.GetGradNode() == grad_node0,
-        paddle::platform::errors::Fatal("Node1's edge should point to Node 0"));
+
+    CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().second), 0);
+    CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
 
     // Node 2 -> Node 0
     const std::vector<std::vector<Edge>>& node2_edges = grad_node2->GetEdges();
-    PADDLE_ENFORCE(node2_edges.size() == 1,
-                   paddle::platform::errors::Fatal(
-                       "Node 2 should have exactly 1 edge slot"));
-    PADDLE_ENFORCE(node1_edges[0].size() == 1,
-                   paddle::platform::errors::Fatal(
-                       "Node 2 should have exactly 1 edge in slot 0"));
     const Edge& node2_edge = node2_edges[0][0];
-    PADDLE_ENFORCE((node2_edge.GetEdgeRankInfo().first == 0) &&
-                       (node2_edge.GetEdgeRankInfo().second == 0),
-                   paddle::platform::errors::Fatal(
-                       "Node2's edge should have input rank of 0"));
-    PADDLE_ENFORCE(
-        node2_edge.GetGradNode() == grad_node0,
-        paddle::platform::errors::Fatal("Node2's edge should point to Node 0"));
+
+    CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().second), 0);
+    CHECK_EQ(node2_edge.GetGradNode(), grad_node0);
   }
 }
 

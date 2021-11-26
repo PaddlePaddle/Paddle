@@ -61,7 +61,9 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
       break;
     }
     default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unsupported data type"));
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Detected unsupported data type."
+          "Only Float64, Float32, Int64, Int32 are supported for now."));
       break;
     }
   }
@@ -93,7 +95,10 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
     auto* dev_ctx = dynamic_cast<paddle::platform::CPUDeviceContext*>(
         pool.Get(expected_kernel_place));
     if (!dev_ctx) {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Backend mismatch"));
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Cannot convert device_context to CPUDeviceContext."
+          "This indicates backend mismatch."
+          "Pleas double check your expected place"));
     }
     ScaleDeviceDispatch<paddle::platform::CPUDeviceContext>(
         *dense_tensor.get(), *dev_ctx, scale, bias, bias_after_scale,
@@ -104,7 +109,10 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
     auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
         pool.Get(expected_kernel_place));
     if (!dev_ctx) {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Backend mismatch"));
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Cannot convert device_context to CUDADeviceContext."
+          "This indicates backend mismatch."
+          "Pleas double check your expected place"));
     }
     ScaleDeviceDispatch<paddle::platform::CUDADeviceContext>(
         *dense_tensor.get(), *dev_ctx, scale, bias, bias_after_scale,
@@ -112,7 +120,10 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
 #endif
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Only CPU and CUDA Backend are supported for now"));
+        "Detected unsupported backend."
+        "Only CPU and CUDA Backend are supported for now."
+        "Please double check if your backend falls into the above two "
+        "categories."));
   }
 
   out->set_impl(dense_out);
@@ -128,11 +139,13 @@ void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 std::vector<std::vector<egr::EagerTensor>> GradNodeScale::operator()(
     const std::vector<std::vector<egr::EagerTensor>>& grads) {
   // 1. Check Output Size
-  PADDLE_ENFORCE(((grads.size() == 1) && (grads[0].size() == 1)),
-                 paddle::platform::errors::Fatal(
-                     "ScaleGradNode should take exactly 1 grad tensor"
-                     "However received: %d",
-                     grads.size()));
+  PADDLE_ENFORCE(
+      ((grads.size() == 1) && (grads[0].size() == 1)),
+      paddle::platform::errors::Fatal(
+          "ScaleGradNode takes exactly 1 grad tensor."
+          "However received: %d",
+          "This indicates an issue with Eager Dygraph Backward logic",
+          grads.size()));
   std::vector<std::vector<egr::EagerTensor>> outs;
   // 2. Create needed out parttern
   egr::EagerTensor out;
