@@ -50,9 +50,9 @@ bool Carrier::EnqueueInterceptorMessage(
   } else {
     creating_flag_mutex_.lock();
     if (creating_interceptors_) {
+      std::unique_lock<std::mutex> lock(tmp_message_mutex_);
       // Cannot handle the message to interceptor since interceptors
       // are still under creating. Will enqueue into a tmp stack.
-      std::unique_lock<std::mutex> lock(tmp_message_mutex_);
       VLOG(3) << "Receiving message while creating interceptors.";
       message_tmp_.emplace_back(interceptor_message);
       return true;
@@ -127,6 +127,10 @@ void Carrier::SetCreatingFlag(bool flag) {
 }
 
 void Carrier::HandleTmpMessages() {
+  // NOTE: It's ok lock on the tmp_message_mutex_ here, when enter this
+  // `HandleTmpMessages` method, the creating_interceptors_ flag
+  // must be false, therefore, there won't have conflict with the
+  // lock on the tmp_message_mutex_ inside `EnqueueInterceptorMessage`
   std::unique_lock<std::mutex> lock(tmp_message_mutex_);
   VLOG(3) << "Carrier has received " << message_tmp_.size()
           << " messages during creating interceptors.";
