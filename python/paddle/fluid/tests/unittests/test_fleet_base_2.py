@@ -76,6 +76,7 @@ class TestFleetBase(unittest.TestCase):
         fleet.fleet.save(dirname="/tmp")
 
         fleet.load_model(path="/tmp", mode=0)
+        fleet.load_model(path="/tmp", mode=1)
 
         self.assertRaises(
             Exception,
@@ -89,6 +90,15 @@ class TestFleetBase(unittest.TestCase):
             Exception,
             fleet.save_inference_model,
             dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor=exe,
+            main_program=compiled_prog)
+
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='afs:/tmp/',
             feeded_var_names=['x', 'y'],
             target_vars=[avg_cost],
             executor=exe,
