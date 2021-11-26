@@ -2055,11 +2055,9 @@ def sigmoid_focal_loss(logit,
 
 def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input
-    tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
-    This is usually used for measuring whether two inputs are similar or
-    dissimilar, e.g. using the L1 pairwise distance as :math:`x`, and is typically
-    used for learning nonlinear embeddings or semi-supervised learning.
+    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
+    and is typically used for learning nonlinear embeddings or semi-supervised learning.
 
     The loss function for :math:`n`-th sample in the mini-batch is
 
@@ -2080,11 +2078,7 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
     where :math:`L = \{l_1,\dots,l_N\}^\top`.
 
     Parameters:
-        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
-            (N, C), where C is number of classes, and if shape is more than 2D, this
-            is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
-            The shape of labelis the same as the shape of input.
+
         delta (float, optional): Specifies the hyperparameter delta to be used.
             The value determines how large the input need to be to calculate in
             hinge_embedding_loss. When label is -1, Input smaller than delta are minimized with hinge_embedding_loss.
@@ -2095,25 +2089,31 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-        name (str, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Call Parameters:
+
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
+
+        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64. The shape of label is the same as the shape of input.
 
     Shape:
-        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions,
-            available dtype is float32, float64.. The sum operationoperates over all the elements.
+
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64. The sum operationoperates over all the elements.
+
         label: N-D Tensor, same shape as the input.
+
         output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
     Returns:
-        The tensor variable storing the hinge_embedding_loss of input and label.
 
-    Return type: Tensor.
+        Tensor, The tensor variable storing the hinge_embedding_loss of input and label.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn as nn
 
             input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
