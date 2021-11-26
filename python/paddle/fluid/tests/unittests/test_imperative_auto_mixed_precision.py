@@ -577,9 +577,16 @@ class TestAmpDecorator(unittest.TestCase):
         model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt4 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model4.parameters())
-        model4, opt4 = paddle.amp.decorate(
-            models=model4, optimizers=opt4, level='O2', master_weight=False)
-        self.assertEqual(opt4._multi_precision, False)
+
+        models = [model3, model4]
+        optimizers = [opt3, opt4]
+        models, optimizers = paddle.amp.decorate(
+            models=models,
+            optimizers=optimizers,
+            level='O2',
+            master_weight=False)
+        self.assertEqual(optimizers[0]._multi_precision, False)
+        self.assertEqual(optimizers[1]._multi_precision, False)
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
