@@ -67,16 +67,38 @@ void print_data(const std::vector<T>& vec, std::stringstream& sstr, bool whole =
   for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
     sstr << vec1[i] << " ";
   }
-  // if (vec1.size() > 0) {
-  //   sstr << vec1[vec1.size() - 1];
-  // }
+}
+
+static std::vector<string> split_str(string strtem,char a)
+    {
+        vector<string> strvec;
+ 
+        string::size_type pos1, pos2;
+        pos2 = strtem.find(a);
+        pos1 = 0;
+        while (string::npos != pos2)
+        {
+                strvec.push_back(strtem.substr(pos1, pos2 - pos1));
+ 
+                pos1 = pos2 + 1;
+                pos2 = strtem.find(a, pos1);
+        }
+        strvec.push_back(strtem.substr(pos1));
+        return strvec;
 }
 
 void show_var(const Scope& scope, const std::string& var_name,
               const platform::DeviceContext* ctx) {
 
   static std::vector<std::string> to_show_names(0);
-  if (to_show_names.size() == 0){
+  static bool inited_var_name_list = false;
+  char* var_name_list = std::getenv("VAR_NAMES");
+  if (var_name_list != nullptr && !inited_var_name_list){
+    to_show_names = split_str(var_name_list, ',');
+  }
+
+  if (!inited_var_name_list){
+    inited_var_name_list = true;
     char *var_name_path = std::getenv("VAR_NAME_LIST_FILE");
     if (var_name_path == nullptr){
       return;
@@ -153,11 +175,6 @@ void show_var(const Scope& scope, const std::string& var_name,
           } else if (type == proto::VarType::FP32) {
             TensorToVector(tensor, *ctx, &vec_float);
           } else if (type == proto::VarType::FP16) {
-            // Tensor cast_tensor(proto::VarType::FP32);
-            // cast_tensor.mutable_data<float>(tensor.dims(), ctx->GetPlace());
-            // paddle::operators::CastOpFunctor<paddle::platform::GPUDeviceContext,
-            // paddle::platform::float16> cast_op(&tensor, &cast_tensor,*ctx);
-            // cast_op.apply();
             TensorToVector(tensor, *ctx, &vec_fp16);
           }
         }
