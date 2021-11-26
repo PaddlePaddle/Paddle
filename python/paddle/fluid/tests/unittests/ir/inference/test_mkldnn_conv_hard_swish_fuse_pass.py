@@ -42,9 +42,9 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
         groups = draw(st.sampled_from([1]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        threshold = draw(st.floats(min_value=0, max_value=10))
-        scale = draw(st.floats(min_value=0, max_value=10))
-        offset = draw(st.floats(min_value=0, max_value=10))
+        threshold = draw(st.sampled_from([6.0]))
+        scale = draw(st.sampled_from([6.0]))
+        offset = draw(st.sampled_from([3.0]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input(attrs):
