@@ -60,6 +60,8 @@ class NCCLParallelContext : public ParallelContext {
                          framework::Variable* dst, int ring_id,
                          bool use_calc_stream) override;
 
+  void BroadCast(framework::Variable* src, int ring_id) override;
+
   paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
 
   void WaitCompute(int ring_id) override;

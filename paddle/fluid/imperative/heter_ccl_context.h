@@ -13,14 +13,23 @@
 // limitations under the License.
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 #include <vector>
 
+#ifdef PADDLE_WITH_NCCL
+#include "paddle/fluid/imperative/nccl_context.h"
+#endif
+
+#ifdef PADDLE_WITH_BKCL
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/imperative/hccl_context.h"
+#endif
+
+#include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
-#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
 
 namespace paddle {
 namespace framework {
@@ -31,16 +40,12 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-class HCCLParallelContext : public ParallelContext {
+class HeterParallelContext : public ParallelContext {
  public:
-  explicit HCCLParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
-      : ParallelContext(strategy, place) {}
+  explicit HeterParallelContext(const ParallelStrategy& strategy,
+                                const int& device_id);
 
-  ~HCCLParallelContext() override = default;
-
-  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids, int root,  // NOLINT
-                   int server_fd);
+  ~HeterParallelContext() override = default;
 
   void Init() override;
 
@@ -61,13 +66,12 @@ class HCCLParallelContext : public ParallelContext {
   void SynchronizeCompute() override;
 
  private:
-  // used for comm wait compute, compute_stream-->event-->comm_stream[ring_id]
-  std::vector<std::shared_ptr<platform::NpuStreamObject>> compute_events_;
-
-  // used for compute wait comm, comm_stream[ring_id]-->event-->compute_stream
-  std::vector<std::shared_ptr<platform::NpuEventObject>> comm_events_;
+  ParallelStrategy inter_strategy_;
+  ParallelStrategy node_strategy_;
+  platform::Place node_place_;
+  std::shared_ptr<imperative::ParallelContext> node_parallel_ctx_{nullptr};
+  std::shared_ptr<imperative::ParallelContext> inter_parallel_ctx_{nullptr};
 };
 
 }  //  namespace imperative
 }  //  namespace paddle
-#endif
