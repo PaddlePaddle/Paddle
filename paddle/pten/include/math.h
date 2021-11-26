@@ -16,7 +16,7 @@ limitations under the License. */
 
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/math.h"
 #include "paddle/pten/kernels/cuda/math.h"
 
