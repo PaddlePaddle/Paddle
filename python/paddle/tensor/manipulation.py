@@ -516,15 +516,17 @@ def rot90(x, k, dims, name=None):
           import paddle
           import numpy as np
 
-          image_shape=(3, 2, 2)
-          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-          x = x.astype('float32')
-          img = paddle.to_tensor(x)
-          tmp = paddle.flip(img, [0,1])
-          print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
-
-          out = paddle.flip(tmp,-1)
-          print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
+          data = paddle.arange(4)
+          data = paddle.reshape(data, (2, 2))
+          print(data) ## [[0, 1],[2, 3]]
+          y = paddle.rot90(data, 1, [0, 1])
+          print(y) #[[1, 3],[0, 2]]
+          y= paddle.rot90(data, -1, [0, 1])
+          print(y) #[[2, 0],[3, 1]]
+          data2 = paddle.arange(8)
+          print(data2) ###[[[0, 1],[2, 3]],[[4, 5],[6, 7]]]
+          y = paddle.rot90(data2, 1, [1, 2])
+          print(y)   ### [[[1, 3],[0, 2]],[[5, 7],[4, 6]]]
     """
 
     helper = LayerHelper("rot90", **locals())
@@ -535,38 +537,40 @@ def rot90(x, k, dims, name=None):
                 'rot90')
     check_type(dims, 'dims', (list, tuple), 'rot90')
 
-    total_dims = len(x.shape), total_rot_dims = len(dims)
+    input_total_dims = len(x.shape)
+    total_rot_dims = len(dims)
     if total_rot_dims != 2:
         raise ValueError("expected total rotation dims == 2, but got dims = {}".
                          format(total_rot_dims))
-    if total_dims < 2:
+    if input_total_dims < 2:
         raise ValueError("expected total dims >= 2, but got total dims = {}".
-                         format(total_dims))
+                         format(input_total_dims))
 
-    if not (dims[0] != dims[1] and abs(dims[0] - dims[1]) != total_dims):
+    if not (dims[0] != dims[1] and abs(dims[0] - dims[1]) != input_total_dims):
         raise ValueError(
             "expected rotation dims to be different, but got dim0 = {}, and dim1 = {}".
             format(dims[0], dims[1]))
 
-    if not (dims[0] < total_dims and dims[0] >= -total_dims):
+    if not (dims[0] < input_total_dims and dims[0] >= -input_total_dims):
         raise ValueError("Rotation dim0 out of range, dim0 =".format(dims[0]))
-    if not (dims[1] < total_dims and dims[1] >= -total_dims):
+    if not (dims[1] < input_total_dims and dims[1] >= -input_total_dims):
         raise ValueError("Rotation dim1 out of range, dim1 =".format(dims[1]))
-
+    
+    ## k % 4
     k = k % 4 if k >= 0 else 4 - (-k % 4)
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype)
+    if k == 0:
+        return x
+    if k == 2:
+        return flip(flip(x, dims[0]), dims[1])
+     
+    axes_list = list(range(0, input_total_dims))
+    (axes_list[dims[0]], axes_list[dims[1]]) = (axes_list[dims[1]],
+                                                axes_list[dims[0]])   
+    if k == 1:
+        return transpose(flip(x, dims[1]), axes_list)
     else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
-
-    helper.append_op(
-        type="rot90",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"k": k,
-               "dims": dims})
-    return out
-
+        # k == 3
+        return flip(transpose(x, axes_list), dims[1])
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     r"""

@@ -150,6 +150,7 @@ from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
 from .tensor.manipulation import unstack  # noqa: F401
 from .tensor.manipulation import flip  # noqa: F401
+from .tensor.manipulation import rot90  # noqa: F401
 from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
@@ -404,6 +405,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
+           "rot90",
            'bincount',
            'histogram',
            'multiplex',
