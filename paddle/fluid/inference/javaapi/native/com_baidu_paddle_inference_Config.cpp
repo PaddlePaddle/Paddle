@@ -22,7 +22,7 @@
 
 JNIEXPORT jlong JNICALL Java_com_baidu_paddle_inference_Config_createCppConfig(
     JNIEnv* env, jobject obj) {
-  jlong cppPaddleConfigPointer = (jlong)PD_ConfigCreate();
+  jlong cppPaddleConfigPointer = reinterpret_cast<jlong>(PD_ConfigCreate());
   return cppPaddleConfigPointer;
 }
 
@@ -39,66 +39,51 @@ Java_com_baidu_paddle_inference_Config_isCppConfigValid(
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppModel(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer, jstring modelFile,
     jstring paramsFile) {
-  const char* model_file = env->GetStringUTFChars(modelFile, 0);
-  const char* params_file = env->GetStringUTFChars(paramsFile, 0);
   PD_ConfigSetModel(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
-                    model_file, params_file);
-  free(const_cast<char*>(model_file));
-  free(const_cast<char*>(params_file));
+                    jstring_to_cpp_string(env, modelFile).c_str(),
+                    jstring_to_cpp_string(env, paramsFile).c_str());
 }
 
 // 3. combined model settings
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppModelDir(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer, jstring modelDir) {
-  const char* model_dir = env->GetStringUTFChars(modelDir, 0);
   PD_ConfigSetModelDir(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
-                       model_dir);
-  free(const_cast<char*>(model_dir));
+                       jstring_to_cpp_string(env, modelDir).c_str());
 }
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppProgFile(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer, jstring progFile) {
-  const char* prog_file = env->GetStringUTFChars(progFile, 0);
   PD_ConfigSetProgFile(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
-                       prog_file);
-  free(const_cast<char*>(prog_file));
+                       jstring_to_cpp_string(env, progFile).c_str());
 }
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppParamsFile(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer,
     jstring paramsFile) {
-  const char* params_file = env->GetStringUTFChars(paramsFile, 0);
   PD_ConfigSetParamsFile(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
-                         params_file);
-  free(const_cast<char*>(params_file));
+                         jstring_to_cpp_string(env, paramsFile).c_str());
 }
 
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_modelDir(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
-  const char* model_dir = PD_ConfigGetModelDir(
-      reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
-  jstring modelDir = env->NewStringUTF(model_dir);
-  free(const_cast<char*>(model_dir));
-  return modelDir;
+  return cpp_string_to_jstring(
+      env, PD_ConfigGetModelDir(
+               reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }
 
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_progFile(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
-  const char* prog_file = PD_ConfigGetProgFile(
-      reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
-  jstring progFile = env->NewStringUTF(prog_file);
-  free(const_cast<char*>(prog_file));
-  return progFile;
+  return cpp_string_to_jstring(
+      env, PD_ConfigGetProgFile(
+               reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }
 
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_paramsFile(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
-  const char* params_file = PD_ConfigGetProgFile(
-      reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
-  jstring paramsFile = env->NewStringUTF(params_file);
-  free(const_cast<char*>(params_file));
-  return paramsFile;
+  return cpp_string_to_jstring(
+      env, PD_ConfigGetParamsFile(
+               reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }
 
 // 4. cpu settings
@@ -107,7 +92,7 @@ JNIEXPORT void JNICALL
 Java_com_baidu_paddle_inference_Config_setCpuMathLibraryNumThreads(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer,
     jint mathThreadsNum) {
-  int math_threads_num = static_cast<int>(mathThreadsNum);
+  int math_threads_num = reinterpret_cast<int>(mathThreadsNum);
   PD_ConfigSetCpuMathLibraryNumThreads(
       reinterpret_cast<PD_Config*>(cppPaddleConfigPointer), math_threads_num);
 }
@@ -115,8 +100,10 @@ Java_com_baidu_paddle_inference_Config_setCpuMathLibraryNumThreads(
 JNIEXPORT jint JNICALL
 Java_com_baidu_paddle_inference_Config_cpuMathLibraryNumThreads(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
-  jint mathThreadsNum = (jint)PD_ConfigGetCpuMathLibraryNumThreads(
-      reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
+  jint mathThreadsNum =
+      reinterpret_cast<jint>(PD_ConfigGetCpuMathLibraryNumThreads(
+          reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
+  return mathThreadsNum;
 }
 
 // 5. MKLDNN settings
@@ -173,7 +160,7 @@ JNIEXPORT jint JNICALL Java_com_baidu_paddle_inference_Config_gpuDeviceId(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
   int device_id = PD_ConfigGpuDeviceId(
       reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
-  return (jint)device_id;
+  return reinterpret_cast<jint>(device_id);
 }
 
 JNIEXPORT jint JNICALL
@@ -181,7 +168,7 @@ Java_com_baidu_paddle_inference_Config_memoryPoolInitSizeMb(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
   int memory_pool_init_size_mb = PD_ConfigMemoryPoolInitSizeMb(
       reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
-  return (jint)memory_pool_init_size_mb;
+  return reinterpret_cast<jint>(memory_pool_init_size_mb);
 }
 
 JNIEXPORT jfloat JNICALL
@@ -259,9 +246,7 @@ JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_disableGlogInfo(
 
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_summary(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
-  const char* summary =
-      PD_ConfigSummary(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
-  jstring jSummary = env->NewStringUTF(summary);
-  free(const_cast<char*>(summary));
-  return jSummary;
+  return cpp_string_to_jstring(
+      env,
+      PD_ConfigSummary(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }

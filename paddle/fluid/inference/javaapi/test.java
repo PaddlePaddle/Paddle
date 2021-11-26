@@ -15,13 +15,12 @@ public class test {
         config.enableMemoryOptim(true);
         config.enableProfile();
         config.enableMKLDNN();
-        try {
-            System.out.println(config.getCppModelDir());
-            System.out.println(config.getCppParamsFile());
-            System.out.println(config.getProgFile());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+            System.out.println("summary:\n" + config.summary());
+            System.out.println("model dir:\n" + config.getCppModelDir());
+            System.out.println("prog file:\n" + config.getProgFile());
+            System.out.println("params file:\n" + config.getCppParamsFile());
+
         config.getCpuMathLibraryNumThreads();
         config.getFractionOfGpuMemoryForPool();
         config.switchIrDebug(false);
@@ -54,5 +53,14 @@ public class test {
         outHandle.destroyNativeTensor();
         inHandle.destroyNativeTensor();
         predictor.destroyNativePredictor();
+
+        Config newConfig = new Config();
+        newConfig.setCppModelDir("/model_dir");
+        newConfig.setCppProgFile("/prog_file");
+        newConfig.setCppParamsFile("/param");
+        System.out.println("model dir:\n" + newConfig.getCppModelDir());
+        System.out.println("prog file:\n" + newConfig.getProgFile());
+        System.out.println("params file:\n" + newConfig.getCppParamsFile());
+
     }
 }

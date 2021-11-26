@@ -40,25 +40,16 @@ public class Config {
         setCppParamsFile(this.cppPaddleConfigPointer, paramsFile);
     }
 
-    public String getCppModelDir() throws Exception {
-        if (this.modelDir.equals("")) {
-            throw new Exception("没有设置ModelDir");
-        }
-        else return modelDir(this.cppPaddleConfigPointer);
+    public String getCppModelDir() {
+        return modelDir(this.cppPaddleConfigPointer);
     }
 
-    public String getCppProgFile() throws Exception {
-        if (this.modelDir.equals("")) {
-            throw new Exception("没有设置ProgFile");
-        }
-        else return progFile(this.cppPaddleConfigPointer);
+    public String getCppProgFile(){
+        return progFile(this.cppPaddleConfigPointer);
     }
 
-    public String getCppParamsFile() throws Exception {
-        if (this.modelDir.equals("")) {
-            throw new Exception("没有设置ParamsFile");
-        }
-        else return paramsFile(this.cppPaddleConfigPointer);
+    public String getCppParamsFile() {
+        return paramsFile(this.cppPaddleConfigPointer);
     }
 
     public void setCpuMathLibraryNumThreads(int mathThreadsNum){
@@ -145,7 +136,6 @@ public class Config {
     public String summary(){
         return summary(this.cppPaddleConfigPointer);
     }
-
 
     public long getCppPaddleConfigPointer() {
         return cppPaddleConfigPointer;
