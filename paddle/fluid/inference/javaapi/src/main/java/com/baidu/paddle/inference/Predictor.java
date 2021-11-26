@@ -17,7 +17,7 @@ public class Predictor {
 
     public static Predictor createPaddlePredictor(Config config){
         Predictor predictor = new Predictor(config);
-        return predictor;
+        return predictor.cppPaddlePredictorPointer == 0L ? null : predictor;
     }
 
     public void destroyNativePredictor() {
@@ -33,13 +33,13 @@ public class Predictor {
     }
 
     public Tensor getInputHandle(String name){
-        long tensorPointer = getInputHandleByName(this.cppPaddlePredictorPointer, name);
-        return new Tensor(tensorPointer);
+        long cppTensorPointer = getInputHandleByName(this.cppPaddlePredictorPointer, name);
+        return cppTensorPointer == 0 ? null : new Tensor(cppTensorPointer);
     }
 
     public Tensor getOutputHandle(String name){
-        long tensorPointer = getOutputHandleByName(this.cppPaddlePredictorPointer, name);
-        return new Tensor(tensorPointer);
+        long cppTensorPointer = getOutputHandleByName(this.cppPaddlePredictorPointer, name);
+        return cppTensorPointer == 0 ? null : new Tensor(cppTensorPointer);
     }
 
     public void clearIntermediateTensor(){
