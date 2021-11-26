@@ -224,6 +224,7 @@ from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
+from .tensor.math import deg2rad  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -458,6 +459,8 @@ __all__ = [  # noqa
            'ceil',
            'atan',
            'atan2',
+           'rad2deg',
+           'deg2rad',
            'expand',
            'broadcast_to',
            'ones_like',

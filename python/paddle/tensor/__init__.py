@@ -190,6 +190,7 @@ from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
 from .math import rad2deg  # noqa: F401
+from .math import deg2rad  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
