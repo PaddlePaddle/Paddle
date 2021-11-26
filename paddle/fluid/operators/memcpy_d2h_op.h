@@ -54,6 +54,29 @@ class MemcpyD2HFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
+  void operator()(const framework::LoDTensorArray &array) const {
+    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
+    out_array.clear();
+    out_array.resize(array.size());
+
+    for (size_t i = 0; i < array.size(); i++) {
+      auto &lod_tensor = array[i];
+      auto &out_tensor = out_array[i];
+      if (dst_place_type_ == 1) {
+        framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
+                              &out_tensor);
+      } else if (dst_place_type_ == 0) {
+        framework::TensorCopySync(lod_tensor, platform::CPUPlace(),
+                                  &out_tensor);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "memcpy dst_place_type: %d is not supported yet.",
+            dst_place_type_));
+      }
+      out_tensor.set_lod(lod_tensor.lod());
+    }
+  }
+
   void operator()(const framework::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
