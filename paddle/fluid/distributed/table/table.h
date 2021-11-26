@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include "paddle/fluid/distributed/common/afs_warpper.h"
+#include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/graph/graph_node.h"

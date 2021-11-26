@@ -53,6 +53,70 @@ def parse_table_class(varname, o_main_program):
                 return "MemorySparseTable"
 
 
+def get_default_accessor_proto(accessor, varname, o_main_program):
+    embedding_dim = 0
+    for var in o_main_program.list_vars():
+        if var.name == varname:
+            print("var:", var)
+            print("var.shape:", var.shape)
+            embedding_dim = var.shape[1]
+            print("sparse dim:", embedding_dim)
+            break
+
+    accessor.accessor_class = "CtrCommonAccessor"
+    accessor.fea_dim = embedding_dim + 2
+    accessor.embedx_dim = embedding_dim - 1
+    accessor.embedx_threshold = 0
+
+    ctr_accessor_param = accessor.ctr_accessor_param
+    ctr_accessor_param.nonclk_coeff = 0.1
+    ctr_accessor_param.click_coeff = 1.0
+    ctr_accessor_param.base_threshold = 0
+    ctr_accessor_param.delta_threshold = 0
+    ctr_accessor_param.delta_keep_days = 16
+    ctr_accessor_param.show_click_decay_rate = 1
+    ctr_accessor_param.delete_threshold = 0
+    ctr_accessor_param.delete_after_unseen_days = 30
+    ctr_accessor_param.ssd_unseenday_threshold = 1
+
+    embed_sgd_param = accessor.embed_sgd_param
+    embed_sgd_param.name = "SparseAdaGradSGDRule"
+    embed_sgd_param.adagrad.learning_rate = 0.05
+    embed_sgd_param.adagrad.initial_g2sum = 3.0
+    embed_sgd_param.adagrad.initial_range = 0.0001
+    embed_sgd_param.adagrad.weight_bounds.append(-10.0)
+    embed_sgd_param.adagrad.weight_bounds.append(10.0)
+
+    embedx_sgd_param = accessor.embedx_sgd_param
+    embedx_sgd_param.name = "SparseAdaGradSGDRule"
+    embedx_sgd_param.adagrad.learning_rate = 0.05
+    embedx_sgd_param.adagrad.initial_g2sum = 3.0
+    embedx_sgd_param.adagrad.initial_range = 0.0001
+    embedx_sgd_param.adagrad.weight_bounds.append(-10.0)
+    embedx_sgd_param.adagrad.weight_bounds.append(10.0)
+
+
+def check_embedding_dim(accessor, varname, o_main_program):
+    embedding_dim = 0
+    for var in o_main_program.list_vars():
+        if var.name == varname:
+            print("var:", var)
+            print("var.shape:", var.shape)
+            embedding_dim = var.shape[1]
+            print("sparse dim:", embedding_dim)
+            break
+    fea_dim = accessor.fea_dim
+    if fea_dim != embedding_dim + 2:
+        raise ValueError(
+            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
+            format(embedding_dim + 2, fea_dim))
+    embedx_dim = accessor.embedx_dim
+    if embedx_dim != embedding_dim - 1:
+        raise ValueError(
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
+            format(embedding_dim - 1, embedx_dim))
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
@@ -344,6 +408,11 @@ class Table:
         self.accessor_proto = None
 
     def to_string(self, indent):
+        # if self.id == 1:
+        #     proto_txt = ''
+        #     with open('./sparse_table.prototxt') as f:
+        #         proto_txt = f.read()
+        #     return proto_txt
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
@@ -586,6 +655,11 @@ class TheOnePSRuntime(RuntimeBase):
             return kwargs
 
         proto_txt = str(worker) + "\n" + str(server)
+        #with open('./sparse_table.prototxt') as f:
+        #    proto_txt = f.read()
+
+        with open('proto_txt', 'w') as f:
+            f.write(proto_txt)
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
@@ -847,54 +921,54 @@ class TheOnePSRuntime(RuntimeBase):
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        table.table_class = parse_table_class(
-                            common.table_name, self.origin_main_program)
                         table_proto = self.context[
                             "user_defined_strategy"].sparse_table_configs
-                        table.shard_num = table_proto.shard_num
+                        print('table proto:', table_proto)
+                        print('table_class:', table_proto.table_class)
+                        print('shard_num:', table_proto.shard_num)
+                        print('table_proto.accessor:', table_proto.accessor)
+                        print('accessor.IsInitialized',
+                              table_proto.accessor.IsInitialized())
+                        print('accessor.ByteSize',
+                              table_proto.accessor.ByteSize())
+                        if table_proto.table_class:
+                            print('table_proto.table_class is true')
+                            table.table_class = table_proto.table_class
+                        else:
+                            table.table_class = parse_table_class(
+                                common.table_name, self.origin_main_program)
+                        if table.table_class != 'MemorySparseTable':
+                            table.table_class = 'MemorySparseTable'
+                            warnings.warn(
+                                "The PS mode must use MemorySparseTable.")
+
+                        if table_proto.shard_num:
+                            print('table_proto.shard_num is true')
+                            table.shard_num = table_proto.shard_num
+                        else:
+                            table.shard_num = 1000
+                            warnings.warn(
+                                "The shard_num of sparse table is not set, use default value 1000."
+                            )
+
+                        if table_proto.accessor.ByteSize() == 0:
+                            print('table_proto.accessor is false')
+                            get_default_accessor_proto(table_proto.accessor,
+                                                       common.table_name,
+                                                       self.origin_main_program)
+                            warnings.warn(
+                                "The accessor of sparse table is not set, use default value."
+                            )
+                        else:
+                            check_embedding_dim(table_proto.accessor,
+                                                common.table_name,
+                                                self.origin_main_program)
+                        print('accessor.ByteSize',
+                              table_proto.accessor.ByteSize())
                         from google.protobuf import text_format
                         table.accessor_proto = text_format.MessageToString(
                             table_proto.accessor)
-
-                        print('table proto:', table_proto)
-                        if table.table_class == 'MemorySparseTable' and table.accessor_proto == '':
-                            emb_dim = ctx.sections()[1]
-                            table.shard_num = 1950
-                            table.accessor_proto = 'accessor_class: "CtrCommonAccessor"\n' \
-                                                   'embed_sgd_param {\n' \
-                                                   '  name: "SparseAdaGradSGDRule"\n' \
-                                                   '  adagrad {\n' \
-                                                   '    learning_rate: 0.05\n' \
-                                                   '    initial_g2sum: 3.0\n' \
-                                                   '    initial_range: 0.0001\n' \
-                                                   '    weight_bounds: -10.0\n' \
-                                                   '    weight_bounds: 10.0\n' \
-                                                   '  }\n' \
-                                                   '}\n' \
-                                                   'embedx_sgd_param {\n' \
-                                                   '  name: "SparseAdaGradSGDRule"\n' \
-                                                   '  adagrad {\n' \
-                                                   '    learning_rate: 0.05\n' \
-                                                   '    initial_g2sum: 3.0\n' \
-                                                   '    initial_range: 0.0001\n' \
-                                                   '    weight_bounds: -10.0\n' \
-                                                   '    weight_bounds: 10.0\n' \
-                                                   '  }\n' \
-                                                   '}\n' \
-                                                   'fea_dim: ' + str(emb_dim+2) + '\n' \
-                                                   'embedx_dim: ' + str(emb_dim-1) + '\n' \
-                                                   'embedx_threshold: 10\n' \
-                                                   'ctr_accessor_param {\n' \
-                                                   '  nonclk_coeff: 0.1\n' \
-                                                   '  click_coeff: 1.0\n' \
-                                                   '  base_threshold: 1.5\n' \
-                                                   '  delta_threshold: 0.25\n' \
-                                                   '  delta_keep_days: 16.0\n' \
-                                                   '  show_click_decay_rate: 0.98\n' \
-                                                   '  delete_threshold: 0.8\n' \
-                                                   '  delete_after_unseen_days: 30.0\n' \
-                                                   '  ssd_unseenday_threshold: 1\n' \
-                                                   '}'
+                        print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -916,7 +990,6 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "true"
                 else:
                     common.sync = "false"
-
                 table.common = common
 
                 if table.table_class != 'MemorySparseTable':
@@ -973,6 +1046,7 @@ class TheOnePSRuntime(RuntimeBase):
                              .fs_client_param)
         proto_txt = proto_txt + "\n" + fs_client.to_string()
 
+        print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
@@ -1112,8 +1186,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         import paddle
         for var in remaining_vars:
-            # if var.name not in recv_dense_varnames:
-            #     continue
+            if var.name not in recv_dense_varnames:
+                continue
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
@@ -1209,9 +1283,8 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
         print("the one ps sparses:", sparses)
-        sparse_names = []
-        for id, name in sparses.items():
-            sparse_names.extend(name)
+        sparse_names = self._save_sparse_params(executor, dirname, sparses,
+                                                main_program, mode)
         print("the one ps sparse names:", sparse_names)
 
         denses = self.compiled_strategy.get_the_one_recv_context(
@@ -1225,7 +1298,7 @@ class TheOnePSRuntime(RuntimeBase):
         generate_vars = [var for var in generate_vars]
         remaining_vars = list(
             filter(
-                TheOnePSRuntime.__exclude_vars(generate_vars + sparse_names),
+                TheOnePSRuntime.__exclude_vars(sparse_names),
                 infer_program.list_vars()))
         print("remain_vars:", [var.name for var in remaining_vars])
         for var in remaining_vars:
@@ -1234,9 +1307,6 @@ class TheOnePSRuntime(RuntimeBase):
                 tensor,
                 os.path.join(model_path, var.name),
                 use_binary_format=True)
-
-        self._ps_inference_save_persistables(executor, dirname, infer_program,
-                                             mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
@@ -1315,7 +1385,13 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             self._ps_inference_load_inference_model(path, mode)
 
-    def _shrink(self, threshold):
+    def _shrink(self, threshold=None):
+        if threshold is not None:
+            warnings.warn(
+                "The param threshold is not used in MemorySparseTable, if you need to shrink, please set the config of accessor"
+            )
+        else:
+            threshold = 0
         import paddle.distributed.fleet as fleet
         fleet.util.barrier()
         if self.role_maker._is_first_worker():

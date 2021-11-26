@@ -419,18 +419,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             for idx in op_idxs[::-1]:
                 program.global_block()._remove_op(idx)
 
-#            if use_ps_gpu:
-#                program.global_block().append_op(
-#                    type="push_box_sparse",
-#                    inputs={"Ids": inputs,
-#                            'Out': outputs},
-#                    outputs={"Out": outputs},
-#                    attrs={
-#                        "size": w.shape[1],
-#                        "is_distributed": True,
-#                        "is_sparse": True
-#                    })
-#            else:
             program.global_block().append_op(
                 type="distributed_push_sparse",
                 inputs={
@@ -502,6 +490,7 @@ def append_send_ops_pass(program, config):
     sends = config.get_the_one_trainer_send_context(
         split_dense_table=config.is_heter_ps_mode)
 
+    print("yxf::sends: {}".format(sends))
     for merged_name, send in sends.items():
         if send.is_sparse():
             continue

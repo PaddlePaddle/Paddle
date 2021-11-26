@@ -85,6 +85,7 @@ void TrainerBase::FinalizeDumpEnv() {
     th.join();
   }
   queue_.reset();
+  VLOG(2) << "dump done";
 }
 
 }  // end namespace framework

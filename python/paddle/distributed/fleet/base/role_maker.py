@@ -1096,6 +1096,12 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             is_collective=is_collective, init_gloo=init_gloo, **kwargs)
         self._init_gloo = init_gloo
 
+    def _all_gather(self, input, comm_world="worker"):
+        if self._gloo._is_initialized:
+            return self._gloo.all_gather(input, comm_world)
+        else:
+            return [input]
+
     def _user_defined_ps_env(self):
         self._server_endpoints = self._kwargs.get("server_endpoints")
         self._worker_endpoints = self._kwargs.get("worker_endpoints", [])

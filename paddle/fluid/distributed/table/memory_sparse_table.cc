@@ -35,7 +35,7 @@ int32_t MemorySparseTable::initialize() {
     shards_task_pool_[i].reset(new ::ThreadPool(1));
   }
   initialize_value();
-  VLOG(0) << "initalize MemorySparseTable succ";
+  VLOG(0) << "initalize ctrSparseTable succ";
   return 0;
 }
 
@@ -173,7 +173,6 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
   size_t file_start_idx = _shard_idx * avg_local_shard_num_;
 
   size_t feature_value_size = _value_accesor->size() / sizeof(float);
-
   // int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
   // omp_set_num_threads(thread_num);
   // #pragma omp parallel for schedule(dynamic)

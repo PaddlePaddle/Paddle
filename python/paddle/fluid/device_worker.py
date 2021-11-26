@@ -179,8 +179,10 @@ class Hogwild(DeviceWorker):
                     i.dense_gradient_variable_name)
         hogwild.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
-            hogwild.skip_ops.extend(
-                ["push_sparse", "push_sparse_v2", "push_dense"])
+            hogwild.skip_ops.extend([
+                "push_sparse", "push_sparse_v2", "push_dense",
+                "distributed_push_sparse", "send"
+            ])
 
 
 class DownpourSGD(DeviceWorker):

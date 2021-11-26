@@ -406,6 +406,8 @@ class AsyncCommunicator : public Communicator {
   void InitEnvs() {
     independent_recv_ = static_cast<bool>(
         std::stoi(envs.at("communicator_independent_recv_thread")));
+    VLOG(2) << "debug comm: communicator_independent_recv_thread "
+            << independent_recv_;
     min_send_grad_num_before_recv_ =
         std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
