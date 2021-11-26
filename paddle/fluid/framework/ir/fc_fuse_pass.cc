@@ -52,7 +52,7 @@ FCFusePass::FCFusePass() {
       .End()
       .AddAttr("axis")
       .IsNumMatch<int>([](int axis) -> bool {
-        if (axis == -1) {
+        if (axis == -1 || axis >= 1) {
           return true;
         }
         return false;
@@ -136,10 +136,25 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     size_t w_rank = w_shape.size();
     if (w_rank != 2) return;
 
-    // Shape of bias should be [1, out_size]
+    // axis of elementwise_add should be -1 or x_num_col_dims
+    auto x_num_col_dims =
+        BOOST_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims"));
+    auto axis = BOOST_GET_CONST(int, elementwise_add->Op()->GetAttr("axis"));
+    if (axis != -1 && axis != x_num_col_dims) return;
+
+    // Shape of bias should be [1, out_size] or [out_size]
     std::vector<int64_t> b_shape = bias->Var()->GetShape();
-    if (b_shape.size() != 2) return;
-    if (b_shape[0] != 1 || b_shape[1] != w_shape[1]) return;
+    if (b_shape.size() == 1) {
+      if (b_shape[0] != w_shape[1]) {
+        return;
+      }
+    } else if (b_shape.size() == 2) {
+      if (b_shape[0] != 1 || b_shape[1] != w_shape[1]) {
+        return;
+      }
+    } else {
+      return;
+    }
 
     Node* relu = nullptr;
     Node* relu_out = nullptr;

@@ -83,6 +83,7 @@ class AutoScanTest(unittest.TestCase):
         self.num_ran_programs = 0
         self.num_invalid_programs = 0
         self.num_skipped_tests = 0
+        self.num_skipped_tests_with_no_diff = 0
         self.num_predictor_kinds = 0
 
     @abc.abstractmethod
@@ -371,6 +372,10 @@ class PassAutoScanTest(AutoScanTest):
         logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
         logging.info("Number of Skipped Tests: {}".format(
             self.num_skipped_tests))
+        logging.info(
+            "And in these skipped tests, there are {} didn't cause difference".
+            format(self.num_skipped_tests_with_no_diff))
+
         successful_ran_programs = int(self.num_ran_programs -
                                       self.num_skipped_tests /
                                       self.num_predictor_kinds)
@@ -452,6 +457,8 @@ class PassAutoScanTest(AutoScanTest):
                                              results[0])
                     if not skip_flag:
                         self.assert_op_list(op_list)
+                    else:
+                        self.num_skipped_tests_with_no_diff += 1
 
                 except Exception as e:
                     self.fail_log(
@@ -459,6 +466,10 @@ class PassAutoScanTest(AutoScanTest):
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
                     if not skip_flag:
                         status = False
+                    elif os.getenv("DEBUG_SKIP", "OFF") == "ON":
+                        self.assertTrue(
+                            False,
+                            "DEBUG_SKIP is ON, this skipped case has diff")
                     continue
                 self.success_log('RUN predictor_config ' + self.
                                  inference_config_str(pred_config) + ' done')

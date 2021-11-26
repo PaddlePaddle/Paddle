@@ -63,14 +63,16 @@ class TestFcFusePass(PassAutoScanTest):
             # shape of bias should be [1, mul_y_shape[-1]] or [mul_y_shape[-1]]
             x_shape = list(program_config.inputs["mul_x"].shape)
             y_shape = list(program_config.weights["mul_y"].shape)
-            bias_shape = program_config.weights["bias"].shape
-            if bias_shape != [1, y_shape[-1]]:
+            bias_shape = list(program_config.weights["bias"].shape)
+            if bias_shape != [y_shape[-1]] and bias_shape != [1, y_shape[-1]]:
                 return True
             return False
 
         def teller2(program_config, predictor_config):
             # TODO fuse has bug while axis != -1
-            if program_config.ops[1].attrs["axis"] != -1:
+            axis = program_config.ops[1].attrs["axis"]
+            if axis != -1 and axis != program_config.ops[0].attrs[
+                    "x_num_col_dims"]:
                 return True
             return False
 
