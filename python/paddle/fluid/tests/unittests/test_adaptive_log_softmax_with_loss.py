@@ -18,11 +18,11 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
-np.random.seed(10)
-paddle.seed(10)
-
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
     def test_error(self):
         # args validation
         with self.assertRaises(ValueError):
@@ -137,30 +137,6 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         out = asfm.predict(x)
         np.testing.assert_array_almost_equal(
             out, asfm.log_prob(x).argmax(axis=1))
-
-    def linear_ref(self, x, weight, bias):
-        x = x.numpy() if isinstance(x, paddle.Tensor) else x
-        weight = weight.numpy() if isinstance(weight, paddle.Tensor) else weight
-        bias = bias.numpy() if isinstance(bias, paddle.Tensor) else bias
-        return np.matmul(x, weight) + bias
-
-    def test_approx_to_lsfm(self):
-        """
-        Test error between AdaptiveLogSoftmaxWithLoss and log_softmax less then 3%, according to https://arxiv.org/abs/1609.04309
-        """
-        x = paddle.abs(paddle.randn((64, 8)))
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(
-            8, 10, [6, 8], div_value=2., head_bias=True)
-
-        head_weight = asfm.head.weight.detach()
-        head_bias = asfm.head.bias.detach()
-        ref_head_output = self.linear_ref(x, head_weight, head_bias)
-
-        out = asfm.log_prob(x).argmax(axis=1)
-        ref = F.log_softmax(
-            paddle.to_tensor(
-                ref_head_output, dtype='float32')).argmax(axis=1)
-        self.assertTrue(out[out != ref].shape[0] < out.shape[0] / 30)
 
 
 if __name__ == "__main__":
