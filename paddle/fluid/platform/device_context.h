@@ -79,6 +79,10 @@ struct GpuDevice;
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
+// #ifdef PADDLE_WITH_MLU
+// #include "paddle/fluid/platform/mlu/device_context.h"
+// #endif
+
 namespace paddle {
 namespace platform {
 
@@ -99,8 +103,9 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+  MLU = 4,
 
-  MAX_DEVICE_TYPES = 4,
+  MAX_DEVICE_TYPES = 5,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -109,6 +114,7 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
+constexpr DeviceType kMLU = DeviceType::MLU;
 
 class DeviceContext {
  public:
@@ -139,6 +145,11 @@ template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
+
+#ifdef PADDLE_WITH_MLU
+template <>
+struct DefaultDeviceContextType<platform::MLUPlace>;
+#endif
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;

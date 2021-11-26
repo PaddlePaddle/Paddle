@@ -30,6 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/mlu/device_context.h"
+#endif
 
 namespace paddle {
 namespace framework {

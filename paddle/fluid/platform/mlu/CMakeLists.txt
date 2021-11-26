@@ -1,3 +1,6 @@
 IF(WITH_MLU)
-    cc_binary(mlu_info SRCS mlu_info.cc DEPS glog neuware_lib)
+    cc_library(mlu_info SRCS mlu_info.cc DEPS enforce glog neuware_lib)
+    cc_test(mlu_info_test SRCS mlu_info_test.cc DEPS glog neuware_lib)
+    cc_library(mlu_stream SRCS mlu_stream.cc DEPS boost mlu_info)
+    cc_library(mlu_device_context SRCS device_context.cc DEPS mlu_stream)
 ENDIF()

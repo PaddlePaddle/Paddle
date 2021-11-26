@@ -561,6 +561,13 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
+                 const platform::MLUPlace& xpu) const {
+    // TODO(mlu)
+    // return GetResultHelper(out, mlu);
+    return true;
+  }
+
+  bool GetResult(const framework::Tensor& out,
                  const platform::CUDAPlace& gpu) const {
     return GetResultHelper(out, gpu);
   }

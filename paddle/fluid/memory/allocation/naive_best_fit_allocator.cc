@@ -638,6 +638,7 @@ size_t Used<platform::MLUPlace>(const platform::MLUPlace &place) {
 #ifdef PADDLE_WITH_MLU
   // TODO(mlu): add GetGPUBuddyAllocator method
   // return GetGPUBuddyAllocator(place.device)->Used();
+  return 0;
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'MLUPlace' is not supported in CPU only device."));
@@ -649,12 +650,7 @@ void *Alloc<platform::MLUPlace>(const platform::MLUPlace &place,
                                 size_t size) {
 #ifdef PADDLE_WITH_MLU
   // TODO(mlu): Alloc<platform::MLUPlace>
-  } else {
-    if (FLAGS_init_allocated_mem) {
-      // TODO(mlu): adapt memory
-      // cudaMemset(ptr, 0xEF, size);
-    }
-  }
+  void *ptr = nullptr;
   return ptr;
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -679,6 +675,7 @@ uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
 #ifdef PADDLE_WITH_MLU
   // TODO(mlu): add GetGPUBuddyAllocator method
   // return GetMLUBuddyAllocator(place.device)->Release();
+  return 0;
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'MLUPlace' is not supported in CPU only device."));
