@@ -37,14 +37,18 @@ class DataTranferHelper {
              const std::string& var_name, std::string* new_var_name,
              std::vector<OpFuncNode>* new_op_func_nodes, bool use_local_scope);
 
- private:
-  platform::Place place_;
-  VariableScope* var_scope_;
+  void RunAndConstructShareNode(const std::string& src_var_name,
+                                const std::string& dst_var_name,
+                                std::vector<OpFuncNode>* op_func_nodes);
 
   void RunAndConstructOpFuncNode(const std::shared_ptr<OperatorBase>& op,
                                  const std::string& var_name,
                                  const std::string& new_var_name,
                                  std::vector<OpFuncNode>* op_func_nodes);
+
+ private:
+  platform::Place place_;
+  VariableScope* var_scope_;
 };
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
@@ -53,6 +57,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* op_func_nodes,
                         bool use_local_scope = true);
+
+void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
+                                 const platform::Place& place,
+                                 const VariableNameMap& out_names,
+                                 VariableValueMap* out_vars,
+                                 VariableScope* var_scope,
+                                 std::vector<OpFuncNode>* op_func_nodes,
+                                 framework::Scope* local_scope);
 
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);

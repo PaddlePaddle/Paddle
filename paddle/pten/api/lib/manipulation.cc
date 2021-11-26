@@ -50,8 +50,8 @@ PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   kernel_context.EmplaceBackAttr(start_axis);
   kernel_context.EmplaceBackAttr(stop_axis);
 
-  // 4. InferShape
-  auto out_meta = FlattenInferShape(dense_x->meta(), start_axis, stop_axis);
+  // 4. InferMeta
+  auto out_meta = FlattenInferMeta(dense_x->meta(), start_axis, stop_axis);
 
   // 5. Prepare outputs
   Tensor out;
@@ -84,7 +84,7 @@ PD_DLL_DECL Tensor cast(const Tensor& x, DataType out_dtype) {
   kernel_context.EmplaceBackAttr(out_dtype);
   kernel_context.EmplaceBackAttr(dense_x->meta().dtype);
 
-  // 4. InferShape
+  // 4. InferMeta
   auto out_meta = CastInferMeta(dense_x->meta(), out_dtype);
 
   // 5. Prepare outputs
@@ -117,8 +117,8 @@ PD_DLL_DECL Tensor reshape(const Tensor& x, const std::vector<int64_t>& shape) {
   kernel_context.EmplaceBackInput(dense_x);
   kernel_context.EmplaceBackAttr(shape);
 
-  // 4. InferShape
-  auto out_meta = InferShapeFromVecValue(dense_x->meta(), shape);
+  // 4. InferMeta
+  auto out_meta = InferMetaFromVecValue(dense_x->meta(), shape);
 
   // 5. Prepare outputs
   Tensor out;

@@ -17,10 +17,17 @@ limitations under the License. */
 
 namespace pten {
 
-DenseTensorMeta FullInferShape(const std::vector<int64_t>& shape,
-                               DataType dtype,
-                               DataLayout layout) {
+DenseTensorMeta FullInferMeta(const std::vector<int64_t>& shape,
+                              DataType dtype,
+                              DataLayout layout) {
   const auto& out_dims = paddle::framework::make_ddim(shape);
+  return {dtype, out_dims, layout};
+}
+
+DenseTensorMeta FullInferMeta(const ScalarArray& shape,
+                              DataType dtype,
+                              DataLayout layout) {
+  const auto& out_dims = paddle::framework::make_ddim(shape.GetData());
   return {dtype, out_dims, layout};
 }
 
