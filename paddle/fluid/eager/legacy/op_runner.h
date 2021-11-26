@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto2";
-package paddle.distributed;
+#pragma once
+#include "paddle/fluid/eager/legacy/type_def.h"
+// TODO(Jiabin): We should not depends on this header remove it later
+#include "paddle/fluid/imperative/jit/program_desc_tracer.h"
+#include "paddle/pten/core/tensor_meta.h"
 
-message IndexNode {
-  required uint64 id = 1;
-  required bool is_leaf = 2;
-  required float probability = 3;
-  optional string item_name = 4;
-}
+namespace egr {
 
-message TreeMeta {
-  required int32 height = 1;
-  required int32 branch = 2;
-}
-
-message KVItem {
-  required bytes key = 1;
-  required bytes value = 2;
+void RunOp(const std::string& type, const NameTensorMap& ins,
+           const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+           const paddle::platform::Place& place,
+           paddle::framework::AttributeMap* default_attrs,
+           bool override_default_attr_map,
+           const std::map<std::string, std::string>& inplace_map = {});
 }
