@@ -278,6 +278,11 @@ if (WITH_XPU2 AND NOT WITH_XPU)
         "Enable XPU when compiling with XPU2" FORCE)
 endif()
 
+if (WITH_XPU AND NOT WITH_XPU2)
+    set(WITH_XPU2 OFF CACHE STRING
+        "Disable XPU2 when compiling with XPU" FORCE)
+endif()
+
 #
 if (NOT WITH_XPU AND WITH_XPU_BKCL)
     MESSAGE(WARNING
@@ -321,7 +326,7 @@ endif(WITH_ROCM)
 
 if(WITH_XPU2)
     include(xpu2)
-endif(WITH_ROCM)
+endif()
 
 if (NOT WITH_ROCM AND WITH_RCCL)
     MESSAGE(WARNING

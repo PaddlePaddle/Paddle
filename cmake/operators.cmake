@@ -356,16 +356,17 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 
-    if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0 AND ${xpu2_cc_srcs_len} EQUAL 0)
-        #message(STATUS "lxd_debug: ${TARGET} op in XPU1")
+    if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0 AND ${xpu2_cc_srcs_len} EQUAL 0) 
+        message(STATUS "lxd_debug: ${TARGET} op in XPU1")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
-
-    #message(STATUS "lxd_debug: cmake source dir is: ${CMAKE_SOURCE_DIR}")
 
     if (WITH_XPU2 AND ${xpu2_cc_srcs_len} GREATER 0)
+        message(STATUS "lxd_debug: ${TARGET} op in XPU2")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
+
+    
 
     if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
         file(READ ${ORIGINAL_TARGET}_npu.cc TARGET_NPU_CONTENT)
