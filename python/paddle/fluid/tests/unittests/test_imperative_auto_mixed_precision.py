@@ -554,29 +554,39 @@ class TestAmpDecorator(unittest.TestCase):
             learning_rate=0.0001,
             parameters=model1.parameters(),
             multi_precision=True)
-        model1, opt1 = paddle.amp.decorate(
-            models=model1, optimizers=opt1, level='O2', master_weight=None)
-        self.assertEqual(opt1._multi_precision, True)
 
         model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt2 = paddle.optimizer.Adam(
             learning_rate=0.0001,
             parameters=model2.parameters(),
             multi_precision=False)
-        model2, opt2 = paddle.amp.decorate(
-            models=model2, optimizers=opt2, level='O2', master_weight=None)
+
+        model1, opt1 = paddle.amp.decorate(
+            models=model1, optimizers=opt1, level='O2', master_weight=None)
+        self.assertEqual(opt1._multi_precision, True)
+
+        models, opt2 = paddle.amp.decorate(
+            models=[model1, model2],
+            optimizers=opt2,
+            level='O2',
+            master_weight=None)
         self.assertEqual(opt2._multi_precision, True)
 
         model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt3 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model3.parameters())
-        model3, opt3 = paddle.amp.decorate(
-            models=model3, optimizers=opt3, level='O2', master_weight=True)
-        self.assertEqual(opt3._multi_precision, True)
 
         model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt4 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model4.parameters())
+
+        model3, opts = paddle.amp.decorate(
+            models=model3,
+            optimizers=[opt3, opt4],
+            level='O2',
+            master_weight=True)
+        self.assertEqual(opts[0]._multi_precision, True)
+        self.assertEqual(opts[1]._multi_precision, True)
 
         models = [model3, model4]
         optimizers = [opt3, opt4]
