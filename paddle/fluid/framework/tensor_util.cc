@@ -783,6 +783,10 @@ struct BothFalseVisitor : public boost::static_visitor<> {
     // TODO(zhiqiu)
   }
 
+  void VisitorImpl(const platform::MLUPlace& mlu) const {
+    PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
+  }
+
   void VisitorImpl(const platform::CPUPlace& cpu) const {
     int num = in_.numel();
     const bool* in_ptr = in_.data<bool>();

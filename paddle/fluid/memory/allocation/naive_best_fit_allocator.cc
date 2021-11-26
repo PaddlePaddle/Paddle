@@ -35,6 +35,9 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/mlu/mlu_info.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(
     init_allocated_mem, false,
@@ -620,6 +623,65 @@ uint64_t Release<platform::CUDAPinnedPlace>(
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+// For MLU
+#ifdef PADDLE_WITH_MLU
+// TODO(mlu): adapt GPUBuddyAllocatorList
+// class GPUBuddyAllocatorList {};
+// BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {}
+#endif
+
+template <>
+size_t Used<platform::MLUPlace>(const platform::MLUPlace &place) {
+#ifdef PADDLE_WITH_MLU
+  // TODO(mlu): add GetGPUBuddyAllocator method
+  // return GetGPUBuddyAllocator(place.device)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void *Alloc<platform::MLUPlace>(const platform::MLUPlace &place,
+                                size_t size) {
+#ifdef PADDLE_WITH_MLU
+  // TODO(mlu): Alloc<platform::MLUPlace>
+  } else {
+    if (FLAGS_init_allocated_mem) {
+      // TODO(mlu): adapt memory
+      // cudaMemset(ptr, 0xEF, size);
+    }
+  }
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<platform::MLUPlace>(const platform::MLUPlace &place, void *p,
+                               size_t size) {
+#ifdef PADDLE_WITH_MLU
+  // TODO(mlu): add GetGPUBuddyAllocator method
+  // return GetMLUBuddyAllocator(place.device)->Free(p);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
+#ifdef PADDLE_WITH_MLU
+  // TODO(mlu): add GetGPUBuddyAllocator method
+  // return GetMLUBuddyAllocator(place.device)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
 #endif
 }
 
