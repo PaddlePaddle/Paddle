@@ -26,7 +26,7 @@ if(WITH_MKLDNN)
   set(mkldnn_quantizer_cfg ${mkldnn_quantizer_cfg} PARENT_SCOPE)
 endif()
 
-cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer)
+cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer utf8proc)
 cc_library(paddle_infer_contrib SRCS paddle_infer_contrib.cc DEPS zero_copy_tensor)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 

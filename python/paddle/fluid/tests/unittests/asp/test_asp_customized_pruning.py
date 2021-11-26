@@ -39,7 +39,7 @@ static_tensor = None
 static_tensor_mask = None
 
 
-def my_own_pruning(tensor, m, n, func_name, param_name):
+def my_own_pruning(tensor, m, n, mask_algo, param_name):
     global static_tensor
     global static_tensor_mask
     if static_tensor is None:
@@ -108,10 +108,7 @@ class TestASPHelperCustomerizedPruneFunc(unittest.TestCase):
         self.exe.run(self.startup_program)
 
         sparsity.prune_model(
-            self.place,
-            self.main_program,
-            func_name=sparsity.MaskAlgo.MASK_1D,
-            with_mask=False)
+            self.main_program, mask_algo="mask_1d", with_mask=False)
 
         supported_layer_count = 0
         for param in self.main_program.global_block().all_parameters():
@@ -144,10 +141,7 @@ class TestASPHelperCustomerizedPruneFunc(unittest.TestCase):
         self.exe.run(self.startup_program)
 
         sparsity.prune_model(
-            self.place,
-            self.main_program,
-            func_name=sparsity.MaskAlgo.MASK_1D,
-            with_mask=True)
+            self.main_program, mask_algo="mask_1d", with_mask=True)
 
         supported_layer_count = 0
         for param in self.main_program.global_block().all_parameters():

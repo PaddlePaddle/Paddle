@@ -32,7 +32,8 @@ def test_static_assert_true(self, x_list, p_list):
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
-                self.assertTrue(np.allclose(result, expected_output))
+                np.testing.assert_allclose(
+                    result[0], expected_output, rtol=5e-5)
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
@@ -41,7 +42,8 @@ def test_dygraph_assert_true(self, x_list, p_list):
             input_tensor = paddle.to_tensor(x)
             output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
-            self.assertTrue(np.allclose(output, expected_output))
+            np.testing.assert_allclose(
+                output.numpy(), expected_output, rtol=5e-5)
 
 
 def gen_input():
@@ -156,5 +158,4 @@ class TestCondEmptyTensorInput(unittest.TestCase):
 
 if __name__ == "__main__":
     paddle.enable_static()
-    # paddle.device.set_device("cpu")
     unittest.main()

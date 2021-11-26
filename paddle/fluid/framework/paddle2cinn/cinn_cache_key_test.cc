@@ -47,17 +47,19 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKey) {
   DDim ddim = paddle::framework::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
 
-  CinnCacheKey cache_key1(empty_graph, feed_tensors);
-  CinnCacheKey cache_key2(empty_graph, feed_shapes);
-  EXPECT_EQ(cache_key1, cache_key2);
+  CinnCacheKey cache_key0(empty_graph, feed_tensors, "x86");
+  CinnCacheKey cache_key1(empty_graph, feed_shapes, "x86");
+  EXPECT_EQ(cache_key0, cache_key1);
 
-  CinnCacheKey cache_key3(graph, feed_shapes);
-  CinnCacheKey cache_key4(graph, feed_tensors);
+  CinnCacheKey cache_key2(graph, feed_shapes, "x86");
+  CinnCacheKey cache_key3(graph, feed_shapes, "nvgpu");
+  CinnCacheKey cache_key4(graph, feed_tensors, "nvgpu");
+  EXPECT_NE(cache_key2, cache_key3);
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKey cache_key5(empty_graph,
-                          std::map<std::string, const LoDTensor *>());
-  CinnCacheKey cache_key6(empty_graph, std::map<std::string, DDim>());
+                          std::map<std::string, const LoDTensor *>(), "unk");
+  CinnCacheKey cache_key6(empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -69,19 +71,19 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKey) {
   EXPECT_NE(cache_key5, cache_key1);
   EXPECT_NE(cache_key2, cache_key6);
 
+  test_set.insert(cache_key0);
   test_set.insert(cache_key1);
-  test_set.insert(cache_key2);
   test_set.insert(cache_key3);
   test_set.insert(cache_key4);
   test_set.insert(cache_key5);
   test_set.insert(cache_key6);
   EXPECT_EQ(test_set.size(), 3U);
 
-  auto iter = test_set.find(cache_key1);
+  auto iter = test_set.find(cache_key0);
   EXPECT_NE(iter, test_set.end());
   test_set.erase(iter);
   EXPECT_EQ(test_set.size(), 2U);
-  EXPECT_EQ(test_set.find(cache_key2), test_set.end());
+  EXPECT_EQ(test_set.find(cache_key1), test_set.end());
 
   iter = test_set.find(cache_key3);
   EXPECT_NE(iter, test_set.end());

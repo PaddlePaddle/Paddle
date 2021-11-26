@@ -23,16 +23,9 @@ class GPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *out = context.Output<Tensor>("Out");
-    int user_seed = context.Attr<int>("seed");
-    auto force_cpu = context.Attr<bool>("force_cpu");
-    std::random_device rnd;
-    int seed;
-    if (user_seed != 0) {
-      seed = user_seed;
-    } else {
-      seed = rnd();
-    }
+    int seed = get_seed(context);
 
+    auto force_cpu = context.Attr<bool>("force_cpu");
     bool cpu_place = force_cpu || context.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       platform::DeviceContextPool &pool =

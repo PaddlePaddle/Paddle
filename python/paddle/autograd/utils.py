@@ -25,9 +25,7 @@ def _tensors(ts, name):
                 name)
         return list(ts)
     else:
-        assert isinstance(
-            ts, paddle.Tensor
-        ) or ts is None, "{} must be Tensor or list of Tensor".format(name)
+        assert isinstance(ts, paddle.Tensor), "{} must be Tensor".format(name)
         return [ts]
 
 

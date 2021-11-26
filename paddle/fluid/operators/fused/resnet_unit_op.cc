@@ -109,7 +109,12 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     // Check dims of inputs
     const auto x_dims = ctx->GetInputDim("X");
     const auto w_dims = ctx->GetInputDim("FilterX");
-    const auto bn_param_dims = ctx->GetInputDim("ScaleX");
+    std::vector<int64_t> bn_param_shape =
+        framework::vectorize(ctx->GetInputDim("ScaleX"));
+    if (1 == bn_param_shape.size()) {
+      bn_param_shape = {1, 1, 1, bn_param_shape[0]};
+    }
+    framework::DDim bn_param_dims = framework::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
                                             "The dimensions of input "
                                             "must equal to 4."
@@ -232,13 +237,14 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
+    AddAttr<bool>("use_addto", "").SetDefault(false);
     AddAttr<std::string>("act_type", "The activation type to be fused.")
         .SetDefault("relu");
     AddComment(R"DOC(
-Fusion op of the basic unit of resnet block.
+Fusion op of the basic unit of resnet block. 
 
 The implementation is based on the latest fusion op interface in cuDNN v8.0.
-For more details:
+For more details: 
 https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnFusedOps_t
 
 )DOC");

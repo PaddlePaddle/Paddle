@@ -191,6 +191,14 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
         continue;
       }
 
+      if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+        if (pair.first == "LnScale" || pair.first == "LnBias" ||
+            pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+            pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+          continue;
+        }
+      }
+
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (auto& var : pair.second) {
@@ -223,6 +231,14 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
+      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
+          dst_type == framework::proto::VarType::FP32) {
+        if (pair.first != "LnScale" && pair.first != "LnBias" &&
+            pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&
+            pair.first != "Ln1Scale" && pair.first != "Ln1Bias") {
+          continue;
+        }
+      }
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
               << framework::DataTypeToString(dst_type);
@@ -245,10 +261,24 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
     dst_type = framework::proto::VarType::FP32;
   }
   for (auto& pair : new_ins) {
+    // NOTE: The run_program OP only has FP32 kernel. In dy2stat pure fp16
+    // training, we have correctly cast the inputs of run_program OP before,
+    // so here should avoid casting for run_program OP.
+    if (op_type == "run_program") {
+      continue;
+    }
+
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
       continue;
+    }
+    if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+      if (pair.first == "LnScale" || pair.first == "LnBias" ||
+          pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+          pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+        continue;
+      }
     }
     VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
             << GetDtypeStr(*pair.second.cbegin()) << " to "

@@ -25,6 +25,7 @@ import subprocess
 from contextlib import closing
 import socket
 from paddle.fluid import core
+from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from distutils.util import strtobool
 
 from paddle.fluid.layer_helper import LayerHelper
@@ -65,14 +66,11 @@ def global_scatter(x,
     to global_count.
     
     Args:
-        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+        x (Tensor): Tensor. The tensor data type should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be sent. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be sent. The tensor data type should be int64.
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be received. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be received. The tensor data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
     
@@ -161,19 +159,16 @@ def global_gather(x,
     to global_count.
 
     Args:
-        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+        x (Tensor): Tensor. Tensor whose data type should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be received. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be received. Tensor data type should be int64.
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be sent. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be sent. Tensor data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
     
     Returns:
-        None.
+        out (Tensor): The data received from all experts. 
     
     Examples:
         .. code-block:: python
@@ -619,8 +614,10 @@ def find_free_ports(num):
     return None
 
 
-def _prepare_trainer_env(cluster, trainer):
-    if core.is_compiled_with_xpu():
+def _prepare_trainer_env(cluster, trainer, backend=None):
+    if backend is None:
+        backend = get_backend_by_compile_flag()  # for compatibility
+    if backend == 'bkcl':
         proc_env = {
             "FLAGS_selected_xpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -629,7 +626,7 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
-    elif core.is_compiled_with_cuda():
+    elif backend == 'nccl':
         proc_env = {
             "FLAGS_selected_gpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -638,6 +635,19 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
+    elif backend == 'gloo':
+        # NOTE (xiongkun) default fall back into cpu only
+        proc_env = {
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "PADDLE_DISTRI_BACKEND":
+            backend,  # only add here, other will be auto
+        }
+    else:
+        raise ValueError("backend must be one of 'gloo, nccl, bkcl'")
+
     return proc_env
 
 

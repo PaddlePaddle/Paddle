@@ -27,7 +27,7 @@ from ... import tensor
 from ...fluid import layers
 from .. import Layer, LayerList
 from ...framework import ParamAttr
-from ...fluid.data_feeder import convert_dtype
+from paddle.fluid.data_feeder import convert_dtype
 
 __all__ = []
 
@@ -108,7 +108,8 @@ def _convert_attention_mask(attn_mask, dtype):
 
 
 class CUDNNSeqInfo:
-    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen, attn_mask):
+    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
+                 kv_seqlen, attn_mask):
         self.max_seq_len = max_seq_len
         self.low_hi_win_idx = paddle.concat([low_win_idx, hi_win_idx], axis=0)
         self.qo_kv_seqlen = paddle.concat([qo_seqlen, kv_seqlen], axis=0)
@@ -128,7 +129,8 @@ class CUDNNSeqInfoInfer(Layer):
     def __init__(self, enable_cache=True):
         super(CUDNNSeqInfoInfer, self).__init__()
         self.enable_cache = enable_cache
-        self.id = "{}_{}".format(CUDNNSeqInfoInfer.__name__, CUDNNSeqInfoInfer.id)
+        self.id = "{}_{}".format(CUDNNSeqInfoInfer.__name__,
+                                 CUDNNSeqInfoInfer.id)
         CUDNNSeqInfoInfer.id += 1
 
     def forward(self, attention_mask):
@@ -136,16 +138,15 @@ class CUDNNSeqInfoInfer(Layer):
         low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
         hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
         if (len(attention_mask.shape) == 4):
-            qo_seqlen = paddle.sum(attention_mask[:, 0, 0,:] == 1,
-                                        axis=1,
-                                        dtype='int32')
+            qo_seqlen = paddle.sum(attention_mask[:, 0, 0, :] == 1,
+                                   axis=1,
+                                   dtype='int32')
         else:
-            qo_seqlen = paddle.sum(attention_mask == 1,
-                                        axis=1,
-                                        dtype='int32')
+            qo_seqlen = paddle.sum(attention_mask == 1, axis=1, dtype='int32')
         kv_seqlen = qo_seqlen
-        
-        seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen, kv_seqlen, attention_mask)
+
+        seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
+                                kv_seqlen, attention_mask)
         if self.enable_cache:
             # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
             # converting dygraph to static. Since to_static would build ParallelExecutor which 
@@ -184,7 +185,7 @@ class CUDNNMultiHeadAttention(Layer):
         self.meta_data.sm_scaler = self.meta_data.proj_size**-0.5
 
         self.weight = self.create_parameter(
-            shape=(embed_dim * embed_dim * 4 + embed_dim * 4,),
+            shape=(embed_dim * embed_dim * 4 + embed_dim * 4, ),
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
@@ -234,8 +235,8 @@ class CUDNNMultiHeadAttention(Layer):
         WV_B = state_dict['v_proj.bias']
         WO_P = state_dict['out_proj.weight']
         WO_B = state_dict['out_proj.bias']
-        W = CUDNNMultiHeadAttention._merge_WQKVO_to_W(
-            WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B)
+        W = CUDNNMultiHeadAttention._merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B,
+                                                      WV_P, WV_B, WO_P, WO_B)
         self.weight.set_value(W)
 
     def extra_repr(self):
@@ -245,7 +246,8 @@ class CUDNNMultiHeadAttention(Layer):
             self.meta_data.hidden_size, self._dtype, name_str)
 
     @staticmethod
-    def convert_inference_program_with_paddleMHA_replacement(layer, exe, inputs):
+    def convert_inference_program_with_paddleMHA_replacement(layer, exe,
+                                                             inputs):
         in_dygraph_mode_before = paddle.fluid.framework.in_dygraph_mode()
         if in_dygraph_mode_before:
             paddle.enable_static()
@@ -256,17 +258,22 @@ class CUDNNMultiHeadAttention(Layer):
         with paddle.static.program_guard(main_prog, startup_prog):
             new_inputs = []
             for input_ in inputs:
-                new_inputs.append(paddle.static.data(
-                    name="input_{}".format(id(input_)), shape=input_.shape, dtype=input_.dtype))
+                new_inputs.append(
+                    paddle.static.data(
+                        name="input_{}".format(id(input_)),
+                        shape=input_.shape,
+                        dtype=input_.dtype))
 
             import types
             for _, l in layer.named_sublayers():
                 if isinstance(l, CUDNNMultiHeadAttention):
-                    l.paddle_mha = MultiHeadAttention(l._embed_dim, 
+                    l.paddle_mha = MultiHeadAttention(l._embed_dim,
                                                       l.meta_data.nheads,
                                                       l.meta_data.dropout_rate)
+
                     def forward(self, q, k, v, seq_info):
                         return self.paddle_mha(q, k, v, seq_info.attn_mask)
+
                     l.forward = types.MethodType(forward, l)
             exe.run(startup_prog)
             with paddle.static.program_guard(main_prog, startup_prog):
@@ -284,7 +291,8 @@ class CUDNNMultiHeadAttention(Layer):
                         l.paddle_mha.v_proj.bias.set_value(WV_B)
                         l.paddle_mha.out_proj.bias.set_value(WO_B)
                 if isinstance(layer.forward,
-                    paddle.fluid.dygraph.dygraph_to_static.program_translator.StaticFunction):
+                              paddle.fluid.dygraph.dygraph_to_static.
+                              program_translator.StaticFunction):
                     output = layer.forward._call_dygraph_function(*new_inputs)
                 else:
                     output = layer(*new_inputs)
@@ -302,18 +310,19 @@ class CUDNNMultiHeadAttention(Layer):
         WO_P = weight[3 * stride:4 * stride].reshape(param_shape)
 
         bias_start = 4 * stride
-        WQ_B = weight[bias_start: bias_start + embed_dim]
-        WK_B = weight[bias_start + embed_dim: bias_start + 2*embed_dim]
-        WV_B = weight[bias_start + 2*embed_dim:bias_start + 3*embed_dim]
-        WO_B = weight[bias_start + 3*embed_dim :]
+        WQ_B = weight[bias_start:bias_start + embed_dim]
+        WK_B = weight[bias_start + embed_dim:bias_start + 2 * embed_dim]
+        WV_B = weight[bias_start + 2 * embed_dim:bias_start + 3 * embed_dim]
+        WO_B = weight[bias_start + 3 * embed_dim:]
 
         return WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B
 
     @staticmethod
     def _merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
-        W = np.concatenate(
-            [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten(),
-             WQ_B.flatten(), WK_B.flatten(), WV_B.flatten(), WO_B.flatten()])
+        W = np.concatenate([
+            WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten(),
+            WQ_B.flatten(), WK_B.flatten(), WV_B.flatten(), WO_B.flatten()
+        ])
         return W
 
     @staticmethod
@@ -326,7 +335,8 @@ class CUDNNMultiHeadAttention(Layer):
             WK = weight_nparray[stride:2 * stride].reshape((vec_size, vec_size))
             WV = weight_nparray[2 * stride:3 * stride].reshape(
                 (vec_size, vec_size))
-            WO = weight_nparray[3 * stride:4 * stride].reshape((vec_size, vec_size))
+            WO = weight_nparray[3 * stride:4 * stride].reshape(
+                (vec_size, vec_size))
 
             WQ_sparse_mask = sparsity.create_mask(
                 WQ.T, func_name=func_name, n=n, m=m).T.flatten()
@@ -336,10 +346,10 @@ class CUDNNMultiHeadAttention(Layer):
                 WV.T, func_name=func_name, n=n, m=m).T.flatten()
             WO_sparse_mask = sparsity.create_mask(
                 WO.T, func_name=func_name, n=n, m=m).T.flatten()
-            bias_sparse_mask = np.ones((4*vec_size))
+            bias_sparse_mask = np.ones((4 * vec_size))
             weight_sparse_mask = np.concatenate([
-                WQ_sparse_mask, WK_sparse_mask, WV_sparse_mask,
-                WO_sparse_mask, bias_sparse_mask
+                WQ_sparse_mask, WK_sparse_mask, WV_sparse_mask, WO_sparse_mask,
+                bias_sparse_mask
             ])
 
             weight_pruned_nparray = np.multiply(weight_nparray,

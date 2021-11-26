@@ -105,10 +105,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
             self.assertFalse(fluid.contrib.sparsity.check_sparsity(w.T))
 
         fluid.contrib.sparsity.prune_model(
-            self.place,
-            self.cudnn_main_prog,
-            func_name=fluid.contrib.sparsity.MaskAlgo.MASK_1D,
-            with_mask=True)
+            self.cudnn_main_prog, mask_algo="mask_1d", with_mask=True)
 
         post_pruned_mat = np.array(fluid.global_scope().find_var(param_name)
                                    .get_tensor())
@@ -125,10 +122,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
                     w.T, func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
         fluid.contrib.sparsity.prune_model(
-            self.place,
-            self.cudnn_main_prog,
-            func_name=fluid.contrib.sparsity.MaskAlgo.MASK_2D_GREEDY,
-            with_mask=True)
+            self.cudnn_main_prog, mask_algo="mask_2d_greedy", with_mask=True)
 
         post_pruned_mat = np.array(fluid.global_scope().find_var(param_name)
                                    .get_tensor())
@@ -148,10 +142,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
                     w.T, func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
         fluid.contrib.sparsity.prune_model(
-            self.place,
-            self.cudnn_main_prog,
-            func_name=fluid.contrib.sparsity.MaskAlgo.MASK_2D_BEST,
-            with_mask=True)
+            self.cudnn_main_prog, mask_algo="mask_2d_best", with_mask=True)
 
         post_pruned_mat = np.array(fluid.global_scope().find_var(param_name)
                                    .get_tensor())
@@ -161,8 +152,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
                     w.T, func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
     def test_asp_workflow(self):
-        fluid.contrib.sparsity.prune_model(
-            self.place, self.cudnn_main_prog, with_mask=True)
+        fluid.contrib.sparsity.prune_model(self.cudnn_main_prog, with_mask=True)
         for _ in range(3):
             self.exe.run(self.cudnn_main_prog,
                          feed={

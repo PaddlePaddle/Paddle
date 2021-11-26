@@ -55,7 +55,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     int padding = ctx.Attr<int>("padding");
     int stride = ctx.Attr<int>("stride");
     int stride_z = ctx.Attr<int>("stride_z");
-    int dilate = ctx.Attr<int>("dilate");
+    int dilation = ctx.Attr<int>("dilation");
     int group = ctx.Attr<int>("group");
     double eps = static_cast<double>(ctx.Attr<float>("epsilon"));
     double momentum = static_cast<double>(ctx.Attr<float>("momentum"));
@@ -68,8 +68,16 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
 
     auto input_x_shape = framework::vectorize<int>(input_x->dims());
     auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
+    // std::swap used to convert shape of filter from conv2d when kernel size is
+    // 1.
+    if (filter_x_shape[1] != filter_x_shape[2] && 1 == filter_x_shape[2]) {
+      std::swap(filter_x_shape[1], filter_x_shape[3]);
+    }
     auto param_dims = scale_x->dims();
     auto param_shape = framework::vectorize<int>(scale_x->dims());
+    if (1 == param_shape.size()) {
+      param_shape = {1, 1, 1, param_shape[0]};
+    }
     auto output_shape = framework::vectorize<int>(output->dims());
     auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
     int output_channel = filter_x_shape[0];
@@ -87,7 +95,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     sum_x.Resize(param_dims);
     sum_of_squares_x.Resize(param_dims);
     CudnnNormConvolution<T> conv_x_op(dev_ctx, input_x_shape, filter_x_shape,
-                                      output_shape, padding, stride, dilate,
+                                      output_shape, padding, stride, dilation,
                                       group);
     conv_x_op.Forward(dev_ctx, *input_x, *filter_x, conv_out_x, &sum_x,
                       &sum_of_squares_x);
@@ -129,8 +137,8 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       sum_z.Resize(param_dims);
       sum_of_squares_z.Resize(param_dims);
       CudnnNormConvolution<T> conv_z_op(dev_ctx, input_z_shape, filter_z_shape,
-                                        output_shape, padding, stride_z, dilate,
-                                        group);
+                                        output_shape, padding, stride_z,
+                                        dilation, group);
       conv_z_op.Forward(dev_ctx, *input_z, *filter_z, conv_out_z, &sum_z,
                         &sum_of_squares_z);
 
@@ -189,7 +197,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     int padding = ctx.Attr<int>("padding");
     int stride = ctx.Attr<int>("stride");
     int stride_z = ctx.Attr<int>("stride_z");
-    int dilate = ctx.Attr<int>("dilate");
+    int dilation = ctx.Attr<int>("dilation");
     int group = ctx.Attr<int>("group");
     double eps = static_cast<double>(ctx.Attr<float>("epsilon"));
     double momentum = static_cast<double>(ctx.Attr<float>("momentum"));
@@ -263,7 +271,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
       CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx, z_shape, filter_z_shape,
                                             output_shape, padding, stride_z,
-                                            dilate, group);
+                                            dilation, group);
       conv_z_op.Backward(dev_ctx, *z, *filter_z, conv_out_z_grad, z_grad,
                          filter_z_grad);
     } else {
@@ -278,11 +286,12 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     }
 
     // 2. Backward of Conv for x, get x_grad and filter_x_grad
+    bool use_addto = ctx.Attr<bool>("use_addto");
     CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx, x_shape, filter_x_shape,
-                                          output_shape, padding, stride, dilate,
-                                          group);
+                                          output_shape, padding, stride,
+                                          dilation, group);
     conv_x_op.Backward(dev_ctx, *x, *filter_x, conv_out_x_grad, x_grad,
-                       filter_x_grad);
+                       filter_x_grad, use_addto);
   }
 };
 

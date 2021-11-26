@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import logging
+import unittest
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):

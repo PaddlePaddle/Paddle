@@ -44,7 +44,11 @@ if (WITH_ASCEND_CL)
 endif()
 
 # please add new math_library in alphabetical order
+if (WITH_ASCEND_CL)
+math_library(concat_and_split DEPS npu_op_runner)
+else()
 math_library(concat_and_split)
+endif()
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)
@@ -57,7 +61,7 @@ math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
-math_library(math_function DEPS blas)
+math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 math_library(pooling)
 

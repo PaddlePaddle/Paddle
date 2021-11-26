@@ -63,6 +63,43 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   return default_cpu_generator;
 }
 
+using RNGMap = std::unordered_map<std::string, std::shared_ptr<Generator>>;
+
+static RNGMap& GetRandomSeedGeneratorMap() {
+  static auto random_seed_generator_map = RNGMap();
+  return random_seed_generator_map;
+}
+
+const std::shared_ptr<Generator>& SetRandomSeedGenerator(
+    const std::string& name, uint64_t seed) {
+  auto& rng_map = GetRandomSeedGeneratorMap();
+  auto iter = rng_map.find(name);
+  PADDLE_ENFORCE_EQ(iter == rng_map.end(), true,
+                    platform::errors::AlreadyExists(
+                        "%s RandomSeedGenerator is already exist", name));
+
+  auto generator = std::make_shared<Generator>(seed);
+  bool emplace_success = rng_map.emplace(name, generator).second;
+  PADDLE_ENFORCE_EQ(
+      emplace_success, true,
+      platform::errors::PermissionDenied(
+          "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
+          name));
+  return rng_map[name];
+}
+
+const std::shared_ptr<Generator>& GetRandomSeedGenerator(
+    const std::string& name) {
+  auto& rng_map = GetRandomSeedGeneratorMap();
+  auto iter = rng_map.find(name);
+  PADDLE_ENFORCE_EQ(iter != rng_map.end(), true,
+                    platform::errors::NotFound(
+                        "%s RandomSeedGenerator is not found, please "
+                        "use `set_random_seed_generator` to set rng first",
+                        name));
+  return iter->second;
+}
+
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
   static auto op_default_cpu_engine = std::make_shared<std::mt19937_64>();
   return op_default_cpu_engine;

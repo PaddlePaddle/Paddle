@@ -153,6 +153,16 @@ int CreateListenSocket(const std::string& ep) {
   // not enter the TIME-WAIT state. But this is obviously not as convenient
   // as the reuse method.
   int opt = 1;
+
+  // NOTE. The linger is used for skipping TIME-WAIT status forcefully.
+  linger ling;
+  ling.l_onoff = 1;
+  ling.l_linger = 0;
+
+  CHECK_SYS_CALL(
+      setsockopt(server_fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling)),
+      "setsockopt set linger");
+
 #if defined(SO_REUSEPORT)
   // since Linux kernel 3.9
   CHECK_SYS_CALL(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,

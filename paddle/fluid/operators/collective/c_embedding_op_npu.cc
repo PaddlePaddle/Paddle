@@ -68,10 +68,21 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   ignore_tensor.Resize(ids_t.dims());
 
   NpuOpRunner sub_runner;
+#if (CANN_VERSION_CODE >= 503003)
+  Tensor factor_tensor(ids_t.type());
+  factor_tensor.mutable_data<T>({1}, context.GetPlace());
+  TensorFromVector(std::vector<T>{static_cast<T>(start_idx)},
+                   context.device_context(), &factor_tensor);
+  sub_runner.SetType("Sub")
+      .AddInput(ids_t)
+      .AddInput(factor_tensor)
+      .AddOutput(id_t);
+#else
   sub_runner.SetType("Sub")
       .AddInput(ids_t)
       .AddInput(std::vector<T>{static_cast<T>(start_idx)})
       .AddOutput(id_t);
+#endif
   sub_runner.Run();
 
   NpuOpRunner lessequal1_runner;
@@ -137,6 +148,9 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       .AddInput(table_t_pad)
       .AddInput(ids_t_local)
       .AddInput(std::vector<int32_t>{0})
+#if (CANN_VERSION_CODE >= 503003)
+      .AddAttrs({{"batch_dims", 0}})
+#endif
       .AddOutput(*output_t);
   runner.Run();
 }
