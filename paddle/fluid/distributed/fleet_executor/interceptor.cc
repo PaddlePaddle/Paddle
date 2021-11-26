@@ -100,7 +100,8 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
                   << " doesn't have empty slot or not every upstream is ready,"
                      " it will store the DATA_IS_READY info.";
       }
-      while (can_run && used_slot_nums_ < node_->max_slot_nums() &&
+      while (can_run &&
+             (node_->role() == 1 || used_slot_nums_ < node_->max_slot_nums()) &&
              already_run_times_ < node_->max_run_times()) {
         used_slot_nums_++;
         already_run_times_++;
@@ -168,7 +169,8 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
                   << " doesn't have empty slot or not every upstream is ready,"
                      " it will store the DATA_IS_READY info.";
       }
-      while (can_run && used_slot_nums_ < node_->max_slot_nums() &&
+      while (can_run &&
+             (node_->role() == 1 || used_slot_nums_ < node_->max_slot_nums()) &&
              already_run_times_ < node_->max_run_times()) {
         already_run_times_++;
         used_slot_nums_++;
