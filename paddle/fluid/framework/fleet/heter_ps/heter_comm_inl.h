@@ -100,6 +100,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   storage_.resize(resource_->total_gpu());
   for (int i = 0; i < resource_->total_gpu(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(8, 1, (unsigned int) -1, (size_t) -1, false, false));
     auto table = new Table(capacity / load_factor_);
     tables_.push_back(table);
