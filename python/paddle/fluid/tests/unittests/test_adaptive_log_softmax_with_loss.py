@@ -146,7 +146,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
 
     def test_approx_to_lsfm(self):
         """
-        Test error between AdaptiveLogSoftmaxWithLoss and log_softmax less then 3%, according to https://arxiv.org/abs/1609.04309
+        Test error between AdaptiveLogSoftmaxWithLoss and log_softmax less then 3%, according to http://arxiv.org/abs/1609.04309
         """
         x = paddle.abs(paddle.randn((64, 8)))
         asfm = nn.AdaptiveLogSoftmaxWithLoss(
