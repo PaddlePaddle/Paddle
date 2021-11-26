@@ -197,7 +197,7 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
               "The size of Attr(regularization_coeff) must be equal "
               "to Input(Param), but got the size of Attr(regularization_coeff) "
               "is %d, the size of Input(Param) is %d.",
-              regularization_coeff.size(), n));
+              regularization_coeffs.size(), n));
     }
 
     VLOG(5) << "use_nesterov: " << use_nesterov
