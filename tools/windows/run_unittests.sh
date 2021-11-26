@@ -319,9 +319,11 @@ set +e
 export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
     run_unittest_gpu $cpu_parallel_job 10
+    run_unittest_gpu $cpu_parallel_job
     run_unittest_gpu $tetrad_parallel_job 4
+    run_unittest_gpu $tetrad_parallel_job
     run_unittest_gpu $two_parallel_job 2
-    run_unittest_gpu $non_parallel_job
+    run_unittest_gpu $two_parallel_job
 else
     run_unittest_cpu
 fi
