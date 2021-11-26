@@ -50,7 +50,7 @@ void ReshapeFromVectorVal(const CPUContext& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int64_t>& shape,
                           DenseTensor* out) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
   if (&x == out) {
     out->Resize(out_meta.dims);
     return;

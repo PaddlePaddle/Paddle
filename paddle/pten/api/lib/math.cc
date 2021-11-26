@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/infermeta/unary.h"
 
 PT_DECLARE_MODULE(MathCPU);
@@ -50,8 +50,8 @@ PD_DLL_DECL Tensor mean(const Tensor& x) {
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
 
-  // 4. InferShape
-  auto out_meta = ReductionInferShape(dense_x->meta());
+  // 4. InferMeta
+  auto out_meta = ReductionInferMeta(dense_x->meta());
 
   // 5. Prepare outputs
   Tensor out;
@@ -86,8 +86,8 @@ PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;
@@ -121,8 +121,8 @@ PD_DLL_DECL Tensor subtract(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;
@@ -156,8 +156,43 @@ PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   kernel_context.EmplaceBackAttr(-1);
 
-  // 4. InferShape
-  auto out_meta = ElementwiseInferShape(dense_x->meta(), dense_y->meta(), -1);
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
+
+  // 5. Prepare outputs
+  Tensor out;
+  const auto allocator = std::make_shared<DefaultAllocator>(
+      pten::TransToFluidPlace(kernel_key.backend()));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  kernel_context.EmplaceBackOutput(dense_out);
+  out.set_impl(dense_out);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
+
+PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y) {
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "elementwise_mul", kernel_key);
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  kernel_context.EmplaceBackInput(dense_x);
+  auto dense_y = std::dynamic_pointer_cast<pten::DenseTensor>(y.impl());
+  kernel_context.EmplaceBackInput(dense_y);
+  kernel_context.EmplaceBackAttr(-1);
+
+  // 4. InferMeta
+  auto out_meta = ElementwiseInferMeta(dense_x->meta(), dense_y->meta(), -1);
 
   // 5. Prepare outputs
   Tensor out;
