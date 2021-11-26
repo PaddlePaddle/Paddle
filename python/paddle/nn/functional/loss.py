@@ -2078,12 +2078,15 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
     where :math:`L = \{l_1,\dots,l_N\}^\top`.
 
     Parameters:
-
+        input (Tensor): Input tensor, the data type is float32 or float64.
+            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
         delta (float, optional): Specifies the hyperparameter delta to be used.
             The value determines how large the input need to be to calculate in
             hinge_embedding_loss. When label is -1, Input smaller than delta are minimized with hinge_embedding_loss.
             Default = 1.0
-        reduction (str, optional): Indicate how to average the loss by batch_size,
+        reduction (str, optional): Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -2092,23 +2095,16 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Call Parameters:
-
-        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
-
-        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64. The shape of label is the same as the shape of input.
-
     Shape:
 
         input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64. The sum operationoperates over all the elements.
 
-        label: N-D Tensor, same shape as the input.
+        label: N-D Tensor, same shape as the input. tensor elements should containing 1 or -1, the data type is float32 or float64.
 
         output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
     Returns:
-
-        Tensor, The tensor variable storing the hinge_embedding_loss of input and label.
+        Tensor. The tensor variable storing the hinge_embedding_loss of input and label.
 
     Examples:
         .. code-block:: python
