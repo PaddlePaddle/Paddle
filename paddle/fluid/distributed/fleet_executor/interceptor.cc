@@ -51,8 +51,7 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
       InterceptorMessage msg;
       msg.set_message_type(STOP);
       Send(interceptor_id_, msg);
-    }
-    if (msg.message_type() == STOP) {
+    } else if (msg.message_type() == STOP) {
       stop_ = true;
       StopCarrier();
     }
