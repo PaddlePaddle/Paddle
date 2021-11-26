@@ -17,7 +17,7 @@
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 
-namespace pten {
+namespace paddle {
 namespace tests {
 
 template <typename T>
@@ -224,4 +224,4 @@ TEST(PtenTensor, All) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle

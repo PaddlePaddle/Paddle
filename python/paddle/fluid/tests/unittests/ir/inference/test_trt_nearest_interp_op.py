@@ -38,7 +38,7 @@ class TRTNearestInterpTest(InferencePassTest):
                     -1, self.origin_shape[0], self.origin_shape[1],
                     self.channels
                 ]
-            data = fluid.data(name='data', shape=shape, dtype='float16')
+            data = fluid.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
             out = fluid.layers.batch_norm(resize_out, is_test=True)
 
@@ -53,17 +53,18 @@ class TRTNearestInterpTest(InferencePassTest):
                 self.channels
             ]
 
-        self.feeds = {'data': np.random.random(shape).astype('float16'), }
+        self.feeds = {'data': np.random.random(shape).astype('float32'), }
         self.enable_trt = True
         self.trt_parameters = TRTNearestInterpTest.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float16, False, False)
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def set_params(self):
         self.bs = 4
-        self.scale = 1
+        self.scale = 0
         self.channels = 3
-        self.origin_shape = (16, 16)  # HW
+
+        self.origin_shape = (4, 4)  # HW
         self.resize_shape = (16, 16)  # HW
         self.align_corners = True
         self.data_layout = 'NCHW'
@@ -95,7 +96,7 @@ class TRTNearestInterpTest1(TRTNearestInterpTest):
         self.scale = -1
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = True
         self.data_layout = 'NCHW'
 
@@ -106,7 +107,7 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
         self.scale = 2.
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NCHW'
 
@@ -114,10 +115,10 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
 class TRTNearestInterpTest3(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
-        self.scale = -1
+        self.scale = 0
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NCHW'
 
@@ -139,7 +140,7 @@ class TRTNearestInterpTest5(TRTNearestInterpTest):
         self.scale = -1
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = True
         self.data_layout = 'NHWC'
 
@@ -150,7 +151,7 @@ class TRTNearestInterpTest6(TRTNearestInterpTest):
         self.scale = 2.
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NHWC'
 
@@ -161,7 +162,7 @@ class TRTNearestInterpTest7(TRTNearestInterpTest):
         self.scale = -1
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NHWC'
 

@@ -38,13 +38,27 @@ else
 fi
 
 # check added ut
-if [ ${WITH_GPU:-OFF} == "ON" ];then
-    set +e
-    cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
-    bash $PADDLE_ROOT/tools/check_added_ut_win.sh
-    rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
-    set -e
+
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+if [ -f "$PADDLE_ROOT/added_ut" ];then
+    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+    ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    rm -f $PADDLE_ROOT/added_ut
+    if [ "$added_ut_error" != 0 ];then
+        echo "========================================"
+        echo "Added UT should pass three additional executions"
+        echo "========================================"
+        exit 8;
+    fi
+    if nvcc --version | grep 11.2; then
+        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+        exit 0;
+    fi
 fi
+set -e
 
 # /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
 # TODO: fix these unittest that is bound to fail
@@ -96,7 +110,16 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_matmul_quant_dequant$|\
 ^test_trt_subgraph_pass$|\
 ^test_trt_convert_dropout$|\
-^test_trt_convert_hard_sigmoid$"
+^test_trt_convert_hard_sigmoid$|\
+^test_trt_convert_reduce_mean$|\
+^test_trt_convert_reduce_sum$|\
+^test_trt_convert_group_norm$|\
+^test_trt_convert_batch_norm$|\
+^test_trt_convert_activation$|\
+^test_trt_convert_depthwise_conv2d_transpose$|\
+^test_trt_convert_elementwise$|\
+^test_trt_convert_matmul$|\
+^test_trt_convert_scale$"
 
 # /*============================================================================*/
 
@@ -169,11 +192,9 @@ long_time_test="^test_gru_op$|\
 ^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
-    export FLAGS_fraction_of_gpu_memory_to_use=0.92
     export CUDA_VISIBLE_DEVICES=0
 
-    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-    echo "${UT_list}" > all_ut_list
+    ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
     num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
     echo "Windows 1 card TestCases count is $num"
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -181,18 +202,12 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
         if [[ -f "ut_list" ]]; then
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
+            if [[ "$precision_cases" != "" ]];then
+                python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py
+            fi
         fi
     fi
 
-    set +e
-    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py)
-        UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
-        echo "${UT_list_res}" | grep 'PRECISION_TEST'
-        UT_list=$UT_list_prec
-        echo "${UT_list}" > all_ut_list
-    fi
-    set -e
     # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
     output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
     cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
@@ -326,21 +341,6 @@ set +e
 
 export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
-    if [ -f "$PADDLE_ROOT/added_ut" ];then
-        added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-        ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
-        rm -f $PADDLE_ROOT/added_ut
-        if [ "$added_ut_error" != 0 ];then
-            echo "========================================"
-            echo "Added UT should pass three additional executions"
-            echo "========================================"
-            exit 8;
-        fi
-        if nvcc --version | grep 11.2; then
-            echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-            exit 0;
-        fi
-    fi
     run_unittest_gpu $cpu_parallel_job 10
     run_unittest_gpu $tetrad_parallel_job 4
     run_unittest_gpu $two_parallel_job 2

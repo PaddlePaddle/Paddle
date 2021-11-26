@@ -26,7 +26,7 @@ def get_prec_ut_list(all_test_cases, prec_test_cases):
     prec_test_cases_list_new = [item.rstrip() for item in prec_test_cases_list]
 
     if len(prec_test_cases) == 0:
-        return "\n".join(all_test_cases_list)
+        return
 
     case_to_run = ['test_prec_ut']
     for case in all_test_cases_list_new:
@@ -34,8 +34,9 @@ def get_prec_ut_list(all_test_cases, prec_test_cases):
             case_to_run.append(case)
         else:
             print("{} will not run in PRECISION_TEST mode.".format(case))
-    for case in case_to_run:
-        print(case)
+
+    with open(file_path, 'w') as f:
+        f.write('\n'.join(case_to_run))
 
 
 if __name__ == '__main__':
