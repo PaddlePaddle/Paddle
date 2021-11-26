@@ -213,8 +213,8 @@ class CUDNNMultiHeadAttention(Layer):
 
         if destination is None:
             destination = collections.OrderedDict()
-        WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = self._split_W_into_WQKVO(
-        )
+        WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = \
+            CUDNNMultiHeadAttention._split_W_into_WQKVO(self.weight, self._embed_dim)
         destination['q_proj.weight'] = WQ_P
         destination['q_proj.bias'] = WQ_B
         destination['k_proj.weight'] = WK_P
@@ -234,8 +234,8 @@ class CUDNNMultiHeadAttention(Layer):
         WV_B = state_dict['v_proj.bias']
         WO_P = state_dict['out_proj.weight']
         WO_B = state_dict['out_proj.bias']
-        W = self._merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P,
-                                   WO_B)
+        W = CUDNNMultiHeadAttention._merge_WQKVO_to_W(
+            WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B)
         self.weight.set_value(W)
 
     def extra_repr(self):
@@ -244,23 +244,69 @@ class CUDNNMultiHeadAttention(Layer):
             self.weight.shape[0], self.meta_data.hidden_size,
             self.meta_data.hidden_size, self._dtype, name_str)
 
-    def _split_W_into_WQKVO(self):
-        param_shape = (self._embed_dim, self._embed_dim)
-        stride = self._embed_dim * self._embed_dim
-        WQ_P = self.weight[:stride].reshape(param_shape)
-        WK_P = self.weight[stride:2 * stride].reshape(param_shape)
-        WV_P = self.weight[2 * stride:3 * stride].reshape(param_shape)
-        WO_P = self.weight[3 * stride:4 * stride].reshape(param_shape)
+    @staticmethod
+    def convert_inference_program_with_paddleMHA_replacement(layer, exe, inputs):
+        paddle.enable_static()
+
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            new_inputs = []
+            for input_ in inputs:
+                new_inputs.append(paddle.static.data(
+                    name="input_{}".format(id(input_)), shape=input_.shape, dtype=input_.dtype))
+
+            import types
+            for _, l in layer.named_sublayers():
+                if isinstance(l, CUDNNMultiHeadAttention):
+                    l.paddle_mha = MultiHeadAttention(l._embed_dim, 
+                                                      l.meta_data.nheads,
+                                                      l.meta_data.dropout_rate)
+                    def forward(self, q, k, v, seq_info):
+                        return self.paddle_mha(q, k, v, seq_info.attn_mask)
+                    l.forward = types.MethodType(forward, l)
+            exe.run(startup_prog)
+            with paddle.static.program_guard(main_prog, startup_prog):
+                for p, l in layer.named_sublayers():
+                    if isinstance(l, CUDNNMultiHeadAttention):
+                        WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = \
+                            CUDNNMultiHeadAttention._split_W_into_WQKVO(
+                                np.array(l.weight), l._embed_dim)
+                        l.paddle_mha.q_proj.weight.set_value(WQ_P)
+                        l.paddle_mha.k_proj.weight.set_value(WK_P)
+                        l.paddle_mha.v_proj.weight.set_value(WV_P)
+                        l.paddle_mha.out_proj.weight.set_value(WO_P)
+                        l.paddle_mha.q_proj.bias.set_value(WQ_B)
+                        l.paddle_mha.k_proj.bias.set_value(WK_B)
+                        l.paddle_mha.v_proj.bias.set_value(WV_B)
+                        l.paddle_mha.out_proj.bias.set_value(WO_B)
+                if isinstance(layer.forward,
+                    paddle.fluid.dygraph.dygraph_to_static.program_translator.StaticFunction):
+                    output = layer.forward._call_dygraph_function(*new_inputs)
+                else:
+                    output = layer(*new_inputs)
+            return main_prog, startup_prog, new_inputs, output
+
+    @staticmethod
+    def _split_W_into_WQKVO(weight, embed_dim):
+        param_shape = (embed_dim, embed_dim)
+        stride = embed_dim * embed_dim
+        WQ_P = weight[:stride].reshape(param_shape)
+        WK_P = weight[stride:2 * stride].reshape(param_shape)
+        WV_P = weight[2 * stride:3 * stride].reshape(param_shape)
+        WO_P = weight[3 * stride:4 * stride].reshape(param_shape)
 
         bias_start = 4 * stride
-        WQ_B = self.weight[bias_start: bias_start + self._embed_dim]
-        WK_B = self.weight[bias_start + self._embed_dim: bias_start + 2*self._embed_dim]
-        WV_B = self.weight[bias_start + 2*self._embed_dim:bias_start + 3*self._embed_dim]
-        WO_B = self.weight[bias_start + 3*self._embed_dim :]
+        WQ_B = weight[bias_start: bias_start + embed_dim]
+        WK_B = weight[bias_start + embed_dim: bias_start + 2*embed_dim]
+        WV_B = weight[bias_start + 2*embed_dim:bias_start + 3*embed_dim]
+        WO_B = weight[bias_start + 3*embed_dim :]
 
         return WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B
 
-    def _merge_WQKVO_to_W(self, WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
+    @staticmethod
+    def _merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
         W = np.concatenate(
             [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten(),
              WQ_B.flatten(), WK_B.flatten(), WV_B.flatten(), WO_B.flatten()])
