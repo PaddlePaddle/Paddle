@@ -86,7 +86,7 @@ class InterpreterCore {
 
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
-  void ClearLocalScope();
+  void ClearLoDTensorArrayInLocalScope();
 
   bool is_build_;
 

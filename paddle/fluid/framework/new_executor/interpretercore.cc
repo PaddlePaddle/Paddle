@@ -89,7 +89,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   if (create_local_scope_) {
-    ClearLocalScope();
+    ClearLoDTensorArrayInLocalScope();
   }
 
   // return Fetch Tensors
@@ -127,7 +127,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   if (create_local_scope_) {
-    ClearLocalScope();
+    ClearLoDTensorArrayInLocalScope();
   }
 
   // return Fetch Tensors
@@ -135,7 +135,10 @@ paddle::framework::FetchList InterpreterCore::Run(
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
-void InterpreterCore::ClearLocalScope() {
+// At the end of each step, the holder of Tensor in LoDTensorArray is null.
+// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
+// will occur in the next step
+void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
     if (var->IsType<LoDTensorArray>()) {
@@ -628,7 +631,7 @@ interpreter::CostInfo InterpreterCore::DryRun(
   }
 
   if (create_local_scope_) {
-    ClearLocalScope();
+    ClearLoDTensorArrayInLocalScope();
   }
 
   return cost_info;
