@@ -301,6 +301,14 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
+bool IsCompiledWithTRT() {
+#ifdef PADDLE_WITH_TENSORRT
+  return true;
+#else
+  return false;
+#endif
+}
+
 template <typename PlaceType1, typename PlaceType2>
 static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
   return paddle::platform::Place(p1) == paddle::platform::Place(p2);
@@ -2097,6 +2105,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
+  m.def("is_compiled_with_tensorrt", IsCompiledWithTRT);
 
   m.def("get_float_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
