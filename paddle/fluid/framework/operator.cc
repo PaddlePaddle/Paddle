@@ -69,9 +69,9 @@ void print_data(const std::vector<T>& vec, std::stringstream& sstr, bool whole =
   }
 }
 
-static std::vector<string> split_str(std::string strtem,char a)
+static std::vector<std::string> split_str(std::string strtem,char a)
     {
-        std::vector<string> strvec;
+        std::vector<std::string> strvec;
  
         std::string::size_type pos1, pos2;
         pos2 = strtem.find(a);
