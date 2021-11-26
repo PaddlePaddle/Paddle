@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 
 PT_DECLARE_MODULE(UtilsCPU);
 
@@ -55,7 +55,7 @@ PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   kernel_context.EmplaceBackAttr(blocking);
 
   // 4. InferMeta
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  auto out_meta = UnchangedInferMeta(dense_x->meta());
 
   // 5. Prepare outputs
   const auto allocator =

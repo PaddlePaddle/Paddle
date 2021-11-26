@@ -14,4 +14,5 @@
 //
 #pragma once
 
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
