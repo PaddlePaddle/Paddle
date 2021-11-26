@@ -287,21 +287,15 @@ def cpuonly_check(args):
 def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
-    if args.enable_auto_mapping:
-        (device_mode, devices_per_proc) = (DeviceMode.GPU, [])
-    else:
-        (device_mode,
-         devices_per_proc) = launch_utils.get_device_proc_info(args)
+    (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
         trainers_num, device_mode, devices_per_proc))
 
-    cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-
     cluster = None
     pod = None
-    start_port = 6170
 
+    start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
 
