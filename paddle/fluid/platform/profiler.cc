@@ -102,7 +102,9 @@ class EventContainer {
     static constexpr size_t kPadSize =
         kAvailSize - kNumEvents * sizeof(InitDeferedEvent);
     static constexpr size_t kMinimumEventsPerBlock = 1024;
-    static_assert(kNumEvents >= kMinimumEventsPerBlock);
+    static_assert(
+        kNumEvents >= kMinimumEventsPerBlock,
+        "EventType is too large for kBlockSize, make kBlockSize larger");
 
     size_t offset = 0;
     EventBlock *next = nullptr;
