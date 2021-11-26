@@ -26,5 +26,10 @@ PD_DLL_DECL Tensor mean(const Tensor& x);
 PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y);
 
 PD_DLL_DECL Tensor subtract(const Tensor& x, const Tensor& y);
+
+PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y);
+
+PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y);
+
 }  // namespace experimental
 }  // namespace paddle

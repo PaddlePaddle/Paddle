@@ -17,19 +17,19 @@ limitations under the License. */
 
 namespace pten {
 
-DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta) {
+DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {
   return x_meta;
 }
 
-DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta) {
+DenseTensorMeta ReductionInferMeta(const DenseTensorMeta& x_meta) {
   const auto& out_dims = paddle::framework::make_ddim({1});
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
   return return_meta;
 }
 
-DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
-                                  int start_axis,
-                                  int stop_axis) {
+DenseTensorMeta FlattenInferMeta(const DenseTensorMeta& x_meta,
+                                 int start_axis,
+                                 int stop_axis) {
   auto& x_dims = x_meta.dims;
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -63,7 +63,7 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
     out_shape.push_back(x_dims[i]);
   }
   const auto& out_dims = paddle::framework::make_ddim(out_shape);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
 
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
@@ -74,10 +74,16 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
-DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
-                                   DataType dtype,
-                                   DataLayout layout) {
-  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype,
+DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
+                              const DataType out_dtype) {
+  DenseTensorMeta out_meta(out_dtype, x_meta.dims, x_meta.layout);
+  return out_meta;
+}
+
+DenseTensorMeta FullLikeInferMeta(const DenseTensorMeta& x_meta,
+                                  DataType dtype,
+                                  DataLayout layout) {
+  return {dtype == DataType::UNDEFINED ? x_meta.dtype : dtype,
           x_meta.dims,
           layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
 }
@@ -202,8 +208,8 @@ static paddle::framework::DDim ValidateShape(
   return paddle::framework::make_ddim(output_shape);
 }
 
-DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
-                                       const std::vector<int64_t>& shape) {
+DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
+                                      const std::vector<int64_t>& shape) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
                     paddle::platform::errors::InvalidArgument(
@@ -211,7 +217,7 @@ DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
                         "But received 'shape' is empty."));
   auto x_dims = x_meta.dims;
   auto out_dims = ValidateShape(shape, x_dims);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.

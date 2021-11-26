@@ -39,9 +39,9 @@ struct DenseTensorMeta {
   using DataLayout = paddle::experimental::DataLayout;
 
   DenseTensorMeta() = default;
-  DenseTensorMeta(DataType type, const DDim& dims);
-  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout);
-  DenseTensorMeta(DataType type,
+  DenseTensorMeta(DataType dtype, const DDim& dims);
+  DenseTensorMeta(DataType dtype, const DDim& dims, DataLayout layout);
+  DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
                   const std::vector<std::vector<size_t>>& lod);
@@ -54,7 +54,7 @@ struct DenseTensorMeta {
   /// marked with `const` are expected to remain unchanged.
   bool is_scalar{false};
   DDim dims;
-  DataType type{DataType::UNDEFINED};
+  DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
   LoD lod;
   size_t offset{0};
