@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 
+// #include "paddle/fluid/distributed/common/thread_pool.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
 
@@ -51,6 +52,15 @@ DEFINE_int32(pserver_connect_timeout_ms, 10000,
              "pserver connect server timeout_ms");
 
 DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
+DEFINE_int32(pslib_max_async_call_num, 13, "max task num in async_call_server");
+DEFINE_int32(pslib_sparse_table_shard_num, 1000,
+             "sparse table shard for save & load");
+DEFINE_int32(pslib_push_dense_merge_limit, 12,
+             "limit max push_dense local merge requests");
+DEFINE_bool(pslib_scale_gradient_by_merge, false,
+            "scale dense gradient when merged");
+DEFINE_int32(pslib_async_push_dense_interval_ms, 10,
+             "async push_dense to server interval");
 
 DEFINE_int32(pserver_sparse_table_shard_num, 1000,
              "sparse table shard for save & load");
@@ -310,6 +320,7 @@ std::future<int32_t> BrpcPsClient::print_table_stat(uint32_t table_id) {
 std::future<int32_t> BrpcPsClient::send_cmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string> &params) {
   size_t request_call_num = _server_channels.size();
+  VLOG(0) << "begin to send cmd_id = " << cmd_id;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, cmd_id](void *done) {
         int ret = 0;
@@ -378,6 +389,7 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }
+  VLOG(3) << "cmd_id = " << cmd_id << "is sent";
   return fut;
 }
 
@@ -422,7 +434,7 @@ std::future<int32_t> BrpcPsClient::flush() {
   std::promise<int> promise;
   std::future<int32_t> fut = promise.get_future();
   do {
-    VLOG(3) << "wait _async_call_num:" << _async_call_num;
+    VLOG(0) << "wait _async_call_num:" << _async_call_num;
     usleep(100000);  // sleep 100ms wait async end
   } while (_async_call_num > 0);
   VLOG(1) << "flush _async_call_num = 0";

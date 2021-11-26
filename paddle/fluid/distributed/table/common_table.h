@@ -26,6 +26,7 @@
 namespace paddle {
 namespace distributed {
 
+
 template <typename T>
 struct ReservoirValue {
   std::vector<T> values;

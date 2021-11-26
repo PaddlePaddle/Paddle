@@ -111,6 +111,70 @@ def check_embedding_dim(accessor, varname, o_main_program):
         raise ValueError("The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".format(embedding_dim - 1, embedx_dim))
 
 
+def get_default_accessor_proto(accessor, varname, o_main_program):
+    embedding_dim = 0
+    for var in o_main_program.list_vars():
+        if var.name == varname:
+            print("var:", var)
+            print("var.shape:", var.shape)
+            embedding_dim = var.shape[1]
+            print("sparse dim:", embedding_dim)
+            break
+
+    accessor.accessor_class = "CtrCommonAccessor"
+    accessor.fea_dim = embedding_dim + 2
+    accessor.embedx_dim = embedding_dim - 1
+    accessor.embedx_threshold = 0
+
+    ctr_accessor_param = accessor.ctr_accessor_param
+    ctr_accessor_param.nonclk_coeff = 0.1
+    ctr_accessor_param.click_coeff = 1.0
+    ctr_accessor_param.base_threshold = 0
+    ctr_accessor_param.delta_threshold = 0
+    ctr_accessor_param.delta_keep_days = 16
+    ctr_accessor_param.show_click_decay_rate = 1
+    ctr_accessor_param.delete_threshold = 0
+    ctr_accessor_param.delete_after_unseen_days = 30
+    ctr_accessor_param.ssd_unseenday_threshold = 1
+
+    embed_sgd_param = accessor.embed_sgd_param
+    embed_sgd_param.name = "SparseAdaGradSGDRule"
+    embed_sgd_param.adagrad.learning_rate = 0.05
+    embed_sgd_param.adagrad.initial_g2sum = 3.0
+    embed_sgd_param.adagrad.initial_range = 0.0001
+    embed_sgd_param.adagrad.weight_bounds.append(-10.0)
+    embed_sgd_param.adagrad.weight_bounds.append(10.0)
+
+    embedx_sgd_param = accessor.embedx_sgd_param
+    embedx_sgd_param.name = "SparseAdaGradSGDRule"
+    embedx_sgd_param.adagrad.learning_rate = 0.05
+    embedx_sgd_param.adagrad.initial_g2sum = 3.0
+    embedx_sgd_param.adagrad.initial_range = 0.0001
+    embedx_sgd_param.adagrad.weight_bounds.append(-10.0)
+    embedx_sgd_param.adagrad.weight_bounds.append(10.0)
+
+
+def check_embedding_dim(accessor, varname, o_main_program):
+    embedding_dim = 0
+    for var in o_main_program.list_vars():
+        if var.name == varname:
+            print("var:", var)
+            print("var.shape:", var.shape)
+            embedding_dim = var.shape[1]
+            print("sparse dim:", embedding_dim)
+            break
+    fea_dim = accessor.fea_dim
+    if fea_dim != embedding_dim + 2:
+        raise ValueError(
+            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
+            format(embedding_dim + 2, fea_dim))
+    embedx_dim = accessor.embedx_dim
+    if embedx_dim != embedding_dim - 1:
+        raise ValueError(
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
+            format(embedding_dim - 1, embedx_dim))
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
@@ -1025,6 +1089,7 @@ class TheOnePSRuntime(RuntimeBase):
                              .fs_client_param)
         proto_txt = proto_txt + "\n" + fs_client.to_string()
 
+        print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))

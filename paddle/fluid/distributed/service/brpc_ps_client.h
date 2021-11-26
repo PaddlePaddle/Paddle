@@ -22,6 +22,7 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+// #include "paddle/fluid/distributed/common/thread_queue.h"
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/framework/channel.h"

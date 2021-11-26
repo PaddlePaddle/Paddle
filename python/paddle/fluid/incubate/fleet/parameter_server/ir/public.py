@@ -44,6 +44,7 @@ OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
 SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+SPARSE_OP_GRAD_LIST = ["lookup_table_grad", "push_sparse", "push_sparse_v2"]
 
 
 def _get_lr_ops(program):
@@ -114,6 +115,11 @@ class MergedVariable:
         self.ordered_vars = ordered
         self.offsets = offsets
 
+    def __str__(self):
+        ov = ','.join([str(oo) for oo in self.ordered_vars])
+        return 'merged_var: {}, ordered_vars: {}, offsets: {}'.format(
+            self.merged_var, ov, self.offsets)
+
 
 def Singleton(cls):
     _instance = {}
@@ -163,12 +169,81 @@ class CompileTimeStrategy(object):
 
         self._build_var_distributed()
 
+        self._find_multi_distributed_lookup_table()
+
         self.tensor_table_dict = {}
 
         # for heter-ps save variables
         self.origin_merged_variables_pairs = list(self.merged_variables_pairs)
         self.origin_merged_dense_pairs = list(self.merged_dense_pairs)
         self.origin_merged_sparse_pairs = list(self.merged_sparse_pairs)
+
+    def _find_multi_distributed_lookup_table(self):
+        """
+        find multi-sparse-table
+        """
+        table_names = set()
+        cnt = 0
+        tmp_list = []
+        ret_list = []
+        for op in self.origin_main_program.global_block().ops:
+            if op.type in SPARSE_OP_LIST:
+                if op.attr('is_distributed') is True:
+                    table_name = op.input("W")[0]
+                    if table_name not in table_names:
+                        table_names.add(table_name)
+                        tmp_list.append([table_name, cnt])
+                        cnt += 1
+        tmp_list.sort(key=lambda k: k[1])
+        for x in tmp_list:
+            ret_list.append(x[0])
+        sparse_table_to_index = collections.OrderedDict()
+        sparse_table_index = 0
+        for tn in ret_list:
+            if sparse_table_to_index.get(tn) is None:
+                sparse_table_to_index[tn] = sparse_table_index
+                sparse_table_index += 1
+        grads_dict = self._find_distributed_lookup_table_grads(ret_list)
+        inputs_dict = self._find_distributed_lookup_table_inputs(ret_list)
+        print("yxf::multi sparse table list: {}".format(ret_list))
+        print("yxf::multi sparse table grad list: {}".format(grads_dict))
+        print("yxf::multi sparse table inputs list: {}".format(inputs_dict))
+        return ret_list
+
+    def _find_distributed_lookup_table_grads(self, table_names):
+        local_vars = self.origin_main_program.current_block().vars
+        grads_dict = dict()
+        for table_name in table_names:
+            grads_dict[table_name] = []
+
+        for op in self.origin_main_program.global_block().ops:
+            if op.type in SPARSE_OP_GRAD_LIST:
+                if op.input("W")[0] in table_names:
+                    grads_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.input("Out@GRAD")])
+        return grads_dict
+
+    def _find_distributed_lookup_table_inputs(self, table_names):
+        """
+        Find input variable of distribute lookup table in program.
+        We could support multi-distribute table now.
+        Args:
+            program(Program): given program, locate distributed lookup table
+            table_name(str): given table names that is found beforehand
+        Returns:
+            inputs
+        """
+        local_vars = self.origin_main_program.current_block().vars
+        inputs_dict = dict()
+        for table_name in table_names:
+            inputs_dict[table_name] = []
+
+        for op in self.origin_main_program.global_block().ops:
+            if op.type in SPARSE_OP_LIST:
+                if op.input("W")[0] in table_names:
+                    inputs_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.input("Ids")])
+        return inputs_dict
 
     def get_distributed_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()
@@ -616,6 +691,9 @@ class CompileTimeStrategy(object):
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False)
+            #print('debug dense_ctx')
+            #print('k: {}, v: {}'.format(grad_name, str([origin_varnames, var_numel])))
+
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
@@ -673,6 +751,8 @@ class CompileTimeStrategy(object):
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False)
+            #print('debug: send_ctx:')
+            #print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx, param_name])))
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
@@ -1021,6 +1101,8 @@ class CompileTimeStrategy(object):
         self.var_distributed = vars_metatools.VarsDistributed()
 
         sparse_pairs, dense_pairs = self.get_param_grads()
+        print("yxf::public::sparse_pairs: {}".format(sparse_pairs))
+        print("yxf::public::dense_pairs: {}".format(dense_pairs))
         origin_for_sparse = []
         origin_for_dense = []
         param_name_grad_name = dict()

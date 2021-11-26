@@ -1,0 +1,135 @@
+worker_param {
+  downpour_worker_param {
+    downpour_table_param {
+      table_id: 0 
+      table_class: "CommonDenseTable" 
+      shard_num: 256 
+      type: PS_DENSE_TABLE
+      accessor {
+        accessor_class: "CommMergeAccessor" 
+        fea_dim: 243969 
+        embedx_dim: 1 
+      }
+      common {name: "adam" table_name: "MergedDense" trainer_num: 1 sync: false params: "Param" params: "Moment1" params: "Moment2" params: "Beta1Pow" params: "Beta2Pow" params: "LearningRate" dims: 121985 dims: 121985 dims: 121985 dims: 1 dims: 1 dims: 1 initializers: "fill_constant&0.0" initializers: "fill_constant&0.0" initializers: "fill_constant&0.0" initializers: "fill_constant&0.8999999761581421" initializers: "fill_constant&0.9990000128746033" initializers: "fill_constant&0.0010000000474974513" 
+      }
+    }
+    downpour_table_param {
+      table_id: 1 
+      table_class: "CtrSparseTable" 
+      shard_num: 256 
+      type: PS_SPARSE_TABLE
+      accessor {
+        accessor_class: "CtrCommonAccessor"
+        embed_sgd_param {
+          name: "CtrStdAdaGradSGDRule"
+          adagrad {
+            learning_rate: 0.05
+            initial_g2sum: 3.0
+            initial_range: 0.0001
+            weight_bounds: -10.0
+            weight_bounds: 10.0
+          }
+        }
+        embedx_sgd_param {
+          name: "CtrStdAdaGradSGDRule"
+            adagrad {
+              learning_rate: 0.05
+              initial_g2sum: 3.0
+              initial_range: 0.0001
+              weight_bounds: -10.0
+              weight_bounds: 10.0
+            }
+        }
+
+        fea_dim: 11
+        embedx_dim: 8
+        embedx_threshold: 5
+        downpour_accessor_param {
+          nonclk_coeff: 0.2
+          click_coeff: 1.0
+          base_threshold: 0.5
+          delta_threshold: 0.2
+          delta_keep_days: 16.0
+          show_click_decay_rate: 0.98
+          delete_threshold: 0.3
+          delete_after_unseen_days: 30.0
+          ssd_unseenday_threshold: 1
+        }
+      }
+    }
+
+    downpour_table_param {table_id: 2 table_class: "BarrierTable" shard_num: 256 type: PS_OTHER_TABLE
+      accessor {accessor_class: "CommMergeAccessor" fea_dim: 0 embedx_dim: 0 
+
+      }
+      common {name: "" table_name: "barrier_table" trainer_num: 1 sync: false 
+
+      }
+
+    }
+  }
+}
+server_param {
+  downpour_server_param {
+    service_param {server_class: "BrpcPsServer" client_class: "BrpcPsClient" service_class: "BrpcPsService" start_server_port: 0 server_thread_num: 12 
+    }
+    downpour_table_param {table_id: 0 table_class: "CommonDenseTable" shard_num: 256 type: PS_DENSE_TABLE
+      accessor {accessor_class: "CommMergeAccessor" fea_dim: 243969 embedx_dim: 1 
+
+      }
+      common {name: "adam" table_name: "MergedDense" trainer_num: 1 sync: false params: "Param" params: "Moment1" params: "Moment2" params: "Beta1Pow" params: "Beta2Pow" params: "LearningRate" dims: 121985 dims: 121985 dims: 121985 dims: 1 dims: 1 dims: 1 initializers: "fill_constant&0.0" initializers: "fill_constant&0.0" initializers: "fill_constant&0.0" initializers: "fill_constant&0.8999999761581421" initializers: "fill_constant&0.9990000128746033" initializers: "fill_constant&0.0010000000474974513" 
+
+      }
+
+    }
+    downpour_table_param {table_id: 1 table_class: "CtrSparseTable" shard_num: 256 type: PS_SPARSE_TABLE
+      accessor {
+        accessor_class: "CtrCommonAccessor"
+        embed_sgd_param {
+          name: "CtrStdAdaGradSGDRule"
+          adagrad {
+            learning_rate: 0.05
+            initial_g2sum: 3.0
+            initial_range: 0.0001
+            weight_bounds: -10.0
+            weight_bounds: 10.0
+          }
+        }
+        embedx_sgd_param {
+          name: "CtrStdAdaGradSGDRule"
+            adagrad {
+              learning_rate: 0.05
+              initial_g2sum: 3.0
+              initial_range: 0.0001
+              weight_bounds: -10.0
+              weight_bounds: 10.0
+            }
+        }
+
+        fea_dim: 11
+        embedx_dim: 8
+        embedx_threshold: 5
+        downpour_accessor_param {
+          nonclk_coeff: 0.2
+          click_coeff: 1.0
+          base_threshold: 0.5
+          delta_threshold: 0.2
+          delta_keep_days: 16.0
+          show_click_decay_rate: 0.98
+          delete_threshold: 0.3
+          delete_after_unseen_days: 30.0
+          ssd_unseenday_threshold: 1
+        }
+      }
+  }
+  downpour_table_param {table_id: 2 table_class: "BarrierTable" shard_num: 256 type: PS_OTHER_TABLE
+    accessor {accessor_class: "CommMergeAccessor" fea_dim: 0 embedx_dim: 0 
+
+    }
+    common {name: "" table_name: "barrier_table" trainer_num: 1 sync: false 
+
+    }
+
+  }
+}
+}
