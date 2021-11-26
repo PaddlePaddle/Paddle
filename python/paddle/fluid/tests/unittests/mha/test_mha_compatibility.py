@@ -106,6 +106,9 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
 
         self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor)
 
+
+        paddle.enable_static()
+
         self.path_with_coverting = '/tmp/paddle_mha_convert_with_to_static'
         self.exe = paddle.static.Executor(self.place)
 
@@ -224,6 +227,8 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
                 place=self.place)
 
         self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor)
+
+        paddle.enable_static()
 
         self.path_with_coverting = '/tmp/paddle_mha_convert_with_to_static'
         self.exe = paddle.static.Executor(self.place)

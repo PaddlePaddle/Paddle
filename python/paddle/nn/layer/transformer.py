@@ -246,7 +246,9 @@ class CUDNNMultiHeadAttention(Layer):
 
     @staticmethod
     def convert_inference_program_with_paddleMHA_replacement(layer, exe, inputs):
-        paddle.enable_static()
+        in_dygraph_mode_before = paddle.fluid.framework.in_dygraph_mode()
+        if in_dygraph_mode_before:
+            paddle.enable_static()
 
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -286,6 +288,8 @@ class CUDNNMultiHeadAttention(Layer):
                     output = layer.forward._call_dygraph_function(*new_inputs)
                 else:
                     output = layer(*new_inputs)
+            if in_dygraph_mode_before:
+                paddle.disable_static()
             return main_prog, startup_prog, new_inputs, output
 
     @staticmethod
