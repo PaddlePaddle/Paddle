@@ -69,14 +69,14 @@ void print_data(const std::vector<T>& vec, std::stringstream& sstr, bool whole =
   }
 }
 
-static std::vector<string> split_str(string strtem,char a)
+static std::vector<string> split_str(std::string strtem,char a)
     {
-        vector<string> strvec;
+        std::vector<string> strvec;
  
-        string::size_type pos1, pos2;
+        std::string::size_type pos1, pos2;
         pos2 = strtem.find(a);
         pos1 = 0;
-        while (string::npos != pos2)
+        while (std::string::npos != pos2)
         {
                 strvec.push_back(strtem.substr(pos1, pos2 - pos1));
  
