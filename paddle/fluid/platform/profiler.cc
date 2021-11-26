@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 #include <random>
+#include <sstream>
 #include <string>
 
 #include "paddle/fluid/platform/device_tracer.h"
@@ -29,6 +30,241 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
 
 namespace paddle {
 namespace platform {
+
+struct BaseEvent {
+ public:
+  BaseEvent(const char *name, uint64_t start_ns, uint64_t end_ns)
+      : name(name), start_ns(start_ns), end_ns(end_ns) {}
+
+  const char *name = 0;  // not owned, designed for performance
+  uint64_t start_ns = 0;
+  uint64_t end_ns = 0;
+};
+
+struct ThreadEventSection {
+  std::string thread_name;
+  uint64_t thread_id;
+  std::vector<BaseEvent> events;
+};
+
+struct HostEventSection {
+  std::string process_name;
+  uint64_t process_id;
+  std::vector<ThreadEventSection> thr_sections;
+};
+
+template <typename EventType>
+class EventContainer {
+ public:
+  EventContainer() {
+    event_blocks_ = cur_event_block_ = new EventBlock;
+    str_blocks_ = cur_str_block_ = new StringBlock;
+  }
+  ~EventContainer() {
+    Reduce();
+    for (auto cur = str_blocks_; cur != nullptr;) {
+      auto next = cur->next;
+      delete cur;
+      cur = next;
+    }
+  }
+  DISABLE_COPY_AND_ASSIGN(EventContainer);
+
+ public:
+  // Record an event
+  template <typename... Args>
+  void Record(Args &&... args) {
+    auto *storage = GetEventStorage();
+    new (storage) EventType(std::forward<Args>(args)...);
+  }
+
+  // Get all events and clear the container
+  std::vector<EventType> Reduce();
+
+  // Return a buffer to store the string attribute of Event.
+  // HostEventRecorder locates in the static data section.
+  // So it's safe to use arena to avoid fragmented allocation.
+  char *GetStrBufFromArena(size_t size) { return GetStringStorage(size); }
+
+ private:
+  struct EventBlock {
+    union InitDeferedEvent {
+      InitDeferedEvent() {}
+      ~InitDeferedEvent() {}
+
+      EventType event;
+    };
+
+    static constexpr size_t kBlockSize = 1 << 24;  // 16 MB
+    static constexpr size_t kAvailSize =
+        kBlockSize - sizeof(size_t) - sizeof(nullptr);
+    static constexpr size_t kNumEvents = kAvailSize / sizeof(InitDeferedEvent);
+    static constexpr size_t kPadSize =
+        kAvailSize - kNumEvents * sizeof(InitDeferedEvent);
+    static constexpr size_t kMinimumEventsPerBlock = 1024;
+    static_assert(kNumEvents >= kMinimumEventsPerBlock);
+
+    size_t offset = 0;
+    EventBlock *next = nullptr;
+    InitDeferedEvent events[kNumEvents];
+    char padding[kPadSize];
+  };
+  static_assert(sizeof(EventBlock) == EventBlock::kBlockSize,
+                "sizeof EventBlock must equal to kBlockSize");
+
+  struct StringBlock {
+    static constexpr size_t kBlockSize = 1 << 22;  // 4 MB
+    static constexpr size_t kAvailSize =
+        kBlockSize - sizeof(size_t) - sizeof(nullptr);
+
+    size_t offset = 0;
+    StringBlock *next = nullptr;
+    char storage[kAvailSize];
+  };
+  static_assert(sizeof(StringBlock) == StringBlock::kBlockSize,
+                "sizeof StringBlock must equal to kBlockSize");
+
+  EventType *GetEventStorage();
+
+  char *GetStringStorage(size_t sz);
+
+  EventBlock *event_blocks_ = nullptr;
+  EventBlock *cur_event_block_ = nullptr;
+  StringBlock *str_blocks_ = nullptr;
+  StringBlock *cur_str_block_ = nullptr;
+};
+
+template <typename EventType>
+std::vector<EventType> EventContainer<EventType>::Reduce() {
+  std::vector<EventType> all_events;
+  size_t event_cnt = 0;
+  for (auto cur = event_blocks_; cur != nullptr; cur = cur->next) {
+    event_cnt += cur->offset;
+  }
+  all_events.reserve(event_cnt);
+  for (auto cur = event_blocks_; cur != nullptr;) {
+    for (size_t i = 0; i < cur->offset; ++i) {
+      all_events.emplace_back(cur->events[i].event);
+    }
+    auto next = cur->next;
+    delete cur;
+    cur = next;
+  }
+  event_blocks_ = cur_event_block_ = new EventBlock;
+  return std::move(all_events);
+}
+
+template <typename EventType>
+EventType *EventContainer<EventType>::GetEventStorage() {
+  if (UNLIKELY(cur_event_block_->offset >=
+               EventBlock::kNumEvents)) {  // another block
+    cur_event_block_->next = new EventBlock;
+    cur_event_block_ = cur_event_block_->next;
+  }
+  auto &obj = cur_event_block_->events[cur_event_block_->offset].event;
+  ++cur_event_block_->offset;
+  return &obj;
+}
+
+template <typename EventType>
+char *EventContainer<EventType>::GetStringStorage(size_t sz) {
+  if (UNLIKELY(cur_str_block_->offset + sz >
+               StringBlock::kAvailSize)) {  // another block
+    cur_str_block_->next = new StringBlock;
+    cur_str_block_ = cur_str_block_->next;
+  }
+  char *storage = cur_str_block_->storage + cur_str_block_->offset;
+  cur_str_block_->offset += sz;
+  return storage;
+}
+
+class ThreadEventRecorder {
+ public:
+  ThreadEventRecorder();
+  DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
+
+ public:
+  // If your string attribute has a longer lifetime than the Event, use this.
+  // e.g.: string literal, op name, etc.
+  void RecordEvent(const char *name, uint64_t start_ns, uint64_t end_ns) {
+    base_evt_cntr_.Record(name, start_ns, end_ns);
+  }
+
+  // Do your best to avoid use this interface.
+  // It will cause deep-copy to harm performance.
+  void RecordEvent(const std::string &name, uint64_t start_ns,
+                   uint64_t end_ns) {
+    auto buf = base_evt_cntr_.GetStrBufFromArena(name.length() + 1);
+    strncpy(buf, name.c_str(), name.length() + 1);
+    base_evt_cntr_.Record(buf, start_ns, end_ns);
+  }
+
+  ThreadEventSection GatherEvents() {
+    ThreadEventSection thr_sec;
+    thr_sec.thread_name = thread_name_;
+    thr_sec.thread_id = thread_id_;
+    thr_sec.events = std::move(base_evt_cntr_.Reduce());
+    return std::move(thr_sec);
+  }
+
+ private:
+  uint64_t thread_id_;
+  std::string thread_name_;
+  EventContainer<BaseEvent> base_evt_cntr_;
+};
+
+class HostEventRecorder {
+ public:
+  // singleton
+  static HostEventRecorder &GetInstance() {
+    static HostEventRecorder instance;
+    return instance;
+  }
+
+  // forward call to ThreadEventRecorder::Record
+  template <typename... Args>
+  void RecordEvent(Args &&... args) {
+    GetThreadLocalRecorder().RecordEvent(std::forward<Args>(args)...);
+  }
+
+  // poor performance, call it at the ending
+  HostEventSection GatherEvents();
+
+  void RegisterThreadRecorder(uint64_t tid, ThreadEventRecorder *recorder) {
+    const std::lock_guard<std::mutex> guard(thread_recorders_lock_);
+    thread_recorders_[tid] = recorder;
+  }
+
+ private:
+  HostEventRecorder() = default;
+  DISABLE_COPY_AND_ASSIGN(HostEventRecorder);
+
+  ThreadEventRecorder &GetThreadLocalRecorder() {
+    static thread_local ThreadEventRecorder tls_recorder;
+    return tls_recorder;
+  }
+
+  std::mutex thread_recorders_lock_;
+  std::unordered_map<uint64_t, ThreadEventRecorder *> thread_recorders_;
+};
+
+static uint64_t GetThreadId() {
+  return std::hash<std::thread::id>{}(std::this_thread::get_id());
+}
+
+ThreadEventRecorder::ThreadEventRecorder() {
+  thread_id_ = GetThreadId();
+  HostEventRecorder::GetInstance().RegisterThreadRecorder(thread_id_, this);
+}
+
+HostEventSection HostEventRecorder::GatherEvents() {
+  HostEventSection host_sec;
+  host_sec.thr_sections.reserve(thread_recorders_.size());
+  for (auto &kv : thread_recorders_) {
+    host_sec.thr_sections.emplace_back(std::move(kv.second->GatherEvents()));
+  }
+  return std::move(host_sec);
+}
 
 MemEvenRecorder MemEvenRecorder::recorder;
 
@@ -57,6 +293,16 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
+RecordEvent::RecordEvent(const char *name) {
+  if (LIKELY(g_enable_host_event_recorder_hook)) {
+    shallow_copy_name_ = name;
+    start_ns_ = PosixInNsec();
+    return;
+  } else {
+    RecordEvent(name, EventRole::kOrdinary, "none");
+  }
+}
+
 RecordEvent::RecordEvent(const std::string &name, const EventRole role,
                          const std::string attr) {
 #ifndef _WIN32
@@ -67,6 +313,12 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
+  if (g_enable_host_event_recorder_hook) {
+    name_ = name;
+    start_ns_ = PosixInNsec();
+    return;
+  }
+
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
@@ -81,6 +333,17 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
 }
 
 RecordEvent::~RecordEvent() {
+  if (LIKELY(g_enable_host_event_recorder_hook)) {
+    if (LIKELY(shallow_copy_name_ != nullptr)) {
+      HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
+                                                   start_ns_, PosixInNsec());
+    } else {
+      HostEventRecorder::GetInstance().RecordEvent(name_, start_ns_,
+                                                   PosixInNsec());
+    }
+    return;
+  }
+
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed_) {
@@ -88,6 +351,7 @@ RecordEvent::~RecordEvent() {
   }
 #endif
 #endif
+
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
@@ -361,6 +625,24 @@ void NvprofEnableRecordEvent() {
 }
 
 void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
+
+void EnableHostEventRecorder() {
+  g_enable_host_event_recorder_hook = true;
+  HostEventRecorder::GetInstance();
+}
+
+std::string PrintHostEvents() {
+  std::ostringstream oss;
+  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
+    oss << thr_evt_sec.thread_id << std::endl;
+    for (const auto &evt : thr_evt_sec.events) {
+      oss << "{ " << evt.name << " | " << evt.start_ns << " | " << evt.end_ns
+          << " }" << std::endl;
+    }
+  }
+  return oss.str();
+}
 
 }  // namespace platform
 }  // namespace paddle

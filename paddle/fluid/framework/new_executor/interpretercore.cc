@@ -493,7 +493,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(op->Type());
+    platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
 
     try {

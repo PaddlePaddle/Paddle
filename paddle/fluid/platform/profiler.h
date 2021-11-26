@@ -132,6 +132,8 @@ struct RecordEvent {
               const EventRole role = EventRole::kOrdinary,
               const std::string attr = "none");
 
+  explicit RecordEvent(const char* name);
+
   ~RecordEvent();
 
   bool is_enabled_{false};
@@ -139,6 +141,7 @@ struct RecordEvent {
   uint64_t start_ns_;
   // Event name
   std::string name_;
+  const char* shallow_copy_name_ = nullptr;
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
@@ -241,6 +244,11 @@ int64_t ListenerId();
 
 void NvprofEnableRecordEvent();
 void NvprofDisableRecordEvent();
+
+void EnableHostEventRecorder();
+
+// Defined for UT
+std::string PrintHostEvents();
 
 }  // namespace platform
 }  // namespace paddle
