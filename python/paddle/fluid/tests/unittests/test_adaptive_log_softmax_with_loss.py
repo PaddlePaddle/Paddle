@@ -20,6 +20,11 @@ from paddle.nn import functional as F
 
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+
     def test_error(self):
         # args validation
         with self.assertRaises(ValueError):
@@ -127,9 +132,9 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         x[32:, asfm.shortlist_size:] *= 0.
 
         asfm.head.weight.detach()[:asfm.shortlist_size,
-                                  asfm.shortlist_size:] *= 0.
+        asfm.shortlist_size:] *= 0.
         asfm.head.weight.detach()[asfm.shortlist_size:, :
-                                  asfm.shortlist_size] *= 0.
+                                                        asfm.shortlist_size] *= 0.
 
         out = asfm.predict(x)
         np.testing.assert_array_almost_equal(
