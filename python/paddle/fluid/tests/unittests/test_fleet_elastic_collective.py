@@ -143,6 +143,11 @@ class TestCollectiveLauncher(unittest.TestCase):
             pass
 
         try:
+            os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
+            os.environ['POD_IP'] = "10.10.10.0"
+            os.environ['TRAINER_PORTS_NUM'] = "2"
+            os.environ['PADDLE_TRAINER_ID'] = "0"
+
             paddle.distributed.fleet.launch.launch_collective(args)
         except Exception as e:
             pass
