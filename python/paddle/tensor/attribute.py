@@ -45,6 +45,7 @@ def _real_to_complex_dtype(dtype):
 
 
 def is_complex(x):
+    """Returns True if the data type of input is a complex data type."""
     dtype = x.dtype
     is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64 or
                         dtype == core.VarDesc.VarType.COMPLEX128)
@@ -52,6 +53,7 @@ def is_complex(x):
 
 
 def is_floating_point(x):
+    """Returns True if the data type of input is a floating point data type."""
     dtype = x.dtype
     is_fp_dtype = (dtype == core.VarDesc.VarType.FP32 or
                    dtype == core.VarDesc.VarType.FP64 or
@@ -61,6 +63,7 @@ def is_floating_point(x):
 
 
 def is_integer(x):
+    """Returns True if the data type of input is a integer data type."""
     dtype = x.dtype
     is_int_dtype = (dtype == core.VarDesc.VarType.UINT8 or
                     dtype == core.VarDesc.VarType.INT8 or
