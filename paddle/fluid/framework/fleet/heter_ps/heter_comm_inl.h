@@ -100,8 +100,8 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   storage_.resize(resource_->total_gpu());
   for (int i = 0; i < resource_->total_gpu(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    
-    allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(8, 1, (unsigned int) -1, (size_t) -1, false, false));
+    allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
+        8, 1, (unsigned int)-1, (size_t)-1, false, false));
     auto table = new Table(capacity / load_factor_);
     tables_.push_back(table);
     if (multi_node_) {
@@ -165,31 +165,38 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::create_storage(
-    int start_index, int end_index, int keylen, int vallen) {
+void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
+                                                           int end_index,
+                                                           int keylen,
+                                                           int vallen) {
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].gpu_num));
-    allocator->DeviceAllocate(resource_->dev_id(nodes[i].gpu_num), (void**)&(nodes[i].key_storage), keylen, resource_->remote_stream(nodes[i].gpu_num, start_index));
-    allocator->DeviceAllocate(resource_->dev_id(nodes[i].gpu_num), (void**)&(nodes[i].val_storage), vallen, resource_->remote_stream(nodes[i].gpu_num, start_index));
-    
+    allocator->DeviceAllocate(
+        resource_->dev_id(nodes[i].gpu_num), (void**)&(nodes[i].key_storage),
+        keylen, resource_->remote_stream(nodes[i].gpu_num, start_index));
+    allocator->DeviceAllocate(
+        resource_->dev_id(nodes[i].gpu_num), (void**)&(nodes[i].val_storage),
+        vallen, resource_->remote_stream(nodes[i].gpu_num, start_index));
+
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
   }
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::destroy_storage(
-    int start_index, int end_index) {
+void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
+                                                            int end_index) {
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].gpu_num));
-    
-    allocator->DeviceFree(resource_->dev_id(nodes[i].gpu_num), nodes[i].key_storage);
-    allocator->DeviceFree(resource_->dev_id(nodes[i].gpu_num), nodes[i].val_storage);
-    
+
+    allocator->DeviceFree(resource_->dev_id(nodes[i].gpu_num),
+                          nodes[i].key_storage);
+    allocator->DeviceFree(resource_->dev_id(nodes[i].gpu_num),
+                          nodes[i].val_storage);
   }
 }
 
@@ -646,7 +653,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->remote_stream(i, gpu_num));
     if (h_left[i] != -1) {
-        tables_[i]->rwlock_->UNLock();
+      tables_[i]->rwlock_->UNLock();
     }
   }
   for (int i = 0; i < total_gpu; ++i) {
