@@ -88,6 +88,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -123,18 +127,22 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   if (create_local_scope_) {
-    auto vars = local_scope_->LocalVars();
-    for (auto var : vars) {
-      if (var->IsType<LoDTensorArray>()) {
-        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
-        lod_tensor_arr->clear();
-      }
-    }
+    ClearLocalScope();
   }
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
+}
+
+void InterpreterCore::ClearLocalScope() {
+  auto vars = local_scope_->LocalVars();
+  for (auto var : vars) {
+    if (var->IsType<LoDTensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+      lod_tensor_arr->clear();
+    }
+  }
 }
 
 void InterpreterCore::BuildOperatorDependences() {
@@ -617,6 +625,10 @@ interpreter::CostInfo InterpreterCore::DryRun(
     interpreter::ProfilerGuard(place_, &cost_info);
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+
+  if (create_local_scope_) {
+    ClearLocalScope();
   }
 
   return cost_info;
