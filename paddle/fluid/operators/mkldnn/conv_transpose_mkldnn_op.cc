@@ -25,7 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using framework::DataLayout;
 
-inline mkldnn::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
+inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
   auto weights_tz = framework::vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ?  1 : 0;
