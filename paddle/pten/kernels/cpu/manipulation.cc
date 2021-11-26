@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/cpu/manipulation.h"
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
 #include "paddle/pten/kernels/functions/general/manipulation.h"
+#include "paddle/pten/kernels/functions/math/cast_func.h"
 
 namespace pten {
 
@@ -26,7 +28,7 @@ void Flatten(const CPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -46,24 +48,24 @@ void FlattenWithXShape(const CPUContext& dev_ctx,
 
 void ReshapeFromVectorVal(const CPUContext& dev_ctx,
                           const DenseTensor& x,
-                          const std::vector<int>& shape,
+                          const std::vector<int64_t>& shape,
                           DenseTensor* out) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
   if (&x == out) {
     out->Resize(out_meta.dims);
     return;
   }
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
 }
 
 void ReshapeFromVectorValWithXShape(const CPUContext& dev_ctx,
                                     const DenseTensor& x,
-                                    const std::vector<int>& shape,
+                                    const std::vector<int64_t>& shape,
                                     DenseTensor* xshape,
                                     DenseTensor* out) {
-  ReshapeFromVectorVal(dev_ctx, x, shape, out);
   general::SetXShape(x, xshape);
+  ReshapeFromVectorVal(dev_ctx, x, shape, out);
 }
 
 void ReshapeFromDT(const CPUContext& dev_ctx,
@@ -71,8 +73,10 @@ void ReshapeFromDT(const CPUContext& dev_ctx,
                    const DenseTensor& shape,
                    DenseTensor* out) {
   auto* shape_data = shape.data<int>();
-  auto vector_shape = std::vector<int>(shape_data, shape_data + shape.numel());
+  auto vector_shape =
+      std::vector<int64_t>(shape_data, shape_data + shape.numel());
   ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+  out->ResetLoD(x.lod());
 }
 
 void ReshapeFromDTWithXShape(const CPUContext& dev_ctx,
@@ -80,15 +84,15 @@ void ReshapeFromDTWithXShape(const CPUContext& dev_ctx,
                              const DenseTensor& shape,
                              DenseTensor* xshape,
                              DenseTensor* out) {
-  ReshapeFromDT(dev_ctx, x, shape, out);
   general::SetXShape(x, xshape);
+  ReshapeFromDT(dev_ctx, x, shape, out);
 }
 
 void ReshapeFromVectorDT(const CPUContext& dev_ctx,
                          const DenseTensor& x,
                          const std::vector<DenseTensor>& shape,
                          DenseTensor* out) {
-  std::vector<int> vector_shape;
+  std::vector<int64_t> vector_shape;
   for (auto& tensor : shape) {
     PADDLE_ENFORCE_EQ(
         tensor.dims(),
@@ -108,8 +112,20 @@ void ReshapeFromVectorDTWithXShape(const CPUContext& dev_ctx,
                                    const std::vector<DenseTensor>& shape,
                                    DenseTensor* xshape,
                                    DenseTensor* out) {
-  ReshapeFromVectorDT(dev_ctx, x, shape, out);
   general::SetXShape(x, xshape);
+  ReshapeFromVectorDT(dev_ctx, x, shape, out);
+}
+
+template <typename T>
+void Cast(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                       math::CastKernelImpl<CPUContext, T, data_t>(
+                           dev_ctx, x, out);
+                     }));
 }
 
 }  // namespace pten
@@ -140,6 +156,23 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+PT_REGISTER_KERNEL("cast",
+                   CPU,
+                   ANY,
+                   pten::Cast,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int16_t,
+                   bool,
+                   uint8_t,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
 
 // TODO(yuanrisheng): "reshape2" is compatible with old kernel
 // architecture, kernel_name should be "reshape".

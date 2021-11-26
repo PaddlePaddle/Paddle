@@ -58,7 +58,7 @@ class ScopeListener {
   // in original Scope.
  public:
   virtual ~ScopeListener() {}
-  virtual void onCreateVariable(const std::string& name) {}
+  virtual void onCreateVariable(const std::string& name, Variable* v) {}
   virtual void onDeleteVariable(const std::string& name) {}
   virtual void onRenameVariable(const std::string& old_name,
                                 const std::string& new_name) {}

@@ -18,18 +18,26 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infershape.h"
+
+PT_DECLARE_MODULE(LinalgCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(LinalgCUDA);
+#endif
 
 namespace paddle {
 namespace experimental {
 
-Tensor dot(const Tensor& x, const Tensor& y) {
+PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -47,8 +55,8 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   // TODO(chenweihang): add transform impl
 
-  // 4. InferShape
-  auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
+  // 4. InferMeta
+  auto out_meta = DotInferMeta(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
   Tensor out;
@@ -64,10 +72,10 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   return out;
 }
 
-Tensor matmul(const Tensor& x,
-              const Tensor& y,
-              bool transpose_x,
-              bool transpose_y) {
+PD_DLL_DECL Tensor matmul(const Tensor& x,
+                          const Tensor& y,
+                          bool transpose_x,
+                          bool transpose_y) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x, y);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -87,8 +95,8 @@ Tensor matmul(const Tensor& x,
   kernel_context.EmplaceBackAttr(transpose_y);
   // TODO(chenweihang): add transform impl
 
-  // 4. InferShape
-  auto out_meta = MatmulInferShape(
+  // 4. InferMeta
+  auto out_meta = MatmulInferMeta(
       dense_x->meta(), dense_y->meta(), transpose_x, transpose_y);
 
   // 5. Prepare outputs
@@ -108,3 +116,5 @@ Tensor matmul(const Tensor& x,
 
 }  // namespace experimental
 }  // namespace paddle
+
+PT_REGISTER_API(Linalg);

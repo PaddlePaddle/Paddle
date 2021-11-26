@@ -401,11 +401,8 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
     auto& src_tensor = src.Var().Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
                       platform::errors::InvalidArgument(
-                          "tensor has not been initialized", src.Name()));
+                          "Tensor %s has not been initialized", src.Name()));
     auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(grad_t->IsInitialized(), true,
-                      platform::errors::InvalidArgument(
-                          "tensor %s has not been initialized", Name()));
     auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());

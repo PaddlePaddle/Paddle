@@ -60,6 +60,10 @@ void InterpreterCoreGarbageCollector::Add(
 void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
                                           paddle::platform::DeviceEvent& event,
                                           const platform::DeviceContext* ctx) {
+  if (!var) {
+    return;
+  }
+
   if (var->IsType<LoDTensor>()) {
     Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
   } else if (var->IsType<
@@ -75,6 +79,7 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }
+    tensor_arr->clear();
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
     // refer to executor.cc to see what old garbage collector does.

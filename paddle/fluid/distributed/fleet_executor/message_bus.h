@@ -89,6 +89,7 @@ class MessageBus final {
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
+  InterceptorMessageServiceImpl interceptor_message_service_;
   // brpc server
   brpc::Server server_;
 #endif
