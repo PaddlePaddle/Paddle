@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -61,6 +63,9 @@ class Carrier final {
   bool IsInit() const;
 
   bool status{false};
+
+  std::condition_variable cond_var;
+  std::mutex mu;
 
   DISABLE_COPY_AND_ASSIGN(Carrier);
 

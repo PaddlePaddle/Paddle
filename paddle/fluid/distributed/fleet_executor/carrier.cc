@@ -109,11 +109,14 @@ void Carrier::Start() {
   tmp_msg.set_message_type(DATA_IS_READY);
   message_bus_instance.Send(tmp_msg);
 
-  while (status == false) {
-    LOG(INFO) << "Carrier is waiting for the status to be reported. Next check "
-                 "in 5 seconds.";
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  }
+  //  while (status == false) {
+  //    LOG(INFO) << "Carrier is waiting for the status to be reported. Next
+  //    check "
+  //                 "in 5 seconds.";
+  //    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  //  }
+  std::unique_lock<std::mutex> lock(mu);
+  cond_var.wait(lock);
 }
 
 bool Carrier::IsInit() const { return is_init_; }

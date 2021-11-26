@@ -142,7 +142,12 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
           }
         } else if (node_->role() == 2) {
           Carrier& carrier_instance = Carrier::Instance();
-          carrier_instance.status = true;
+          //          carrier_instance.status = true;
+          std::mutex& mu = carrier_instance.mu;
+          mu.lock();
+          std::condition_variable& cond_var = carrier_instance.cond_var;
+          cond_var.notify_all();
+          mu.unlock();
         }
         if (node_->upstream().size() != 0) {
           for (int64_t upstream : node_->upstream()) {
@@ -211,7 +216,12 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
           }
         } else if (node_->role() == 2) {
           Carrier& carrier_instance = Carrier::Instance();
-          carrier_instance.status = true;
+          //          carrier_instance.status = true;
+          std::mutex& mu = carrier_instance.mu;
+          mu.lock();
+          std::condition_variable& cond_var = carrier_instance.cond_var;
+          cond_var.notify_all();
+          mu.unlock();
         }
         if (node_->upstream().size() != 0) {
           for (int64_t upstream : node_->upstream()) {
