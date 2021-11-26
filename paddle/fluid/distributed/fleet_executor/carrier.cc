@@ -116,7 +116,7 @@ void Carrier::Start() {
   while (status == false) {
     LOG(INFO) << "Carrier is waiting for the status to be reported. Next check "
                  "in 5 seconds.";
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 }
 

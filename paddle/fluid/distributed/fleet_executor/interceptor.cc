@@ -148,6 +148,10 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
             can_run = can_run && ready_flags_.at(upstream)[already_run_times_];
           }
         }
+        if (!can_run) {
+          LOG(INFO) << "Interceptor " << interceptor_id_
+                    << " will stop since max slot or max run time is reached.";
+        }
       }
     } else if (msg.message_type() == DATE_IS_USELESS) {
       LOG(INFO) << "Interceptor " << interceptor_id_
@@ -211,6 +215,10 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
           for (int64_t upstream : node_->upstream()) {
             can_run = can_run && ready_flags_.at(upstream)[already_run_times_];
           }
+        }
+        if (!can_run) {
+          LOG(INFO) << "Interceptor " << interceptor_id_
+                    << " will stop since max slot or max run time is reached.";
         }
       }
     }
