@@ -290,7 +290,6 @@ def compare_op_desc(origin_op_desc, new_op_desc):
             version_error_message.setdefault(op_type,
                                              {})[OUTPUTS] = outs_version_errors
         if attrs_version_errors:
-            print(attrs_version_errors)
             version_error_message.setdefault(op_type,
                                              {})[ATTRS] = attrs_version_errors
 
