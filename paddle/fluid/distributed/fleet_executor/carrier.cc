@@ -48,16 +48,17 @@ bool Carrier::EnqueueInterceptorMessage(
     // handle control message
     return true;
   } else {
-    creating_flag_mutex_.lock();
-    if (creating_interceptors_) {
-      std::unique_lock<std::mutex> lock(tmp_message_mutex_);
-      // Cannot handle the message to interceptor since interceptors
-      // are still under creating. Will enqueue into a tmp stack.
-      VLOG(3) << "Receiving message while creating interceptors.";
-      message_tmp_.emplace_back(interceptor_message);
-      return true;
+    {
+      std::unique_lock<std::mutex> lock_creating(creating_flag_mutex_);
+      if (creating_interceptors_) {
+        std::unique_lock<std::mutex> lock_message(tmp_message_mutex_);
+        // Cannot handle the message to interceptor since interceptors
+        // are still under creating. Will enqueue into a tmp stack.
+        VLOG(3) << "Receiving message while creating interceptors.";
+        message_tmp_.emplace_back(interceptor_message);
+        return true;
+      }
     }
-    creating_flag_mutex_.unlock();
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
     bool rst =
