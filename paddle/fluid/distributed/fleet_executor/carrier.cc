@@ -98,6 +98,8 @@ void Carrier::Start() {
   }
 }
 
+std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
+
 bool Carrier::IsInit() const { return is_init_; }
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
@@ -164,6 +166,8 @@ void Carrier::CreateInterceptors() {
     creating_flag_mutex_.unlock();
     HandleTmpMessages();
   }
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
 }
 
 }  // namespace distributed

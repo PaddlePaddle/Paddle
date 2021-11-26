@@ -48,8 +48,6 @@ class Interceptor {
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
-  virtual void HandleStop(const InterceptorMessage& msg);
-
   void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
@@ -69,6 +67,7 @@ class Interceptor {
  protected:
   TaskNode* GetTaskNode() const { return node_; }
   bool stop_{false};
+  void StopCarrier();
 
  private:
   // pool the local mailbox, parse the Message
