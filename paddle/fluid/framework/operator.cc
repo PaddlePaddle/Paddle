@@ -166,7 +166,7 @@ void show_var(const Scope& scope, const std::string& var_name,
     char * whole_data_name = std::getenv("VAR_TO_SHOW_WHOLE_DATA");
     bool show_whole = false;
     show_whole = (whole_data_name != nullptr && strcmp(var_name.c_str(), whole_data_name) == 0);
-    print_data<int64_t>(vec_int64, sstrm, show_whole);
+    print_data<int64_t>(vec_int64, sstr, show_whole);
     print_data<int>(vec_int, sstr, show_whole);
     print_data<float>(vec_float, sstr, show_whole);
     print_data<paddle::platform::float16>(vec_fp16, sstr, show_whole);
