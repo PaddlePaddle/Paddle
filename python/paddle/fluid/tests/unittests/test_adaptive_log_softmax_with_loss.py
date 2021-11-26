@@ -18,9 +18,6 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
-np.random.seed(10)
-paddle.seed(10)
-
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def test_error(self):
