@@ -27,12 +27,6 @@ import hypothesis.strategies as st
 
 class TestConvActivationMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-        if attrs[1]["scale"] < 1e-6:
-            return False
         return True
 
     def sample_program_config(self, draw):
