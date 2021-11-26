@@ -56,6 +56,7 @@ from .linalg import eigvalsh  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
+from .linalg import triangular_solve  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401

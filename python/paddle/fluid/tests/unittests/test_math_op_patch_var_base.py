@@ -580,6 +580,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.mean))
         self.assertTrue(inspect.ismethod(a.std))
         self.assertTrue(inspect.ismethod(a.numel))
+        self.assertTrue(inspect.ismethod(a.triangular_solve))
 
     def test_complex_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
