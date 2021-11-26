@@ -29,6 +29,7 @@ from .tensor.linalg import eigvalsh
 from .tensor.linalg import det
 from .tensor.linalg import slogdet
 from .tensor.linalg import pinv
+from .tensor.linalg import triangular_solve
 
 __all__ = [
     'cholesky',  #noqa
@@ -47,5 +48,6 @@ __all__ = [
     'eigh',
     'eigvalsh',
     'pinv',
-    'solve'
+    'solve',
+    'triangular_solve',
 ]
