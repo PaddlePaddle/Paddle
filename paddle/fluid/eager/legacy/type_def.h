@@ -12,22 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto2";
-package paddle.distributed;
+#pragma once
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
-message IndexNode {
-  required uint64 id = 1;
-  required bool is_leaf = 2;
-  required float probability = 3;
-  optional string item_name = 4;
-}
+#include "paddle/fluid/platform/macros.h"
+namespace egr {
 
-message TreeMeta {
-  required int32 height = 1;
-  required int32 branch = 2;
-}
+class EagerTensor;
+namespace details {
+template <typename T>
+struct NameVarMapTrait {};
 
-message KVItem {
-  required bytes key = 1;
-  required bytes value = 2;
-}
+template <>
+struct NameVarMapTrait<EagerTensor> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;
+};
+}  // namespace details
+template <typename T>
+using NameMap = typename details::NameVarMapTrait<T>::Type;
+
+using NameTensorMap = NameMap<EagerTensor>;
+}  // namespace egr

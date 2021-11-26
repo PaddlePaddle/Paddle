@@ -172,4 +172,5 @@ inline void InitEnv(paddle::platform::Place place) {
   // Init Tracer Place
   egr::Controller::Instance().SetExpectedPlace(place);
 }
+
 }  // namespace eager_test

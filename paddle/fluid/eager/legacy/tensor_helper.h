@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto2";
-package paddle.distributed;
+#pragma once
 
-message IndexNode {
-  required uint64 id = 1;
-  required bool is_leaf = 2;
-  required float probability = 3;
-  optional string item_name = 4;
-}
-
-message TreeMeta {
-  required int32 height = 1;
-  required int32 branch = 2;
-}
-
-message KVItem {
-  required bytes key = 1;
-  required bytes value = 2;
+#include <vector>
+#include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/include/core.h"
+namespace egr {
+void InitializeVariable(paddle::framework::Variable* var,
+                        paddle::framework::proto::VarType::Type var_type);
+paddle::framework::proto::VarType::Type GetDtypeFromVar(
+    const paddle::framework::Variable& var);
+const paddle::platform::Place& GetPlaceFromVar(
+    const paddle::framework::Variable& var);
+void CopyVariable(const paddle::framework::Variable& src_var,
+                  paddle::framework::Variable* dst_var);
 }
