@@ -28,7 +28,7 @@ using framework::DataLayout;
 inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
   auto weights_tz = framework::vectorize(filter->dims());
   int g = std::max(groups, 1);
-  int g_dim = (g > 1) ?  1 : 0;
+  int g_dim = (g > 1) ? 1 : 0;
   platform::GetGroupConvWeightsTz(weights_tz, g);
   // gIOHW -> gOIHW || IOHW -> OIHW
   std::swap(weights_tz[g_dim + 0], weights_tz[g_dim + 1]);
