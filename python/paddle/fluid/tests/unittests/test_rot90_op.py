@@ -32,7 +32,7 @@ class TestRot90Op(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             axis = [0]
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-            output = paddle.flip(input, axis)
+            output = paddle.flip(input, k=1, dims=[0, 1])
             output = paddle.flip(output, -1)
             output = output.flip(0)
             place = fluid.CPUPlace()
@@ -40,15 +40,20 @@ class TestRot90Op(unittest.TestCase):
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(startup_program)
+
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
             res = exe.run(train_program,
                           feed={'input': img},
                           fetch_list=[output])
+
             out_np = np.array(res[0])
             out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
+
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='flip output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np))
+
+
 
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
