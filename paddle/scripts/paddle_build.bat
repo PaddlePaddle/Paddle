@@ -223,11 +223,12 @@ set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
+set WITH_INFERENCE_API_TEST=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-call :test_unit || goto test_unit_error
+::call :test_unit || goto test_unit_error
 :: call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
