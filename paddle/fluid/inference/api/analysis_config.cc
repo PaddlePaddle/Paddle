@@ -468,6 +468,17 @@ void AnalysisConfig::Update() {
     }
   }
 
+  if (use_tensorrt_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kTRTSubgraphPasses) {
+      if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+          (pass == "conv_bn_fuse_pass")) {
+        continue;
+      }
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (use_gpu() && use_cudnn_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
@@ -670,8 +681,6 @@ void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   prog_file_ = std::string(prog_buffer, prog_buffer + prog_buffer_size);
   params_file_ = std::string(param_buffer, param_buffer + param_buffer_size);
   model_from_memory_ = true;
-
-  Update();
 }
 
 NativeConfig AnalysisConfig::ToNativeConfig() const {
