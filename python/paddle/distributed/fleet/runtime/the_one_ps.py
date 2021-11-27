@@ -52,6 +52,7 @@ def parse_table_class(varname, o_main_program):
             else:
                 return "MemorySparseTable"
 
+
 def get_default_accessor_proto(accessor, varname, o_main_program):
     embedding_dim = 0
     for var in o_main_program.list_vars():
@@ -94,6 +95,7 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
     embedx_sgd_param.adagrad.weight_bounds.append(-10.0)
     embedx_sgd_param.adagrad.weight_bounds.append(10.0)
 
+
 def check_embedding_dim(accessor, varname, o_main_program):
     embedding_dim = 0
     for var in o_main_program.list_vars():
@@ -105,10 +107,14 @@ def check_embedding_dim(accessor, varname, o_main_program):
             break
     fea_dim = accessor.fea_dim
     if fea_dim != embedding_dim + 2:
-        raise ValueError("The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".format(embedding_dim + 2, fea_dim))
+        raise ValueError(
+            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
+            format(embedding_dim + 2, fea_dim))
     embedx_dim = accessor.embedx_dim
     if embedx_dim != embedding_dim - 1:
-        raise ValueError("The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".format(embedding_dim - 1, embedx_dim))
+        raise ValueError(
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
+            format(embedding_dim - 1, embedx_dim))
 
 
 class Accessor:
@@ -918,8 +924,10 @@ class TheOnePSRuntime(RuntimeBase):
                         print('table_class:', table_proto.table_class)
                         print('shard_num:', table_proto.shard_num)
                         print('table_proto.accessor:', table_proto.accessor)
-                        print('accessor.IsInitialized', table_proto.accessor.IsInitialized())
-                        print('accessor.ByteSize', table_proto.accessor.ByteSize())
+                        print('accessor.IsInitialized',
+                              table_proto.accessor.IsInitialized())
+                        print('accessor.ByteSize',
+                              table_proto.accessor.ByteSize())
                         if table_proto.table_class:
                             print('table_proto.table_class is true')
                             table.table_class = table_proto.table_class
@@ -928,22 +936,32 @@ class TheOnePSRuntime(RuntimeBase):
                                 common.table_name, self.origin_main_program)
                         if table.table_class != 'MemorySparseTable':
                             table.table_class = 'MemorySparseTable'
-                            warnings.warn("The PS mode must use MemorySparseTable.")
+                            warnings.warn(
+                                "The PS mode must use MemorySparseTable.")
 
                         if table_proto.shard_num:
                             print('table_proto.shard_num is true')
                             table.shard_num = table_proto.shard_num
                         else:
                             table.shard_num = 1000
-                            warnings.warn("The shard_num of sparse table is not set, use default value 1000.")
+                            warnings.warn(
+                                "The shard_num of sparse table is not set, use default value 1000."
+                            )
 
                         if table_proto.accessor.ByteSize() == 0:
                             print('table_proto.accessor is false')
-                            get_default_accessor_proto(table_proto.accessor, common.table_name, self.origin_main_program)
-                            warnings.warn("The accessor of sparse table is not set, use default value.")
+                            get_default_accessor_proto(table_proto.accessor,
+                                                       common.table_name,
+                                                       self.origin_main_program)
+                            warnings.warn(
+                                "The accessor of sparse table is not set, use default value."
+                            )
                         else:
-                            check_embedding_dim(table_proto.accessor, common.table_name, self.origin_main_program)
-                        print('accessor.ByteSize', table_proto.accessor.ByteSize())
+                            check_embedding_dim(table_proto.accessor,
+                                                common.table_name,
+                                                self.origin_main_program)
+                        print('accessor.ByteSize',
+                              table_proto.accessor.ByteSize())
                         from google.protobuf import text_format
                         table.accessor_proto = text_format.MessageToString(
                             table_proto.accessor)
@@ -1260,6 +1278,7 @@ class TheOnePSRuntime(RuntimeBase):
             use_origin_program=True)
         print("the one ps sparses:", sparses)
         sparse_names = self._save_sparse_params(executor, dirname, sparses,
+                                                main_program, mode)
         print("the one ps sparse names:", sparse_names)
 
         denses = self.compiled_strategy.get_the_one_recv_context(
@@ -1363,7 +1382,9 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _shrink(self, threshold=None):
         if threshold is not None:
-            warnings.warn("The param threshold is not used in MemorySparseTable, if you need to shrink, please set the config of accessor")
+            warnings.warn(
+                "The param threshold is not used in MemorySparseTable, if you need to shrink, please set the config of accessor"
+            )
         else:
             threshold = 0
         import paddle.distributed.fleet as fleet
