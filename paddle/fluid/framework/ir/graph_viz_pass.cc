@@ -39,9 +39,12 @@ std::string FormatName(const Node* node) {
 }  // namespace
 
 void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string& optim_cache_dir = Get<std::string>("optim_cache_dir");
-  if (!optim_cache_dir.empty()) {
-    paddle::inference::analysis::MakeDirIfNotExists(optim_cache_dir);
+  std::string optim_cache_dir;
+  if (Has("optim_cache_dir")) {
+    optim_cache_dir = Get<std::string>("optim_cache_dir");
+    if (!optim_cache_dir.empty()) {
+      paddle::inference::analysis::MakeDirIfNotExists(optim_cache_dir);
+    }
   }
   const std::string& graph_viz_path = Get<std::string>(kGraphvizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
