@@ -11,10 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 #pragma once
 
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
-#include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/api/utils/hook_utils.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
+#include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/pten/api/all.h"
+
+namespace egr {
+
+// run_backward():
+// tensors corresponds to those lived in the backward graph
+// each grad_tensors[i] keeps the value for its corresponding tensors[i]
+void RunBackward(const std::vector<egr::EagerTensor> &tensors,
+                 const std::vector<egr::EagerTensor> &grad_tensors,
+                 bool retain_graph = false);
+
+// Reserved for gradient()
+
+}  // namespace egr

@@ -11,10 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 #pragma once
 
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
-#include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/api/utils/hook_utils.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
+#include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/pten/api/all.h"
+namespace egr {
+
+void RegisterGradientHookForTensor(
+    const egr::EagerTensor& tensor,
+    std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
+
+void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
+                                 const std::function<void(void)>& hook);
+void RetainGradForTensor(const egr::EagerTensor& tensor);
+
+}  // namespace egr
