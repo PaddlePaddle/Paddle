@@ -329,6 +329,7 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
 /* ---------------------- CUDA Tests ------------------ */
 /* ---------------------------------------------------- */
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(FwdBwdJoint, SingleNodeCUDA) {
   InitEnv(paddle::platform::CUDAPlace());
 
@@ -411,5 +412,6 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   // Examine Backward Grad
   CompareGradTensorWithValue<float>(tensor, 30.0);
 }
+#endif
 
 }  // namespace eager_test
