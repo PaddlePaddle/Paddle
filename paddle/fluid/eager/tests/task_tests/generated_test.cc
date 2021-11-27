@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/utils.h"
@@ -29,14 +30,10 @@
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
-
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
+
+namespace eager_test {
 
 TEST(Generated, Sigmoid) {
   // Prepare Device Contexts
@@ -45,7 +42,7 @@ TEST(Generated, Sigmoid) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 0.0, true);
   VLOG(6) << "Make EagerTensor";
@@ -72,13 +69,13 @@ TEST(Generated, Matmul_v2) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
-  egr::EagerTensor X = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor X = CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
-  egr::EagerTensor Y = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor Y = CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
   RetainGradForTensor(Y);
@@ -94,3 +91,5 @@ TEST(Generated, Matmul_v2) {
   CompareGradVariableWithValue<float>(X, 2.0 * 20);
   CompareGradVariableWithValue<float>(Y, 3.0 * 4);
 }
+
+}  // namespace eager_test
