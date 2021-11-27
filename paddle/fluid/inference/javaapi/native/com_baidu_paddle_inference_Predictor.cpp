@@ -14,6 +14,7 @@
 
 #include "com_baidu_paddle_inference_Predictor.h"
 #include <jni.h>
+#include "jni_convert_util.h"  // NOLINT
 #include "pd_inference_api.h"  // NOLINT
 
 JNIEXPORT void JNICALL
@@ -78,22 +79,22 @@ Java_com_baidu_paddle_inference_Predictor_getOutputNameByIndex(
 JNIEXPORT jlong JNICALL
 Java_com_baidu_paddle_inference_Predictor_getInputHandleByName(
     JNIEnv* env, jobject obj, jlong cppPaddlePredictorPointer, jstring name) {
-  const char* input_name = env->GetStringUTFChars(name, 0);
+  // const char* input_name = env->GetStringUTFChars(name, 0);
   PD_Predictor* pd_predictor =
       reinterpret_cast<PD_Predictor*>(cppPaddlePredictorPointer);
-  jlong output_tensor =
-      (jlong)PD_PredictorGetInputHandle(pd_predictor, input_name);
+  jlong output_tensor = (jlong)PD_PredictorGetInputHandle(
+      pd_predictor, jstring_to_cpp_string(env, name).c_str());
   return output_tensor;
 }
 
 JNIEXPORT jlong JNICALL
 Java_com_baidu_paddle_inference_Predictor_getOutputHandleByName(
     JNIEnv* env, jobject obj, jlong cppPaddlePredictorPointer, jstring name) {
-  const char* output_name = env->GetStringUTFChars(name, 0);
+  // const char* output_name = env->GetStringUTFChars(name, 0);
   PD_Predictor* pd_predictor =
       reinterpret_cast<PD_Predictor*>(cppPaddlePredictorPointer);
-  jlong output_tensor =
-      (jlong)PD_PredictorGetOutputHandle(pd_predictor, output_name);
+  jlong output_tensor = (jlong)PD_PredictorGetOutputHandle(
+      pd_predictor, jstring_to_cpp_string(env, name).c_str());
   return output_tensor;
 }
 
