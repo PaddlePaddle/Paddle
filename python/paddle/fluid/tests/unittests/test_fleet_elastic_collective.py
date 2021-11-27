@@ -26,61 +26,8 @@ from warnings import catch_warnings
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective
 
-cluster_json = """
-{
-  "machines": [
-    {
-      "hostname": "machine1",
-      "addr": "127.0.0.1",
-      "port": "768",
-      "devices": [
-        {
-          "global_id": 0,
-          "local_id": 0,
-          "type": "GPU",
-          "model": "Tesla V100-SXM2-32GB",
-          "sp_gflops": 15700,
-          "dp_gflops": 7800,
-          "memory": 32
-        },
-        {
-          "global_id": 1,
-          "local_id": 1,
-          "type": "GPU",
-          "model": "Tesla V100-SXM2-32GB",
-          "sp_gflops": 15700,
-          "dp_gflops": 7800,
-          "memory": 32
-        },
-        {
-          "global_id": 2,
-          "local_id": 0,
-          "type": "CPU",
-          "model": "Intel(R) Xeon(R) Gold 6271C CPU @ 2.60G",
-          "arch": "x86_64",
-          "vendor": "GenuineIntel",
-          "sp_gflops": 150,
-          "dp_gflops": 75,
-          "memory": "503"
-        }
-      ],
-      "links": [
-        {
-          "source_global_id": 0,
-          "target_global_id": 1,
-          "type": "NVL",
-          "bandwidth": 42
-        },
-        {
-          "source_global_id": 1,
-          "target_global_id": 0,
-          "type": "PHB",
-          "bandwidth": 12
-        }
-      ]
-    }
-  ]
-}
+fake_python_code = """
+print("test")
 """
 
 
@@ -88,11 +35,9 @@ class TestCollectiveLauncher(unittest.TestCase):
     def setUp(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
 
-        self.cluster_json_path = os.path.join(file_dir,
-                                              "auto_parallel_cluster.json")
-        cluster_json_object = json.loads(cluster_json)
-        with open(self.cluster_json_path, "w") as cluster_json_file:
-            json.dump(cluster_json_object, cluster_json_file)
+        self.code_path = os.path.join(file_dir, "fake_python_for_elastic.py")
+        with open(self.code_path, "w") as f:
+            f.write(fake_python_code)
 
     def test_launch(self):
         class Argument:
@@ -110,9 +55,8 @@ class TestCollectiveLauncher(unittest.TestCase):
             enable_auto_mapping = False
             run_mode = "cpuonly"
             servers = None
-            cluster_topo_path = self.cluster_json_path
             rank_mapping_path = None
-            training_script = "python -h"
+            training_script = "fake_python_for_elastic.py"
             training_script_args = ["--use_amp false"]
             log_dir = None
 
@@ -131,7 +75,6 @@ class TestCollectiveLauncher(unittest.TestCase):
             args.backend = "gloo"
             launch_collective(args)
         except Exception as e:
-            #print(traceback.format_exc())
             pass
 
     def test_stop(self):
@@ -150,9 +93,8 @@ class TestCollectiveLauncher(unittest.TestCase):
             enable_auto_mapping = False
             run_mode = "cpuonly"
             servers = None
-            cluster_topo_path = self.cluster_json_path
             rank_mapping_path = None
-            training_script = "python -h"
+            training_script = "fake_python_for_elastic.py"
             training_script_args = ["--use_amp false"]
             log_dir = None
 
