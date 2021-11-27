@@ -28,16 +28,11 @@
 #include "paddle/pten/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
-#include "paddle/pten/core/kernel_registry.h"
-
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
+
+namespace eager_test {
 
 egr::EagerTensor hook_function(const egr::EagerTensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
@@ -70,7 +65,7 @@ TEST(FwdBwdJoint, SingleNode) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -110,7 +105,7 @@ TEST(FwdBwdJoint, LinearNodes) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -158,7 +153,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -224,7 +219,7 @@ TEST(FwdBwdJoint, GradientHook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -291,7 +286,7 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -339,7 +334,7 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -376,7 +371,7 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+  egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
@@ -416,3 +411,5 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   // Examine Backward Grad
   CompareGradTensorWithValue<float>(tensor, 30.0);
 }
+
+}  // namespace eager_test
