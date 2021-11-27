@@ -106,8 +106,10 @@ static std::string AttrTypeToString(const proto::AttrType& type) {
       break;
     }
     default: {
-      PADDLE_THROW(
-          platform::errors::Fatal("Unable to recognize AttrType: %d", type));
+      PADDLE_THROW(platform::errors::Fatal(
+          "AttrType of type boost::variant only supports specific data types."
+          "However, detected unrecognized AttrType: %d",
+          type));
     }
   }
   return ret;
@@ -119,13 +121,13 @@ static std::string GetAttrValue(const framework::Attribute& attr,
   std::string val = "";
   if (is_vector) {
     val += "{";
-    for (auto x : boost::get<std::vector<T>>(attr)) {
+    for (auto x : BOOST_GET_CONST(std::vector<T>, attr)) {
       val += std::to_string(x) + ",";
     }
     if (val.size() > 1) val.pop_back();
     val += "}";
   } else {
-    val = std::to_string(boost::get<T>(attr));
+    val = std::to_string(BOOST_GET_CONST(T, attr));
   }
   return val;
 }
@@ -149,7 +151,7 @@ static std::pair<std::string, std::string> GetAttrType(
     case (3): {
       ret = "std::string";
       if (is_arg) ret += "&";
-      val = "\"" + boost::get<std::string>(attr) + "\"";
+      val = "\"" + BOOST_GET_CONST(std::string, attr) + "\"";
       break;
     }
     case (4): {
@@ -168,7 +170,7 @@ static std::pair<std::string, std::string> GetAttrType(
       ret = "std::vector<std::string>";
       if (is_arg) ret += "&";
       val += "{";
-      for (auto x : boost::get<std::vector<std::string>>(attr)) {
+      for (auto x : BOOST_GET_CONST(std::vector<std::string>, attr)) {
         val += "\"" + x + "\"" + ",";
       }
       if (val.size() > 1) val.pop_back();
@@ -213,8 +215,10 @@ static std::pair<std::string, std::string> GetAttrType(
       break;
     }
     default: {
-      PADDLE_THROW(platform::errors::Fatal("Unable to recognize AttrType: %d",
-                                           variant_pos));
+      PADDLE_THROW(platform::errors::Fatal(
+          "AttrType of type boost::variant only supports specific data types."
+          "However, detected unrecognized AttrType: %d",
+          variant_pos));
     }
   }
   return {ret, val};
@@ -258,6 +262,7 @@ static void SlotNameMatching(
             if (grad_fwd_slotname_map.count(grad_slot_name) &&
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(platform::errors::Fatal(
+                  "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name, grad_fwd_slotname_map[grad_slot_name],
                   fwd_slot_name));
@@ -270,6 +275,7 @@ static void SlotNameMatching(
             if (grad_grad_slotname_map.count(grad_slot_name) &&
                 grad_grad_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(platform::errors::Fatal(
+                  "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name, grad_grad_slotname_map[grad_slot_name],
                   fwd_slot_name));
@@ -289,6 +295,7 @@ static void SlotNameMatching(
             if (grad_fwd_slotname_map.count(grad_slot_name) &&
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(platform::errors::Fatal(
+                  "Detected mismatched slot names"
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name, grad_fwd_slotname_map[grad_slot_name],
                   fwd_slot_name));
@@ -301,6 +308,7 @@ static void SlotNameMatching(
             if (grad_grad_slotname_map.count(grad_slot_name) &&
                 grad_grad_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(platform::errors::Fatal(
+                  "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name, grad_grad_slotname_map[grad_slot_name],
                   fwd_slot_name));
@@ -314,6 +322,7 @@ static void SlotNameMatching(
 
     if (!found_matching) {
       PADDLE_THROW(platform::errors::Fatal(
+          "Detected mismatched slot names."
           "Found no matching fwd_slot_name for grad_slot_name: %s",
           grad_slot_name));
 
@@ -1101,7 +1110,9 @@ static std::string GenerateGradNodeCCContents(
 
     } else {
       PADDLE_THROW(platform::errors::Fatal(
-          "Unable to find forward slot name that matches %s", grad_input_name));
+          "Detected mismatched slot names."
+          "Unable to find forward slot name that matches %s",
+          grad_input_name));
     }
   }
   if (ins_contents_str.size() > 0)
@@ -1149,6 +1160,7 @@ static std::string GenerateGradNodeCCContents(
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
+          "Detected mismatched slot names."
           "Unable to find forward slot name that matches %s",
           grad_output_name));
     }
@@ -1514,9 +1526,6 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
   GenerateForwardHFile(output_dir, dygraph_forward_api_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
-
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     std::cerr << "argc must be 2" << std::endl;
@@ -1528,3 +1537,6 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
+}  // namespace framework
+}  // namespace paddle
