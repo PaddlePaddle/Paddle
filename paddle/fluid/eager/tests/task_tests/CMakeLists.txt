@@ -4,3 +4,4 @@ cc_test(test_egr_task_forward_autograd SRCS forward_autograd_test.cc DEPS ${eage
 cc_test(test_egr_task_backward SRCS backward_test.cc DEPS ${eager_deps} ${fluid_deps} eager_scale scale_node)
 cc_test(test_egr_task_hook SRCS hook_test.cc DEPS ${eager_deps} ${fluid_deps} eager_scale scale_node)
 cc_test(test_egr_task_cross_batch SRCS cross_batch_accumulation_test.cc DEPS ${eager_deps} ${fluid_deps} eager_scale scale_node)
+cc_test(test_egr_task_autocodegen SRCS generated_test.cc DEPS ${eager_deps} ${fluid_deps} ${generated_deps})
