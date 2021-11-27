@@ -20,6 +20,7 @@ import json
 import unittest
 import argparse
 import tempfile
+import traceback
 from warnings import catch_warnings
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
@@ -106,7 +107,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             scale = None
             force = None
             backend = 'gloo'
-            enable_auto_mapping = True
+            enable_auto_mapping = False
             run_mode = "cpuonly"
             servers = None
             cluster_topo_path = self.cluster_json_path
@@ -129,7 +130,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             pass
 
         try:
-            args.backend = "nccl"
+            args.backend = "gloo"
             launch.launch()
             launch.stop()
         except Exception as e:
@@ -137,15 +138,17 @@ class TestCollectiveLauncher(unittest.TestCase):
 
         try:
             args.backend = "unknown"
-            args.enable_auto_mapping = True
+            args.enable_auto_mapping = False
             launch.launch()
             launch.stop()
         except Exception as e:
             pass
 
         try:
+            args.backend = "gloo"
             launch_collective(args)
         except Exception as e:
+            print(traceback.format_exc())
             pass
 
         try:
@@ -171,7 +174,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             scale = None
             force = None
             backend = 'gloo'
-            enable_auto_mapping = True
+            enable_auto_mapping = False
             run_mode = "cpuonly"
             servers = None
             cluster_topo_path = self.cluster_json_path
