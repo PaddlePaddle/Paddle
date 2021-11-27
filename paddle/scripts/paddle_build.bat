@@ -223,7 +223,7 @@ set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
-set WITH_INFERENCE_API_TEST=ON
+set WITH_INFERENCE_API_TEST=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
