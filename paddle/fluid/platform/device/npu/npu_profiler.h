@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "acl/acl_prof.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 
 namespace paddle {
 namespace platform {

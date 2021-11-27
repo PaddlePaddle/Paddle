@@ -274,7 +274,7 @@ NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
   // NOTE(zhiqiu): Usually, no need to create context explicitly,
   // ACL creates a default context which contains 1 default stream
   // and 1 sync strean after aclrtSetDevice.
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  platform::GetCurrentNPUContext(&context_);
   stream_.reset(new stream::NPUStream(place));
 }
 
