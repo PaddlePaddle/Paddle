@@ -367,7 +367,7 @@ tensor_method_func  = [ #noqa
            'unsqueeze_',
            'unstack',
            'flip',
-           "rot90",
+           'rot90',
            'unbind',
            'roll',
            'tile',

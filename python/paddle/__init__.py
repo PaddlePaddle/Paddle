@@ -405,7 +405,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
-           "rot90",
+           'rot90',
            'bincount',
            'histogram',
            'multiplex',
