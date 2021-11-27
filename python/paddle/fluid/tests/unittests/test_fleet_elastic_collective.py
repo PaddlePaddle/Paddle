@@ -119,26 +119,9 @@ class TestCollectiveLauncher(unittest.TestCase):
         args = Argument()
 
         launch = CollectiveLauncher(args)
-        try:
-            launch.launch()
-            launch.stop()
-
-            args.rank_mapping_path = "./rank_mapping"
-            launch.launch()
-            launch.stop()
-        except Exception as e:
-            pass
 
         try:
             args.backend = "gloo"
-            launch.launch()
-            launch.stop()
-        except Exception as e:
-            pass
-
-        try:
-            args.backend = "unknown"
-            args.enable_auto_mapping = False
             launch.launch()
             launch.stop()
         except Exception as e:
@@ -150,15 +133,6 @@ class TestCollectiveLauncher(unittest.TestCase):
         except Exception as e:
             #print(traceback.format_exc())
             pass
-
-        #try:
-        #    os.environ['PADDLE_TRAINERS'] = "10.10.10.1"
-        #    os.environ['POD_IP'] = "10.10.10.0"
-        #    os.environ['TRAINER_PORTS_NUM'] = "2"
-        #    os.environ['PADDLE_TRAINER_ID'] = "0"
-        #    launch_collective(args)
-        #except Exception as e:
-        #    pass
 
     def test_stop(self):
         class Argument:
