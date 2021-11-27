@@ -461,13 +461,6 @@ void AnalysisConfig::Update() {
     }
   }
 
-  if (use_dlnne_) {
-    pass_builder()->ClearPasses();
-    for (const auto &pass : kDlnneSubgraphPasses) {
-      pass_builder()->AppendPass(pass);
-    }
-  }
-
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -475,6 +468,13 @@ void AnalysisConfig::Update() {
           (pass == "conv_bn_fuse_pass")) {
         continue;
       }
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
+  if (use_dlnne_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kDlnneSubgraphPasses) {
       pass_builder()->AppendPass(pass);
     }
   }
