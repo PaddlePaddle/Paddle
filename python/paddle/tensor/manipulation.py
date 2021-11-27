@@ -529,6 +529,9 @@ def rot90(x, k, dims, name=None):
           print(y)   ### [[[1, 3],[0, 2]],[[5, 7],[4, 6]]]
     """
 
+    if in_dygraph_mode():
+        return core.ops.rot90(x, "k", k, "dims", dims)
+
     helper = LayerHelper("rot90", **locals())
     check_type(x, 'X', (Variable), 'rot90')
     dtype = helper.input_dtype('x')
@@ -536,43 +539,18 @@ def rot90(x, k, dims, name=None):
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'rot90')
     check_type(dims, 'dims', (list, tuple), 'rot90')
-
-    input_total_dims = len(x.shape)
-    total_rot_dims = len(dims)
-    if total_rot_dims != 2:
-        raise ValueError("expected total rotation dims == 2, but got dims = {}".
-                         format(total_rot_dims))
-    if input_total_dims < 2:
-        raise ValueError("expected total dims >= 2, but got total dims = {}".
-                         format(input_total_dims))
-
-    if not (dims[0] != dims[1] and abs(dims[0] - dims[1]) != input_total_dims):
-        raise ValueError(
-            "expected rotation dims to be different, but got dim0 = {}, and dim1 = {}".
-            format(dims[0], dims[1]))
-
-    if not (dims[0] < input_total_dims and dims[0] >= -input_total_dims):
-        raise ValueError("Rotation dim0 out of range, dim0 = {}".format(dims[
-            0]))
-    if not (dims[1] < input_total_dims and dims[1] >= -input_total_dims):
-        raise ValueError("Rotation dim1 out of range, dim1 = {}".format(dims[
-            1]))
-
-    ## k % 4
-    k = k % 4 if k >= 0 else 4 - (-k % 4)
-    if k == 0:
-        return x
-    if k == 2:
-        return flip(flip(x, dims[0]), dims[1])
-
-    axes_list = list(range(0, input_total_dims))
-    (axes_list[dims[0]], axes_list[dims[1]]) = (axes_list[dims[1]],
-                                                axes_list[dims[0]])
-    if k == 1:
-        return transpose(flip(x, dims[1]), axes_list)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype)
     else:
-        # k == 3
-        return flip(transpose(x, axes_list), dims[1])
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="rot90",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"dims": dims,
+               "k": k})
+    return out
 
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
