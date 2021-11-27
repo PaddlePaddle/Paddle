@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 
-#include "paddle/fluid/platform/dynload/hccl.h"
+#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
 
 namespace paddle {
 namespace platform {
