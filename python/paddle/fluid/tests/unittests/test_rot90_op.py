@@ -26,6 +26,7 @@ class TestRot90_API(unittest.TestCase):
     """Test rot90 api."""
 
     def test_static_graph(self):
+        paddle.enable_static()
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
