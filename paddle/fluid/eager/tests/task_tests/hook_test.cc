@@ -30,7 +30,6 @@
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
-// TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
 namespace eager_test {
@@ -61,19 +60,6 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
   return ret;
 }
 
-/*
-AccumulationNode
-  |
-  |retain_grad
-  |hook
-  |
-ScaleNode
-  |
-  |retain_grad
-  |hook
-  |
- inp0
-*/
 TEST(RetainGrad, HookBeforeRetainGrad) {
   InitEnv(paddle::platform::CPUPlace());
 
@@ -144,33 +130,12 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     RetainGradForTensor(leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
   }
 
-  // Use Empty Grad Tensor
   RunBackward(target_tensors, {});
 
-  // Print target tensor grad
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(target_tensor, 4.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 4.0));
-
-  // Print leaf tensor grad
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 23.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 23.0));
+  CompareGradTensorWithValue<float>(target_tensor, 4.0);
+  CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }
 
-/*
-AccumulationNode
-  |
-  |hook
-  |retain_grad
-  |
-ScaleNode
-  |
-  |hook
-  |retain_grad
-  |
- inp0
-*/
 TEST(RetainGrad, HookAfterRetainGrad) {
   InitEnv(paddle::platform::CPUPlace());
 
@@ -241,18 +206,9 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     RegisterGradientHookForTensor(leaf_tensor, hook);
   }
 
-  // Use Empty Grad Tensor
   RunBackward(target_tensors, {});
-
-  // Print target tensor grad
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(target_tensor, 1.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
-
-  // Print leaf tensor grad
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 23.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 23.0));
+  CompareGradTensorWithValue<float>(target_tensor, 1.0);
+  CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }
 
 }  // namespace eager_test

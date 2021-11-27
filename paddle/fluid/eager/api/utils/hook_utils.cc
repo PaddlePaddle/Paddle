@@ -49,6 +49,7 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
       [grad_tensor](const egr::EagerTensor& t) {
         if (!grad_tensor) {
           PADDLE_THROW(paddle::platform::errors::Fatal(
+              "Detected null grad_tensor."
               "Grad tensor in AutogradMeta of should not be nullptr"));
         }
         if (t.defined()) {
@@ -58,8 +59,12 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
         } else {
           PADDLE_ENFORCE_EQ(
               t.Var().IsInitialized(), true,
-              "Variable %s has to be initialized while we need to set it.",
-              t.name());
+              paddle::platform::errors::Fatal(
+                  "Detected uninitialized variable, causing segmentation fault "
+                  "inside the hook."
+                  "Variable %s has to be initialized while we need to set it."
+                  "please check tensor initialization status.",
+                  t.name()));
           grad_tensor->MutableVar()
               ->GetMutable<paddle::framework::LoDTensor>()
               ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
@@ -72,7 +77,8 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
     PADDLE_ENFORCE(
         grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Leaf tensor should have had grad_node "
+        paddle::platform::errors::Fatal("Detected NULL grad_node"
+                                        "Leaf tensor should have had grad_node "
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);

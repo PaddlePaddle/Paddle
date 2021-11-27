@@ -33,24 +33,14 @@
 
 using namespace egr;  // NOLINT
 
-/*
-AccumulationNode
-  |
-ScaleNode
-  |
- inp0
-*/
 namespace eager_test {
 
 TEST(CrossBatchAccumulation, SingleScaleNode) {
-  // Prepare Device Contexts
   InitEnv(paddle::platform::CPUPlace());
 
-  // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
-  // Create Target Tensor
   egr::EagerTensor tensor = CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
@@ -59,25 +49,19 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
 
   egr::EagerTensor leaf_tensor = egr::EagerTensor();
   {
-    // Create ScaleNode
     auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
     scale_node_ptr->SetAttributes_scale(5.0 /*scale*/);
 
-    // Set grad in/out meta for node0
     scale_node_ptr->SetDefaultGradInOutMeta();
 
-    // Create AccumulationNode
     auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();
 
-    // Connect Input Tensor and ScaleNode via AutoGradMeta
-    // Apply RetainGrad
     AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(&target_tensor);
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     RetainGradForTensor(target_tensor);  // result: 1.0
 
-    // Connect ScaleNode -> AccumulationNode via Edge
     auto meta = AutogradMeta();
     meta.SetSingleOutRankWithSlot(0, 0);
     meta.SetGradNode(acc_node_ptr);
@@ -90,31 +74,15 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
     RetainGradForTensor(leaf_tensor);
   }
 
-  // Use Empty Grad Tensor
   RunBackward(target_tensors, {});
 
-  // target tensor's grad should remain the same
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(target_tensor, 1.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
+  CompareGradTensorWithValue<float>(target_tensor, 1.0);
+  CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
 
-  // Leaf tensor should keep accumulated grad
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 5.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 5.0));
-
-  // Cross-Batch Accumulation
   RunBackward(target_tensors, {});
 
-  // target tensor's grad should remain the same
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(target_tensor, 1.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
-
-  // Leaf tensor should keep accumulated grad
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 10.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 10.0));
+  CompareGradTensorWithValue<float>(target_tensor, 1.0);
+  CompareGradTensorWithValue<float>(leaf_tensor, 10.0);
 }
 
 }  // namespace eager_test

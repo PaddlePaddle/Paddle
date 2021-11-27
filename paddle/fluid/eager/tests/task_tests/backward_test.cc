@@ -30,7 +30,6 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-// TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
 namespace eager_test {
@@ -55,7 +54,6 @@ TEST(Backward, SingleNodeEmptyGrad) {
 
     // Set grad in/out meta
     node0_ptr->SetDefaultGradInOutMeta();
-    // Connect Tensor and Node via AutoGradMeta
     AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(&target_tensor);
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
@@ -82,9 +80,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
   RunBackward(outs, {});
 
   // Check Output Value
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 5.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 5.0));
+  CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
 }
 
 TEST(Backward, SingleNodeCustomGrad) {
@@ -145,9 +141,7 @@ TEST(Backward, SingleNodeCustomGrad) {
   RunBackward(target_tensors, grad_tensors);
 
   // Check Output Value
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 50.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 50.0));
+  CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
 }
 
 /*
@@ -221,9 +215,7 @@ TEST(Backward, LinearNodes) {
   RunBackward(target_tensors, {});
 
   // Check Output Value
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 50.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 50.0));
+  CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
 }
 
 /*
@@ -320,13 +312,9 @@ TEST(Backward, WithAccumulation) {
     node2_ptr->AddEdges({&meta2}, 0);
   }
 
-  // Use Empty Grad Tensor
   RunBackward(target_tensors, grad_tensors);
 
-  // Check Output Value
-  PADDLE_ENFORCE(
-      CompareGradTensorWithValue<float>(leaf_tensor, 2500.0) == true,
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 2500.0));
+  CompareGradTensorWithValue<float>(leaf_tensor, 2500.0);
 }
 
 }  // namespace eager_test

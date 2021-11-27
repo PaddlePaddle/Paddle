@@ -93,7 +93,9 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
 
     PADDLE_ENFORCE(grad_node,
                    paddle::platform::errors::Fatal(
-                       "Grad Node is nullptr for grad input tensor %d", i));
+                       "Detected null grad_node."
+                       "Grad Node is nullptr for grad input tensor %d",
+                       i));
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
       VLOG(6) << "Create Value for grad input tensor " << i;
@@ -104,8 +106,10 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     if (grad_tensors.size() > 0) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
-          paddle::platform::errors::Fatal("grad_tensors should either have "
-                                          "size = 0 or same size as tensors"));
+          paddle::platform::errors::Fatal(
+              "Detected size mismatch between tensors and grad_tensors"
+              "grad_tensors should either have "
+              "size = 0 or same size as tensors"));
       // Feed given tensor if it's provided
       VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
       node_input_buffers_dict[grad_node]->add(
@@ -146,6 +150,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     PADDLE_ENFORCE(
         node_input_buffers_dict.count(node),
         paddle::platform::errors::Fatal(
+            "Unable to find next node in the InputBuufer"
             "Trying to run Node without configuring its GradTensorHolder"));
 
     std::unique_ptr<GradTensorHolder> node_input_buffer =
@@ -194,6 +199,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
         node_in_degree_map[next_node]--;
         PADDLE_ENFORCE(node_in_degree_map[next_node] >= 0,
                        paddle::platform::errors::Fatal(
+                           "Detected in-degree value smaller than zero."
                            "Node's in-degree cannot be negative"));
         if (node_in_degree_map[next_node] == 0) {
           queue.emplace(std::move(next_node));
