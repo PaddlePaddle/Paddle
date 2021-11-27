@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
+
 class TestRot90_API(unittest.TestCase):
     """Test rot90 api."""
 
@@ -55,7 +56,7 @@ class TestRot90_API(unittest.TestCase):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with fluid.dygraph.guard():
             inputs = fluid.dygraph.to_variable(img)
-            
+
             ret = paddle.rot90(inputs, k=1, dims=[0, 1])
             ret = ret.rot90(1, dims=[0, 1])
             ret = paddle.rot90(ret, k=1, dims=[0, 1])
