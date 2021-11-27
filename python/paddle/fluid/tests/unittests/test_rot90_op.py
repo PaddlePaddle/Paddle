@@ -23,7 +23,7 @@ from paddle.fluid import Program, program_guard
 from op_test import OpTest
 
 
-class TestRot90Op(unittest.TestCase):
+class TestRot90Op_API(unittest.TestCase):
     """Test rot90 api."""
 
     def test_static_graph(self):
@@ -32,9 +32,9 @@ class TestRot90Op(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             axis = [0]
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-            output = paddle.flip(input, k=1, dims=[0, 1])
-            output = paddle.flip(output, -1)
-            output = output.flip(0)
+            output = paddle.rot90(input, k=1, dims=[0, 1])
+            output = paddle.rot90(output, k=1, dims=[0, 1])
+            output = output.rot90(k=1, dims=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -47,38 +47,37 @@ class TestRot90Op(unittest.TestCase):
                           fetch_list=[output])
 
             out_np = np.array(res[0])
-            out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
+            out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np))
 
-
-
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with fluid.dygraph.guard():
             inputs = fluid.dygraph.to_variable(img)
-            ret = paddle.flip(inputs, [0])
-            ret = ret.flip(0)
-            ret = paddle.flip(ret, 1)
-            out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
+            
+            ret = paddle.rot90(inputs, k=1, dims=[0, 1])
+            ret = ret.rot90(1, dims=[0, 1])
+            ret = paddle.rot90(ret, k=1, dims=[0, 1])
+            out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
-                msg='flip output is wrong, out =' + str(ret.numpy()))
+                msg='rot90 output is wrong, out =' + str(ret.numpy()))
 
 
-class TestFlipOp(OpTest):
+class TestRot90Op(OpTest):
     def setUp(self):
-        self.op_type = 'flip'
+        self.op_type = 'rot90'
         self.init_test_case()
         self.inputs = {'X': np.random.random(self.in_shape).astype('float64')}
         self.init_attrs()
         self.outputs = {'Out': self.calc_ref_res()}
 
     def init_attrs(self):
-        self.attrs = {"axis": self.axis}
+        self.attrs = {"k": self.k, "dims": self.dims}
 
     def test_check_output(self):
         self.check_output()
@@ -88,51 +87,66 @@ class TestFlipOp(OpTest):
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
-        self.axis = [0, 1]
+        self.k = 1
+        self.dims = [0, 1]
 
     def calc_ref_res(self):
         res = self.inputs['X']
-        if isinstance(self.axis, int):
-            return np.flip(res, self.axis)
-        for axis in self.axis:
-            res = np.flip(res, axis)
+        res = np.rot90(res, self.k, self.dims)
+        #if isinstance(self.axis, int):
+        #    return np.flip(res, self.axis)
+        #for axis in self.axis:
+        #    res = np.flip(res, axis)
         return res
 
 
-class TestFlipOpAxis1(TestFlipOp):
+class TestRot90OpK1(TestRot90Op):
     def init_test_case(self):
         self.in_shape = (2, 4, 4)
-        self.axis = [0]
+        self.k = 1
+        self.dims = [0, 1]
 
 
-class TestFlipOpAxis2(TestFlipOp):
+class TestRot90OpK2(TestRot90Op):
     def init_test_case(self):
         self.in_shape = (4, 4, 6, 3)
-        self.axis = [0, 2]
+        self.k = 2
+        self.dims = [0, 1]
 
 
-class TestFlipOpAxis3(TestFlipOp):
+class TestRot90OpK3(TestRot90Op):
     def init_test_case(self):
         self.in_shape = (4, 3, 1)
-        self.axis = [0, 1, 2]
+        self.k = 3
+        self.dims = [0, 1]
 
 
-class TestFlipOpAxis4(TestFlipOp):
+class TestRot90OpKNeg1(TestRot90Op):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
-        self.axis = [0, 1, 2, 3]
+        self.k = -1
+        self.dims = [0, 1]
 
 
-class TestFlipOpEmptyAxis(TestFlipOp):
+class TestRot90OpKNeg2(TestRot90Op):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
-        self.axis = []
+        self.k = -2
+        self.dims = [0, 1]
 
 
-class TestFlipOpNegAxis(TestFlipOp):
+class TestRot90OpKNeg3(TestRot90Op):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
-        self.axis = [-1]
+        self.k = -3
+        self.dims = [0, 1]
+
+
+class TestRot90OpK0(TestRot90Op):
+    def init_test_case(self):
+        self.in_shape = (6, 4, 2, 2)
+        self.k = 0
+        self.dims = [0, 1]
 
 
 if __name__ == "__main__":
