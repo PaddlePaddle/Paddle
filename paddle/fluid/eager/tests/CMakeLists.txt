@@ -3,3 +3,4 @@ set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memc
 
 add_subdirectory(data_structure_tests)
 add_subdirectory(task_tests)
+add_subdirectory(performance_tests)
