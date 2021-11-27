@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
@@ -268,20 +268,24 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                 "input_data2": [2, 128],
                 "input_data3": [2, 128]
             })
-        yield config, ['fused_embedding_eltwise_layernorm'], (1e-5, 1e-5)
+        yield config, ['tensorrt_engine'], (1e-5, 1e-5)
 
-    def add_skip_pass_case(self):
+    def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
             if program_config.ops[3].attrs['axis'] in [
                     -1, 2
             ] and program_config.ops[5].attrs[
                     'begin_norm_axis'] == 2 and program_config.weights[
                         'embedding_weight1'].shape in [(64, 32), (64, 64)]:
+                predictor_config.delete_pass(
+                    'embedding_eltwise_layernorm_fuse_pass')
                 return True
             return False
 
-        self.add_skip_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
-                           "The pass output has diff in a specific case.")
+        self.add_ignore_check_case(
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The pass output has diff in a specific case. We need to fix it as soon as possible."
+        )
 
     def test(self):
         # this fuse need to fix, now there's no program can ran successfully

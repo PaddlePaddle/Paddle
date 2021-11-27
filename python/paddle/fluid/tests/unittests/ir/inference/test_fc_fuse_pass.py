@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
@@ -46,7 +46,7 @@ class TestFcFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ["fc"], (1e-5, 1e-5)
 
-    def add_skip_pass_case(self):
+    def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
         def teller1(program_config, predictor_config):
             # shape of bias should be [1, mul_y_shape[-1]] or [mul_y_shape[-1]]
@@ -55,23 +55,25 @@ class TestFcFusePass(PassAutoScanTest):
             bias_shape = program_config.weights["bias"].shape
             if (bias_shape != [y_shape[-1], ] and
                     bias_shape != [1, y_shape[-1]]):
+                predictor_config.delete_pass('fc_fuse_pass')
                 return True
             return False
 
         def teller2(program_config, predictor_config):
             # TODO fuse has bug while axis != -1
             if program_config.ops[1].attrs["axis"] != -1:
+                predictor_config.delete_pass('fc_fuse_pass')
                 return True
             return False
 
-        self.add_skip_case(
+        self.add_ignore_check_case(
             teller1,
-            SkipReasons.PASS_ACCURACY_ERROR,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
             "The pass output has diff while shape of bias is not [out_size] or [1, out_size].",
         )
-        self.add_skip_case(
+        self.add_ignore_check_case(
             teller2,
-            SkipReasons.PASS_ACCURACY_ERROR,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
             "The pass output has diff while axis of elementwise_add is not -1.",
         )
 
