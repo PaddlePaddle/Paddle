@@ -512,7 +512,6 @@ def rot90(x, k, dims, name=None):
 
     Examples:
         .. code-block:: python
-
           import paddle
           import numpy as np
 
@@ -552,9 +551,11 @@ def rot90(x, k, dims, name=None):
             format(dims[0], dims[1]))
 
     if not (dims[0] < input_total_dims and dims[0] >= -input_total_dims):
-        raise ValueError("Rotation dim0 out of range, dim0 = {}".format(dims[0]))
+        raise ValueError("Rotation dim0 out of range, dim0 = {}".format(dims[
+            0]))
     if not (dims[1] < input_total_dims and dims[1] >= -input_total_dims):
-        raise ValueError("Rotation dim1 out of range, dim1 = {}".format(dims[1]))
+        raise ValueError("Rotation dim1 out of range, dim1 = {}".format(dims[
+            1]))
 
     ## k % 4
     k = k % 4 if k >= 0 else 4 - (-k % 4)
