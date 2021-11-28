@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn_launch_op.h"
+#include <vector>
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(cudnn_deterministic);
@@ -65,8 +66,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 }
 
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context) {
-  compiled_obj.runtime_program->Execute(&context.FinalizeArguments());
+                         const CinnLaunchContext& context, void* stream) {
+  compiled_obj.runtime_program->Execute(&context.FinalizeArguments(), stream);
 }
 
 void SetCinnRuntimeFlags() {
@@ -121,6 +122,7 @@ void CinnLaunchContext::MutableTensorData(const std::string& var_name,
 
   auto cinn_tensor = GetCinnTensor(cinn_name);
   // TODO(CtfGo): support mutable corresponding c++ type after CINN ready
+  VLOG(4) << "Only support float in cinn_launch op now.";
   paddle_tensor->mutable_data<float>(
       framework::make_ddim(cinn_tensor->shape().data()), place);
 }

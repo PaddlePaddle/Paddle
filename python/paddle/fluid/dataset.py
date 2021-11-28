@@ -321,19 +321,19 @@ class DatasetBase(object):
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_readers()
 
-    def _set_use_ps_gpu(self, use_ps_gpu):
+    def _set_use_ps_gpu(self, psgpu):
         """
         set use_ps_gpu flag
 
         Args:
             use_ps_gpu: bool
         """
-        self.use_ps_gpu = use_ps_gpu
+        self.use_ps_gpu = True
         # if not defined heterps with paddle, users will not use psgpu
         if not core._is_compiled_with_heterps():
-            self.use_ps_gpu = 0
+            self.use_ps_gpu = False
         elif self.use_ps_gpu:
-            self.psgpu = core.PSGPU()
+            self.psgpu = psgpu
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
