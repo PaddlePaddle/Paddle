@@ -2,7 +2,11 @@ set(eager_deps pten pten_api hook_utils tensor_utils utils global_utils backward
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
 set(generated_deps dygraph_function dygraph_node)
 
-add_subdirectory(auto_code_generator)
+if(NOT DEFINED PADDLE_ON_INFERENCE)
+    message("Performing Eager Auto Coden Generation")
+    add_subdirectory(auto_code_generator)
+endif()
+
 add_subdirectory(api)
 add_subdirectory(accumulation)
 add_subdirectory(legacy)
