@@ -196,7 +196,7 @@ static std::string GetDirRoot(const std::string &path) {
   return path;
 }
 
-static void MakeDirIfNotExists(const std::string path) {
+static void MakeDirIfNotExists(const std::string &path) {
   if (!PathExists(path)) {
     PADDLE_ENFORCE_NE(
         MKDIR(path.c_str()), -1,
