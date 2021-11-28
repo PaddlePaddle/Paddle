@@ -18,6 +18,12 @@
 namespace paddle {
 namespace framework {
 
+bool StreamAnalyzer::InAsyncStream(const OpFuncNode& op_func_node) {
+  auto& op_type = op_func_node.operator_base_->Type();
+  return op_type == interpreter::kMemcpyD2H ||
+         op_type == interpreter::kMemcpyH2D;
+}
+
 /*
  * Parse the var_ids that need to be associated with an event.
  * The caller should guarantee front_op and back_op satisfy the

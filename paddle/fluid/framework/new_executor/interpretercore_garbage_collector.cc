@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
 namespace paddle {
 namespace framework {
 
@@ -36,7 +37,13 @@ void InterpreterCoreGarbageCollector::Add(
     std::shared_ptr<memory::Allocation> garbage,
     paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {
   if (max_memory_size_ <= 1) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (!FLAGS_use_stream_safe_cuda_allocator) {
+      Free(garbage, event, ctx);
+    }
+#else
     Free(garbage, event, ctx);
+#endif
   } else {
     if (!garbage) return;
     GarbageQueue* garbage_ptr = nullptr;
@@ -52,7 +59,15 @@ void InterpreterCoreGarbageCollector::Add(
       }
     }
     if (garbage_ptr) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (FLAGS_use_stream_safe_cuda_allocator) {
+        delete garbage_ptr;
+      } else {
+        Free(garbage_ptr, event, ctx);
+      }
+#else
       Free(garbage_ptr, event, ctx);
+#endif
     }
   }
 }
@@ -89,6 +104,67 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
         framework::ToTypeName(var->Type())));
   }
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void InterpreterCoreGarbageCollector::StreamSynchronize(
+    const Instruction& instr, const VariableScope& scope) {
+  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                           instr.DeviceContext())
+                           .stream();
+  auto TensorSynchronize = [&stream](Tensor& tensor) {
+    const platform::Place& place = tensor.place();
+    if (platform::is_gpu_place(place)) {
+      tensor.RecordStream(stream);
+    } else if (platform::is_cuda_pinned_place(place)) {
+      // TODO(Ruibiao): Here should do something to make sure that the tensor is
+      // not freed until the H2D copies done.
+      // However, simplely launch a CUDA runtime callback to the H2D stream may
+      // lead a high performance overhead.
+      // As all the cases we meet in H2D are copies from CPUPlace at present, we
+      // just log a WARNING here.
+      // A better design is required.
+      LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
+                      "manner may lead to data inconsistent";
+    } else {
+      // memory copies involve CPUPlace are always synchronous, so just do
+      // nothing here
+    }
+  };
+
+  for (int var_id : instr.NeedStreamSyncVars()) {
+    // persistable var will be ignore while GC
+    if (scope.VarDesc(var_id) && scope.VarDesc(var_id)->Persistable()) {
+      continue;
+    }
+
+    paddle::framework::Variable* var = scope.Var(var_id);
+    if (var == nullptr) {
+      continue;
+    }
+
+    if (var->IsType<LoDTensor>()) {
+      TensorSynchronize(*(var->GetMutable<LoDTensor>()));
+    } else if (var->IsType<
+                   operators::reader::
+                       OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+      // do nothing
+    } else if (var->IsType<SelectedRows>()) {
+      TensorSynchronize(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& tensor : *tensor_arr) {
+        TensorSynchronize(tensor);
+      }
+    } else if (var->IsType<std::vector<Scope*>>()) {
+      // do nothing
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The variable(%s) is not supported in eager deletion.",
+          framework::ToTypeName(var->Type())));
+    }
+  }
+}
+#endif
 
 void InterpreterCoreGarbageCollector::Free(GarbageQueue* garbages,
                                            paddle::platform::DeviceEvent& event,

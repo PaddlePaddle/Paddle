@@ -29,6 +29,8 @@ class StreamAnalyzer {
 
   ~StreamAnalyzer() {}
 
+  bool InAsyncStream(const OpFuncNode& op_func_node);
+
   void Schedule(const std::vector<size_t>& downstream_ops,
                 std::vector<Instruction>* instructions, size_t op_index);
 

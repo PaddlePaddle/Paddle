@@ -20,10 +20,8 @@
 #endif
 
 #include <deque>
+#include <list>
 #include <map>
-#include <memory>
-#include <mutex>
-#include <set>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/place.h"
@@ -37,13 +35,13 @@ class StreamSafeCUDAAllocation : public Allocation {
   StreamSafeCUDAAllocation(AllocationPtr underlying_allocation,
                            gpuStream_t owning_stream);
   void RecordStream(gpuStream_t stream);
-  std::shared_ptr<std::set<gpuStream_t>> GetRecordedStreams();
+  bool CanBeFreed();
 
  private:
   AllocationPtr underlying_allocation_;
   gpuStream_t owning_stream_;
-  std::shared_ptr<std::set<gpuStream_t>> recorded_streams_;
-  SpinLock spin_lock_;
+  std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
+  SpinLock outstanding_event_map_lock_;
 };
 
 class StreamSafeCUDAAllocator : public Allocator {
@@ -60,22 +58,18 @@ class StreamSafeCUDAAllocator : public Allocator {
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
-  void CreateEventForAllRecordedStream(
-      std::set<gpuStream_t> *recorded_streams,
-      std::deque<gpuEvent_t> *outstanding_events);
-  void FreeStreamSafeCUDAAllocation(Allocation *allocation);
-  void ProcessEventsAndFree();
-  uint64_t ProcessEventsAndFreeWithRelease();
+  void ProcessUnfreedAllocations();
+  uint64_t ProcessUnfreedAllocationsWithRelease();
 
   static std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator *>>
-      allocators_map_;
-  static SpinLock allocators_map_lock_;
+      allocator_map_;
+  static SpinLock allocator_map_lock_;
 
   std::shared_ptr<Allocator> underlying_allocator_;
   platform::CUDAPlace place_;
   gpuStream_t default_stream_;
-  std::map<Allocation *, std::deque<gpuEvent_t>> outstanding_events_map_;
-  SpinLock outstanding_events_map_lock_;
+  std::list<Allocation *> unfreed_allocations_;
+  SpinLock unfreed_allocation_lock_;
 };
 
 }  // namespace allocation

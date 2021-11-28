@@ -211,5 +211,11 @@ void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
 
 void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void Tensor::RecordStream(const gpuStream_t& stream) {
+  memory::RecordStream(holder_.get(), stream);
+}
+#endif
+
 }  // namespace framework
 }  // namespace paddle

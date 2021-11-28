@@ -28,6 +28,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
+DECLARE_bool(use_stream_safe_cuda_allocator);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 
@@ -177,10 +178,21 @@ void InterpreterCore::Convert(
 
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
+
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
 
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
     auto& instr = vec_instruction_.back();
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (FLAGS_use_stream_safe_cuda_allocator) {
+      bool in_async_stream = stream_analyzer_.InAsyncStream(op_func_node);
+      in_async_stream_.push_back(in_async_stream);
+      if (in_async_stream) {
+        instr.InferNeedStreamSyncVars();
+      }
+    }
+#endif
 
     OpInOutInfo info;
     std::vector<size_t> gc_check_input_list;
@@ -519,6 +531,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       RunInstruction(instr_node);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (FLAGS_use_stream_safe_cuda_allocator && in_async_stream_[instr_id]) {
+        gc_->StreamSynchronize(instr_node, *global_scope_);
+      }
+#endif
       // GC infomation
       CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {

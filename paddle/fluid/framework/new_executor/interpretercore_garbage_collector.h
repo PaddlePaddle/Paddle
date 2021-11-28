@@ -23,6 +23,7 @@
 #include <queue>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
@@ -46,6 +47,12 @@ class InterpreterCoreGarbageCollector {
            const platform::DeviceContext* ctx);
 
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+ public:
+  void StreamSynchronize(const Instruction& instr, const VariableScope& scope);
+#endif
 
  private:
   void Free(GarbageQueue* garbages,
