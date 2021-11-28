@@ -268,7 +268,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                 "input_data2": [2, 128],
                 "input_data3": [2, 128]
             })
-        yield config, ['tensorrt_engine'], (1e-5, 1e-5)
+        yield config, ['fused_embedding_eltwise_layernorm'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
@@ -277,8 +277,6 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             ] and program_config.ops[5].attrs[
                     'begin_norm_axis'] == 2 and program_config.weights[
                         'embedding_weight1'].shape in [(64, 32), (64, 64)]:
-                predictor_config.delete_pass(
-                    'embedding_eltwise_layernorm_fuse_pass')
                 return True
             return False
 

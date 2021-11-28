@@ -172,7 +172,7 @@ class AutoScanTest(unittest.TestCase):
 
     @abc.abstractmethod
     def fail_log(self, msg: str):
-        logging.error("FAILE: " + msg)
+        logging.error("FAIL: " + msg)
 
     @abc.abstractmethod
     def success_log(self, msg: str):
@@ -492,8 +492,6 @@ class PassAutoScanTest(AutoScanTest):
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
         config.switch_ir_debug()
-        # for assert_op_size.
-        self.passes = ['transpose_flatten_concat_fuse_pass']
         return config
 
 

@@ -55,14 +55,12 @@ class TestFcFusePass(PassAutoScanTest):
             bias_shape = program_config.weights["bias"].shape
             if (bias_shape != [y_shape[-1], ] and
                     bias_shape != [1, y_shape[-1]]):
-                predictor_config.delete_pass('fc_fuse_pass')
                 return True
             return False
 
         def teller2(program_config, predictor_config):
             # TODO fuse has bug while axis != -1
             if program_config.ops[1].attrs["axis"] != -1:
-                predictor_config.delete_pass('fc_fuse_pass')
                 return True
             return False
 
