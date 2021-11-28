@@ -53,14 +53,14 @@ class TestRot90_API(unittest.TestCase):
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np))
 
-    def test_k():
+    def test_k(self):
         paddle.enable_static()
         input = fluid.data(name='input', dtype='float32', shape=[2, 3])
         output = paddle.rot90(input, k=0, dims=[0, 1])
         output = paddle.rot90(input, k=2, dims=[0, 1])
         output = paddle.rot90(input, k=3, dims=[0, 1])
 
-    def test_error_api():
+    def test_error_api(self):
         ## dims error
         def run1():
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
