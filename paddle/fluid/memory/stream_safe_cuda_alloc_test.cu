@@ -37,6 +37,8 @@ __global__ void add_kernel(int *x, int n) {
   for (int i = thread_id; i < n; i += thread_num) {
     atomicAdd(x + i, thread_id);
   }
+  // sleep 5000 ns to ensure that the kernel does not finish before GC
+  __nanosleep(5000);
 }
 
 class StreamSafeCUDAAllocTest : public ::testing::Test {
