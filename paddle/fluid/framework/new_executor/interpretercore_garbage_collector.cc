@@ -117,14 +117,12 @@ void InterpreterCoreGarbageCollector::StreamSynchronize(
       tensor.RecordStream(stream);
     } else if (platform::is_cuda_pinned_place(place)) {
       // TODO(Ruibiao): Here should do something to make sure that the tensor is
-      // not freed until the H2D copies done.
-      // However, simplely launch a CUDA runtime callback to the H2D stream may
-      // lead a high performance overhead.
-      // As all the cases we meet in H2D are copies from CPUPlace at present, we
-      // just log a WARNING here.
-      // A better design is required.
+      // not freed until the H2D copies done. However, simplely launch a CUDA
+      // runtime callback to the H2D stream may lead a high performance
+      // overhead. As all the cases we meet in H2D are copies from CPUPlace at
+      // present, we just log a WARNING here. A better design is required.
       LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
-                      "manner may lead to data inconsistent";
+                      "manner may lead a data inconsistent";
     } else {
       // memory copies involve CPUPlace are always synchronous, so just do
       // nothing here

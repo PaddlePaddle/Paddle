@@ -32,9 +32,10 @@ namespace paddle {
 namespace memory {
 
 __global__ void add_kernel(int *x, int n) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < n; i += blockDim.x * gridDim.x) {
-    atomicAdd(x + i, tid);
+  int thread_num = gridDim.x * blockDim.x;
+  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = thread_id; i < n; i += thread_num) {
+    atomicAdd(x + i, thread_id);
   }
 }
 
@@ -46,24 +47,19 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     grid_num_ = 1;
     block_num_ = 64;
     data_num_ = 64;
-    default_stream = nullptr;
+    workspace_size_ = data_num_ * sizeof(int);
 
-    streams_.reserve(stream_num_);
-    streams_.emplace_back(default_stream);
-    for (size_t i = 1; i < stream_num_; ++i) {
+    // alloc workspace for each stream
+    for (size_t i = 0; i < stream_num_; ++i) {
       gpuStream_t stream;
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
 #else
       PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream));
 #endif
-      streams_.emplace_back(stream);
-    }
 
-    for (size_t i = 0; i < stream_num_; ++i) {
-      size_t allocation_size = data_num_ * sizeof(int);
       std::shared_ptr<Allocation> allocation =
-          AllocShared(place_, allocation_size, streams_[i]);
+          AllocShared(place_, workspace_size_, stream);
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
@@ -71,25 +67,45 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           hipMemset(allocation->ptr(), 0, allocation->size()));
 #endif
-      allocations_.emplace_back(allocation);
+
+      streams_.emplace_back(stream);
+      workspaces_.emplace_back(allocation);
     }
+
+    result_ = AllocShared(place_, stream_num_ * workspace_size_);
   }
 
   void SingleStreamRun(size_t idx) {
+    // for all stream i,
+    // stream idx lauch a kernel to add (j % thread_num) to workspaces_[i][j]
     for (size_t i = 0; i < stream_num_; ++i) {
-      int *x = reinterpret_cast<int *>(allocations_[i]->ptr());
+      int *x = reinterpret_cast<int *>(workspaces_[i]->ptr());
       add_kernel<<<grid_num_, block_num_, 0, streams_[idx]>>>(x, data_num_);
-      if (i != idx) {
-        RecordStream(allocations_[i].get(), streams_[idx]);
-      }
+      RecordStream(workspaces_[i].get(), streams_[idx]);
+    }
+  }
+
+  void CopyResultAsync() {
+    for (size_t i = 0; i < stream_num_; ++i) {
+#ifdef PADDLE_WITH_CUDA
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+          result_->ptr() + i * workspace_size_, workspaces_[i]->ptr(),
+          workspace_size_, cudaMemcpyDeviceToDevice));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpyAsync(
+          result_->ptr() + i * workspace_size_, workspaces_[i]->ptr(),
+          workspace_size_, hipMemcpyDeviceToDevice));
+#endif
     }
   }
 
   void MultiStreamRun() {
-    for (int i = 0; i < stream_num_; ++i) {
+    for (size_t i = 0; i < stream_num_; ++i) {
       SingleStreamRun(i);
     }
-    allocations_.clear();  // fast_gc
+    CopyResultAsync();
+    workspaces_.clear();  // fast_gc
+    cudaDeviceSynchronize();
   }
 
   void MultiThreadMUltiStreamRun() {
@@ -101,28 +117,30 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     for (size_t i = 0; i < stream_num_; ++i) {
       threads[i].join();
     }
-    allocations_.clear();  // fast_gc
+    CopyResultAsync();
+    workspaces_.clear();  // fast_gc
+    cudaDeviceSynchronize();
   }
 
   void CheckResult() {
-    auto host_x = std::unique_ptr<int[]>(new int[data_num_]);
-    size_t thread_num = grid_num_ * block_num_;
-    for (int i = 0; i < stream_num_; ++i) {
-// tricky code, the allocations are still accessible even though
-// allocations_.clear() has been called
+    auto result_host = std::unique_ptr<int[]>(new int[result_->size()]);
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaMemcpy(host_x.get(), allocations_[i]->ptr(),
-                     data_num_ * sizeof(int), cudaMemcpyDeviceToHost));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(result_host.get(), result_->ptr(),
+                                           result_->size(),
+                                           cudaMemcpyDeviceToHost));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          hipMemcpy(host_x.get(), allocations_[i]->ptr(),
-                    data_num_ * sizeof(int), hipMemcpyDeviceToHost));
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(result_host.get(), result_->ptr(),
+                                          result_->size(),
+                                          hipMemcpyDeviceToHost));
 #endif
-      for (int j = 0; j < data_num_; ++j) {
-        EXPECT_TRUE(host_x[j] == (j % thread_num) * stream_num_);
+    size_t thread_num = grid_num_ * block_num_;
+    for (size_t i = 0; i < stream_num_; ++i) {
+      for (size_t j = 0; j < data_num_; ++j) {
+        EXPECT_TRUE(result_host[i * stream_num_ + j] ==
+                    (j % thread_num) * stream_num_);
       }
     }
+    result_.reset();
   }
 
   void TearDown() override {
@@ -154,10 +172,11 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   size_t grid_num_;
   size_t block_num_;
   size_t data_num_;
+  size_t workspace_size_;
   platform::CUDAPlace place_;
-  gpuStream_t default_stream;
   std::vector<gpuStream_t> streams_;
-  std::vector<std::shared_ptr<Allocation>> allocations_;
+  std::vector<std::shared_ptr<Allocation>> workspaces_;
+  std::shared_ptr<Allocation> result_;
 };
 
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
@@ -199,7 +218,8 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream2));
 #endif
   size_t available_size = platform::GpuAvailableMemToAlloc();
-  // alloc_size < available_size < 2 * alloc_size
+  // alloc_size < available_size < 2 * alloc_size,
+  // so the second alloc will fail and retry
   size_t alloc_size = available_size / 4 * 3;
 
   std::shared_ptr<Allocation> allocation1 =

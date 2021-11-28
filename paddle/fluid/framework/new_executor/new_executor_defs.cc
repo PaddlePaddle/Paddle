@@ -706,11 +706,10 @@ void Instruction::InferNeedStreamSyncVars() {
   // ParseIndexFromMap(op_func_node_.output_index, &need_stream_sync_var_list_);
 
   // NOTE(Ruibiao): A simple and general approach is to record all input and
-  // output vars of the instruction.
-  // However, we ignore the output vars here, because the output of both H2D and
-  // D2H must be needed and will not be GC at the moment.
-  // We should figure out a better way to decide which vars should really be
-  // recorded later.
+  // output vars of the instruction. However, we ignore the output vars here,
+  // because the output of both H2D and D2H must be needed and will not be GC
+  // at the moment. We should figure out a better way to decide which vars
+  // should really be recorded later.
 }
 
 const std::vector<size_t>& Instruction::NeedStreamSyncVars() const {

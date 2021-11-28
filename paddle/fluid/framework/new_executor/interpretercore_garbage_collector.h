@@ -13,13 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#if !defined(_WIN32)
-#include <sched.h>
-#else
-#define NOMINMAX
-#include <windows.h>
-#endif  // !_WIN32
-
 #include <queue>
 #include <vector>
 
@@ -27,6 +20,13 @@
 #include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
+
+#if !defined(_WIN32)
+#include <sched.h>
+#else
+#define NOMINMAX
+#include <windows.h>
+#endif  // !_WIN32
 
 namespace paddle {
 namespace framework {

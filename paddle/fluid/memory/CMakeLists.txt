@@ -24,7 +24,7 @@ if (WITH_GPU)
     if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
         set_tests_properties(stream_safe_cuda_alloc_test PROPERTIES 
                              ENVIRONMENT "FLAGS_use_system_allocator=false"
-                             ENVIRONMENT "FLAGS_enable_stream_safe_cuda_allocator=true"
+                             ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true"
                              ENVIRONMENT "FLAGS_allocator_strategy=auto_growth")   
     endif()
 endif()

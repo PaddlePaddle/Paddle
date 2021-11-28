@@ -73,7 +73,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     PADDLE_ENFORCE_CUDA_SUCCESS(err);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
 #else
-    gpuError_t err = hipEventQuery(*deque_it);
+    gpuError_t err = hipEventQuery(event);
     if (err == hipErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
       // Erase the completded event before "it"
