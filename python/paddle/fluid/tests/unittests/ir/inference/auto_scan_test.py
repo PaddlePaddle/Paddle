@@ -462,10 +462,6 @@ class PassAutoScanTest(AutoScanTest):
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
                     if not skip_flag:
                         status = False
-                    elif os.getenv("DEBUG_SKIP", "OFF") == "ON":
-                        self.assertTrue(
-                            False,
-                            "DEBUG_SKIP is ON, this skipped case has diff")
                     continue
                 self.success_log('RUN predictor_config ' + self.
                                  inference_config_str(pred_config) + ' done')
