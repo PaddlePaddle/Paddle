@@ -53,6 +53,46 @@ class TestRot90_API(unittest.TestCase):
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np))
 
+    def test_k():
+        paddle.enable_static()
+        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        output = paddle.rot90(input, k=0, dims=[0, 1])
+        output = paddle.rot90(input, k=2, dims=[0, 1])
+        output = paddle.rot90(input, k=3, dims=[0, 1])
+
+    def test_error_api():
+        ## dims error
+        def run1():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.rot90(input, k=1, dims=[0])
+
+        self.assertRaises(ValueError, run1)
+
+        ## input dims error
+        def run2():
+            input = fluid.data(name='input', dtype='float32', shape=[2])
+            output = paddle.rot90(input, k=1, dims=[0, 1])
+
+        self.assertRaises(ValueError, run2)
+
+        def run3():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.rot90(input, k=1, dims=[0, 0])
+
+        self.assertRaises(ValueError, run3)
+
+        def run4():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.rot90(input, k=1, dims=[3, 1])
+
+        self.assertRaises(ValueError, run4)
+
+        def run5():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.rot90(input, k=1, dims=[0, 3])
+
+        self.assertRaises(ValueError, run5)
+
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with fluid.dygraph.guard():
