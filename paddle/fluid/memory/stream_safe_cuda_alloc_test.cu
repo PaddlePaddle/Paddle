@@ -37,8 +37,6 @@ __global__ void add_kernel(int *x, int n) {
   for (int i = thread_id; i < n; i += thread_num) {
     atomicAdd(x + i, thread_id);
   }
-  // sleep 5000 ns to ensure that the kernel does not finish before GC
-  __nanosleep(5000);
 }
 
 class StreamSafeCUDAAllocTest : public ::testing::Test {
@@ -47,8 +45,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     place_ = platform::CUDAPlace();
     stream_num_ = 64;
     grid_num_ = 1;
-    block_num_ = 64;
-    data_num_ = 64;
+    block_num_ = 32;
+    data_num_ = 131072;
     workspace_size_ = data_num_ * sizeof(int);
 
     // alloc workspace for each stream
