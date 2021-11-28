@@ -44,8 +44,36 @@ class Rot90Kernel<platform::CPUDeviceContext, T>
     auto k = ctx.template Attr<int>("k");
     auto rot_dims = ctx.template Attr<std::vector<int>>("dims");
 
+    auto total_rot_dims = rot_dims.size();
+
     auto x_dims = x->dims();
     const int total_dims = x_dims.size();
+
+    TORCH_CHECK(total_rot_dims == 2,
+                "expected total rotation dims == 2, but got dims = ",
+                total_rot_dims);
+    TORCH_CHECK(total_dims >= 2,
+                "expected total dims >= 2, but got total dims = ", total_dims);
+    TORCH_CHECK(dims[0] != dims[1] && std::abs(dims[0] - dims[1]) != total_dims,
+                "expected rotation dims to be different, but got dim0 = ",
+                dims[0], " and dim1 = ", dims[1]);
+    // check range of dims
+    TORCH_CHECK(dims[0] < total_dims && dims[0] >= -total_dims,
+                "Rotation dim0 out of range, dim0 = ", dims[0]);
+    TORCH_CHECK(dims[1] < total_dims && dims[1] >= -total_dims,
+                "Rotation dim1 out of range, dim1 = ", dims[1]);
+    // handle modulo with negative k
+    k = (4 + (k % 4)) % 4;
+    switch (k) {
+      case 1:
+        return self.flip({dims[1]}).transpose_(dims[0], dims[1]);
+      case 2:
+        return self.flip(dims);
+      case 3:
+        return self.flip({dims[0]}).transpose_(dims[0], dims[1]);
+      default:
+        return self.clone(at::MemoryFormat::Contiguous);
+    }
 
     std::bitset<dim_bitset_size> dim_bitset;
     for (size_t i = 0; i < flip_dims.size(); ++i) {
