@@ -1086,12 +1086,12 @@ class TheOnePSRuntime(RuntimeBase):
         pserver_id = self.role_maker._role_id()
 
         for var_name in load_varnames:
-            table_id = sparse_table_maps[var_name]
-            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-                                "{}.block{}.txt".format(var_name, pserver_id))
-            meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
-                                "{}.block{}.meta".format(var_name, pserver_id))
-            self._server.load_sparse(path, meta, table_id)
+            # table_id = sparse_table_maps[var_name]
+            # path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
+            #                     "{}.block{}.txt".format(var_name, pserver_id))
+            # meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
+            #                     "{}.block{}.meta".format(var_name, pserver_id))
+            self._server.load_sparse(dirname, "0", table_id)
 
     def _run_server(self):
         ep = self.compiled_strategy.get_ps_endpoint()
@@ -1180,8 +1180,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         import paddle
         for var in remaining_vars:
-            if var.name not in recv_dense_varnames:
-                continue
+            # if var.name not in recv_dense_varnames:
+            #     continue
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
