@@ -146,20 +146,12 @@ class Graph:
     def __iter__(self):
         return iter(self._nodes.values())
 
-    def __getitem__(self, n):
+    def __getitem__(self, node_id):
         # Return the adjacency of a node
-        if isinstance(n, Node):
-            node_id = n.id
-        else:
-            node_id = n
         return self._adjs[node_id]
 
-    def __contains__(self, n):
+    def __contains__(self, node_id):
         # Check whether a node in the graph
-        if isinstance(n, Node):
-            node_id = n.id
-        else:
-            node_id = n
         try:
             return node_id in self._nodes
         except TypeError:

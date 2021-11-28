@@ -20,6 +20,7 @@
 #include <unordered_map>
 
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/float16.h"
 #include "xpu/runtime.h"
