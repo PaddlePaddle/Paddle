@@ -12,7 +12,31 @@ execute_process(
     COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generate_file_structures.py" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/"
 )
 
-add_custom_target(eager_codegen
-      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
+if(WIN32)
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/eager_generator_retry.bat ""
+    "set build_times=1\n"
+    ":retry\n"
+    "ECHO eager_generator run %build_times% time\n"
+    "taskkill /f /im eager_generator.exe 2>NUL\n"
+    "${CMAKE_CURRENT_BINARY_DIR}/eager_generator.exe ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated\n"
+    "if %ERRORLEVEL% NEQ 0 (\n"
+    "    set /a build_times=%build_times%+1\n"
+    "    if %build_times% GEQ 10 (\n"
+    "        exit /b 1\n"
+    "    ) else (\n"
+    "        goto :retry\n"
+    "    )\n"
+    ")\n"
+    "exit /b 0")
+
+    add_custom_target(eager_codegen
+      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator_retry.bat"
       DEPENDS eager_generator
       VERBATIM)
+
+else()
+    add_custom_target(eager_codegen
+          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
+          DEPENDS eager_generator
+          VERBATIM)
+endif()
