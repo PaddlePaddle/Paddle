@@ -182,7 +182,7 @@ class TestFcFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=1300, passes=["fc_fuse_pass"])
+            quant=False, max_examples=500, passes=["fc_fuse_pass"])
 
 
 if __name__ == "__main__":
