@@ -510,6 +510,11 @@ def rot90(x, k, dims, name=None):
     Returns:
         Tensor: Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
 
+    Raises:
+        TypeError: If the data type of ``x`` is not Variable
+        TypeError: If the dtype of ``x`` is not float16, float32, float64, int32, int64, bool
+        TypeError: If the data type of ``dims`` is not list, tuple
+
     Examples:
         .. code-block:: python
           import paddle
