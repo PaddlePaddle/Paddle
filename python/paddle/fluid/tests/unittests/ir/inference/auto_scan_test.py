@@ -179,7 +179,6 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def create_inference_config(self,
                                 passes: Optional[List[str]]=None,
-                                disable_passes: Optional[List[str]]=None,
                                 use_gpu: bool=False,
                                 use_mkldnn: bool=False,
                                 ir_optim: Optional[bool]=None):
@@ -197,9 +196,6 @@ class AutoScanTest(unittest.TestCase):
         if passes is not None:
             config.pass_builder().set_passes(passes)
             self.passes = passes
-        if disable_passes is not None:
-            for pass_name in disable_passes:
-                config.delete_pass(pass_name)
         return config
 
 
