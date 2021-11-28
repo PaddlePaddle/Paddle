@@ -64,6 +64,12 @@ class TestFcFusePass(PassAutoScanTest):
             x_shape = list(program_config.inputs["mul_x"].shape)
             y_shape = list(program_config.weights["mul_y"].shape)
             bias_shape = list(program_config.weights["bias"].shape)
+
+            if predictor_config.tensorrt_engine_enabled():
+                # TensorRT cann't handle all the situation of elementwise_add
+                # disable it until this problem fixed
+                predictor_config.exp_disable_tensorrt_ops(["elementwise_add"])
+
             if bias_shape != [y_shape[-1]] and bias_shape != [1, y_shape[-1]]:
                 return True
             return False
