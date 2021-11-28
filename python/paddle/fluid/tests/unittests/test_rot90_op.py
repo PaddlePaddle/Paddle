@@ -61,6 +61,8 @@ class TestRot90_API(unittest.TestCase):
         output = paddle.rot90(input, k=3, dims=[0, 1])
 
     def test_error_api(self):
+        paddle.enable_static()
+
         ## dims error
         def run1():
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
