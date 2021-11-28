@@ -40,12 +40,6 @@
 
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
-
 static size_t max_num_benchmark_runs = 5000;
 
 namespace egr {
