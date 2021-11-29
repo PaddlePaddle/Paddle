@@ -157,23 +157,32 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("cast",
-                   CUDA,
-                   ANY,
-                   pten::Cast,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
+
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
+  PT_REGISTER_KERNEL("cast",                            \
+                     CUDA,                              \
+                     ANY,                               \
+                     pten::Cast,                        \
+                     float,                             \
+                     double,                            \
+                     int,                               \
+                     int64_t,                           \
+                     int16_t,                           \
+                     bool,                              \
+                     uint8_t,                           \
+                     paddle::platform::float16,         \
+                     paddle::platform::complex<float>,  \
+                     paddle::platform::complex<double>, \
+                     ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                    \
+        paddle::experimental::DataType::UNDEFINED);     \
+  }
+
+#if !defined(PADDLE_WITH_HIP)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
+#else
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
+#endif
 
 PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
                                 CUDA,
