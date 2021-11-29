@@ -38,6 +38,8 @@ DECLARE_bool(run_pten_kernel);
 
 TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
@@ -185,3 +187,5 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
     }
   }
 }
+
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

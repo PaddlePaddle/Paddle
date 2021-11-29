@@ -39,6 +39,8 @@ DECLARE_bool(run_pten_kernel);
 
 TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 namespace paddle {
 namespace imperative {
 
@@ -252,3 +254,5 @@ USE_OP(scale);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);
 USE_OP(reduce_sum_grad);
+
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

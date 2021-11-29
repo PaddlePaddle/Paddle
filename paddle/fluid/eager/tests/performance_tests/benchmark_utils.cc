@@ -137,6 +137,8 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   auto* tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
   float* t_ptr = tensor->mutable_data<float>(place);
   std::vector<float> host_data(tensor->numel());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place == paddle::platform::CUDAPlace()) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
@@ -149,6 +151,8 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
                          sizeof(float) * tensor->numel(), stream);
     t_ptr = host_data.data();
   }
+#endif
+
   VLOG(6) << "Tensor Value: " << t_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       t_ptr[0] == value,
@@ -162,6 +166,8 @@ static void FluidCheckGradTensorValue(
   auto* grad_tensor = X->MutableGradVar()->GetMutable<framework::LoDTensor>();
   float* g_ptr = grad_tensor->mutable_data<float>(place);
   std::vector<float> g_host_data(grad_tensor->numel());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place == paddle::platform::CUDAPlace()) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
@@ -174,6 +180,8 @@ static void FluidCheckGradTensorValue(
                          sizeof(float) * grad_tensor->numel(), stream);
     g_ptr = g_host_data.data();
   }
+#endif
+
   VLOG(6) << "Tensor Value: " << g_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       g_ptr[0] == value,
