@@ -23,17 +23,17 @@
 #include "paddle/infrt/common/buffer.h"
 #include "paddle/infrt/common/dtype.h"
 
-using infrt::CinnRtConfig;
-using infrt::CinnRtPredictor;
-using infrt::CreateCinnRtPredictor;
+using infrt::InfRtConfig;
+using infrt::InfRtPredictor;
+using infrt::CreateInfRtPredictor;
 
 namespace infrt {
 
-TEST(CinnRtPredictor, predictor) {
+TEST(InfRtPredictor, predictor) {
   std::vector<std::string> shared_libs;
   shared_libs.push_back("../../paddle/libexternal_kernels.so");
 
-  CinnRtConfig config;
+  InfRtConfig config;
 
   // set external shared libraries that contain kernels.
   config.set_shared_libs(shared_libs);
@@ -42,7 +42,7 @@ TEST(CinnRtPredictor, predictor) {
   // set mlir path
   config.set_mlir_path("../../../infrt/dialect/mlir_tests/tensor_map.mlir");
 
-  std::shared_ptr<CinnRtPredictor> predictor = CreateCinnRtPredictor(config);
+  std::shared_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
 
   auto* input = predictor->GetInput(0);
   std::vector<int64_t> shape = {3, 3};
