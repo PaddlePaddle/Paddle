@@ -75,10 +75,12 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
             self.prepare_program_mul(program)
             graph = IrGraph(core.Graph(program.desc), for_test=True)
 
+            op_node = ""
             for op in graph.all_op_nodes():
-                if op.op().type() == self.op_name:
+                if op.op().type() == self.op_name():
                     op_node = op
                     break
+            assert op_node != "", "op of type %s not found" % self.op_name()
 
             qpass = Quant2Int8MkldnnPass(
                 self.quantized_ops,
