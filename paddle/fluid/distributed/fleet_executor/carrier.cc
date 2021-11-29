@@ -96,7 +96,11 @@ void Carrier::Start() {
                           "Message bus has not been initialized."));
     message_bus_instance.Send(tmp_msg);
   }
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
 }
+
+std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
 
