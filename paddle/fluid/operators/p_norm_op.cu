@@ -21,10 +21,10 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/p_norm_op.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/fluid/operators/p_norm_op.h"
+#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -74,8 +74,17 @@ struct AbsFunctor {
   }
 };
 
+template <typename Tx, typename Ty = Tx>
 struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(float porder) {
+  HOSTDEVICE explicit inline PowFunctor(float porder) { this->porder = porder; }
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(inline_pow(inline_abs(x), static_cast<Tx>(porder)));
+  }
+  float porder;
+};
+
+struct UnaryPowFunctor {
+  HOSTDEVICE explicit inline UnaryPowFunctor(float porder) {
     this->porder = porder;
   }
   template <typename T>
@@ -92,7 +101,7 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     auto* in_x = ctx.Input<framework::Tensor>("X");
     auto* out_norm = ctx.Output<framework::Tensor>("Out");
     const T* x = in_x->data<T>();
-
+    T* norm = out_norm->mutable_data<T>(ctx.GetPlace());
     auto xdim = in_x->dims();
     auto ndim = out_norm->dims();
     float porder = ctx.Attr<float>("porder");
@@ -100,48 +109,41 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     bool asvector = ctx.Attr<bool>("asvector");
     if (axis < 0) axis = xdim.size() + axis;
     std::vector<int> reduce_axis = {axis};
-    int pre, n, post;
-    GetDims(xdim, axis, &pre, &n, &post, asvector);
 
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.cuda_device_context();
     auto stream = ctx.cuda_device_context().stream();
 
-#ifdef __HIPCC__
-    const int block = 256;
-#else
-    const int block = 512;
-#endif
-
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    const int max_blocks = std::max(max_threads / block, 1);
-    int grid = std::min(max_blocks, pre * post);
-    int reduce_idx = (blockIdx.x / post) * post * n + (blockIdx.x % post);
+    using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduce<T, T, cub::Sum, NonzeroFunctor> (
-        *in_x, out_norm, reduce_axis, static_cast<T>(0), cub::Sum(),
-        NonzeroFunctor(), stream);
+      TensorReduce<T, T, cub::Sum, NonzeroFunctor>(
+          *in_x, out_norm, reduce_axis, static_cast<T>(0), cub::Sum(),
+          NonzeroFunctor(), stream);
     } else if (porder == INFINITY) {
-      TensorReduce<T, T, cub::Max, AbsFunctor> (
-        *in_x, out_norm, reduce_axis, static_cast<T>(inline_abs(x[reduce_idx])), 
-        cub::Max(), AbsFunctor(), stream);
+      auto inf = -std::numeric_limits<MT>::infinity();
+      TensorReduce<T, T, cub::Max, AbsFunctor>(*in_x, out_norm, reduce_axis,
+                                               static_cast<T>(inf), cub::Max(),
+                                               AbsFunctor(), stream);
     } else if (porder == -INFINITY) {
-      TensorReduce<T, T, cub::Min, AbsFunctor> (
-        *in_x, out_norm, reduce_axis, static_cast<T>(inline_abs(x[reduce_idx])),
-        cub::Min(), AbsFunctor(), stream);
+      auto inf = std::numeric_limits<MT>::infinity();
+      TensorReduce<T, T, cub::Min, AbsFunctor>(*in_x, out_norm, reduce_axis,
+                                               static_cast<T>(inf), cub::Min(),
+                                               AbsFunctor(), stream);
     } else {
-      TensorReduce<T, T, cub::Sum, PowFunctor> (
-        *in_x, out_norm, reduce_axis, static_cast<T>(0),
-        cub::Sum(), PowFunctor(porder), stream);
-      //const T* tmp_norm = out_norm->data<T>();
-      //T* norm = out_norm->mutable_data<T>(ctx.GetPlace());
-      //kps::ElementwiseUnary<T, T, block, 1, 1, PowFunctor> (
-      //  norm, tmp_norm, PowFunctor(1. / porder));
-      const framework::Tensor* tmp_norm = out_norm; 
+      framework::Tensor tmp;
+      tmp.mutable_data<T>(ndim, ctx.GetPlace());
+      TensorReduce<T, T, cub::Sum, UnaryPowFunctor>(
+          *in_x, &tmp, reduce_axis, static_cast<T>(0), cub::Sum(),
+          UnaryPowFunctor(porder), stream);
+      const framework::Tensor* tmp_norm = &tmp;
       std::vector<const framework::Tensor*> ins = {tmp_norm};
       std::vector<framework::Tensor*> outs = {out_norm};
-      auto func = PowFunctor(porder);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T, PowFunctor> (
-        dev_ctx, ins, &outs, func);
+      auto func = PowFunctor<MT, T>(1. / porder);
+      const auto& cuda_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
+                                          PowFunctor<MT, T>>(cuda_ctx, ins,
+                                                             &outs, func);
     }
   }
 };
