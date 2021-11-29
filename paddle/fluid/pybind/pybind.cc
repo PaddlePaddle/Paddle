@@ -121,8 +121,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/npu_info.h"
-#include "paddle/fluid/platform/npu_profiler.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
