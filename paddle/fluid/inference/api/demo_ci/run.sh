@@ -132,6 +132,30 @@ for WITH_STATIC_LIB in ON OFF; do
         fi
       done
     done
+
+    # --------tensorrt mobilenet on windows------
+    if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+      rm -rf *
+      cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=trt_mobilenet_demo \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+        -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=D:/TensorRT \
+        -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
+        -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
+      msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+      Release/trt_mobilenet_demo.exe \
+        --modeldir=$DATA_DIR/mobilenet/model \
+        --data=$DATA_DIR/mobilenet/data.txt \
+        --refer=$DATA_DIR/mobilenet/result.txt 
+      if [ $? -ne 0 ]; then
+        echo "trt demo trt_mobilenet_demo runs fail."
+        exit 1
+      fi
+    fi
   else
     # -----simple_on_word2vec on linux/mac-----
     rm -rf *
