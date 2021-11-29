@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "paddle/infrt/common/axis.h"
 #include "paddle/infrt/common/macros.h"
 #include "paddle/infrt/common/shared.h"
 #include "paddle/infrt/common/target.h"
@@ -57,8 +56,6 @@ static void CheckVarNameValid(const std::string& name) {
         name.find('\n') == std::string::npos &&  //
         name.find('\r') == std::string::npos)
       << "Some invalid character found";
-  CHECK(!infrt::common::IsAxisNameReserved(std::string(name)))
-      << "The name [" << name << "] is reserved for internal axis";
 }
 
 }  // namespace infrt

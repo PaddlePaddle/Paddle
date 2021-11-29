@@ -8,7 +8,6 @@ gather_srcs(infrt_src SRCS
     type.cc
     shared.cc
     object.cc
-    axis.cc
     string.cc
     buffer.cc
     memory.cc
