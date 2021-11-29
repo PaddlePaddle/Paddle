@@ -72,7 +72,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
     def test_dequantize_op_weights(self):
         program = fluid.Program()
         with fluid.program_guard(program):
-            self.prepare_program_mul(program, self.op_name())
+            self.prepare_program_mul(program)
             graph = IrGraph(core.Graph(program.desc), for_test=True)
 
             for op in graph.all_op_nodes():
