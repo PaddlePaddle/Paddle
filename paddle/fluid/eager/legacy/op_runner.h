@@ -19,6 +19,7 @@
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace egr {
+namespace legacy {
 
 void RunOp(const std::string& type, const NameTensorMap& ins,
            const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
@@ -26,4 +27,6 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
            paddle::framework::AttributeMap* default_attrs,
            bool override_default_attr_map,
            const std::map<std::string, std::string>& inplace_map = {});
-}
+
+}  // namespace legacy
+}  // namespace egr
