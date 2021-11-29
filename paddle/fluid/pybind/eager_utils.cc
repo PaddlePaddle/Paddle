@@ -101,7 +101,7 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos) {
 
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return reinterpret_cast<int64_t>(PyLong_AsLong(obj));
+    return (int64_t)PyLong_AsLong(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
