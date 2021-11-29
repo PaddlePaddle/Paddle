@@ -176,7 +176,7 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
   }
 }
 
-void GLOOParallelContext::BroadCast(framework::Variable *src, int ring_id) {
+void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Unimplemented inter-broadcast for CPU now."));
 }

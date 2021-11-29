@@ -135,7 +135,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
 }
 
-void NCCLParallelContext::BroadCast(framework::Variable *src, int ring_id) {
+void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
   framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
   const auto &place = src_tensor->place();

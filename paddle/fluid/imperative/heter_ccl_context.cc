@@ -40,12 +40,12 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
                                            const int &device_id)
 #ifdef PADDLE_WITH_NCCL
     : ParallelContext(strategy, platform::CUDAPlace(device_id))
-#endif
-#ifdef PADDLE_WITH_XPU_BKCL
+#elif PADDLE_WITH_XPU_BKCL
     : ParallelContext(strategy, platform::XPUPlace(device_id))
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
+#elif PADDLE_WITH_ASCEND_CL
     : ParallelContext(strategy, platform::NPUPlace(device_id))
+#else
+    : ParallelContext(strategy, platform::CPUPlace())
 #endif
 {
   // construct node_strategy_ from global strategy by selecting the
@@ -84,7 +84,7 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   node_strategy_.nranks_ = node_nranks;
   node_strategy_.current_endpoint_ = strategy_.current_endpoint_;
 
-  if (inter_rank >= 0) {
+  if (inter_rank >= 0 && inter_endpoints.size() > 1) {
     inter_strategy_.nranks_ = inter_endpoints.size();
     inter_strategy_.local_rank_ = inter_rank;
     inter_strategy_.current_endpoint_ = strategy_.current_endpoint_;
@@ -142,7 +142,8 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
   // step 2: call allreduce between nodes with gloo
   if (inter_parallel_ctx_ != nullptr) {
     // copy src to cpu
-    auto src_tensor = src.Get<framework::LoDTensor>();
+    // dst is now the src
+    auto src_tensor = dst->Get<framework::LoDTensor>();
     framework::Variable src_cpu;
     auto src_cpu_tensor = src_cpu.GetMutable<framework::LoDTensor>();
     framework::TensorCopySync(src_tensor, platform::CPUPlace(), src_cpu_tensor);
@@ -161,11 +162,11 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
 
   // step 3: call broadcast within node
   VLOG(3) << "/// DEBUG /// step 3: broadcast within node... ";
-  node_parallel_ctx_->BroadCast(dst, ring_id);
+  node_parallel_ctx_->Broadcast(dst, ring_id);
   node_parallel_ctx_->WaitComm(ring_id);
 }
 
-void HeterParallelContext::BroadCast(framework::Variable *src, int ring_id) {
+void HeterParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   PADDLE_THROW(platform::errors::Unimplemented("Unimplemented function."));
 }
 

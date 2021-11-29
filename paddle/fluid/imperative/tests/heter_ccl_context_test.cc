@@ -25,25 +25,19 @@ namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
 namespace framework = paddle::framework;
 
-// instructions to run this unittest
-// RANK_ID=0 DEVICE_ID=0 heter_ccl_context_test
-// RANK_ID=1 DEVICE_ID=1 heter_ccl_context_test
-
 imperative::ParallelStrategy GetStrategy(int local_rank) {
-  std::vector<std::string> eps = {"127.0.0.1:37589", "127.0.0.1:37590"};
+  std::vector<std::string> eps = {"127.0.0.1:37580", "127.0.0.1:37581"};
   imperative::ParallelStrategy strategy;
   strategy.trainer_endpoints_ = eps;
   strategy.current_endpoint_ = eps[local_rank];
-  strategy.nranks_ = 2;
+  strategy.nranks_ = eps.size();
   strategy.local_rank_ = local_rank;
   return strategy;
 }
 
 #ifdef PADDLE_WITH_NCCL
-TEST(AllReduceByStream, Run) {
+void AllReduceByStream(int local_rank, int device_id) {
   int data_size = 32;
-  int local_rank = atoi(getenv("RANK_ID"));
-  int device_id = atoi(getenv("DEVICE_ID"));
   const auto& place = platform::CUDAPlace(device_id);
   platform::CUDADeviceContext ctx(place);
 
@@ -81,6 +75,15 @@ TEST(AllReduceByStream, Run) {
   EXPECT_EQ(dst_vec.size(), src_vec.size());
   for (int i = 0; i < data_size; i++) {
     EXPECT_EQ(dst_vec[i], 3.0);
+  }
+}
+
+TEST(AllReduceByStream, Run) {
+  if (platform::GetCUDADeviceCount() >= 2) {
+    std::thread t0(AllReduceByStream, 0, 0);
+    std::thread t1(AllReduceByStream, 1, 1);
+    t0.join();
+    t1.join();
   }
 }
 #endif

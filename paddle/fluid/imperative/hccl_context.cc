@@ -158,7 +158,7 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   }
 }
 
-void HCCLParallelContext::BroadCast(framework::Variable *src, int ring_id) {
+void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
   if (src->IsType<framework::LoDTensor>()) {
     framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
