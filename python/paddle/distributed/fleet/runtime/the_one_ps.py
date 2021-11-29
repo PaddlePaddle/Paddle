@@ -956,10 +956,9 @@ class TheOnePSRuntime(RuntimeBase):
                             warnings.warn(
                                 "The accessor of sparse table is not set, use default value."
                             )
-                        else:
-                            check_embedding_dim(table_proto.accessor,
-                                                common.table_name,
-                                                self.origin_main_program)
+                        check_embedding_dim(table_proto.accessor,
+                                            common.table_name,
+                                            self.origin_main_program)
                         print('accessor.ByteSize',
                               table_proto.accessor.ByteSize())
                         from google.protobuf import text_format
