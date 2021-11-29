@@ -26,6 +26,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
 
 namespace egr {
+namespace legacy {
 
 const paddle::framework::Tensor* GetTensorFromVar(
     const paddle::framework::Variable& var) {
@@ -96,9 +97,9 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
 #endif
 
   // 1. get expected kernel key
-  auto dygraph_exe_ctx =
-      egr::EagerExecutionContext(op, paddle::framework::Scope(), *dev_ctx, ctx,
-                                 ins, outs, attrs, default_attrs);
+  auto dygraph_exe_ctx = egr::legacy::EagerExecutionContext(
+      op, paddle::framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
+      default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
@@ -251,4 +252,6 @@ std::shared_ptr<NameTensorMap> PrepareData(
   }
   return tmp_ins_ptr;
 }
+
+}  // namespace legacy
 }  // namespace egr
