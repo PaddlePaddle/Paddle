@@ -19,6 +19,7 @@ namespace inference {
 
 using paddle::PaddleTensor;
 
+#ifdef PADDLE_WITH_MKLDNN
 void SetInt8Config(AnalysisConfig *cfg,
                    std::vector<paddle::PaddleTensor> data) {
   cfg->SetModel(FLAGS_infer_model);
@@ -44,7 +45,6 @@ void compare_int8(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_ernie, compare_int8_mkldnn) {
   compare_int8(true /* use_mkldnn */);
 }
