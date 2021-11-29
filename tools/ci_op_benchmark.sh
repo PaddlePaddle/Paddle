@@ -73,7 +73,7 @@ function load_CHANGE_OP_FILES {
   LOG "[INFO] run function load_CHANGE_OP_FILES"
   local sub_dir change_file
   # TODO(Avin0323): Need to filter the files added by the new OP.
-  for change_file in $(git diff --name-only origin/develop)
+  for change_file in $(git diff --name-only develop)
   do
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue

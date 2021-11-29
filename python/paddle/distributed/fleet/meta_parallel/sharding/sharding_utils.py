@@ -22,15 +22,6 @@ import paddle
 import paddle.distributed as dist
 from paddle.fluid import core
 
-# Set global device id
-global dev_id
-if core.is_compiled_with_cuda():
-    dev_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-elif core.is_compiled_with_npu():
-    dev_id = int(os.environ.get('FLAGS_selected_npus', 0))
-else:
-    raise ValueError("This device doesn't support.")
-
 
 class Taskflow:
     """
@@ -48,36 +39,6 @@ class Type(Enum):
     """
     fp16 = paddle.float16
     fp32 = paddle.float32
-
-
-def GpuInfo(fn):
-    """
-    Displays GPU usage information before and after the function。
-    """
-
-    def used(*args, **kw):
-        # Before using
-        b_info = os.popen("nvidia-smi -i {} | grep MiB".format(str(
-            dev_id))).read()
-        before_info = (int(b_info.split()[8][:-3]),
-                       int(b_info.split()[10][:-3]))
-        print(
-            "====== Current device {} ====== Total has {} MiB, Has used {} MiB ======".
-            format(str(dev_id), str(before_info[1]), str(before_info[0])))
-        result = fn(*args, **kw)
-        # After using
-        a_info = os.popen("nvidia-smi -i {} | grep MiB".format(str(
-            dev_id))).read()
-        after_info = (int(a_info.split()[8][:-3]), int(a_info.split()[10][:-3]))
-        print(
-            "====== Current device {} ====== Total has {} MiB, Has used {} MiB, Self use {} MiB ======".
-            format(
-                str(dev_id),
-                str(after_info[1]),
-                str(after_info[0]), str(after_info[0] - before_info[0])))
-        return result
-
-    return used
 
 
 @contextlib.contextmanager
