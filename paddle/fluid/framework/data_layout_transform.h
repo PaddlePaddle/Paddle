@@ -36,6 +36,21 @@ class Tensor;
 namespace paddle {
 namespace framework {
 
+struct CastDataLayout {
+  CastDataLayout(const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis, const framework::Tensor& in,
+                 framework::Tensor* out)
+      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
+
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+  const std::vector<int> axis_;
+
+  template <typename T>
+  void apply();
+};
+
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNDataType = dnnl::memory::data_type;
 

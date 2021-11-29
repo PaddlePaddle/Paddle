@@ -17,10 +17,12 @@ limitations under the License. */
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/place.h"
 
 // TODO(chenweihang): this file may need to be removed
@@ -39,5 +41,8 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
 paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout);
+
+paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod);
+pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod);
 
 }  // namespace pten

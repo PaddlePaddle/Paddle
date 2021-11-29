@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 
 namespace paddle {

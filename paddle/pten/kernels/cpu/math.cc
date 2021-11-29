@@ -14,11 +14,13 @@
 
 #include "paddle/pten/kernels/cpu/math.h"
 
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/kernels/functions/cpu/elementwise.h"
-#include "paddle/pten/kernels/functions/eigen/mean.h"
+#include "paddle/pten/kernels/functions/eigen/reduce.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
+#include "paddle/pten/kernels/functions/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -33,8 +35,16 @@ void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 template <typename T>
-void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  eigen::Mean<CPUContext, T>(dev_ctx, x, out);
+void Mean(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          const std::vector<int64_t>& dims,
+          bool keep_dim,
+          bool reduce_all,
+          DataType in_dtype,
+          DataType out_dtype,
+          DenseTensor* out) {
+  pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T>
@@ -65,48 +75,50 @@ void ScaleHost(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void ElementwiseAdd(const CPUContext& dev_ctx,
+void ElementwiseDiv(const CPUContext& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
-  if (x.dims() == y.dims()) {
-    SameDimsElementwiseCompute<general::SameDimsAddFunctor<CPUContext, T>>()(
+  // allocate memory for out
+  out->mutable_data<T>();
+  if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
+    SameDimsElementwiseCompute<general::SameDimsDivFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
   } else {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::AddFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::AddFunctor<T>(), out);
+      ElementwiseCompute<general::DivFunctor<T>, T>(
+          dev_ctx, x, y, axis, general::DivFunctor<T>(), out);
     } else {
-      ElementwiseCompute<general::InverseAddFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseAddFunctor<T>(), out);
+      ElementwiseCompute<general::InverseDivFunctor<T>, T>(
+          dev_ctx, x, y, axis, general::InverseDivFunctor<T>(), out);
     }
   }
 }
 
 template <typename T>
-void ElementwiseSub(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  if (x.dims() == y.dims()) {
-    SameDimsElementwiseCompute<general::SameDimsSubFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::SubFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::SubFunctor<T>(), out);
-    } else {
-      ElementwiseCompute<general::InverseSubFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseSubFunctor<T>(), out);
-    }
-  }
+void Sum(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         const std::vector<int64_t>& dims,
+         bool keep_dim,
+         bool reduce_all,
+         DataType in_dtype,
+         DataType out_dtype,
+         DenseTensor* out) {
+  pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
+
+// Create the definition of ElementwiseAdd
+DEFINE_CPU_ELEMENTWISE_OP(Add)
+
+// Create the definition of ElementwiseSub
+DEFINE_CPU_ELEMENTWISE_OP(Sub)
+
+// Create the definition of ElementwiseMul
+DEFINE_CPU_ELEMENTWISE_OP(Mul)
 
 }  // namespace pten
 
@@ -120,8 +132,7 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 
 PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL(
-    "mean", CPU, ANY, pten::Mean, float, double, paddle::platform::bfloat16) {}
+PT_REGISTER_KERNEL("reduce_mean", CPU, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
                    ANY,
@@ -168,3 +179,39 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    int64_t,
                    complex64,
                    complex128) {}
+PT_REGISTER_KERNEL("elementwise_div",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseDiv,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_mul",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseMul,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   complex64,
+                   complex128) {}
+
+PT_REGISTER_KERNEL("reduce_sum",
+                   CPU,
+                   ANY,
+                   pten::Sum,
+                   bool,
+                   float,
+                   double,
+                   paddle::platform::float16,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

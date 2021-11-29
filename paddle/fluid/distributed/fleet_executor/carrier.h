@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -42,7 +44,7 @@ class Carrier final {
   void Init(
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
 
-  ~Carrier() = default;
+  ~Carrier();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
@@ -55,6 +57,8 @@ class Carrier final {
                               std::unique_ptr<Interceptor>);
 
   void SetCreatingFlag(bool flag);
+
+  std::condition_variable& GetCondVar();
 
   void Start();
 
@@ -78,8 +82,13 @@ class Carrier final {
       interceptor_idx_to_interceptor_;
 
   std::vector<InterceptorMessage> message_tmp_{};
+  std::mutex tmp_message_mutex_;
   bool creating_interceptors_{true};
+  std::mutex creating_flag_mutex_;
   bool is_init_{false};
+
+  std::mutex running_mutex_;
+  std::condition_variable cond_var_;
 };
 
 }  // namespace distributed
