@@ -577,11 +577,6 @@ static std::string GenerateGradNodeCreationContent(
   // If single output slotname and not duplicable,
   // then generate: "egr::AutogradMeta* p_autograd_out =
   // egr::EagerUtils::autograd_meta("op_proto->outputs()[0].name()")"
-
-  // TODO(zhanlve): in case of multiple slotname but none of which are
-  // duplicable,
-  // avoid constructing vector<AutogradMeta*>, generate seperate
-  // AutogradMeta* objects respectively.
   std::string get_autograd_meta_str = "  // Prepare Autograd Meta \n";
   for (const proto::OpProto::Var& input : op_proto.inputs()) {
     const std::string& input_name = input.name();
@@ -607,11 +602,6 @@ static std::string GenerateGradNodeCreationContent(
   // If single output slotname and not duplicable,
   // then generate: "egr::AutogradMeta* p_autograd_out =
   // egr::EagerUtils::autograd_meta("op_proto.outputs()[0].name()")"
-
-  // TODO(zhanlve): in case of multiple slotname but none of which are
-  // duplicable,
-  // avoid constructing vector<AutogradMeta*>, generate seperate
-  // AutogradMeta* objects respectively.
   for (const proto::OpProto::Var& output : op_proto.outputs()) {
     const std::string& output_name = output.name();
     const std::string& output_autograd_name = "p_autograd_" + output_name;
@@ -725,9 +715,9 @@ static std::string GenerateGradNodeCreationContent(
   // [Generation] GradNode Creation
   const char* GRAD_NODE_CREATION_TEMPLATE =
       "  %s"
-      "  bool require_any_grad = egr::ComputeRequireGrad(%s);\n"
+      "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n"
       "  if(require_any_grad) {\n"
-      "    egr::PassStopGradient(%s);\n"
+      "    egr::EagerUtils::PassStopGradient(%s);\n"
       "%s\n  }";
   std::string grad_node_creation_body_str = paddle::string::Sprintf(
       GRAD_NODE_CREATION_TEMPLATE, prepare_autograd_meta_str,
@@ -793,7 +783,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
-        std::vector<egr::EagerTensor> Out0 = GetOutputs(outs["Out0"]);
+        std::vector<egr::EagerTensor> Out0 = GGetOutputetOutputs(outs["Out0"]);
         egr::EagerTensor Out1 = GetOutputs(outs["Out1"][0]);
         std::vector<egr::EagerTensor> Out2 = GetOutputs(outs["Out2"]);
 
@@ -830,7 +820,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
     }
-    const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", egr::SyncToVars(%s) },";
+    const char* FWD_INS_CONTENT_TEMPLATE =
+        "{ \"%s\", egr::EagerUtils::SyncToVars(%s) },";
     ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
                                                 input_name, input_name);
   }
@@ -925,14 +916,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (output.duplicable()) {
       const char* FWD_OUT_TENSORS_TEMPLATE =
           "  std::vector<egr::EagerTensor> %s = "
-          "egr::GetOutputs(outs[\"%s\"]);\n";
+          "egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
                                                output_name, output_name);
       return_types[return_position] = "std::vector<egr::EagerTensor>";
     } else {
       const char* FWD_OUT_TENSOR_TEMPLATE =
           "  egr::EagerTensor %s = "
-          "egr::GetOutput(outs[\"%s\"][0]);\n";
+          "egr::EagerUtils::GetOutput(outs[\"%s\"][0]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
                                                output_name, output_name);
       return_types[return_position] = "egr::EagerTensor";
@@ -1093,7 +1084,8 @@ static std::string GenerateGradNodeCCContents(
           grad_ins_fwd_slotname_map.at(grad_input_name) + "_";
       const char* GRAD_INS_FWD_CONTENT_TEMPLATE =
           "{ \"%s\", "
-          "egr::SyncToVars(egr::EagerUtils::RecoverTensorWrapper(&this->%s, "
+          "egr::EagerUtils::SyncToVars(egr::EagerUtils::RecoverTensorWrapper(&"
+          "this->%s, "
           "nullptr)) },";
       ins_contents_str +=
           paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE,
@@ -1104,7 +1096,7 @@ static std::string GenerateGradNodeCCContents(
       size_t fwd_output_position = fwd_outputs_name_pos_map.at(
           grad_ins_grad_slotname_map.at(grad_input_name));
       const char* GRAD_INS_GRAD_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::SyncToVars(grads[%d]) },";
+          "{ \"%s\", egr::EagerUtils::SyncToVars(grads[%d]) },";
       ins_contents_str += paddle::string::Sprintf(
           GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, fwd_output_position);
 
@@ -1206,7 +1198,7 @@ static std::string GenerateGradNodeCCContents(
         fwd_inputs_name_pos_map.at(grad_outs_slotname_map.at(grad_out_name));
 
     const char* BWD_OUTPUT_TEMPLATE =
-        "  outputs[%d] = GetOutputs(outs[\"%s\"]);\n";
+        "  outputs[%d] = egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
     outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE,
                                            fwd_input_position, grad_out_name);
   }
@@ -1526,6 +1518,9 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
   GenerateForwardHFile(output_dir, dygraph_forward_api_str);
 }
 
+}  // namespace framework
+}  // namespace paddle
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     std::cerr << "argc must be 2" << std::endl;
@@ -1537,6 +1532,3 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
-
-}  // namespace framework
-}  // namespace paddle
