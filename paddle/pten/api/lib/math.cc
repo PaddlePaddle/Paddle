@@ -117,7 +117,7 @@ PD_DLL_DECL Tensor sum(const Tensor& x,
   kernel_context.EmplaceBackAttr(dense_x->dtype());
   kernel_context.EmplaceBackAttr(out_dtype);
 
-  // 4. InferShape
+  // 4. InferMeta
   auto out_meta = ReduceInferMeta(dense_x->meta(), axis, keep_dim);
 
   // 5. Prepare outputs

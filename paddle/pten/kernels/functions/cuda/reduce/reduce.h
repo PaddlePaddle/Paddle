@@ -21,7 +21,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/kernels/functions/cuda/reduce/reduce_op.cu.h"
+#include "paddle/pten/kernels/functions/cuda/reduce/reduce_cuda_impl.h"
 
 namespace pten {
 
@@ -55,7 +55,7 @@ template <typename T, template <typename, typename> class ReduceFunctor>
 void Reduce(const CUDAContext& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
-            std::vector<int64_t> dims,
+            const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {

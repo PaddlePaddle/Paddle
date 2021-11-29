@@ -25,7 +25,7 @@ template <typename DeviceContext, typename T, typename Functor>
 void Reduce(const DeviceContext& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
-            std::vector<int64_t> dims,
+            const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
