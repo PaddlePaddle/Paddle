@@ -258,11 +258,19 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
-      if (!(var->IsType<LoDTensor>() || var->IsType<SelectedRows>())) {
-        continue;
-      }
       auto& var_name = new_ins[var_name_item.first].at(i);
-      auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      const Tensor* tensor_in;
+      if (var->IsType<LoDTensor>() || var->IsType<SelectedRows>()) {
+        tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      } else if (var->IsType<LoDTensorArray>()) {
+        tensor_in =
+            static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Variable type is %s, expect LoDTensor or SelectedRows or "
+            "LoDTensorArray.",
+            ToTypeName(var->Type())));
+      }
       if (!tensor_in->IsInitialized()) {
         continue;
       }

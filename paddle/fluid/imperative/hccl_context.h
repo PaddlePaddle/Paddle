@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/dynload/hccl.h"
-#include "paddle/fluid/platform/npu_resource_pool.h"
+#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
+#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
 
 namespace paddle {
 namespace framework {

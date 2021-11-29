@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -57,6 +58,8 @@ class Carrier final {
 
   void SetCreatingFlag(bool flag);
 
+  std::condition_variable& GetCondVar();
+
   void Start();
 
   bool IsInit() const;
@@ -83,6 +86,9 @@ class Carrier final {
   bool creating_interceptors_{true};
   std::mutex creating_flag_mutex_;
   bool is_init_{false};
+
+  std::mutex running_mutex_;
+  std::condition_variable cond_var_;
 };
 
 }  // namespace distributed
