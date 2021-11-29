@@ -173,24 +173,24 @@ class PredictExecutor : public MlirToRuntimeTranslator {
   llvm::SmallVector<ValueRef, 1> results_;
 };
 
-std::shared_ptr<CinnRtPredictor> CreateCinnRtPredictor(
-    const CinnRtConfig& config) {
-  auto x = std::make_shared<CinnRtPredictor>();
+std::shared_ptr<InfRtPredictor> CreateInfRtPredictor(
+    const InfRtConfig& config) {
+  auto x = std::make_shared<InfRtPredictor>();
   x->Init(config);
   return x;
 }
 
-struct CinnRtPredictor::Impl {
+struct InfRtPredictor::Impl {
   mlir::OwningModuleRef module_ref;
   std::unique_ptr<PredictExecutor> executor;
 };
 
-CinnRtPredictor::CinnRtPredictor() : impl_(new Impl) {}
-CinnRtPredictor::~CinnRtPredictor() {}
+InfRtPredictor::InfRtPredictor() : impl_(new Impl) {}
+InfRtPredictor::~InfRtPredictor() {}
 
-void CinnRtPredictor::Run() { impl_->executor->Run(); }
+void InfRtPredictor::Run() { impl_->executor->Run(); }
 
-int CinnRtPredictor::Init(const CinnRtConfig& config) {
+int InfRtPredictor::Init(const InfRtConfig& config) {
   mlir::MLIRContext* context = infrt::Global::getMLIRContext();
   auto module_ref = dialect::LoadMlirFile(config.mlir_path(), context);
 
@@ -231,15 +231,15 @@ int CinnRtPredictor::Init(const CinnRtConfig& config) {
   return 0;
 }
 
-int CinnRtPredictor::GetInputNum() { return impl_->executor->GetInputNum(); }
+int InfRtPredictor::GetInputNum() { return impl_->executor->GetInputNum(); }
 
-DenseHostTensor* CinnRtPredictor::GetInput(int i) {
+DenseHostTensor* InfRtPredictor::GetInput(int i) {
   return impl_->executor->GetInput(i);
 }
 
-int CinnRtPredictor::GetOutputNum() { return impl_->executor->GetOutputNum(); }
+int InfRtPredictor::GetOutputNum() { return impl_->executor->GetOutputNum(); }
 
-DenseHostTensor* CinnRtPredictor::GetOutput(int i) {
+DenseHostTensor* InfRtPredictor::GetOutput(int i) {
   return impl_->executor->GetOutput(i);
 }
 

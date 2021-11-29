@@ -21,13 +21,13 @@
 
 namespace infrt {
 
-class CinnRtConfig {
+class InfRtConfig {
   std::string model_dir_;
   std::string mlir_path_;
   std::vector<std::string> shared_libs_;
 
  public:
-  CinnRtConfig() = default;
+  InfRtConfig() = default;
   void set_model_dir(const std::string& model_dir) { model_dir_ = model_dir; }
   const std::string& model_dir() const { return model_dir_; }
 
@@ -39,15 +39,15 @@ class CinnRtConfig {
   }
   const std::vector<std::string>& shared_libs() const { return shared_libs_; }
 
-  virtual ~CinnRtConfig() = default;
+  virtual ~InfRtConfig() = default;
 };
 
-class CinnRtPredictor {
+class InfRtPredictor {
  public:
-  CinnRtPredictor();
-  ~CinnRtPredictor();
+  InfRtPredictor();
+  ~InfRtPredictor();
   void Run();
-  int Init(const CinnRtConfig& config);
+  int Init(const InfRtConfig& config);
   int GetInputNum();
   tensor::DenseHostTensor* GetInput(int i);
   int GetOutputNum();
@@ -58,7 +58,6 @@ class CinnRtPredictor {
   std::unique_ptr<Impl> impl_;
 };
 
-std::shared_ptr<CinnRtPredictor> CreateCinnRtPredictor(
-    const CinnRtConfig& config);
+std::shared_ptr<InfRtPredictor> CreateInfRtPredictor(const InfRtConfig& config);
 
 }  // namespace infrt
