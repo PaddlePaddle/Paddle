@@ -124,20 +124,14 @@ void ScaleHost(const CUDAContext& dev_ctx,
                                out);
 }
 
-template <typename T>
-void ElementwiseAdd(const CUDAContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  std::vector<DenseTensor*> outputs;
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, axis, general::AddFunctor<T>());
-}
+// Create the definition of ElementwiseAdd
+DEFINE_CUDA_ELEMENTWISE_OP(Add)
+// Create the definition of ElementwiseSub
+DEFINE_CUDA_ELEMENTWISE_OP(Sub)
+// Create the definition of ElementwiseMul
+DEFINE_CUDA_ELEMENTWISE_OP(Mul)
+// Create the definition of ElementwiseDiv
+DEFINE_CUDA_ELEMENTWISE_OP(Div)
 
 }  // namespace pten
 
@@ -184,6 +178,40 @@ PT_REGISTER_KERNEL("elementwise_add",
                    double,
                    int,
                    int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_sub",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseSub,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_div",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseDiv,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_mul",
+                   CUDA,
+                   ANY,
+                   pten::ElementwiseMul,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
                    float16,
                    complex64,
                    complex128) {}

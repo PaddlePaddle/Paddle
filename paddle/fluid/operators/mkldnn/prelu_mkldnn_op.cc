@@ -31,7 +31,7 @@ class PReluMKLDNNHandler
                                       dnnl::prelu_backward> {
  public:
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                     const mkldnn::engine engine, platform::Place cpu_place,
+                     const dnnl::engine engine, platform::Place cpu_place,
                      const Tensor* x, const Tensor* weights,
                      const std::string& uniq_name, const std::string& mode,
                      bool is_test = false)

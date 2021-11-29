@@ -29,6 +29,13 @@ void Flatten(const CPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out);
 
+template <typename T>
+void Cast(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out);
+
 void ReshapeFromDT(const CPUContext& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& shape,

@@ -61,14 +61,13 @@ class StandaloneExecutor : public ExecutorBase {
 
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
       const std::vector<std::string>& feed_names,
-      const std::vector<std::string>& fetch_names);
+      const std::vector<std::string>& fetch_names, bool add_fetch_op);
 
   const platform::Place& place_;
   const ProgramDesc& startup_prog_;
   const ProgramDesc& main_prog_;
   VariableScope global_scope_;
 
-  std::unordered_map<std::string, std::shared_ptr<ProgramDesc>> programs_;
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;
 };

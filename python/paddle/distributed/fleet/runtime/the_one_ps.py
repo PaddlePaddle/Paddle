@@ -24,6 +24,7 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
+import paddle.distributed.fleet as fleet
 
 __all__ = []
 
@@ -49,7 +50,7 @@ def parse_table_class(varname, o_main_program):
             if op.has_attr('table_class') and op.attr("table_class") != "none":
                 return op.attr('table_class')
             else:
-                return "CommonSparseTable"
+                return "MemorySparseTable"
 
 
 class Accessor:
@@ -95,6 +96,11 @@ class CommonAccessor:
         opt_input_map["adam"] = [("Param", None), ("Moment1", None),
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
+        opt_input_map["adam_d2sum"] = [
+            ("Param", None), ("D2Sum", None), ("G2Sum", None), ("Moment", None),
+            ("MomentDecayRate", 1), ("AdaDecayRate", 1), ("AdaEpsilon", 1),
+            ("LearningRate", 1)
+        ]
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
                                           ("LearningRate", 1)]
@@ -105,6 +111,8 @@ class CommonAccessor:
         opt_attr_map["naive_adagrad"] = []
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
+        opt_attr_map["adam_d2sum"] = [("beta1", "f"), ("beta2", "f"),
+                                      ("epsilon", "f")]
 
         opt_init_map = {}
         opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
@@ -162,7 +170,7 @@ class CommonAccessor:
         return attr_str
 
     def parse_by_optimizer(self, grad_name, is_sparse, total_dims,
-                           compiled_strategy):
+                           compiled_strategy, adam_d2sum):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
         param_name = compiled_strategy.grad_name_to_param_name[grad_name]
         main_program, startup_program = compiled_strategy.get_origin_programs()
@@ -187,6 +195,10 @@ class CommonAccessor:
 
         self.trainer_num = compiled_strategy.get_trainers()
 
+        if oop.type != 'adam' and adam_d2sum == True:
+            print('optimization algorithm is not adam, set adam_d2sum False')
+            adam_d2sum = False
+        print("adam_d2sum:", adam_d2sum)
         if compiled_strategy.is_geo_mode():
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
@@ -195,6 +207,10 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["naive_adagrad"]
             attr_varnames = self.opt_attr_map["naive_adagrad"]
             self.accessor_class = "sgd"
+        elif adam_d2sum:
+            param_varnames = self.opt_input_map["adam_d2sum"]
+            attr_varnames = self.opt_attr_map["adam_d2sum"]
+            self.accessor_class = "adam_d2sum"
         else:
             param_varnames = self.opt_input_map[oop.type]
             attr_varnames = self.opt_attr_map[oop.type]
@@ -202,17 +218,8 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             params.append(formal_name)
-            if formal_name == "G2Sum":
-                dims.append(1)
-                initializer = "fill_constant&0"
-                initializers.append(initializer)
-            else:
-                param = main_program.global_block().vars[oop.input(formal_name)[
-                    0]]
-                if formal_name == "LearningRate" and param.name != "learning_rate_0":
-                    warnings.warn("will support decay soon")
-                    param = main_program.global_block().vars["learning_rate_0"]
-
+            if self.accessor_class == "adam_d2sum":
+                #for dims
                 if shape is None:
                     if is_sparse:
                         shape = total_dims
@@ -221,9 +228,51 @@ class CommonAccessor:
                                                pserver_id)
                 dims.append(shape)
 
-                initializer = self.get_initializer_attr(param.name,
-                                                        startup_program)
+                #for initializers
+                if formal_name == "Param" or formal_name == "LearningRate":
+                    param = main_program.global_block().vars[oop.input(
+                        formal_name)[0]]
+                    #TODO: for dense learning_rate, can be different from sparse lr
+                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                        warnings.warn("will support decay soon")
+                        param = main_program.global_block().vars[
+                            "learning_rate_0"]
+
+                    initializer = self.get_initializer_attr(param.name,
+                                                            startup_program)
+                elif formal_name == "MomentDecayRate":
+                    initializer = "fill_constant&0.99"
+                elif formal_name == "AdaDecayRate":
+                    initializer = "fill_constant&0.9999"
+                elif formal_name == "AdaEpsilon":
+                    initializer = "fill_constant&1.0e-8"
+                else:
+                    initializer = "fill_constant&0"
                 initializers.append(initializer)
+            else:
+                if formal_name == "G2Sum":
+                    dims.append(1)
+                    initializer = "fill_constant&0"
+                    initializers.append(initializer)
+                else:
+                    param = main_program.global_block().vars[oop.input(
+                        formal_name)[0]]
+                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                        warnings.warn("will support decay soon")
+                        param = main_program.global_block().vars[
+                            "learning_rate_0"]
+
+                    if shape is None:
+                        if is_sparse:
+                            shape = total_dims
+                        else:
+                            shape = self.get_shard(total_dims, pserver_num,
+                                                   pserver_id)
+                    dims.append(shape)
+
+                    initializer = self.get_initializer_attr(param.name,
+                                                            startup_program)
+                    initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
@@ -292,6 +341,7 @@ class Table:
         self.accessor = None
         self.common = None
         self.tensor = None
+        self.accessor_proto = None
 
     def to_string(self, indent):
         table_str = "{}downpour_table_param {{{}\n{}}}"
@@ -303,6 +353,14 @@ class Table:
         attrs += "type: {}".format(self.type)
         attrs += "\n"
         indent += 2
+
+        if self.accessor_proto is not None:
+            accessor_str = "{}accessor {{{}\n{}}}"
+            accessor_str = accessor_str.format(
+                conv_indent(indent), self.accessor_proto, conv_indent(indent))
+            attrs += accessor_str + "\n"
+            return table_str.format(
+                conv_indent(indent), attrs, conv_indent(indent))
 
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
@@ -431,6 +489,24 @@ class Worker:
         return worker_str.format(workers_str)
 
 
+class fsClient:
+    def __init__(self, proto):
+        self.proto = proto
+        self.uri = proto.uri
+        self.user = proto.user
+        self.passwd = proto.passwd
+        self.hadoop_bin = proto.hadoop_bin
+
+    def to_string(self):
+        from google.protobuf import text_format
+        proto_txt = text_format.MessageToString(self.proto)
+        if proto_txt:
+            fs_str = "fs_client_param {{\n{}}}"
+            return fs_str.format(proto_txt)
+        else:
+            return ""
+
+
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
         super(TheOnePSRuntime, self).__init__()
@@ -533,7 +609,6 @@ class TheOnePSRuntime(RuntimeBase):
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-
         if debug:
             print("worker: \n{}".format(proto_txt))
             print("communicator send_ctx:")
@@ -565,6 +640,25 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
                                          string_hosts, fluid.global_scope())
 
+        import paddle.distributed.fleet as fleet
+        fleet.util.barrier()
+        info = self._communicator.get_client_info()
+        if isinstance(info, list) and len(info) > 0:
+            all_info = self.role_maker._all_gather(info[0])
+            # for unittest
+            if not isinstance(all_info, list):
+                warnings.warn("gloo may not initialize correctly")
+                all_info = [all_info]
+            self._communicator.set_clients(all_info)
+            # create_c2c_connection default param: 
+            #  pserver_timeout_ms=500000
+            #  pserver_connect_timeout_ms=10000
+            #  max_retry=3
+            self._communicator.create_client_to_client_connection()
+            print('create c2c connection done')
+        else:
+            print('cannot create c2c connection')
+
         dist_strategy = self.context["valid_strategy"]
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
@@ -577,7 +671,6 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
-        import paddle.distributed.fleet as fleet
         if not is_test:
             self._communicator.init_params(init_params)
             fleet.util.barrier()
@@ -632,7 +725,7 @@ class TheOnePSRuntime(RuntimeBase):
                             int(os.getenv("FLAGS_selected_xpus", "0"))))
         return executor
 
-    def _get_fleet_proto(self, is_server, is_sync):
+    def _get_fleet_proto(self, is_server, is_sync, **kwargs):
         def _build_merge_accessor(ctx):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
@@ -736,6 +829,7 @@ class TheOnePSRuntime(RuntimeBase):
 
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
+                print(" wxm python test send_ctx.items-->", idx, (name, ctx))
                 if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 
@@ -755,18 +849,64 @@ class TheOnePSRuntime(RuntimeBase):
                     else:
                         table.table_class = parse_table_class(
                             common.table_name, self.origin_main_program)
+                        table_proto = self.context[
+                            "user_defined_strategy"].sparse_table_configs
+                        table.shard_num = table_proto.shard_num
+                        from google.protobuf import text_format
+                        table.accessor_proto = text_format.MessageToString(
+                            table_proto.accessor)
 
+                        print('table proto:', table_proto)
+                        if table.table_class == 'MemorySparseTable' and table.accessor_proto == '':
+                            emb_dim = ctx.sections()[1]
+                            table.shard_num = 1950
+                            table.accessor_proto = 'accessor_class: "CtrCommonAccessor"\n' \
+                                                   'embed_sgd_param {\n' \
+                                                   '  name: "SparseAdaGradSGDRule"\n' \
+                                                   '  adagrad {\n' \
+                                                   '    learning_rate: 0.05\n' \
+                                                   '    initial_g2sum: 3.0\n' \
+                                                   '    initial_range: 0.0001\n' \
+                                                   '    weight_bounds: -10.0\n' \
+                                                   '    weight_bounds: 10.0\n' \
+                                                   '  }\n' \
+                                                   '}\n' \
+                                                   'embedx_sgd_param {\n' \
+                                                   '  name: "SparseAdaGradSGDRule"\n' \
+                                                   '  adagrad {\n' \
+                                                   '    learning_rate: 0.05\n' \
+                                                   '    initial_g2sum: 3.0\n' \
+                                                   '    initial_range: 0.0001\n' \
+                                                   '    weight_bounds: -10.0\n' \
+                                                   '    weight_bounds: 10.0\n' \
+                                                   '  }\n' \
+                                                   '}\n' \
+                                                   'fea_dim: ' + str(emb_dim+2) + '\n' \
+                                                   'embedx_dim: ' + str(emb_dim-1) + '\n' \
+                                                   'embedx_threshold: 10\n' \
+                                                   'ctr_accessor_param {\n' \
+                                                   '  nonclk_coeff: 0.1\n' \
+                                                   '  click_coeff: 1.0\n' \
+                                                   '  base_threshold: 1.5\n' \
+                                                   '  delta_threshold: 0.25\n' \
+                                                   '  delta_keep_days: 16.0\n' \
+                                                   '  show_click_decay_rate: 0.98\n' \
+                                                   '  delete_threshold: 0.8\n' \
+                                                   '  delete_after_unseen_days: 30.0\n' \
+                                                   '  ssd_unseenday_threshold: 1\n' \
+                                                   '}'
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
                     table.shard_num = 256
                     common.table_name = "MergedDense"
 
+                adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
                                           ctx.is_sparse(),
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
-                                          self.compiled_strategy)
+                                          self.compiled_strategy, adam_d2sum)
 
                 if ctx.is_sparse():
                     common.parse_entry(common.table_name,
@@ -779,8 +919,9 @@ class TheOnePSRuntime(RuntimeBase):
 
                 table.common = common
 
-                accessor = _build_merge_accessor(ctx)
-                table.accessor = accessor
+                if table.table_class != 'MemorySparseTable':
+                    accessor = _build_merge_accessor(ctx)
+                    table.accessor = accessor
                 tables.append(table)
 
             tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
@@ -828,6 +969,9 @@ class TheOnePSRuntime(RuntimeBase):
             trainers += len(self.role_maker._get_heter_worker_endpoints())
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
+        fs_client = fsClient(self.context["user_defined_strategy"]
+                             .fs_client_param)
+        proto_txt = proto_txt + "\n" + fs_client.to_string()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
@@ -884,40 +1028,13 @@ class TheOnePSRuntime(RuntimeBase):
         host, port = ep.split(":")
         self._server.run_server(host, int(port))
 
-    def _init_heter_worker(self):
-        executor = self._get_executor()
-        startup_program = fluid.default_startup_program()
-        #real_startup_program = startup_program._heter_pipeline_opt[
-        #    "startup_program"]
-        executor.run(startup_program)
-        self._init_worker()
-
-    def _run_heter_worker(self,
-                          dataset=None,
-                          scope=None,
-                          thread=0,
-                          debug=False,
-                          fetch_list=None,
-                          fetch_info=None,
-                          print_period=100,
-                          fetch_handler=None):
-        executor = self._get_executor()
-        # dataset is not needed for heter worker
-        executor.train_from_dataset(
-            program=fluid.default_main_program(),
-            dataset=None,
-            debug=debug,
-            fetch_list=fetch_list,
-            fetch_info=fetch_info,
-            print_period=print_period)
-
     def _stop_worker(self):
         self._communicator.stop()
-        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-        ):
+        if self.role_maker._is_heter_parameter_server_mode:
+            assert self._heter_client != None, "heter client should not be None in heterps mode"
             self._heter_client.stop()
-        executor = self._get_executor()
-        executor.close()
+        #executor = self._get_executor()
+        #executor.close()
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
@@ -951,10 +1068,14 @@ class TheOnePSRuntime(RuntimeBase):
         for id, names in context.items():
             if names[0] not in distributed_varnames:
                 # only save sparse param to local
-                self._worker.recv_and_save_model(id, dirname)
+                try:
+                    self._worker.recv_and_save_model(id, dirname)
+                except:
+                    pass
             # save sparse & distributed param on server
             self._worker.save_one_model(id, dirname, mode)
             values.extend(names)
+        # self._worker.save_all_model(dirname, mode)
         return values
 
     def _save_distributed_persistables(self,
@@ -978,6 +1099,7 @@ class TheOnePSRuntime(RuntimeBase):
         recv_dense_varnames = []
         for id, names in denses.items():
             recv_dense_varnames.extend(names)
+        self._communicator.pull_dense(denses)
 
         saved_varnames = sparse_varnames
 
@@ -990,8 +1112,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         import paddle
         for var in remaining_vars:
-            if var.name not in recv_dense_varnames:
-                continue
+            # if var.name not in recv_dense_varnames:
+            #     continue
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
@@ -1031,8 +1153,9 @@ class TheOnePSRuntime(RuntimeBase):
             )
 
         # Todo(MrChengmo): Save optimizer status
-        self._save_distributed_persistables(executor, dirname, main_program,
-                                            mode)
+        # self._save_distributed_persistables(executor, dirname, main_program,
+        #                                     mode)
+        self._worker.save_all_model(dirname, mode)
 
     def _ps_inference_save_inference_model(self,
                                            executor,
@@ -1073,9 +1196,44 @@ class TheOnePSRuntime(RuntimeBase):
 
         infer_program._copy_dist_param_info_from(program)
 
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
         model_basename = "__model__"
-        model_basename = os.path.join(dirname, model_basename)
+        model_basename = os.path.join(model_path, model_basename)
         paddle.save(infer_program, model_basename)
+
+        sparses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=False,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+        print("the one ps sparses:", sparses)
+        sparse_names = []
+        for id, name in sparses.items():
+            sparse_names.extend(name)
+        print("the one ps sparse names:", sparse_names)
+
+        denses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=True,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+        self._communicator.pull_dense(denses)
+
+        generate_vars = self.context[
+            "user_defined_strategy"].trainer_desc_configs["stat_var_names"]
+        generate_vars = [var for var in generate_vars]
+        remaining_vars = list(
+            filter(
+                TheOnePSRuntime.__exclude_vars(generate_vars + sparse_names),
+                infer_program.list_vars()))
+        print("remain_vars:", [var.name for var in remaining_vars])
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(
+                tensor,
+                os.path.join(model_path, var.name),
+                use_binary_format=True)
 
         self._ps_inference_save_persistables(executor, dirname, infer_program,
                                              mode)
@@ -1100,8 +1258,10 @@ class TheOnePSRuntime(RuntimeBase):
             values.extend(names)
         return values
 
-    def _load_distributed_persistables(self, dirname, main_program=None,
-                                       mode=0):
+    def _ps_inference_load_inference_model(self,
+                                           dirname,
+                                           mode=0,
+                                           main_program=None):
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
@@ -1133,17 +1293,27 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(loaded_varnames),
                 main_program.list_vars()))
 
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
         import paddle
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
                 continue
-            tensor = paddle.load(os.path.join(dirname, var.name))
+            tensor = paddle.load(os.path.join(model_path, var.name))
             var.set_value(tensor)
 
         self._communicator.init_params(denses)
 
+    def _load_distributed_persistables(self, path, mode):
+        self._worker.load_model(path, mode)
+
     def load_model(self, path, mode):
-        self._load_distributed_persistables(path, mode=mode)
+        if mode == 0 or mode == 3:
+            self._load_distributed_persistables(path, mode)
+        else:
+            self._ps_inference_load_inference_model(path, mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet

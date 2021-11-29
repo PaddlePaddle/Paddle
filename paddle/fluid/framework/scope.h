@@ -58,7 +58,7 @@ class ScopeListener {
   // in original Scope.
  public:
   virtual ~ScopeListener() {}
-  virtual void onCreateVariable(const std::string& name) {}
+  virtual void onCreateVariable(const std::string& name, Variable* v) {}
   virtual void onDeleteVariable(const std::string& name) {}
   virtual void onRenameVariable(const std::string& old_name,
                                 const std::string& new_name) {}
@@ -134,8 +134,11 @@ class Scope : public ScopeBase {
 
   const std::list<Scope*>& kids() const { return kids_; }
 
-  // enumerate all the variables current contains.
+  // enumerate all the variable names current contains.
   std::vector<std::string> LocalVarNames() const;
+
+  // enumerate all the variables current contains.
+  std::vector<Variable*> LocalVars();
 
   // Rename variable to a new name
   void Rename(const std::string& origin_name,
