@@ -43,12 +43,11 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         self.run_and_statis(quant=False, passes=["conv_transpose_bn_fuse_pass"])
 
     def sample_program_config(self, draw):
-        # 随机数生成
+        # generate random number
         random_batch_size = draw(st.integers(min_value=1, max_value=4))
         random_channel = draw(st.integers(min_value=2, max_value=64))
         random_input_dim1 = draw(st.integers(min_value=50, max_value=512))
         random_input_dim2 = draw(st.integers(min_value=50, max_value=512))
-
         random_groups = draw(st.sampled_from([1]))
         random_dilations = draw(
             st.lists(
@@ -67,14 +66,11 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         random_data_layout = draw(st.sampled_from(["NCHW", "NHWC"]))
         random_use_mkldnn = draw(st.booleans())
         random_output_size = []
-
         random_filter = draw(
             st.lists(
                 st.integers(
                     min_value=1, max_value=4), min_size=2, max_size=2))
         random_out_channel = draw(st.integers(min_value=20, max_value=256))
-
-        # 随机数生成
         random_epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
         def generate_conv2d_Input():
@@ -105,7 +101,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         def generate_batch_norm_Variance():
             return np.random.random([random_out_channel]).astype(np.float32)
 
-        # op定义
+        # define op
         conv2d_op = OpConfig(
             type="conv2d_transpose",
             inputs={
@@ -126,8 +122,6 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'use_mkldnn': random_use_mkldnn,
                 'is_test': True,
             })
-
-        # op定义
 
         batch_norm_op = OpConfig(
             type="batch_norm",
@@ -154,9 +148,9 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'use_mkldnn': random_use_mkldnn,
             })
 
-        # 网络结构
+        # define model_net
         model_net = [conv2d_op, batch_norm_op]
-        # 接入tensor
+        # set tensor
         program_config = ProgramConfig(
             ops=model_net,
             inputs={
@@ -206,5 +200,5 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
 
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d is wrong when data_format attribute is NHWC"
+            "The output format of conv2d_transpose is wrong when data_format attribute is NHWC"
         )
