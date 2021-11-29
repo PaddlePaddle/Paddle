@@ -105,9 +105,6 @@ static void LerpGradFunction(const framework::ExecutionContext& ctx) {
   GetBraodcastDims<D>(x_dims, out_dims, &x_bcast_dims);
   GetBraodcastDims<D>(y_dims, out_dims, &y_bcast_dims);
 
-  auto eigen_x = framework::EigenTensor<T, D>::From(*x, x_dims);
-  auto eigen_y = framework::EigenTensor<T, D>::From(*y, y_dims);
-  auto eigen_out = framework::EigenTensor<T, D>::From(*out);
   auto eigen_dout = framework::EigenTensor<T, D>::From(*dout);
 
   Eigen::DSizes<int, D * 2> x_reshape_dims;
