@@ -51,15 +51,11 @@ void MessageBus::Init(
 #endif
 
   ListenPort();
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { MessageBus::Instance().Release(); });
-  });
 }
 
 bool MessageBus::IsInit() const { return is_init_; }
 
-void MessageBus::Release() {
+MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
@@ -111,8 +107,7 @@ void MessageBus::ListenPort() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // function keep listen the port and handle the message
-  InterceptorMessageServiceImpl interceptor_message_service;
-  PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service,
+  PADDLE_ENFORCE_EQ(server_.AddService(&interceptor_message_service_,
                                        brpc::SERVER_DOESNT_OWN_SERVICE),
                     0, platform::errors::Unavailable(
                            "Message bus: init brpc service error."));

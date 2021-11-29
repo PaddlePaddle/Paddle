@@ -240,10 +240,8 @@ void BufferedReader::ReadAsync(size_t i) {
 
       platform::SetNPUDeviceId(
           BOOST_GET_CONST(platform::NPUPlace, place_).device);
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclrtRecordEvent(events_[i].get(), compute_stream_));
-      PADDLE_ENFORCE_NPU_SUCCESS(
-          aclrtStreamWaitEvent(stream_.get(), events_[i].get()));
+      platform::NPUEventRecord(events_[i].get(), compute_stream_);
+      platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
 
       platform::RecordEvent record_event("BufferedReader:MemoryCopy");
       for (size_t i = 0; i < cpu.size(); ++i) {
@@ -260,11 +258,11 @@ void BufferedReader::ReadAsync(size_t i) {
           memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place_), npu_ptr,
                        BOOST_GET_CONST(platform::CPUPlace, cpu_place), cpu_ptr,
                        size, stream_.get());
-          PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_.get()));
+          platform::NPUStreamSync(stream_.get());
         }
         npu[i].set_lod(cpu[i].lod());
       }
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_.get()));
+      platform::NPUStreamSync(stream_.get());
     }
 #endif
     return i;

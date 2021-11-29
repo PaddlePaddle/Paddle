@@ -32,6 +32,15 @@ void Carrier::Init(
   is_init_ = true;
 }
 
+Carrier::~Carrier() {
+  // NOTE(wangxi): must join before `Derived Interceptor` destruct,
+  // otherwise Derived object will be destructed before thread complete.
+  // TODO(wangxi): Maybe need a better to use thread.
+  for (auto& interceptor : interceptor_idx_to_interceptor_) {
+    interceptor.second->Join();
+  }
+}
+
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // enqueue message to interceptor
@@ -39,12 +48,16 @@ bool Carrier::EnqueueInterceptorMessage(
     // handle control message
     return true;
   } else {
-    if (creating_interceptors_) {
-      // Cannot handle the message to interceptor since interceptors
-      // are still under creating. Will enqueue into a tmp stack.
-      VLOG(3) << "Receiving message while creating interceptors.";
-      message_tmp_.emplace_back(interceptor_message);
-      return true;
+    {
+      std::unique_lock<std::mutex> lock_creating(creating_flag_mutex_);
+      if (creating_interceptors_) {
+        std::unique_lock<std::mutex> lock_message(tmp_message_mutex_);
+        // Cannot handle the message to interceptor since interceptors
+        // are still under creating. Will enqueue into a tmp stack.
+        VLOG(3) << "Receiving message while creating interceptors.";
+        message_tmp_.emplace_back(interceptor_message);
+        return true;
+      }
     }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
@@ -83,7 +96,11 @@ void Carrier::Start() {
                           "Message bus has not been initialized."));
     message_bus_instance.Send(tmp_msg);
   }
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
 }
+
+std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
 
@@ -103,9 +120,11 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
 
 void Carrier::SetCreatingFlag(bool flag) {
   // set the creating flag
+  creating_flag_mutex_.lock();
   VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
           << " to " << flag << ".";
   creating_interceptors_ = flag;
+  creating_flag_mutex_.unlock();
   if (!flag) {
     // finish create interceptors outside, handle tmp messsages
     HandleTmpMessages();
@@ -113,6 +132,12 @@ void Carrier::SetCreatingFlag(bool flag) {
 }
 
 void Carrier::HandleTmpMessages() {
+  // NOTE: It's ok lock on the tmp_message_mutex_ here, when enter this
+  // `HandleTmpMessages` method, the creating_interceptors_ flag
+  // must be false, therefore, there won't have conflict with the
+  // lock on the tmp_message_mutex_ inside `EnqueueInterceptorMessage`
+  // on the same thread.
+  std::unique_lock<std::mutex> lock(tmp_message_mutex_);
   VLOG(3) << "Carrier has received " << message_tmp_.size()
           << " messages during creating interceptors.";
   for (const auto& msg : message_tmp_) {
@@ -138,7 +163,9 @@ void Carrier::CreateInterceptors() {
     }
     // The carrier will be always waiting for outside initializer
     // since there is no interceptor has been created during auto init
+    creating_flag_mutex_.lock();
     creating_interceptors_ = false;
+    creating_flag_mutex_.unlock();
     HandleTmpMessages();
   }
 }
