@@ -16,6 +16,7 @@ limitations under the License. */
 #include <random>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -31,27 +32,46 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
 namespace paddle {
 namespace platform {
 
-struct BaseEvent {
+struct DurationEvent {
  public:
-  BaseEvent(const char *name, uint64_t start_ns, uint64_t end_ns)
+  DurationEvent(const char *name, uint64_t start_ns, uint64_t end_ns)
       : name(name), start_ns(start_ns), end_ns(end_ns) {}
 
-  const char *name = 0;  // not owned, designed for performance
+  DurationEvent(std::function<void *(size_t)> &arena_allocator,
+                const char *name, uint64_t start_ns, uint64_t end_ns,
+                EventRole role, const std::string &attr_str)
+      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {
+    auto buf = static_cast<char *>(arena_allocator(attr_str.length() + 1));
+    strncpy(buf, attr_str.c_str(), attr_str.length() + 1);
+    attr = buf;
+  }
+
+  DurationEvent(const std::function<void *(size_t)> &arena_allocator,
+                const std::string &name_str, uint64_t start_ns, uint64_t end_ns)
+      : start_ns(start_ns), end_ns(end_ns) {
+    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
+    strncpy(buf, name_str.c_str(), name_str.length() + 1);
+    name = buf;
+  }
+
+  const char *name = nullptr;  // not owned, designed for performance
   uint64_t start_ns = 0;
   uint64_t end_ns = 0;
+  EventRole role = EventRole::kOrdinary;
+  const char *attr = nullptr;  // not owned, designed for performance
 };
 
-struct ThreadEventSection {
-  std::string thread_name;
-  uint64_t thread_id;
-  std::vector<BaseEvent> events;
-};
+template <typename HeadType, typename... RestTypes>
+struct ContainsStdString
+    : std::conditional_t<
+          std::is_same<std::string, std::remove_cv_t<std::remove_reference_t<
+                                        HeadType>>>::value,
+          std::true_type, ContainsStdString<RestTypes...>> {};
 
-struct HostEventSection {
-  std::string process_name;
-  uint64_t process_id;
-  std::vector<ThreadEventSection> thr_sections;
-};
+template <typename TailType>
+struct ContainsStdString<TailType>
+    : std::is_same<std::string,
+                   std::remove_cv_t<std::remove_reference_t<TailType>>> {};
 
 template <typename EventType>
 class EventContainer {
@@ -72,7 +92,18 @@ class EventContainer {
   DISABLE_COPY_AND_ASSIGN(EventContainer);
 
  public:
-  // Record an event
+  // Record an event with string arguments
+  template <typename... Args,
+            typename = std::enable_if_t<ContainsStdString<Args...>::value>>
+  void Record(Args &&... args) {
+    auto *storage = GetEventStorage();
+    std::function<void *(size_t)> allocator = [this](size_t size) {
+      return GetStrBufFromArena(size);
+    };
+    new (storage) EventType(allocator, std::forward<Args>(args)...);
+  }
+
+  // Record an event without any string argument
   template <typename... Args>
   void Record(Args &&... args) {
     auto *storage = GetEventStorage();
@@ -84,7 +115,7 @@ class EventContainer {
 
   // Return a buffer to store the string attribute of Event.
   // HostEventRecorder locates in the static data section.
-  // So it's safe to use arena to avoid fragmented allocation.
+  // So it's safe to use arena to avoid fragmented allocations.
   char *GetStrBufFromArena(size_t size) { return GetStringStorage(size); }
 
  private:
@@ -181,25 +212,22 @@ char *EventContainer<EventType>::GetStringStorage(size_t sz) {
   return storage;
 }
 
+struct ThreadEventSection {
+  std::string thread_name;
+  uint64_t thread_id;
+  std::vector<DurationEvent> events;
+};
+
 class ThreadEventRecorder {
  public:
   ThreadEventRecorder();
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 
  public:
-  // If your string attribute has a longer lifetime than the Event, use this.
-  // e.g.: string literal, op name, etc.
-  void RecordEvent(const char *name, uint64_t start_ns, uint64_t end_ns) {
-    base_evt_cntr_.Record(name, start_ns, end_ns);
-  }
-
-  // Do your best to avoid use this interface.
-  // It will cause deep-copy to harm performance.
-  void RecordEvent(const std::string &name, uint64_t start_ns,
-                   uint64_t end_ns) {
-    auto buf = base_evt_cntr_.GetStrBufFromArena(name.length() + 1);
-    strncpy(buf, name.c_str(), name.length() + 1);
-    base_evt_cntr_.Record(buf, start_ns, end_ns);
+  // Forward call to EventContainer::Record
+  template <typename... Args>
+  void RecordEvent(Args &&... args) {
+    base_evt_cntr_.Record(std::forward<Args>(args)...);
   }
 
   ThreadEventSection GatherEvents() {
@@ -213,7 +241,13 @@ class ThreadEventRecorder {
  private:
   uint64_t thread_id_;
   std::string thread_name_;
-  EventContainer<BaseEvent> base_evt_cntr_;
+  EventContainer<DurationEvent> base_evt_cntr_;
+};
+
+struct HostEventSection {
+  std::string process_name;
+  uint64_t process_id;
+  std::vector<ThreadEventSection> thr_sections;
 };
 
 class HostEventRecorder {
@@ -224,13 +258,16 @@ class HostEventRecorder {
     return instance;
   }
 
-  // forward call to ThreadEventRecorder::Record
+  // If your string argument has a longer lifetime than the Event,
+  // use 'const char*'. e.g.: string literal, op name, etc.
+  // Do your best to avoid using 'std::string' as the argument type.
+  // It will cause deep-copy to harm performance.
   template <typename... Args>
   void RecordEvent(Args &&... args) {
     GetThreadLocalRecorder().RecordEvent(std::forward<Args>(args)...);
   }
 
-  // poor performance, call it at the ending
+  // Poor performance, call it at the ending
   HostEventSection GatherEvents();
 
   void RegisterThreadRecorder(uint64_t tid, ThreadEventRecorder *recorder) {
