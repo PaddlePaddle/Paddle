@@ -14,11 +14,13 @@
 
 #include "paddle/pten/kernels/cpu/math.h"
 
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/kernels/functions/cpu/elementwise.h"
-#include "paddle/pten/kernels/functions/eigen/mean.h"
+#include "paddle/pten/kernels/functions/eigen/reduce.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
+#include "paddle/pten/kernels/functions/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -33,8 +35,16 @@ void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 template <typename T>
-void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  eigen::Mean<CPUContext, T>(dev_ctx, x, out);
+void Mean(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          const std::vector<int64_t>& dims,
+          bool keep_dim,
+          bool reduce_all,
+          DataType in_dtype,
+          DataType out_dtype,
+          DenseTensor* out) {
+  pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T>
@@ -88,6 +98,19 @@ void ElementwiseDiv(const CPUContext& dev_ctx,
   }
 }
 
+template <typename T>
+void Sum(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         const std::vector<int64_t>& dims,
+         bool keep_dim,
+         bool reduce_all,
+         DataType in_dtype,
+         DataType out_dtype,
+         DenseTensor* out) {
+  pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
 // Create the definition of ElementwiseAdd
 DEFINE_CPU_ELEMENTWISE_OP(Add)
 
@@ -109,8 +132,7 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 
 PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL(
-    "mean", CPU, ANY, pten::Mean, float, double, paddle::platform::bfloat16) {}
+PT_REGISTER_KERNEL("reduce_mean", CPU, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
                    ANY,
@@ -178,3 +200,18 @@ PT_REGISTER_KERNEL("elementwise_mul",
                    bool,
                    complex64,
                    complex128) {}
+
+PT_REGISTER_KERNEL("reduce_sum",
+                   CPU,
+                   ANY,
+                   pten::Sum,
+                   bool,
+                   float,
+                   double,
+                   paddle::platform::float16,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
