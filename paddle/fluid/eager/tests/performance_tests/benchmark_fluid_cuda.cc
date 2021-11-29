@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
+#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -45,7 +45,7 @@ namespace imperative {
 TEST(Benchmark, FluidScaleCUDA) {
   // Prepare Device Contexts
   platform::CUDAPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -98,7 +98,7 @@ TEST(Benchmark, FluidScaleCUDA) {
 TEST(Benchmark, FluidMatmulCUDA) {
   // Prepare Device Contexts
   platform::CUDAPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -161,7 +161,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
 TEST(Benchmark, FluidMLPCUDA) {
   // Prepare Device Contexts
   platform::CUDAPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::platform::DeviceContextPool& pool =

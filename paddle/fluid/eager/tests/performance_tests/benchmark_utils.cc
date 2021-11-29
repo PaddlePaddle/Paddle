@@ -36,10 +36,6 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 
-#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
-
-#include "paddle/pten/core/kernel_registry.h"
-
 static size_t max_num_benchmark_runs = 5000;
 
 namespace egr {
@@ -64,9 +60,9 @@ void benchmark_eager_scale(const EagerTensor& tensor, bool accuracy_check) {
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 10)
-    CompareTensorWithValue<float>(input_tensor, 8189.0);
+    eager_test::CompareTensorWithValue<float>(input_tensor, 8189.0);
     // Examine Backward Grad (w.r.t max_num_runs = 10)
-    CompareGradTensorWithValue<float>(tensor, 1024.0);
+    eager_test::CompareGradTensorWithValue<float>(tensor, 1024.0);
   }
 }
 
@@ -89,10 +85,10 @@ void benchmark_eager_intermediate_matmul(const EagerTensor& X,
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 2)
-    CompareVariableWithValue<float>(input_tensor0, 16);
+    eager_test::CompareVariableWithValue<float>(input_tensor0, 16);
     // Examine Backward Grad (w.r.t max_num_runs = 2)
-    CompareGradVariableWithValue<float>(X, 16);
-    CompareGradVariableWithValue<float>(Y, 16);
+    eager_test::CompareGradVariableWithValue<float>(X, 16);
+    eager_test::CompareGradVariableWithValue<float>(Y, 16);
   }
 }
 
@@ -122,11 +118,11 @@ void benchmark_eager_intermediate_mlp(const EagerTensor& X,
         compute_mlp_expected_results();
 
     // Examine Forward Grad (w.r.t max_num_runs = 2)
-    CompareVariableWithValue<float>(Out, result["Out"]);
+    eager_test::CompareVariableWithValue<float>(Out, result["Out"]);
 
     // Examine Backward Grad (w.r.t max_num_runs = 2)
-    CompareGradVariableWithValue<float>(X, result["GradX"]);
-    CompareGradVariableWithValue<float>(Ws[0], result["GradW"]);
+    eager_test::CompareGradVariableWithValue<float>(X, result["GradX"]);
+    eager_test::CompareGradVariableWithValue<float>(Ws[0], result["GradW"]);
   }
 }
 
