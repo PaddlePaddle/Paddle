@@ -35,6 +35,8 @@ limitations under the License. */
 #include "paddle/pten/include/core.h"
 #pragma GCC diagnostic ignored "-Wconversion-null"  // for import_array();
 #pragma GCC diagnostic ignored "-Wunused-variable"  // for numpy_initialized_p
+#pragma GCC diagnostic ignored \
+    "-Wwrite-strings"  // for {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 namespace paddle {
 namespace pybind {
