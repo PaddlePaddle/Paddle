@@ -34,13 +34,44 @@ DenseTensor Sign(const ContextT& dev_ctx, const DenseTensor& x) {
 }
 
 template <typename T, typename ContextT>
-DenseTensor Mean(const ContextT& dev_ctx, const DenseTensor& x) {
-  auto out_meta = ReductionInferMeta(x.meta());
+DenseTensor Mean(const ContextT& dev_ctx,
+                 const DenseTensor& x,
+                 const std::vector<int64_t>& axis,
+                 bool keep_dim) {
+  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  Mean<T>(dev_ctx, x, &dense_out);
+  bool reduce_all = false;
+  DataType out_dtype = pten::DataType::UNDEFINED;
+  Mean<T>(
+      dev_ctx, x, axis, keep_dim, reduce_all, x.dtype(), out_dtype, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename ContextT>
+DenseTensor Sum(const ContextT& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& axis,
+                DataType dtype,
+                bool keep_dim) {
+  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  pten::DenseTensor dense_out(allocator, out_meta);
+
+  // The real value of reduce_all will be get in kernel
+  // so use default value(false) is OK.
+  bool reduce_all = false;
+
+  if (x.dtype() == pten::DataType::BOOL || x.dtype() == pten::DataType::INT32 ||
+      x.dtype() == pten::DataType::INT64) {
+    dtype = pten::DataType::INT64;
+  }
+
+  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, x.dtype(), dtype, &dense_out);
   return dense_out;
 }
 
