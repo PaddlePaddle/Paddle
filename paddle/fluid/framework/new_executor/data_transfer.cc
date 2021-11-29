@@ -266,10 +266,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         tensor_in =
             static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Variable type is %s, expect LoDTensor or SelectedRows or "
-            "LoDTensorArray.",
-            ToTypeName(var->Type())));
+        continue;
       }
       if (!tensor_in->IsInitialized()) {
         continue;
