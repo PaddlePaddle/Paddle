@@ -18,7 +18,7 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import copy_distributed_attr_for_var
-from .common import copy_distributed_attr_for_dist_op
+from .common import copy_distributed_attr_for_dist_op, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -184,7 +184,9 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     Out_grad = main_block.var(kwargs['Out@GRAD'][0])
     Y_grad = main_block.var(kwargs['Y@GRAD'][0])
 
-    assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
+    assert not is_parameter_related(
+        X_var.name, main_block
+    ), "left operand(X) [{}] of dist matmul should not be parameter".format(
         X_var.name)
 
     Y_var_dim_mapping = dist_attr.get_input_dims_mapping(Y_var.name)
@@ -200,7 +202,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             Y_var_partitioned = True
             break
 
-    if Y_var.is_parameter and Y_var_partitioned:
+    if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
 
         if Y_var_dim_mapping[0] >= 0:
             # row parallel: c_identity + matmul
@@ -314,7 +316,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         dp_degree = len(group_ranks)
         dp_group = new_process_group(group_ranks)
 
-    if need_gradient_allreduce and Y_var.is_parameter:
+    if need_gradient_allreduce and is_parameter_related(Y_var.name, main_block):
         Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
         allreduce_op = main_block.append_op(
             type='c_allreduce_sum',

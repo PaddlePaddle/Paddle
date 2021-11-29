@@ -13,6 +13,7 @@
 # limitations under the License
 
 _g_distributed_operator_impl_registries = {}
+BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale'}
 
 
 class DistributedOperatorImplContainer:
@@ -145,3 +146,10 @@ def copy_distributed_attr_for_dist_op(dist_context, dist_op, dst_block,
 
     dist_context.set_op_dist_attr_for_program(dist_op, op_dist_attr)
     op_dist_attr = dist_context.get_op_dist_attr_for_program(dist_op)
+
+
+def is_parameter_related(varname, block):
+    if ".cast_fp" in varname:
+        varname = varname[:varname.index(".cast_fp")]
+    var = block.var(varname)
+    return var.is_parameter

@@ -15,7 +15,7 @@
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -183,8 +183,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
-                if "@GRAD" not in varname and not main_block.var(
-                        varname).is_parameter:
+                if "@GRAD" not in varname and not is_parameter_related(
+                        varname, main_block):
 
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     process_mesh = dist_attr.process_mesh
@@ -210,8 +210,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             allreduce_vars = []
             for input_name in backward_op.desc.input_names():
                 for varname in backward_op.desc.input(input_name):
-                    if "@GRAD" not in varname and main_block.var(
-                            varname).is_parameter:
+                    if "@GRAD" not in varname and is_parameter_related(
+                            varname, main_block):
                         assert len(
                             backward_op.desc.input(input_name)
                         ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(

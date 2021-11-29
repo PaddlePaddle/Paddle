@@ -177,13 +177,13 @@ class AutoParallelizer:
         params_grads = self._apply_serial_passes_and_backward(
             completed_main_program, startup_program, loss, parameter_list,
             no_grad_set)
-        set_default_distributed_context(None)
-        with open("./fb_serial_main_program.txt.%d" %
-                  (paddle.distributed.get_rank()), 'w') as f:
-            f.write(str(completed_main_program))
-        with open("./fb_serial_startup_program.txt.%d" %
-                  (paddle.distributed.get_rank()), 'w') as f:
-            f.write(str(startup_program))
+        # set_default_distributed_context(None)
+        # with open("./fb_serial_main_program.txt.%d" %
+        #           (paddle.distributed.get_rank()), 'w') as f:
+        #     f.write(str(completed_main_program))
+        # with open("./fb_serial_startup_program.txt.%d" %
+        #           (paddle.distributed.get_rank()), 'w') as f:
+        #     f.write(str(startup_program))
 
         # Logical partition 
         rank = paddle.distributed.get_rank()

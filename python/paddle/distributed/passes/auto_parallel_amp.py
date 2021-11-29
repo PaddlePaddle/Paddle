@@ -17,8 +17,8 @@ from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
 from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists, _keep_fp32_input, _keep_fp32_output, _valid_types, find_true_post_op, find_op_index, _is_in_black_varnames, _dtype_to_str, _rename_arg
-from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
-from paddle.distributed.auto_parallel.utils import get_loss_op
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
+from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 
 from collections import OrderedDict
@@ -27,15 +27,6 @@ import numpy as np
 BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
 # FIXME
 global_process_mesh = [0, 1]
-
-
-def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
-    tensor_dist_attr = TensorDistributedAttribute()
-    tensor_dist_attr.dims_mapping = dims_mapping
-    # TODO get global mesh group
-    tensor_dist_attr.process_mesh = process_mesh
-    dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
-    return tensor_dist_attr
 
 
 def _mark_black_white_ops(main_prog, amp_lists):
@@ -304,6 +295,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
 
     new_op_dist_attr = OperatorDistributedAttribute()
     new_op_dist_attr.process_mesh = global_process_mesh
+    new_op_dist_attr.impl_idx = 0
     for g in grads:
         g_dist_attr = dist_context.get_tensor_dist_attr_for_program(g)
         assert g_dist_attr is not None
@@ -521,22 +513,29 @@ class AMPBackwardPass(PassBase):
             elementwise_mul_grad_op_desc.set_output('Y@GRAD', [])
             elementwise_mul_grad_op_desc._set_attr(
                 OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward)
-            main_block.ops.insert(loss_op_idx + 3, op)
+            elementwise_mul_grad_op_desc._set_attr('axis', -1)
+            elementwise_mul_grad_op = paddle.fluid.framework.Operator(
+                main_block, elementwise_mul_grad_op_desc)
+            main_block.ops.insert(loss_op_idx + 3, elementwise_mul_grad_op)
+            main_block._sync_with_cpp()
             elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
-            main_block._sync_with_cpp()
             elementwise_mul_grad_op_dist_attr = OperatorDistributedAttribute()
             elementwise_mul_grad_op_dist_attr.process_mesh = global_process_mesh
             elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
-                self._dist_context.get_tensor_dist_attr_for_graph(loss))
+                loss.name,
+                self._dist_context.get_tensor_dist_attr_for_program(loss))
             elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
-                self._dist_context.get_tensor_dist_attr_for_graph(
+                self._loss_scaling.name,
+                self._dist_context.get_tensor_dist_attr_for_program(
                     self._loss_scaling))
             elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
-                self._dist_context.get_tensor_dist_attr_for_graph(
+                self._scaled_loss_grad.name,
+                self._dist_context.get_tensor_dist_attr_for_program(
                     self._scaled_loss_grad))
             elementwise_mul_grad_op_dist_attr.set_output_dist_attr(
-                self._dist_context.get_tensor_dist_attr_for_graph(
+                pre_grad_name,
+                self._dist_context.get_tensor_dist_attr_for_program(
                     main_block.var(pre_grad_name)))
             self._dist_context.set_op_dist_attr_for_program(
                 elementwise_mul_grad_op, elementwise_mul_grad_op_dist_attr)

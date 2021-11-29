@@ -23,3 +23,4 @@ from . import dist_reshape
 from . import dist_softmax
 from . import dist_transpose
 from . import dist_default
+from . import dist_check_finite_and_unscale
