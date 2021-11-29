@@ -15,6 +15,7 @@
 include(ExternalProject)
 
 set(BOOST_PROJECT       "extern_boost")
+
 # To release PaddlePaddle as a pip package, we have to follow the
 # manylinux1 standard, which features as old Linux kernels and
 # compilers as possible and recommends CentOS 5. Indeed, the earliest
