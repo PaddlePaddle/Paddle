@@ -495,7 +495,7 @@ def flip(x, axis, name=None):
     return out
 
 
-def rot90(x, k=1, dims=[0, 1], name=None):
+def rot90(x, k=1, axes=[0, 1], name=None):
     """
     Rotate a n-D tensor by 90 degrees in the plane specified by dims axis. Rotation direction is from the first towards the second axis if k > 0, and from the second towards the first for k < 0.
 
@@ -503,7 +503,7 @@ def rot90(x, k=1, dims=[0, 1], name=None):
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
         k (int): Number of times to rotate
-        dims (list|tuple): Axis to rotate
+        axes (list|tuple): Axis to rotate
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -540,27 +540,27 @@ def rot90(x, k=1, dims=[0, 1], name=None):
     check_dtype(dtype, 'X',
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'rot90')
-    check_type(dims, 'dims', (list, tuple), 'rot90')
+    check_type(axes, 'axes', (list, tuple), 'rot90')
 
     input_total_dims = len(x.shape)
-    total_rot_dims = len(dims)
+    total_rot_dims = len(axes)
     if total_rot_dims != 2:
-        raise ValueError("expected total rotation dims == 2, but got dims = {}".
+        raise ValueError("expected total rotation axes == 2, but got axes = {}".
                          format(total_rot_dims))
     if input_total_dims < 2:
         raise ValueError("expected total dims >= 2, but got total dims = {}".
                          format(input_total_dims))
 
-    if not (dims[0] != dims[1] and abs(dims[0] - dims[1]) != input_total_dims):
+    if not (axes[0] != axes[1] and abs(axes[0] - axes[1]) != input_total_dims):
         raise ValueError(
-            "expected rotation dims to be different, but got dim0 = {}, and dim1 = {}".
-            format(dims[0], dims[1]))
+            "expected rotation axes to be different, but got axis0 = {}, and axis1 = {}".
+            format(axes[0], axes[1]))
 
-    if not (dims[0] < input_total_dims and dims[0] >= -input_total_dims):
-        raise ValueError("Rotation dim0 out of range, dim0 = {}".format(dims[
+    if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
+        raise ValueError("Rotation axis0 out of range, axis0 = {}".format(axes[
             0]))
-    if not (dims[1] < input_total_dims and dims[1] >= -input_total_dims):
-        raise ValueError("Rotation dim1 out of range, dim1 = {}".format(dims[
+    if not (axes[1] < input_total_dims and axes[1] >= -input_total_dims):
+        raise ValueError("Rotation axis1 out of range, axis1 = {}".format(axes[
             1]))
 
     ## k % 4
@@ -568,16 +568,16 @@ def rot90(x, k=1, dims=[0, 1], name=None):
     if k == 0:
         return x
     if k == 2:
-        return flip(flip(x, dims[0]), dims[1])
+        return flip(flip(x, axes[0]), axes[1])
 
     axes_list = list(range(0, input_total_dims))
-    (axes_list[dims[0]], axes_list[dims[1]]) = (axes_list[dims[1]],
-                                                axes_list[dims[0]])
+    (axes_list[axes[0]], axes_list[axes[1]]) = (axes_list[axes[1]],
+                                                axes_list[axes[0]])
     if k == 1:
-        return transpose(flip(x, dims[1]), axes_list)
+        return transpose(flip(x, axes[1]), axes_list)
     else:
         # k == 3
-        return flip(transpose(x, axes_list), dims[1])
+        return flip(transpose(x, axes_list), axes[1])
 
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
