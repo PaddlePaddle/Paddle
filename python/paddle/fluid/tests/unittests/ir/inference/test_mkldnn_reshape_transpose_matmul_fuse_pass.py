@@ -163,10 +163,7 @@ class TestReshapeTransposeMatmulMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False,
-            max_examples=150,
-            passes=["reshape_transpose_matmul_mkldnn_fuse_pass"],
-            min_success_num=150)
+            quant=False, passes=["reshape_transpose_matmul_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
