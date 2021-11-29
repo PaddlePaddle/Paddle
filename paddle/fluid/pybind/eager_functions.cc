@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/core.h"
 #pragma GCC diagnostic ignored "-Wconversion-null"  // for import_array();
+#pragma GCC diagnostic ignored "-Wunused-variable"  // for numpy_initialized_f
 
 namespace paddle {
 namespace pybind {
