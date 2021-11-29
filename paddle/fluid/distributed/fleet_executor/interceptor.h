@@ -52,8 +52,6 @@ class Interceptor {
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
-  virtual void HandleStop(const InterceptorMessage& msg);
-
   void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
@@ -89,6 +87,7 @@ class Interceptor {
 
   // for stop
   bool stop_{false};
+  void StopCarrier();
 
   // for runtime
   platform::Place place_;

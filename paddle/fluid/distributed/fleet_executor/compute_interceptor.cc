@@ -221,12 +221,11 @@ void ComputeInterceptor::TryStop() {
     Send(down_id, stop);
   }
   stop_ = true;
-}
 
-void ComputeInterceptor::HandleStop(const InterceptorMessage& msg) {
-  ReceivedStop(msg.src_id());
-
-  TryStop();
+  if (out_buffs_.size() == 0) {
+    // TODO(fleet executor dev) need a better place to notify
+    StopCarrier();
+  }
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
@@ -236,6 +235,8 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   } else if (msg.message_type() == DATE_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
+  } else if (msg.message_type() == STOP) {
+    ReceivedStop(msg.src_id());
   }
 
   TryStop();
