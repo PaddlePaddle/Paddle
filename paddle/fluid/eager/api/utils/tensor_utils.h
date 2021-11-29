@@ -18,6 +18,7 @@
 #include "paddle/pten/api/all.h"
 
 namespace egr {
+namespace egr_utils_api {
 
 // If and only if the tensor holds an AccumulationNode
 // Then it's treated as a leaf tensor
@@ -29,4 +30,5 @@ egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
                                        const pten::DataLayout& layout,
                                        float value, bool is_leaf = true);
 
+}  // namespace egr_utils_api
 }  // namespace egr
