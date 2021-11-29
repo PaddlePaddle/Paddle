@@ -134,7 +134,6 @@ float ComputeOutputScale(const ExecutionContext& ctx) {
   float scale_y = ctx.Attr<float>("Scale_y");
   bool force_fp32_out = ctx.Attr<bool>("force_fp32_output");
   float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
-  }
   return scale_out / (scale_x * scale_y);
 }
 
