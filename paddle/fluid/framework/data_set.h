@@ -48,6 +48,13 @@ class Dataset {
  public:
   Dataset() {}
   virtual ~Dataset() {}
+  // do sample
+  virtual void TDMSample(const std::string tree_name,
+                         const std::string tree_path,
+                         const std::vector<uint16_t> tdm_layer_counts,
+                         const uint16_t start_sample_layer,
+                         const bool with_hierachy, const uint16_t seed_,
+                         const uint16_t sample_slot) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num
@@ -162,7 +169,6 @@ class DatasetImpl : public Dataset {
  public:
   DatasetImpl();
   virtual ~DatasetImpl() {}
-
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
@@ -311,6 +317,12 @@ class DatasetImpl : public Dataset {
 class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
+  virtual void TDMSample(const std::string tree_name,
+                         const std::string tree_path,
+                         const std::vector<uint16_t> tdm_layer_counts,
+                         const uint16_t start_sample_layer,
+                         const bool with_hierachy, const uint16_t seed_,
+                         const uint16_t sample_slot);
   virtual void MergeByInsId();
   virtual void PreprocessInstance();
   virtual void PostprocessInstance();
