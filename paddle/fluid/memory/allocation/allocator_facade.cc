@@ -23,7 +23,6 @@
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

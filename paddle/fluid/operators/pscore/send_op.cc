@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -42,14 +43,15 @@ class SendOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto ins = Inputs("X");
     // auto is_sparse = Attr<int>("is_sparse");
-    // auto table_id = Attr<int>("table_id");
+    auto table_id = Attr<int>("table_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
-    auto* communicator = paddle::distributed::Communicator::GetInstance();
-    if (communicator->Check(send_varnames)) {
-      communicator->Send(ins, scope);
-    }
+    auto fleet = paddle::distributed::FleetWrapper::GetInstance();
+    std::vector<::std::future<int32_t>> status;
+    // Note: only send push_dense now!
+    // communicator->Send(ins, scope) can be used to push_sparse or push_dense
+    fleet->PushDenseVarsAsync(scope, table_id, ins, &status, 0, -1);
 
     // auto fleet = paddle::distributed::FleetWrapper::GetInstance();
     // if (is_sparse == 0) {
