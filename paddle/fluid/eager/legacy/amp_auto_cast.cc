@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/operator.h"
 
 namespace egr {
+namespace legacy {
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
@@ -85,12 +86,12 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
 inline std::string GetDtypeStr(
     const std::shared_ptr<egr::EagerTensor>& tensor) {
   return paddle::framework::DataTypeToString(
-      egr::GetDtypeFromVar(tensor->Var()));
+      egr::legacy::GetDtypeFromVar(tensor->Var()));
 }
 
 inline bool NeedCast(const std::shared_ptr<egr::EagerTensor>& tensor) {
-  auto place = egr::GetPlaceFromVar(tensor->Var());
-  auto data_type = egr::GetDtypeFromVar(tensor->Var());
+  auto place = egr::legacy::GetPlaceFromVar(tensor->Var());
+  auto data_type = egr::legacy::GetDtypeFromVar(tensor->Var());
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place)) {
@@ -109,7 +110,7 @@ static inline std::shared_ptr<egr::EagerTensor> CastToType(
     const std::shared_ptr<egr::EagerTensor>& tensor,
     const paddle::framework::proto::VarType::Type dst_type) {
   NameTensorMap ins = {{"X", {tensor}}};
-  auto in_data_type = egr::GetDtypeFromVar(tensor->Var());
+  auto in_data_type = egr::legacy::GetDtypeFromVar(tensor->Var());
   paddle::framework::AttributeMap attrs = {{"in_dtype", in_data_type},
                                            {"out_dtype", dst_type}};
   auto out = std::shared_ptr<egr::EagerTensor>(new egr::EagerTensor());
@@ -127,7 +128,8 @@ static inline std::shared_ptr<egr::EagerTensor> CastToType(
 static inline std::shared_ptr<egr::EagerTensor> CastToFP16(
     const std::shared_ptr<egr::EagerTensor>& tensor) {
   auto dst_type = paddle::framework::proto::VarType::FP16;
-  if (NeedCast(tensor) && (egr::GetDtypeFromVar(tensor->Var()) != dst_type)) {
+  if (NeedCast(tensor) &&
+      (egr::legacy::GetDtypeFromVar(tensor->Var()) != dst_type)) {
     return CastToType(tensor, dst_type);
   }
   return tensor;
@@ -136,7 +138,8 @@ static inline std::shared_ptr<egr::EagerTensor> CastToFP16(
 static inline std::shared_ptr<egr::EagerTensor> CastToFP32(
     const std::shared_ptr<egr::EagerTensor>& tensor) {
   auto dst_type = paddle::framework::proto::VarType::FP32;
-  if (NeedCast(tensor) && (egr::GetDtypeFromVar(tensor->Var()) != dst_type)) {
+  if (NeedCast(tensor) &&
+      (egr::legacy::GetDtypeFromVar(tensor->Var()) != dst_type)) {
     return CastToType(tensor, dst_type);
   }
   return tensor;
@@ -147,9 +150,9 @@ static inline paddle::framework::proto::VarType::Type GetPromoteType(
   auto dst_type = paddle::framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& tensor : pair.second) {
-      if (egr::GetDtypeFromVar(tensor->Var()) ==
+      if (egr::legacy::GetDtypeFromVar(tensor->Var()) ==
           paddle::framework::proto::VarType::FP32) {
-        dst_type = egr::GetDtypeFromVar(tensor->Var());
+        dst_type = egr::legacy::GetDtypeFromVar(tensor->Var());
         break;
       }
     }
@@ -160,7 +163,7 @@ static inline paddle::framework::proto::VarType::Type GetPromoteType(
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
       if (pair.first == "X" &&
-          egr::GetDtypeFromVar(pair.second.front()->Var()) ==
+          egr::legacy::GetDtypeFromVar(pair.second.front()->Var()) ==
               paddle::framework::proto::VarType::FP16) {
         dst_type = paddle::framework::proto::VarType::FP16;
       }
@@ -255,4 +258,5 @@ NameTensorMap CastPureFp16Inputs(const std::string& op_type,
   return new_ins;
 }
 
+}  // namespace legacy
 }  // namespace egr
