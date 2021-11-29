@@ -134,11 +134,11 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& paddle_name,
 
   const auto& cinn_name = paddle2cinn_varmap_.at(paddle_name);
   CinnTensor cinn_tensor = GetCinnTensor(cinn_name);
-  if (paddle_tensor->IsInitialized()) {
+  if (!paddle_tensor->IsInitialized()) {
     paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
   }
   CheckTensorEquivalent(paddle_name, *paddle_tensor, cinn_tensor);
-  return SetArgument(cinn_name, place, /* free_mem_callback = */ true,
+  return SetArgument(cinn_name, place, /* free_mem_callback = */ false,
                      paddle_tensor);
 }
 
@@ -149,11 +149,11 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name,
                     platform::errors::InvalidArgument(
                         "Variable(%s) not found in cinn socpe.", cinn_name));
   CinnTensor cinn_tensor = GetCinnTensor(cinn_name);
-  if (paddle_tensor->IsInitialized()) {
+  if (!paddle_tensor->IsInitialized()) {
     paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
   }
   CheckTensorEquivalent(cinn_name, *paddle_tensor, cinn_tensor);
-  return SetArgument(cinn_name, place, /* free_mem_callback = */ false,
+  return SetArgument(cinn_name, place, /* free_mem_callback = */ true,
                      paddle_tensor);
 }
 
@@ -170,7 +170,7 @@ std::unique_ptr<cinn_buffer_t> CinnLaunchContext::ShareTensorWithCinnBuffer(
   cinn_buffer->resize(cinn_dims.data(), cinn_dims.size());
 
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
-      [&place, tensor](void* ctx, cinn_buffer_t* buffer) {
+      [place, tensor](void* ctx, cinn_buffer_t* buffer) {
         buffer->memory =
             reinterpret_cast<uint8_t*>(tensor->mutable_data<float>(place));
         return 0;
@@ -202,9 +202,8 @@ void CinnLaunchContext::SetArgument(const std::string& cinn_name,
   name2argument_.emplace(cinn_name, buffer.get());
   hold_buffers_.emplace_back(std::move(buffer));
   VLOG(4) << "SetArgument-" << name2argument_.size() << ": "
-          << "name(" << cinn_name << "), "
-          << "), type(" << framework::DataTypeToString(paddle_tensor->type())
-          << "), dims(" << paddle_tensor->dims() << ").";
+          << "name(" << cinn_name << "), dims(" << paddle_tensor->dims()
+          << ").";
 }
 
 const std::map<std::string, cinn_pod_value_t>&

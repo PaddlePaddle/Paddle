@@ -27,7 +27,7 @@ add_definitions(-w)
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
 # TODO(zhhsplendid): Modify git tag after we have release tag
-set(CINN_GIT_TAG 6f25d604a7a0b549ed5f46396445bebc11dc3bda)
+set(CINN_GIT_TAG 00662566af2d2beeffac5e35fcbd40bb5c6d43a9)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}
@@ -40,7 +40,7 @@ set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY   "${GIT_URL}/zhhsplendid/CINN.git"
+  GIT_REPOSITORY   "${GIT_URL}/CtfGo/CINN.git"
   GIT_TAG          ${CINN_GIT_TAG}
   PREFIX           ${CINN_PREFIX_DIR}
   BUILD_COMMAND    ${CINN_BUILD_COMMAND}
