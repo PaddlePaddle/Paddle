@@ -21,14 +21,10 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/manipulation.h"
+#include "paddle/pten/kernels/functions/math/cast_func.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename InT, typename OutT>
-struct CastOpTransformFunctor {
-  HOSTDEVICE OutT operator()(InT in) const { return static_cast<OutT>(in); }
-};
 
 template <typename DeviceContext, typename InT>
 struct CastOpFunctor {
@@ -43,11 +39,8 @@ struct CastOpFunctor {
   void apply() const {
     auto* in_begin = in_->data<InT>();
     auto numel = in_->numel();
-    auto* in_end = in_begin + numel;
     auto* out_begin = out_->mutable_data<OutT>(ctx_.GetPlace());
-    platform::Transform<DeviceContext> trans;
-    trans(ctx_, in_begin, in_end, out_begin,
-          CastOpTransformFunctor<InT, OutT>());
+    pten::math::CastWithRawPtr<DeviceContext, InT, OutT>(ctx_, in_begin, out_begin, numel);
   }
 };
 
