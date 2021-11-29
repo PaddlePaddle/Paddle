@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/npu_resource_pool.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -26,13 +26,13 @@ NpuStreamResourcePool::NpuStreamResourcePool() {
     auto creator = [dev_idx] {
       platform::SetNPUDeviceId(dev_idx);
       aclrtStream stream;
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateStream(&stream));
+      NPUStreamCreate(&stream);
       return stream;
     };
 
     auto deleter = [dev_idx](aclrtStream stream) {
       platform::SetNPUDeviceId(dev_idx);
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyStream(stream));
+      NPUStreamDestroy(stream);
     };
 
     pool_.emplace_back(ResourcePool<NpuStreamObject>::Create(creator, deleter));
@@ -64,13 +64,13 @@ NpuEventResourcePool::NpuEventResourcePool() {
     auto creator = [dev_idx] {
       platform::SetNPUDeviceId(dev_idx);
       aclrtEvent event;
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateEvent(&event));
+      NPUEventCreate(&event);
       return event;
     };
 
     auto deleter = [dev_idx](aclrtEvent event) {
       platform::SetNPUDeviceId(dev_idx);
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
+      NPUEventDestroy(event);
     };
 
     pool_.emplace_back(ResourcePool<NpuEventObject>::Create(creator, deleter));
