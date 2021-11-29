@@ -18,10 +18,55 @@
 namespace paddle {
 namespace framework {
 
-bool StreamAnalyzer::InAsyncStream(const OpFuncNode& op_func_node) {
-  auto& op_type = op_func_node.operator_base_->Type();
-  return op_type == interpreter::kMemcpyD2H ||
-         op_type == interpreter::kMemcpyH2D;
+bool StreamAnalyzer::InAsyncStream(const Instruction& instr,
+                                   const VariableScope& scope) {
+  if (instr.KernelType() != OpFuncType::kQueueAsync) {
+    return false;
+  }
+
+  const gpuStream_t& op_stream =
+      reinterpret_cast<const platform::CUDADeviceContext&>(
+          instr.DeviceContext())
+          .stream();
+  auto in_async_stream = [&op_stream](Tensor& tensor) {
+    if (!platform::is_gpu_place(tensor.place())) {
+      return false;
+    }
+    auto& holder = tensor.Holder();
+    return holder != nullptr && holder->stream() != op_stream;
+  };
+
+  for (auto& pair : instr.Inputs()) {
+    for (const int& var_id : pair.second) {
+      paddle::framework::Variable* var = scope.Var(var_id);
+      if (var == nullptr) {
+        continue;
+      }
+
+      if (var->IsType<LoDTensor>()) {
+        auto* tensor = var->GetMutable<LoDTensor>();
+        if (in_async_stream(*tensor)) {
+          return true;
+        }
+      } else if (var->IsType<SelectedRows>()) {
+        auto* tensor = var->GetMutable<SelectedRows>()->mutable_value();
+        if (in_async_stream(*tensor)) {
+          return true;
+        }
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& tensor : *tensor_arr) {
+          if (in_async_stream(tensor)) {
+            return true;
+          }
+        }
+      } else {
+        // do nothing
+      }
+    }
+  }
+
+  return false;
 }
 
 /*

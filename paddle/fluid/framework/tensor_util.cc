@@ -54,6 +54,10 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
       src.layout() == DataLayout::kMKLDNN
           ? dst->mutable_data(dst_place, src.type(), src.memory_size())
           : dst->mutable_data(dst_place, src.type());
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto dst_ptr = dst->mutable_data(
+      dst_place, src.type(),
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
 #else
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 #endif

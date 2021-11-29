@@ -694,22 +694,9 @@ const std::vector<size_t>& Instruction::GCCheckVars() const {
 }
 
 void Instruction::InferNeedStreamSyncVars() {
-  auto ParseIndexFromMap = [](
-      std::map<std::string, std::vector<int>>& index_map,
-      std::vector<size_t>* out_vec) {
-    for (auto& pair : index_map) {
-      std::vector<int>& indexes = pair.second;
-      out_vec->insert(out_vec->end(), indexes.begin(), indexes.end());
-    }
-  };
-  ParseIndexFromMap(op_func_node_.input_index, &need_stream_sync_var_list_);
-  // ParseIndexFromMap(op_func_node_.output_index, &need_stream_sync_var_list_);
-
-  // NOTE(Ruibiao): A simple and general approach is to record all input and
-  // output vars of the instruction. However, we ignore the output vars here,
-  // because the output of both H2D and D2H must be needed and will not be GC
-  // at the moment. We should figure out a better way to decide which vars
-  // should really be recorded later.
+  // NOTE(TODO): Figure out a better way to decide which vars should really be
+  // sync later.
+  need_stream_sync_var_list_ = gc_check_var_list_;
 }
 
 const std::vector<size_t>& Instruction::NeedStreamSyncVars() const {

@@ -13,11 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#else
-#include <hip/hip_runtime.h>
-#endif
 
 #include <deque>
 #include <list>
@@ -25,6 +20,12 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/place.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#else
+#include <hip/hip_runtime.h>
+#endif
 
 namespace paddle {
 namespace memory {
@@ -34,21 +35,23 @@ class StreamSafeCUDAAllocation : public Allocation {
  public:
   StreamSafeCUDAAllocation(AllocationPtr underlying_allocation,
                            gpuStream_t owning_stream);
-  void RecordStream(gpuStream_t stream);
+  void RecordStream(const gpuStream_t &stream);
   bool CanBeFreed();
+
+  const gpuStream_t &stream() const override;
 
  private:
   AllocationPtr underlying_allocation_;
-  gpuStream_t owning_stream_;
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
+  gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
 };
 
 class StreamSafeCUDAAllocator : public Allocator {
  public:
-  StreamSafeCUDAAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator,
-      const platform::CUDAPlace &place, const gpuStream_t default_stream);
+  StreamSafeCUDAAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                          platform::CUDAPlace place,
+                          gpuStream_t default_stream);
   ~StreamSafeCUDAAllocator();
   bool IsAllocThreadSafe() const override;
 
@@ -68,7 +71,7 @@ class StreamSafeCUDAAllocator : public Allocator {
   std::shared_ptr<Allocator> underlying_allocator_;
   platform::CUDAPlace place_;
   gpuStream_t default_stream_;
-  std::list<Allocation *> unfreed_allocations_;
+  std::list<StreamSafeCUDAAllocation *> unfreed_allocations_;
   SpinLock unfreed_allocation_lock_;
 };
 

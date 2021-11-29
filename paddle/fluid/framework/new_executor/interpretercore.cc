@@ -183,16 +183,6 @@ void InterpreterCore::Convert(
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
     auto& instr = vec_instruction_.back();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (FLAGS_use_stream_safe_cuda_allocator) {
-      bool in_async_stream = stream_analyzer_.InAsyncStream(op_func_node);
-      in_async_stream_.push_back(in_async_stream);
-      if (in_async_stream) {
-        instr.InferNeedStreamSyncVars();
-      }
-    }
-#endif
-
     OpInOutInfo info;
     std::vector<size_t> gc_check_input_list;
 
@@ -530,12 +520,15 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       RunInstruction(instr_node);
+
+// GC infomation
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (FLAGS_use_stream_safe_cuda_allocator && in_async_stream_[instr_id]) {
+      if (FLAGS_use_stream_safe_cuda_allocator &&
+          stream_analyzer_.InAsyncStream(instr_node, *global_scope_)) {
+        instr_node.InferNeedStreamSyncVars();
         gc_->StreamSynchronize(instr_node, *global_scope_);
       }
 #endif
-      // GC infomation
       CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);

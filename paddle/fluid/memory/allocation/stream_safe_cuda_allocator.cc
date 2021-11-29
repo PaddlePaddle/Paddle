@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -24,9 +23,9 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
     : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
                  underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
-      owning_stream_(owning_stream) {}
+      owning_stream_(std::move(owning_stream)) {}
 
-void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
+void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
   if (stream == owning_stream_) {
     return;
   }
@@ -57,8 +56,8 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
-  // NOTE(Ruibiao): This function will not execute concurrently, so
-  // outstanding_event_lock_ is not required here
+  // NOTE(Ruibiao): This function will not execute concurrently,
+  // so outstanding_event_lock_ is not required here
   for (auto it = outstanding_event_map_.begin();
        it != outstanding_event_map_.end(); ++it) {
     gpuEvent_t& event = it->second;
@@ -87,12 +86,16 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
   return true;
 }
 
+const gpuStream_t& StreamSafeCUDAAllocation::stream() const {
+  return owning_stream_;
+}
+
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
-    const std::shared_ptr<Allocator>& underlying_allocator,
-    const platform::CUDAPlace& place, const gpuStream_t default_stream)
-    : underlying_allocator_(underlying_allocator),
-      place_(place),
-      default_stream_(default_stream) {
+    std::shared_ptr<Allocator> underlying_allocator, platform::CUDAPlace place,
+    gpuStream_t default_stream)
+    : underlying_allocator_(std::move(underlying_allocator)),
+      place_(std::move(place)),
+      default_stream_(std::move(default_stream)) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   allocator_map_[place].emplace_back(this);
 }
@@ -132,12 +135,19 @@ Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
-  VLOG(8) << "Try free allocation " << allocation->ptr();
-  if (dynamic_cast<StreamSafeCUDAAllocation*>(allocation)->CanBeFreed()) {
-    delete allocation;
+  StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
+      dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
+  PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
+                          platform::errors::InvalidArgument(
+                              "Failed to dynamic cast %p from Allocation* to "
+                              "StreamSafeCUDAAllocation*",
+                              allocation));
+  VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
+  if (stream_safe_cuda_allocation->CanBeFreed()) {
+    delete stream_safe_cuda_allocation;
   } else {
     std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
-    unfreed_allocations_.emplace_back(allocation);
+    unfreed_allocations_.emplace_back(stream_safe_cuda_allocation);
   }
 }
 
@@ -157,7 +167,7 @@ void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
   std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   for (auto it = unfreed_allocations_.begin();
        it != unfreed_allocations_.end();) {
-    if (dynamic_cast<StreamSafeCUDAAllocation*>(*it)->CanBeFreed()) {
+    if ((*it)->CanBeFreed()) {
       delete *it;
       it = unfreed_allocations_.erase(it);
     } else {

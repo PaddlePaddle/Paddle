@@ -114,7 +114,6 @@ class InterpreterCore {
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::vector<bool> in_async_stream_;
   bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
 };
