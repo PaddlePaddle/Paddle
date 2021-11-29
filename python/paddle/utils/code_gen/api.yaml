@@ -1,3 +1,33 @@
+- api : add
+  args : (const Tensor& x, const Tensor& y)
+  output : Tensor
+  infer_meta : 
+    func : ElementwiseInferShape
+    param : [x, y, -1]
+  kernel :
+    func : elementwise_add
+    param : [x, y, -1]
+
+- api : cast
+  args : (const Tensor& x, DataType out_dtype)
+  output : Tensor
+  infer_meta : 
+    func : CastInferMeta
+  kernel :
+    func : cast
+    param : [x, out_dtype, x.dtype()]
+    data_type : x
+
+- api : divide
+  args : (const Tensor& x, const Tensor& y)
+  output : Tensor
+  infer_meta : 
+    func : ElementwiseInferShape
+    param : [x, y, -1]
+  kernel :
+    func : elementwise_div
+    param : [x, y, -1]
+
 - api : dot
   args : (const Tensor& x, const Tensor& y)
   output : Tensor
@@ -15,30 +45,30 @@
     func : flatten_contiguous_range
 
 - api : full
-  args : (const std::vector<int64_t>& shape, const Scalar& value, DataType dtype=DataType::FLOAT32, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
-  output: Tensor # Tensor or vector<Tensor>
+  args : (const ScalarArray& shape, const Scalar& value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
+  output: Tensor
   infer_meta : 
     func : FullInferShape
     param : [shape, dtype, layout]
   kernel : 
     func : fill_constant.scalar
     param : [value]
-    data_type : [dtype]
-    backend : [place]
-    layout : [layout]
+    data_type : dtype
+    backend : place
+    layout : layout
   
 - api : full_like
   args : (const Tensor& x, const Scalar& value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
   output: Tensor
   infer_meta : 
-    func : UnchangedInferShape
-    param : [x]
+    func : FullLikeInferShape
+    param : [x, dtype, layout]
   kernel : 
     func : fill_any_like
     param : [x, value]
-    data_type : [dtype, x]
-    backend : [place, x]
-    layout : [layout, x]
+    data_type : dtype > x
+    backend : place > x
+    layout : layout > x
 
 - api : matmul
   args : (const Tensor& x, const Tensor& y, bool transpose_x = false, bool transpose_y = false)
@@ -56,10 +86,43 @@
   kernel : 
     func : mean
 
+- api : multiply
+  args : (const Tensor& x, const Tensor& y)
+  output : Tensor
+  infer_meta : 
+    func : ElementwiseInferShape
+    param : [x, y, -1]
+  kernel :
+    func : elementwise_mul
+    param : [x, y, -1]
+
 - api : ones_like
-  args : (const Tensor& x, DataType dtype, Backend place, DataLayout layout)
+  args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 1, dtype, place, layout)
+
+- api : reshape
+  args : (const Tensor& x, const std::vector<int64_t>& shape)
+  output : Tensor
+  infer_meta : 
+    func : InferShapeFromVecValue
+  kernel : 
+    func : reshape2
+
+- api : subtract
+  args : (const Tensor& x, const Tensor& y)
+  output : Tensor
+  infer_meta : 
+    func : ElementwiseInferShape
+    param : [x, y, -1]
+  kernel :
+    func : elementwise_sub
+    param : [x, y, -1]
+
+- api : zeros_like
+  args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
+  output : Tensor
+  invoke : full_like(x, 0, dtype, place, layout)
 
 # - api : full_like
 #   args : (const Tensor& x, const Scalar& value, DataType dtype, Backend place)->Tensor

@@ -60,9 +60,9 @@ class API:
         args_str = args_str[1:-1]
         args_list = args_str.split(',')
         input_types = ['const Tensor&', 'const Tensor &']
-        attr_types = ['const Scalar&', 'const Scalar &', 'int', 'int32_t', 'int64_t', \
-                      'size_t', 'float', 'double', 'bool', 'const std::vector<int64_t>&',\
-                      'Backend', 'DataLayout', 'DataType']
+        attr_types = ['const Scalar&', 'const Scalar &', 'const ScalarArray&', 'const ScalarArray &', \
+                      'int', 'int32_t', 'int64_t', 'size_t', 'float', 'double', 'bool', \
+                      'const std::vector<int64_t>&', 'Backend', 'DataLayout', 'DataType']
         args_declare_str = ""
         args_define_str = ""
         for item in args_list:
@@ -111,7 +111,7 @@ class API:
 
     def gene_api_declaration(self):
         return f"""
-{self.output} {self.api}({self.args['args_declare']});
+PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
 """
 
     def gene_kernel_select(self, input_names, attrs, kernel):
@@ -121,100 +121,100 @@ class API:
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
 """
-        kernel_key_item_by_attr = ""
-        # Set kernel_key info by attr
+        # Check the tensor options
         attr_backend_count = 0
         attr_layout_count = 0
         attr_data_type_count = 0
         for attr_name in attrs['names']:
-            # Check the tensor options
             if attrs['attr_info'][attr_name][0] == 'Backend':
                 assert kernel['backend'] is not None, \
                     f"{self.api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                attr_backend_count = attr_backend_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataLayout':
                 assert kernel['layout'] is not None, \
                     f"{self.api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                attr_layout_count = attr_layout_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataType':
                 assert kernel['data_type'] is not None, \
                     f"{self.api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
-
-            if kernel['backend'] is not None and attr_name in kernel['backend']:
-                attr_backend_count = attr_backend_count + 1
-                assert attrs['attr_info'][attr_name][
-                    0] == 'Backend', f"{self.api} api: The attribute to set backend only allows the type of Backend, but received {attrs['attr_info'][attr_name][0]}."
-                assert attr_backend_count <= 1, f"{self.api} api: The number of attributes to set backend only allows 0 or 1, but now received more than 1."
-                kernel_key_item_by_attr = kernel_key_item_by_attr + f"""
-  kernel_backend = {attr_name};"""
-
-            if kernel['layout'] is not None and attr_name in kernel['layout']:
-                attr_layout_count = attr_layout_count + 1
-                assert attrs['attr_info'][attr_name][
-                    0] == 'DataLayout', f"{self.api} api: The attribute to set layout only allows the type of Layout, but received {attrs['attr_info'][attr_name][0]}."
-                assert attr_backend_count <= 1, f"{self.api} api: The number of attributes to set layout only allows 0 or 1, but now received more than 1."
-                kernel_key_item_by_attr = kernel_key_item_by_attr + f"""
-  kernel_layout = {attr_name};"""
-
-            if kernel['data_type'] is not None and attr_name in kernel[
-                    'data_type']:
                 attr_data_type_count = attr_data_type_count + 1
-                assert attrs['attr_info'][attr_name][
-                    0] == 'DataType', f"{self.api} api: The attribute to set data_type only allows the type of DataType, but received {attrs['attr_info'][attr_name][0]}."
-                assert attr_data_type_count <= 1, f"{self.api} api: The number of attributes to set data_type only allows 0 or 1, but now received more than 1."
-                kernel_key_item_by_attr = kernel_key_item_by_attr + f"""
-  kernel_data_type = {attr_name};"""
+
+        # preprocess kernel configures
+        kernel_select_code = ""
+        if kernel['backend'] is not None:
+            if '>' in kernel['backend']:
+                vars_list = kernel['backend'].split('>')
+                assert len(
+                    vars_list
+                ) == 2, f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Backend'), \
+                    f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Backend type."
+                kernel_select_code = kernel_select_code + f"""
+  kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+
+            else:
+                args_str = ""
+                for ele in kernel['backend'].split(','):
+                    args_str = args_str + ele.strip() + ', '
+                kernel_select_code = kernel_select_code + f"""
+  kernel_backend = ParseBackend({args_str[:-2]});
+"""
+
+        if kernel['layout'] is not None:
+            if '>' in kernel['layout']:
+                vars_list = kernel['layout'].split('>')
+                assert len(
+                    vars_list
+                ) == 2, f"{self.api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                assert vars_list[0].strip() in attrs['names'] and attrs['attr_info'][vars_list[0].strip()][0] == 'DataLayout', \
+                    f"{self.api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                kernel_select_code = kernel_select_code + f"""
+  kernel_layout = ParseLayoutWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+
+            else:
+                vars_list = kernel['layout'].split(',')
+                assert len(
+                    vars_list
+                ) == 1, f"{self.api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                kernel_select_code = kernel_select_code + f"""
+  kernel_layout = ParseLayout({vars_list[0].strip()});
+"""
+
+        if kernel['data_type'] is not None:
+            if '>' in kernel['data_type']:
+                vars_list = kernel['data_type'].split('>')
+                assert len(
+                    vars_list
+                ) == 2, f"{self.api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                assert vars_list[0].strip() in attrs['names'] and attrs['attr_info'][vars_list[0].strip()][0] == 'DataType', \
+                    f"{self.api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                kernel_select_code = kernel_select_code + f"""
+  kernel_data_type = ParseDataTypeWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+
+            else:
+                vars_list = kernel['data_type'].split(',')
+                assert len(
+                    vars_list
+                ) == 1, f"{self.api} api: The number of params to set data_type only allows 2, but received {len(vars_list)}."
+                kernel_select_code = kernel_select_code + f"""
+  kernel_data_type = ParseDataType({vars_list[0].strip()});
+"""
 
         if len(input_names) == 0:
-            assert attr_backend_count == 1 and attr_layout_count == 1 and attr_data_type_count == 1, \
+            assert attr_backend_count > 0 and attr_layout_count > 0 and attr_data_type_count > 0, \
                 f"{self.api} api: When there is no input tensor, the args must have 'Backend', 'DataLayout' and 'DataType'."
 
-        # Set kernel_key info by input
         kernel_select_args = ""
-        kernel_key_item_by_input = ""
-
-        input_backend_count = 0
-        input_layout_count = 0
-        input_data_type_count = 0
-
         for input_name in input_names:
-            if kernel['backend'] is not None and input_name in kernel[
-                    'backend']:
-                input_backend_count = input_backend_count + 1
-                assert input_backend_count <= 1, f"{self.api} api: Currently, the number of inputs to set backend only allows 0 or 1, but now received more than 1."
-                kernel_key_item_by_input = kernel_key_item_by_input + f"""
-  if (kernel_backend == Backend::UNDEFINED) {{
-    kernel_backend = kernel_key_parser.ParseBackend({input_name});
-  }}"""
-
-            if kernel['layout'] is not None and input_name in kernel['layout']:
-                input_layout_count = input_layout_count + 1
-                assert input_layout_count <= 1, f"{self.api} api: Currently, the number of inputs to set layout only allows 0 or 1, but now received more than 1."
-                kernel_key_item_by_input = kernel_key_item_by_input + f"""
-  if (kernel_layout == DataLayout::UNDEFINED) {{
-    kernel_layout = kernel_key_parser.ParseLayout({input_name});
-  }}"""
-
-            if kernel['data_type'] is not None and input_name in kernel[
-                    'data_type']:
-                input_data_type_count = input_data_type_count + 1
-                assert input_data_type_count <= 1, f"{self.api} api: Currently, the number of inputs to set data_type only allows 0 or 1, but now received more than 1."
-                kernel_key_item_by_input = kernel_key_item_by_input + f"""
-  if (kernel_data_type == DataType::UNDEFINED) {{
-    kernel_data_type = kernel_key_parser.ParseDataType({input_name});
-  }}"""
-
             kernel_select_args = kernel_select_args + input_name + ", "
 
         if len(kernel_select_args) > 2:
             kernel_select_args = kernel_select_args[:-2]
 
-        if len(kernel_key_item_by_input) > 0:
-            kernel_key_parse_code = """
-
-  CustomKernelKeyParser kernel_key_parser;
-"""
-            kernel_key_item_by_input = kernel_key_parse_code + kernel_key_item_by_input
-
-        kernel_select_code = kernel_key_item_init + kernel_key_item_by_attr + kernel_key_item_by_input
+        kernel_select_code = kernel_key_item_init + kernel_select_code
 
         if len(input_names) > 0:
             kernel_select_code = kernel_select_code + f"""
@@ -236,7 +236,9 @@ class API:
 
         kernel_select_code = kernel_select_code + f"""
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
-      "{kernel['func']}", {{kernel_backend, kernel_layout, kernel_data_type}});"""
+      "{kernel['func']}", {{kernel_backend, kernel_layout, kernel_data_type}});
+  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+  VLOG(6) << "{self.api} API kernel: " << kernel;"""
 
         return kernel_select_code
 
@@ -249,37 +251,46 @@ class API:
                 param_code = param_code + self.prefix_tensor_name + param + "->meta(), "
             elif param in attr_names:
                 param_code = param_code + param + ", "
+            elif isinstance(param, str):
+                param_code = param_code + + "\"" + param + "\", "
             else:
-                raise ValueError(
-                    f"{self.api}: The param {param} of infer_mate is not found in api args."
-                )
+                param_code = param_code + str(param) + ", "
+
         param_code = param_code[:-2]
         return f"""
-  auto out_meta = {infer_meta['func']}({param_code});
+  auto out_meta = pten::{infer_meta['func']}({param_code});
 """
 
-    def gene_kernel_context(self, input_names, attr_names, infer_meta,
-                            kernel_param):
+    def gene_kernel_context(self, input_names, attrs, infer_meta, kernel_param):
+        attr_names = attrs['names']
         if kernel_param is None:
             kernel_param = input_names + attr_names
-        # set input for kernel_context
-        input_code_str = ""
-        for input_name in input_names:
-            if input_name in kernel_param:
-                input_code_str = input_code_str + f"""
-  auto {self.prefix_tensor_name}{input_name} = std::dynamic_pointer_cast<pten::DenseTensor>({input_name}.impl());
-  kernel_context.EmplaceBackInput({self.prefix_tensor_name}{input_name});"""
 
-        # set attr for kernel_context
+        input_code_str = ""
         attr_code_str = ""
-        for attr_name in attr_names:
-            if attr_name in kernel_param:
+        for param in kernel_param:
+            if param in input_names:
+                # set input for kernel_context
+                input_code_str = input_code_str + f"""
+  auto {self.prefix_tensor_name}{param} = std::dynamic_pointer_cast<pten::DenseTensor>({param}.impl());
+  kernel_context.EmplaceBackInput({self.prefix_tensor_name}{param});"""
+
+            elif param in attr_names:
+                # set attr for kernel_context
+                if 'ScalarArray' in attrs['attr_info'][param][0]:
+                    param = 'pten::ScalarArray(' + param + ')'
+                elif 'Scalar' in attrs['attr_info'][param][0]:
+                    param = 'pten::Scalar(' + param + ')'
                 attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({attr_name});"""
+  kernel_context.EmplaceBackAttr({param});"""
+
+            else:
+                attr_code_str = attr_code_str + f"""
+  kernel_context.EmplaceBackAttr({param});"""
 
         return f"""
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-  auto kernel_context = pten::KernelContext(*dev_ctx);
+  auto kernel_context = pten::KernelContext(dev_ctx);
 {input_code_str}
 {attr_code_str}
 {self.gene_infer_meta(input_names, attr_names, infer_meta)}
@@ -295,9 +306,9 @@ class API:
     def gene_api_code(self):
         if self.is_base_api:
             return f"""
-{self.output} {self.api}({self.args["args_define"]}) {{
+PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-{self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta, self.kernel['param'])}
+{self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs'], self.infer_meta, self.kernel['param'])}
 
   kernel(&kernel_context);
   return out;
@@ -306,7 +317,7 @@ class API:
 
         else:
             return f"""
-{self.output} {self.api}({self.args["args_define"]}) {{
+PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
   return {self.invoke};
 }}
 """
@@ -345,13 +356,50 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
+#include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infershape.h"
+"""
+
+
+def module_declare():
+    return """
+PT_DECLARE_MODULE(CreationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(CreationCUDA);
+#endif
+
+PT_DECLARE_MODULE(LinalgCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(LinalgCUDA);
+#endif
+
+PT_DECLARE_MODULE(ManipulationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(ManipulationCUDA);
+#endif
+
+PT_DECLARE_MODULE(MathCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(MathCUDA);
+#endif
+
+"""
+
+
+def api_register():
+    return """
+PT_REGISTER_API(Creation);
+PT_REGISTER_API(Linalg);
+PT_REGISTER_API(Manipulation);
+PT_REGISTER_API(Math);
 """
 
 
@@ -384,6 +432,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     source_file.write(license())
     include_header_file = "paddle/pten/api/include/api.h"
     source_file.write(source_include(include_header_file))
+    source_file.write(module_declare())
     source_file.write(namespace[0])
 
     for api in apis:
@@ -394,6 +443,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
+    source_file.write(api_register())
 
     header_file.close()
     source_file.close()

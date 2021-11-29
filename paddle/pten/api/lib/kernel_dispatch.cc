@@ -78,13 +78,25 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
   return dtype;
 }
 
+DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
+  return dtype != DataType::UNDEFINED ? dtype : ParseDataType(tensor);
+}
+
 Backend ParseBackend(Backend backend) { return backend; }
 Backend ParseBackend(const Tensor& tensor) {
   return pten::TransToPtenBackend(tensor.inner_place());
 }
 
+Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {
+  return backend != Backend::UNDEFINED ? backend : ParseBackend(tensor);
+}
+
 DataLayout ParseLayout(DataLayout layout) { return layout; }
 DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+
+DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
+  return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
+}
 
 }  // namespace experimental
 }  // namespace paddle

@@ -1,7 +1,7 @@
 if(WITH_ROCM)
-  hip_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor utils_api manipulation_api glog)
+  hip_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor pten_function_api utils_api glog)
 else()
-  cc_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor utils_api manipulation_api glog)
+  cc_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor pten_function_api utils_api glog)
 endif()
 
 cc_test(test_pten_exception SRCS test_pten_exception.cc DEPS gtest)
