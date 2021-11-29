@@ -165,6 +165,53 @@ class TestExpandAsOpRank6(XPUOpTest):
         pass
 
 
+class TestExpandAsOpRank6BOOL(XPUOpTest):
+    def setUp(self):
+        self.set_xpu()
+        self.place = paddle.XPUPlace(0)
+        self.op_type = "expand_as_v2"
+        x = np.random.rand(1, 1, 7, 16).astype("bool")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("bool")
+        self.inputs = {'X': x}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def set_xpu(self):
+        self.__class__.use_xpu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        pass
+
+
+class TestExpandAsOpRank6FP16(XPUOpTest):
+    def setUp(self):
+        self.set_xpu()
+        self.place = paddle.XPUPlace(0)
+        self.op_type = "expand_as_v2"
+        x = np.random.rand(1, 1, 7, 16).astype("float16")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("float16")
+        self.inputs = {'X': x}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def set_xpu(self):
+        self.__class__.use_xpu = True
+        self.__class__.no_need_check_grad = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        pass
+
+
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):

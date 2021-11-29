@@ -211,6 +211,16 @@ class TesstExpandV2OpInt64(TestExpandV2OpInteger):
         self.dtype = 'int64'
 
 
+class TesstExpandV2OpBool(TestExpandV2OpInteger):
+    def init_dtype(self):
+        self.dtype = 'bool'
+
+
+class TesstExpandV2OpFP16(TestExpandV2OpInteger):
+    def init_dtype(self):
+        self.dtype = 'float16'
+
+
 # Test python API
 class TestExpandV2API(unittest.TestCase):
     def test_static(self):

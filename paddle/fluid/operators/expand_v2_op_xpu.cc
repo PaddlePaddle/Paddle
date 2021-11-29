@@ -20,6 +20,8 @@ namespace operators {
 
 template <typename T>
 class ExpandV2XPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<framework::Tensor>("X");
@@ -88,16 +90,25 @@ class ExpandV2XPUKernel : public framework::OpKernel<T> {
 
     framework::DDim out_dims = framework::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
-    auto out_data = Out->mutable_data<T>(context.GetPlace());
-    auto x_data = X->data<T>();
-
+    Out->mutable_data<T>(context.GetPlace());
     auto& x_shape = vec_in_dims;
     auto out_shape = framework::vectorize<int>(out_dims);
 
     const auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
-    int r = xpu::broadcast<T>(dev_ctx.x_context(), x_data, out_data, x_shape,
-                              out_shape);
+    int r = XPU_SUCCESS;
+
+    if (std::is_same<T, bool>::value) {
+      auto x_data = reinterpret_cast<const int8_t*>(X->data<T>());
+      auto out_data = reinterpret_cast<int8_t*>(Out->data<T>());
+      r = xpu::broadcast<int8_t>(dev_ctx.x_context(), x_data, out_data, x_shape,
+                                 out_shape);
+    } else {
+      auto x_data = reinterpret_cast<const XPUType*>(X->data<T>());
+      auto out_data = reinterpret_cast<XPUType*>(Out->data<T>());
+      r = xpu::broadcast<XPUType>(dev_ctx.x_context(), x_data, out_data,
+                                  x_shape, out_shape);
+    }
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
                                           "XPU API(broadcast) return wrong "
                                           "value[%d %s] in ExpandV2XPUKernel.",
@@ -110,6 +121,8 @@ class ExpandV2XPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(expand_v2, ops::ExpandV2XPUKernel<float>,
+                       ops::ExpandV2XPUKernel<paddle::platform::float16>,
+                       ops::ExpandV2XPUKernel<bool>,
                        ops::ExpandV2XPUKernel<int>,
                        ops::ExpandV2XPUKernel<int64_t>);
 
