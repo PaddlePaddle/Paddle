@@ -333,12 +333,11 @@ class Quant2Int8MkldnnPass(object):
             weight = self._load_param(self._scope, weight_var_name)
             return np.all(np.mod(weight, 1) == 0)
 
+        mul_and_matmul_ops = self._mul_ops + self._matmul_ops
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops and _is_int8_weights(op, "Filter"):
                 self._dequantize_op_weights(graph, op, "Filter", "Output")
-            elif op.name() in self._mul_ops and _is_int8_weights(op, "Y"):
-                self._dequantize_op_weights(graph, op, "Y", "Out")
-            elif op.name() in self._matmul_ops and _is_int8_weights(op, "Y"):
+            elif op.name() in mul_and_matmul_ops and _is_int8_weights(op, "Y"):
                 self._dequantize_op_weights(graph, op, "Y", "Out")
 
         return graph
