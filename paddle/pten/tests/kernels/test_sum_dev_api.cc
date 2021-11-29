@@ -27,7 +27,7 @@ namespace tests {
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
-TEST(DEV_API, mean) {
+TEST(DEV_API, sum) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -46,12 +46,13 @@ TEST(DEV_API, mean) {
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
-  std::vector<int64_t> dims = {0, 1};
+  std::vector<int64_t> axis = {0, 1};
   // 2. test API
-  auto out = pten::Mean<float>(
+  auto out = pten::Sum<float>(
       *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
       dense_x,
-      dims,
+      axis,
+      pten::DataType::FLOAT32,
       false);
 
   // 3. check result
@@ -60,7 +61,7 @@ TEST(DEV_API, mean) {
   ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
-  auto expect_result = sum / 12;
+  auto expect_result = sum;
   auto actual_result = out.data<float>()[0];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
