@@ -137,7 +137,7 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& paddle_name,
 
   const auto& cinn_name = paddle2cinn_varmap_.at(paddle_name);
   auto cinn_tensor = GetCinnTensor(cinn_name);
-  if (paddle_tensor->numel() == 0) {
+  if (!paddle_tensor->IsInitialized()) {
     paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
   }
   CheckTensorEquivalent(paddle_name, *paddle_tensor, cinn_tensor);
@@ -152,7 +152,7 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name,
                     platform::errors::InvalidArgument(
                         "Variable(%s) not found in cinn socpe.", cinn_name));
   auto cinn_tensor = GetCinnTensor(cinn_name);
-  if (paddle_tensor->numel() == 0) {
+  if (!paddle_tensor->IsInitialized()) {
     paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
   }
   CheckTensorEquivalent(cinn_name, *paddle_tensor, cinn_tensor);
