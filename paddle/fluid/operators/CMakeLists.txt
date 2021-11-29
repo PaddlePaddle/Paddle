@@ -79,6 +79,9 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
+cc_library(matmul_utils SRCS matmul_utils.cc DEPS operator)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} matmul_utils)
+
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op

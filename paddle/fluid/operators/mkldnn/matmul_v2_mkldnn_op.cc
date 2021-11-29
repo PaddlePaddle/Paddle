@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/matmul_utils.h"
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
 
 namespace {
@@ -234,7 +235,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto y_dims = vectorize(y->dims());
     auto out_dims = vectorize(out->dims());
 
-    int ndims = std::max(x->dims().size(), y->dims().size());
+    int ndims = std::max(x_dims.size(), y_dims.size());
     ndims = std::max(ndims, 3);
 
     std::vector<int64_t> x_bd_dims(ndims, 1);
@@ -397,8 +398,6 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
   paddle::operators::MatMulGradMKLDNNKernel<T> matmul_v1_grad_mkldnn_kernel;
 };
 }  // anonymous namespace
-
-namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    MatMulV2MKLDNNKernel<float>,

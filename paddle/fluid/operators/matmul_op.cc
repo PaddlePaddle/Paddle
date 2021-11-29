@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/matmul_utils.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -33,28 +34,6 @@ inline static std::string DumpMatrixShape(const math::MatDescriptor &desc) {
   buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
          << desc.width_ << "]";
   return buffer.str();
-}
-
-/**
- * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
- * original x_dim is returned.
- */
-static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
-  if (x_dim.size() > 1) {
-    return x_dim;
-  }
-  return framework::make_ddim({1, x_dim[0]});
-}
-
-/**
- * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
- * original y_dim is returned.
- */
-static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
-  if (y_dim.size() > 1) {
-    return y_dim;
-  }
-  return framework::make_ddim({y_dim[0], 1});
 }
 
 template <typename DeviceContext, typename T>
@@ -105,92 +84,6 @@ class MatMulKernel : public framework::OpKernel<T> {
 #endif
   }
 };
-
-// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
-// Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldInitDims(const framework::Tensor &input) {
-  auto output = input;
-  auto in_dims = input.dims();
-  if (in_dims.size() == 3) {
-    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
-  }
-  return output;
-}
-
-// Reshape a rank-3 tensor from P x M x N to M x (P * N).
-// (Warning: This requires transposing data and writes into new memory.)
-// Identity op if the tensor is not of rank 3.
-template <typename DeviceContext, typename T>
-static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
-                                             const framework::Tensor &input) {
-  auto in_dims = input.dims();
-  if (in_dims.size() != 3) {
-    return input;
-  }
-  framework::Tensor output;
-  output.Resize({in_dims[1], in_dims[0], in_dims[2]});
-  output.mutable_data<T>(context.GetPlace());
-  std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
-  trans(context, input, &output, axis);
-  output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
-
-  return output;
-}
-
-/**
- * Reshape a tensor to 3-D or 2-D tensor by matrix descriptor.
- *
- * The shape would be [BatchSize, H, W] or [H, W].
- * If transposed, `H,W` will be swapped.
- */
-static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const math::MatDescriptor &descriptor) {
-  int64_t h, w;
-  h = descriptor.height_;
-  w = descriptor.width_;
-  if (descriptor.trans_) {
-    std::swap(w, h);
-  }
-  if (descriptor.batch_size_) {
-    x->Resize({descriptor.batch_size_, h, w});
-  } else {
-    x->Resize({h, w});
-  }
-}
-
-/**
- * Reshape the x,y,out tensor to 3-D or 2-D tensor by matrix descriptor
- * Out = matmul(x, y)
- *
- * This method will first calculate X,Y matrix sequence, and then calculate
- * the out shape.
- *
- * Assume X = [BatchSize, H1, W1], Y = [BatchSize, H2, W2]
- * The out = [BatchSize, H1, W2]
- *
- * If there is no batch size in `X` and `Y`, the out will be [H1, W2]
- * If any of `X` and `Y` has batch size BatchSize, the out will have the
- * BatchSize.
- */
-static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
-                                           framework::Tensor *y,
-                                           framework::Tensor *out, bool trans_x,
-                                           bool trans_y) {
-  auto x_dim = RowMatrixFromVector(x->dims());
-  auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
-  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
-    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
-  } else {
-    out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_, mat_dim_y.width_});
-  }
-
-  ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
-  ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
-}
 
 // Using dimensional constraints on matrix multiplication, it is
 // straight-forward to check the following table for when X and Y
@@ -323,81 +216,6 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     }
   }
 };
-
-framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
-                               std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.GetInputDim(input_name);
-
-  PADDLE_ENFORCE_GT(dim.size(), 0,
-                    platform::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
-
-  // if mkldnn reshape+transpose+matmul fuse activated
-  if (!shape.empty() && !axis.empty()) {
-    PADDLE_ENFORCE_GE(
-        shape.size(), 2,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_LE(
-        shape.size(), 4,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_EQ(
-        shape.size(), axis.size(),
-        platform::errors::InvalidArgument(
-            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
-            "must be equal.",
-            input_name, input_name));
-
-    int num_negative = std::count(shape.begin(), shape.end(), -1);
-    PADDLE_ENFORCE_LE(num_negative, 1,
-                      platform::errors::InvalidArgument(
-                          "The max number of -1 in fused_reshape_%s is 1 "
-                          "but received %d.",
-                          input_name, num_negative));
-
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i, dim.size(),
-                            platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name, i, dim.size()));
-          shape[i] = dim.at(i);
-        }
-      }
-    }
-
-    // if "-1" is present then one of reshape dims must be infered
-    auto it_negative = std::find(shape.begin(), shape.end(), -1);
-    if (it_negative != shape.end()) {
-      int64_t dim_product = 1;
-      for (int i = 0; i < dim.size(); i++) {
-        dim_product *= dim.at(i);
-      }
-
-      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                              std::multiplies<int>());
-      int index = std::distance(shape.begin(), it_negative);
-      shape[index] = dim_product / shape_product;
-    }
-
-    dim = dim.reshape(shape).transpose(axis);
-  }
-  return dim;
-}
 
 template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
@@ -585,8 +403,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = GetDimForInput(*context, "X");
-    auto dim_y = GetDimForInput(*context, "Y");
+    auto dim_x = GetDimForInput(*context, 'X');
+    auto dim_y = GetDimForInput(*context, 'Y');
     auto mat_dim_x =
         math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
                                      context->Attrs().Get<bool>("transpose_X"));

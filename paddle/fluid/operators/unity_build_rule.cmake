@@ -156,6 +156,8 @@ register_unity_group(cc
     match_matrix_tensor_op.cc
     matmul_op.cc
     mkldnn/matmul_mkldnn_op.cc
+    matmul_v2_op.cc
+    mkldnn/matmul_v2_mkldnn_op.cc
     max_sequence_len_op.cc
     maxout_op.cc
     merge_lod_tensor_op.cc
@@ -170,8 +172,7 @@ register_unity_group(cc
     fake_quantize_op.cc
     gelu_op.cc
     get_tensor_from_selected_rows_op.cc
-    lookup_table_op.cc
-    matmul_v2_op.cc)
+    lookup_table_op.cc)
 register_unity_group(cc
     mean_iou_op.cc
     mean_op.cc

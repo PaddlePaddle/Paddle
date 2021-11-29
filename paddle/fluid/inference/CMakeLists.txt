@@ -75,6 +75,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/paddle_infer_contrib.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../operators/matmul_utils.cc
     ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
