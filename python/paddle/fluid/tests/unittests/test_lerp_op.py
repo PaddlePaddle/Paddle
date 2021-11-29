@@ -24,20 +24,12 @@ paddle.enable_static()
 np.random.seed(0)
 
 
-def lerp_grad(x, y, weight, dout):
-    # dx1 = dout * x2 / (x1 * x1 + x2 * x2)
-    # dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
-    # return dx1, dx2
-    return x, y
-
-
 class TestLerp(OpTest):
     def setUp(self):
         self.op_type = "lerp"
         self.init_dtype()
         x = np.arange(1., 101.).astype(self.dtype)
         y = np.full(100, 10.).astype(self.dtype)
-        # w = np.asarray([0.5]).astype(self.dtype)
         self.attrs = {'WeightValue': 0.5}
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': x + 0.5 * (y - x)}

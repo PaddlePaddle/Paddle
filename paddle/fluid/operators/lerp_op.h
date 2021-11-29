@@ -16,6 +16,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -80,7 +84,7 @@ static void LerpFunction(const framework::ExecutionContext& ctx) {
         w * (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
   } else {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Must have one of weight or value"));
+        platform::errors::InvalidArgument("Missing input of Weight."));
   }
 }
 
@@ -128,10 +132,7 @@ static void LerpGradFunction(const framework::ExecutionContext& ctx) {
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       auto eigen_dx = framework::EigenTensor<T, D>::From(*dx, x_dims);
-      auto eigen_expr =
-          eigen_dout * (1 +
-                        (eigen_out - eigen_y.broadcast(y_bcast_dims)) /
-                            (1 - eigen_w).pow(2));
+      auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
       eigen_dx.device(place) = eigen_expr.reshape(x_reshape_dims)
                                    .sum(reduce_dims)
                                    .reshape(eigen_dx.dimensions());
@@ -139,9 +140,7 @@ static void LerpGradFunction(const framework::ExecutionContext& ctx) {
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
       auto eigen_dy = framework::EigenTensor<T, D>::From(*dy, y_dims);
-      auto eigen_expr =
-          eigen_dout *
-          (1 + (eigen_out - eigen_x.broadcast(x_bcast_dims)) / eigen_w.pow(2));
+      auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
       eigen_dy.device(place) = eigen_expr.reshape(y_reshape_dims)
                                    .sum(reduce_dims)
                                    .reshape(eigen_dy.dimensions());
@@ -151,10 +150,7 @@ static void LerpGradFunction(const framework::ExecutionContext& ctx) {
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       auto eigen_dx = framework::EigenTensor<T, D>::From(*dx, x_dims);
-      auto eigen_expr =
-          eigen_dout * (1 +
-                        (1 / std::pow(1 - w, 2)) *
-                            (eigen_out - eigen_y.broadcast(y_bcast_dims)));
+      auto eigen_expr = (1 - w) * eigen_dout;
       eigen_dx.device(place) = eigen_expr.reshape(x_reshape_dims)
                                    .sum(reduce_dims)
                                    .reshape(eigen_dx.dimensions());
@@ -162,17 +158,14 @@ static void LerpGradFunction(const framework::ExecutionContext& ctx) {
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
       auto eigen_dy = framework::EigenTensor<T, D>::From(*dy, y_dims);
-      auto eigen_expr =
-          eigen_dout * (1 +
-                        (1 / std::pow(w, 2)) *
-                            (eigen_out - eigen_x.broadcast(x_bcast_dims)));
+      auto eigen_expr = w * eigen_dout;
       eigen_dy.device(place) = eigen_expr.reshape(y_reshape_dims)
                                    .sum(reduce_dims)
                                    .reshape(eigen_dy.dimensions());
     }
   } else {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Must have one of weight or value"));
+        platform::errors::InvalidArgument("Missing input of Weight."));
   }
 }
 

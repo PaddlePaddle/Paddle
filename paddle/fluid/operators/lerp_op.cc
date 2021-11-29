@@ -113,7 +113,6 @@ class LerpOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> op) const override {
-    VLOG(1) << "LerpOpGradMaker::Apply";
     op->SetType("lerp_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
