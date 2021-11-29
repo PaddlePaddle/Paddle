@@ -198,6 +198,7 @@ XPUOpMap& get_kl1_ops() {
                                    pOpKernelType(vartype::INT64, XPUPlace())})},
       {"sgd", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"adam", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"adamw", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"rmsprop", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"lamb", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"pool2d", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
