@@ -79,12 +79,13 @@
     func : matmul_v2
 
 - api : mean
-  args : (const Tensor& x)
+  args : (const Tensor& x, const std::vector<int64_t>& axis, bool keep_dim)
   output : Tensor
   infer_meta : 
-    func : ReductionInferMeta
+    func : ReduceInferMeta
   kernel : 
-    func : mean
+    func : reduce_mean
+    param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
 
 - api : multiply
   args : (const Tensor& x, const Tensor& y)
@@ -118,6 +119,15 @@
   kernel :
     func : elementwise_sub
     param : [x, y, -1]
+
+- api : sum
+  args : (const Tensor& x, const std::vector<int64_t>& axis, bool keep_dim)
+  output : Tensor
+  infer_meta : 
+    func : ReduceInferMeta
+  kernel : 
+    func : reduce_sum
+    param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
 
 - api : zeros_like
   args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)

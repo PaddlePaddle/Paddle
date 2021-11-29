@@ -253,6 +253,8 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
                 param_code = param_code + param + ", "
             elif isinstance(param, str):
                 param_code = param_code + + "\"" + param + "\", "
+            elif isinstance(param, bool):
+                param_code = param_code + str(param).lower() + ", "
             else:
                 param_code = param_code + str(param) + ", "
 
@@ -283,6 +285,10 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
                     param = 'pten::Scalar(' + param + ')'
                 attr_code_str = attr_code_str + f"""
   kernel_context.EmplaceBackAttr({param});"""
+
+            elif isinstance(param, bool):
+                attr_code_str = attr_code_str + f"""
+  kernel_context.EmplaceBackAttr({str(param).lower()});"""
 
             else:
                 attr_code_str = attr_code_str + f"""
