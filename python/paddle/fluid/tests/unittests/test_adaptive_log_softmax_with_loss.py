@@ -22,8 +22,6 @@ from paddle.nn import functional as F
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        paddle.seed(10)
-        np.random.seed(10)
 
     def test_error(self):
         # args validation
