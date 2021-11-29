@@ -25,20 +25,20 @@ from op_test import OpTest
 paddle.enable_static()
 
 
-class TestRad2degAPI(unittest.TestCase):
+class TestDeg2radAPI(unittest.TestCase):
     def setUp(self):
         self.x_dtype = 'float64'
         self.x_np = np.array(
-            [3.142, -3.142, 6.283, -6.283, 1.570, -1.570]).astype(np.float64)
+            [180.0, -180.0, 360.0, -360.0, 90.0, -90.0]).astype(np.float64)
         self.x_shape = [6]
-        self.out_np = np.rad2deg(self.x_np)
+        self.out_np = np.deg2rad(self.x_np)
 
     def test_static_graph(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
             x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
-            out = paddle.rad2deg(x)
+            out = paddle.deg2rad(x)
 
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
@@ -50,43 +50,26 @@ class TestRad2degAPI(unittest.TestCase):
 
     def test_dygraph(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
-        result1 = paddle.rad2deg(x1)
+        x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
+        result1 = paddle.deg2rad(x1)
         self.assertEqual(np.allclose(self.out_np, result1.numpy()), True)
 
         paddle.enable_static()
 
 
-class TestRad2degAPI2(TestRad2degAPI):
-    def setUp(self):
-        self.x_np = np.pi / 2
-        self.x_shape = [1]
-        self.out_np = 90
-        self.x_dtype = 'float32'
-
-    def test_dygraph(self):
-        paddle.disable_static()
-
-        x2 = paddle.to_tensor(np.pi / 2)
-        result2 = paddle.rad2deg(x2)
-        self.assertEqual(np.allclose(90, result2.numpy()), True)
-
-        paddle.enable_static()
-
-
-class TestRad2degAPI3(TestRad2degAPI):
+class TestDeg2radAPI2(TestDeg2radAPI):
     # Test input data type is int
     def setUp(self):
-        self.x_np = 1
+        self.x_np = 180
         self.x_shape = [1]
-        self.out_np = 180 / np.pi
+        self.out_np = np.pi
         self.x_dtype = 'int64'
 
     def test_dygraph(self):
         paddle.disable_static()
 
-        x2 = paddle.to_tensor(1)
-        result2 = paddle.rad2deg(x2)
-        self.assertEqual(np.allclose(180 / np.pi, result2.numpy()), True)
+        x2 = paddle.to_tensor(180)
+        result2 = paddle.deg2rad(x2)
+        self.assertEqual(np.allclose(np.pi, result2.numpy()), True)
 
         paddle.enable_static()

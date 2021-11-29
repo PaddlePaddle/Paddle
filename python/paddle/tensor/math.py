@@ -2622,11 +2622,11 @@ def rad2deg(x, name=None):
             rad2deg(x)=180/ \pi * x
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
 
     Examples:
         .. code-block:: python
@@ -2638,25 +2638,37 @@ def rad2deg(x, name=None):
             result1 = paddle.rad2deg(x1)
             print(result1)
             # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-                     [180.02334595, -180.02334595,  359.98937988, -359.98937988,
-                       9.95437622 , -89.95437622])
+            #         [180.02334595, -180.02334595,  359.98937988, -359.98937988,
+            #           9.95437622 , -89.95437622])
 
             x2 = paddle.to_tensor(np.pi/2)
             result2 = paddle.rad2deg(x2)
             print(result2)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-                     [90.])
+            #         [90.])
+                     
+            x3 = paddle.to_tensor(1)
+            result2 = paddle.rad2deg(x3)
+            print(result3)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [57.29578018])
     """
-
     rad2deg_scale = 180 / np.pi
     if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
         return _C_ops.scale(x, 'scale', rad2deg_scale)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'rad2deg')
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg')
         helper = LayerHelper('rad2deg', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out_cast = x
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
+            helper.append_op(
+                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
         helper.append_op(
-            type='scale', inputs={'X':x}, outputs={'Out': out}, attrs={'scale': rad2deg_scale})
+            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': rad2deg_scale})
         return out
 
 def deg2rad(x, name=None):
@@ -2669,11 +2681,11 @@ def deg2rad(x, name=None):
             deg2rad(x)=\pi * x / 180
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
 
     Examples:
         .. code-block:: python
@@ -2685,25 +2697,29 @@ def deg2rad(x, name=None):
             result1 = paddle.deg2rad(x1)
             print(result1)
             # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-                     [3.14159274, -3.14159274,  6.28318548, -6.28318548,  1.57079637,
-                       -1.57079637])
+            #         [3.14159274, -3.14159274,  6.28318548, -6.28318548,  1.57079637,
+            #           -1.57079637])
 
             x2 = paddle.to_tensor(180)
             result2 = paddle.deg2rad(x2)
             print(result2)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-                     [3.14159274])
+            #         [3.14159274])
     """
-
     deg2rad_scale = np.pi / 180.0
     if in_dygraph_mode():
-        if convert_dtype(x.dtype) in ['int64']:
-            x = cast(x, dtype="float64")
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
         return _C_ops.scale(x, 'scale', deg2rad_scale)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'deg2rad')
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad')
         helper = LayerHelper('deg2rad', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out_cast = x
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
+            helper.append_op(
+                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
         helper.append_op(
-            type='scale', inputs={'X':x}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
+            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
         return out
