@@ -2648,7 +2648,7 @@ def rad2deg(x, name=None):
             #         [90.])
                      
             x3 = paddle.to_tensor(1)
-            result2 = paddle.rad2deg(x3)
+            result3 = paddle.rad2deg(x3)
             print(result3)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #         [57.29578018])
