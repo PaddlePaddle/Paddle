@@ -108,7 +108,7 @@ class KernelContext {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
   }
 
-  const std::shared_ptr<TensorBase> InputPtrAt(size_t idx) const {
+  std::shared_ptr<TensorBase>& MutableInputPtrAt(size_t idx) {
     return inputs_.at(idx);
   }
 

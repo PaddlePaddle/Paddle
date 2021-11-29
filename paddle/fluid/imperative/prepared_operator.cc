@@ -304,7 +304,7 @@ static void BuildDygraphPtenKernelContext(
     // the start_idx. For the reason of reusing the allocted of inputs or
     // outputs in pt_kernel_context_, the current size of input/output can be
     // greater then the index of which the tensort wanted to set to, so it will
-    // use ReMakePtenDenseTensorFromVar to make pten tensor.
+    // use MakePtenTensorBaseFromVar to reset input pointer.
     if (kernel_ctx->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (const auto& var : ins_vector) {
@@ -317,16 +317,13 @@ static void BuildDygraphPtenKernelContext(
       size_t input_size = kernel_ctx->InputsSize();
       for (size_t j = 0; j < ins_vector.size(); ++j) {
         if (input_size > start_idx + j) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              ins_vector[j]->Var(), in_def,
-              kernel_ctx->MutableInputAt<pten::DenseTensor>(start_idx + j));
-          // TODO(chentianyu03): When multi input kernel, open this code
-          /*
-          } else {
-            kernel_ctx->EmplaceBackInputWithoutSetRange(
-                experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
-                                                        in_def));
-          */
+          kernel_ctx->MutableInputPtrAt(start_idx + j) =
+              experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
+                                                      in_def);
+        } else {
+          kernel_ctx->EmplaceBackInputWithoutSetRange(
+              experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
+                                                      in_def));
         }
       }
       kernel_ctx->MutableInputRangeAt(i) = std::make_pair(start_idx, end_idx);
@@ -366,13 +363,10 @@ static void BuildDygraphPtenKernelContext(
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j]->MutableVar(), out_def,
               kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
-          // TODO(chentianyu03): When multi output kernel, open this code
-          /*
-          } else {
-            kernel_ctx->EmplaceBackOutputWithoutSetRange(
-                experimental::MakePtenTensorBaseFromVar(
-                    outs_vector[j]->MutableVar(), out_def));
-          */
+        } else {
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(
+              experimental::MakePtenTensorBaseFromVar(
+                  outs_vector[j]->MutableVar(), out_def));
         }
       }
       kernel_ctx->MutableOutputRangeAt(i) = std::make_pair(start_idx, end_idx);
