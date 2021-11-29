@@ -50,10 +50,10 @@ class MessageBus final {
 
   bool IsInit() const;
 
-  void Release();
-
   // called by Interceptor, send InterceptorMessage to dst
   bool Send(const InterceptorMessage& interceptor_message);
+
+  ~MessageBus();
 
   DISABLE_COPY_AND_ASSIGN(MessageBus);
 

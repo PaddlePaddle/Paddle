@@ -51,15 +51,11 @@ void MessageBus::Init(
 #endif
 
   ListenPort();
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { MessageBus::Instance().Release(); });
-  });
 }
 
 bool MessageBus::IsInit() const { return is_init_; }
 
-void MessageBus::Release() {
+MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
