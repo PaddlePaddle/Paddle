@@ -62,6 +62,7 @@ class EventContainer {
   }
   ~EventContainer() {
     Reduce();
+    delete event_blocks_;
     for (auto cur = str_blocks_; cur != nullptr;) {
       auto next = cur->next;
       delete cur;
@@ -335,6 +336,14 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
 }
 
 RecordEvent::~RecordEvent() {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook && is_pushed_) {
+    dynload::nvtxRangePop();
+  }
+#endif
+#endif
+
   if (LIKELY(g_enable_host_event_recorder_hook)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
       HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
@@ -345,14 +354,6 @@ RecordEvent::~RecordEvent() {
     }
     return;
   }
-
-#ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook && is_pushed_) {
-    dynload::nvtxRangePop();
-  }
-#endif
-#endif
 
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
@@ -628,10 +629,7 @@ void NvprofEnableRecordEvent() {
 
 void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
-void EnableHostEventRecorder() {
-  g_enable_host_event_recorder_hook = true;
-  HostEventRecorder::GetInstance();
-}
+void EnableHostEventRecorder() { g_enable_host_event_recorder_hook = true; }
 
 std::string PrintHostEvents() {
   std::ostringstream oss;

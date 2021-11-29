@@ -141,7 +141,7 @@ struct RecordEvent {
   uint64_t start_ns_;
   // Event name
   std::string name_;
-  const char* shallow_copy_name_ = nullptr;
+  const char* shallow_copy_name_{nullptr};
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
