@@ -141,11 +141,7 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
         yield config, ["batch_norm"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            max_examples=150,
-            passes=["batch_norm_act_fuse_pass"],
-            min_success_num=150)
+        self.run_and_statis(quant=False, passes=["batch_norm_act_fuse_pass"])
 
 
 if __name__ == "__main__":
