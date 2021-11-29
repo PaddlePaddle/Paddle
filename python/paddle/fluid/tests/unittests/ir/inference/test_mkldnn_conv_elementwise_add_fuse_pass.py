@@ -47,6 +47,7 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         axis = draw(st.sampled_from([1]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
         has_bias = draw(st.booleans())
+        has_res = draw(st.booleans())
 
         def generate_input1(attrs):
             if attrs[0]['data_format'] == "NCHW":
@@ -62,6 +63,25 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         def generate_weight2():
             return np.random.random([16]).astype(np.float32)
 
+        def generate_weight3(attrs):
+            if attrs[0]['data_format'] == "NCHW":
+                shape = [attrs[2]['batch_size'], 16, 64, 64]
+            else:
+                shape = [attrs[2]['batch_size'], 64, 64, 16]
+
+            import paddle
+            import paddle.nn as nn
+            x_var = paddle.uniform(shape, dtype='float32', min=-1., max=1.)
+            if attrs[0]['padding_algorithm'] == "EXPLICIT":
+                padding = attrs[0]['paddings']
+            else:
+                padding = attrs[0]['padding_algorithm']
+            conv = nn.Conv2D(16, 16, (3, 3), attrs[0]['strides'], padding,
+                             attrs[0]['dilations'], 1, "zeros", None, None,
+                             attrs[0]['data_format'])
+            out = conv(x_var)
+            return np.random.random(out.shape).astype(np.float32)
+
         attrs = [{
             "data_format": data_format,
             "dilations": dilations,
@@ -73,7 +93,8 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
             "axis": axis
         }, {
             'batch_size': batch_size,
-            'has_bias': has_bias
+            'has_bias': has_bias,
+            'has_res': has_res
         }]
 
         ops_config = [{
@@ -109,6 +130,8 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         if has_bias:
             ops_config[0]["op_inputs"]["Bias"] = ["bias_weight"]
+        if has_res:
+            ops_config[0]["op_inputs"]["ResidualData"] = ["res_weight"]
 
         ops = self.generate_op_config(ops_config)
 
@@ -128,6 +151,9 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         if has_bias:
             program_config.weights["bias_weight"] = TensorConfig(
                 data_gen=partial(generate_weight2))
+        if has_res:
+            program_config.weights["res_weight"] = TensorConfig(
+                data_gen=partial(generate_weight3, attrs))
 
         return program_config
 
@@ -149,17 +175,29 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         )
 
         def teller2(program_config, predictor_config):
-            # has bias
+            # has Bias
             if len(program_config.weights) == 3:
                 return True
             return False
 
         self.add_ignore_check_case(teller2, SkipReasons.PASS_ACCURACY_ERROR,
-                                   "The output has diff when bias input exits")
+                                   "The output has diff when Bias input exits")
+
+        def teller3(program_config, predictor_config):
+            # has ResidualData
+            if len(program_config.weights) == 4:
+                return True
+            return False
+
+        self.add_ignore_check_case(
+            teller3, SkipReasons.PASS_ACCURACY_ERROR,
+            "The output has diff when ResidualData input exits")
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["conv_elementwise_add_mkldnn_fuse_pass"])
+            max_examples=500,
+            quant=False,
+            passes=["conv_elementwise_add_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
