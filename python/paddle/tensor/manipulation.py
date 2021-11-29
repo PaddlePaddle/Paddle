@@ -495,7 +495,7 @@ def flip(x, axis, name=None):
     return out
 
 
-def rot90(x, k, dims, name=None):
+def rot90(x, k=1, dims=[0, 1], name=None):
     """
     Rotate a n-D tensor by 90 degrees in the plane specified by dims axis. Rotation direction is from the first towards the second axis if k > 0, and from the second towards the first for k < 0.
 
