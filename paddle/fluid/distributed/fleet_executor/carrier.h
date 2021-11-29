@@ -15,8 +15,10 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
@@ -41,7 +43,7 @@ class Carrier final {
   void Init(
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
 
-  ~Carrier() = default;
+  ~Carrier();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
@@ -53,6 +55,12 @@ class Carrier final {
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
 
+  void SetCreatingFlag(bool flag);
+
+  void Start();
+
+  bool IsInit() const;
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:
@@ -61,12 +69,20 @@ class Carrier final {
   // create each Interceptor
   void CreateInterceptors();
 
+  void HandleTmpMessages();
+
   // interceptor logic id to the Nodes info
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
 
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
+
+  std::vector<InterceptorMessage> message_tmp_{};
+  std::mutex tmp_message_mutex_;
+  bool creating_interceptors_{true};
+  std::mutex creating_flag_mutex_;
+  bool is_init_{false};
 };
 
 }  // namespace distributed

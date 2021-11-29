@@ -223,7 +223,7 @@ TEST(CinnLaunchContextTest, TestGetInternalVariableNames) {
       std::make_unique<CinnLaunchContext>(GetDefaultCompiledObj());
   auto internal_variable_names = launch_context->GetInternalVariableNames();
   ASSERT_EQ(internal_variable_names.size(), 1);
-  EXPECT_EQ(internal_variable_names.front(), "cinn_var2");
+  EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
 }
 
 TEST(CinnLaunchContextTest, TestMutableTensorData) {

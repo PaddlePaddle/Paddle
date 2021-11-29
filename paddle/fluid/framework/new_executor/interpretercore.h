@@ -49,12 +49,16 @@ class InterpreterCore {
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
+
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
+  void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
+
  private:
-  void Convert();
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
 
@@ -78,13 +82,24 @@ class InterpreterCore {
 
   void BuildSkipShareLoDInfo();
 
+  void BuildOperatorDependences();
+
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+
+  void ClearLoDTensorArrayInLocalScope();
+
   bool is_build_;
 
   const platform::Place& place_;
-  const BlockDesc& block_;       // not owned
+  const BlockDesc& block_;  // not owned
+  // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
+  // copy a new program and block, the copy_program_ here is used to
+  // hold the program, otherwise block_ maybe not valid after the
+  // new program is deleted.
+  std::shared_ptr<ProgramDesc> copy_program_{nullptr};
+
   VariableScope* global_scope_;  // not owned
 
-  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
   std::vector<size_t> dependecy_count_;
@@ -99,6 +114,8 @@ class InterpreterCore {
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
+  bool create_local_scope_{true};
+  Scope* local_scope_{nullptr};  // not owned
 };
 }  // namespace framework
 }  // namespace paddle

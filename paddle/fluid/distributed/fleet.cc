@@ -570,8 +570,6 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
-    sleep(sleep_seconds_before_fail_exit_);
-    exit(-1);
   }
 }
 
@@ -596,8 +594,6 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "save model failed";
-    sleep(sleep_seconds_before_fail_exit_);
-    exit(-1);
   }
 }
 
@@ -710,8 +706,15 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
                                                    MsgHandlerFunc handler) {
   VLOG(1) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
   auto* communicator = Communicator::GetInstance();
-  return communicator->_worker_ptr->registe_client2client_msg_handler(msg_type,
-                                                                      handler);
+  // for unittest which does not call fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler communicator is "
+               "null";
+    return -1;
+  } else {
+    return communicator->_worker_ptr->registe_client2client_msg_handler(
+        msg_type, handler);
+  }
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(

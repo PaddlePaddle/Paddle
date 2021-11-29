@@ -72,6 +72,7 @@ from .logic import bitwise_xor  # noqa: F401
 from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
+from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
 from .manipulation import cast  # noqa: F401
@@ -332,6 +333,7 @@ tensor_method_func  = [ #noqa
            'logical_xor',
            'not_equal',
            'allclose',
+           'isclose',
            'is_tensor',
            'cast',
            'concat',

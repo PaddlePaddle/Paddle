@@ -392,12 +392,100 @@ class DistributedStrategy(object):
         """
         return get_msg_dict(self.strategy.trainer_desc_configs)
 
+    @property
+    def adam_d2sum(self):
+        """
+        set adam_d2sum
+        Default value: True
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            strategy.adam_d2sum = True  # by default this is True
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.adam_d2sum
+
+    @adam_d2sum.setter
+    @is_strict_auto
+    def adam_d2sum(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.adam_d2sum = flag
+        else:
+            raise ValueError(
+                "The type of `flag` is invalid, expected type is bool, but received {}".
+                format(type(flag)))
+
     @trainer_desc_configs.setter
     @is_strict_auto
     def trainer_desc_configs(self, configs):
         check_configs_key(self.strategy.trainer_desc_configs, configs,
                           "trainer_desc_configs")
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
+
+    @property
+    def fs_client_param(self):
+        """
+        Set fs client configurations. 
+        **Notes**:
+            uri(str): the uri of fs client
+            user(str): the user_name of fs client
+            passwd(str): the passwd of fs client
+            hadoop_bin(str): 
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+            strategy = fleet.DistributedStrategy()
+            configs = {"uri": "xxx", "user": "xxx", passwd: "xxx"}
+            strategy.fs_client_param = configs
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.fs_client_param
+
+    @fs_client_param.setter
+    @is_strict_auto
+    def fs_client_param(self, configs):
+        check_configs_key(self.strategy.fs_client_param, configs,
+                          "fs_client_param")
+        assign_configs_value(self.strategy.fs_client_param, configs)
+
+    @property
+    def sparse_table_configs(self):
+        return self.strategy.downpour_table_param
+
+    @sparse_table_configs.setter
+    @is_strict_auto
+    def sparse_table_configs(self, configs):
+        from google.protobuf.descriptor import FieldDescriptor
+        table_param = self.strategy.downpour_table_param
+
+        def set_table_config(msg, config_name, configs):
+            for field in msg.DESCRIPTOR.fields:
+                name = config_name + "." + field.name
+                if field.type == FieldDescriptor.TYPE_MESSAGE:
+                    print("message:", name)
+                    set_table_config(getattr(msg, field.name), name, configs)
+                else:
+                    print("not message:", name)
+                    if name not in configs:
+                        continue
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        getattr(msg, field.name).extend(configs[name])
+                    else:
+                        setattr(msg, field.name, configs[name])
+
+        set_table_config(table_param, "table_parameters", configs)
 
     @property
     def amp(self):
@@ -1630,6 +1718,29 @@ class DistributedStrategy(object):
             self.strategy.semi_auto = flag
         else:
             print("WARNING: semi-auto should have value of bool type")
+
+    @property
+    def auto_search(self):
+        """
+        Indicating whether we are using auto-search parallel function
+        For details, please reference the following code example
+        Default Value: False
+        Examples:
+          .. code-block:: python
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.auto_search = True
+        """
+        return self.strategy.auto_search
+
+    @auto_search.setter
+    def auto_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.auto_search = flag
+        else:
+            print("WARNING: auto-search should have value of bool type")
 
     @property
     def cudnn_exhaustive_search(self):
