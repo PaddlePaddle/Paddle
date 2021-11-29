@@ -22,6 +22,7 @@
 #endif
 
 #ifdef PADDLE_WITH_BKCL
+#include "paddle/fluid/imperative/bkcl_context.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL

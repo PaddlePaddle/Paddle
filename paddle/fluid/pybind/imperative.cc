@@ -2361,11 +2361,17 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
   py::class_<imperative::HeterParallelContext, imperative::ParallelContext,
              std::shared_ptr<imperative::HeterParallelContext>>(
       m, "HeterParallelContext")
       .def(py::init<const imperative::ParallelStrategy &, const int &>())
-      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::HeterParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
 
   m.def("pylayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,

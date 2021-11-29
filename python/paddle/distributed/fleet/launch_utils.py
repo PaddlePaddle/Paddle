@@ -954,11 +954,8 @@ def get_mapped_cluster_from_args(args, device_mode):
         node_rank = node_ips.index(ip)
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            free_ports = [
-                x
-                for x in range(start_port, start_port + len(node_ranks_mapping[
-                    node_rank]))
-            ]
+            end_port = start_port + len(node_ranks_mapping[node_rank])
+            free_ports = [x for x in range(start_port, end_port)]
         else:
             free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
