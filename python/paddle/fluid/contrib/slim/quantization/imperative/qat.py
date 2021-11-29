@@ -578,8 +578,13 @@ class ImperativeQuantizeOutputs(object):
                         previous_op._set_attr("out_threshold", out_scale)
                         previous_op._set_attr("with_quant_attr", True)
 
+                fetch_op_type = "fetch"
                 for next_op in next_ops:
                     next_op._rename_input(out_var_name, in_var_name)
+                    if fetch_op_type == next_op.type:
+                        pre_op = utils.find_previous_op(block, in_var_name)
+                        pre_op._rename_output(in_var_name, out_var_name)
+                        op._rename_output(out_var_name, "")
 
         _gather_input_scale()
         _gather_output_scale()
