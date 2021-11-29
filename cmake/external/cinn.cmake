@@ -27,7 +27,7 @@ add_definitions(-w)
 include(ExternalProject)
 set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
 # TODO(zhhsplendid): Modify git tag after we have release tag
-set(CINN_GIT_TAG 6ffa22f9577bc2e817a47c6cb6f2f11c65ed82b9)
+set(CINN_GIT_TAG 6f25d604a7a0b549ed5f46396445bebc11dc3bda)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}

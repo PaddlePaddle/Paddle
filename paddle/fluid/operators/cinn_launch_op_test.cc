@@ -293,7 +293,7 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
       static_cast<cinn_buffer_t*>(name2argument.at("cinn_var1"));
 
   ASSERT_EQ(cinn_buffer->memory, nullptr);
-  cinn_buffer->external_malloc(nullptr, nullptr);
+  (*(cinn_buffer->external_malloc))(nullptr, nullptr);
   ASSERT_NE(cinn_buffer->memory, nullptr);
   ASSERT_EQ(cinn_buffer->num_elements(), 12);
   auto* shadow_data = reinterpret_cast<float*>(cinn_buffer->memory);
