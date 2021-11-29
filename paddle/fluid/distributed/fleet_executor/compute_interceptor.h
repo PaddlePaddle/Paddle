@@ -31,6 +31,7 @@ class ComputeInterceptor : public Interceptor {
   void DecreaseBuff(int64_t down_id);
   bool IsInputReady();
   bool CanWriteOutput();
+  bool ShouldReset();
 
   void SendDataReadyToDownStream();
   void ReplyCompletedToUpStream();
@@ -43,8 +44,9 @@ class ComputeInterceptor : public Interceptor {
   void TryStop();
 
  private:
-  // FIXME(wangxi): if use step_ and max_steps_, how to restart step_ from 0
+  bool is_source_{false};
   int64_t step_{0};
+
   // upstream_id-->(max_ready_size, ready_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
   // downstream_id-->(max_buffer_size, used_size)
