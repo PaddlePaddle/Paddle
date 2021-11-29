@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import unittest
-# import numpy as np
-# from inference_pass_test import InferencePassTest
-# import paddle.fluid as fluid
-# import paddle.fluid.core as core
-# from paddle.fluid.core import PassVersionChecker
-
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
