@@ -24,7 +24,6 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
-import paddle.distributed.fleet as fleet
 
 __all__ = []
 
@@ -918,8 +917,9 @@ class TheOnePSRuntime(RuntimeBase):
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        table_proto = self.context[
-                            "user_defined_strategy"].sparse_table_configs
+                        import copy
+                        table_proto = copy.deepcopy(self.context[
+                            "user_defined_strategy"].sparse_table_configs)
                         print('table proto:', table_proto)
                         print('table_class:', table_proto.table_class)
                         print('shard_num:', table_proto.shard_num)
@@ -1086,7 +1086,7 @@ class TheOnePSRuntime(RuntimeBase):
         pserver_id = self.role_maker._role_id()
 
         for var_name in load_varnames:
-            # table_id = sparse_table_maps[var_name]
+            table_id = sparse_table_maps[var_name]
             # path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
             #                     "{}.block{}.txt".format(var_name, pserver_id))
             # meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
