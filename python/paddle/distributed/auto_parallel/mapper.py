@@ -28,7 +28,7 @@ def is_collective_comm_op(op):
     comm_list = [
         "c_allreduce_sum", "c_allreduce_min", "c_allreduce_max",
         "c_allreduce_prod", "c_reduce_sum", "c_reduce_min", "c_reduce_max",
-        "c_reduce_prod", "c_broadcast", "c_allgather", "send_v2", "recv_v2"
+        "c_reduce_prod", "c_broadcast", "c_allgather"
     ]
     if op.type in comm_list:
         return True
@@ -87,7 +87,8 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
         if val == -1:
             print("Warning: -1 in the tensor shape.")
             new_tensor_shape.append(1)
-        new_tensor_shape.append(val)
+        else:
+            new_tensor_shape.append(val)
     tensor_size = functools.reduce(operator.mul, new_tensor_shape, 1)
     tensor_bytes = tensor_size * get_dtype_bytes(tensor.dtype)
     if "c_allreduce" in comm_op_type:
@@ -95,7 +96,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     elif "c_allgather" in comm_op_type:
         comm_volume = tensor_bytes
     elif "c_broadcast" in comm_op_type:
-        if comm_op.attr("root_id") == src_rank:
+        if comm_op.attr("root") == src_rank:
             comm_volume = tensor_bytes
         else:
             comm_volume = None
