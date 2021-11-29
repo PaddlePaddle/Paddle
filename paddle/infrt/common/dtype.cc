@@ -21,12 +21,12 @@ const char* DType::name() const {
     case Kind::Unk:
       return "Unk";
       break;
-#define CINNRT_DTYPE(enum__, value__) \
-  case Kind::enum__:                  \
-    return #enum__;                   \
+#define INFRT_DTYPE(enum__, value__) \
+  case Kind::enum__:                 \
+    return #enum__;                  \
     break;
 #include "paddle/infrt/common/dtype.def"
-#undef CINNRT_DTYPE
+#undef INFRT_DTYPE
   }
 
   return "";
@@ -34,11 +34,11 @@ const char* DType::name() const {
 
 size_t DType::GetHostSize() const {
   switch (kind_) {
-#define CINNRT_DTYPE(enum__, value__) \
-  case DType::Kind::enum__:           \
+#define INFRT_DTYPE(enum__, value__) \
+  case DType::Kind::enum__:          \
     return sizeof(DTypeInternal<DType::Kind::enum__>::type);
 #include "paddle/infrt/common/dtype.def"  // NOLINT
-#undef CINNRT_DTYPE
+#undef INFRT_DTYPE
 
     case Kind::Unk:
       return 0;

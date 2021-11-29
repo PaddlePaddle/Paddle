@@ -92,7 +92,7 @@ void TensorFromStream(std::istream &is,
     // tensor->set_persistable(true);
     is.read(static_cast<char *>(buf), size);
   } else if (target.arch == infrt::common::Target::Arch::NVGPU) {
-#ifdef CINNRT_WITH_CUDA
+#ifdef INFRT_WITH_CUDA
     if (desc.data_type() != Type::VarType_Type_FP32)
       LOG(FATAL) << "[CUDA] The type is not fp32!!";
     auto *data = tensor->mutable_data<float>(target);

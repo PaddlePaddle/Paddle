@@ -1,5 +1,5 @@
-#ifndef CINNRT_REWRITE
-#define CINNRT_REWRITE
+#ifndef INFRT_REWRITE
+#define INFRT_REWRITE
 
 include "paddle/infrt/dialect/cinn_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
@@ -87,4 +87,4 @@ def FuseBatchNormWithConvPattern: Pat<
             (CINN_createI32Attr<"1">)))
 >;
 
-#endif // CINNRT_REWRITE
+#endif // INFRT_REWRITE

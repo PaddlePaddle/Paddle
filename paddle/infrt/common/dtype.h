@@ -25,9 +25,9 @@ class DType {
     Unk = 0,
 
 // Automatically generate the enum definition
-#define CINNRT_DTYPE(enum__, value__) enum__ = value__,
+#define INFRT_DTYPE(enum__, value__) enum__ = value__,
 #include "paddle/infrt/common/dtype.def"
-#undef CINNRT_DTYPE
+#undef INFRT_DTYPE
 
     BOOL = I1,
   };
@@ -59,7 +59,7 @@ constexpr DType GetDType();
 template <DType::Kind kind>
 struct DTypeInternal;
 
-#define CINNRT_IMPL_GET_DTYPE(cpp_type__, enum__) \
+#define INFRT_IMPL_GET_DTYPE(cpp_type__, enum__)  \
   template <>                                     \
   inline constexpr DType GetDType<cpp_type__>() { \
     return DType{DType::Kind::enum__};            \
@@ -69,17 +69,17 @@ struct DTypeInternal;
     using type = cpp_type__;                      \
   };
 
-CINNRT_IMPL_GET_DTYPE(bool, I1);
-CINNRT_IMPL_GET_DTYPE(int8_t, I8);
-CINNRT_IMPL_GET_DTYPE(int16_t, I16);
-CINNRT_IMPL_GET_DTYPE(int32_t, I32);
-CINNRT_IMPL_GET_DTYPE(int64_t, I64);
-CINNRT_IMPL_GET_DTYPE(uint8_t, UI8);
-CINNRT_IMPL_GET_DTYPE(uint16_t, UI16);
-CINNRT_IMPL_GET_DTYPE(uint32_t, UI32);
-CINNRT_IMPL_GET_DTYPE(uint64_t, UI64);
-CINNRT_IMPL_GET_DTYPE(float, F32);
-CINNRT_IMPL_GET_DTYPE(double, F64);
-CINNRT_IMPL_GET_DTYPE(std::string, STRING);
+INFRT_IMPL_GET_DTYPE(bool, I1);
+INFRT_IMPL_GET_DTYPE(int8_t, I8);
+INFRT_IMPL_GET_DTYPE(int16_t, I16);
+INFRT_IMPL_GET_DTYPE(int32_t, I32);
+INFRT_IMPL_GET_DTYPE(int64_t, I64);
+INFRT_IMPL_GET_DTYPE(uint8_t, UI8);
+INFRT_IMPL_GET_DTYPE(uint16_t, UI16);
+INFRT_IMPL_GET_DTYPE(uint32_t, UI32);
+INFRT_IMPL_GET_DTYPE(uint64_t, UI64);
+INFRT_IMPL_GET_DTYPE(float, F32);
+INFRT_IMPL_GET_DTYPE(double, F64);
+INFRT_IMPL_GET_DTYPE(std::string, STRING);
 
 }  // namespace infrt
