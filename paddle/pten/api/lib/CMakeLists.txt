@@ -24,7 +24,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
-  COMMAND python3 ${api_gen_file} 
+  COMMAND python ${api_gen_file} 
                  --api_yaml_path ${api_yaml_file}
                  --api_header_path ${api_header_file_tmp}
                  --api_source_path ${api_source_file_tmp}
