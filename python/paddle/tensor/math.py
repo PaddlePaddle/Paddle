@@ -2613,9 +2613,9 @@ def atan2(x, y, name=None):
         return out
 
 
-def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
+def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
-    Computes the n-th forward difference along the given dimension.
+    Computes the n-th forward difference along the given axis.
     The first-order differences is computed by using the following formula: 
 
     .. math::
@@ -2629,13 +2629,13 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
         x(Tensor): The input tensor to compute the forward difference on
         n(int, optional): The number of times to recursively compute the difference. 
                           Only support n=1. Default:1
-        dim(int, optional): The dimension to compute the difference along. Default:-1
-        prepend(Tensor, optional): The tensor to prepend to input along dim before computing the difference.
+        axis(int, optional): The axis to compute the difference along. Default:-1
+        prepend(Tensor, optional): The tensor to prepend to input along axis before computing the difference.
                                    It's dimensions must be equivalent to that of x, 
-                                   and its shapes must match x's shape except on dim.
-        append(Tensor, optional): The tensor to append to input along dim before computing the difference, 
+                                   and its shapes must match x's shape except on axis.
+        append(Tensor, optional): The tensor to append to input along axis before computing the difference, 
                                    It's dimensions must be equivalent to that of x, 
-                                   and its shapes must match x's shape except on dim.
+                                   and its shapes must match x's shape except on axis.
         name(str|None): A name for this layer(optional). If set None, 
                         the layer will be named automatically.
     
@@ -2659,11 +2659,11 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
             # [3, 1, -3, 5, 2]
 
             z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-            out = paddle.diff(z, dim=0)
+            out = paddle.diff(z, axis=0)
             print(out)
             # out:
-            # [3, 3, 3]
-            out = paddle.diff(z, dim=1)
+            # [[3, 3, 3]]
+            out = paddle.diff(z, axis=1)
             print(out)
             # out:
             # [[1, 1], [1, 1]]
@@ -2671,14 +2671,14 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
 
     """
 
-    if dim < 0:
-        dim = dim + len(x.shape)
-    if dim > len(x.shape):
-        dim = len(x.shape)
-    if dim < 0:
-        dim = 0
+    if axis < 0:
+        axis = axis + len(x.shape)
+    if axis > len(x.shape):
+        axis = len(x.shape)
+    if axis < 0:
+        axis = 0
     dtype = x.dtype
-    axes = [dim]
+    axes = [axis]
     infer_flags = list(1 for i in range(len(axes)))
     if in_dygraph_mode():
         has_pend = False
@@ -2693,14 +2693,14 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
             input_list = [x, append]
             has_pend = True
         if has_pend:
-            new_input = _C_ops.concat(input_list, 'axis', dim)
+            new_input = _C_ops.concat(input_list, 'axis', axis)
         else:
             new_input = x
 
         attrs_1 = ()
         attrs_2 = ()
 
-        dim_len = new_input.shape[dim]
+        dim_len = new_input.shape[axis]
 
         starts_1 = [0]
         attrs_1 += ('starts', starts_1)
@@ -2719,11 +2719,11 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
             op = getattr(_C_ops, "logical_xor")
             out = op(input_back, input_front)
         else:
-            out = layers.elementwise_sub(input_back, input_front, axis=dim)
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
         return out
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
-        check_type(dim, 'axis', (int), 'diff')
+        check_type(axis, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())
         has_pend = False
         input_list = []
@@ -2740,12 +2740,12 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
         if has_pend:
             new_input = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
-                type='concat', inputs={'X': input_list}, outputs={'Out': [new_input]}, attrs={'axis': dim}
+                type='concat', inputs={'X': input_list}, outputs={'Out': [new_input]}, attrs={'axis': axis}
             )
         else:
             new_input = x
 
-        dim_len = new_input.shape[dim]
+        dim_len = new_input.shape[axis]
         attrs_1 = {'axes': axes}
         starts_1 = [0]
         ends_1 = [dim_len - 1]
@@ -2771,6 +2771,6 @@ def diff(x, n=1, dim=-1, prepend=None, append=None, name=None):
                 type='logical_xor', inputs={"X": input_back, "Y": input_front}, outputs={"Out": out}
             )
         else:
-            out = layers.elementwise_sub(input_back, input_front, axis=dim)
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
 
         return out

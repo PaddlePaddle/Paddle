@@ -533,5 +533,5 @@ __all__ = [  # noqa
            'einsum',
            'set_flags',
            'get_flags',
-           'diff',
+           'diff'
 ]

@@ -64,7 +64,7 @@ class TestDiffOp(unittest.TestCase):
             out = paddle.diff(
                 x,
                 n=self.n,
-                dim=self.axis,
+                axis=self.axis,
                 prepend=self.prepend,
                 append=self.append)
             self.assertTrue((out.numpy() == self.output).all(), True)
@@ -98,7 +98,7 @@ class TestDiffOp(unittest.TestCase):
 
                 exe = fluid.Executor(place)
                 out = paddle.diff(
-                    x, n=self.n, dim=self.axis, prepend=prepend, append=append)
+                    x, n=self.n, axis=self.axis, prepend=prepend, append=append)
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={
                                       "input": self.input,
@@ -118,7 +118,7 @@ class TestDiffOp(unittest.TestCase):
             out = paddle.diff(
                 x,
                 n=self.n,
-                dim=self.axis,
+                axis=self.axis,
                 prepend=self.prepend,
                 append=self.append)
             try:
