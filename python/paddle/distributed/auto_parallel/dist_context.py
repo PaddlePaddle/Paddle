@@ -335,6 +335,17 @@ class DistributedContext:
                         dist_op.serial_op.type, dist_tensor.dist_attr)
         return True
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == "_serial_program" or k == "_serial_graph":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
 
 class DistributedOperatorContext:
     """
@@ -351,6 +362,17 @@ class DistributedOperatorContext:
         self._cur_dist_attr = None
         self.gradopidx2opidx = {}
         self.already_init_sync_vars = set()
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == "_dst_main_program" or k == "_dst_startup_program" or k == "_cur_src_op":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
 
     def set_dst_main_program(self, prog):
         self._dst_main_program = prog

@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/functions/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -265,6 +266,13 @@ struct ElementwiseAddTo<platform::CPUDeviceContext, T> {
                   framework::Tensor* dst) {
     auto in = framework::EigenVector<T>::Flatten(src);
     auto out = framework::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+  void operator()(platform::CPUDeviceContext* ctx, const pten::DenseTensor& src,
+                  pten::DenseTensor* dst) {
+    auto in = pten::EigenVector<T>::Flatten(src);
+    auto out = pten::EigenVector<T>::Flatten(*dst);
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }

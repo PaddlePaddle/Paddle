@@ -21,6 +21,17 @@ namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
 
+TaskNode::TaskNode(const framework::ProgramDesc& program, int64_t rank,
+                   int64_t max_run_times, int64_t max_slot_nums)
+    : program_(program),
+      rank_(rank),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  // Should be serially invoked, not thread-safe
+  static int64_t task_node_cnt = 0;
+  task_id_ = task_node_cnt++;
+}
+
 TaskNode::TaskNode(int32_t role, const std::vector<OperatorBase*>& ops,
                    int64_t rank, int64_t task_id, int64_t max_run_times,
                    int64_t max_slot_nums)
@@ -55,10 +66,14 @@ std::unique_ptr<TaskNode> TaskNode::CreateTaskNode(
                                     max_slot_nums);
 }
 
-void TaskNode::AddUpstreamTask(int64_t task_id) { upstream_.insert(task_id); }
+bool TaskNode::AddUpstreamTask(int64_t task_id) {
+  const auto& ret = upstream_.insert(task_id);
+  return *ret.first == task_id;
+}
 
-void TaskNode::AddDownstreamTask(int64_t task_id) {
-  downstream_.insert(task_id);
+bool TaskNode::AddDownstreamTask(int64_t task_id) {
+  const auto& ret = downstream_.insert(task_id);
+  return *ret.first == task_id;
 }
 
 std::string TaskNode::DebugString() const {

@@ -515,7 +515,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_a_sync_optimizer_sync',
     'test_dist_fleet_decay',
     'test_auto_checkpoint2',
-    'test_dist_fleet_heter_ctr',
     'test_dist_fleet_simnet',
     'test_dist_sparse_load_ps1',
     'test_dist_mnist_fleet_save',
@@ -2205,7 +2204,12 @@ def main():
     lowest_high_parallel_job = '^job$'
     non_parallel_job = '^job$'
 
-    test_cases = sys.argv[1]
+    # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
+    BUILD_DIR = os.getcwd()
+    file_path = os.path.join(BUILD_DIR, 'all_ut_list')
+    with open(file_path, 'r') as f:
+        test_cases = f.read()
+
     test_cases = test_cases.split("\n")
 
     if platform.system() == 'Windows':
@@ -2260,7 +2264,7 @@ def main():
         print("{};{};{};{}".format(high_parallel_job, fourth_high_parallel_job,
                                    fifth_high_parallel_job, non_parallel_job))
     else:
-        print("{};{};{};{};{};{};{}".format(
+        print("{};{};{};{};{};{};{};{}".format(
             high_parallel_job, secondary_high_parallel_job,
             third_high_parallel_job, fourth_high_parallel_job,
             fifth_high_parallel_job, sixth_high_parallel_job,

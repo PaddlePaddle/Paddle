@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/pten/api/all.h"
+#include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/convert_utils.h"
