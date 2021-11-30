@@ -329,24 +329,6 @@ PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
 """
 
 
-def license():
-    return """
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.    
-"""
-
-
 def header_include():
     return """
 #include "paddle/pten/api/include/tensor.h"
@@ -430,12 +412,10 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     namespace = api_namespace()
 
-    header_file.write(license())
     header_file.write("#pragma once\n")
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    source_file.write(license())
     include_header_file = "paddle/pten/api/include/api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(module_declare())
