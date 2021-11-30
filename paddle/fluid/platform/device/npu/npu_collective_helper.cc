@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 
 namespace paddle {
 namespace platform {
@@ -79,7 +80,7 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   HcclComm comm;
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
+  SetNPUDeviceId(dev_id);
   VLOG(1) << "initialized comm: " << &comm << ", nranks: " << nranks
           << ", hccl_id: " << hccl_id << ", rank: " << rank;
   PADDLE_ENFORCE_NPU_SUCCESS(

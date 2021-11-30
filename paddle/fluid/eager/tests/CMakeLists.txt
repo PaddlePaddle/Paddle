@@ -1,5 +1,6 @@
-set(eager_deps pten pten_api tensor_utils utils global_utils pten_tensor autograd_meta grad_node_info grad_tensor_holder gradient_accumulation accumulation_node)
-set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
-
 add_subdirectory(data_structure_tests)
 add_subdirectory(task_tests)
+
+if(NOT ON_INFER)
+    add_subdirectory(performance_tests)
+endif()
