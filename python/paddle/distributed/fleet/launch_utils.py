@@ -904,8 +904,8 @@ def get_mapped_cluster_from_args(args, device_mode):
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
                 x
-                for x in range(start_port, start_port + len(node_ranks_mapping[
-                    node_rank]))
+                for x in range(start_port,
+                               start_port + len(node_ranks_mapping[node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
