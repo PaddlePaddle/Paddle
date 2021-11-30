@@ -27,21 +27,18 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-// TODO(jiabin): remove nolint here!!!
-using namespace egr;  // NOLINT
-
-namespace eager_test {
+namespace egr {
 
 TEST(Forward, SingleNode) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = CreateTensorWithValue(
+  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
@@ -55,7 +52,7 @@ TEST(Forward, SingleNode) {
       tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output
-  CompareTensorWithValue<float>(out, 13.0);
+  eager_test::CompareTensorWithValue<float>(out, 13.0);
 
   // Examine GradNode
   {
@@ -80,14 +77,14 @@ Node1
  out
 */
 TEST(Forward, LinearNodes) {
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = CreateTensorWithValue(
+  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
@@ -108,10 +105,10 @@ TEST(Forward, LinearNodes) {
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output 0
-  CompareTensorWithValue<float>(out0, 13.0);
+  eager_test::CompareTensorWithValue<float>(out0, 13.0);
 
   // Examine Forward Output 1
-  CompareTensorWithValue<float>(out1, 75.0);
+  eager_test::CompareTensorWithValue<float>(out1, 75.0);
 
   // Examine GradNode
   {
@@ -156,14 +153,14 @@ TEST(Forward, LinearNodes) {
    out1    out2
 */
 TEST(Forward, BranchedNodes) {
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = CreateTensorWithValue(
+  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
@@ -190,13 +187,13 @@ TEST(Forward, BranchedNodes) {
       out0, scale2, bias2, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output 0
-  CompareTensorWithValue<float>(out0, 13.0);
+  eager_test::CompareTensorWithValue<float>(out0, 13.0);
 
   // Examine Forward Output 1
-  CompareTensorWithValue<float>(out1, 75.0);
+  eager_test::CompareTensorWithValue<float>(out1, 75.0);
 
   // Examine Forward Output 2
-  CompareTensorWithValue<float>(out2, 150.0);
+  eager_test::CompareTensorWithValue<float>(out2, 150.0);
 
   // Examine GradNode
   {
@@ -248,4 +245,4 @@ TEST(Forward, BranchedNodes) {
   }
 }
 
-}  // namespace eager_test
+}  // namespace egr
