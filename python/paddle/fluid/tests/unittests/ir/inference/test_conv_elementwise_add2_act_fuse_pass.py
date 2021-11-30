@@ -47,7 +47,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["conv2d_fusion"], (1e-5, 1e-5)
+        yield config, ["conv2d_fusion"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
@@ -72,10 +72,16 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             if int((input_shape[2] + strides[0] - 1) / strides[0]) <= 0 or int(
                 (input_shape[3] + strides[1] - 1) / strides[1]) <= 0:
                 return False
-        if input_shape[1] != filter_shape[1] * groups:
-            return False
-        if filter_shape[0] % groups != 0:
-            return False
+        if data_format == "NCHW":
+            if input_shape[1] != filter_shape[1] * groups:
+                return False
+            if filter_shape[0] % groups != 0:
+                return False
+        else:
+            if input_shape[3] != filter_shape[1] * groups:
+                return False
+            if filter_shape[0] % groups != 0:
+                return False
 
         return True
 
@@ -92,16 +98,23 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                     min_size=4,
                     max_size=4))
             x_shape[1] = draw(st.integers(min_value=1, max_value=10))
-            # 2. Generate legal shape of input:Y of conv2d
+
+            # 2. Generate legal attr:data_format of conv2d
+            data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+
+            # 3. Generate legal shape of input:Y of conv2d
             f_shape = draw(
                 st.lists(
                     st.integers(
                         min_value=1, max_value=7),
                     min_size=4,
                     max_size=4))
-            f_shape[1] = x_shape[1]
+            if data_format == "NCHW":
+                f_shape[1] = x_shape[1]
+            else:
+                f_shape[1] = x_shape[3]
 
-            # 3. Generate legal attr:strides of conv2d
+            # 4. Generate legal attr:strides of conv2d
             strides = draw(
                 st.lists(
                     st.integers(
@@ -109,11 +122,11 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                     min_size=2,
                     max_size=2))
 
-            # 4. Generate legal attr:padding_algorithm of conv2d
+            # 5. Generate legal attr:padding_algorithm of conv2d
             padding_algorithm = draw(
                 st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
-            # 5. Generate legal attr:padding of conv2d
+            # 6. Generate legal attr:padding of conv2d
             padding = draw(
                 st.lists(
                     st.integers(
@@ -121,19 +134,16 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                     min_size=4,
                     max_size=4))
 
-            # 6. Generate legal attr:groups of conv2d
+            # 7. Generate legal attr:groups of conv2d
             groups = draw(st.integers(min_value=1, max_value=3))
 
-            # 7. Generate legal attr:dilations of conv2d
+            # 8. Generate legal attr:dilations of conv2d
             dilations = draw(
                 st.lists(
                     st.integers(
                         min_value=1, max_value=5),
                     min_size=2,
                     max_size=2))
-
-            # 8. Generate legal attr:data_format of conv2d
-            data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
 
             # 9. Generate legal elemntwise_add: X of conv2d
             bias_2_dict = dict()

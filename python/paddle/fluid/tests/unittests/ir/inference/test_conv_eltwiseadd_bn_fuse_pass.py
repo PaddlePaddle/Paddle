@@ -45,11 +45,11 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # cpu
         config = self.create_inference_config(use_gpu=False)
-        config.enable_mkldnn()
         yield config, ["conv2d", "elementwise_add"], (1e-4, 1e-5)
 
         # MKLDNN
         config = self.create_inference_config(use_gpu=False)
+        config.enable_mkldnn()
         yield config, ["conv2d", "elementwise_add"], (1e-4, 1e-5)
 
         # for gpu
@@ -75,10 +75,17 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
             if ((input_shape[2] + paddings[0] + paddings[1] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
                 ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
                 return False
-        if input_shape[1] != filter_shape[1] * groups:
-            return False
-        if filter_shape[0] % groups != 0:
-            return False
+
+        if data_format == "NCHW":
+            if input_shape[1] != filter_shape[1] * groups:
+                return False
+            if filter_shape[0] % groups != 0:
+                return False
+        else:
+            if input_shape[3] != filter_shape[1] * groups:
+                return False
+            if filter_shape[0] % groups != 0:
+                return False
 
         bn_scale = np.array(prog_config.weights["scale_in"].data)
         bn_bias = np.array(prog_config.weights["bias_in"].data)
@@ -106,12 +113,19 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
                 min_size=4,
                 max_size=4))
         x_shape[1] = draw(st.integers(min_value=1, max_value=10))
+
+        # 2. Generate legal attr:data_format of conv2d
+        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+
         # 2. Generate legal shape of input:Y of conv2d
         f_shape = draw(
             st.lists(
                 st.integers(
                     min_value=1, max_value=7), min_size=4, max_size=4))
-        f_shape[1] = x_shape[1]
+        if data_format == "NCHW":
+            f_shape[1] = x_shape[1]
+        else:
+            f_shape[1] = x_shape[3]
 
         # 3. Generate legal attr:strides of conv2d
         strides = draw(
@@ -136,9 +150,6 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
             st.lists(
                 st.integers(
                     min_value=1, max_value=5), min_size=2, max_size=2))
-
-        # 8. Generate legal attr:data_format of conv2d
-        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
 
         # 9. Generate legal input:ResidualData of conv2d
         res_shape = []

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
@@ -25,27 +25,24 @@ from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
-class TestConvElementwiseAddActPass(PassAutoScanTest):
+class TestConvSwishMkldnnFusePass(PassAutoScanTest):
     """
     x_var   f_var(persistable)
       \       /
-         conv2d 
-           |
-        conv2d_var    y_var(persistable)
-            \          /
-           elementwise_add
-                |
-         elementwise_add_var
-                |
-               act
-                |
-              act_var
+        conv2d 
+          |
+      conv2d_var    
+          |
+        swish
+          |
+       swish_var
     """
 
     def sample_predictor_configs(self, program_config):
-        # for gpu
-        config = self.create_inference_config(use_gpu=True)
-        yield config, ["conv2d_fusion"], (1e-4, 1e-5)
+        # MKLDNN
+        config = self.create_inference_config(use_gpu=False)
+        config.enable_mkldnn()
+        yield config, ["conv2d"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
@@ -83,11 +80,12 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=100), min_size=4, max_size=4))
+                    min_value=5, max_value=100), min_size=4, max_size=4))
         x_shape[1] = draw(st.integers(min_value=1, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+        # data_format = "NHWC"
 
         # 3. Generate legal shape of input:Y of conv2d
         f_shape = draw(
@@ -123,7 +121,7 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
                 st.integers(
                     min_value=1, max_value=5), min_size=2, max_size=2))
 
-        # 9. Generate legal input:ResidualData of conv2d
+        # 10. Generate legal input:ResidualData of conv2d
         res_shape = []
         if draw(st.booleans()):
             res_shape = draw(
@@ -133,11 +131,8 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
                     min_size=4,
                     max_size=4))
 
-        # 10. Generate legal shape of input:bias of elementwise_add
-        bias_shape = [f_shape[0]]
-
-        # 11. Generate legal attr:axis of elementwise_add
-        axis = 1
+        # 11. Generate legal attr:alpha of Swish
+        beta = draw(st.floats(min_value=0.1, max_value=1.0))
 
         conv2d_op = OpConfig(
             "conv2d",
@@ -153,24 +148,18 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format)
-        add_op = OpConfig(
-            "elementwise_add",
-            inputs={"X": ["conv2d_out"],
-                    "Y": ["bias"]},
-            outputs={"Out": ["add_out"]},
-            axis=axis)
 
-        relu_op = OpConfig(
-            "relu", inputs={"X": ["add_out"]}, outputs={"Out": ["relu_out"]})
+        swish_op = OpConfig(
+            "swish",
+            inputs={"X": ["conv2d_out"]},
+            outputs={"Out": ["swish_out"]},
+            beta=beta)
 
-        ops = [conv2d_op, add_op, relu_op]
+        ops = [conv2d_op, swish_op]
 
         program_config = ProgramConfig(
             ops=ops,
-            weights={
-                "filter": TensorConfig(shape=f_shape),
-                "bias": TensorConfig(shape=bias_shape),
-            },
+            weights={"filter": TensorConfig(shape=f_shape), },
             inputs={
                 "input_x": TensorConfig(shape=x_shape),
                 "residualdata": TensorConfig(shape=res_shape)
@@ -181,8 +170,8 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=400,
-            passes=["conv_elementwise_add_act_fuse_pass"])
+            max_examples=350,
+            passes=["conv_swish_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
