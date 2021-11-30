@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/cuda/utils.h"
 
+namespace paddle {
+namespace tests {
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -152,3 +155,6 @@ TEST(API, matmul_cuda) {
 }
 
 #endif
+
+}  // namespace tests
+}  // namespace paddle

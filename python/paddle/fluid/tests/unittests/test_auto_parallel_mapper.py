@@ -23,10 +23,12 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
+import paddle.fluid as fluid
 import paddle.nn.functional as F
 import paddle.tensor as tensor
 import paddle.utils as utils
 import paddle.static as static
+from paddle.fluid import core
 from paddle.fluid import layers
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
@@ -42,11 +44,13 @@ from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cluster import DeviceType
 from paddle.distributed.auto_parallel.cluster import LinkType
+from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.mapper import build_process_graph
 from paddle.distributed.auto_parallel.mapper import build_cluster_graph
 from paddle.distributed.auto_parallel.mapper import mapping
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
+from paddle.distributed.auto_parallel.mapper import get_comm_volume
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -469,16 +473,16 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
                                                       dist_context)
     partitioner = Partitioner(dist_strategy, dist_context, rank_id)
     # logical partition
-    dist_main_prog, dist_startup_prog = partitioner.transpile_forward(
+    dist_train_program, dist_startup_prog = partitioner.transpile_forward(
         complete_train_program, startup_program)
     dist_params_grads = partitioner.apply_backward(
-        loss, complete_train_program, startup_program, dist_main_prog,
+        loss, complete_train_program, startup_program, dist_train_program,
         dist_startup_prog)
     optimizer = paddle.fluid.optimizer.AdamOptimizer()
     opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                         dist_main_prog, dist_startup_prog)
-
-    return dist_main_prog, dist_startup_prog
+                                         dist_train_program, dist_startup_prog)
+    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context)
+    return dist_train_program, dist_startup_prog
 
 
 def is_in_machine(device_local_id, machine):
@@ -520,8 +524,8 @@ class TestAutoParallelMapper(unittest.TestCase):
             dist_context = DistributedContext()
             dist_train_program, dist_startup_prog = get_dist_prog(
                 train_program, startup_program, dist_context, rank_id)
-            reshard(dist_train_program, dist_startup_prog, rank_id,
-                    dist_context)
+            # if rank_id == 0:
+            #   print_program_with_dist_attr(dist_train_program, dist_context)
             dist_programs[rank_id] = dist_train_program
 
         rank_mapping = mapping(dist_programs, cluster)
@@ -541,6 +545,64 @@ class TestAutoParallelMapper(unittest.TestCase):
                 len(machine_mapped_ranks), len(machine_mapped_device_local_ids))
             all_mapped_ranks.update(machine_mapped_ranks)
         self.assertEqual(set(processes), all_mapped_ranks)
+
+    def test_mapper_misc(self):
+        self.assertEqual(get_dtype_bytes(paddle.float64), 8)
+        self.assertEqual(get_dtype_bytes(paddle.float32), 4)
+        self.assertEqual(get_dtype_bytes(paddle.float16), 2)
+        self.assertEqual(get_dtype_bytes(paddle.bfloat16), 2)
+        self.assertEqual(get_dtype_bytes(paddle.int64), 8)
+        self.assertEqual(get_dtype_bytes(paddle.int32), 4)
+        self.assertEqual(get_dtype_bytes(paddle.int16), 2)
+        self.assertEqual(get_dtype_bytes(paddle.int8), 1)
+        self.assertEqual(get_dtype_bytes(paddle.uint8), 1)
+        self.assertRaises(ValueError, get_dtype_bytes, "unknown type")
+        train_program = static.Program()
+        startup_program = static.Program()
+        ring_id = 0
+        root_id = 0
+        nranks = 2
+        with fluid.program_guard(train_program, startup_program):
+            input = layers.data(name="input", shape=[10, 10], dtype='float32')
+            output = train_program.current_block().create_var(
+                name="outofbroadcast",
+                dtype='float32',
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False)
+            broadcast_op = train_program.global_block().append_op(
+                type="c_broadcast",
+                inputs={'X': input},
+                attrs={'ring_id': ring_id,
+                       'root': root_id},
+                outputs={'Out': output})
+            self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
+            self.assertEqual(get_comm_volume(broadcast_op, 1, 0), None)
+            allgather_op = train_program.global_block().append_op(
+                type="c_allgather",
+                inputs={'X': input},
+                attrs={'ring_id': ring_id,
+                       'nranks': nranks},
+                outputs={'Out': output})
+            self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
+            self.assertEqual(get_comm_volume(allgather_op, 0, 0), None)
+            reduce_op = train_program.global_block().append_op(
+                type="c_reduce_sum",
+                inputs={'X': input},
+                attrs={'ring_id': ring_id,
+                       'root_id': root_id},
+                outputs={'Out': output})
+            self.assertEqual(get_comm_volume(reduce_op, 0, 1), None)
+            self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)
+            cast_op = train_program.global_block().append_op(
+                type="cast",
+                inputs={"X": input},
+                outputs={"Out": output},
+                attrs={
+                    "in_dtype": fluid.core.VarDesc.VarType.FP32,
+                    "out_dtype": fluid.core.VarDesc.VarType.FP32
+                })
+            self.assertRaises(ValueError, get_comm_volume, cast_op, 0, 1)
 
 
 if __name__ == '__main__':

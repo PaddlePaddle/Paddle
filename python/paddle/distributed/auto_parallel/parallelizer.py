@@ -19,7 +19,9 @@ import shlex
 import copy
 import pathlib
 import subprocess
+import logging
 import paddle
+from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from .dist_context import DistributedContext
@@ -30,9 +32,13 @@ from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .process_group import get_world_process_groups
 from .utils import make_data_unshard
+from .utils import set_grad_var_shape
 from .reshard import reshard
 from .cluster import Cluster
 from .mapper import mapping
+# from .auto_search import auto_search
+
+_logger = get_logger(logging.INFO)
 
 
 class AutoParallelizer:

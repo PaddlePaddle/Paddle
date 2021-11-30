@@ -336,7 +336,7 @@ class HeterServer {
 
   bool IsExit() { return service_.IsExit(); }
 
-  HeterServer() {}
+  HeterServer() { this->ready_ = 0; }
 
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func);
@@ -391,7 +391,7 @@ class HeterServer {
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
 
-  int ready_;
+  int ready_ = 0;
 };
 
 }  // end namespace distributed

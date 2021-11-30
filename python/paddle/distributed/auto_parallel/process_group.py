@@ -136,15 +136,15 @@ class ProcessGroup:
 
         self._is_instantiate = True
 
-    def __eq__(self, other):
-        if not isinstance(other, ProcessGroup):
-            return False
-        if self.id != other.id:
-            return False
-        return True
+    # def __eq__(self, other):
+    #     if not isinstance(other, ProcessGroup):
+    #         return False
+    #     if self.id != other.id:
+    #         return False
+    #     return True
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    # def __ne__(self, other):
+    #     return not self.__eq__(other)
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(

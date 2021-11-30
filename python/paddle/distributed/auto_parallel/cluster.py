@@ -35,8 +35,8 @@ class LinkType(IntEnum):
     LOC = 1
     SYS = 2
     PHB = 3
-    PXB = 5
     PIX = 4
+    PIB = 5
     NVL = 6
     NVB = 7
     NET = 8

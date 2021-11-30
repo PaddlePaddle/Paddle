@@ -370,6 +370,8 @@ def sync_params_buffers(model,
             # such as moe's expert parameters
             if getattr(param, "no_sync", False):
                 continue
+        if param.type == core.VarDesc.VarType.VOCAB:
+            continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:
