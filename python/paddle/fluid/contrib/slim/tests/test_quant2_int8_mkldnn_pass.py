@@ -30,9 +30,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
         self.scope = fluid.Scope()
         self.place = fluid.CPUPlace()
         self.dtype = np.float32
-        self.use_cudnn = False
         self.use_mkldnn = True
-        self.data_format = "ANYLAYOUT"
 
         self.quantized_ops = self.op_name()
         self.mul_input_size = [1, 3]
