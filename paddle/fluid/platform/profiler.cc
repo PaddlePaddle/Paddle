@@ -34,21 +34,26 @@ namespace platform {
 
 struct DurationEvent {
  public:
-  DurationEvent(const char *name, uint64_t start_ns, uint64_t end_ns)
-      : name(name), start_ns(start_ns), end_ns(end_ns) {}
+  DurationEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
+                EventRole role)
+      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {}
 
   DurationEvent(std::function<void *(size_t)> &arena_allocator,
-                const char *name, uint64_t start_ns, uint64_t end_ns,
+                const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
                 EventRole role, const std::string &attr_str)
-      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(attr_str.length() + 1));
+      : start_ns(start_ns), end_ns(end_ns), role(role) {
+    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
+    strncpy(buf, name_str.c_str(), name_str.length() + 1);
+    name = buf;
+    buf = static_cast<char *>(arena_allocator(attr_str.length() + 1));
     strncpy(buf, attr_str.c_str(), attr_str.length() + 1);
     attr = buf;
   }
 
   DurationEvent(const std::function<void *(size_t)> &arena_allocator,
-                const std::string &name_str, uint64_t start_ns, uint64_t end_ns)
-      : start_ns(start_ns), end_ns(end_ns) {
+                const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
+                EventRole role)
+      : start_ns(start_ns), end_ns(end_ns), role(role) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
     name = buf;
@@ -333,18 +338,44 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const char *name) {
-  if (LIKELY(g_enable_host_event_recorder_hook)) {
-    shallow_copy_name_ = name;
-    start_ns_ = PosixInNsec();
-    return;
-  } else {
-    RecordEvent(name, EventRole::kOrdinary, "none");
+RecordEvent::RecordEvent(const char *name, const EventRole role) {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook) {
+    dynload::nvtxRangePushA(name);
+    is_pushed_ = true;
   }
+#endif
+#endif
+  if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
+    RecordEvent(name, role, "none");
+    return;
+  }
+  shallow_copy_name_ = name;
+  role_ = role;
+  start_ns_ = PosixInNsec();
+}
+
+RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook) {
+    dynload::nvtxRangePushA(name.c_str());
+    is_pushed_ = true;
+  }
+#endif
+#endif
+  if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
+    RecordEvent(name, role, "none");
+    return;
+  }
+  name_ = new std::string(name);
+  role_ = role;
+  start_ns_ = PosixInNsec();
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         const std::string attr) {
+                         const std::string &attr) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -354,8 +385,9 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
 #endif
 #endif
   if (g_enable_host_event_recorder_hook) {
-    name_ = name;
+    name_ = new std::string(name);
     start_ns_ = PosixInNsec();
+    attr_ = new std::string(attr);
     return;
   }
 
@@ -369,7 +401,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   // Maybe need the same push/pop behavior.
   Event *e = PushEvent(name, role, attr);
   SetCurAnnotation(e);
-  name_ = e->name();
+  // name_ = e->name();
 }
 
 RecordEvent::~RecordEvent() {
@@ -380,15 +412,22 @@ RecordEvent::~RecordEvent() {
   }
 #endif
 #endif
-
+  uint64_t end_ns = PosixInNsec();
   if (LIKELY(g_enable_host_event_recorder_hook)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
       HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
-                                                   start_ns_, PosixInNsec());
-    } else {
-      HostEventRecorder::GetInstance().RecordEvent(name_, start_ns_,
-                                                   PosixInNsec());
+                                                   start_ns_, end_ns, role_);
+    } else if (name_ != nullptr) {
+      if (attr_ == nullptr) {
+        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
+                                                     role_);
+      } else {
+        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
+                                                     role_, *attr_);
+      }
     }
+    delete name_;
+    delete attr_;
     return;
   }
 
@@ -396,11 +435,13 @@ RecordEvent::~RecordEvent() {
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer) {
-    tracer->AddCPURecords(CurAnnotationName(), start_ns_, PosixInNsec(),
-                          BlockDepth(), g_thread_id);
+    tracer->AddCPURecords(CurAnnotationName(), start_ns_, end_ns, BlockDepth(),
+                          g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_, role_);
+  PopEvent(*name_, role_);
+  delete name_;
+  delete attr_;
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -452,11 +493,11 @@ MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
   PopMemEvent(start_ns_, end_ns_, bytes_, place_, annotation_free);
 }
 
-RecordRPCEvent::RecordRPCEvent(const std::string &name) {
+/*RecordRPCEvent::RecordRPCEvent(const std::string &name) {
   if (FLAGS_enable_rpc_profiler) {
     event_.reset(new platform::RecordEvent(name));
   }
-}
+}*/
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {

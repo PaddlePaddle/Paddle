@@ -128,34 +128,38 @@ struct MemEvenRecorder {
 };
 
 struct RecordEvent {
-  RecordEvent(const std::string& name,
-              const EventRole role = EventRole::kOrdinary,
-              const std::string attr = "none");
+  explicit RecordEvent(const std::string& name,
+                       const EventRole role = EventRole::kOrdinary);
 
-  explicit RecordEvent(const char* name);
+  explicit RecordEvent(const char* name,
+                       const EventRole role = EventRole::kOrdinary);
+
+  RecordEvent(const std::string& name, const EventRole role,
+              const std::string& attr);
 
   ~RecordEvent();
 
   bool is_enabled_{false};
   bool is_pushed_{false};
-  uint64_t start_ns_;
   // Event name
-  std::string name_;
+  const std::string* name_{nullptr};
   const char* shallow_copy_name_{nullptr};
+  uint64_t start_ns_;
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
-  std::string full_name_;
+  // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
+  const std::string* attr_{nullptr};
 };
 
-class RecordRPCEvent {
+/*class RecordRPCEvent {
  public:
   explicit RecordRPCEvent(const std::string& name);
   ~RecordRPCEvent() {}
 
  private:
   std::unique_ptr<RecordEvent> event_;
-};
+};*/
 
 struct RecordBlock {
   explicit RecordBlock(int block_id);
