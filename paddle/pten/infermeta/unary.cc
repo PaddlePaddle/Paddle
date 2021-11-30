@@ -14,6 +14,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/unary.h"
+#include <set>
 
 namespace pten {
 
@@ -223,6 +224,52 @@ DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
     // are the same.
     return_meta.lod = x_meta.lod;
   }
+  return return_meta;
+}
+
+DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
+                                const std::vector<int64_t>& axis,
+                                bool keep_dim) {
+  bool reduce_all = true;
+  std::set<int64_t> dims_set(axis.begin(), axis.end());
+  for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
+    if (dims_set.find(i) == dims_set.end()) {
+      reduce_all = false;
+      break;
+    }
+  }
+
+  std::vector<int64_t> out_dim_vector;
+  if (keep_dim) {
+    for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
+      if (reduce_all || dims_set.find(i) != dims_set.end()) {
+        out_dim_vector.push_back(1);
+      } else {
+        out_dim_vector.push_back(x_meta.dims.at(i));
+      }
+    }
+  } else {
+    for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
+      if (reduce_all || dims_set.find(i) != dims_set.end()) {
+        continue;
+      } else {
+        out_dim_vector.push_back(x_meta.dims.at(i));
+      }
+    }
+
+    if (out_dim_vector.size() == 0) {
+      out_dim_vector.push_back(1);
+    }
+  }
+  DDim out_dim = paddle::framework::make_ddim(out_dim_vector);
+
+  DataType out_dtype = x_meta.dtype;
+  if (x_meta.dtype == DataType::BOOL || x_meta.dtype == DataType::INT32 ||
+      x_meta.dtype == DataType::INT64) {
+    out_dtype = DataType::INT64;
+  }
+
+  DenseTensorMeta return_meta(out_dtype, out_dim, x_meta.layout);
   return return_meta;
 }
 

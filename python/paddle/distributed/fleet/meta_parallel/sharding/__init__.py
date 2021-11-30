@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sharding_utils import GpuInfo
+from .sharding_utils import Type, device_guard
