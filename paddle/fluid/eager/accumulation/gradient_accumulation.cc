@@ -102,10 +102,18 @@ class TensorAddFunctor : public boost::static_visitor<> {
 
 #ifdef PADDLE_WITH_XPU
   void operator()(const paddle::platform::XPUPlace& place) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
     paddle::platform::XPUDeviceContext* ctx =
         dynamic_cast<paddle::platform::XPUDeviceContext*>(
             paddle::platform::DeviceContextPool::Instance().Get(place));
-    xpu::add<T>(ctx->x_context(), x_, y_, y_, static_cast<int>(numel_));
+    int r = xpu::add<XPUType>(
+        ctx->x_context(), reinterpret_cast<const XPUType*>(x_),
+        reinterpret_cast<const XPUType*>(y_), reinterpret_cast<XPUType*>(y_),
+        static_cast<int>(numel_));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        paddle::platform::errors::External(
+            "XPU add kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
   }
 #else
   void operator()(const paddle::platform::XPUPlace& place) {
@@ -193,12 +201,15 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
   // TODO(jiabin): Support NPU here
   PADDLE_TENSOR_ADD(float);
+
+#ifndef PADDLE_WITH_XPU
   // NOTE(phlrain): xpu only support float
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
   PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
+#endif
 
 #undef PADDLE_TENSOR_ADD
 
@@ -268,12 +279,15 @@ void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
   // TODO(jiabin): Support NPU here
   PADDLE_TENSOR_ADD(float);
+
+#ifndef PADDLE_WITH_XPU
   // NOTE(phlrain): xpu only support float
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
   PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
+#endif
 
 #undef PADDLE_TENSOR_ADD
 
