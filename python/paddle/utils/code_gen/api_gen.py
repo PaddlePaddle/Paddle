@@ -356,29 +356,16 @@ def source_include(header_file_path):
 def module_declare():
     return """
 PT_DECLARE_MODULE(CreationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-#endif
-
 PT_DECLARE_MODULE(LinalgCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(LinalgCUDA);
-#endif
-
 PT_DECLARE_MODULE(ManipulationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(ManipulationCUDA);
-#endif
-
 PT_DECLARE_MODULE(MathCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(CreationCUDA);
+PT_DECLARE_MODULE(LinalgCUDA);
+PT_DECLARE_MODULE(ManipulationCUDA);
 PT_DECLARE_MODULE(MathCUDA);
 #endif
-
 """
 
 
@@ -423,7 +410,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     for api in apis:
         api_code = API(api)
-        print("#######", api_code.gene_api_declaration())
+        print(api_code.gene_api_declaration())
         header_file.write(api_code.gene_api_declaration())
         source_file.write(api_code.gene_api_code())
 
