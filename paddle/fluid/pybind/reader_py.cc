@@ -30,6 +30,7 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "pybind11/stl.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -179,6 +180,7 @@ class MultiDeviceFeedReader {
   bool DropLast() const { return drop_last_; }
 
   ResultDictList ReadNext() {
+    platform::RecordEvent record_event("yoki: ReadNext");
     CheckNextStatus();
     ResultDictList result;
     result.reserve(ret_.size());
@@ -207,6 +209,7 @@ class MultiDeviceFeedReader {
   }
 
   ResultList ReadNextList() {
+    platform::RecordEvent record_event("ReadNextList");
     CheckNextStatus();
     ResultList result;
     result.reserve(ret_.size());
@@ -276,6 +279,7 @@ class MultiDeviceFeedReader {
   }
 
   void ReadAsync() {
+    platform::RecordEvent record_event("yoki: ReadAsync");
     for (size_t i = 0; i < readers_.size(); ++i) {
       futures_[i] = pool_->enqueue([this, i] {
         try {
@@ -290,6 +294,7 @@ class MultiDeviceFeedReader {
   }
 
   void CheckNextStatus() {
+    platform::RecordEvent record_event("yoki: CheckNextStatus");
     std::exception_ptr excep;
     Status status = WaitFutures(&excep);
 
@@ -339,11 +344,13 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
            py::call_guard<py::gil_scoped_release>())
       .def("read_next_var_list",
            [](ReaderType &self) {
+             platform::RecordEvent record_event("yoki: Read Next Var List");
              auto result_list = self.ReadNextList();
              auto &tensor_list = result_list[0];
              std::vector<std::shared_ptr<imperative::VarBase>> var_list;
              var_list.reserve(tensor_list.size());
              auto func = [](framework::LoDTensor &lod_tensor) {
+               platform::RecordEvent record_event("yoki: Generate New Var");
                std::string act_name =
                    imperative::GetCurrentTracer()->GenerateUniqueName(
                        "generated_var");
@@ -357,6 +364,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
                return new_var;
              };
              for (auto &tensor : tensor_list) {
+               platform::RecordEvent record_event("yoki: Do Generate New Var");
                var_list.emplace_back(func(tensor));
              }
              return var_list;

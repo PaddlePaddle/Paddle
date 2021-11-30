@@ -524,6 +524,7 @@ template <>
 void Copy<platform::CUDAPinnedPlace, platform::CPUPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
     platform::CPUPlace src_place, const void* src, size_t num) {
+  platform::RecordEvent record_event("yoki: MemoryCopy: CPU->CUDAPinned");
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place;
   if (UNLIKELY(num == 0)) return;
