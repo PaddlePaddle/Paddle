@@ -81,7 +81,7 @@ void ShareTensorBufferOpHandle::AddReuseVarPair(
 
 void ShareTensorBufferOpHandle::SetShareDimsAndDtype(
     bool share_dims_and_dtype) {
-  functor_.SetShareDimsAndDtype(share_dims);
+  functor_.SetShareDimsAndDtype(share_dims_and_dtype);
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {

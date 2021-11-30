@@ -73,7 +73,7 @@ class ShareTensorBufferFunctor {
       Scope *scope, size_t scope_idx, const std::string &op_type,
       const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
       const std::vector<std::string> &out_var_names,
-      const bool &is_variant_scope, bool share_dims = false);
+      const bool &is_variant_scope, bool share_dims_and_dtype = false);
 
   void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);

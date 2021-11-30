@@ -39,14 +39,14 @@ ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
     const std::vector<std::string> &out_var_names, const bool &is_variant_scope,
-    bool share_dims)
+    bool share_dims_and_dtype)
     : scope_(scope),
       scope_idx_(scope_idx),
       op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names),
       is_variant_scope_(is_variant_scope),
-      share_dims_(share_dims) {
+      share_dims_and_dtype_(share_dims_and_dtype) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size(),
                     platform::errors::PreconditionNotMet(
                         "The number of input variables and output variables "
