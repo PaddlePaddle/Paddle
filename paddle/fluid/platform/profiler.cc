@@ -97,22 +97,10 @@ class EventContainer {
   DISABLE_COPY_AND_ASSIGN(EventContainer);
 
  public:
-  // Record an event with string arguments
-  template <typename... Args,
-            typename = std::enable_if_t<ContainsStdString<Args...>::value>>
-  void Record(Args &&... args) {
-    auto *storage = GetEventStorage();
-    std::function<void *(size_t)> allocator = [this](size_t size) {
-      return GetStrBufFromArena(size);
-    };
-    new (storage) EventType(allocator, std::forward<Args>(args)...);
-  }
-
-  // Record an event without any string argument
+  // Record an event
   template <typename... Args>
   void Record(Args &&... args) {
-    auto *storage = GetEventStorage();
-    new (storage) EventType(std::forward<Args>(args)...);
+    DoRecord(ContainsStdString<Args...>(), std::forward<Args>(args)...);
   }
 
   // Get all events and clear the container
@@ -162,6 +150,23 @@ class EventContainer {
   };
   static_assert(sizeof(StringBlock) == StringBlock::kBlockSize,
                 "sizeof StringBlock must equal to kBlockSize");
+
+  // Record an event with string arguments
+  template <typename... Args>
+  void DoRecord(std::true_type, Args &&... args) {
+    auto *storage = GetEventStorage();
+    std::function<void *(size_t)> allocator = [this](size_t size) {
+      return GetStrBufFromArena(size);
+    };
+    new (storage) EventType(allocator, std::forward<Args>(args)...);
+  }
+
+  // Record an event without any string argument
+  template <typename... Args>
+  void DoRecord(std::false_type, Args &&... args) {
+    auto *storage = GetEventStorage();
+    new (storage) EventType(std::forward<Args>(args)...);
+  }
 
   EventType *GetEventStorage();
 
