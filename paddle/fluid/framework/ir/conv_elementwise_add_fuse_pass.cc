@@ -87,7 +87,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::ConvElementwiseadd pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
-
+  int found_conv_eltwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
@@ -135,9 +135,11 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});
+    found_conv_eltwise_count++;
   };
 
   gpd(graph, handler);
+  AddStatis(found_conv_eltwise_count);
 }
 
 }  // namespace ir
