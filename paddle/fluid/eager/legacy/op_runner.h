@@ -14,7 +14,6 @@
 
 #pragma once
 #include "paddle/fluid/eager/legacy/type_def.h"
-// TODO(Jiabin): We should not depends on this header remove it later
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/pten/core/tensor_meta.h"
 
