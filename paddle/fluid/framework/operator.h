@@ -163,6 +163,7 @@ class OperatorBase {
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
+  virtual bool SupportMLU() const { return false; }
 
   const std::string& Type() const { return type_; }
 
@@ -504,6 +505,13 @@ class OperatorWithKernel : public OperatorBase {
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
                          return platform::is_npu_place(kern_pair.first.place_);
+                       });
+  }
+  bool SupportMLU() const override {
+    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+    return std::any_of(op_kernels.begin(), op_kernels.end(),
+                       [](OpKernelMap::const_reference kern_pair) {
+                         return platform::is_mlu_place(kern_pair.first.place_);
                        });
   }
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
