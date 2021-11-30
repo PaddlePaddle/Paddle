@@ -15,24 +15,24 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-static dnnl::memory::format_tag get_plain_format_tag(
+static mkldnn::memory::format_tag get_plain_format_tag(
     const paddle::framework::Tensor* tensor) {
   auto tensor_dims_size = tensor->dims().size();
 
   switch (tensor_dims_size) {
     case 1:
-      return dnnl::memory::format_tag::a;
+      return mkldnn::memory::format_tag::a;
     case 2:
-      return dnnl::memory::format_tag::ab;
+      return mkldnn::memory::format_tag::ab;
     case 3:
-      return dnnl::memory::format_tag::abc;
+      return mkldnn::memory::format_tag::abc;
     case 4:
-      return dnnl::memory::format_tag::abcd;
+      return mkldnn::memory::format_tag::abcd;
     case 5:
-      return dnnl::memory::format_tag::abcde;
+      return mkldnn::memory::format_tag::abcde;
   }
 
-  return dnnl::memory::format_tag::abcdef;
+  return mkldnn::memory::format_tag::abcdef;
 }
 
 namespace paddle {
@@ -97,7 +97,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(framework::make_ddim(slice_dims));
 
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
 
     platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
                                                    x_type, onednn_engine);
@@ -192,11 +192,11 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    dnnl::memory::data_type dout_type =
+    mkldnn::memory::data_type dout_type =
         framework::ToMKLDNNDataType(dout->type());
-    dnnl::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
-                          dout->format());
-    dnnl::memory::format_tag reorder_format_tag =
+    mkldnn::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
+                            dout->format());
+    mkldnn::memory::format_tag reorder_format_tag =
         platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
     platform::ReorderMKLDNNHandler reorder_handler(slice_dims, dout->type(),

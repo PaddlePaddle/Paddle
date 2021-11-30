@@ -48,7 +48,7 @@ void* AlignedMalloc(size_t size) {
   void* p = nullptr;
   size_t alignment = 32ul;
 #ifdef PADDLE_WITH_MKLDNN
-  // refer to https://github.com/01org/mkl-dnn/blob/master/include/dnnl.hpp
+  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
   // memory alignment
   alignment = 4096ul;
 #endif
