@@ -86,38 +86,16 @@ class PriorBoxOpXPUKernel : public framework::OpKernel<T> {
                           "XPU gen_prior_box kernel return wrong value[%d %s]",
                           ret, XPUAPIErrorMsg[ret]));
 
-    framework::Tensor var_t;
-    framework::Tensor vars_cpu;
-    vars_cpu.mutable_data<K>(vars->dims(), platform::CPUPlace());
-    var_t.mutable_data<K>(
-        framework::make_ddim({1, static_cast<int>(variances.size())}),
-        platform::CPUPlace());
-    auto var_et = framework::EigenTensor<K, 2>::From(var_t);
-
-    for (size_t i = 0; i < variances.size(); ++i) {
-      var_et(0, i) = variances[i];
-    }
-
     int box_num = feature_height * feature_width * num_priors;
-    auto var_dim = vars->dims();
-
-    vars_cpu.Resize({box_num, static_cast<int>(variances.size())});
-    auto e_vars = framework::EigenMatrix<K, Eigen::RowMajor>::From(vars_cpu);
-
+    int vlen = variances.size();
     for (int i = 0; i < box_num; ++i) {
-      for (size_t j = 0; j < variances.size(); ++j) {
-        e_vars(i, j) = variances[j];
-      }
+      ret = xpu_memcpy(vars_data + i * vlen, variances.data(), vlen * sizeof(K),
+                       XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS, platform::errors::External(
+                                              "XPU xpu_memcpy return wrong "
+                                              "value[%d %s] in prior_box.",
+                                              ret, XPUAPIErrorMsg[ret]));
     }
-    vars_cpu.Resize(var_dim);
-
-    auto vars_cpu_data = vars_cpu.data<K>();
-    ret = xpu_memcpy(vars_data, vars_cpu_data, vars->numel() * sizeof(K),
-                     XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External("XPU xpu_memcpy return wrong "
-                                                 "value[%d %s] in prior_box.",
-                                                 ret, XPUAPIErrorMsg[ret]));
   }
 };
 
