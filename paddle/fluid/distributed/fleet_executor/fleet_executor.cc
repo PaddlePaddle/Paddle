@@ -58,7 +58,7 @@ void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
 void FleetExecutor::InitCarrier() {
   Carrier& carrier_instance = Carrier::Instance();
   if (!carrier_instance.IsInit()) {
-    carrier_instance.Init(runtime_graph_->intercepter_id_to_node(),
+    carrier_instance.Init(runtime_graph_->intercepter_id_to_node(), root_scope_,
                           minibatch_scope_, microbatch_scopes_, place_);
   }
 }
