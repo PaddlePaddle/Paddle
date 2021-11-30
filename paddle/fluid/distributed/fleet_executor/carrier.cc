@@ -26,7 +26,7 @@ USE_INTERCEPTOR(Compute);
 
 void Carrier::Init(
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-    framework::Scope* minibatch_scope,
+    framework::Scope* root_scope, framework::Scope* minibatch_scope,
     const std::vector<framework::Scope*>& microbatch_scopes,
     const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
@@ -35,6 +35,8 @@ void Carrier::Init(
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
   place_ = place;
+  root_scope_ = root_scope;
+  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   CreateInterceptors();
   is_init_ = true;
 }
@@ -105,6 +107,7 @@ void Carrier::Start() {
   }
   std::unique_lock<std::mutex> lock(running_mutex_);
   cond_var_.wait(lock);
+  dev_ctx_->Wait();
 }
 
 std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
@@ -164,6 +167,10 @@ void Carrier::CreateInterceptors() {
       // TODO(wangxi): use node_type to select different Interceptor
       auto interceptor =
           std::make_unique<Interceptor>(interceptor_id, task_node);
+      interceptor->SetPlace(place_);
+      interceptor->SetMiniBatchScope(minibatch_scope_);
+      interceptor->SetMicroBatchScope(microbatch_scopes_);
+      interceptor->SetRootScope(root_scope_);
       SetInterceptor(interceptor_id, std::move(interceptor));
       VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
               << ".";
