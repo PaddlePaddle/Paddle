@@ -22,6 +22,7 @@ import paddle
 
 paddle.enable_static()
 
+
 class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
     def op_name(self):
         return "mul"
@@ -94,17 +95,19 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
             assert np.allclose(
                 self.scope.find_var("mul_weights").get_tensor(),
                 [[1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
-                [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
-                [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.]])
+                 [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
+                 [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.]])
 
             param = self.scope.var("mul_weights").get_tensor()
             param.set(self.variables_mul["mul_weights_bad"], self.place)
             with self.assertRaises(ValueError):
                 qpass._dequantize_op_weights(graph, op_node, "Y", "Out")
 
+
 class TestQuant2Int8MkldnnPassMatmulV2(TestQuant2Int8MkldnnPassMul):
     def op_name(self):
         return "matmul_v2"
+
 
 class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
     def setUp(self):
@@ -216,3 +219,4 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
