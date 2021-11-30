@@ -248,14 +248,20 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
 #undef PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL
     } else {
       for (size_t idx = 0; idx < n; idx++) {
-        std::string regularization_method = "";
-        if (regularization_methods.size() != 0) {
-          regularization_method = regularization_methods[idx];
-        }
-        RegularizationType regularization_flag{RegularizationType::kNONE};
-        if (regularization_method == "l2_decay") {
-          regularization_flag = RegularizationType::kL2DECAY;
-        }
+        // std::string regularization_method = "";
+        // if (regularization_methods.size() != 0) {
+        //   regularization_method = regularization_methods[idx];
+        // }
+        // RegularizationType regularization_flag{RegularizationType::kNONE};
+        // if (regularization_method == "l2_decay") {
+        //   regularization_flag = RegularizationType::kL2DECAY;
+        // }
+        RegularizationType regularization_flag =
+            regularization_methods.size() > 0 &&
+                    regularization_methods[idx] == "l2_decay"
+                ? RegularizationType::kL2DECAY
+                : RegularizationType::kNONE;
+
         MPType regularization_coeff = static_cast<MPType>(0.0);
         if (regularization_coeffs.size() != 0) {
           regularization_coeff =
@@ -263,8 +269,6 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
         }
         auto lr_temp = lrs.size() > 1 ? lrs[idx] : lrs[0];
 
-        params_out[idx]->data<T>();
-        velocitys_out[idx]->data<MPType>();
         const MPType *master_in_data =
             multi_precision ? master_params[idx]->data<MPType>() : nullptr;
         MPType *master_out_data =
