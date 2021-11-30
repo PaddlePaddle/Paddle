@@ -399,8 +399,10 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
+  name_ = new std::string(name);
   start_ns_ = PosixInNsec();
   role_ = role;
+  attr_ = new std::string(attr);
   is_enabled_ = true;
   // lock is not needed, the code below is thread-safe
   // Maybe need the same push/pop behavior.
