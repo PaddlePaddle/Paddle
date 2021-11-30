@@ -49,8 +49,6 @@ struct SkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_bias);
   PATTERN_DECL_NODE(layer_norm_scale);
   PATTERN_DECL_NODE(layer_norm_out);
-  PATTERN_DECL_NODE(layer_norm_mean);
-  PATTERN_DECL_NODE(layer_norm_variance);
 };
 
 PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
@@ -82,20 +80,12 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   auto *layer_norm_out_var = pattern->NewNode(layer_norm_out_repr())
                                  ->AsOutput()
                                  ->assert_is_op_output("layer_norm", "Y");
-  auto *layer_norm_mean_var = pattern->NewNode(layer_norm_mean_repr())
-                                  ->AsOutput()
-                                  ->assert_is_op_output("layer_norm", "Mean");
-  auto *layer_norm_variance_var =
-      pattern->NewNode(layer_norm_variance_repr())
-          ->AsOutput()
-          ->assert_is_op_output("layer_norm", "Variance");
 
   // Add links for layer_norm op.
   layer_norm
       ->LinksFrom(
           {elementwise_out_var, layer_norm_bias_var, layer_norm_scale_var})
-      .LinksTo(
-          {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+      .LinksTo({layer_norm_out_var});
   return layer_norm_out_var;
 }
 
@@ -142,9 +132,6 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
                               fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 
@@ -175,8 +162,6 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     del_node_set.insert(elementwise);
     del_node_set.insert(layer_norm);
     del_node_set.insert(elementwise_out);
-    del_node_set.insert(layer_norm_mean);
-    del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
 
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
