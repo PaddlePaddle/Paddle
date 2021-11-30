@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/api.h"
 #include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -66,6 +65,9 @@ inline bool IsDenseTensor(
 }
 
 }  // namespace detail
+
+// declare cast api
+Tensor cast(const Tensor &x, DataType out_dtype);
 
 /////// Tensor Methods ////////
 
