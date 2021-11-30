@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace distributed {
@@ -24,10 +25,16 @@ namespace distributed {
 USE_INTERCEPTOR(Compute);
 
 void Carrier::Init(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
+    framework::Scope* minibatch_scope,
+    const std::vector<framework::Scope*>& microbatch_scopes,
+    const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "Carrier is already init."));
   interceptor_id_to_node_ = interceptor_id_to_node;
+  minibatch_scope_ = minibatch_scope;
+  microbatch_scopes_ = microbatch_scopes;
+  place_ = place;
   CreateInterceptors();
   is_init_ = true;
 }
@@ -96,7 +103,11 @@ void Carrier::Start() {
                           "Message bus has not been initialized."));
     message_bus_instance.Send(tmp_msg);
   }
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
 }
+
+std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
 

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,8 +26,13 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+}
+
 namespace distributed {
 
 class TaskNode;
@@ -41,7 +47,10 @@ class Carrier final {
   }
 
   void Init(
-      const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node);
+      const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
+      framework::Scope* minibatch_scope,
+      const std::vector<framework::Scope*>& microbatch_scopes,
+      const platform::Place& place);
 
   ~Carrier();
 
@@ -56,6 +65,8 @@ class Carrier final {
                               std::unique_ptr<Interceptor>);
 
   void SetCreatingFlag(bool flag);
+
+  std::condition_variable& GetCondVar();
 
   void Start();
 
@@ -83,6 +94,12 @@ class Carrier final {
   bool creating_interceptors_{true};
   std::mutex creating_flag_mutex_;
   bool is_init_{false};
+
+  std::mutex running_mutex_;
+  std::condition_variable cond_var_;
+  std::vector<framework::Scope*> microbatch_scopes_;
+  framework::Scope* minibatch_scope_;
+  paddle::platform::Place place_;
 };
 
 }  // namespace distributed
