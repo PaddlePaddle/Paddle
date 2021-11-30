@@ -827,7 +827,7 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
                        bool dispensable = false) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (list == nullptr) {
+  if (list == nullptr || list == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "
