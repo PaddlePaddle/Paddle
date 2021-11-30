@@ -37,14 +37,19 @@ class CReduceProdOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Prod"; }
 };
 
+DECLARE_INPLACE_OP_INFERER(ReduceProdInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_prod, ops::CReduceOp,
-                             ops::CReduceProdOpMaker);
+REGISTER_OPERATOR(
+    c_reduce_prod, ops::CReduceOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::CReduceProdOpMaker, ops::ReduceProdInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_prod,
                        ops::CReduceOpCPUKernel<ops::kRedProd, float>,

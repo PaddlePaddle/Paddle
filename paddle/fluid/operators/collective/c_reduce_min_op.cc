@@ -37,14 +37,19 @@ class CReduceMinOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Min"; }
 };
 
+DECLARE_INPLACE_OP_INFERER(ReduceMinInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_min, ops::CReduceOp,
-                             ops::CReduceMinOpMaker);
+REGISTER_OPERATOR(
+    c_reduce_min, ops::CReduceOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::CReduceMinOpMaker, ops::ReduceMinInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_min,
                        ops::CReduceOpCPUKernel<ops::kRedMin, float>,

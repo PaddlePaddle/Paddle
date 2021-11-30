@@ -403,9 +403,9 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if in_dygraph_mode():
-        return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
-                                  'use_calc_stream', use_calc_stream, 'ring_id',
-                                  ring_id)
+        return _C_ops.c_broadcast_(tensor, tensor, 'root', gsrc,
+                                   'use_calc_stream', use_calc_stream,
+                                   'ring_id', ring_id)
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -568,21 +568,21 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            return _C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
-        elif op == ReduceOp.MAX:
-            return _C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
-        elif op == ReduceOp.MIN:
-            return _C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
-        elif op == ReduceOp.PROD:
-            return _C_ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
+            return _C_ops.c_reduce_sum_(tensor, tensor, 'use_calc_stream',
                                         use_calc_stream, 'ring_id', ring_id,
                                         'root_id', gdst)
+        elif op == ReduceOp.MAX:
+            return _C_ops.c_reduce_max_(tensor, tensor, 'use_calc_stream',
+                                        use_calc_stream, 'ring_id', ring_id,
+                                        'root_id', gdst)
+        elif op == ReduceOp.MIN:
+            return _C_ops.c_reduce_min_(tensor, tensor, 'use_calc_stream',
+                                        use_calc_stream, 'ring_id', ring_id,
+                                        'root_id', gdst)
+        elif op == ReduceOp.PROD:
+            return _C_ops.c_reduce_prod_(tensor, tensor, 'use_calc_stream',
+                                         use_calc_stream, 'ring_id', ring_id,
+                                         'root_id', gdst)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 

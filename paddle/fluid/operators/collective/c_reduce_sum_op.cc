@@ -37,14 +37,19 @@ class CReduceSumOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Sum"; }
 };
 
+DECLARE_INPLACE_OP_INFERER(ReduceSumInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_sum, ops::CReduceOp,
-                             ops::CReduceSumOpMaker);
+REGISTER_OPERATOR(
+    c_reduce_sum, ops::CReduceOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::CReduceSumOpMaker, ops::ReduceSumInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_sum,
                        ops::CReduceOpCPUKernel<ops::kRedSum, float>,

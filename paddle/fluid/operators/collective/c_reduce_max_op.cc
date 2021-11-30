@@ -37,14 +37,19 @@ class CReduceMaxOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Max"; }
 };
 
+DECLARE_INPLACE_OP_INFERER(ReduceMaxInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_max, ops::CReduceOp,
-                             ops::CReduceMaxOpMaker);
+REGISTER_OPERATOR(
+    c_reduce_max, ops::CReduceOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::CReduceMaxOpMaker, ops::ReduceMaxInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_max,
                        ops::CReduceOpCPUKernel<ops::kRedMax, float>,
