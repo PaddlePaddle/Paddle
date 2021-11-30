@@ -57,9 +57,9 @@ TEST(ComputeInterceptor, Compute) {
   Carrier& carrier = Carrier::Instance();
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* node_a = new TaskNode(0, 0, 0, 0, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 0, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 0, 0);
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
 
   // a->b->c
   node_a->AddDownstreamTask(1);

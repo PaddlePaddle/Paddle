@@ -164,7 +164,7 @@ void ComputeInterceptor::Run() {
 
     // step_ %= node_->max_run_times();
     for (auto op : node_->ops()) {
-      auto* scope = microbatch_scopes_[step_ % node_->max_slot_nums()];
+      auto* scope = microbatch_scopes_[step_ % node_->max_run_times()];
       op->Run(*scope, place_);
     }
     ++step_;
