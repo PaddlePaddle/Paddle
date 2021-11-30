@@ -62,37 +62,67 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
             print("sparse dim:", embedding_dim)
             break
 
-    accessor.accessor_class = "CtrCommonAccessor"
-    accessor.fea_dim = embedding_dim + 2
-    accessor.embedx_dim = embedding_dim - 1
-    accessor.embedx_threshold = 0
+    if not accessor.HasField("accessor_class"):
+        accessor.accessor_class = "CtrCommonAccessor"
+    if not accessor.HasField("fea_dim"):
+        accessor.fea_dim = embedding_dim + 2
+    if not accessor.HasField("embedx_dim"):
+        accessor.embedx_dim = embedding_dim - 1
+    if not accessor.HasField("embedx_threshold"):
+        accessor.embedx_threshold = 0
 
     ctr_accessor_param = accessor.ctr_accessor_param
-    ctr_accessor_param.nonclk_coeff = 0.1
-    ctr_accessor_param.click_coeff = 1.0
-    ctr_accessor_param.base_threshold = 0
-    ctr_accessor_param.delta_threshold = 0
-    ctr_accessor_param.delta_keep_days = 16
-    ctr_accessor_param.show_click_decay_rate = 1
-    ctr_accessor_param.delete_threshold = 0
-    ctr_accessor_param.delete_after_unseen_days = 30
-    ctr_accessor_param.ssd_unseenday_threshold = 1
+    if not ctr_accessor_param.HasField("nonclk_coeff"):
+        ctr_accessor_param.nonclk_coeff = 0.1
+    if not ctr_accessor_param.HasField("click_coeff"):
+        ctr_accessor_param.click_coeff = 1.0
+    if not ctr_accessor_param.HasField("base_threshold"):
+        ctr_accessor_param.base_threshold = 0
+    if not ctr_accessor_param.HasField("delta_threshold"):
+        ctr_accessor_param.delta_threshold = 0
+    if not ctr_accessor_param.HasField("delta_keep_days"):
+        ctr_accessor_param.delta_keep_days = 16
+    if not ctr_accessor_param.HasField("show_click_decay_rate"):
+        ctr_accessor_param.show_click_decay_rate = 1
+    if not ctr_accessor_param.HasField("delete_threshold"):
+        ctr_accessor_param.delete_threshold = 0
+    if not ctr_accessor_param.HasField("delete_after_unseen_days"):
+        ctr_accessor_param.delete_after_unseen_days = 30
+    if not ctr_accessor_param.HasField("ssd_unseenday_threshold"):
+        ctr_accessor_param.ssd_unseenday_threshold = 1
 
-    embed_sgd_param = accessor.embed_sgd_param
-    embed_sgd_param.name = "SparseAdaGradSGDRule"
-    embed_sgd_param.adagrad.learning_rate = 0.05
-    embed_sgd_param.adagrad.initial_g2sum = 3.0
-    embed_sgd_param.adagrad.initial_range = 0.0001
-    embed_sgd_param.adagrad.weight_bounds.append(-10.0)
-    embed_sgd_param.adagrad.weight_bounds.append(10.0)
-
-    embedx_sgd_param = accessor.embedx_sgd_param
-    embedx_sgd_param.name = "SparseAdaGradSGDRule"
-    embedx_sgd_param.adagrad.learning_rate = 0.05
-    embedx_sgd_param.adagrad.initial_g2sum = 3.0
-    embedx_sgd_param.adagrad.initial_range = 0.0001
-    embedx_sgd_param.adagrad.weight_bounds.append(-10.0)
-    embedx_sgd_param.adagrad.weight_bounds.append(10.0)
+    for sgd_param in [accessor.embed_sgd_param, accessor.embedx_sgd_param]:
+        if not sgd_param.HasField("name"):
+            sgd_param.name = "SparseAdaGradSGDRule"
+        if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
+            if not sgd_param.adagrad.HasField("learning_rate"):
+                sgd_param.adagrad.learning_rate = 0.05
+            if not sgd_param.adagrad.HasField("initial_g2sum"):
+                sgd_param.adagrad.initial_g2sum = 3.0
+            if not sgd_param.adagrad.HasField("initial_range"):
+                sgd_param.adagrad.initial_range = 0.0001
+            if len(sgd_param.adagrad.weight_bounds) == 0:
+                sgd_param.adagrad.weight_bounds.extend([-10.0, 10.0])
+        if sgd_param.name == "SparseNaiveSGDRule":
+            if not sgd_param.naive.HasField("learning_rate"):
+                sgd_param.naive.learning_rate = 0.05
+            if not sgd_param.naive.HasField("initial_range"):
+                sgd_param.naive.initial_range = 0.0001
+            if len(sgd_param.adagrad.weight_bounds) == 0:
+                sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
+        if sgd_param.name == "SparseAdamSGDRule":
+            if not sgd_param.adam.HasField("learning_rate"):
+                sgd_param.adam.learning_rate = 0.001
+            if not sgd_param.adam.HasField("initial_g2sum"):
+                sgd_param.adam.initial_g2sum = 0.0001
+            if not sgd_param.adam.HasField("beta1_decay_rate"):
+                sgd_param.adam.beta1_decay_rate = 0.9
+            if not sgd_param.adam.HasField("beta2_decay_rate"):
+                sgd_param.adam.beta2_decay_rate = 0.999
+            if not sgd_param.adam.HasField("ada_epsilon"):
+                sgd_param.adam.ada_epsilon = 1e-08
+            if len(sgd_param.adagrad.weight_bounds) == 0:
+                sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
 
 def check_embedding_dim(accessor, varname, o_main_program):
@@ -917,9 +947,14 @@ class TheOnePSRuntime(RuntimeBase):
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        import copy
-                        table_proto = copy.deepcopy(self.context[
-                            "user_defined_strategy"].sparse_table_configs)
+                        all_table_proto = self.context[
+                            "user_defined_strategy"].sparse_table_configs
+                        table_proto = all_table_proto.add()
+                        for proto in all_table_proto:
+                            if proto.table_name == common.table_name:
+                                print("table name:", proto.table_name)
+                                table_proto = proto
+                                break
                         print('table proto:', table_proto)
                         print('table_class:', table_proto.table_class)
                         print('shard_num:', table_proto.shard_num)
@@ -928,7 +963,7 @@ class TheOnePSRuntime(RuntimeBase):
                               table_proto.accessor.IsInitialized())
                         print('accessor.ByteSize',
                               table_proto.accessor.ByteSize())
-                        if table_proto.table_class:
+                        if table_proto.HasField("table_class"):
                             print('table_proto.table_class is true')
                             table.table_class = table_proto.table_class
                         else:
@@ -939,7 +974,7 @@ class TheOnePSRuntime(RuntimeBase):
                             warnings.warn(
                                 "The PS mode must use MemorySparseTable.")
 
-                        if table_proto.shard_num:
+                        if table_proto.HasField("shard_num"):
                             print('table_proto.shard_num is true')
                             table.shard_num = table_proto.shard_num
                         else:
@@ -950,12 +985,12 @@ class TheOnePSRuntime(RuntimeBase):
 
                         if table_proto.accessor.ByteSize() == 0:
                             print('table_proto.accessor is false')
-                            get_default_accessor_proto(table_proto.accessor,
-                                                       common.table_name,
-                                                       self.origin_main_program)
                             warnings.warn(
                                 "The accessor of sparse table is not set, use default value."
                             )
+                        get_default_accessor_proto(table_proto.accessor,
+                                                   common.table_name,
+                                                   self.origin_main_program)
                         check_embedding_dim(table_proto.accessor,
                                             common.table_name,
                                             self.origin_main_program)

@@ -501,7 +501,11 @@ class DistributedStrategy(object):
         if not configs:
             print("table configs is empty")
         else:
-            set_table_config(table_param, "table_parameters", configs)
+            for table_name in configs:
+                table_data = table_param.add()
+                table_data.table_name = table_name
+                set_table_config(table_data, "table_parameters." + table_name,
+                                 configs[table_name])
 
     @property
     def amp(self):
