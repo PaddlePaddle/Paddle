@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -83,6 +85,62 @@ __global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<double>>(
     dx[col] = plat::complex<double>(y[col].real, -y[col].imag) * o;
     dy[col] = plat::complex<double>(x[col].real, -x[col].imag) * o;
     col += blockDim.x * gridDim.x;
+  }
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  // dx
+  if (dx != nullptr) {
+    if (dx->dims() == dout->dims()) {
+      // dx = dout * y
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, y, dx);
+    } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(*dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+      }
+      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
+      gpuStream_t stream = ctx.cuda_device_context().stream();
+
+      framework::Tensor wayto_dx;
+      wayto_dx.Resize(dout->dims());
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, y, &wayto_dx);
+
+      const framework::Tensor* const_to_dx =
+          const_cast<const framework::Tensor*>(&wayto_dx);
+      TensorReduceFunctorImpl<T, T, CustomSum>(*const_to_dx, dx, reduce_dims,
+                                               stream);
+    }
+  }
+  // dy
+  if (dy != nullptr) {
+    if (dy->dims() == dout->dims()) {
+      // dy = dout * x
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, x, dy);
+    } else {
+      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
+      gpuStream_t stream = ctx.cuda_device_context().stream();
+
+      framework::Tensor wayto_dy;
+      wayto_dy.Resize(dout->dims());
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, x, &wayto_dy);
+
+      const framework::Tensor* const_to_dy =
+          const_cast<const framework::Tensor*>(&wayto_dy);
+      TensorReduceFunctorImpl<T, T, CustomSum>(*const_to_dy, dy, reduce_dims,
+                                               stream);
+    }
   }
 }
 
