@@ -79,30 +79,12 @@ void Mean(const CUDAContext& dev_ctx,
 template <typename T>
 void Scale(const CUDAContext& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  eigen::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
-
-template <typename T>
-void ScaleHost(const CUDAContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(scale.place()),
-                    false,
-                    paddle::platform::errors::InvalidArgument(
-                        "Scale argument isn't a host tensor."));
-  eigen::Scale<CUDAContext, T>(dev_ctx,
-                               x,
-                               static_cast<float>(*scale.data<T>()),
-                               bias,
-                               bias_after_scale,
-                               out);
+  eigen::Scale<CUDAContext, T>(
+      dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
 }
 
 // Create the definition of ElementwiseAdd
@@ -150,20 +132,6 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.host",
-                   CUDA,
-                   ANY,
-                   pten::ScaleHost,
-                   float,
-                   double,
-                   float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-}
 PT_REGISTER_KERNEL("elementwise_add",
                    CUDA,
                    ANY,
