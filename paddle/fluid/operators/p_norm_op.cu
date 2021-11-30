@@ -24,6 +24,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/p_norm_op.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -60,6 +62,7 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
 
 struct NonzeroFunctor {
   HOSTDEVICE explicit inline NonzeroFunctor() {}
+  HOSTDEVICE explicit inline NonzeroFunctor(int n) {}
   template <typename T>
   HOSTDEVICE inline T operator()(const T& x) const {
     return static_cast<T>(static_cast<double>(x) != 0);
@@ -68,6 +71,7 @@ struct NonzeroFunctor {
 
 struct AbsFunctor {
   HOSTDEVICE explicit inline AbsFunctor() {}
+  HOSTDEVICE explicit inline AbsFunctor(int n) {}
   template <typename T>
   HOSTDEVICE inline T operator()(const T& x) const {
     return static_cast<T>(inline_abs(x));
@@ -83,15 +87,37 @@ struct PowFunctor {
   float porder;
 };
 
-struct UnaryPowFunctor {
-  HOSTDEVICE explicit inline UnaryPowFunctor(float porder) {
-    this->porder = porder;
+template <typename Tx, typename Ty = Tx>
+struct AbsAndMin {
+  using Transformer = AbsFunctor;
+  using MT = typename details::MPTypeTrait<Ty>::Type;
+  inline Ty initial() {
+    return static_cast<Ty>(std::numeric_limits<MT>::infinity());
   }
-  template <typename T>
-  HOSTDEVICE inline T operator()(const T& x) const {
-    return inline_pow(inline_abs(x), static_cast<T>(porder));
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return (a < b) ? a : b;
   }
-  float porder;
+};
+
+template <typename Tx, typename Ty = Tx>
+struct AbsAndMax {
+  using Transformer = AbsFunctor;
+  using MT = typename details::MPTypeTrait<Ty>::Type;
+  inline Ty initial() {
+    return static_cast<Ty>(-std::numeric_limits<MT>::infinity());
+  }
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return (a > b) ? a : b;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct NonzeroAndSum {
+  using Transformer = NonzeroFunctor;
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b + a;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -115,35 +141,38 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduce<T, T, cub::Sum, NonzeroFunctor>(
-          *in_x, out_norm, reduce_axis, static_cast<T>(0), cub::Sum(),
-          NonzeroFunctor(), stream);
+      TensorReduceFunctorImpl<T, T, NonzeroAndSum>(*in_x, out_norm, reduce_axis,
+                                                   stream);
     } else if (porder == INFINITY) {
-      auto inf = -std::numeric_limits<MT>::infinity();
-      TensorReduce<T, T, cub::Max, AbsFunctor>(*in_x, out_norm, reduce_axis,
-                                               static_cast<T>(inf), cub::Max(),
-                                               AbsFunctor(), stream);
+      TensorReduceFunctorImpl<T, T, AbsAndMax>(*in_x, out_norm, reduce_axis,
+                                               stream);
     } else if (porder == -INFINITY) {
-      auto inf = std::numeric_limits<MT>::infinity();
-      TensorReduce<T, T, cub::Min, AbsFunctor>(*in_x, out_norm, reduce_axis,
-                                               static_cast<T>(inf), cub::Min(),
-                                               AbsFunctor(), stream);
+      TensorReduceFunctorImpl<T, T, AbsAndMin>(*in_x, out_norm, reduce_axis,
+                                               stream);
     } else {
-      framework::Tensor tmp;
-      tmp.mutable_data<T>(ndim, ctx.GetPlace());
-      TensorReduce<T, T, cub::Sum, UnaryPowFunctor>(
-          *in_x, &tmp, reduce_axis, static_cast<T>(0), cub::Sum(),
-          UnaryPowFunctor(porder), stream);
-      const framework::Tensor* tmp_norm = &tmp;
-      std::vector<const framework::Tensor*> ins = {tmp_norm};
-      std::vector<framework::Tensor*> outs = {out_norm};
-      auto func = PowFunctor<MT, T>(1. / porder);
+      framework::Tensor tmp_x;
+      tmp_x.mutable_data<T>(xdim, ctx.GetPlace());
+      std::vector<const framework::Tensor*> ins = {in_x};
+      std::vector<framework::Tensor*> outs = {&tmp_x};
+      auto func = PowFunctor<MT, T>(porder);
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
 
       LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
                                           PowFunctor<MT, T>>(cuda_ctx, ins,
                                                              &outs, func);
+      framework::Tensor tmp_y;
+      tmp_y.mutable_data<T>(ndim, ctx.GetPlace());
+      TensorReduceFunctorImpl<T, T, CustomSum>(tmp_x, &tmp_y, reduce_axis,
+                                               stream);
+      const framework::Tensor* tmp_norm = &tmp_y;
+      ins = {tmp_norm};
+      outs = {out_norm};
+      auto func_inverse = PowFunctor<MT, T>(1. / porder);
+
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
+                                          PowFunctor<MT, T>>(
+          cuda_ctx, ins, &outs, func_inverse);
     }
   }
 };
