@@ -147,7 +147,21 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NDHWC", "NCDHW"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(1)
       .End();
 }
 
