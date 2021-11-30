@@ -106,7 +106,7 @@ class AutoParallelizer:
         # instantiate communication by process_mapping.
         all_process_groups = get_all_process_groups()
         for process_group in all_process_groups:
-            if rank not in process_group._ranks:
+            if rank not in process_group.ranks:
                 continue
             process_group.instantiate()
 

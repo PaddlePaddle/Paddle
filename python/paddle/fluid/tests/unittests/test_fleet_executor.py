@@ -32,11 +32,8 @@ class TestFleetExecutor(unittest.TestCase):
         exe.run(empty_program, feed={'x': [1]})
 
     def test_executor_on_single_device(self):
-        places = [fluid.CPUPlace()]
         if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            self.run_fleet_executor(place)
+            self.run_fleet_executor(fluid.CUDAPlace(0))
 
 
 if __name__ == "__main__":
