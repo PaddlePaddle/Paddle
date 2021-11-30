@@ -147,12 +147,14 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
       // NOTE(zhiqiu): In the case of inplace addto, if the operator of
       // the in_out_vars is skipped during running, we should set the dims of
       // output as the same as input.
-      if (share_dims_) {
+      if (share_dims_and_dtype_) {
         out_tensor->Resize(in_tensor.dims());
+        out_tensor->ShareDataTypeWith(in_tensor);
       }
 
       VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
-              << in_var_info->Name() << " -> " << out_var_names_[i];
+              << in_var_info->Name() << " -> " << out_var_names_[i]
+              << " share_dims_and_dtype = " << share_dims_and_dtype_;
     }
   }
 }
