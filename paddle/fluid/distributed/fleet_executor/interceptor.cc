@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
@@ -50,8 +51,18 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
       InterceptorMessage msg;
       msg.set_message_type(STOP);
       Send(interceptor_id_, msg);
+    } else if (msg.message_type() == STOP) {
+      stop_ = true;
+      StopCarrier();
     }
   }
+}
+
+void Interceptor::StopCarrier() {
+  Carrier& carrier_instance = Carrier::Instance();
+  std::condition_variable& cond_var = carrier_instance.GetCondVar();
+  // probably double notify, but ok for ut
+  cond_var.notify_all();
 }
 
 std::condition_variable& Interceptor::GetCondVar() {
@@ -80,9 +91,6 @@ bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
   return MessageBus::Instance().Send(msg);
 }
 
-// maybe need a better method for interceptor base
-void Interceptor::HandleStop(const InterceptorMessage& msg) { stop_ = true; }
-
 void Interceptor::PoolTheMailbox() {
   // pool the local mailbox, parse the Message
   for (;;) {
@@ -101,11 +109,7 @@ void Interceptor::PoolTheMailbox() {
             << " from interceptor " << interceptor_message.src_id()
             << " with message: " << message_type << ".";
 
-    if (message_type == STOP) {
-      HandleStop(interceptor_message);
-    } else {
-      Handle(interceptor_message);
-    }
+    Handle(interceptor_message);
 
     if (stop_) {
       // break the pooling thread

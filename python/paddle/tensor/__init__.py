@@ -191,6 +191,7 @@ from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
+from .math import diff  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -402,7 +403,8 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
-           'triangular_solve'
+           'triangular_solve',
+           'diff'
 ]
 
 #this list used in math_op_patch.py for magic_method bind

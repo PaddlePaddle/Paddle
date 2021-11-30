@@ -42,6 +42,7 @@ TEST(AccumulationNode, EagerTensor) {
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace()),
       meta);
+
   dt1->mutable_data<paddle::platform::float16>()[0] = 20.0;
   EagerTensor et1 = EagerTensor(dt1);
 

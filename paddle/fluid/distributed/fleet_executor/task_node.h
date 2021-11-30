@@ -48,6 +48,7 @@ class TaskNode final {
   const std::unordered_set<int64_t>& downstream() const { return downstream_; }
   const std::string& type() const { return type_; }
   const paddle::framework::ProgramDesc& program() const { return program_; }
+  const std::vector<OperatorBase*>& ops() const { return ops_; }
 
   bool AddUpstreamTask(int64_t task_id);
   bool AddDownstreamTask(int64_t task_id);

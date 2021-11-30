@@ -166,8 +166,6 @@ def get_dist_prog_with_parallelizer(train_program, startup_program,
         grad_clip=None)
     optimizer = fleet.distributed_optimizer(optimizer)
 
-    # fake a comm group
-    pg = new_process_group([3, 4])
     _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
         loss, startup_program)
 
