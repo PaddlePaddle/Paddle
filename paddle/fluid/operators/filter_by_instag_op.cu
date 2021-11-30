@@ -12,149 +12,214 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/filter_by_instag_op.h"
+#include <cstring>
+#include <random>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
 
-#include <memory>
-#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
-#include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/operators/filter_by_instag_op.h"
 
 namespace paddle {
 namespace operators {
-class FilterByInstagOp : public framework::OperatorWithKernel {
+
+using Tensor = framework::Tensor;
+using SelectedRows = framework::SelectedRows;
+using LoDTensor = framework::LoDTensor;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename T>
+using Vector = framework::Vector<T>;
+#else
+template <typename T>
+using Vector = framework::CPUVector<T>;
+#endif
+
+template <typename T>
+class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Ins"), true,
-        platform::errors::InvalidArgument("Input(Ins) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins_tag"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Ins_tag) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter_tag"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Filter_tag) should be not null."));
+  void Compute(const framework::ExecutionContext& context) const override {
+    // X1 is global FC output
+    // Dim [batch size, embedding size]
+    auto* x1 = context.Input<LoDTensor>("Ins");
+    bool is_x1_lod = context.Attr<bool>("is_lod");
+    int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
+    // X2 is ins tag list
+    // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
+    auto* x2 = context.Input<LoDTensor>("Ins_tag");
+    // X3 is local fc tag list
+    // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
+    auto* x3 = context.Input<Tensor>("Filter_tag");
 
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument("Output(Out) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("LossWeight"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(LossWeight) shoudl not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("IndexMap"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(IndexMap) should be not null."));
+    std::unordered_set<int64_t> filter_tag;
+    auto* x3_data = x3->data<int64_t>();
+    size_t len = x3->dims()[0];
+    for (size_t i = 0; i < len; i++) {
+      filter_tag.insert(x3_data[i]);
+    }
 
-    auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
+    // expected auto = const int64_t
+    auto* x2_data = x2->data<int64_t>();
+    // e.g get [0, 1, 2, 3, ...]
+    auto x2_lods = x2->lod()[0];
+    Vector<size_t> x1_lods(1, 0);
+    if (!is_x1_lod) {
+      for (int i = 0; i < x1->dims()[0]; i++) {
+        x1_lods.push_back(i + 1);
+      }
+    } else {
+      x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
+    }
+    std::unordered_map<int64_t, int64_t> mmap_aux;
+    Vector<size_t> out_lods(1, 0);
+    for (size_t i = 0; i < x2_lods.size() - 1; i++) {
+      for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
+        if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
+          size_t batch_len = x1_lods[i + 1] - x1_lods[i];
+          mmap_aux[out_lods.back()] = x1_lods[i];
+          out_lods.push_back(out_lods.back() + batch_len);
+          break;
+        }
+      }
+    }
+    // set output value
+    // for those whose ins been dropout, set 0 for whole lines.
+    // otherwise, copy whole line
+    // Dim [local fc count, batch size, embedding size]
+    LoDTensor* out = context.Output<LoDTensor>("Out");
+    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
+    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
+    // expected auto = const T
+    auto* x1_data = x1->data<T>();
+    // expected auto = T
+    size_t x1_embed_size = x1->dims()[1];
+    if (out_lods.size() - 1 > 0) {
+      out->Resize(framework::make_ddim(
+          {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
+      loss_weight->Resize(
+          framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+    } else {
+      out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
+      map->Resize(framework::make_ddim({1, 3}));
+      loss_weight->Resize(framework::make_ddim({1, 1}));
+    }
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
+    auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
+    auto* loss_weight_data =
+        loss_weight->mutable_data<float>(context.GetPlace());
+    if (out_lods.size() - 1 > 0) {
+      Vector<size_t> map_lods;
+      for (size_t i = 0; i < out_lods.size() - 1; i++) {
+        map_data[i * 3] = (int64_t)out_lods[i];
+        map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
+        map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
+        map_lods.push_back(i);
+      }
+      map_lods.push_back(out_lods.size() - 1);
+      std::vector<Vector<size_t>> map_lod_info;
+      map_lod_info.push_back(map_lods);
 
-    ctx->SetOutputDim("Out", framework::make_ddim({-1, x1_dims[1]}));
-    ctx->SetOutputDim("LossWeight", framework::make_ddim({-1, 1}));
-    ctx->SetOutputDim("IndexMap", framework::make_ddim({-1, 2}));
-  }
+      map->set_lod(map_lod_info);
+      loss_weight->set_lod(map_lod_info);
+      std::vector<Vector<size_t>> out_lod_info;
+      out_lod_info.push_back(out_lods);
+      out->set_lod(out_lod_info);
+      memset(out_data, 0, out->numel() * sizeof(T));
+      for (int i = 0; i < loss_weight->numel(); i++) {
+        loss_weight_data[i] = 1;
+      }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Ins");
-    return framework::OpKernelType(data_type, ctx.device_context());
-  }
-};
-
-class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("Ins", "(LoDTensor) embeded tensor");
-    AddInput("Ins_tag", "(LoDTensor) ins tag list");
-    AddInput("Filter_tag", "(1D Tensor) filter tag list");
-    AddAttr<bool>("is_lod", "is Ins with LoD info or not, default True");
-    AddAttr<int64_t>("out_val_if_empty",
-                     "if the output after filter is empty, the output value")
-        .SetDefault(0);
-    AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
-    AddOutput("LossWeight", "(Tensor) loss weight.");
-    AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
-    AddComment(R"DOC(
-Filter By Instag Op 
-
-This operator is used to filter embeded ins.
-
-There are 3 inputs. First is embeded ins, Second is tags for ins, 
-Third is tags to filter.
-
-There are 3 outputs. First is filtered embeded ins, Second is Loss Weight,
-Third is the IndexMap from Out line number to X1 line number. 
-)DOC");
-  }
-};
-
-class FilterByInstagOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("IndexMap"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(IndexMap) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Grad Input(Out) should be not null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Ins"), true,
-        platform::errors::InvalidArgument("Input(Ins) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LossWeight"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(LossWeight) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Ins")), true,
-                      platform::errors::InvalidArgument(
-                          "Grad Output(Ins) should be not null"));
-
-    auto grad_out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x1_dims = ctx->GetInputDim("Ins");
-    ctx->SetOutputDim(framework::GradVarName("Ins"),
-                      framework::make_ddim({x1_dims[0], grad_out_dims[1]}));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+      for (size_t i = 0; i < out_lods.size() - 1; i++) {
+        size_t pos = out_lods[i];
+        for (int k = map_data[i * 3 + 1];
+             k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
+          memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
+                 x1_embed_size * sizeof(T));
+          ++pos;
+        }
+      }
+    } else {
+      Vector<size_t> map_lods;
+      map_data[0] = 0;
+      map_data[1] = 1;
+      map_data[2] = 1;
+      map_lods.push_back(0);
+      map_lods.push_back(1);
+      out_lods.push_back(1);
+      std::vector<Vector<size_t>> map_lod_info;
+      map_lod_info.push_back(map_lods);
+      map->set_lod(map_lod_info);
+      loss_weight->set_lod(map_lod_info);
+      std::vector<Vector<size_t>> out_lod_info;
+      out_lod_info.push_back(out_lods);
+      out->set_lod(out_lod_info);
+      for (int64_t oi = 0; oi < out->numel(); ++oi) {
+        if (std::is_same<T, int32_t>::value) {
+          out_data[oi] = (int32_t)out_val_if_empty;
+        } else if (std::is_same<T, int64_t>::value) {
+          out_data[oi] = (int64_t)out_val_if_empty;
+        } else {
+          out_data[oi] = static_cast<double>(out_val_if_empty);
+        }
+      }
+      loss_weight_data[0] = 0;
+    }
   }
 };
 
 template <typename T>
-class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
+class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
+    auto* loss_weight = context.Input<LoDTensor>("LossWeight");
+    auto* mmap = context.Input<LoDTensor>("IndexMap");
+    auto* x1 = context.Input<LoDTensor>("Ins");
+    x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
+    x1_grad->Resize(x1->dims());
+    auto mmap_data = mmap->data<int64_t>();
+    // expected auto = T
+    auto* output_grad_data = output_grad->data<T>();
 
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("filter_by_instag_grad");
-    op->SetInput("IndexMap", this->Output("IndexMap"));
-    op->SetInput("Ins", this->Input("Ins"));
-    op->SetAttrMap(this->Attrs());
-    op->SetInput("LossWeight", this->Output("LossWeight"));
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("Ins"), this->InputGrad("Ins"));
+    auto* loss_weight_data = loss_weight->data<float>();
+    // expected auto = T
+    auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
+    memset(x1_grad_data, 0, x1->dims()[0] * x1->dims()[1] * sizeof(T));
+    if (loss_weight->numel() != 1 || loss_weight_data[0] != 0) {
+      auto output_dims = output_grad->dims();
+      for (int i = 0; i < mmap->dims()[0]; i++) {
+        int src_ln = mmap_data[i * 3], dst_ln = mmap_data[i * 3 + 1];
+        int line_cnt = mmap_data[i * 3 + 2];
+        for (int l = 0; l < line_cnt; l++) {
+          for (int j = 0; j < output_dims[1]; j++) {
+            x1_grad_data[(dst_ln + l) * output_dims[1] + j] =
+                output_grad_data[(src_ln + l) * output_dims[1] + j];
+          }
+        }
+      }
+    }
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(filter_by_instag, ops::FilterByInstagOp,
-                  ops::FilterByInstagOpMaker,
-                  ops::FilterByInstagGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FilterByInstagGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
+REGISTER_OP_CUDA_KERNEL(filter_by_instag, ops::FilterByInstagGPUKernel<float>,
+                        ops::FilterByInstagGPUKernel<double>,
+                        ops::FilterByInstagGPUKernel<int32_t>,
+                        ops::FilterByInstagGPUKernel<int64_t>);
 
-REGISTER_OP_CPU_KERNEL(filter_by_instag, ops::FilterByInstagKernel<float>,
-                       ops::FilterByInstagKernel<double>,
-                       ops::FilterByInstagKernel<int32_t>,
-                       ops::FilterByInstagKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(filter_by_instag_grad,
-                       ops::FilterByInstagGradKernel<float>,
-                       ops::FilterByInstagGradKernel<double>,
-                       ops::FilterByInstagGradKernel<int32_t>,
-                       ops::FilterByInstagGradKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(filter_by_instag_grad,
+                        ops::FilterByInstagGradGPUKernel<float>,
+                        ops::FilterByInstagGradGPUKernel<double>,
+                        ops::FilterByInstagGradGPUKernel<int32_t>,
+                        ops::FilterByInstagGradGPUKernel<int64_t>);
