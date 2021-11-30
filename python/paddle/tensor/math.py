@@ -2618,11 +2618,14 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.
     The first-order differences is computed by using the following formula: 
+
     .. math::
+
         out[i] = x[i+1] - x[i]
     
     Higher-order differences are computed by using paddle.diff() recursively. 
     Only n=1 is currently supported.
+
     Args:
         x(Tensor): The input tensor to compute the forward difference on
         n(int, optional): The number of times to recursively compute the difference. 
@@ -2639,19 +2642,23 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     
     Returns:
         Tensor: The output tensor with same dtype with x.
+
     Examples:
         .. code-block:: python
+
             import paddle
             x = paddle.to_tensor([1, 4, 5, 2])
             out = paddle.diff(x)
             print(out)
             # out:
             # [3, 1, -3]
+
             y = paddle.to_tensor([7, 9])
             out = paddle.diff(x, append=y)
             print(out)
             # out: 
             # [3, 1, -3, 5, 2]
+
             z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             out = paddle.diff(z, axis=0)
             print(out)
@@ -2661,6 +2668,8 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             print(out)
             # out:
             # [[1, 1], [1, 1]]
+
+
     """
 
     if axis < 0:
