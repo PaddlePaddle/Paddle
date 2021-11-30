@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,217 +12,156 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
 
 
-class ConvAffineChannelFusePassExplicitPaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                groups=3,
-                padding=[1, 1, 1, 1],
-                bias_attr=False,
-                act=None)
-            input_scale = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            input_bias = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            ac_out = fluid.layers.affine_channel(
-                x=conv_out, scale=input_scale, bias=input_bias)
+class TestConvAffineChannelFusePass(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [ac_out]
+        if attrs[0]['data_format'] == "NHWC":
+            return False
 
-    def test_check_output(self):
-        self.check_output()
+        return True
 
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass'))
+    def sample_program_config(self, draw):
+        strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
+        paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
+        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        groups = draw(st.sampled_from([1]))
+        dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
+        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+        axis = draw(st.sampled_from([1]))
+        batch_size = draw(st.integers(min_value=1, max_value=4))
 
+        def generate_input(attrs):
+            if attrs[0]['data_format'] == "NCHW":
+                return np.random.random(
+                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
+            else:
+                return np.random.random(
+                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
 
-class ConvAffineChannelFusePassValidPaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                groups=3,
-                padding='VALID',
-                bias_attr=False,
-                act=None)
-            input_scale = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            input_bias = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            ac_out = fluid.layers.affine_channel(
-                x=conv_out, scale=input_scale, bias=input_bias)
+        def generate_weight1():
+            return np.random.random([16, 16, 3, 3]).astype(np.float32)
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [ac_out]
+        def generate_weight2():
+            return np.random.random([1]).astype(np.float32)
 
-    def test_check_output(self):
-        self.check_output()
+        def generate_scale_bias():
+            return np.random.random([16]).astype(np.float32)
 
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass'))
+        attrs = [{
+            "data_format": data_format,
+            "dilations": dilations,
+            "padding_algorithm": padding_algorithm,
+            "groups": groups,
+            "paddings": paddings,
+            "strides": strides
+        }, {
+            "axis": axis
+        }, {
+            'batch_size': batch_size
+        }]
 
+        ops_config = [
+            {
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["conv2d_weight"],
+                    # "Bias": ["conv2d_bias"],
+                },
+                "op_outputs": {
+                    "Output": ["conv_output"]
+                },
+                "op_attrs": {
+                    "data_format": attrs[0]['data_format'],
+                    "dilations": attrs[0]['dilations'],
+                    "padding_algorithm": attrs[0]['padding_algorithm'],
+                    "groups": attrs[0]['groups'],
+                    "paddings": attrs[0]['paddings'],
+                    "strides": attrs[0]['strides'],
+                    "is_test": True
+                }
+            },
+            {
+                "op_type": "affine_channel",
+                "op_inputs": {
+                    "X": ["conv_output"],
+                    "Scale": ["affine_channel_scale"],
+                    "Bias": ["affine_channel_bias"]
+                },
+                "op_outputs": {
+                    "Out": ["affine_channel_ouput"]
+                },
+                "op_attrs": {
+                    "data_layout": attrs[0]['data_format']
+                }
+            }
+        ]
 
-class ConvAffineChannelFusePassSamePaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                groups=3,
-                padding='SAME',
-                bias_attr=False,
-                act=None)
-            input_scale = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            input_bias = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            ac_out = fluid.layers.affine_channel(
-                x=conv_out, scale=input_scale, bias=input_bias)
+        ops = self.generate_op_config(ops_config)
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [ac_out]
+        program_config = ProgramConfig(
+            ops=ops,
+            inputs={
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, attrs)),
+            },
+            weights={
+                "conv2d_weight":
+                TensorConfig(data_gen=partial(generate_weight1)),
+                "affine_channel_scale":
+                TensorConfig(data_gen=partial(generate_scale_bias)),
+                "affine_channel_bias":
+                TensorConfig(data_gen=partial(generate_scale_bias)),
+            },
+            outputs=["affine_channel_ouput"])
 
-    def test_check_output(self):
-        self.check_output()
+        return program_config
 
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass'))
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_gpu=True)
+        yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
+        # mkldnn Output has diff with bias!!
+        config = self.create_inference_config(use_mkldnn=True)
+        yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
-class ConvEltwiseAddAffineChannelFusePassExplicitPaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                groups=3,
-                padding=[1, 1, 1, 1],
-                bias_attr=param_attr,
-                act=None)
-            input_scale = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            input_bias = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            ac_out = fluid.layers.affine_channel(
-                x=conv_out, scale=input_scale, bias=input_bias)
+    def add_ignore_pass_case(self):
+        # If the problem has been fixed, the judgment 
+        # in is_program_valid needs to be deleted!!!
+        def teller1(program_config, predictor_config):
+            if program_config.ops[0].attrs['data_format'] == "NHWC":
+                return True
+            return False
 
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [ac_out]
+        self.add_ignore_check_case(
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d is wrong when data_format attribute is NHWC, \
+            Operator(Conv2DFusion) only supports data format of channel first (NCHW) now."
+        )
 
-    def test_check_output(self):
-        self.check_output()
-
-        self.assertTrue(
-            PassVersionChecker.IsCompatible(
-                'conv_eltwiseadd_affine_channel_fuse_pass'))
-
-
-class ConvEltwiseAddAffineChannelFusePassValidPaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                groups=3,
-                padding='VALID',
-                bias_attr=param_attr,
-                act=None)
-            input_scale = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            input_bias = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            ac_out = fluid.layers.affine_channel(
-                x=conv_out, scale=input_scale, bias=input_bias)
-
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [ac_out]
-
-    def test_check_output(self):
-        self.check_output()
-
-        self.assertTrue(
-            PassVersionChecker.IsCompatible(
-                'conv_eltwiseadd_affine_channel_fuse_pass'))
-
-
-class ConvEltwiseAddAffineChannelFusePassSamePaddingTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                groups=3,
-                padding='Same',
-                bias_attr=param_attr,
-                act=None)
-            input_scale = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            input_bias = fluid.layers.create_parameter(
-                shape=[3], dtype="float32")
-            ac_out = fluid.layers.affine_channel(
-                x=conv_out, scale=input_scale, bias=input_bias)
-
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [ac_out]
-
-    def test_check_output(self):
-        self.check_output()
-
-        self.assertTrue(
-            PassVersionChecker.IsCompatible(
-                'conv_eltwiseadd_affine_channel_fuse_pass'))
+    def test(self):
+        self.run_and_statis(
+            quant=False,
+            passes=["conv_affine_channel_fuse_pass"], )
 
 
 if __name__ == "__main__":
     unittest.main()
+
