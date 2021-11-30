@@ -18,6 +18,10 @@ NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 WITH_GPU=$3
 
+# /*==================Fixed Disabled Windows GPU inference_api_test unittests==============================*/
+disable_win_inference_api_test="^test_analyzer_capi_exp_pd_config$|\
+^lite_mul_model_test$"
+
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
@@ -54,8 +58,14 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         exit 8;
     fi
     if nvcc --version | grep 11.2; then
-        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-        exit 0;
+        inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
+        ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release ;inference_api_test_error=$?
+        echo "Only test added_ut adn inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
+        if [ "$inference_api_test_error" != 0 ];then
+            exit 8;
+        else 
+            exit 0;
+        fi
     fi
 fi
 set -e
