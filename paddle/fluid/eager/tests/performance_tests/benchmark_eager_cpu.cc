@@ -32,8 +32,8 @@
 #include "gperftools/profiler.h"
 #endif
 
-// TODO(jiabin): remove nolint here!!!
-using namespace egr;  // NOLINT
+using namespace egr;            // NOLINT
+using namespace egr_utils_api;  // NOLINT
 
 // Disable pten path
 DECLARE_bool(run_pten_kernel);
