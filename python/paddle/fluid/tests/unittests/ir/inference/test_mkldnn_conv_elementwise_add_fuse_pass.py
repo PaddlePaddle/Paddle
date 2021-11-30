@@ -34,6 +34,8 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         if attrs[0]['data_format'] == "NHWC":
             return False
+        if attrs[1]['axis'] == 3:
+            return False
 
         return True
 
@@ -44,7 +46,7 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         groups = draw(st.sampled_from([1]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        axis = draw(st.sampled_from([1]))
+        axis = draw(st.sampled_from([1, 3]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input1(attrs):
@@ -126,9 +128,9 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ["conv2d"], (1e-5, 1e-5)
 
+    # If the problem has been fixed, the judgment 
+    # in is_program_valid needs to be deleted!!!
     def add_ignore_pass_case(self):
-        # If the problem has been fixed, the judgment 
-        # in is_program_valid needs to be deleted!!!
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs['data_format'] == "NHWC":
                 return True
@@ -136,6 +138,16 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         self.add_ignore_check_case(
             teller1, SkipReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d is wrong when data_format attribute is NHWC"
+        )
+
+        def teller2(program_config, predictor_config):
+            if program_config.ops[1].attrs['axis'] == 3:
+                return True
+            return False
+
+        self.add_ignore_check_case(
+            teller2, SkipReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC"
         )
 
