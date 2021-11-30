@@ -262,7 +262,6 @@ def check_dims_mapping(process_mesh_topology, tensor_shape, dims_mapping):
             if tensor_shape[idx] % process_mesh_topology[
                     item] != 0 or dims_mapping.count(item) > 1:
                 valid = False
-        print("process_mesh_topology: ", process_mesh_topology)
         if item != -1 and process_mesh_topology[0] == 1:
             valid = False
     return valid
@@ -857,9 +856,6 @@ def mcmc_search_strategy(program,
                                     new_dist_context.set_tensor_dist_attr_for_program(
                                         vars[var_name], tensor_dist_attr)
                                     has_changed = True
-                                    print(
-                                        "*******has changed softmax_with_cross_entropy"
-                                    )
                                     break
                         if has_changed:
                             break
@@ -881,37 +877,22 @@ def mcmc(train_program,
          loss,
          optimizer,
          cluster=None,
-         max_search_times=5,
+         max_search_times=1,
          pipeline_process_mesh_list=None):
     times = 0
     best_dist_context = init_dist_context
-    cost = estimate_searched_strategy_cost(
-        train_program,
-        start_program,
-        init_dist_context,
-        loss,
-        optimizer,
-        pipeline_process_mesh_list,
-        cluster=None).runtime
+    cost = np.random.randint(100000)
     min_cost = cost
     while times < max_search_times:
         times += 1
         new_dist_context = mcmc_search_strategy(
             train_program, op_valid_dist_attr_dict, best_dist_context,
             pipeline_process_mesh_list)[1]
-        cur_cost = estimate_searched_strategy_cost(
-            train_program,
-            start_program,
-            new_dist_context,
-            loss,
-            optimizer,
-            pipeline_process_mesh_list,
-            cluster=None).runtime
+        cur_cost = np.random.randint(100000)
         print("cur_cost: ", cur_cost, "min_cost: ", min_cost)
         if (min_cost - cur_cost) > 0:
             best_dist_context = copy.deepcopy(new_dist_context)
             min_cost = cur_cost
-
             times = 0
     return best_dist_context, min_cost
 
@@ -1172,6 +1153,7 @@ def init(op_valid_dist_attr_dict, program, pipeline_process_mesh_list,
     elif pipeline_process_mesh_list is not None:
         for process_mesh in pipeline_process_mesh_list:
             new_dist_context.add_process_mesh(process_mesh)
+    print("=====init end=====")
     return new_dist_context
 
 
@@ -1196,26 +1178,24 @@ def auto_search(serial_main_program,
     """
     processes = get_ranks(cluster=None)
     process_meshes = enumerate_process_mesh(processes)
-    searched_dist_context = None
-    min_runtime = None
-    for process_mesh in process_meshes:
-        op_valid_dist_attr_dict, pipeline_process_mesh_list, global_process_mesh = enumerate_ops_valid_dist_attr(
-            serial_main_program, process_mesh, False)
-        init_dist_context = init(op_valid_dist_attr_dict, serial_main_program,
-                                 pipeline_process_mesh_list,
-                                 global_process_mesh)
-        best_dist_context, runtime = mcmc(
-            serial_main_program,
-            serial_startup_program,
-            op_valid_dist_attr_dict,
-            init_dist_context,
-            loss,
-            optimizer,
-            pipeline_process_mesh_list=pipeline_process_mesh_list,
-            cluster=None)
-        best_dist_context._dist_op_context = DistributedOperatorContext()
-        min_runtime = runtime if min_runtime is None else min_runtime
-        min_runtime = runtime if runtime < min_runtime else min_runtime
-        searched_dist_context = best_dist_context if searched_dist_context is None else searched_dist_context
-        searched_dist_context = best_dist_context if runtime < min_runtime else searched_dist_context
-    return searched_dist_context, min_runtime
+    designated_process_mesh = None
+    if len(process_meshes) > 1:
+        for process_mesh in process_meshes:
+            if len(process_mesh) == 1:
+                designated_process_mesh = process_mesh
+    else:
+        designated_process_mesh = process_meshes[0]
+
+    op_valid_dist_attr_dict, pipeline_process_mesh_list, global_process_mesh = enumerate_ops_valid_dist_attr(serial_main_program, designated_process_mesh, False)
+    init_dist_context = init(op_valid_dist_attr_dict, serial_main_program, pipeline_process_mesh_list, global_process_mesh)
+    best_dist_context, runtime = mcmc(
+        serial_main_program,
+        serial_startup_program,
+        op_valid_dist_attr_dict,
+        init_dist_context,
+        loss,
+        optimizer,
+        pipeline_process_mesh_list=pipeline_process_mesh_list,
+        cluster=None)
+    best_dist_context._dist_op_context = DistributedOperatorContext()
+    return best_dist_context, runtime

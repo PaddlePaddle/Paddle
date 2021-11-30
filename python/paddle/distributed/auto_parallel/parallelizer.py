@@ -80,9 +80,27 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
+<<<<<<< HEAD
     def _get_dist_program(self, rank, dist_context=None):
         completed_main_program = None
         if dist_context is None:
+=======
+    def parallelize(self,
+                    loss,
+                    startup_program,
+                    parameter_list=None,
+                    no_grad_set=None):
+        assert startup_program is not None
+        main_program = loss.block.program
+
+        if self._dist_strategy.auto_search:
+            # auto search
+            _logger.info("Start search dist attr.")
+            self._dist_context, _ = auto_search(main_program, startup_program,
+                                                loss, self._optimizer)
+            completed_main_program = main_program
+        else:
+>>>>>>> close cost model
             # Annotation completion
             self._dist_context = DistributedContext()
             _logger.info("Start annotation dist attr.")
