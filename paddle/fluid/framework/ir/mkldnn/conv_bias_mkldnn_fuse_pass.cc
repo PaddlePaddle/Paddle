@@ -117,6 +117,20 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .AddAttr("data_format")
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({1, 3})
+      .End();
 }
 
 Conv3DBiasFusePass::Conv3DBiasFusePass() {
