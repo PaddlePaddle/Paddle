@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
@@ -48,7 +49,7 @@ class Carrier final {
 
   void Init(
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-      framework::Scope* minibatch_scope,
+      framework::Scope* root_scope, framework::Scope* minibatch_scope,
       const std::vector<framework::Scope*>& microbatch_scopes,
       const platform::Place& place);
 
@@ -98,8 +99,10 @@ class Carrier final {
   std::mutex running_mutex_;
   std::condition_variable cond_var_;
   std::vector<framework::Scope*> microbatch_scopes_;
+  framework::Scope* root_scope_;
   framework::Scope* minibatch_scope_;
   paddle::platform::Place place_;
+  paddle::platform::DeviceContext* dev_ctx_ = nullptr;
 };
 
 }  // namespace distributed
