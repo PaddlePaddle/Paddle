@@ -129,7 +129,28 @@ void InterpreterCoreGarbageCollector::StreamSynchronize(
     }
   };
 
-  for (int var_id : instr.NeedStreamSyncVars()) {
+  /* NOTE(Ruibiao)：Cross-stream tensor synchronization is required only when
+   * all the following conditions are satisfied:
+   * 1. The tensor will be GC after running the instruction, i.e., in
+   * instr.GCCheckVars.
+   * 2. The stream which initializes this tensor is different from the stream
+   * which the instruction run in.
+   * 3. The tensor is the instruction's input, cause we assume that instruction
+   * will initialize all output tensors with its running stream.
+   * 4. In the OP function of this instruction, the tensor is an input of a
+   * async CUDA kernel.
+   *
+   * Here we only process the first condition, because:
+   * 1. Since the RecordStream function will directly return when the recored
+   * stream is equal to the owning stream, recording a stream same as which
+   * initialized this tensor has less time overhead. Conversely, it may take
+   * more time if we try to extract those cross-stream input vars from
+   * instr.GCCheckVars.
+   * 2. Now the instruction has no idea of which vars involving async running in
+   * OP function, and thus we can not recognize condition 4. It should be
+   * supported later.
+   */
+  for (int var_id : instr.GCCheckVars()) {
     // persistable var will be ignore while GC
     if (scope.VarDesc(var_id) && scope.VarDesc(var_id)->Persistable()) {
       continue;

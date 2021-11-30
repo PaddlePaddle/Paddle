@@ -693,16 +693,6 @@ const std::vector<size_t>& Instruction::GCCheckVars() const {
   return gc_check_var_list_;
 }
 
-void Instruction::InferNeedStreamSyncVars() {
-  // NOTE(TODO): Figure out a better way to decide which vars should really be
-  // sync later.
-  need_stream_sync_var_list_ = gc_check_var_list_;
-}
-
-const std::vector<size_t>& Instruction::NeedStreamSyncVars() const {
-  return need_stream_sync_var_list_;
-}
-
 void Instruction::ResetContext(const VariableValueMap& in_vars,
                                const VariableValueMap& out_vars) {
   runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));

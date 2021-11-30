@@ -55,9 +55,13 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
           ? dst->mutable_data(dst_place, src.type(), src.memory_size())
           : dst->mutable_data(dst_place, src.type());
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto dst_ptr = dst->mutable_data(
-      dst_place, src.type(),
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  auto dst_ptr =
+      platform::is_gpu_place(dst_place)
+          ? dst->mutable_data(
+                BOOST_GET_CONST<platform::CUDAPlace>(dst_place), src.type(),
+                reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                    .stream())
+          : dst->mutable_data(dst_place, src.type());
 #else
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 #endif

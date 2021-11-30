@@ -367,7 +367,6 @@ class Instruction {
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_var_list_;
-  std::vector<size_t> need_stream_sync_var_list_;
   NextInstruction next_instruction_;
 
   std::vector<EventInter> intput_events_;

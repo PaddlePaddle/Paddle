@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -215,6 +217,10 @@ void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 void* Tensor::mutable_data(const platform::CUDAPlace& place,
                            proto::VarType::Type type,
                            const gpuStream_t& stream) {
+  if (!FLAGS_use_stream_safe_cuda_allocator) {
+    return mutable_data(place, type);
+  }
+
   type_ = type;
   PADDLE_ENFORCE_GE(
       numel(), 0,

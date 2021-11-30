@@ -29,12 +29,14 @@ class StreamAnalyzer {
 
   ~StreamAnalyzer() {}
 
-  bool InAsyncStream(const Instruction& instr, const VariableScope& scope);
-
   void Schedule(const std::vector<size_t>& downstream_ops,
                 std::vector<Instruction>* instructions, size_t op_index);
 
   platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  bool InAsyncStream(const Instruction& instr, const VariableScope& scope);
+#endif
 
  private:
   std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,

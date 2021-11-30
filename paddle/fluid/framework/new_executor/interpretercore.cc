@@ -521,11 +521,9 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     try {
       RunInstruction(instr_node);
 
-// GC infomation
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (FLAGS_use_stream_safe_cuda_allocator &&
-          stream_analyzer_.InAsyncStream(instr_node, *global_scope_)) {
-        instr_node.InferNeedStreamSyncVars();
+          instr_node.KernelType() == OpFuncType::kQueueAsync) {
         gc_->StreamSynchronize(instr_node, *global_scope_);
       }
 #endif
