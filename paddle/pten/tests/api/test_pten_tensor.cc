@@ -17,7 +17,7 @@
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 
-namespace pten {
+namespace paddle {
 namespace tests {
 
 template <typename T>
@@ -37,7 +37,7 @@ void TestCopyTensor() {
   auto t1_cpu_cp = t1.template copy_to<T>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t1_cpu_cp.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_cpu_cp.template data<T>()[i], T(5));
+    CHECK_EQ(t1_cpu_cp.template mutable_data<T>()[i], T(5));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(2) << "Do GPU copy test";
@@ -49,7 +49,7 @@ void TestCopyTensor() {
       t1_gpu_cp_cp.template copy_to<T>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
+    CHECK_EQ(t1_gpu_cp_cp_cpu.template mutable_data<T>()[i], T(5));
   }
 #endif
 }
@@ -206,22 +206,21 @@ void TestInitilized() {
 }
 
 TEST(PtenTensor, All) {
-  // TODO(chenweihang, before 2021.11.20) support copy, slice and cast methods
-  // VLOG(2) << "TestCopy";
-  // GroupTestCopy();
+  VLOG(2) << "TestCopy";
+  GroupTestCopy();
   VLOG(2) << "TestDtype";
   GroupTestDtype();
   VLOG(2) << "TestShape";
   TestAPISizeAndShape();
   VLOG(2) << "TestPlace";
   TestAPIPlace();
-  // VLOG(2) << "TestSlice";
-  // TestAPISlice();
-  // VLOG(2) << "TestCast";
-  // GroupTestCast();
+  VLOG(2) << "TestSlice";
+  TestAPISlice();
+  VLOG(2) << "TestCast";
+  GroupTestCast();
   VLOG(2) << "TestInitilized";
   TestInitilized();
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle

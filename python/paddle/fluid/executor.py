@@ -580,26 +580,6 @@ class _ExecutorCache(object):
         self._place = place
         self._cached_executors = {}
 
-    def run(self, program, scope, feed, fetch_list, return_numpy=True):
-        new_exe = self._get_exe_from_cache(program, scope)
-        return new_exe.run(feed, fetch_list, return_numpy)
-
-    def _get_exe_from_cache(self, program, scope):
-        """
-        Return cached _StandaloneExecutor instance. If not found, create associated 
-        _StandaloneExecutor instance with given program and cache it.
-        """
-        assert isinstance(
-            program, Program), "Required type(Program), but received {}".format(
-                type(program).__name__)
-
-        if str(program) not in self._cached_executors:
-            new_program = program.clone()
-            new_exe = _StandaloneExecutor(self._place, new_program, scope)
-            self._cached_executors[str(program)] = new_exe
-
-        return self._cached_executors[str(program)]
-
 
 class Executor(object):
     """
@@ -1330,52 +1310,6 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
-        # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core:
-            inner_program_ = program._program if isinstance(
-                program, compiler.CompiledProgram) else program
-            assert isinstance(inner_program_, framework.Program)
-            if not inner_program_._is_start_up_program_:
-                if feed is None:
-                    feed = {}
-                elif isinstance(feed, (list, tuple)):
-                    assert len(feed) == 1, "Not compiled with data parallel"
-                    feed = feed[0]
-                if not isinstance(feed, dict):
-                    raise TypeError(
-                        "feed requires dict as its Parameter. But you passed in %s"
-                        % (type(feed)))
-                feed = self._update_feed(program, feed)
-                program = self._add_feed_fetch_ops(
-                    program=inner_program_,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name,
-                    use_fetch_v2=True)
-
-                # NPTE(zhiqiu): Construct standalone_executor first, so 
-                # the scope is binded with the variable_scope of standalone_executor
-                new_exe = self._executor_cache._get_exe_from_cache(program,
-                                                                   scope)
-
-                self._feed_data(program, feed, feed_var_name, scope)
-                if hasattr(program, 'lr_sheduler'):
-                    from paddle.optimizer.lr import LRScheduler
-                    assert isinstance(program.lr_sheduler,
-                                      LRScheduler), "must be LRScheduler"
-                    lr_sheduler = program.lr_sheduler
-                    lr_value = lr_sheduler()
-                    lr_var = program.global_block().vars[lr_sheduler._var_name]
-                    data = np.array(
-                        [lr_value]).astype(convert_dtype(lr_var.dtype))
-                    tensor = core.get_variable_tensor(scope,
-                                                      lr_sheduler._var_name)
-                    tensor.set(data, self.place)
-
-                return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
-
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
         _origin_program = program
@@ -1407,6 +1341,75 @@ class Executor(object):
 
             feed = self._update_feed(pruned_program, feed)
             program = pruned_program
+
+        def _can_use_interpreter_core(program, place):
+            compiled = isinstance(program, compiler.CompiledProgram)
+            # NOTE(zhiqiu): do not support compiled program now
+            if compiled:
+                return False
+                # if program._is_data_parallel and len(
+                #         program._get_places(place, program._places)) == 1:
+                #     return True
+                # else:
+                #     return False
+            else:
+                assert isinstance(program, Program)
+                return True
+
+        # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
+        # use StandaloneExecutor to run the program.
+        if self._enable_interpreter_core and _can_use_interpreter_core(
+                program, self.place):
+            inner_program = program._program if isinstance(
+                program, compiler.CompiledProgram) else program
+            if not inner_program._is_start_up_program_:
+                if feed is None:
+                    feed = {}
+                elif isinstance(feed, (list, tuple)):
+                    assert len(feed) == 1, "Not compiled with data parallel"
+                    feed = feed[0]
+                if not isinstance(feed, dict):
+                    raise TypeError(
+                        "feed requires dict as its Parameter. But you passed in %s"
+                        % (type(feed)))
+                feed = self._update_feed(program, feed)
+
+                key = _get_strong_program_cache_key(inner_program, feed,
+                                                    fetch_list)
+
+                program = self._add_feed_fetch_ops(
+                    program=inner_program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name,
+                    use_fetch_v2=True)
+
+                # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
+                # while use program to geet _StandaloneExecutor
+                if key not in self._executor_cache._cached_executors:
+                    new_program = program.clone()
+                    new_exe = _StandaloneExecutor(self.place, new_program,
+                                                  scope)
+                    self._executor_cache._cached_executors[key] = new_exe
+
+                new_exe = self._executor_cache._cached_executors[key]
+
+                self._feed_data(program, feed, feed_var_name, scope)
+                if hasattr(program, 'lr_sheduler'):
+                    from paddle.optimizer.lr import LRScheduler
+                    assert isinstance(program.lr_sheduler,
+                                      LRScheduler), "must be LRScheduler"
+                    lr_sheduler = program.lr_sheduler
+                    lr_value = lr_sheduler()
+                    lr_var = program.global_block().vars[lr_sheduler._var_name]
+                    data = np.array(
+                        [lr_value]).astype(convert_dtype(lr_var.dtype))
+                    tensor = core.get_variable_tensor(scope,
+                                                      lr_sheduler._var_name)
+                    tensor.set(data, self.place)
+
+                return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -1734,12 +1737,8 @@ class Executor(object):
                 for var in program.global_block().vars.values():
                     if var.is_data:
                         data_vars.append(var)
-                if core.is_compiled_with_npu():
-                    dataset = paddle.fluid.DatasetFactory().create_dataset(
-                        'InMemoryDataset')
-                else:
-                    dataset = paddle.fluid.DatasetFactory().create_dataset(
-                        'FileInstantDataset')
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'InMemoryDataset')
                 dataset.set_batch_size(1)
                 dataset.set_thread(1)
                 dataset.set_filelist(['None'])
@@ -1800,9 +1799,9 @@ class Executor(object):
         if program._pipeline_opt is None:
             if program._heter_pipeline_opt is None:
                 self._dump_debug_info(program=program, trainer=trainer)
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         if program._heter_pipeline_opt is None:
@@ -1935,9 +1934,9 @@ class Executor(object):
         # NOTE: only for debug, very slow
         # self._dump_debug_info(program=program, trainer=trainer)
 
-        # in case of calling _set_use_ps_gpu explicitly
-        if dataset.use_ps_gpu is False:
-            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        # warning if dataset not set psgpu in psgpu mode
+        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
+            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache
@@ -1998,8 +1997,12 @@ class Executor(object):
         num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
-        fleet_exe.init(program._pipeline_opt["section_program"].desc)
+        place = core.Place()
+        place.set_place(self.place)
+        fleet_exe.init(program._pipeline_opt["section_program"].desc, scope,
+                       place)
         fleet_exe.run()
+        fleet_exe.release()
         return None
 
     def _run_pipeline(self,

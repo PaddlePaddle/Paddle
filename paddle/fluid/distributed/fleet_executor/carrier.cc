@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace distributed {
@@ -24,12 +25,29 @@ namespace distributed {
 USE_INTERCEPTOR(Compute);
 
 void Carrier::Init(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
+    framework::Scope* root_scope, framework::Scope* minibatch_scope,
+    const std::vector<framework::Scope*>& microbatch_scopes,
+    const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "Carrier is already init."));
   interceptor_id_to_node_ = interceptor_id_to_node;
+  minibatch_scope_ = minibatch_scope;
+  microbatch_scopes_ = microbatch_scopes;
+  place_ = place;
+  root_scope_ = root_scope;
+  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   CreateInterceptors();
   is_init_ = true;
+}
+
+Carrier::~Carrier() {
+  // NOTE(wangxi): must join before `Derived Interceptor` destruct,
+  // otherwise Derived object will be destructed before thread complete.
+  // TODO(wangxi): Maybe need a better to use thread.
+  for (auto& interceptor : interceptor_idx_to_interceptor_) {
+    interceptor.second->Join();
+  }
 }
 
 bool Carrier::EnqueueInterceptorMessage(
@@ -39,12 +57,16 @@ bool Carrier::EnqueueInterceptorMessage(
     // handle control message
     return true;
   } else {
-    if (creating_interceptors_) {
-      // Cannot handle the message to interceptor since interceptors
-      // are still under creating. Will enqueue into a tmp stack.
-      VLOG(3) << "Receiving message while creating interceptors.";
-      message_tmp_.emplace_back(interceptor_message);
-      return true;
+    {
+      std::unique_lock<std::mutex> lock_creating(creating_flag_mutex_);
+      if (creating_interceptors_) {
+        std::unique_lock<std::mutex> lock_message(tmp_message_mutex_);
+        // Cannot handle the message to interceptor since interceptors
+        // are still under creating. Will enqueue into a tmp stack.
+        VLOG(3) << "Receiving message while creating interceptors.";
+        message_tmp_.emplace_back(interceptor_message);
+        return true;
+      }
     }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
@@ -83,7 +105,12 @@ void Carrier::Start() {
                           "Message bus has not been initialized."));
     message_bus_instance.Send(tmp_msg);
   }
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
+  dev_ctx_->Wait();
 }
+
+std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
 
@@ -103,9 +130,11 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
 
 void Carrier::SetCreatingFlag(bool flag) {
   // set the creating flag
+  creating_flag_mutex_.lock();
   VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
           << " to " << flag << ".";
   creating_interceptors_ = flag;
+  creating_flag_mutex_.unlock();
   if (!flag) {
     // finish create interceptors outside, handle tmp messsages
     HandleTmpMessages();
@@ -113,6 +142,12 @@ void Carrier::SetCreatingFlag(bool flag) {
 }
 
 void Carrier::HandleTmpMessages() {
+  // NOTE: It's ok lock on the tmp_message_mutex_ here, when enter this
+  // `HandleTmpMessages` method, the creating_interceptors_ flag
+  // must be false, therefore, there won't have conflict with the
+  // lock on the tmp_message_mutex_ inside `EnqueueInterceptorMessage`
+  // on the same thread.
+  std::unique_lock<std::mutex> lock(tmp_message_mutex_);
   VLOG(3) << "Carrier has received " << message_tmp_.size()
           << " messages during creating interceptors.";
   for (const auto& msg : message_tmp_) {
@@ -132,13 +167,19 @@ void Carrier::CreateInterceptors() {
       // TODO(wangxi): use node_type to select different Interceptor
       auto interceptor =
           std::make_unique<Interceptor>(interceptor_id, task_node);
+      interceptor->SetPlace(place_);
+      interceptor->SetMiniBatchScope(minibatch_scope_);
+      interceptor->SetMicroBatchScope(microbatch_scopes_);
+      interceptor->SetRootScope(root_scope_);
       SetInterceptor(interceptor_id, std::move(interceptor));
       VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
               << ".";
     }
     // The carrier will be always waiting for outside initializer
     // since there is no interceptor has been created during auto init
+    creating_flag_mutex_.lock();
     creating_interceptors_ = false;
+    creating_flag_mutex_.unlock();
     HandleTmpMessages();
   }
 }

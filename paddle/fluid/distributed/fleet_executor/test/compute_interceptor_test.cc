@@ -25,22 +25,29 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-class StopInterceptor : public Interceptor {
+class StartInterceptor : public Interceptor {
  public:
-  StopInterceptor(int64_t interceptor_id, TaskNode* node)
+  StartInterceptor(int64_t interceptor_id, TaskNode* node)
       : Interceptor(interceptor_id, node) {
-    RegisterMsgHandle([this](const InterceptorMessage& msg) { Stop(msg); });
+    RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
   }
 
-  void Stop(const InterceptorMessage& msg) {
+  void NOP(const InterceptorMessage& msg) {
+    if (msg.message_type() == STOP) {
+      stop_ = true;
+      return;
+    }
     std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
               << std::endl;
-    InterceptorMessage stop;
-    stop.set_message_type(STOP);
-    Send(0, stop);
-    Send(1, stop);
-    Send(2, stop);
+    ++count_;
+    if (count_ == 3) {
+      InterceptorMessage stop;
+      stop.set_message_type(STOP);
+      Send(msg.dst_id(), stop);  // stop 0, this
+      Send(msg.src_id(), stop);  // stop 1, compute
+    }
   }
+  int count_{0};
 };
 
 TEST(ComputeInterceptor, Compute) {
@@ -58,16 +65,20 @@ TEST(ComputeInterceptor, Compute) {
   node_a->AddDownstreamTask(1);
   node_b->AddUpstreamTask(0);
   node_b->AddDownstreamTask(2);
+  node_c->AddUpstreamTask(1);
 
-  Interceptor* a = carrier.SetInterceptor(
-      0, InterceptorFactory::Create("Compute", 0, node_a));
+  Interceptor* a =
+      carrier.SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
   carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier.SetInterceptor(2, std::make_unique<StopInterceptor>(2, node_c));
+  carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
 
   carrier.SetCreatingFlag(false);
 
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
+  // test run three times
+  a->Send(1, msg);
+  a->Send(1, msg);
   a->Send(1, msg);
 }
 
