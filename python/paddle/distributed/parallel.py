@@ -168,9 +168,10 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
+    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
-    if is_cpu_only or init_gloo:
+    if is_cpu_only or init_gloo or backend == "heter":
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
         # glboal dict to store status
@@ -179,6 +180,8 @@ def init_parallel_env():
         if parallel_env.rank == 0:
             # The scope for worker used by http server is '_worker'
             size = {'_worker': parallel_env.world_size}
+            if backend == "heter":
+                size = {'_worker': len(node_num)}
             http_server = Process(
                 target=_start_kv_server,
                 args=(int(ep_rank_0[1]), http_server_d, size))
@@ -218,7 +221,7 @@ def init_parallel_env():
             core.GLOOParallelContext(strategy, place))
     elif (backend == "heter"):
         parallel_helper._set_parallel_ctx(
-            core.HeterParallelContext(strategy, place))
+            core.HeterParallelContext(strategy, parallel_env.device_id))
     elif core.is_compiled_with_cuda():
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
@@ -229,22 +232,19 @@ def init_parallel_env():
         parallel_helper._set_parallel_ctx(
             core.HCCLParallelContext(strategy, place))
 
-    other_endpoints = strategy.trainer_endpoints[:]
-    other_endpoints.remove(strategy.current_endpoint)
-    if not is_cpu_only and strategy.local_rank == 0:
-        wait_server_ready(other_endpoints)
+    if backend != "heter":
+        other_endpoints = strategy.trainer_endpoints[:]
+        other_endpoints.remove(strategy.current_endpoint)
+        if not is_cpu_only and strategy.local_rank == 0:
+            wait_server_ready(other_endpoints)
 
     parallel_helper._init_parallel_ctx()
-
-    # no more action needed for heter mode
-    if backend == "heter":
-        return
 
     # 5: init gloo context (step 2: gloo init)
     # dividing init_gloo into two part beacause nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
-    if is_cpu_only and parallel_env.rank == 0:
+    if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:
         # compare to init_gloo, we don't need to 
         # init gloo, because we do this in _init_parallel_ctx;
         http_server_d["running"] = False

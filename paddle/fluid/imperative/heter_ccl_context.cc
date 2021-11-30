@@ -78,6 +78,9 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     }
   }
 
+  VLOG(0) << "init node size " << node_nranks << " rank "
+          << node_strategy_.local_rank_;
+
   PADDLE_ENFORCE_NE(node_nranks, 0,
                     platform::errors::InvalidArgument(
                         "The number of local nranks should not be zero."));
@@ -92,6 +95,9 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     inter_parallel_ctx_ = std::make_shared<GLOOParallelContext>(
         inter_strategy_, platform::CPUPlace());
   }
+
+  VLOG(0) << "init inter size " << inter_endpoints.size() << " rank "
+          << inter_rank;
 
 #ifdef PADDLE_WITH_NCCL
   node_place_ = platform::CUDAPlace(device_id);
@@ -116,11 +122,11 @@ void HeterParallelContext::Init() {
       platform::errors::Unavailable(
           "The heter parallel context has not been initialized."));
 
-  node_parallel_ctx_->Init();
-
   if (inter_parallel_ctx_ != nullptr) {
     inter_parallel_ctx_->Init();
   }
+
+  node_parallel_ctx_->Init();
 
   VLOG(3) << "/// DEBUG /// heter parallel env init done..." << std::endl;
 }
@@ -151,6 +157,7 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
     // allreduce src/cpu to dst/cpu
     framework::Variable dst_cpu;
     inter_parallel_ctx_->AllReduceByStream(src_cpu, &dst_cpu, ring_id, false);
+    inter_parallel_ctx_->WaitComm(ring_id);
 
     // copy dst/cpu to dst
     auto dst_cpu_tensor = dst_cpu.Get<framework::LoDTensor>();
@@ -162,6 +169,7 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
 
   // step 3: call broadcast within node
   VLOG(3) << "/// DEBUG /// step 3: broadcast within node... ";
+  node_parallel_ctx_->WaitComm(ring_id);
   node_parallel_ctx_->Broadcast(dst, ring_id);
   node_parallel_ctx_->WaitComm(ring_id);
 }

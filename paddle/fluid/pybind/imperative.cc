@@ -2367,10 +2367,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::HeterParallelContext>>(
       m, "HeterParallelContext")
       .def(py::init<const imperative::ParallelStrategy &, const int &>())
-      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::HeterParallelContext::InitWithRingID,
-           py::arg("ring_id"));
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
 
   m.def("pylayer_apply",

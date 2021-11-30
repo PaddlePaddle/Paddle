@@ -21,7 +21,7 @@
 #include "paddle/fluid/imperative/nccl_context.h"
 #endif
 
-#ifdef PADDLE_WITH_BKCL
+#ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/fluid/imperative/bkcl_context.h"
 #endif
 
