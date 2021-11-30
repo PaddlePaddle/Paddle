@@ -214,8 +214,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                             "Output variable(%s) not used by cinn", var_name));
 
       auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      launch_context->AssignExternalVariable(
-          var_name, place, scope.GetVar(var_name)->GetMutable<LoDTensor>());
+      launch_context->AssignExternalVariable(var_name, place, tensor);
     }
 
     // 3.3 Prepare internal or temporary variables: Create a temporary
