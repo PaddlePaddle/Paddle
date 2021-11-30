@@ -34,11 +34,11 @@ PT_DECLARE_MODULE(CreationCUDA);
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor full(const ScalarArray& shape,
-                        const Scalar& value,
-                        DataType dtype,
-                        Backend backend,
-                        DataLayout layout) {
+PADDLE_API Tensor full(const ScalarArray& shape,
+                       const Scalar& value,
+                       DataType dtype,
+                       Backend backend,
+                       DataLayout layout) {
   // 1. Get kernel signature and kernel
   pten::KernelKey kernel_key{backend, layout, dtype};
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -70,11 +70,11 @@ PD_DLL_DECL Tensor full(const ScalarArray& shape,
   return out;
 }
 
-PD_DLL_DECL Tensor full_like(const Tensor& x,
-                             const Scalar& value,
-                             DataType dtype,
-                             Backend backend,
-                             DataLayout layout) {
+PADDLE_API Tensor full_like(const Tensor& x,
+                            const Scalar& value,
+                            DataType dtype,
+                            Backend backend,
+                            DataLayout layout) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -115,17 +115,17 @@ PD_DLL_DECL Tensor full_like(const Tensor& x,
   return out;
 }
 
-PD_DLL_DECL Tensor ones_like(const Tensor& x,
-                             DataType dtype,
-                             Backend backend,
-                             DataLayout layout) {
+PADDLE_API Tensor ones_like(const Tensor& x,
+                            DataType dtype,
+                            Backend backend,
+                            DataLayout layout) {
   return full_like(x, 1, dtype, backend, layout);
 }
 
-PD_DLL_DECL Tensor zeros_like(const Tensor& x,
-                              DataType dtype,
-                              Backend backend,
-                              DataLayout layout) {
+PADDLE_API Tensor zeros_like(const Tensor& x,
+                             DataType dtype,
+                             Backend backend,
+                             DataLayout layout) {
   return full_like(x, 0, dtype, backend, layout);
 }
 

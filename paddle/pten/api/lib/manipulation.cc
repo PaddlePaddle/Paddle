@@ -33,7 +33,7 @@ PT_DECLARE_MODULE(ManipulationCUDA);
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
+PADDLE_API Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -67,7 +67,7 @@ PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   return out;
 }
 
-PD_DLL_DECL Tensor cast(const Tensor& x, DataType out_dtype) {
+PADDLE_API Tensor cast(const Tensor& x, DataType out_dtype) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
@@ -101,7 +101,7 @@ PD_DLL_DECL Tensor cast(const Tensor& x, DataType out_dtype) {
   return out;
 }
 
-PD_DLL_DECL Tensor reshape(const Tensor& x, const std::vector<int64_t>& shape) {
+PADDLE_API Tensor reshape(const Tensor& x, const std::vector<int64_t>& shape) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();

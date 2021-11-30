@@ -19,12 +19,12 @@
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor dot(const Tensor& x, const Tensor& y);
 
-PD_DLL_DECL Tensor matmul(const Tensor& x,
-                          const Tensor& y,
-                          bool transpose_x = false,
-                          bool transpose_y = false);
+PADDLE_API Tensor matmul(const Tensor& x,
+                         const Tensor& y,
+                         bool transpose_x = false,
+                         bool transpose_y = false);
 
 }  // namespace experimental
 }  // namespace paddle

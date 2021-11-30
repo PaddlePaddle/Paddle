@@ -20,29 +20,29 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor add(const Tensor& x, const Tensor& y);
 
-PD_DLL_DECL Tensor subtract(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor subtract(const Tensor& x, const Tensor& y);
 
-PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor divide(const Tensor& x, const Tensor& y);
 
-PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor multiply(const Tensor& x, const Tensor& y);
 
 // TODO(chenweihang): move mean API into stat.h/cc
-PD_DLL_DECL Tensor mean(const Tensor& x,
-                        const std::vector<int64_t>& axis,
-                        bool keep_dim);
-
-PD_DLL_DECL Tensor sum(const Tensor& x,
+PADDLE_API Tensor mean(const Tensor& x,
                        const std::vector<int64_t>& axis,
-                       DataType dtype,
                        bool keep_dim);
 
+PADDLE_API Tensor sum(const Tensor& x,
+                      const std::vector<int64_t>& axis,
+                      DataType dtype,
+                      bool keep_dim);
+
 // TODO(chenweihang): Follow-up discussion on the handling of `act` argument
-PD_DLL_DECL Tensor scale(const Tensor& x,
-                         const Scalar& scale,
-                         float bias,
-                         bool bias_after_scale);
+PADDLE_API Tensor scale(const Tensor& x,
+                        const Scalar& scale,
+                        float bias,
+                        bool bias_after_scale);
 
 }  // namespace experimental
 }  // namespace paddle
