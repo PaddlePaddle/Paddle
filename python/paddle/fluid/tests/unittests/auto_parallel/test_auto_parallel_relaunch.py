@@ -16,6 +16,7 @@ import unittest
 import os
 import sys
 import json
+import shutil
 import subprocess
 from paddle.distributed.fleet.launch_utils import run_with_coverage
 
@@ -77,17 +78,16 @@ cluster_json = """
 """
 
 
-class TestAutoParallelLaunch(unittest.TestCase):
-    def test_launch(self):
+class TestAutoParallelReLaunch(unittest.TestCase):
+    def test_relaunch(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-
         cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
 
-        launch_demo_path = os.path.join(file_dir,
-                                        "auto_parallel_launch_demo.py")
+        launch_model_path = os.path.join(file_dir,
+                                         "auto_parallel_relaunch_model.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             run_with_coverage(True)
@@ -97,12 +97,22 @@ class TestAutoParallelLaunch(unittest.TestCase):
 
         cmd = [sys.executable, "-u"] + coverage_args + [
             "-m", "launch", "--cluster_topo_path", cluster_json_path,
-            "--enable_auto_mapping", "True", launch_demo_path
+            "--enable_auto_mapping", "True", launch_model_path
         ]
         process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)
-        os.remove(cluster_json_path)
+
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
+        rank_mapping_json_path = os.path.join(file_dir,
+                                              "auto_parallel_rank_mapping.json")
+        if os.path.exists(rank_mapping_json_path):
+            os.remove(rank_mapping_json_path)
+        log_path = os.path.join(file_dir, "log")
+        if os.path.exists(log_path):
+            shutil.rmtree(log_path)
 
 
 if __name__ == "__main__":
