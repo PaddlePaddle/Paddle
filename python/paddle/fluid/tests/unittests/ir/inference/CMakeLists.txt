@@ -78,6 +78,7 @@ set_tests_properties(test_conv_relu_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_leaky_relu_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_relu6_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_swish_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv_bias_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
 
 if (WITH_MKLDNN)
   set_tests_properties(test_mkldnn_prelu_op PROPERTIES TIMEOUT 300)
