@@ -45,7 +45,9 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["conv_transpose_eltwiseadd_bn_fuse_pass"])
+            quant=False,
+            max_duration=250,
+            passes=["conv_transpose_eltwiseadd_bn_fuse_pass"])
 
     def sample_program_config(self, draw):
         # generate random number
