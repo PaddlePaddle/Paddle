@@ -515,7 +515,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_a_sync_optimizer_sync',
     'test_dist_fleet_decay',
     'test_auto_checkpoint2',
-    'test_dist_fleet_heter_ctr',
     'test_dist_fleet_simnet',
     'test_dist_sparse_load_ps1',
     'test_dist_mnist_fleet_save',
