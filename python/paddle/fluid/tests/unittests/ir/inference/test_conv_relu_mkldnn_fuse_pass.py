@@ -85,7 +85,6 @@ class TestConvReluMkldnnFusePass(PassAutoScanTest):
 
         # 2. Generate legal attr:data_format of conv2d
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
-        # data_format = "NHWC"
 
         # 3. Generate legal shape of input:Y of conv2d
         f_shape = draw(

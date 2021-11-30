@@ -165,7 +165,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             else:
                 continue
 
-# 10. Generate legal shape of input:bias of elementwise_add
+            # 10. Generate legal shape of input:bias of elementwise_add
             bias_shape = [f_shape[0]]
 
             # 11. Generate legal attr:axis of elementwise_add_1
@@ -224,6 +224,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             quant=False,
             max_examples=300,
             passes=["conv_elementwise_add2_act_fuse_pass"])
+
 
 if __name__ == "__main__":
     unittest.main()

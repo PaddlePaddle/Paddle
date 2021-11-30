@@ -85,7 +85,6 @@ class TestConvLeakyReluMkldnnFusePass(PassAutoScanTest):
 
         # 2. Generate legal attr:data_format of conv2d
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
-        # data_format = "NHWC"
 
         # 3. Generate legal shape of input:Y of conv2d
         f_shape = draw(
@@ -121,7 +120,7 @@ class TestConvLeakyReluMkldnnFusePass(PassAutoScanTest):
                 st.integers(
                     min_value=1, max_value=5), min_size=2, max_size=2))
 
-        # 10. Generate legal input:ResidualData of conv2d
+        # 9. Generate legal input:ResidualData of conv2d
         res_shape = []
         if draw(st.booleans()):
             res_shape = draw(
@@ -131,7 +130,7 @@ class TestConvLeakyReluMkldnnFusePass(PassAutoScanTest):
                     min_size=4,
                     max_size=4))
 
-        # 11. Generate legal attr:alpha of leaky_relu
+        # 10. Generate legal attr:alpha of leaky_relu
         alpha = draw(st.floats(min_value=0.1, max_value=1.0))
 
         conv2d_op = OpConfig(
