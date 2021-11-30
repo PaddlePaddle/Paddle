@@ -77,44 +77,38 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             'batch_size': batch_size
         }]
 
-        ops_config = [
-            {
-                "op_type": "conv2d",
-                "op_inputs": {
-                    "Input": ["input_data"],
-                    "Filter": ["conv2d_weight"],
-                    "Bias": ["conv2d_bias"],
-                },
-                "op_outputs": {
-                    "Output": ["conv_output"]
-                },
-                "op_attrs": {
-                    "data_format": attrs[0]['data_format'],
-                    "dilations": attrs[0]['dilations'],
-                    "padding_algorithm": attrs[0]['padding_algorithm'],
-                    "groups": attrs[0]['groups'],
-                    "paddings": attrs[0]['paddings'],
-                    "strides": attrs[0]['strides'],
-                    #"output_size": [],
-                    #"output_padding": [],
-                    "use_cudnn": False,
-                    "is_test": True
-                }
+        ops_config = [{
+            "op_type": "conv2d",
+            "op_inputs": {
+                "Input": ["input_data"],
+                "Filter": ["conv2d_weight"],
             },
-            {
-                "op_type": "elementwise_add",
-                "op_inputs": {
-                    "X": ["conv_output"],
-                    "Y": ["conv2d_bias"]
-                },
-                "op_outputs": {
-                    "Out": ["elementwise_output"]
-                },
-                "op_attrs": {
-                    'axis': attrs[1]['axis']
-                },
+            "op_outputs": {
+                "Output": ["conv_output"]
+            },
+            "op_attrs": {
+                "data_format": attrs[0]['data_format'],
+                "dilations": attrs[0]['dilations'],
+                "padding_algorithm": attrs[0]['padding_algorithm'],
+                "groups": attrs[0]['groups'],
+                "paddings": attrs[0]['paddings'],
+                "strides": attrs[0]['strides'],
+                "use_cudnn": False,
+                "is_test": True
             }
-        ]
+        }, {
+            "op_type": "elementwise_add",
+            "op_inputs": {
+                "X": ["conv_output"],
+                "Y": ["conv2d_bias"]
+            },
+            "op_outputs": {
+                "Out": ["elementwise_output"]
+            },
+            "op_attrs": {
+                'axis': attrs[1]['axis']
+            },
+        }]
 
         ops = self.generate_op_config(ops_config)
 
