@@ -2614,28 +2614,175 @@ def atan2(x, y, name=None):
         return out
 
 
+def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
+    r"""
+    Computes the n-th forward difference along the given axis.
+    The first-order differences is computed by using the following formula: 
+    .. math::
+        out[i] = x[i+1] - x[i]
+    
+    Higher-order differences are computed by using paddle.diff() recursively. 
+    Only n=1 is currently supported.
+    Args:
+        x(Tensor): The input tensor to compute the forward difference on
+        n(int, optional): The number of times to recursively compute the difference. 
+                          Only support n=1. Default:1
+        axis(int, optional): The axis to compute the difference along. Default:-1
+        prepend(Tensor, optional): The tensor to prepend to input along axis before computing the difference.
+                                   It's dimensions must be equivalent to that of x, 
+                                   and its shapes must match x's shape except on axis.
+        append(Tensor, optional): The tensor to append to input along axis before computing the difference, 
+                                   It's dimensions must be equivalent to that of x, 
+                                   and its shapes must match x's shape except on axis.
+        name(str|None): A name for this layer(optional). If set None, 
+                        the layer will be named automatically.
+    
+    Returns:
+        Tensor: The output tensor with same dtype with x.
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.to_tensor([1, 4, 5, 2])
+            out = paddle.diff(x)
+            print(out)
+            # out:
+            # [3, 1, -3]
+            y = paddle.to_tensor([7, 9])
+            out = paddle.diff(x, append=y)
+            print(out)
+            # out: 
+            # [3, 1, -3, 5, 2]
+            z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            out = paddle.diff(z, axis=0)
+            print(out)
+            # out:
+            # [[3, 3, 3]]
+            out = paddle.diff(z, axis=1)
+            print(out)
+            # out:
+            # [[1, 1], [1, 1]]
+    """
+
+    if axis < 0:
+        axis = axis + len(x.shape)
+    if axis > len(x.shape):
+        axis = len(x.shape)
+    if axis < 0:
+        axis = 0
+    dtype = x.dtype
+    axes = [axis]
+    infer_flags = list(1 for i in range(len(axes)))
+    if in_dygraph_mode():
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+        if has_pend:
+            new_input = _C_ops.concat(input_list, 'axis', axis)
+        else:
+            new_input = x
+
+        attrs_1 = ()
+        attrs_2 = ()
+
+        dim_len = new_input.shape[axis]
+
+        starts_1 = [0]
+        attrs_1 += ('starts', starts_1)
+        ends_1 = [dim_len - 1]
+        attrs_1 += ('ends', ends_1)
+        input_front = _C_ops.slice(new_input, None, None, 'axes', axes, \
+            'infer_flags', infer_flags, *attrs_1)
+        starts_2 = [1]
+        attrs_2 += ('starts', starts_2)
+        ends_2 = [dim_len]
+        attrs_2 += ('ends', ends_2)
+        input_back = _C_ops.slice(new_input, None, None, 'axes', axes, \
+            'infer_flags', infer_flags, *attrs_2)
+
+        if x.dtype == paddle.bool:
+            op = getattr(_C_ops, "logical_xor")
+            out = op(input_back, input_front)
+        else:
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
+        return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
+        check_type(axis, 'axis', (int), 'diff')
+        helper = LayerHelper('diff', **locals())
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+
+        if has_pend:
+            new_input = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='concat', inputs={'X': input_list}, outputs={'Out': [new_input]}, attrs={'axis': axis}
+            )
+        else:
+            new_input = x
+
+        dim_len = new_input.shape[axis]
+        attrs_1 = {'axes': axes}
+        starts_1 = [0]
+        ends_1 = [dim_len - 1]
+        attrs_1['starts'] = starts_1
+        attrs_1['ends'] = ends_1
+        input_front = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='slice', inputs={'Input': new_input}, attrs=attrs_1, outputs={'Out': input_front}
+        )
+        attrs_2 = {'axes': axes}
+        starts_2 = [1]
+        ends_2 = [dim_len]
+        attrs_2['starts'] = starts_2
+        attrs_2['ends'] = ends_2
+        input_back = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='slice', inputs={'Input': new_input}, attrs=attrs_2, outputs={'Out': input_back}
+        )
+
+        if dtype == paddle.bool:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='logical_xor', inputs={"X": input_back, "Y": input_front}, outputs={"Out": out}
+            )
+        else:
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
+
+        return out
+
+
 def angle(x, name=None):
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
     for negative real numbers, the angle is :math:`\pi`.
-
     Equation:
         .. math::
-
             angle(x)=arctan2(x.imag, x.real)
-
     Args:
         x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
     Returns:
         out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
             y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
             z = x + 1j * y
@@ -2644,7 +2791,6 @@ def angle(x, name=None):
             #  [-1.-2.j -1.-1.j -1.+0.j -1.+1.j]
             #  [ 0.-2.j  0.-1.j  0.+0.j  0.+1.j]
             #  [ 1.-2.j  1.-1.j  1.+0.j  1.+1.j]]
-
             theta = paddle.angle(z)
             print(theta.numpy())
             # [[-2.3561945 -2.6779451  3.1415927  2.6779451]
@@ -2652,7 +2798,6 @@ def angle(x, name=None):
             #  [-1.5707964 -1.5707964  0.         1.5707964]
             #  [-1.1071488 -0.7853982  0.         0.7853982]]
             
-
     """
     if in_dygraph_mode():
         return _C_ops.angle(x)

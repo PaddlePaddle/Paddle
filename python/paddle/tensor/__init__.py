@@ -189,6 +189,7 @@ from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
+from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
 
 from .random import multinomial  # noqa: F401
@@ -402,6 +403,7 @@ tensor_method_func  = [ #noqa
            'multi_dot',
            'solve',
            'triangular_solve',
+           'diff',
            'angle',
 ]
 
