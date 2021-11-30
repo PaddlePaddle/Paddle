@@ -53,6 +53,10 @@ void BasicEngine::Init(
                     platform::errors::AlreadyExists(
                         "Accumulators are not empty before preparing it for "
                         "backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators with grad_node as the key are not empty "
+                        "before preparing it for backward network execution."));
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto var = tensors[i];
@@ -73,7 +77,6 @@ void BasicEngine::Init(
       VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
               << " because of retain_graph=False when calling backward";
       var->GradVarBase()->SetGraphIsFreed(true);
-      var->GradVarBase()->ClearGradNode();
     }
 
     if (init_node == nullptr || var->OverridedStopGradient()) {
@@ -108,7 +111,9 @@ void BasicEngine::Init(
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
-    auto& accumulator = accumulators_[init_grad_var];
+    auto& accumulator =
+        accumulators_with_grad_node_[init_grad_var->GetGradNode()]
+                                    [init_grad_var];
     if (!accumulator) {
       if (FLAGS_sort_sum_gradient) {
         accumulator.reset(new SortedGradientAccumulator(init_grad_var));
@@ -116,6 +121,8 @@ void BasicEngine::Init(
         accumulator.reset(new EagerGradientAccumulator(init_grad_var));
       }
     }
+    accumulator->IncreaseRefCnt();
+    accumulator->IncreaseCurCnt();
 
     init_nodes_.push_back(init_node);
   }
@@ -253,10 +260,6 @@ void BasicEngine::PrepareDeps() {
       node_deps_.empty(), true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
                                       "it for backward network execution."));
-  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
-                    platform::errors::AlreadyExists(
-                        "Accumulators with grad_node as the key are not empty "
-                        "before preparing it for backward network execution."));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
@@ -312,6 +315,68 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
     }
   }
   return tmp_ins_ptr;
+}
+
+static bool IsInputCanInplace(const std::shared_ptr<VariableWrapper>& var) {
+  auto* inner_var = var->MutableVar();
+  if (inner_var->IsInitialized() && inner_var->IsType<framework::LoDTensor>()) {
+    auto tensor = inner_var->GetMutable<framework::LoDTensor>();
+    if (tensor->IsInitialized()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void PerformBackwardInplace(const std::string& op_type,
+                                   const NameVarMap<VariableWrapper>& ins,
+                                   NameVarMap<VariableWrapper>* outs) {
+  auto& infer_inplace =
+      paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+
+  if (infer_inplace) {
+    auto in_to_outs = infer_inplace(true);
+    for (auto& pair : in_to_outs) {
+      framework::LoDTensor *in_tensor = nullptr, *out_tensor = nullptr;
+      for (auto& p : ins) {
+        if (p.first == pair.first) {
+          // has at least one var
+          if (p.second.size() > 0 && p.second[0]) {
+            auto& in_var = p.second[0];
+            VLOG(10) << p.first << " use_count: " << in_var.use_count();
+            // the refcount of var to be inplaced should be 1
+            if (in_var.use_count() == 1) {
+              if (IsInputCanInplace(in_var)) {
+                in_tensor =
+                    in_var->MutableVar()->GetMutable<framework::LoDTensor>();
+              }
+            }
+          }
+        }
+      }
+      if (!in_tensor) {
+        continue;
+      }
+      for (auto& p : *outs) {
+        if (p.first == pair.second) {
+          if (p.second.size() > 0 && p.second[0]) {
+            auto& out_var = p.second[0];
+            if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
+              out_tensor =
+                  out_var->MutableVar()->GetMutable<framework::LoDTensor>();
+            }
+          }
+        }
+      }
+      if (!out_tensor) {
+        continue;
+      }
+      out_tensor->ShareBufferWith(*in_tensor);
+      out_tensor->Resize(in_tensor->dims());
+      VLOG(4) << "Inplace performed in op " << op_type << ": " << pair.second
+              << " -> " << pair.first;
+    }
+  }
 }
 
 void BasicEngine::Execute() {
@@ -483,6 +548,10 @@ void BasicEngine::Execute() {
        */
       auto tmp_ins_ptr = CallGradientHooks(bwd_ins, cur_op.Type());
 
+      if (!tmp_ins_ptr) {
+        PerformBackwardInplace(cur_op.Type(), bwd_ins, &tmp_outs);
+      }
+
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         try {
@@ -500,6 +569,13 @@ void BasicEngine::Execute() {
         } catch (std::exception& ex) {
           Clear();
           PADDLE_THROW(platform::errors::External("%s", ex.what()));
+        }
+      }
+
+      // Function Post Hook
+      if (cur_op.HasVoidFunctionPostHook()) {
+        for (const auto& hook : cur_op.GetVoidFunctionPostHooks()) {
+          (*hook)();
         }
       }
 

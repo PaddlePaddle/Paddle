@@ -81,10 +81,12 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "
                   "Sparse update.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<bool>("is_distributed",
                   "(boolean, default false) distributed lookup table.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
                      "If the value is -1, it makes no effect to lookup. "
@@ -93,22 +95,27 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(kNoPadding);
 
     // for parameter prefetch
-    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<bool>("remote_prefetch", "").SetDefault(false).AsExtra();
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
+        .SetDefault(0)
+        .AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
+        .SetDefault(std::vector<int64_t>({}))
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
 
     AddComment(R"DOC(
 Lookup Table V2 Operator.

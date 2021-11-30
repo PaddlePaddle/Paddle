@@ -43,14 +43,18 @@ class TestDatasetAbstract(unittest.TestCase):
 class TestDatasetWithDiffOutputPlace(unittest.TestCase):
     def get_dataloader(self, num_workers):
         dataset = paddle.vision.datasets.MNIST(
-            mode='test', transform=transforms.ToTensor())
+            mode='test',
+            transform=transforms.Compose([
+                transforms.CenterCrop(20), transforms.RandomResizedCrop(14),
+                transforms.Normalize(), transforms.ToTensor()
+            ]))
         loader = paddle.io.DataLoader(
             dataset, batch_size=32, num_workers=num_workers, shuffle=True)
         return loader
 
     def run_check_on_cpu(self):
         paddle.set_device('cpu')
-        loader = self.get_dataloader(0)
+        loader = self.get_dataloader(1)
         for image, label in loader:
             self.assertTrue(image.place.is_cpu_place())
             self.assertTrue(label.place.is_cpu_place())
@@ -66,12 +70,7 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
             for image, label in loader:
                 self.assertTrue(image.place.is_gpu_place())
                 self.assertTrue(label.place.is_cuda_pinned_place())
-                # FIXME(dkp): when input tensor is in GPU place and
-                # iteration break in the median, it seems the GPU
-                # tensor put into blocking_queue cannot be safely
-                # released and may cause ABRT/SEGV, this should
-                # be fixed
-                # break
+                break
 
     def test_multi_process(self):
         # DataLoader with multi-process mode is not supported on MacOs and Windows currently

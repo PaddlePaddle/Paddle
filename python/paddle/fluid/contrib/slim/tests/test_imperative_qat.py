@@ -28,10 +28,10 @@ from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn import Linear, Conv2D, Softmax
+from paddle.nn import Linear, Conv2D, Softmax, Conv2DTranspose
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn.quant.quant_layers import QuantizedConv2D
+from paddle.nn.quant.quant_layers import QuantizedConv2D, QuantizedConv2DTranspose
 
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
@@ -74,6 +74,12 @@ class TestImperativeQat(unittest.TestCase):
             quant_conv1 = QuantizedConv2D(conv1)
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             quant_conv1(fluid.dygraph.to_variable(data))
+
+            conv_transpose = Conv2DTranspose(4, 6, (3, 3))
+            quant_conv_transpose = QuantizedConv2DTranspose(conv_transpose)
+            x_var = paddle.uniform(
+                (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
+            quant_conv_transpose(x_var)
 
             seed = 1
             np.random.seed(seed)

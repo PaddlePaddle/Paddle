@@ -264,6 +264,10 @@ def new_group(ranks=None, backend=None):
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_npu():
+                place = core.NPUPlace(genv.device_id)
+                core.HCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
             else:
                 assert False, ("no cuda device found")
         else:
@@ -349,6 +353,13 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
     Broadcast a tensor from the source to all others.
+    As shown below, 4 GPUs each start 4 processes and GPU0 owns data 0. Through broadcast operator,
+    the data 0 will be sent to all GPUs from GPU0.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/broadcast.png
+        :width: 800
+        :alt: broadcast
+        :align: center
 
     Args:
         tensor (Tensor): The Tensor to send if current rank is the source, or the tensor to receive otherwise. Its data type
@@ -364,6 +375,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -416,6 +428,14 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
+    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    by the GPU number. The reduce operator is sum. Through all_reduce operator, 
+    each GPU will have the sum of the data from all GPUs.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
+        :width: 800
+        :alt: all_reduce
+        :align: center
 
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
@@ -431,6 +451,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import ReduceOp
@@ -495,7 +516,14 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
-    Reduce a tensor to the destination from all others.
+    Reduce a tensor to the destination from all others. As shown below, 4 GPUs each start 4 processes and the data on each GPU is respresnted
+    by the GPU number. The destination of the reduce operator is GPU0 and the process is sum. Through reduce operator,
+    the GPU0 will owns the sum of all data from all GPUs.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/reduce.png
+        :width: 800
+        :alt: reduce
+        :align: center
 
     Args:
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
@@ -512,6 +540,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -589,7 +618,15 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
-    Gather tensors from all participators and all get the result.
+    Gather tensors from all participators and all get the result. As shown
+    below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    by the GPU number. Through the all_gather operator, each GPU will have data
+    from all GPUs.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allgather.png
+        :width: 800
+        :alt: all_gather
+        :align: center
 
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
@@ -606,6 +643,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
@@ -666,7 +704,13 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
 
-    Scatter a tensor to all participators.
+    Scatter a tensor to all participators. As shown below, 4 GPUs each start 4 processes and the source of the scatter
+    is GPU0. Through scatter operator, the data in GPU0 will be sent to all GPUs averagely.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/scatter.png
+        :width: 800
+        :alt: scatter
+        :align: center
 
     Args:
         tensor (Tensor): The output Tensor. Its data type
@@ -684,11 +728,10 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-
-            # required: gpu
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
@@ -1078,6 +1121,19 @@ def _linear(x, weight, bias=None, name=None):
         return res
 
 
+def _set_var_distributed(var):
+    if var is None:
+        return
+
+    var.is_distributed = True
+
+    # NOTE: use current_block and find_var_recursive to support while_loop
+    startup_block = paddle.static.default_startup_program().current_block()
+    main_block = paddle.static.default_main_program().current_block()
+    startup_block._find_var_recursive(var.name).is_distributed = True
+    main_block._find_var_recursive(var.name).is_distributed = True
+
+
 def _parallel_linear(x,
                      num_rows,
                      num_cols,
@@ -1095,7 +1151,7 @@ def _parallel_linear(x,
 
     axis the dimension of the parameter of linear layer. 
     axis = 0: the row dimension
-    axid = 1: the col dimension
+    axis = 1: the col dimension
     
     """
     if group is not None and not group.is_member():
@@ -1108,40 +1164,35 @@ def _parallel_linear(x,
     else:
         x = _c_identity(x, group=group)
 
-    if core.is_compiled_with_npu():
-        linear = _Linear(
-            num_rows,
-            num_cols,
-            weight_attr=param_attr,
-            bias_attr=bias_attr,
-            name=name)
-    else:
-        linear = paddle.nn.Linear(
-            num_rows,
-            num_cols,
-            weight_attr=param_attr,
-            bias_attr=bias_attr,
-            name=name)
+    linear = paddle.nn.Linear(
+        num_rows,
+        num_cols,
+        weight_attr=param_attr,
+        bias_attr=bias_attr,
+        name=name)
 
-    linear_out = linear(x)
-    startup_block = paddle.static.default_startup_program().current_block()
-    main_block = paddle.static.default_main_program().current_block()
-    startup_block._find_var_recursive(linear.weight.name).is_distributed = True
-    main_block._find_var_recursive(linear.weight.name).is_distributed = True
+    # NOTE: npu linear function use matmul_v2 but linear use matmul
+    linear_function = _linear if core.is_compiled_with_npu()\
+        else paddle.nn.functional.linear
+    linear_out = linear_function(
+        x,
+        linear.weight,
+        # NOTE(wangxi): row split, bias need add after allreduce
+        None if axis == 0 else linear.bias,
+        linear.name)
 
+    _set_var_distributed(linear.weight)
     # set is_distributed for splited bias
     # if a linear layer is splited by row, each rank would hold a complete bias and they should be the same in each rank.
     # if a linear layer is splited by col, the bias would also be split into each rank as its weight
     if axis == 1 and linear._bias_attr != False:
-        startup_block._find_var_recursive(
-            linear.bias.name).is_distributed = True
-        main_block._find_var_recursive(linear.bias.name).is_distributed = True
+        _set_var_distributed(linear.bias)
 
     if not gather_out: return linear_out
 
-    op_type = 'c_allreduce_sum' if axis == 0 else 'c_concat'
     out_shape = list(linear_out.shape)
     out_shape[0] *= 1 if axis == 0 else nranks
+    main_block = paddle.static.default_main_program().current_block()
     out = main_block.create_var(
         shape=out_shape,
         dtype=linear_out.dtype,
@@ -1160,6 +1211,8 @@ def _parallel_linear(x,
                 'use_calc_stream': True,
                 'use_model_parallel': True
             })
+        if linear.bias is not None:
+            out = out + linear.bias
     else:
         main_block.append_op(
             type='c_concat',
@@ -1220,65 +1273,6 @@ def _parallel_embedding(x,
     return out
 
 
-def _parallel_embedding_npu(x,
-                            per_part_embeddings,
-                            origin_size,
-                            param_attr,
-                            inner_rank,
-                            num_partitions,
-                            name,
-                            group=None):
-    """
-    NPU Parallel Embedding
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    origin_num_embeddings = origin_size[0]
-    embedding = paddle.nn.Embedding(
-        per_part_embeddings,
-        origin_size[1],
-        padding_idx=per_part_embeddings - 1,
-        sparse=False,
-        weight_attr=param_attr,
-        name=name)
-
-    origin_input_shape = x.shape
-    if len(origin_input_shape) == 2:
-        x = paddle.unsqueeze(x, axis=-1)
-    else:
-        assert origin_input_shape[-1] == 1, (
-            "The last dimension size of x must be 1.")
-    x_shard = paddle.shard_index(x, origin_num_embeddings, num_partitions,
-                                 inner_rank, per_part_embeddings - 1)
-    if len(origin_input_shape) == 2:
-        x_shard = paddle.squeeze(x_shard, axis=-1)
-    emb_out = embedding(x_shard)
-    startup_block = paddle.static.default_startup_program().global_block()
-    main_block = paddle.static.default_main_program().global_block()
-    startup_block.vars[embedding.weight.name].is_distributed = True
-    main_block.vars[embedding.weight.name].is_distributed = True
-    out = main_block.create_var(
-        shape=emb_out.shape,
-        dtype=emb_out.dtype,
-        type=emb_out.type,
-        lod_level=emb_out.lod_level,
-        persistable=False,
-        is_data=False,
-        need_check_feed=emb_out.desc.need_check_feed())
-    main_block.append_op(
-        type='c_allreduce_sum',
-        inputs={'X': emb_out},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'use_model_parallel': True
-        })
-    return out
-
-
 def split(x,
           size,
           operation,
@@ -1310,15 +1304,65 @@ def split(x,
         to N/2 and are mapped to all zeros after embedding. Finally, the results on the two
         devices are sum-reduced.
 
+        The Embedding put on single card is as shown below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_single.png
+            :width: 800
+            :height: 350
+            :alt: single_embedding
+            :align: center
+
+        Parallel Embedding is shown as below:
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_split.png
+            :width: 800
+            :alt: split_embedding
+            :align: center
+
     Case 2: Row Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
         With row parallel linear, the weight is split into num_partitions partitions, each
         of which is a matrix with N/num_partitions rows and M column.
 
+        The linear layer put on single card is shown as below, the input variable is represented by X,
+        the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is 
+        simple matrix multiplication operation, O = X * W.
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_single.png
+            :width: 800
+            :alt: single_linear
+            :align: center
+
+        Row Parallel Linear is shown as below. As the name suggests, Row Parallel Linear splits the weight matrix W into
+        [[W_row1], [W_row2]] along the row. And accordingly the input is splitted along the column into [X_col1, X_col2] and multiply their
+        respective weight matrices. Finally apply AllReduce on the output from each card to get the final output.
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_row.png
+            :width: 800
+            :alt: split_row
+            :align: center
+
     Case 3: Column Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
         With column parallel linear, the weight is split into num_paratitions partitions, each
         of which is a matrix with N rows and M/num_partitions column.
+
+        The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
+        is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and 
+        these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output. 
+
+        .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col.png
+            :width: 800
+            :alt: split_col
+            :align: center
+    
+    As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
+    operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col_row.png
+            :width: 800
+            :alt: split_col_row
+            :align: center
 
     Args:
         x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
@@ -1393,28 +1437,16 @@ def split(x,
             "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
         per_part_size = size[0] // num_partitions
-        if core.is_compiled_with_npu():
-            emb_out = _parallel_embedding_npu(
-                x,
-                per_part_size,
-                size,
-                weight_attr,
-                inner_rank,
-                num_partitions,
-                name,
-                group=None)
-            return emb_out
-        else:
-            emb_out = _parallel_embedding(
-                x,
-                per_part_size,
-                size,
-                weight_attr,
-                inner_rank,
-                num_partitions,
-                name,
-                group=None)
-            return emb_out
+        emb_out = _parallel_embedding(
+            x,
+            per_part_size,
+            size,
+            weight_attr,
+            inner_rank,
+            num_partitions,
+            name,
+            group=None)
+        return emb_out
     else:
         should_split = False
         if axis == 0:
@@ -1455,8 +1487,16 @@ def split(x,
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
-    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
-    
+    Scatter tensors in in_tensor_list to all participators averagely and gather the result tensors in out_tensor_list.
+    As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
+    Through alltoall operator, the 0_0 in GPU0 will be sent to GPU0 and 0_1 to GPU1, 1_0 in GPU1 sent to GPU0 and 1_1 to GPU1.
+    Finally the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/alltoall.png
+        :width: 800
+        :alt: alltoall
+        :align: center
+
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
@@ -1524,7 +1564,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             inputs={'X': [temp]},
             outputs={'Out': [out]},
             attrs={
-                'ring_id': group,
+                'ring_id': ring_id,
                 'use_calc_stream': use_calc_stream,
             })
     out_tensor_list.extend(paddle.split(out, nranks, 0))

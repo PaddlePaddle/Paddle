@@ -46,6 +46,17 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
         framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("Ids", /*->*/ "Out");
     }
+
+    // check valid
+    const int64_t height = table_dims[0];
+    const int64_t width = table_dims[1];
+    const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
+
+    PADDLE_ENFORCE_EQ(
+        (height > 0 && width > 0 && start_idx >= 0), true,
+        platform::errors::InvalidArgument(
+            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            height, width, start_idx));
   }
 
  protected:
@@ -63,7 +74,7 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int64 "
+             "An input with type int32 or int64 in CPU and GPU, int32 in NPU "
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
 
@@ -111,6 +122,21 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto table_dims = ctx->GetInputDim("W");
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+
+    // check valid
+    PADDLE_ENFORCE_EQ(table_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Only accept the dims of table_t == 2"));
+
+    const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
+    const int64_t height = table_dims[0];
+    const int64_t width = table_dims[1];
+
+    PADDLE_ENFORCE_EQ(
+        (height > 0 && width > 0 && start_idx >= 0), true,
+        platform::errors::InvalidArgument(
+            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            height, width, start_idx));
   }
 
  protected:
@@ -137,6 +163,7 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_embedding, ops::CEmbeddingOp, ops::CEmbeddingOpMaker,
                   ops::CEmbeddingGradOpMaker<paddle::framework::OpDesc>,
                   ops::CEmbeddingGradOpMaker<paddle::imperative::OpBase>);
@@ -146,4 +173,9 @@ REGISTER_OPERATOR(c_embedding_grad, ops::CEmbeddingOpGrad,
                   ops::CEmbeddingOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(c_embedding, ops::CEmbeddingOpCPUKernel<float>,
-                       ops::CEmbeddingOpCPUKernel<double>);
+                       ops::CEmbeddingOpCPUKernel<double>,
+                       ops::CEmbeddingOpCPUKernel<plat::float16>);
+
+REGISTER_OP_CPU_KERNEL(c_embedding_grad, ops::CEmbeddingGradOpCPUKernel<float>,
+                       ops::CEmbeddingGradOpCPUKernel<double>,
+                       ops::CEmbeddingGradOpCPUKernel<plat::float16>);

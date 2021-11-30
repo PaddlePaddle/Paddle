@@ -20,6 +20,43 @@ from paddle.fluid import core
 
 
 def softmax_mask_fuse(x, mask, name=None):
+    """
+    Do a masked softmax on x.
+
+    This is designed for speeding up Transformer structure.
+    Used for reducing operation such as: tmp = x + mask, out = softmax(tmp).
+    The equation is:
+
+    .. math::
+        out = softmax(x + mask)
+
+    **Note**:
+        This API only supports GPU.
+
+    Args:
+        x (4-D Tensor): The input tensor, should be in 4D shape, it's data type should be float16, float32.
+                        The fourth dimension of x must be larger or equal to 32 and less then 8192.
+        mask (4-D Tensor): The input tensor, should be in 4D shape, it's data type should be float16, float32.
+                           The second dimension of mask must be 1, and other dimensions must be same with x.
+        name (str, optional): Name for the operation (optional, default is None).
+                              For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        4-D Tensor. A location into which the result is stored. It’s dimension is 4D. Has same shape with x.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import paddle.incubate as incubate
+
+            x = paddle.rand([2, 8, 8, 32])
+            mask = paddle.rand([2, 1, 8, 32])
+
+            rst = incubate.softmax_mask_fuse(x, mask)
+            # [[[[0.02404429, 0.04658398, 0.02746007, ..., 0.01489375, 0.02397441, 0.02851614] ... ]]]
+    """
     if in_dygraph_mode():
         out = core.ops.fused_softmax_mask(x, mask)
         return out

@@ -42,7 +42,7 @@ class NCCLCommunicator;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -112,8 +112,8 @@ struct BuildStrategy {
   bool enable_auto_fusion_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
-  boost::optional<bool> fuse_all_optimizer_ops_{false};
-  boost::optional<bool> fuse_all_reduce_ops_{boost::none};
+  paddle::optional<bool> fuse_all_optimizer_ops_{false};
+  paddle::optional<bool> fuse_all_reduce_ops_{paddle::none};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
   bool fuse_relu_depthwise_conv_{false};
@@ -121,7 +121,7 @@ struct BuildStrategy {
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
-  boost::optional<bool> fuse_broadcast_ops_{boost::none};
+  paddle::optional<bool> fuse_broadcast_ops_{paddle::none};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
 
@@ -135,13 +135,15 @@ struct BuildStrategy {
   // By default, memory_optimize would be opened if gc is disabled, and
   // be closed if gc is enabled.
   // Users can forcely enable/disable memory_optimize by setting True/False.
-  boost::optional<bool> memory_optimize_{boost::none};
+  paddle::optional<bool> memory_optimize_{paddle::none};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
 
   // Turn off inplace addto by default.
   bool enable_addto_{false};
+
+  bool allow_cuda_graph_capture_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
@@ -179,6 +181,11 @@ struct BuildStrategy {
       bool finalize_strategy) const;
 
   bool IsFinalized() const { return is_finalized_; }
+
+  void ClearFinalized() {
+    pass_builder_ = nullptr;
+    is_finalized_ = false;
+  }
 
   bool IsMultiDevPass(const std::string &pass_name) const;
 

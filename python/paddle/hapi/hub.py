@@ -172,22 +172,25 @@ def list(repo_dir, source='github', force_reload=False):
     List all entrypoints available in `github` hubconf.
 
     Args:
-        repo_dir(str): github or local path
+        repo_dir(str): github or local path.
+
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `main` if not specified.
+            tag/branch. The default branch is `main` if not specified.
+            
             local path (str): local repo path
-        source (str): `github` | `gitee` | `local`, default is `github`
+        
+        source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
         entrypoints: a list of available entrypoint names
 
     Example:
-        ```python
-        import paddle
+        .. code-block:: python
 
-        paddle.hub.list('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
+            import paddle
 
-        ```
+            paddle.hub.list('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
+
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
@@ -213,22 +216,26 @@ def help(repo_dir, model, source='github', force_reload=False):
     Show help information of model
 
     Args:
-        repo_dir(str): github or local path
+        repo_dir(str): github or local path.
+
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `main` if not specified.
-            local path (str): local repo path
-        model (str): model name
-        source (str): `github` | `gitee` | `local`, default is `github`
-        force_reload (bool, optional): default is `False`
+            tag/branch. The default branch is `main` if not specified.
+            
+            local path (str): local repo path.
+        
+        model (str): model name.
+        source (str): `github` | `gitee` | `local`, default is `github`.
+        force_reload (bool, optional): default is `False`.
     Return:
         docs
 
     Example:
-        ```python
-        import paddle
+        .. code-block:: python
 
-        paddle.hub.help('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
-        ```
+            import paddle
+
+            paddle.hub.help('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
+
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
@@ -251,21 +258,25 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     Load model
 
     Args:
-        repo_dir(str): github or local path
+        repo_dir(str): github or local path.
+
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `main` if not specified.
-            local path (str): local repo path
-        model (str): model name
-        source (str): `github` | `gitee` | `local`, default is `github`
-        force_reload (bool, optional), default is `False`
+            tag/branch. The default branch is `main` if not specified.
+
+            local path (str): local repo path.
+        
+        model (str): model name.
+        source (str): `github` | `gitee` | `local`, default is `github`.
+        force_reload (bool, optional): default is `False`.
         **kwargs: parameters using for model
     Return:
         paddle model
     Example:
-        ```python
-        import paddle
-        paddle.hub.load('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
-        ```
+        .. code-block:: python
+
+            import paddle
+            paddle.hub.load('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
+
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(

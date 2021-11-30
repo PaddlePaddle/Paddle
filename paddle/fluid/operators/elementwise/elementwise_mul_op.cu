@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
+// only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
@@ -25,26 +28,43 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct CudaMulFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] * args[1];
-  }
-};
-
-template <typename T>
 class ElementwiseMulKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    framework::Tensor x_for_selectedrows;
-    std::vector<const framework::Tensor*> ins;
-    std::vector<framework::Tensor*> outs;
+    auto x_var = ctx.InputVar("X");
+    PADDLE_ENFORCE_EQ(x_var != nullptr, true,
+                      platform::errors::InvalidArgument(
+                          "Cannot get input Variable X, Variable name = %s.",
+                          ctx.InputName("X")));
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
+    if (x_var->IsType<framework::SelectedRows>()) {
+      framework::Tensor x_for_selectedrows;
+      std::vector<const framework::Tensor*> ins;
+      std::vector<framework::Tensor*> outs;
+      int axis =
+          PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          cuda_ctx, ins, &outs, axis, MulFunctor<T>());
+    } else if (x_var->IsType<framework::LoDTensor>()) {
+      auto* x_lod = ctx.Input<framework::LoDTensor>("X");
+      auto* y_lod = ctx.Input<framework::LoDTensor>("Y");
+      auto* z_lod = ctx.Output<framework::LoDTensor>("Out");
+      z_lod->mutable_data<T>(ctx.GetPlace());
 
-    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaMulFunctor<T>());
+      int axis = ctx.Attr<int>("axis");
+      auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
+      auto pt_y = paddle::experimental::MakePtenDenseTensor(*y_lod);
+      auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
+      pten::ElementwiseMul<T>(cuda_ctx, *pt_x.get(), *pt_y.get(), axis,
+                              pt_z.get());
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "X's type[%s] is not supported by elementwise_op. X's type should be "
+          "LoDTensor or SelectedRows.",
+          framework::ToTypeName(x_var->Type())));
+    }
   }
 };
 
@@ -102,10 +122,10 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
-      dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
   SimpleElemwiseMulGradCUDAKernel<
       T><<<grid_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
@@ -121,6 +141,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<double>>);
@@ -130,6 +151,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
                                   plat::complex<float>>,
@@ -141,8 +163,21 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::complex<float>>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex<double>>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_mul_triple_grad,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, bool>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex<float>>,
+    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext,
                                         plat::complex<double>>);

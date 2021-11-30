@@ -392,12 +392,116 @@ class DistributedStrategy(object):
         """
         return get_msg_dict(self.strategy.trainer_desc_configs)
 
+    @property
+    def adam_d2sum(self):
+        """
+        set adam_d2sum
+        Default value: True
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            strategy.adam_d2sum = True  # by default this is True
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.adam_d2sum
+
+    @adam_d2sum.setter
+    @is_strict_auto
+    def adam_d2sum(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.adam_d2sum = flag
+        else:
+            raise ValueError(
+                "The type of `flag` is invalid, expected type is bool, but received {}".
+                format(type(flag)))
+
     @trainer_desc_configs.setter
     @is_strict_auto
     def trainer_desc_configs(self, configs):
         check_configs_key(self.strategy.trainer_desc_configs, configs,
                           "trainer_desc_configs")
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
+
+    @property
+    def fs_client_param(self):
+        """
+        Set fs client configurations. 
+        **Notes**:
+            uri(str): the uri of fs client
+            user(str): the user_name of fs client
+            passwd(str): the passwd of fs client
+            hadoop_bin(str): 
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+            strategy = fleet.DistributedStrategy()
+            configs = {"uri": "xxx", "user": "xxx", passwd: "xxx"}
+            strategy.fs_client_param = configs
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.fs_client_param
+
+    @fs_client_param.setter
+    @is_strict_auto
+    def fs_client_param(self, configs):
+        check_configs_key(self.strategy.fs_client_param, configs,
+                          "fs_client_param")
+        assign_configs_value(self.strategy.fs_client_param, configs)
+
+    @property
+    def sparse_table_configs(self):
+        return self.strategy.downpour_table_param
+
+    @sparse_table_configs.setter
+    @is_strict_auto
+    def sparse_table_configs(self, configs):
+        from google.protobuf.descriptor import FieldDescriptor
+        table_param = self.strategy.downpour_table_param
+
+        def set_table_config(msg, config_name, configs, index=0):
+            for field in msg.DESCRIPTOR.fields:
+                name = config_name + "." + field.name
+                if field.type == FieldDescriptor.TYPE_MESSAGE:
+                    print("message:", name)
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        if name + ".num" not in configs:
+                            continue
+                        num = configs[name + ".num"]
+                        print("message num:", name, num)
+                        for i in range(num):
+                            data = getattr(msg, field.name).add()
+                            set_table_config(data, name, configs, i)
+                    else:
+                        set_table_config(
+                            getattr(msg, field.name), name, configs)
+                else:
+                    print("not message:", name)
+                    if name not in configs:
+                        continue
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        getattr(msg, field.name).extend(configs[name])
+                    else:
+                        if type(configs[name]) == list:
+                            setattr(msg, field.name, configs[name][index])
+                        else:
+                            setattr(msg, field.name, configs[name])
+
+        if not configs:
+            print("table configs is empty")
+        else:
+            set_table_config(table_param, "table_parameters", configs)
 
     @property
     def amp(self):
@@ -888,6 +992,9 @@ class DistributedStrategy(object):
             pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
             This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
 
+            optimize_cast(bool, optional): [Hybrid parallelism ONLY] Move the cast op of AMP which cast fp32 param to fp16 param to optimizer. optimize_cast will persist fp16 param, it
+            will take more memory, but will be faster, trade space for time. Recommend to turn on only when using pipeline or gradient_merge_acc_step large.
+
 
         Examples:
 
@@ -963,6 +1070,28 @@ class DistributedStrategy(object):
             print(
                 "WARNING: calc_comm_same_stream should have value of boolean type"
             )
+
+    @property
+    def fuse_grad_merge(self):
+        """
+        Set whether fuse the grad for gradient merge.
+        Note: this flag will only effect the gradient merge under pipeline mode
+        The default value for the fuse_grad_merge is False
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_param_grad = True
+        """
+        return self.strategy.fuse_grad_merge
+
+    @fuse_grad_merge.setter
+    @is_strict_auto
+    def fuse_grad_merge(self, fuse_grad_merge):
+        if isinstance(fuse_grad_merge, bool):
+            self.strategy.fuse_grad_merge = fuse_grad_merge
+        else:
+            print("WARNING: fuse_grad_merge should have value of boolean type")
 
     @property
     def fuse_grad_size_in_num(self):
@@ -1570,6 +1699,64 @@ class DistributedStrategy(object):
             self.strategy.auto = flag
         else:
             print("WARNING: auto should have value of bool type")
+
+    @property
+    def semi_auto(self):
+        """
+        Indicating whether we are using semi-auto parallel function
+        This feature is currently an experimental feature. Currently, 
+        auto-parallelism can be used only when a user does not set any other
+        strategy configs except semi-auto. For details, please reference the following
+        code example
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+
+            strategy = fleet.DistributedStrategy()
+            strategy.semi_auto = True
+            # if set other strategy at the same time, auto will not apply
+            # strategy.amp = True
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.semi_auto
+
+    @semi_auto.setter
+    def semi_auto(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.semi_auto = flag
+        else:
+            print("WARNING: semi-auto should have value of bool type")
+
+    @property
+    def auto_search(self):
+        """
+        Indicating whether we are using auto-search parallel function
+        For details, please reference the following code example
+        Default Value: False
+        Examples:
+          .. code-block:: python
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.auto_search = True
+        """
+        return self.strategy.auto_search
+
+    @auto_search.setter
+    def auto_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.auto_search = flag
+        else:
+            print("WARNING: auto-search should have value of bool type")
 
     @property
     def cudnn_exhaustive_search(self):

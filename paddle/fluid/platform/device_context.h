@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/dynload/cusparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -45,7 +46,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -58,7 +59,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/stream/npu_stream.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
+#include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -68,13 +70,13 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 namespace paddle {
@@ -97,6 +99,8 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+
+  MAX_DEVICE_TYPES = 4,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -270,7 +274,8 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const stream::Priority& priority = stream::Priority::kNormal);
+      const stream::Priority& priority = stream::Priority::kNormal,
+      const stream::StreamFlag& flag = stream::StreamFlag::kDefaultFlag);
 
   ~CUDAContext();
 
@@ -285,6 +290,12 @@ class CUDAContext {
   }
 
   const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
+
+  stream::CUDAStream* SetStream(stream::CUDAStream* new_stream_ptr) {
+    auto* old_stream_ptr = stream_.release();
+    stream_.reset(new_stream_ptr);
+    return old_stream_ptr;
+  }
 
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
@@ -696,8 +707,8 @@ class MKLDNNDeviceContextThreadLocals {
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
     // MKL-DNN stream used for execution of primitives (per-thread)
-    mkldnn::engine cur_engine;
-    mkldnn::stream cur_stream;
+    dnnl::engine cur_engine;
+    dnnl::stream cur_stream;
     std::string key_suffix;  // Key identifying current Executor
     bool key_attach_thread_id = true;
     void* exec_ptr_ = nullptr;
@@ -711,8 +722,8 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
-    const mkldnn::engine& get_engine(void);
-    mkldnn::stream& get_stream(void);
+    const dnnl::engine& get_engine(void);
+    dnnl::stream& get_stream(void);
     void set_key_suffix(const std::string& suffix) { key_suffix = suffix; }
     const std::string& get_key_suffix(void) const { return key_suffix; }
     void disable_tid_in_key(void) { key_attach_thread_id = false; }
@@ -766,7 +777,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
-  const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
+  const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Register object to currently used executor's map
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;

@@ -116,5 +116,56 @@ class TRTYoloBoxFP16Test(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TRTYoloBoxIoUAwareTest(InferencePassTest):
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            image_shape = [self.bs, self.channel, self.height, self.width]
+            image = fluid.data(name='image', shape=image_shape, dtype='float32')
+            image_size = fluid.data(
+                name='image_size', shape=[self.bs, 2], dtype='int32')
+            boxes, scores = self.append_yolobox(image, image_size)
+
+        self.feeds = {
+            'image': np.random.random(image_shape).astype('float32'),
+            'image_size': np.random.randint(
+                32, 64, size=(self.bs, 2)).astype('int32'),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TRTYoloBoxTest.TensorRTParam(
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [scores, boxes]
+
+    def set_params(self):
+        self.bs = 4
+        self.channel = 258
+        self.height = 64
+        self.width = 64
+        self.class_num = 80
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        self.conf_thresh = .1
+        self.downsample_ratio = 32
+        self.iou_aware = True
+        self.iou_aware_factor = 0.5
+
+    def append_yolobox(self, image, image_size):
+        return fluid.layers.yolo_box(
+            x=image,
+            img_size=image_size,
+            class_num=self.class_num,
+            anchors=self.anchors,
+            conf_thresh=self.conf_thresh,
+            downsample_ratio=self.downsample_ratio,
+            iou_aware=self.iou_aware,
+            iou_aware_factor=self.iou_aware_factor)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -25,7 +25,7 @@ std::unordered_set<std::string> global_extra_attrs = {
     "op_callstack",  "op_device",        "@ENABLE_CACHE_RUNTIME_CONTEXT@",
     "is_test",       "use_mkldnn",       "mkldnn_data_type",
     "use_quantizer", "mkldnn_data_type", "use_cudnn",
-    "name"};
+    "name",          "with_quant_attr"};
 }
 
 namespace paddle {

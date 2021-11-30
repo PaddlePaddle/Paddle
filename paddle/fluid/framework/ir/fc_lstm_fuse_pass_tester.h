@@ -91,7 +91,7 @@ std::unique_ptr<ir::Graph> PrepareGraph(
               false, gate_activation, cell_activation, candidate_activation);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  return std::move(graph);
+  return graph;
 }
 
 }  // namespace fc_lstm_test

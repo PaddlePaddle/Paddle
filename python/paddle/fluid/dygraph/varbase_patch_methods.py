@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -88,17 +88,17 @@ def monkey_patch_varbase():
         """
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
-        # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
-        attr_not_need_keys = ['grad']
+        # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
+        attr_not_need_keys = ['grad', 'T']
         if isinstance(self, ParamBase):
             attr_kwargs = self.__dict__.copy()
         else:
             attr_names = []
             for name in dir(self):
-                if name not in attr_not_need_keys and not (
-                        inspect.ismethod(getattr(self, name)) or
-                        name.startswith('_')):
-                    attr_names.append(name)
+                if name not in attr_not_need_keys:
+                    if not inspect.ismethod(getattr(
+                            self, name)) and not name.startswith('_'):
+                        attr_names.append(name)
             attr_kwargs = {name: getattr(self, name) for name in attr_names}
 
         attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
@@ -146,25 +146,35 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        assert isinstance(value, (np.ndarray, core.VarBase)), \
-            "Variable set_value function, arguments type only support Variable, numpy, VarBase"
+        assert isinstance(value, (np.ndarray, core.VarBase, dict, str)), \
+            "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
 
-        value_np = value
-        if isinstance(value, core.VarBase):
-            value_np = value.numpy()
+        if isinstance(value, (dict, str)):
+            assert len(self) == len(
+                value
+            ), "Variable length not match, Variable [ {} ] need tensor with length {} but load set tensor with length {}".format(
+                self.name, len(self), len(value))
+            if isinstance(value, dict):
+                self.value().set_vocab(value)
+            else:
+                self.value().set_string_list(value)
+        else:
+            value_np = value
+            if isinstance(value, core.VarBase):
+                value_np = value.numpy()
 
-        self_tensor_np = self.numpy()
+            self_tensor_np = self.numpy()
 
-        assert self_tensor_np.shape == value_np.shape, \
-            "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                self.name, self_tensor_np.shape, value_np.shape)
+            assert self_tensor_np.shape == value_np.shape, \
+                "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
+                    self.name, self_tensor_np.shape, value_np.shape)
 
-        assert self_tensor_np.dtype == value_np.dtype, \
-            "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                self.name, self_tensor_np.dtype, value_np.dtype)
+            assert self_tensor_np.dtype == value_np.dtype, \
+                "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                    self.name, self_tensor_np.dtype, value_np.dtype)
 
-        self.value().get_tensor().set(value_np,
-                                      framework._current_expected_place())
+            self.value().get_tensor().set(value_np,
+                                          framework._current_expected_place())
 
     @framework.dygraph_only
     def backward(self, grad_tensor=None, retain_graph=False):
@@ -347,6 +357,83 @@ def monkey_patch_varbase():
         helper = TensorHookRemoveHelper(self, hook_id)
         return helper
 
+    @framework.dygraph_only
+    def _to(self, device=None, dtype=None, blocking=None):
+
+        if device is None and dtype is None and blocking is None:
+            return self
+
+        if device is not None:
+            if isinstance(device, str):
+                device = paddle.device._convert_to_place(device)
+            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
+                                     core.CUDAPinnedPlace, core.XPUPlace)):
+                pass
+            else:
+                raise ValueError(
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    + type(device).__name__)
+
+        if blocking is None:
+            blocking = True
+        else:
+            assert isinstance(
+                blocking,
+                bool), "blocking value error, must be the True, False or None"
+
+        def transform(t, device, dtype, blocking):
+            if device is None:
+                device = t.place
+            if dtype is None:
+                dtype = t.dtype
+            if type(dtype) is str:
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+
+            # 1. gpu place need to determine whether the memory is sufficient for allocation.
+            if t.place.is_gpu_place():
+                size_dtype = core.size_of_dtype(dtype)
+                # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
+                # waiting_alloc_memory will compute the memory space occupied by 't'.
+                # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
+                waiting_alloc_memory = (
+                    (t._numel() * size_dtype) / 256 + 1) * 256 * 1.2
+                gpu_memory_available = core.gpu_memory_available()
+                if gpu_memory_available < waiting_alloc_memory:
+                    # Copy Tensor to cpu
+                    t_used = t._copy_to(paddle.CPUPlace(), blocking)
+                    # Release memory of t
+                    t._clear()
+                else:
+                    # Tensor still in GPU
+                    t_used = t
+            else:
+                t_used = t
+
+            # 2. cast Tensor to dtype
+            if dtype is not None and dtype != t_used.dtype:
+                with paddle.fluid.framework._dygraph_place_guard(
+                        place=t_used.place):
+                    t_casted = t_used.cast(dtype=dtype)
+            else:
+                t_casted = t_used
+
+            # 3. Copy casted Tensor(in CPU or GPU) to device
+            if device is not None and not t_casted.place._equals(device):
+                new_t = t_casted._copy_to(device, blocking)
+            else:
+                new_t = t_casted
+
+            # 4. Share Tensor to origin Tensor
+            dst_tensor = t.value().get_tensor()
+            src_tensor = new_t.value().get_tensor()
+            dst_tensor._share_data_with(src_tensor)
+
+            return t
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return transform(self, device, dtype, blocking)
+
     @property
     def grad(self):
         """
@@ -390,7 +477,8 @@ def monkey_patch_varbase():
 
     def item(self, *args):
         """
-        Convert one element Tensor to a Python scalar.
+        Convert element at specific position in Tensor into Python scalars. If the position is not specified, the Tensor must be a 
+        single-element Tensor.
 
         Args:
             *args(int): The input coordinates. If it's single int, the data in the corresponding order of flattened Tensor will be returned.
@@ -426,8 +514,6 @@ def monkey_patch_varbase():
                 print(x.item(2))            #3.3
                 print(x.item(0, 2))         #3.3
 
-                x = paddle.to_tensor([1, 2])
-                x.item()               #ValueError: only one element tensor can be converted to Python scalar when no input coordinates.
         """
         return self._getitem_from_offset(*args).item()
 
@@ -543,23 +629,43 @@ def monkey_patch_varbase():
             array = array.astype(dtype)
         return array
 
+    def contain_tensor(item):
+        if not isinstance(item, (tuple, list)):
+            item = [item]
+
+        for slice_item in item:
+            if isinstance(slice_item, slice):
+                if isinstance(slice_item.start, Variable)  \
+                    or isinstance(slice_item.stop, Variable) \
+                        or isinstance(slice_item.step, Variable):
+                    return True
+            else:
+                if isinstance(
+                        slice_item,
+                    (Variable, np.ndarray)) and Variable.dtype != paddle.bool:
+                    return True
+        return False
+
     def __getitem__(self, item):
-        def contain_tensor(item):
-            if not isinstance(item, tuple):
-                item = [item]
-
-            for slice_item in item:
-                if isinstance(slice_item, slice):
-                    if isinstance(slice_item.start, Variable)  \
-                        or isinstance(slice_item.stop, Variable) \
-                           or isinstance(slice_item.step, Variable):
-                        return True
+        def is_list_tuple(index, contain_type):
+            def _is_list_tuple(item):
+                if isinstance(item, (tuple, list)):
+                    for s in item:
+                        if not _is_list_tuple(s):
+                            return False
                 else:
-                    if isinstance(slice_item, Variable):
-                        return True
-            return False
+                    if type(item) != contain_type:
+                        return False
+                return True
 
-        if contain_tensor(item):
+            if not isinstance(index, (tuple, list)):
+                return False
+            for s in index:
+                if not _is_list_tuple(s):
+                    return False
+            return True
+
+        if contain_tensor(item) or is_list_tuple(item, int):
             # 1. Call _getitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
             return _getitem_impl_(self, item)
@@ -567,6 +673,49 @@ def monkey_patch_varbase():
         else:
             # 2. Call c++ func getitem_index_not_tensor to speedup.
             return self._getitem_index_not_tensor(item)
+
+    def __setitem__(self, item, value):
+        def contain_tensor_or_list(item):
+            if not isinstance(item, tuple):
+                item = [item]
+
+            for slice_item in item:
+                if isinstance(slice_item, list):
+                    return True
+                elif isinstance(slice_item, Variable):
+                    return True
+
+            return False
+
+        def is_combine_index(item):
+            var_type = None
+            item_type = None
+            if isinstance(item, (tuple, list)):
+                for slice_item in item:
+                    if item_type is None:
+                        item_type = type(slice_item)
+                    else:
+                        if type(slice_item) != item_type:
+                            return True
+
+                    if isinstance(slice_item, Variable):
+                        if var_type is None:
+                            var_type = slice_item.dtype
+                        else:
+                            if var_type != slice_item.dtype:
+                                return True
+                return False
+
+            return False
+
+        if contain_tensor_or_list(item) and not is_combine_index(item):
+            # To reuse code with static graph,
+            # Call _setitem_impl_ when item contains tensor or list.
+            return _setitem_impl_(self, item, value)
+
+        else:
+            # Call c++ func __setitem_varbase__ to speedup.
+            return self.__setitem_varbase__(item, value)
 
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
@@ -577,7 +726,8 @@ def monkey_patch_varbase():
         ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
-        ("__getitem__", __getitem__), ("item", item)):
+        ("__getitem__", __getitem__), ("item", item),
+        ("__setitem__", __setitem__), ("_to", _to)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.

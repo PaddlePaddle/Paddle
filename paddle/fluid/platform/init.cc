@@ -11,12 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <csignal>
 #include <fstream>
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -29,22 +30,26 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
 #include <stdio.h>
 #include <time.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 
 #include "DbgHelp.h"
 #endif
 
 DECLARE_int32(paddle_num_threads);
-DEFINE_int32(multiple_of_cupti_buffer_size, 1,
-             "Multiple of the CUPTI device buffer size. If the timestamps have "
-             "been dropped when you are profiling, try increasing this value.");
+PADDLE_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size, 1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
 namespace platform {
@@ -245,15 +250,16 @@ void InitDevices(const std::vector<int> devices) {
 // Description Quoted from
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
 const struct {
+  int signal_number;
   const char *name;
   const char *error_string;
 } SignalErrorStrings[] = {
-    {"SIGSEGV", "Segmentation fault"},
-    {"SIGILL", "Illegal instruction"},
-    {"SIGFPE", "Erroneous arithmetic operation"},
-    {"SIGABRT", "Process abort signal"},
-    {"SIGBUS", "Access to an undefined portion of a memory object"},
-    {"SIGTERM", "Termination signal"},
+    {SIGSEGV, "SIGSEGV", "Segmentation fault"},
+    {SIGILL, "SIGILL", "Illegal instruction"},
+    {SIGFPE, "SIGFPE", "Erroneous arithmetic operation"},
+    {SIGABRT, "SIGABRT", "Process abort signal"},
+    {SIGBUS, "SIGBUS", "Access to an undefined portion of a memory object"},
+    {SIGTERM, "SIGTERM", "Termination signal"},
 };
 
 bool StartsWith(const char *str, const char *prefix) {
@@ -319,7 +325,21 @@ void SignalHandle(const char *data, int size) {
     // will Kill program by the default signal handler
   }
 }
+#endif  // _WIN32
+
+void DisableSignalHandler() {
+#ifndef _WIN32
+  for (size_t i = 0;
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+    int signal_number = SignalErrorStrings[i].signal_number;
+    struct sigaction sig_action;
+    memset(&sig_action, 0, sizeof(sig_action));
+    sigemptyset(&sig_action.sa_mask);
+    sig_action.sa_handler = SIG_DFL;
+    sigaction(signal_number, &sig_action, NULL);
+  }
 #endif
+}
 
 #ifdef WITH_WIN_DUMP_DBG
 typedef BOOL(WINAPI *MINIDUMP_WRITE_DUMP)(

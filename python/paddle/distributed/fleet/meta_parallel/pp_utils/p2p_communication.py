@@ -19,11 +19,13 @@ import numpy as np
 from paddle import _C_ops
 
 _hcg = None
+_use_cache = False
 
 
-def initialize_p2p_groups(hcg):
-    global _hcg
+def initialize_p2p_groups(hcg, use_cache=True):
+    global _hcg, _use_cache
     _hcg = hcg
+    _use_cache = use_cache
     send_next_group, send_prev_group, recv_next_group, recv_prev_group = _hcg.get_p2p_groups(
     )
 
@@ -372,7 +374,7 @@ def recv_forward():
     else:
         if not _send_recv_meta.has_recv_meta:
             _send_recv_meta.recv_meta(_hcg.recv_prev_group)
-            _send_recv_meta.has_recv_meta = True
+            _send_recv_meta.has_recv_meta = _use_cache
 
         input_tensor, _ = _p2p_helper(
             tensor_send_next=None,
@@ -399,7 +401,7 @@ def send_forward(output_tensor):
         if not _send_recv_meta.has_send_meta:
             _send_recv_meta.set_send_message(output_tensor)
             _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
-            _send_recv_meta.has_send_meta = True
+            _send_recv_meta.has_send_meta = _use_cache
 
         _p2p_helper(
             tensor_send_next=output_tensor,

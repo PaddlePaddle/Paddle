@@ -99,6 +99,22 @@ class TestFillConstantBatchSizeLike3(TestFillConstantBatchSizeLike):
         self.output_value = 4.5
 
 
+class TestFillConstantBatchSizeLike4(TestFillConstantBatchSizeLike):
+    def init_value(self):
+        # str_value = 'inf'
+        self.value = 3.8
+        self.str_value = 'inf'
+        self.output_value = float('inf')
+
+
+class TestFillConstantBatchSizeLike5(TestFillConstantBatchSizeLike):
+    def init_value(self):
+        # str_value = '-inf'
+        self.value = 3.8
+        self.str_value = '-inf'
+        self.output_value = -float('inf')
+
+
 class TestFillConstantBatchSizeLike6(TestFillConstantBatchSizeLike):
     def init_dtype(self):
         self.dtype = core.VarDesc.VarType.FP16
@@ -128,6 +144,55 @@ class TestFillConstantBatchSizeLike9(TestFillConstantBatchSizeLike):
     def init_dim_idx(self):
         self.input_dim_idx = 0
         self.output_dim_idx = 1
+
+
+class TestFillConstantBatchSizeLikeLodTensor(TestFillConstantBatchSizeLike):
+    # test LodTensor
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "fill_constant_batch_size_like"
+        self.init_shape()
+        self.init_value()
+        self.init_dtype()
+        self.init_force_cpu()
+        self.init_dim_idx()
+
+        lod = [[3, 2, 5]]
+        self.inputs = {
+            'Input': (np.random.random(self.input_shape).astype("float32"), lod)
+        }
+        self.attrs = {
+            'shape': self.shape,
+            'value': self.value,
+            'str_value': self.str_value,
+            'dtype': self.dtype,
+            'force_cpu': self.force_cpu,
+            'input_dim_idx': self.input_dim_idx,
+            'output_dim_idx': self.output_dim_idx
+        }
+        self.outputs = {
+            'Out': np.full(self.output_shape, self.output_value,
+                           self.output_dtype)
+        }
+
+    def init_shape(self):
+        self.input_shape = [10, 20]
+        self.shape = [123, 92]
+        self.output_shape = (3, 92)
+
+
+class TestFillConstantBatchSizeLikeLodTensor2(
+        TestFillConstantBatchSizeLikeLodTensor):
+    # test LodTensor with 'input_dim_idx' != 0
+    def init_shape(self):
+        self.input_shape = [10, 20]
+        self.shape = [123, 92]
+        self.output_shape = (20, 92)
+
+    def init_dim_idx(self):
+        self.input_dim_idx = 1
+        self.output_dim_idx = 0
 
 
 if __name__ == '__main__':

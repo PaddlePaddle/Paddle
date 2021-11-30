@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_align_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -261,7 +262,9 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     int output_size = out->numel();
     int blocks = NumBlocks(output_size);
     int threads = kNumCUDAThreads;
-
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(ctx.cuda_device_context(), &threads, 256);
+#endif
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
     auto cplace = platform::CPUPlace();

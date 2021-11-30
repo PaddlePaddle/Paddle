@@ -42,9 +42,12 @@ FLEET_GLOBAL_DICT = {
     "scale_sparse_grad": None,
 }
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 class DistributedOptimizerImplBase(object):
@@ -332,19 +335,27 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if st.get("sparse_accessor_class") is not None:
             accessor = st["sparse_accessor_class"]
 
-        # set sparse_embedx_dim in strategy,
-        # user do not have to set it in config_fleet
+        # set sparse_embedx_dim in the strategy according to accessor and use_cvm config
         if accessor == "DownpourFeatureValueAccessor" \
                 or accessor == "DownpourCtrAccessor" \
                 or accessor == "DownpourDoubleUnitAccessor" \
                 or accessor == "DownpourUnitAccessor":
             if st.get("sparse_embedx_dim") is not None \
+                    and strategy.get("use_cvm") == True \
                     and st["sparse_embedx_dim"] != emb_to_size[table_name] - 3:
                 raise ValueError("fleet config sparse_embedx_dim=%s not"
                                  " equal to embedding dim - 3 = %s" %
                                  (st["sparse_embedx_dim"],
                                   emb_to_size[table_name] - 3))
-            if st.get("sparse_embedx_dim") is None:
+            if st.get("sparse_embedx_dim") is not None \
+                    and strategy.get("use_cvm") == False \
+                    and st["sparse_embedx_dim"] != emb_to_size[table_name] - 1:
+                raise ValueError("fleet config sparse_embedx_dim=%s not"
+                                 " equal to embedding dim - 1 = %s" %
+                                 (st["sparse_embedx_dim"],
+                                  emb_to_size[table_name] - 1))
+            if st.get("sparse_embedx_dim") is None \
+                    and strategy.get("use_cvm") == True:
                 logger.warning(
                     "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
                     "with same sparse table name is not set in config_fleet.py. "
@@ -352,6 +363,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     format(table_name, emb_to_size[table_name], emb_to_size[
                         table_name]))
                 st["sparse_embedx_dim"] = emb_to_size[table_name] - 3
+            if st.get("sparse_embedx_dim") is None \
+                    and strategy.get("use_cvm") == False:
+                logger.warning(
+                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    "with same sparse table name is not set in config_fleet.py. "
+                    "Hence automatically set sparse_embedx_dim = {} - 1.".
+                    format(table_name, emb_to_size[table_name], emb_to_size[
+                        table_name]))
+                st["sparse_embedx_dim"] = emb_to_size[table_name] - 1
         elif accessor == "DownpourSparseValueAccessor":
             if st.get("sparse_embedx_dim") is not None \
                     and st["sparse_embedx_dim"] != emb_to_size[table_name]:
@@ -412,11 +432,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
         sparse_table_index = 0
         for num in range(len(losses)):
             loss = losses[num]
+            parameters = None
+            if parameter_list != None:
+                parameters = parameter_list[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program
             params_grads = sorted(
-                fluid.backward.append_backward(loss, parameter_list,
-                                               no_grad_set),
+                fluid.backward.append_backward(loss, parameters, no_grad_set),
                 key=lambda x: x[0].name)
 
             flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
@@ -825,6 +847,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["no_cvm"] = strategy.get("no_cvm", False)
+        opt_info["scale_sparse_gradient_with_batch_size"] = strategy.get(
+            "scale_sparse_gradient_with_batch_size", True)
         opt_info["worker_class"] = strategy.get("worker_class",
                                                 "DownpourWorker")
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
@@ -842,7 +866,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             "user_define_dump_filename", "")
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
-        gpus_env = os.getenv("FLAGS_selected_gpus")
+        gpus_env = os.getenv("FLAGS_selected_gpus", "0")
         opt_info["worker_places"] = [int(s) for s in gpus_env.split(",")]
         opt_info["use_ps_gpu"] = strategy.get("use_ps_gpu", False)
         if server._server.downpour_server_param.downpour_table_param[

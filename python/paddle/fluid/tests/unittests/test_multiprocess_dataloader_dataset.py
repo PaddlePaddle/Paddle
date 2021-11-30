@@ -397,5 +397,30 @@ class TestDataLoaderGenerateStates(unittest.TestCase):
             assert out == outp
 
 
+class TestDatasetWithDropLast(unittest.TestCase):
+    def run_main(self, dataset, num_samples, batch_size):
+        for num_workers in [0, 1]:
+            for drop_last in [True, False]:
+                steps = (num_samples + (1 - int(drop_last)) * \
+                        (batch_size - 1)) // batch_size
+                dataloader = DataLoader(
+                    dataset,
+                    batch_size=batch_size,
+                    drop_last=drop_last,
+                    num_workers=num_workers)
+                datas = []
+                for data in dataloader:
+                    datas.append(data)
+                assert len(datas) == steps
+
+    def test_map_dataset(self):
+        dataset = RandomDataset(10)
+        self.run_main(dataset, 10, 3)
+
+    def test_iterable_dataset(self):
+        dataset = RandomIterableDataset(10)
+        self.run_main(dataset, 10, 3)
+
+
 if __name__ == '__main__':
     unittest.main()

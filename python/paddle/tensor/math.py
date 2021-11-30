@@ -196,10 +196,10 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         original_op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         original_op_type)
 
     axis = helper.kwargs.get('axis', -1)
@@ -473,8 +473,8 @@ def multiply(x, y, name=None):
     ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
+        y (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -656,7 +656,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     Computes the sum of tensor elements over the given dimension.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
         axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -673,11 +673,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        it's data type is the same as `x`.
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, 
+        otherwise it's data type is the same as `x`.
 
     Raises:
-        ValueError: If the data type of `x` is float64, :attr:`dtype` can not be float32 or int32.
-        ValueError: If the data type of `x` is int64, :attr:`dtype` can not be int32.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
@@ -704,6 +703,16 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                   [[5, 6], [7, 8]]])
             out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
             out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
+            
+            # x is a Tensor with following elements:
+            #    [[True, True, True, True]
+            #     [False, False, False, False]]
+            # Each example is followed by the corresponding output tensor.
+            x = paddle.to_tensor([[True, True, True, True],
+                                  [False, False, False, False]])
+            out7 = paddle.sum(x)  # [4]
+            out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
+            out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
@@ -914,8 +923,6 @@ def mm(input, mat2, name=None):
     nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
-    This op does not support broadcasting. See paddle.matmul.
-
     Args:
         input (Tensor): The input tensor which is a Tensor.
         mat2 (Tensor): The input tensor which is a Tensor.
@@ -940,9 +947,7 @@ def mm(input, mat2, name=None):
 
     """
     if in_dygraph_mode():
-        out = _varbase_creator(dtype=input.dtype)
-        _C_ops.matmul(input, mat2, out)
-        return out
+        return _C_ops.matmul_v2(input, mat2)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -982,7 +987,7 @@ def mm(input, mat2, name=None):
     helper = LayerHelper('mm', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
-        type='matmul', inputs={'X': input,
+        type='matmul_v2', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
     return out
 
@@ -1648,12 +1653,6 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
-    if in_dygraph_mode():
-        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
-
-    inputs = {'Input': [x]}
-    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
-
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float16', 'float32', 'float64'],
@@ -1668,11 +1667,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
         axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
         axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-        assert axis1_ < len(input_shape),     \
+        assert ((0 <= axis1_) and (axis1_ < len(input_shape))),     \
             "The argument axis1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
             % (-(len(input_shape)), len(input_shape) - 1, axis1)
 
-        assert axis2_ < len(input_shape),   \
+        assert ((0 <= axis2_) and (axis2_ < len(input_shape))),   \
             "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
             % (-(len(input_shape)), len(input_shape) - 1, axis2)
 
@@ -1682,6 +1681,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
     __check_input(input, offset, axis1, axis2)
+    if in_dygraph_mode():
+        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
+    inputs = {'Input': [x]}
+    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1911,6 +1915,67 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+def cumprod(x, dim=None, dtype=None, name=None):
+    """
+    Compute the cumulative product of the input tensor x along a given dimension dim.
+
+    **Note**:
+    The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): the input tensor need to be cumproded.
+        dim (int): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank), where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of cumprod operator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.arange(12)
+            data = paddle.reshape(data, (3, 4))
+            # [[ 0  1  2  3 ]
+            #  [ 4  5  6  7 ]
+            #  [ 8  9  10 11]]
+
+            y = paddle.cumprod(data, dim=0)
+            # [[ 0  1   2   3]
+            #  [ 0  5  12  21]
+            #  [ 0 45 120 231]]
+
+            y = paddle.cumprod(data, dim=-1)
+            # [[ 0   0   0    0]
+            #  [ 4  20 120  840]
+            #  [ 8  72 720 7920]]
+
+            y = paddle.cumprod(data, dim=1, dtype='float64')
+            # [[ 0.   0.   0.    0.]
+            #  [ 4.  20. 120.  840.]
+            #  [ 8.  72. 720. 7920.]]
+
+            print(y.dtype)
+            # paddle.float64
+
+    """
+
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = layers.cast(x, dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.cumprod(x, 'dim', dim)
+
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')
+    check_type(dim, 'dim', int, 'cumprod')
+
+    helper = LayerHelper('cumprod', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='cumprod', inputs={'X': x}, outputs={'Out': out}, attrs={'dim': dim})
+    return out
 
 def isfinite(x, name=None):
     """
@@ -2313,17 +2378,17 @@ def any(x, axis=None, keepdim=False, name=None):
             out1 = paddle.any(x)  # [True]
             print(out1)
             
-            # out2 should be [True, False]
-            out2 = paddle.any(x, axis=0)  # [True, False]
+            # out2 should be [True, True]
+            out2 = paddle.any(x, axis=0)  # [True, True]
             print(out2)
             
-            # keep_dim=False, out3 should be [True, False], out.shape should be (2,)
-            out3 = paddle.any(x, axis=-1)  # [True, False]
+            # keep_dim=False, out3 should be [True, True], out.shape should be (2,)
+            out3 = paddle.any(x, axis=-1)  # [True, True]
             print(out3)
             
-            # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
+            # keep_dim=True, result should be [[True], [True]], out.shape should be (2,1)
             out4 = paddle.any(x, axis=1, keepdim=True)
-            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.cast(out4, 'int32')  # [[True], [True]]
             print(out4)
             
     """
@@ -2491,25 +2556,25 @@ def neg(x, name=None):
 
     return layers.scale(x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name)
 
-def atan2(y, x, name=None):
+def atan2(x, y, name=None):
     r"""
-    Element-wise arctangent of y/x with consideration of the quadrant.
+    Element-wise arctangent of x/y with consideration of the quadrant.
 
     Equation:
         .. math::
 
-          atan2(y,x)=\left\{\begin{matrix}
-          & tan^{-1}(\frac{y}{x}) & x > 0 \\
-          & tan^{-1}(\frac{y}{x}) + \pi & y>=0, x < 0 \\
-          & tan^{-1}(\frac{y}{x}) - \pi & y<0, x < 0 \\
-          & +\frac{\pi}{2} & y>0, x = 0 \\
-          & -\frac{\pi}{2} & y<0, x = 0 \\
-          &\text{undefined} & y=0, x = 0
-          \end{matrix}\right.
+            atan2(x,y)=\left\{\begin{matrix}
+            & tan^{-1}(\frac{x}{y}) & y > 0 \\
+            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
+            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
+            & +\frac{\pi}{2} & x>0, y = 0 \\
+            & -\frac{\pi}{2} & x<0, y = 0 \\
+            &\text{undefined} & x=0, y = 0
+            \end{matrix}\right.
 
     Args:
-        y (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
-        x (Tensor): An N-D Tensor, must have the same type as `x`.
+        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
+        y (Tensor): An N-D Tensor, must have the same type as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2518,31 +2583,194 @@ def atan2(y, x, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            import paddle
 
-          y = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-1,  1,  1, -1])
+            x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-1,  1,  1, -1])
 
-          x = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-1,  -1,  1, 1])
+            y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-1,  -1,  1, 1])
 
-          out = paddle.atan2(y, x)
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
+            out = paddle.atan2(x, y)
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
 
     """
 
     if in_dygraph_mode():
-        return _C_ops.atan2(y, x)
+        return _C_ops.atan2(x, y)
     else:
-        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
 
         helper = LayerHelper('atan2', **locals())
-        inputs = {'X1' : y, 'X2' : x}
+        inputs = {'X1' : x, 'X2' : y}
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})
+        return out
+
+
+def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
+    r"""
+    Computes the n-th forward difference along the given axis.
+    The first-order differences is computed by using the following formula: 
+
+    .. math::
+
+        out[i] = x[i+1] - x[i]
+    
+    Higher-order differences are computed by using paddle.diff() recursively. 
+    Only n=1 is currently supported.
+
+    Args:
+        x(Tensor): The input tensor to compute the forward difference on
+        n(int, optional): The number of times to recursively compute the difference. 
+                          Only support n=1. Default:1
+        axis(int, optional): The axis to compute the difference along. Default:-1
+        prepend(Tensor, optional): The tensor to prepend to input along axis before computing the difference.
+                                   It's dimensions must be equivalent to that of x, 
+                                   and its shapes must match x's shape except on axis.
+        append(Tensor, optional): The tensor to append to input along axis before computing the difference, 
+                                   It's dimensions must be equivalent to that of x, 
+                                   and its shapes must match x's shape except on axis.
+        name(str|None): A name for this layer(optional). If set None, 
+                        the layer will be named automatically.
+    
+    Returns:
+        Tensor: The output tensor with same dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([1, 4, 5, 2])
+            out = paddle.diff(x)
+            print(out)
+            # out:
+            # [3, 1, -3]
+
+            y = paddle.to_tensor([7, 9])
+            out = paddle.diff(x, append=y)
+            print(out)
+            # out: 
+            # [3, 1, -3, 5, 2]
+
+            z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            out = paddle.diff(z, axis=0)
+            print(out)
+            # out:
+            # [[3, 3, 3]]
+            out = paddle.diff(z, axis=1)
+            print(out)
+            # out:
+            # [[1, 1], [1, 1]]
+
+
+    """
+
+    if axis < 0:
+        axis = axis + len(x.shape)
+    if axis > len(x.shape):
+        axis = len(x.shape)
+    if axis < 0:
+        axis = 0
+    dtype = x.dtype
+    axes = [axis]
+    infer_flags = list(1 for i in range(len(axes)))
+    if in_dygraph_mode():
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+        if has_pend:
+            new_input = _C_ops.concat(input_list, 'axis', axis)
+        else:
+            new_input = x
+
+        attrs_1 = ()
+        attrs_2 = ()
+
+        dim_len = new_input.shape[axis]
+
+        starts_1 = [0]
+        attrs_1 += ('starts', starts_1)
+        ends_1 = [dim_len - 1]
+        attrs_1 += ('ends', ends_1)
+        input_front = _C_ops.slice(new_input, None, None, 'axes', axes, \
+            'infer_flags', infer_flags, *attrs_1)
+        starts_2 = [1]
+        attrs_2 += ('starts', starts_2)
+        ends_2 = [dim_len]
+        attrs_2 += ('ends', ends_2)
+        input_back = _C_ops.slice(new_input, None, None, 'axes', axes, \
+            'infer_flags', infer_flags, *attrs_2)
+
+        if x.dtype == paddle.bool:
+            op = getattr(_C_ops, "logical_xor")
+            out = op(input_back, input_front)
+        else:
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
+        return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
+        check_type(axis, 'axis', (int), 'diff')
+        helper = LayerHelper('diff', **locals())
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+
+        if has_pend:
+            new_input = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='concat', inputs={'X': input_list}, outputs={'Out': [new_input]}, attrs={'axis': axis}
+            )
+        else:
+            new_input = x
+
+        dim_len = new_input.shape[axis]
+        attrs_1 = {'axes': axes}
+        starts_1 = [0]
+        ends_1 = [dim_len - 1]
+        attrs_1['starts'] = starts_1
+        attrs_1['ends'] = ends_1
+        input_front = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='slice', inputs={'Input': new_input}, attrs=attrs_1, outputs={'Out': input_front}
+        )
+        attrs_2 = {'axes': axes}
+        starts_2 = [1]
+        ends_2 = [dim_len]
+        attrs_2['starts'] = starts_2
+        attrs_2['ends'] = ends_2
+        input_back = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='slice', inputs={'Input': new_input}, attrs=attrs_2, outputs={'Out': input_back}
+        )
+
+        if dtype == paddle.bool:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='logical_xor', inputs={"X": input_back, "Y": input_front}, outputs={"Out": out}
+            )
+        else:
+            out = layers.elementwise_sub(input_back, input_front, axis=axis)
+
         return out

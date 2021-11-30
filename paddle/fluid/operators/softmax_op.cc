@@ -85,9 +85,10 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
 #ifndef PADDLE_WITH_ASCEND_CL
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                        platform::errors::InvalidArgument(
-                            "float16 can only be used on GPU place"));
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
+                            platform::is_xpu_place(ctx.GetPlace()),
+                        true, platform::errors::InvalidArgument(
+                                  "float16 can only be used on GPU/XPU place"));
     }
 #endif
 
@@ -110,7 +111,8 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -120,16 +122,19 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("AnyLayout");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Softmax Operator.
 
@@ -210,9 +215,10 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
 #endif
     if (input_data_type == framework::proto::VarType::FP16) {
       if (!(platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_npu_place(ctx.GetPlace())))
+            platform::is_npu_place(ctx.GetPlace()) ||
+            platform::is_xpu_place(ctx.GetPlace())))
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "float16 can only be used on GPU/NPU place"));
+            "float16 can only be used on GPU/NPU/XPU place"));
     }
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,

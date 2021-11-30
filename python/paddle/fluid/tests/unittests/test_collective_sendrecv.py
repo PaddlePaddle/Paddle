@@ -29,6 +29,10 @@ class TestSendRecvOp(TestDistBase):
     def test_sendrecv(self):
         self.check_with_place("collective_sendrecv_op.py", "sendrecv")
 
+    def test_sendrecv_array(self):
+        self.check_with_place("collective_sendrecv_op_array.py",
+                              "sendrecv_array")
+
 
 if __name__ == '__main__':
     unittest.main()

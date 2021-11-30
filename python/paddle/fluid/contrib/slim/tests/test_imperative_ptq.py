@@ -23,16 +23,46 @@ import unittest
 import copy
 import logging
 
+import paddle.nn as nn
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization import *
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 
-from imperative_test_utils import fix_model_dict, ImperativeLenet
+from imperative_test_utils import fix_model_dict, ImperativeLenet, ImperativeLinearBn
+from imperative_test_utils import ImperativeLinearBn_hook
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+class TestFuseLinearBn(unittest.TestCase):
+    """
+    Fuse the linear and bn layers, and then quantize the model.
+    """
+
+    def test_fuse(self):
+        model = ImperativeLinearBn()
+        model_h = ImperativeLinearBn_hook()
+        inputs = paddle.randn((3, 10), dtype="float32")
+        config = PTQConfig(AbsmaxQuantizer(), AbsmaxQuantizer())
+        ptq = ImperativePTQ(config)
+        f_l = [['linear', 'bn']]
+        quant_model = ptq.quantize(model, fuse=True, fuse_list=f_l)
+        quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
+        for name, layer in quant_model.named_sublayers():
+            if name in f_l:
+                assert not (isinstance(layer, nn.BatchNorm1D) or
+                            isinstance(layer, nn.BatchNorm2D))
+        out = model(inputs)
+        out_h = model_h(inputs)
+        out_quant = quant_model(inputs)
+        out_quant_h = quant_h(inputs)
+        cos_sim_func = nn.CosineSimilarity(axis=0)
+        print('fuse linear+bn',
+              cos_sim_func(out.flatten(), out_quant.flatten()))
+        print(cos_sim_func(out_h.flatten(), out_quant_h.flatten()))
 
 
 class TestImperativePTQ(unittest.TestCase):
@@ -177,7 +207,6 @@ class TestImperativePTQ(unittest.TestCase):
         model = ImperativeLenet()
         model_state_dict = paddle.load(params_path)
         model.set_state_dict(model_state_dict)
-
         # Quantize, calibrate and save
         quant_model = self.ptq.quantize(model)
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
@@ -208,6 +237,67 @@ class TestImperativePTQ(unittest.TestCase):
             after_acc_top1 >= self.eval_acc_top1,
             msg="The test acc {%f} is less than {%f}." %
             (after_acc_top1, self.eval_acc_top1))
+        self.assertTrue(
+            infer_acc_top1 >= after_acc_top1,
+            msg='The acc is lower after converting model.')
+
+        end_time = time.time()
+        print("total time: %ss \n" % (end_time - start_time))
+
+
+class TestImperativePTQfuse(TestImperativePTQ):
+    def test_ptq(self):
+        start_time = time.time()
+
+        self.set_vars()
+
+        # Load model
+        params_path = self.download_model(self.lenet_url, self.lenet_md5,
+                                          "lenet")
+        params_path += "/lenet_pretrained/lenet.pdparams"
+
+        model = ImperativeLenet()
+        model_state_dict = paddle.load(params_path)
+        model.set_state_dict(model_state_dict)
+        # Quantize, calibrate and save
+        f_l = [['features.0', 'features.1'], ['features.4', 'features.5']]
+        quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
+        for name, layer in quant_model.named_sublayers():
+            if name in f_l:
+                assert not (isinstance(layer, nn.BatchNorm1D) or
+                            isinstance(layer, nn.BatchNorm2D))
+        before_acc_top1 = self.model_test(quant_model, self.batch_num,
+                                          self.batch_size)
+
+        input_spec = [
+            paddle.static.InputSpec(
+                shape=[None, 1, 28, 28], dtype='float32')
+        ]
+        self.ptq.save_quantized_model(
+            model=quant_model, path=self.save_path, input_spec=input_spec)
+        print('Quantized model saved in {%s}' % self.save_path)
+
+        after_acc_top1 = self.model_test(quant_model, self.batch_num,
+                                         self.batch_size)
+
+        paddle.enable_static()
+        infer_acc_top1 = self.program_test(self.save_path, self.batch_num,
+                                           self.batch_size)
+        paddle.disable_static()
+
+        # Check
+        print('Before converted acc_top1: %s' % before_acc_top1)
+        print('After converted acc_top1: %s' % after_acc_top1)
+        print('Infer acc_top1: %s' % infer_acc_top1)
+
+        #Check whether the quant_model is correct after converting.
+        #The acc of quantized model should be higher than 0.95.
+        self.assertTrue(
+            after_acc_top1 >= self.eval_acc_top1,
+            msg="The test acc {%f} is less than {%f}." %
+            (after_acc_top1, self.eval_acc_top1))
+        #Check the saved infer_model.The acc of infer model 
+        #should not be lower than the one of dygraph model.
         self.assertTrue(
             infer_acc_top1 >= after_acc_top1,
             msg='The acc is lower after converting model.')

@@ -137,10 +137,12 @@ static void GetGraphInfoBetweenTargets(
     }
 
     for (auto &pending_node : node->GradPendingNodes()) {
+      for (auto &pending_op : *pending_node) {
+        preceding_ops[&pending_op].insert(op);
+      }
       if (visited.count(pending_node.get()) == 0) {
         visited.insert(pending_node.get());
         for (auto &pending_op : *pending_node) {
-          preceding_ops[&pending_op].insert(op);
           q.emplace(&pending_op, pending_node.get());
         }
       }
@@ -305,7 +307,15 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   auto *dst_tensor = dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
   auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
-  dst_tensor->mutable_data(place, ref_var.DataType());
+  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
+  // grad mission
+  // we can't get data_type_ directly. We need to check if we can only use
+  // default data_type for now.
+  if (ref_var.ForwardDataType() != -1) {
+    dst_tensor->mutable_data(place, ref_var.ForwardDataType());
+  } else {
+    dst_tensor->mutable_data(place, ref_var.DataType());
+  }
   operators::math::set_constant(*dev_ctx, dst_tensor, value);
 }
 

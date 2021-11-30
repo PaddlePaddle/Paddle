@@ -17,7 +17,10 @@ limitations under the License. */
 #include <limits>
 #include <type_traits>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/framework/pten_utils.h"
+
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/creation.h"
 
 namespace paddle {
 namespace operators {
@@ -58,9 +61,11 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
         std::isnan(value), false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
-    math::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
-           static_cast<T>(value));
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
+
+    const auto& dev_ctx = context.template device_context<DeviceContext>();
+    // call new kernel
+    pten::FillAnyLike<T>(dev_ctx, value, pt_out.get());
   }
 };
 

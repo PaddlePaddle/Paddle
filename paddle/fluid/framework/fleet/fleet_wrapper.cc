@@ -870,7 +870,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
-    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm) {
+    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+    const bool scale_sparse_gradient_with_batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -939,7 +940,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     float* g = g_tensor->data<float>();
 
-    if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
+    if (scale_sparse_gradient_with_batch_size && grad_dim > 0) {
       int dim = emb_dim;
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
@@ -1333,6 +1334,29 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
 #endif
 }
 
+void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
+  assert(date.size() == 8);
+  int year = std::stoi(date.substr(0, 4));
+  int month = std::stoi(date.substr(4, 2));
+  int day = std::stoi(date.substr(6, 2));
+  struct std::tm b;
+  b.tm_year = year - 1900;
+  b.tm_mon = month - 1;
+  b.tm_mday = day;
+  b.tm_hour = b.tm_min = b.tm_sec = 0;
+  std::time_t seconds_from_1970 = std::mktime(&b);
+  int day_id = seconds_from_1970 / 86400;
+  auto ret = pslib_ptr_->_worker_ptr->set_day_id(table_id, day_id);
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "setdate : " << date << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib-gpu";
+#endif
+}
+
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
@@ -1343,6 +1367,20 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   }
 #else
   VLOG(0) << "FleetWrapper::PrintTableStat does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::SetFileNumOneShard(const uint64_t table_id, int file_num) {
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
+  auto ret =
+      pslib_ptr_->_worker_ptr->set_file_num_one_shard(table_id, file_num);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "set_file_num_one_shard failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SetFileNumOneShard does nothing when no pslib-gpu";
 #endif
 }
 

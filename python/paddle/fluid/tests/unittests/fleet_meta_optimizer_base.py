@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 import paddle
 from paddle import fluid
@@ -25,6 +26,23 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
+        self._debug = False
+
+    def debug_program(self, main_prog, startup_prog):
+        if not self._debug: return
+
+        main_prog_ops = main_prog.global_block().ops
+        startup_prog_ops = startup_prog.global_block().ops
+
+        main_prog_op_types = [op.type for op in main_prog_ops]
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+
+        print("=== debug program and ops in func [{}] ==="
+              .format(inspect.stack()[1].function))
+        print(main_prog)
+        print(main_prog_op_types)
+        print(startup_prog)
+        print(startup_prog_op_types)
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
@@ -80,6 +98,20 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                     avg_cost = paddle.fluid.layers.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
+        return avg_cost, strategy
+
+    def boundary_net(self, main_prog, startup_prog):
+        with fluid.program_guard(main_prog, startup_prog):
+            fleet.init(is_collective=True)
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            with paddle.static.device_guard('gpu:0'):
+                linear = fluid.Linear(4, 8, bias_attr=False)
+                out = linear(x)
+            with paddle.static.device_guard('gpu:1'):
+                linear = fluid.Linear(8, 5, bias_attr=False)
+                out = linear(out)
+                avg_cost = paddle.mean(out)
+            strategy = fleet.DistributedStrategy()
         return avg_cost, strategy
 
     def optimizer(self,
@@ -189,6 +221,13 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 "checkpoints": ["fc_0.tmp_2", "fc_1.tmp_2"],
                 "enable_offload": True,
                 "checkpoint_shape": [256]
+            }
+        elif name == "pipeline":
+            strategy.pipeline = True
+            strategy.pipeline_configs = {
+                "schedule_mode": "1F1B",
+                "micro_batch_size": 2,
+                "accumulate_steps": 4,
             }
         else:
             raise NotImplementedError()

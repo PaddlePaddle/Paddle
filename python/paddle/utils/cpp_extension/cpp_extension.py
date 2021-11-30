@@ -355,6 +355,8 @@ class BuildExtension(build_ext, object):
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
+        # whether containing cuda source file in Extensions
+        self.contain_cuda_file = False
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
@@ -401,7 +403,7 @@ class BuildExtension(build_ext, object):
             cflags = copy.deepcopy(extra_postargs)
             try:
                 original_compiler = self.compiler.compiler_so
-                # nvcc compile CUDA source
+                # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
                         assert ROCM_HOME is not None, "Not found ROCM runtime, \
@@ -427,11 +429,24 @@ class BuildExtension(build_ext, object):
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
 
+                # Note(qili93): HIP require some additional flags for CMAKE_C_FLAGS
+                if core.is_compiled_with_rocm():
+                    cflags.append('-D__HIP_PLATFORM_HCC__')
+                    cflags.append('-D__HIP_NO_HALF_CONVERSIONS__=1')
+                    cflags.append(
+                        '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP')
+
                 # NOTE(Aurelius84): Since Paddle 2.0, we require gcc version > 5.x,
                 # so we add this flag to ensure the symbol names from user compiled
                 # shared library have same ABI suffix with core_(no)avx.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
+                # Append this macor only when jointly compiling .cc with .cu
+                if not is_cuda_file(src) and self.contain_cuda_file:
+                    if core.is_compiled_with_rocm():
+                        cflags.append('-DPADDLE_WITH_HIP')
+                    else:
+                        cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=True)
@@ -506,6 +521,9 @@ class BuildExtension(build_ext, object):
                 elif isinstance(self.cflags, list):
                     cflags = MSVC_COMPILE_FLAGS + self.cflags
                     cmd += cflags
+                # Append this macor only when jointly compiling .cc with .cu
+                if not is_cuda_file(src) and self.contain_cuda_file:
+                    cmd.append('-DPADDLE_WITH_CUDA')
 
                 return original_spawn(cmd)
 
@@ -633,6 +651,8 @@ class BuildExtension(build_ext, object):
 
         for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
+            if not self.contain_cuda_file:
+                self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:

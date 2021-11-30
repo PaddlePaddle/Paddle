@@ -253,7 +253,7 @@ def _generate_states(base_seed=0, worker_id=0):
 
 
 def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
-                 auto_collate_batch, collate_fn, init_fn, worker_id,
+                 auto_collate_batch, collate_fn, drop_last, init_fn, worker_id,
                  num_workers, use_shared_memory):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -282,8 +282,9 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         try:
             if init_fn is not None:
                 init_fn(worker_id)
-            fetcher = _DatasetKind.create_fetcher(
-                dataset_kind, dataset, auto_collate_batch, collate_fn, True)
+            fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                  auto_collate_batch,
+                                                  collate_fn, drop_last)
         except:
             init_exception = _WorkerException(worker_id)
 

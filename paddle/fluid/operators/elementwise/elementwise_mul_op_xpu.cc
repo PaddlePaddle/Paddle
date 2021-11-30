@@ -18,20 +18,25 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
+
+template <typename T>
 class ElementwiseMulXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T>(ctx, xpu::mul<T>);
+    XPUElementwise<T, XPUType>(ctx, xpu::broadcast_mul<XPUType>);
   }
 };
-// DEFINE_XPU_GRAD_KERNEL(Mul, mul, true);
-template <typename DeviceContext, typename T>
+
+template <typename T>
 class ElementwiseMulGradXPUKernel : public ElemwiseGradKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    XPUElementwiseGrad<T>(ctx, xpu::mul_grad<T>, true);
+    XPUElementwiseGrad<T, XPUType>(ctx, xpu::broadcast_mul_grad<XPUType>, true);
   }
 };
 
@@ -39,11 +44,10 @@ class ElementwiseMulGradXPUKernel : public ElemwiseGradKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+REGISTER_OP_XPU_KERNEL(elementwise_mul, ops::ElementwiseMulXPUKernel<float>,
+                       ops::ElementwiseMulXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(elementwise_mul_grad,
-                       ops::ElementwiseMulGradXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+    elementwise_mul_grad, ops::ElementwiseMulGradXPUKernel<float>,
+    ops::ElementwiseMulGradXPUKernel<paddle::platform::float16>);
 
 #endif

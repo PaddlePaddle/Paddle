@@ -20,9 +20,66 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#endif
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext>
+struct FillConstantVisitor {
+  FillConstantVisitor(const DeviceContext &dev_ctx,
+                      framework::LoDTensor *tensor, const float value,
+                      framework::proto::VarType::Type dtype,
+                      const framework::ExecutionContext &context)
+      : dev_ctx_(dev_ctx),
+        tensor_(tensor),
+        value_(value),
+        dtype_(dtype),
+        context_(context) {}
+
+  template <typename T>
+  void apply(typename std::enable_if<std::is_same<T, int8_t>::value ||
+                                     std::is_same<T, int16_t>::value>::type * =
+                 nullptr) const {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support data type for set_constant attr"));
+  }
+
+  template <typename T>
+  void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
+                                       std::is_same<T, int16_t>::value)>::type
+                 * = nullptr) const {
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(dev_ctx_.GetPlace())) {
+      Tensor tensor_tmp(dtype_);
+      tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
+      FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
+
+      const auto &runner =
+          NpuOpRunner("FillD", {tensor_tmp}, {*tensor_},
+                      {{"dims", framework::vectorize(tensor_->dims())}});
+      auto stream =
+          context_.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+    } else {
+      math::SetConstant<DeviceContext, T> set_constant;
+      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+    }
+#else
+    math::SetConstant<DeviceContext, T> set_constant;
+    set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+#endif
+  }
+
+  const DeviceContext &dev_ctx_;
+  framework::LoDTensor *tensor_;
+  float value_;
+  framework::proto::VarType::Type dtype_;
+  const framework::ExecutionContext &context_;
+};
 
 template <typename DeviceContext, typename T>
 class CoalesceTensorOpKernel : public framework::OpKernel<T> {
@@ -30,8 +87,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_var_names = context.InputNames("Input");
     auto out_var_names = context.OutputNames("Output");
-    auto &in_vars = context.MultiInputVar("Input");
-    auto out_vars = context.MultiOutputVar("Output");
+    const auto &in_tensors = context.MultiInput<framework::LoDTensor>("Input");
+    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
 
     PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0),
                       platform::errors::InvalidArgument(
@@ -44,32 +101,64 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                           in_var_names.size(), out_var_names.size()));
 
     // Input & Output check: only support LoDTensor
-    for (size_t i = 0; i < in_var_names.size(); ++i) {
+    bool has_not_init_in_vars = false;
+    for (size_t i = 0; i < in_tensors.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
-          in_vars[i],
-          platform::errors::NotFound("The input variable %s of CoalesceTensor "
-                                     "operator does not exist.",
-                                     in_var_names[i]));
+          in_tensors[i], platform::errors::InvalidArgument(
+                             "The %d-th input tensor cannot be nullptr.", i));
       PADDLE_ENFORCE_NOT_NULL(
-          out_vars[i],
-          platform::errors::NotFound("The output variable %s of CoalesceTensor "
-                                     "operator does not exist.",
-                                     out_var_names[i]));
-      PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensor>(), true,
-                        platform::errors::InvalidArgument(
-                            "The input variable %s of CoalesceTensor operator "
-                            "is not LoDTensor.",
-                            in_var_names[i]));
-      PADDLE_ENFORCE_EQ(out_vars[i]->IsType<framework::LoDTensor>(), true,
-                        platform::errors::InvalidArgument(
-                            "The output variable %s of CoalesceTensor operator "
-                            "is not LoDTensor.",
-                            out_var_names[i]));
+          out_tensors[i], platform::errors::InvalidArgument(
+                              "The %d-th output tensor cannot be nullptr.", i));
+      if (!in_tensors[i]->IsInitialized()) {
+        has_not_init_in_vars = true;
+      }
     }
 
-    auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
+    if (has_not_init_in_vars) {
+      const auto &concated_shapes =
+          context.Attr<std::vector<int64_t>>("concated_shapes");
+      const auto &concated_ranks =
+          context.Attr<std::vector<int64_t>>("concated_ranks");
+      PADDLE_ENFORCE_EQ(concated_ranks.size(), out_tensors.size(),
+                        platform::errors::InvalidArgument(
+                            "The attribute(concated_ranks) length must be "
+                            "equal to the output tensor number."));
+      int64_t accumulated_ranks = 0;
+      for (size_t i = 0; i < in_tensors.size(); ++i) {
+        framework::DDim dims(concated_shapes.data() + accumulated_ranks,
+                             concated_ranks[i]);
+        if (!in_tensors[i]->IsInitialized()) {
+          PADDLE_ENFORCE_EQ(
+              in_tensors[i], out_tensors[i],
+              platform::errors::InvalidArgument(
+                  "The %d-th output tensor and %d-th input tensor when the "
+                  "%d-th input tensor is not initialized.",
+                  i, i, i));
+          out_tensors[i]->Resize(dims);
+        } else {
+          PADDLE_ENFORCE_EQ(
+              in_tensors[i]->dims(), dims,
+              platform::errors::InvalidArgument(
+                  "The %d-th input tensor shape does not match the "
+                  "attribute(concated_shapes) and "
+                  "attribute(concated_ranks).",
+                  i));
+        }
+        accumulated_ranks += concated_ranks[i];
+        PADDLE_ENFORCE_LE(accumulated_ranks, concated_shapes.size(),
+                          platform::errors::InvalidArgument(
+                              "The attribute(concated_shapes) and "
+                              "attribute(concated_ranks) do not match."));
+      }
+      PADDLE_ENFORCE_EQ(accumulated_ranks, concated_shapes.size(),
+                        platform::errors::InvalidArgument(
+                            "The attribute(concated_shapes) and "
+                            "attribute(concated_ranks) do not match."));
+    }
+
     bool use_align = context.Attr<bool>("use_align");
     auto align_size = context.Attr<int>("align_size");
+    auto size_of_dtype = context.Attr<int>("user_defined_size_of_dtype");
 
     if (context.Attr<bool>("check_name")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -83,8 +172,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     } else {
       // Init the output as input
       for (size_t i = 0; i < in_tensors.size(); ++i) {
-        out_vars[i]->GetMutable<framework::LoDTensor>()->Resize(
-            in_tensors[i]->dims());
+        out_tensors[i]->Resize(in_tensors[i]->dims());
       }
     }
 
@@ -94,19 +182,29 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     size_t numel = 0;
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    size_t size_of_dtype = framework::SizeOfType(dtype);
+    if (size_of_dtype == -1) {
+      size_of_dtype = framework::SizeOfType(dtype);
+    }
     GetMemSizeAndDtype(in_tensors, in_var_names, &numel, size_of_dtype,
                        context.GetPlace(), use_align, align_size);
 
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
-    fused_tensor->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
-        .mutable_data(context.GetPlace(), dtype);
+    void *fused_tensor_ptr =
+        fused_tensor
+            ->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
+            .mutable_data(context.GetPlace(), dtype);
+    VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
     // Init the continuous space
-    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
     size_t offset = 0;
     if (context.Attr<bool>("copy_data")) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      framework::VisitDataType(
+          dtype,
+          FillConstantVisitor<DeviceContext>(
+              dev_ctx, fused_tensor, static_cast<float>(0.0), dtype, context));
+#endif
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(in_tensors[i]->numel());
         auto sub_tensor = fused_tensor->Slice(
@@ -121,10 +219,10 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                       : len;
       }
     } else if (context.Attr<bool>("set_constant")) {
-      // TODO(Liu yuang) ADD NPU SET_CONSTANT FUNCTION.
-      math::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx, fused_tensor,
-                   static_cast<T>(context.Attr<float>("constant")));
+      framework::VisitDataType(
+          dtype, FillConstantVisitor<DeviceContext>(
+                     dev_ctx, fused_tensor, context.Attr<float>("constant"),
+                     dtype, context));
     } else if (context.Attr<bool>("persist_output")) {
       for (size_t i = 0; i < out_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(out_tensors[i]->numel());
@@ -191,10 +289,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
-      PADDLE_ENFORCE_EQ(lod_tensors[i]->IsInitialized(), true,
-                        platform::errors::InvalidArgument(
-                            "Tensor `%s` is not initialized.", var_names[i]));
-
       auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(
           size, 0,
@@ -206,11 +300,13 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                                     place, align_size) /
                     size_of_dtype
               : static_cast<size_t>(size);
+      const void *ptr = lod_tensors[i]->IsInitialized()
+                            ? lod_tensors[i]->data<void>()
+                            : nullptr;
       VLOG(4) << size << " " << len;
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
          << ") "
-         << " addres:" << lod_tensors[i]->data<void>() << " len: " << len
-         << ", ";
+         << " addres:" << ptr << " len: " << len << ", ";
       *numel += len;
     }
     VLOG(10) << ss.str();
@@ -227,10 +323,13 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
+    auto size_of_dtype = ctx->Attrs().Get<int>("user_defined_size_of_dtype");
 
     auto dtype = static_cast<framework::proto::VarType::Type>(
         ctx->Attrs().Get<int>("dtype"));
-    size_t size_of_dtype = framework::SizeOfType(dtype);
+    if (size_of_dtype == -1) {
+      size_of_dtype = framework::SizeOfType(dtype);
+    }
 
     auto alignment = [](size_t size, size_t align_size) {
       size_t remaining = size % align_size;
@@ -259,6 +358,13 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
   }
 
  protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &context) const override {
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+    return framework::OpKernelType(dtype, context.GetPlace());
+  }
+
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
@@ -308,6 +414,29 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<int>("align_size", "The alignment size when use_align is True")
         .SetDefault(-1);
+    AddAttr<int>("user_defined_size_of_dtype",
+                 "The user defined size of dtype. This is used to coalesce "
+                 "grad vars and merged_grad vars at the same time. For some "
+                 "strategy, the dtype of fused_grad_vars and the dtype of "
+                 "fused_grad_merged_vars are not identical, which will cause "
+                 "the shape of these two coalesced vars are different. To "
+                 "make sure the shape of these two vars are identical with "
+                 "each other, this attr is added.")
+        .SetDefault(-1);
+    AddAttr<std::vector<int64_t>>(
+        "concated_shapes",
+        "The concated shapes of each shape of the input tensors. "
+        "If any of the input tensors are not inited, this is used to "
+        "init the output tensor shape, together with "
+        "attribute(concated_ranks).")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>(
+        "concated_ranks",
+        "The concated ranks of each rank of the input tensors. "
+        "If any of the input tensors are not inited, this is used to "
+        "init the output tensor shape, together with "
+        "attribute(concated_shapes).")
+        .SetDefault({});
     AddComment(R"DOC(
 CoalesceTensor Operator.
 

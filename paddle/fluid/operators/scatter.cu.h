@@ -29,9 +29,9 @@ using Tensor = framework::Tensor;
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
                                       size_t index_size, size_t slice_size) {
-  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
-    int indices_i = i / slice_size;
-    int slice_i = i - indices_i * slice_size;  // offset inside the slice
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
+    int64_t indices_i = i / slice_size;
+    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
     PADDLE_ENFORCE(scatter_i >= 0,
@@ -41,7 +41,7 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
                    "be greater than or equal to 0, but received [%d]",
                    scatter_i);
 
-    IndexT out_i = scatter_i * slice_size + slice_i;
+    int64_t out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<T>(0);
   }
 }
@@ -50,9 +50,9 @@ template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                                   T* output, size_t index_size,
                                   size_t slice_size, bool overwrite) {
-  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
-    int indices_i = i / slice_size;
-    int slice_i = i - indices_i * slice_size;  // offset inside the slice
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
+    int64_t indices_i = i / slice_size;
+    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
     PADDLE_ENFORCE(scatter_i >= 0,
@@ -62,7 +62,7 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                    "be greater than or equal to 0, but received [%d]",
                    scatter_i);
 
-    IndexT out_i = scatter_i * slice_size + slice_i;
+    int64_t out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
@@ -73,13 +73,13 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
 
 template <typename T, typename IndexT = int>
 __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
-                                    T* output, const int* output_dims,
+                                    T* output, const int64_t* output_dims,
                                     size_t remain_size, size_t slice_size,
                                     size_t end_size) {
-  CUDA_KERNEL_LOOP(i, remain_size * slice_size) {
-    int indices_i = i / slice_size;
-    int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = 0;
+  CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
+    int64_t indices_i = i / slice_size;
+    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
+    int64_t gather_i = 0;
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = indices[indices_i * end_size + j];
@@ -95,7 +95,7 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
       gather_i += (index_value * temp);
       temp *= output_dims[j];
     }
-    IndexT output_i = gather_i + slice_i;
+    int64_t output_i = gather_i + slice_i;
     paddle::platform::CudaAtomicAdd(output + output_i, *(update + i));
   }
 }
@@ -128,14 +128,14 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
                           "But received value is [%d]",
                           index.dims().size()));
   }
-  int index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
   // slice size
-  int slice_size = 1;
+  int64_t slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   const T* p_src = src.data<T>();
@@ -145,8 +145,8 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
 
   // set block and grid num
   int block = 512;
-  int n = slice_size * index_size;
-  int grid = (n + block - 1) / block;
+  int64_t n = slice_size * index_size;
+  int64_t grid = (n + block - 1) / block;
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -167,10 +167,10 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
 template <typename T, typename IndexT = int>
 void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
                         Tensor* output) {
-  IndexT index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
   auto dst_dims = output->dims();
   // slice size
-  IndexT slice_size = 1;
+  int64_t slice_size = 1;
   for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
@@ -224,20 +224,20 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto cplace = platform::CPUPlace();
 
-  std::vector<int> v_output_dims(output_dims_size);
+  std::vector<int64_t> v_output_dims(output_dims_size);
   for (int i = 0; i < output_dims_size; ++i) {
-    v_output_dims[i] = static_cast<int>(output_dims[i]);
+    v_output_dims[i] = output_dims[i];
   }
   auto& dev_ctx = context.cuda_device_context();
-  int bytes = output_dims_size * sizeof(int);
+  int64_t bytes = output_dims_size * sizeof(int64_t);
   auto output_dims_ptr = memory::Alloc(dev_ctx, bytes);
-  int* g_output_dims = reinterpret_cast<int*>(output_dims_ptr->ptr());
+  int64_t* g_output_dims = reinterpret_cast<int64_t*>(output_dims_ptr->ptr());
   memory::Copy(gplace, g_output_dims, cplace, v_output_dims.data(), bytes,
                ctx.stream());
 
   int block = 512;
-  int n = slice_size * remain_numel;
-  int grid = (n + block - 1) / block;
+  int64_t n = slice_size * remain_numel;
+  int64_t grid = (n + block - 1) / block;
 
   ScatterNdCUDAKernel<T, IndexT><<<
       grid, block, 0,

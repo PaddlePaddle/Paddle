@@ -88,7 +88,7 @@ std::unique_ptr<ir::Graph> PrepareGraph(
              nullptr, false, false, activation, gate_activation);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  return std::move(graph);
+  return graph;
 }
 }  // namespace fc_gru_test
 }  // namespace ir

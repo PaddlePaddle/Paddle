@@ -96,6 +96,21 @@ def create_paddle_case(op_type, callback):
                                fetch_list=[out])
             self.assertEqual((res == self.real_result).all(), True)
 
+        def test_api_float(self):
+            if self.op_type == "equal":
+                paddle.enable_static()
+                with program_guard(Program(), Program()):
+                    x = fluid.data(name='x', shape=[4], dtype='int64')
+                    y = fluid.data(name='y', shape=[1], dtype='int64')
+                    op = eval("paddle.%s" % (self.op_type))
+                    out = op(x, y)
+                    exe = fluid.Executor(self.place)
+                    res, = exe.run(feed={"x": self.input_x,
+                                         "y": 1.0},
+                                   fetch_list=[out])
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((res == self.real_result).all(), True)
+
         def test_dynamic_api(self):
             paddle.disable_static()
             x = paddle.to_tensor(self.input_x)
@@ -104,6 +119,47 @@ def create_paddle_case(op_type, callback):
             out = op(x, y)
             self.assertEqual((out.numpy() == self.real_result).all(), True)
             paddle.enable_static()
+
+        def test_dynamic_api_int(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(self.input_x)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, 1)
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_float(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(self.input_x)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, 1.0)
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_assert(self):
+            def test_dynamic_api_string(self):
+                if self.op_type == "equal":
+                    paddle.disable_static()
+                    x = paddle.to_tensor(self.input_x)
+                    op = eval("paddle.%s" % (self.op_type))
+                    out = op(x, "1.0")
+                    paddle.enable_static()
+
+            self.assertRaises(TypeError, test_dynamic_api_string)
+
+        def test_dynamic_api_bool(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(self.input_x)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, True)
+                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
 
         def test_broadcast_api_1(self):
             paddle.enable_static()

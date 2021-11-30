@@ -59,7 +59,7 @@ std::string GetIPCName() {
 #endif
   handle += "_";
   handle += std::to_string(rd());
-  return std::move(handle);
+  return handle;
 }
 
 std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(

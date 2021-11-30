@@ -1128,3 +1128,89 @@ class AdaptiveMaxPool3D(Layer):
     def extra_repr(self):
         return 'output_size={}, return_mask={}'.format(self._output_size,
                                                        self._return_mask)
+
+
+class MaxUnPool2D(Layer):
+    """
+    This API implements max unpooling 2d opereation.
+
+    'max_unpool2d' accepts the output of 'max_unpool2d' as input
+    Including the indices of the maximum value and calculating the partial inverse
+    All non-maximum values ​​are set to zero.
+    
+
+    Parameters:
+        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+            it must contain an integer.
+        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+            it must contain an integer.
+        kernel_size (int|tuple): Size of the max unpooling window.
+        padding (int | tuple): Padding that was added to the input.
+        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+                           the actual output shape will be automatically calculated by (input_shape,
+                           kernel_size, padding).
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+
+        - Input: :math:`(N, C, H_{in}, W_{in})`
+        - Output: :math:`(N, C, H_{out}, W_{out})`, where
+
+          .. math::
+            H_{out} = (H_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
+
+          .. math::
+            W_{out} = (W_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
+
+          or as given by :attr:`output_size` in the call operator
+
+    Returns:
+        A callable object of MaxUnPool2D.
+
+            
+
+    Examples:
+        .. code-block:: python
+        
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        data = paddle.rand(shape=[1,1,7,7])
+        pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+        # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
+        Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
+        unpool_out = UnPool2D(pool_out, indices)
+        # unpool_out shape: [1, 1, 6, 6]
+
+    """
+
+    def __init__(self,
+                 kernel_size,
+                 stride=None,
+                 padding=0,
+                 data_format="NCHW",
+                 output_size=None,
+                 name=None):
+        super(MaxUnPool2D, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.data_format = data_format
+        self.output_size = output_size
+        self.name = name
+
+    def forward(self, x, indices):
+        return F.max_unpool2d(
+            x,
+            indices,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            data_format=self.data_format,
+            output_size=self.output_size,
+            name=self.name)
+
+    def extra_repr(self):
+        return 'output_size={}'.format(self.output_size)

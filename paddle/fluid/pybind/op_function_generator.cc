@@ -40,6 +40,10 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"bincount", {"X", "Weights"}},
+    {"fused_attention",
+     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "SrcMask", "OutLinearW",
+      "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
@@ -54,6 +58,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"gather", {"X", "Index", "Axis"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"psroi_pool", {"X", "ROIs", "RoisNum"}},
     {"collect_fpn_proposals",
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
     {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
@@ -63,9 +68,21 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
-    {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
+    {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"fused_feedforward",
+     {"Dropout1Seed", "Dropout2Seed", "Linear1Bias", "Linear2Bias", "Ln1Scale",
+      "Ln1Bias", "Ln2Scale", "Ln2Bias"}},
+    {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
+    {"matrix_rank", {"X", "TolTensor"}},
+    {"adam",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
+    {"adamw",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -82,10 +99,16 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"fused_attention",
+     {"LnMean", "LnVariance", "LnOut", "QKVOut", "QKVBiasOut", "TransposeOut2",
+      "QKOut", "QKTVOut", "SoftmaxOut", "AttnDropoutMaskOut", "AttnDropoutOut",
+      "SrcMaskOut", "FMHAOut", "OutLinearOut", "DropoutMaskOut", "Ln2Mean",
+      "Ln2Variance", "BiasDropoutResidualOut", "Y"}},
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"unique", {"Out", "Index", "Indices", "Counts"}},
+    {"unique_consecutive", {"Out", "Index", "Counts"}},
     {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
     {"matrix_nms", {"Out", "Index", "RoisNum"}},
@@ -95,11 +118,18 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"run_program", {"DOut"}},
+    {"adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+    {"adamw",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -116,11 +146,16 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
 std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sgd", {"ParamOut"}},
     {"adam",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+    {"adamw",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
     {"average_accumulates",
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
@@ -151,6 +186,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
     {"run_program", {"Out", "DOut", "OutScope"}},
+    {"clear_float_status", {"FloatStatusOut"}},
+    {"get_float_status", {"FloatStatusOut"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
@@ -530,7 +567,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    if (!all_kernels.count(op_type)) {
+    // if the pten lib contains op kernel, we still generate ops method
+    if (!all_kernels.count(op_type) &&
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 

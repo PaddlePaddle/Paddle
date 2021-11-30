@@ -86,7 +86,20 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
   nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
-  nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
+  nvinfer1::DimsHW nv_paddings;
+  nvinfer1::Dims nv_pre_paddings;
+  nvinfer1::Dims nv_post_paddings;
+  if (paddings.size() == 2) {
+    nv_paddings.d[0] = paddings[0];
+    nv_paddings.d[1] = paddings[1];
+  } else {
+    nv_pre_paddings.nbDims = 2;
+    nv_post_paddings.nbDims = 2;
+    nv_pre_paddings.d[0] = paddings[0];
+    nv_pre_paddings.d[1] = paddings[2];
+    nv_post_paddings.d[0] = paddings[1];
+    nv_post_paddings.d[1] = paddings[3];
+  }
 
   TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_data),
@@ -116,7 +129,13 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
       layer, platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                                      " layer failed."));
   layer->setStride(nv_strides);
-  layer->setPadding(nv_paddings);
+  if (paddings.size() == 2) {
+    layer->setPadding(nv_paddings);
+  } else {
+    layer->setPrePadding(nv_pre_paddings);
+    layer->setPostPadding(nv_post_paddings);
+  }
+
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);

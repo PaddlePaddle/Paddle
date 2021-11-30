@@ -46,7 +46,7 @@ class TestDistGeoClipByGlobalNorm(TestFleetBase):
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
-    def _setup_config(self):
+    def _setup_config1(self):
         self._sync_mode = False
         self._grad_clip_mode = 2
 

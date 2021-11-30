@@ -16,6 +16,50 @@
 
 namespace paddle {
 namespace operators {
-namespace kernel_primitives {}
-}
-}
+namespace kernel_primitives {
+
+#ifdef PADDLE_WITH_XPU2
+struct dim3 {
+  int x;
+  int y;
+  int z;
+
+  explicit inline dim3(int split_x, int split_y = 1, int split_z = 1) {
+    x = split_x;
+    y = split_y;
+    z = split_z;
+  }
+};
+#endif
+
+struct DimConfig {
+  int split_num_x;
+  int split_num_y;
+  int split_num_z;
+  int deal_size_x;
+  int deal_size_y;
+  int deal_size_z;
+  int rem_x;
+  int rem_y;
+  int rem_z;
+
+  HOSTDEVICE explicit inline DimConfig(int split_x, int split_y, int split_z,
+                                       int size_x, int size_y, int size_z) {
+    split_num_x = split_x;
+    split_num_y = split_y;
+    split_num_z = split_z;
+    deal_size_x = size_x;
+    deal_size_y = size_y;
+    deal_size_z = size_z;
+  }
+
+  HOSTDEVICE void SetRem(int rem_nx, int rem_ny, int rem_nz) {
+    rem_x = rem_nx;
+    rem_y = rem_ny;
+    rem_z = rem_nz;
+  }
+};
+
+}  // namespace kernel_primitives
+}  // namespace operators
+}  // namespace paddle

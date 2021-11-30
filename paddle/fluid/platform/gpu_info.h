@@ -67,6 +67,9 @@ dim3 GetGpuMaxGridDimSize(int);
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();
 
+//! Get the properties of the ith GPU device.
+const gpuDeviceProp &GetDeviceProperties(int id);
+
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
@@ -128,6 +131,20 @@ gpuError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id);
 //! CudaFree with recorded info
 void RecordedCudaFree(void *p, size_t size, int dev_id);
 
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+
+//! cuMemCreate with recorded info
+CUresult RecordedCuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                             const CUmemAllocationProp *prop,
+                             unsigned long long flags, int dev_id);  // NOLINT
+
+//! cuMemRelease with recorded info
+CUresult RecordedCuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
+                              int dev_id);
+#endif
+#endif
+
 //! Get available and total gpu memory with considering limitation
 bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
                             size_t *actual_total, int dev_id);
@@ -136,6 +153,9 @@ bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
 uint64_t RecordedCudaMallocSize(int dev_id);
 
 bool IsCudaMallocRecorded(int dev_id);
+
+//! Empty idle cached memory held by the allocator.
+void EmptyCache(void);
 
 }  // namespace platform
 }  // namespace paddle

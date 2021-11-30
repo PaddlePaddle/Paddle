@@ -72,6 +72,12 @@ function(copy_part_of_thrid_party TARGET DST)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
                     DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+            if(WITH_STRIP)
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
+                            COMMAND strip -s ${dst_dir}/lib/libiomp5.so
+                            COMMAND strip -s ${dst_dir}/lib/libmklml_intel.so
+                            COMMENT "striping libiomp5.so\nstriping libmklml_intel.so")
+            endif()
         endif()
     elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
         set(dst_dir "${DST}/third_party/install/openblas")
@@ -94,8 +100,17 @@ function(copy_part_of_thrid_party TARGET DST)
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}
-                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1} ${MKLDNN_SHARED_LIB_2}
-                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib)
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                    DSTS ${dst_dir} ${dst_dir}/lib)
+            if(WITH_STRIP)
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
+                            COMMAND strip -s ${dst_dir}/lib/libmkldnn.so.0
+                            COMMENT "striping libmkldnn.so.0")
+            endif()
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.1
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.2
+                    COMMENT "Make a symbol link of libmkldnn.so.0")
         endif()
     endif()
 
@@ -107,6 +122,11 @@ function(copy_part_of_thrid_party TARGET DST)
     set(dst_dir "${DST}/third_party/install/glog")
     copy(${TARGET}
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib)
+
+    set(dst_dir "${DST}/third_party/install/utf8proc")
+    copy(${TARGET}
+            SRCS ${UTF8PROC_INSTALL_DIR}/include ${UTF8PROC_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
     if (WITH_CRYPTO)
@@ -196,18 +216,37 @@ copy(inference_lib_dist
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
+# copy api headers for pten & custom op
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/ext/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/include/*
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/include/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/all.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*
+              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/bfloat16.h
+              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
+              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
+              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
+              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
+              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+
+# the header file of pten is copied to the experimental directory,
+# the include path of pten needs to be changed to adapt to inference api path
+add_custom_command(TARGET inference_lib_dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/pten.cmake"
+        COMMENT "Change pten header include path to adapt to inference api path")
 
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING
@@ -224,6 +263,13 @@ endif(WIN32)
 copy(inference_lib_dist
       SRCS  ${src_dir}/inference/capi_exp/pd_*.h  ${paddle_inference_c_lib}
       DSTS  ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+
+if(WITH_STRIP AND NOT WIN32)
+        add_custom_command(TARGET inference_lib_dist POST_BUILD
+                COMMAND strip -s ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib/libpaddle_inference_c.so
+                COMMAND strip -s ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib/libpaddle_inference.so
+                COMMENT "striping libpaddle_inference_c.so\nstriping libpaddle_inference.so")
+endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
@@ -331,7 +377,9 @@ function(version version_file)
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
             "WITH_GPU: ${WITH_GPU}\n"
-            "WITH_ROCM: ${WITH_ROCM}\n")
+            "WITH_ROCM: ${WITH_ROCM}\n"
+            "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -341,6 +389,11 @@ function(version version_file)
         file(APPEND ${version_file}
                 "HIP version: ${HIP_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
+    endif()
+    if(WITH_ASCEND_CL)
+        file(APPEND ${version_file}
+                "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
+                "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)

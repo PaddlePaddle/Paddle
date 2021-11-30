@@ -22,6 +22,7 @@ import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
+from . import fuse_utils
 from . import utils
 from . import ptq_hooks
 from . import ptq_config
@@ -55,7 +56,7 @@ class ImperativePTQ(object):
 
         self._quant_config = quant_config
 
-    def quantize(self, model, inplace=False):
+    def quantize(self, model, inplace=False, fuse=False, fuse_list=None):
         """
         Add quant config and hook to the target layer.
 
@@ -63,15 +64,23 @@ class ImperativePTQ(object):
             model(paddle.nn.Layer): The model to be quantized.
             inplace(bool): Whether apply quantization to the input model.
                            Default: False.
-        Returns:
+            fuse(bool): Whether to fuse layers.
+                        Default: False.
+            fuse_list(list): The layers' names to be fused. For example,
+                "fuse_list = [["conv1", "bn1"], ["conv2", "bn2"]]".
+                A TypeError would be raised if "fuse" was set as
+                True but "fuse_list" was None.
+                Default: None.
+        Return
             quantized_model(paddle.nn.Layer): The quantized model.
         """
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
-
         if not inplace:
             model = copy.deepcopy(model)
-
+        if fuse:
+            model.eval()
+            model = fuse_utils.fuse_layers(model, fuse_list)
         for name, layer in model.named_sublayers():
             if PTQRegistry.is_supported_layer(layer) \
                 and utils.is_leaf_layer(layer) \
@@ -351,6 +360,7 @@ class ImperativePTQ(object):
                                                                  in_var_name)
                     op._set_attr(argname + str(index) + "_threshold",
                                  in_threshold)
+                    op._set_attr("with_quant_attr", True)
                 else:
                     for out_var_name in utils._get_op_output_var_names(
                             previous_op):
@@ -367,6 +377,7 @@ class ImperativePTQ(object):
                             op, in_var_name)
                         attr_name = argname + str(index) + "_threshold"
                         op._set_attr(attr_name, threshold)
+                        op._set_attr("with_quant_attr", True)
 
     def _clean_up(self, program):
         """
@@ -385,6 +396,7 @@ class ImperativePTQ(object):
                 op._remove_attr(old_attr_name)
                 next_op._remove_attr(old_attr_name)
                 next_op._set_attr(new_attr_name, threshold)
+                next_op._set_attr("with_quant_attr", True)
 
         for op in utils.program_all_ops(program):
             if "quantize_dequantize" in op.type:

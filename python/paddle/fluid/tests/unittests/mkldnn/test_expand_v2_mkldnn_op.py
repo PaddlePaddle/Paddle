@@ -69,6 +69,50 @@ class TestExpandV2CopyScenarioShapeNotGivenOneDNNOp(TestExpandV2OneDNNOp):
         self.expand_times = (1, 1, 1, 1)
 
 
+class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = [100, 1]
+        self.expand_times = [1, 2]
+        self.expand_shape = [100, 2]
+        self.shape = [-1, -1]
+
+    def calc_expand_shapes_tensor(self):
+        self.expand_shapes_tensor = []
+        for index, ele in enumerate(self.expand_shape):
+            self.expand_shapes_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+    def set_inputs(self):
+        self.calc_expand_shapes_tensor()
+        self.inputs = {
+            'X': self.x,
+            'expand_shapes_tensor': self.expand_shapes_tensor
+        }
+
+
+class TestExpandV2ExpandShapesTensor2OneDNNOp(
+        TestExpandV2ExpandShapesTensor1OneDNNOp):
+    def init_data(self):
+        self.ori_shape = [12, 14]
+        self.expand_times = [1, 1]
+        self.expand_shape = [12, 14]
+        self.shape = [12, -1]
+
+
+class TestExpandV2ShapesTensorOneDNNOp(TestExpandV2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = [100]
+        self.expand_times = [2, 1]
+        self.expand_shape = [2, 100]
+        self.shape = [-1, -1]
+
+    def set_inputs(self):
+        self.inputs = {
+            'X': self.x,
+            'Shape': np.array(self.expand_shape).astype("int32")
+        }
+
+
 #   BF16 TESTS
 def create_expand_v2_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()
@@ -101,6 +145,9 @@ create_expand_v2_bf16_test_class(TestExpandV2OneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ExpandDimOneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioOneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioShapeNotGivenOneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor1OneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor2OneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2ShapesTensorOneDNNOp)
 
 if __name__ == '__main__':
     paddle.enable_static()

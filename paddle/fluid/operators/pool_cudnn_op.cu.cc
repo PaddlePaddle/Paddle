@@ -505,6 +505,20 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class PoolCUDNNGradGradOpKernel : public PoolCUDNNOpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    if (pooling_type == "max") {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Pool op grad grad only supports avgpool."));
+    } else {
+      PoolCUDNNOpKernel<T>::Compute(ctx);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -534,6 +548,10 @@ REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>,
                    ops::PoolCUDNNGradOpKernel<plat::float16>);
+REGISTER_OP_KERNEL(pool2d_grad_grad, CUDNN, plat::CUDAPlace,
+                   ops::PoolCUDNNGradGradOpKernel<float>,
+                   ops::PoolCUDNNGradGradOpKernel<double>,
+                   ops::PoolCUDNNGradGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,

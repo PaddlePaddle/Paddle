@@ -38,6 +38,7 @@ class Unpool2dMaxFunctor<platform::CPUDeviceContext, T> {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
           int index = indices_data[i];
+
           PADDLE_ENFORCE_LT(
               index, output_feasize,
               platform::errors::InvalidArgument(

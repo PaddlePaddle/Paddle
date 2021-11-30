@@ -209,7 +209,8 @@ class FleetWrapper {
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+      const bool scale_sparse_gradient_with_batch_size);
 
   // Push sparse variables to server in async mode
   void PushSparseFromTensorWithLabelAsync(
@@ -265,6 +266,7 @@ class FleetWrapper {
                            bool load_combine);
 
   void PrintTableStat(const uint64_t table_id);
+  void SetFileNumOneShard(const uint64_t table_id, int file_num);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
@@ -333,6 +335,8 @@ class FleetWrapper {
   }
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
+
+  void SetDate(const uint64_t table_id, const std::string& date);
 
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;

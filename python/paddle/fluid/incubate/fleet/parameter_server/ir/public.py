@@ -216,11 +216,35 @@ class CompileTimeStrategy(object):
         except Exception:
             return self.role_maker.get_heter_worker_endpoints()
 
+    def get_next_stage_trainers(self):
+        try:
+            return self.role_maker._get_next_trainers()
+        except Exception:
+            return self.role_maker.get_next_trainers()
+
     def get_heter_worker_endpoint(self):
         try:
             return self.role_maker._get_heter_worker_endpoint()
         except Exception:
             return self.role_maker.get_heter_worker_endpoint()
+
+    def get_trainer_endpoints(self):
+        try:
+            return self.role_maker._get_trainer_endpoints()
+        except Exception:
+            return self.role_maker.get_trainer_endpoints()
+
+    def get_trainer_endpoint(self):
+        try:
+            return self.role_maker._get_trainer_endpoint()
+        except Exception:
+            return self.role_maker.get_trainer_endpoint()
+
+    def get_previous_stage_trainers(self):
+        try:
+            return self.role_maker._get_previous_trainers()
+        except Exception:
+            return self.role_maker.get_previous_trainers()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program
@@ -382,6 +406,7 @@ class CompileTimeStrategy(object):
         send_ctx = {}
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
                                                     True)
+        idx = 0
 
         if not self.is_geo_mode():
             for merged in self.merged_dense_pairs:
@@ -401,9 +426,10 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
+                idx += 1
 
             if self.is_async_mode():
-                name, ctx = self._step_ctx()
+                name, ctx = self._step_ctx(idx)
                 send_ctx[name] = ctx
         else:
             for pairs in self.origin_sparse_pairs:
@@ -427,7 +453,8 @@ class CompileTimeStrategy(object):
                                   param_ctx.is_distributed())
 
                 send_ctx[ctx.var_name()] = ctx
-            name, ctx = self._step_ctx()
+                idx += 1
+            name, ctx = self._step_ctx(idx)
             send_ctx[name] = ctx
         return send_ctx
 
@@ -435,6 +462,7 @@ class CompileTimeStrategy(object):
         send_ctx = {}
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
                                                     True)
+        idx = 0
 
         if self.is_geo_mode():
             for pairs in self.merged_dense_pairs:
@@ -451,7 +479,8 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
-            name, ctx = self._step_ctx()
+                idx += 1
+            name, ctx = self._step_ctx(idx)
             send_ctx[name] = ctx
         else:
             for merged in self.merged_dense_pairs:
@@ -469,8 +498,9 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
+                idx += 1
 
-            name, ctx = self._step_ctx()
+            name, ctx = self._step_ctx(idx)
             send_ctx[name] = ctx
         return send_ctx
 

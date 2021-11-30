@@ -21,11 +21,41 @@ from paddle.fluid import core
 
 def softmax_mask_fuse_upper_triangle(x):
     """
-    Fuse softmax mask together without even give a mask.
-    Under GPT model, the mask is always be a upper triangle
-    so we can simply mask the upper triangle part of x to get the mask result
-    :param x: the input x (rst of QK)
-    :return: the result of softmax mask fuse (upper triangle)
+    Do a masked softmax on x, which will always mask upper triangle part of x.
+
+    This is designed for speeding up GPT kind Transformer structure.
+    Used for reducing operation such as: tmp = x + mask, out = softmax(tmp), where the mask is
+    always be an upper triangle matrix.
+    The equation is:
+
+    .. math::
+        out = softmax(LowerTriangular(x))
+
+    **Note**:
+        This API only supports GPU.
+
+    Args:
+        x (4-D Tensor): The input tensor, should be in 4D shape, it's data type should be float16, float32
+                        The fourth dimension of x must be larger or equal to 32 and less then 8192.
+                        The third dimension of x must be same with the fourth dimension of x.
+
+    Returns:
+        4-D Tensor. A location into which the result is stored. It’s dimension is 4D. Has same dimension with x.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import paddle.incubate as incubate
+
+            x = paddle.rand((1, 1, 32, 32))
+
+            rst = incubate.softmax_mask_fuse_upper_triangle(x)
+            # [[[[1.        , 0.        , 0.        , ..., 0., 0., 0.],
+            #    [0.45324376, 0.54675621, 0.        , ..., 0., 0., 0.],
+            #    [0.32674268, 0.28156221, 0.39169508, ..., 0., 0., 0.]
+            #     ... ]]]
     """
     if in_dygraph_mode():
         out = core.ops.fused_softmax_mask_upper_triangle(x)

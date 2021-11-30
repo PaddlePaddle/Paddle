@@ -215,6 +215,45 @@ def adam_step(inputs, attributes):
     return param_out, moment1_out, moment2_out
 
 
+def adamw_step(inputs, attributes):
+    '''
+    Simulate one step of the adam optimizer
+    :param inputs: dict of inputs
+    :param attributes: dict of attributes
+    :return tuple: tuple of output param, moment1, moment2,
+    beta1 power accumulator and beta2 power accumulator
+    '''
+    param = inputs['Param']
+    grad = inputs['Grad']
+    moment1 = inputs['Moment1']
+    moment2 = inputs['Moment2']
+    lr = inputs['LearningRate']
+    beta1_pow = inputs['Beta1Pow']
+    beta2_pow = inputs['Beta2Pow']
+
+    epsilon = attributes['epsilon']
+    coeff = attributes["coeff"]
+    if attributes.get("with_decay", False):
+        decay = 1.0 - lr * coeff
+        param2 = param * decay
+        param = param2.copy()
+    if 'beta1' in attributes:
+        beta1 = attributes['beta1']
+    else:
+        beta1 = inputs['Beta1Tensor'][0]
+    if 'beta2' in attributes:
+        beta2 = attributes['beta2']
+    else:
+        beta2 = inputs['Beta2Tensor'][0]
+
+    moment1_out = beta1 * moment1 + (1 - beta1) * grad
+    moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
+    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
+
+    return param_out, moment1_out, moment2_out
+
+
 def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
                      lazy_mode):
     '''

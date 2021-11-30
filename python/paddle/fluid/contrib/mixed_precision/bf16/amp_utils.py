@@ -235,7 +235,7 @@ def bf16_guard():
 def are_post_ops_bf16(post_ops, keep_fp32_ops):
     for post_op in post_ops:
         for op in post_op:
-            if op.type in keep_fp32_ops:
+            if op in keep_fp32_ops:
                 return False
     return True
 

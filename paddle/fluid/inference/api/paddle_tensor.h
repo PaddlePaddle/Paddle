@@ -14,9 +14,25 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle_infer {
+
+/// \brief  Experimental.
+/// Strings for text data.
+using Strings = std::vector<std::string>;
+
+typedef void (*CallbackFunc)(void*);
+
+#if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
+class InferApiTesterUtils;
+#endif
+
+namespace contrib {
+class TensorUtils;
+}
 
 /// \brief Paddle data type.
 enum DataType {
@@ -47,6 +63,14 @@ class PD_INFER_DECL Tensor {
   /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
 
+  /// \brief Experimental interface.
+  /// Reset the shape of the Strings tensor.
+  /// Generally it's only used for the input tensor.
+  /// Reshape must be called before calling
+  /// ZeroCopyStringTensorCreate() or PaddleInferTensorCreate()
+  /// \param shape The shape to set.
+  void ReshapeStrings(const std::size_t& shape);
+
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
   /// Please Reshape the tensor first before call this.
   /// It's usually used to get input data pointer.
@@ -68,11 +92,30 @@ class PD_INFER_DECL Tensor {
   template <typename T>
   void CopyFromCpu(const T* data);
 
+  /// \brief Experimental interface.
+  /// It's usually used to set the input tensor data with Strings data type.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  void CopyStringsFromCpu(const paddle_infer::Strings* data);
+
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
-  void CopyToCpu(T* data);
+  void CopyToCpu(T* data) const;
+
+  /// \brief Copy the tensor data to the host memory asynchronously.
+  /// \param[out] data The tensor will copy the data to the address.
+  /// \param[out] exec_stream The tensor will excute copy in this stream(Only
+  /// GPU CUDA stream suppported now).
+  template <typename T>
+  void CopyToCpuAsync(T* data, void* exec_stream) const;
+
+  /// \brief Copy the tensor data to the host memory asynchronously.
+  /// \param[out] data The tensor will copy the data to the address.
+  /// \param[out] cb Callback function cb(cb_params) will be executed on the
+  /// host after all currently enqueued items in the stream have completed .
+  template <typename T>
+  void CopyToCpuAsync(T* data, CallbackFunc cb, void* cb_params) const;
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
@@ -92,11 +135,22 @@ class PD_INFER_DECL Tensor {
   /// \return The data type of the tensor.
   DataType type() const;
 
+  /// \brief Return the place type of the tensor.
+  /// \return The place type of the tensor.
+  PlaceType place() const;
+
  protected:
   explicit Tensor(void* scope);
+
+  template <typename T>
   void* FindTensor() const;
+
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);
+
+  template <typename T>
+  void CopyToCpuImpl(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
+                     void* cb_params = nullptr) const;
 
   std::string name_;
   // The corresponding tensor pointer inside Paddle workspace is cached for
@@ -107,6 +161,11 @@ class PD_INFER_DECL Tensor {
   void* scope_{nullptr};
   PlaceType place_;
   int device_;
+
+  friend class paddle_infer::contrib::TensorUtils;
+#if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
+  friend class paddle_infer::InferApiTesterUtils;
+#endif
 };
 
 }  // namespace paddle_infer

@@ -35,7 +35,10 @@ class TestNPUIndexSelect(OpTest):
 
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.dim], size=self.index_size)
+            low=0,
+            high=self.x_shape[self.dim],
+            size=self.index_size,
+            dtype=self.index_type)
 
         # compute real output as baseline.
         outer_loop = np.prod(self.x_shape[:self.dim])
@@ -56,18 +59,14 @@ class TestNPUIndexSelect(OpTest):
         self.attrs = {'dim': self.dim}
         self.outputs = {'Out': out}
 
-    # todo: comment second line when index_select grad npu op is ready. 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # todo: replace first line with second line when index_select grad npu op is ready. 
     def test_check_grad(self):
-        pass
-        #self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def config(self):
         self.x_shape = (100, 4, 5)
@@ -80,6 +79,24 @@ class TestNPUIndexSelect(OpTest):
 class TestNPUIndexSelectCase2(TestNPUIndexSelect):
     def config(self):
         self.dim = -2
+        self.x_type = np.float32
+        self.index_type = np.int32
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
+
+
+class TestNPUIndexSelectCase3(TestNPUIndexSelect):
+    def config(self):
+        self.dim = 0
+        self.x_type = np.float32
+        self.index_type = np.int32
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
+
+
+class TestNPUIndexSelectCase4(TestNPUIndexSelect):
+    def config(self):
+        self.dim = -1
         self.x_type = np.float32
         self.index_type = np.int32
         self.x_shape = (10, 10, 4, 10)

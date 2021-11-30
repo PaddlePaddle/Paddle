@@ -93,7 +93,11 @@ void BindGlooContext(py::module *m) {
 
   py::class_<platform::GlooParallelContext> gloo_ctx(*m, "GlooParallelContext");
   gloo_ctx.def(py::init<const platform::GlooParallelStrategy &>())
-      .def("init", [](platform::GlooParallelContext &self) { self.Init(); });
+      .def("init", [](platform::GlooParallelContext &self) { self.Init(); })
+      .def("barrier",
+           [](platform::GlooParallelContext &self) { self.Barrier(); })
+      .def("release",
+           [](platform::GlooParallelContext &self) { self.ReleaseContext(); });
 #endif
 }
 

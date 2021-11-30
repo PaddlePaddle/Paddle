@@ -33,18 +33,27 @@ enum class Priority : uint8_t {
   kHigh = 0x1,
   kNormal = 0x2,
 };
+
+enum class StreamFlag : uint8_t {
+  kDefaultFlag = 0x0,
+  kStreamNonBlocking = 0x1,
+};
+
 #endif
 class CUDAStream final {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
  public:
   CUDAStream() = default;
   explicit CUDAStream(const Place& place,
-                      const Priority& priority = Priority::kNormal) {
-    Init(place, priority);
+                      const Priority& priority = Priority::kNormal,
+                      const StreamFlag& flag = StreamFlag::kDefaultFlag) {
+    Init(place, priority, flag);
   }
   virtual ~CUDAStream() { Destroy(); }
 
-  bool Init(const Place& place, const Priority& priority = Priority::kNormal);
+  bool Init(const Place& place, const Priority& priority = Priority::kNormal,
+            const StreamFlag& flag = StreamFlag::kDefaultFlag);
 
   template <typename Callback>
   void AddCallback(Callback&& callback) const {
@@ -125,6 +134,8 @@ class CUDAStream final {
 #endif
   }
 
+  const Place& GetPlace() const { return place_; }
+
  private:
   Place place_;
 #ifdef PADDLE_WITH_HIP
@@ -139,6 +150,7 @@ class CUDAStream final {
 };
 
 CUDAStream* get_current_stream(int deviceId);
+CUDAStream* set_current_stream(CUDAStream* stream);
 
 }  // namespace stream
 }  // namespace platform

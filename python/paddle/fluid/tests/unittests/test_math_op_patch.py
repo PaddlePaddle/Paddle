@@ -336,6 +336,20 @@ class TestMathOpPatches(unittest.TestCase):
         self.assertTrue(np.array_equal(out[0], out_np))
 
     @prog_scope()
+    def test_T(self):
+        x_np = np.random.randint(-100, 100, [2, 8, 5, 3]).astype("int32")
+        out_np = x_np.T
+
+        x = paddle.static.data(name="x", shape=[2, 8, 5, 3], dtype="int32")
+        z = x.T
+
+        exe = fluid.Executor()
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np},
+                      fetch_list=[z])
+        self.assertTrue(np.array_equal(out[0], out_np))
+
+    @prog_scope()
     def test_ndim(self):
         a = paddle.static.data(name="a", shape=[10, 1])
         self.assertEqual(a.dim(), 2)

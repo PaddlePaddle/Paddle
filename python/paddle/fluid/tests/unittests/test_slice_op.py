@@ -553,6 +553,22 @@ class TestSliceApiWithTensor(unittest.TestCase):
 
             self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
 
+    def test_bool_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            array = (np.arange(60).reshape([3, 4, 5]) % 3).astype('bool')
+            tt = paddle.to_tensor(array)
+            tt.stop_gradient = False
+
+            starts = [0, 1, 2]
+            ends = [3, 5, 4]
+            axes = [0, 1, 2]
+
+            y_paddle = paddle.slice(tt, axes, starts, ends)
+            y_np = tt[0:3, 1:5, 2:4]
+
+            self.assertTrue(paddle.bool == y_paddle.dtype)
+            self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
     def setUp(self):
@@ -693,6 +709,45 @@ class TestInferShape(unittest.TestCase):
 
         out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
         self.assertEqual(out0.shape, (3, 3, 5))
+
+    def test_axis_less_than_zero(self):
+
+        # Using paddle.disable_static will make other unittests fail.
+        with fluid.dygraph.guard():
+            x_arr = np.arange(0, 24, dtype=np.float32).reshape([2, 3, 4])
+            x = paddle.to_tensor(x_arr)
+
+            pp_slice = paddle.slice(x, [100, ], [0], [1])
+            np_slice = x_arr[:, :, 0:1]
+            self.assertTrue(np.array_equal(pp_slice, np_slice))
+
+            pp_slice = paddle.slice(x, (-100, ), [0], [1])
+            np_slice = x_arr[0:1]
+            self.assertTrue(np.array_equal(pp_slice, np_slice))
+
+            x_arr = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))
+
+            starts = paddle.to_tensor(
+                np.reshape(
+                    np.array(
+                        [], dtype=np.int32), (0, )))
+            ends = paddle.to_tensor(
+                np.reshape(
+                    np.array(
+                        [], dtype=np.int32), (0, )))
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [-1000000], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [1000000], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, 0, starts, ends)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

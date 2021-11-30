@@ -20,6 +20,10 @@ if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
 
+if(WITH_INFERENCE_API_TEST)
+    add_definitions(-DPADDLE_WITH_INFERENCE_API_TEST)
+endif(WITH_INFERENCE_API_TEST)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -28,11 +32,9 @@ if(WITH_AVX AND AVX_FOUND)
     set(SIMD_FLAG ${AVX_FLAG})
     add_definitions(-DPADDLE_WITH_AVX)
 elseif(SSE3_FOUND)
-    set(SIMD_FLAG ${SSE3_FLAG})
-endif()
-
-if (SSE3_FOUND)
-    # TODO: Runtime detection should be used here.
+    if(NOT WIN32)
+        set(SIMD_FLAG ${SSE3_FLAG})
+    endif()
     add_definitions(-DPADDLE_WITH_SSE3)
 endif()
 
@@ -84,6 +86,10 @@ endif()
 
 if(WITH_ASCEND_CL)
     add_definitions(-DPADDLE_WITH_ASCEND_CL)
+endif()
+
+if(WITH_ASCEND_INT64)
+    add_definitions(-DPADDLE_WITH_ASCEND_INT64)
 endif()
 
 if(WITH_XPU)

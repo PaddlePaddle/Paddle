@@ -28,10 +28,6 @@ from paddle.fluid.core import PaddleDType
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
-from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-
 
 class InferencePassTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
@@ -58,25 +54,27 @@ class InferencePassTest(unittest.TestCase):
     def _get_place(self):
         return set([False, core.is_compiled_with_cuda()])
 
-    def _save_models(self, executor, program, scope):
+    def _save_models(self, dirname, feeded_var_names, target_vars, executor,
+                     program, scope):
+        with fluid.scope_guard(scope):
+            # save models as combined to ensure that 
+            # there won't be too many useless files 
+            # after finishing a couple of tests.
+            fluid.io.save_inference_model(dirname, feeded_var_names,
+                                          target_vars, executor, program)
+
+    def _get_paddle_outs(self, executor, program, scope):
+        '''
+        Return PaddlePaddle outputs. 
+        '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
                                 feed=self.feeds,
                                 fetch_list=self.fetch_list,
                                 return_numpy=False)
-            # save models as combined to ensure that 
-            # there won't be too many useless files 
-            # after finishing a couple of tests.
-            fluid.io.save_inference_model(
-                dirname=self.path,
-                feeded_var_names=list(self.feeds.keys()),
-                target_vars=self.fetch_list,
-                executor=executor,
-                main_program=program)
-
         return outs
 
-    def _get_analysis_outputs(self, config):
+    def _get_inference_outs(self, config):
         '''
         Return AnalysisPredictor outputs. 
         '''
@@ -170,113 +168,75 @@ class InferencePassTest(unittest.TestCase):
         device = "GPU" if use_gpu else "CPU"
         with fluid.scope_guard(scope):
             executor.run(self.startup_program)
-
-        if quant:
-            main_graph = IrGraph(
-                core.Graph(self.main_program.desc), for_test=True)
-
-            transform_pass = QuantizationTransformPass(
-                scope=scope,
-                place=place,
-                activation_quantize_type=self.activation_quant_type,
-                weight_quantize_type=self.weight_quant_type,
-                quantizable_op_type=[
-                    'conv2d', 'mul', 'depthwise_conv2d', 'conv2d_transpose'
-                ])
-            transform_pass.apply(main_graph)
-            weight_scale_map = {
-                "conv2d": "conv2d_0.w_0.scale",
-                "mul": "fc_0.w_0.scale"
-            }
-
-            weight_scale_tensor = scope.var(weight_scale_map[
-                self.quantized_op_type]).get_tensor()
-            weight_scale = np.ones(self.channels).astype("float32")
-            weight_scale_tensor.set(weight_scale, place)
-
-            op_nodes = main_graph.all_op_nodes()
-            for op_node in op_nodes:
-                if op_node.name() in [self.quantized_op_type, "relu"]:
-                    op_node.op()._set_attr("out_threshold", 0.5)
-
-            with fluid.scope_guard(scope):
-                executor.run(program=self.main_program,
-                             feed=self.feeds,
-                             fetch_list=self.fetch_list)
-
-            freeze_pass = QuantizationFreezePass(
-                scope=scope,
-                place=place,
-                weight_quantize_type=self.weight_quant_type)
-            freeze_pass.apply(main_graph)
-            self.main_program = main_graph.to_program()
-
-        outs = self._save_models(executor, self.main_program, scope)
-
-        analysis_outputs = self._get_analysis_outputs(
+        self._save_models(self.path,
+                          list(self.feeds.keys()), self.fetch_list, executor,
+                          self.main_program, scope)
+        paddle_outs = self._get_paddle_outs(executor, self.main_program, scope)
+        inference_outs = self._get_inference_outs(
             self._get_analysis_config(use_gpu=use_gpu))
 
         # Check whether the results calculated on CPU and on GPU are the same. 
         self.assertTrue(
-            len(outs) == len(analysis_outputs),
+            len(paddle_outs) == len(inference_outs),
             "The number of outputs is different between inference and training forward at {}".
             format(device))
 
-        for out, analysis_output in zip(outs, analysis_outputs):
-            out = np.array(out)
+        for out, inference_out in zip(paddle_outs, inference_outs):
+            paddle_out = np.array(out)
             if flatten:
-                out = out.flatten()
-                analysis_output = analysis_output.flatten()
+                paddle_out = paddle_out.flatten()
+                inference_out = inference_out.flatten()
 
             self.assertTrue(
                 np.allclose(
-                    out, analysis_output, atol=atol),
+                    paddle_out, inference_out, atol=atol),
                 "Output has diff between inference and training forward at {} ".
                 format(device))
 
         # Check whether the trt results and the GPU results are the same. 
         if use_gpu and self.enable_trt:
-            tensorrt_outputs = self._get_analysis_outputs(
+            tensorrt_outputs = self._get_inference_outs(
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_trt=self.enable_trt))
 
             if self.trt_parameters.use_static:
                 #deserialize
-                tensorrt_outputs = self._get_analysis_outputs(
+                tensorrt_outputs = self._get_inference_outs(
                     self._get_analysis_config(
                         use_gpu=use_gpu, use_trt=self.enable_trt))
 
             self.assertTrue(
-                len(tensorrt_outputs) == len(outs),
+                len(tensorrt_outputs) == len(paddle_outs),
                 "The number of outputs is different between GPU and TensorRT. ")
 
-            for out, tensorrt_output in zip(outs, tensorrt_outputs):
-                out = np.array(out)
+            for paddle_out, tensorrt_output in zip(paddle_outs,
+                                                   tensorrt_outputs):
+                paddle_out = np.array(paddle_out)
                 if flatten:
-                    out = out.flatten()
+                    paddle_out = paddle_out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
 
                 self.assertTrue(
                     np.allclose(
-                        out, tensorrt_output, rtol=rtol, atol=atol),
+                        paddle_out, tensorrt_output, rtol=rtol, atol=atol),
                     "Output has diff between GPU and TensorRT. ")
 
         # Check whether the mkldnn results and the CPU results are the same. 
         if (not use_gpu) and self.enable_mkldnn:
-            mkldnn_outputs = self._get_analysis_outputs(
+            mkldnn_outputs = self._get_inference_outs(
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn))
 
             self.assertTrue(
-                len(outs) == len(mkldnn_outputs),
+                len(paddle_outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ")
 
             if self.enable_mkldnn_bfloat16:
                 atol = 0.01
-            for out, mkldnn_output in zip(outs, mkldnn_outputs):
+            for paddle_out, mkldnn_output in zip(paddle_outs, mkldnn_outputs):
                 self.assertTrue(
                     np.allclose(
-                        np.array(out), mkldnn_output, atol=atol),
+                        np.array(paddle_out), mkldnn_output, atol=atol),
                     "Output has diff between CPU and MKLDNN. ")
 
     class TensorRTParam:

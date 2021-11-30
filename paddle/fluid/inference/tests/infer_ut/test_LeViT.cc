@@ -32,7 +32,7 @@ paddle::test::Record PrepareInput(int batch_size) {
   return image_Record;
 }
 
-TEST(test_LeViT, analysis_gpu_bz1) {
+TEST(gpu_tester_LeViT, analysis_gpu_bz1) {
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
   my_input_data_map["x"] = PrepareInput(1);
@@ -60,7 +60,7 @@ TEST(test_LeViT, analysis_gpu_bz1) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_LeViT, trt_fp32_bz2) {
+TEST(tensorrt_tester_LeViT, trt_fp32_bz2) {
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
   my_input_data_map["x"] = PrepareInput(2);
@@ -77,7 +77,7 @@ TEST(test_LeViT, trt_fp32_bz2) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 6, paddle_infer::PrecisionType::kFloat32, false, false);
+      1 << 20, 2, 50, paddle_infer::PrecisionType::kFloat32, false, false);
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &my_input_data_map,
@@ -91,7 +91,7 @@ TEST(test_LeViT, trt_fp32_bz2) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_LeViT, serial_diff_batch_trt_fp32) {
+TEST(tensorrt_tester_LeViT, serial_diff_batch_trt_fp32) {
   int max_batch_size = 5;
   // prepare groudtruth config
   paddle_infer::Config config, config_no_ir;
@@ -103,7 +103,7 @@ TEST(test_LeViT, serial_diff_batch_trt_fp32) {
   config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableUseGpu(100, 0);
-  config.EnableTensorRtEngine(1 << 20, max_batch_size, 6,
+  config.EnableTensorRtEngine(1 << 20, max_batch_size, 50,
                               paddle_infer::PrecisionType::kFloat32, false,
                               false);
   paddle_infer::services::PredictorPool pred_pool(config, 1);
@@ -127,7 +127,7 @@ TEST(test_LeViT, serial_diff_batch_trt_fp32) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_LeViT, multi_thread4_trt_fp32_bz2) {
+TEST(tensorrt_tester_LeViT, multi_thread4_trt_fp32_bz2) {
   int thread_num = 4;
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
@@ -145,7 +145,7 @@ TEST(test_LeViT, multi_thread4_trt_fp32_bz2) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 6, paddle_infer::PrecisionType::kFloat32, false, false);
+      1 << 20, 2, 50, paddle_infer::PrecisionType::kFloat32, false, false);
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &my_input_data_map,
@@ -174,6 +174,6 @@ TEST(test_LeViT, multi_thread4_trt_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

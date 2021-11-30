@@ -21,17 +21,22 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 class ElementwiseFloordivXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T>(ctx, xpu::floordiv<T>);
+    XPUElementwise<T, XPUType>(ctx, xpu::broadcast_floordiv<XPUType>);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(elementwise_floordiv,
-                       ops::ElementwiseFloordivXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+    elementwise_floordiv,
+    ops::ElementwiseFloordivXPUKernel<paddle::platform::XPUDeviceContext,
+                                      float>,
+    ops::ElementwiseFloordivXPUKernel<paddle::platform::XPUDeviceContext,
+                                      paddle::platform::float16>);
 
 #endif

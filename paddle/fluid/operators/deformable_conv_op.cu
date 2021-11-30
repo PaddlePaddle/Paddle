@@ -126,7 +126,8 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
               DmcnGetGradientWeight(cur_inv_h_data, cur_inv_w_data, cur_h + dy,
                                     cur_w + dx, height, width);
 
-          atomicAdd(grad_im + cur_bottom_grad_pos, weight * cur_top_grad);
+          platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
+                                  weight * cur_top_grad);
         }
       }
     }
@@ -748,6 +749,8 @@ namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(deformable_conv,
-                        ops::DeformableConvCUDAKernel<CUDA, float>);
+                        ops::DeformableConvCUDAKernel<CUDA, float>,
+                        ops::DeformableConvCUDAKernel<CUDA, double>);
 REGISTER_OP_CUDA_KERNEL(deformable_conv_grad,
-                        ops::DeformableConvGradCUDAKernel<CUDA, float>);
+                        ops::DeformableConvGradCUDAKernel<CUDA, float>,
+                        ops::DeformableConvGradCUDAKernel<CUDA, double>);

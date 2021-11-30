@@ -55,10 +55,17 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   // We get all the vars from local_scope instead of the ProgramDesc.
   // Because there exists the case that new parameter variables are not added to
   // the program in the analysis pass.
+  bool reserve_cpu_weights = false;
+  if (argument->tensorrt_allow_build_at_runtime_valid() &&
+      argument->tensorrt_allow_build_at_runtime()) {
+    reserve_cpu_weights = true;
+  }
   for (auto &var_name : all_vars) {
     if (std::count(repetitive_params.begin(), repetitive_params.end(),
                    var_name)) {
-      scope->EraseVars({var_name});
+      if (!reserve_cpu_weights) {
+        scope->EraseVars({var_name});
+      }
       continue;
     }
     auto *var = scope->FindLocalVar(var_name);

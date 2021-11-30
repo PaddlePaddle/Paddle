@@ -40,13 +40,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The peer (%d) for recv_v2 op must be non-negative.", peer));
 
-    auto out = ctx.Output<framework::LoDTensor>("Out");
-    auto out_dims = out->dims();
-    auto numel = out->numel();
-    int data_type = ctx.Attr<int>("dtype");
-    framework::proto::VarType::Type type =
-        framework::proto::VarType::Type(data_type);
-
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
@@ -56,14 +49,40 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-
     PADDLE_ENFORCE_LT(
         peer, comm->nranks(),
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
-    out->mutable_data<T>(out_dims, place);
+
+    int data_type = ctx.Attr<int>("dtype");
+    framework::proto::VarType::Type type =
+        framework::proto::VarType::Type(data_type);
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
+
+    auto *out_var = ctx.OutputVar("Out");
+    if (out_var->IsType<framework::LoDTensorArray>()) {
+      auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
+      for (size_t idx = 0; idx < out_array->size(); ++idx) {
+        VLOG(3) << "LodTensorArray: idx(" << idx << ")";
+        auto out = &out_array->at(idx);
+        auto out_dims = out->dims();
+        out->mutable_data<T>(out_dims, place, 0);
+        auto numel = out->numel();
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+            out->data<T>(), numel, dtype, peer, comm->comm(), stream));
+        VLOG(3) << "rank " << comm->rank() << " recv "
+                << framework::product(out_dims) << " from " << peer;
+      }
+      return;
+    }
+
+    auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out_dims = out->dims();
+    auto numel = out->numel();
+
+    out->mutable_data<T>(out_dims, place);
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv "

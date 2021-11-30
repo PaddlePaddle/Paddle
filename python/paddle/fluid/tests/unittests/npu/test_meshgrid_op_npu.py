@@ -75,6 +75,16 @@ class TestMeshgridOpFP16(TestMeshgridOp):
         return "float16"
 
 
+class TestMeshgridOpINT32(TestMeshgridOp):
+    def get_dtype(self):
+        return "int32"
+
+
+class TestMeshgridOpINT64(TestMeshgridOp):
+    def get_dtype(self):
+        return "int64"
+
+
 class TestMeshgridOp2(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
