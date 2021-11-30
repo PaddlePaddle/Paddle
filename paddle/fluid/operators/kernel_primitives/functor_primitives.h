@@ -91,7 +91,7 @@ struct DivideFunctor {
  */
 template <typename Tx, typename Ty = Tx>
 struct InverseFunctor {
-  HOSTDEVICE inline InverseFunctor() { }
+  HOSTDEVICE inline InverseFunctor() {}
 
   HOSTDEVICE explicit inline InverseFunctor(int n) {}
 

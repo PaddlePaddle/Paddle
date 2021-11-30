@@ -25,40 +25,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-//   template <typename T>
-// static __global__ void SimpleElemwiseSubGradCUDAKernel(
-//     const T* __restrict__ dout, int size, int vec_size, T* dx, T* dy) {
-//   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-//   int stride = gridDim.x * blockDim.x;
-//   int loop = size / vec_size;
-//   int remainder = size % vec_size;
-//   const float4* dout_vec = reinterpret_cast<const float4*>(dout);
-//   float4* dx_vec = reinterpret_cast<float4*>(dx);
-//   float4* dy_vec = reinterpret_cast<float4*>(dy);
-//   float4 tmp_loop;
-
-//   for (int i = tid; i < loop; i += stride) {
-//     tmp_loop = dout_vec[i];
-//     if(dx != nullptr){
-//       dx_vec[i] = tmp_loop;
-//     }
-//     dy_vec[i] = -tmp_loop;
-//   }
-
-//   if (tid == loop && remainder != 0) {
-//     T tmp_rem;
-//     while (remainder) {
-//       int idx = size - remainder;
-//       remainder--;
-//       tmp_rem = dout[idx];
-//       if(dx != nullptr){
-//         dx[idx] = tmp_rem;
-//       }
-//       dy[idx] = -tmp_rem;
-//     }
-//   }
-// }
-
 template <typename T>
 static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
                                                        int64_t size, T* dx,
@@ -66,21 +32,9 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   while (col < size) {
-    // if(dx != nullptr){
-       dx[col] = dout[col];
-    // }
-    dy[col] = -dout[col];
-    col += blockDim.x * gridDim.x;
-  }
-}
-
-template <typename T>
-static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
-                                                       int64_t size,
-                                                       T* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
+    if (dx != nullptr) {
+      dx[col] = dout[col];
+    }
     dy[col] = -dout[col];
     col += blockDim.x * gridDim.x;
   }
@@ -125,12 +79,12 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
       if (dy_data != dout_data) {
         dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
         auto size = dy->numel();
-        dim3 grid_size =
-            dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
-        SimpleElemwiseSubGradCUDAKernel<
-            T><<<grid_size, block_size, 0,
-                ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-            dout->data<T>(), size,
+        dim3 grid_size = dim3(
+            (size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
+        SimpleElemwiseSubGradCUDAKernel<T><<<
+            grid_size, block_size, 0,
+            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+            dout->data<T>(), size, nullptr,
             dy->mutable_data<T>(ctx.GetPlace()));
       }
     } else {
@@ -149,15 +103,15 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-        dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
-        auto size = x->numel();
-        dim3 grid_size =
-            dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
-        SimpleElemwiseSubGradCUDAKernel<
-            T><<<grid_size, block_size, 0,
-                ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-            dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
-            dy->mutable_data<T>(ctx.GetPlace()));
+  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
+  auto size = x->numel();
+  dim3 grid_size =
+      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
+  SimpleElemwiseSubGradCUDAKernel<
+      T><<<grid_size, block_size, 0,
+           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+      dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
+      dy->mutable_data<T>(ctx.GetPlace()));
 }
 
 }  // namespace operators
