@@ -9,17 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-// #define PY_ARRAY_UNIQUE_SYMBOL Paddle_PyArray_API_F
-#define INIT_NUMPY_ARRAY_CPP
-
-#include <numpy/arrayobject.h>
-#include <numpy/arrayscalars.h>
-
 #include <Python.h>
 
 #include <string>
 #include <vector>
+
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
@@ -38,46 +34,11 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/core.h"
-#pragma GCC diagnostic ignored "-Wconversion-null"  // for import_array();
-#pragma GCC diagnostic ignored "-Wunused-variable"  // for numpy_initialized_f
 
 namespace paddle {
 namespace pybind {
 
-int init_numpy_f() {
-  import_array();
-  return 0;
-}
-static const int numpy_initialized_f = init_numpy_f();
-
 namespace py = ::pybind11;
-
-// TODO(wanghuancoder) we must build paddle whl package with lower numpy version
-bool check_numpy_available() {
-  static bool ret = []() {
-    if (_import_array() >= 0) {
-      return true;
-    }
-
-    std::string message = "Failed to initialize NumPy";
-    PyObject *type, *value, *traceback;
-    PyErr_Fetch(&type, &value, &traceback);
-    if (value) {
-      PyObject* err_msg = PyObject_Str(value);
-      PyObject* err_msg2 =
-          PyUnicode_AsEncodedString(err_msg, "utf-8", "strict");
-      if (err_msg2) {
-        LOG(WARNING) << "Numpy Error: '" << PyBytes_AS_STRING(err_msg2)
-                     << "'. You can try upgrading numpy.";
-        Py_XDECREF(err_msg2);
-      }
-      Py_XDECREF(err_msg);
-    }
-    PyErr_Clear();
-    return false;
-  }();
-  return ret;
-}
 
 extern PyTypeObject* p_eager_tensor_type;
 
@@ -103,13 +64,22 @@ static PyObject* eager_api_scale(PyObject* self, PyObject* args,
   return ToPyObject(ret);
 }
 
+size_t PyArray_Size_(PyObject* numpy_data) {
+  size_t res = 1;
+  auto dims = pybind11::detail::array_proxy(numpy_data)->dimensions;
+  auto nd = pybind11::detail::array_proxy(numpy_data)->nd;
+  while (nd--) {
+    res *= (*dims++);
+  }
+  return res;
+}
+
 class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
  public:
   explicit EagerNumpyAllocation(PyObject* numpy_data, pten::DataType dtype)
       : Allocation(
-            static_cast<void*>(
-                (reinterpret_cast<PyArrayObject_fields*>(numpy_data))->data),
-            pten::DataTypeSize(dtype) * PyArray_Size(numpy_data),
+            static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
+            pten::DataTypeSize(dtype) * PyArray_Size_(numpy_data),
             paddle::platform::CPUPlace()),
         arr_(numpy_data) {
     PADDLE_ENFORCE_NOT_NULL(arr_, platform::errors::InvalidArgument(
@@ -134,8 +104,8 @@ static inline PyObject* eager_api_numpy_to_tensor(
     PyObject* numpy_data, pten::DataType dtype,
     const paddle::platform::Place& place, bool stop_gradient) {
   std::vector<int64_t> vec_dims;
-  auto numpy_shape = PyArray_DIMS(reinterpret_cast<PyArrayObject*>(numpy_data));
-  int rank = PyArray_NDIM(reinterpret_cast<PyArrayObject*>(numpy_data));
+  auto numpy_shape = pybind11::detail::array_proxy(numpy_data)->dimensions;
+  int rank = pybind11::detail::array_proxy(numpy_data)->nd;
   for (int i = 0; i < rank; i++) {
     vec_dims.push_back(static_cast<int64_t>(numpy_shape[i]));
   }
@@ -184,7 +154,7 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
   // TODO(jiabin): Support this when python given name
   // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
 
-  if (check_numpy_available() && PyArray_Check(data)) {
+  if (pybind11::detail::npy_api::get().PyArray_Check_(data)) {
     return eager_api_numpy_to_tensor(data, dtype, place, stop_gradient);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

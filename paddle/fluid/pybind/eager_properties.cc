@@ -9,13 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define PY_ARRAY_UNIQUE_SYMBOL Paddle_PyArray_API_P
-#define INIT_NUMPY_ARRAY_CPP
-
-#include <numpy/arrayobject.h>
-#include <numpy/arrayscalars.h>
-
 #include <Python.h>
 
 #include <string>
@@ -33,19 +26,11 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/core.h"
-#pragma GCC diagnostic ignored "-Wconversion-null"  // for import_array();
-#pragma GCC diagnostic ignored "-Wunused-variable"  // for numpy_initialized_p
 #pragma GCC diagnostic ignored \
     "-Wwrite-strings"  // for {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 namespace paddle {
 namespace pybind {
-
-int init_numpy_p() {
-  import_array();
-  return 0;
-}
-static const int numpy_initialized_p = init_numpy_p();
 
 extern PyTypeObject* p_eager_tensor_type;
 

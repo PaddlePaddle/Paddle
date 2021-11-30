@@ -11,10 +11,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "paddle/pten/core/convert_utils.h"
-#include <numpy/ndarraytypes.h>
+#include "paddle/fluid/operators/py_func_op.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/gpu_info.h"
@@ -276,27 +275,27 @@ std::string DataType2String(DataType dtype) {
 int TensorDtype2NumpyDtype(pten::DataType dtype) {
   switch (dtype) {
     case pten::DataType::BOOL:
-      return NPY_TYPES::NPY_BOOL;
+      return pybind11::detail::npy_api::NPY_BOOL_;
     case pten::DataType::INT8:
-      return NPY_TYPES::NPY_INT8;
+      return pybind11::detail::npy_api::NPY_INT8_;
     case pten::DataType::UINT8:
-      return NPY_TYPES::NPY_UINT8;
+      return pybind11::detail::npy_api::NPY_UINT8_;
     case pten::DataType::INT16:
-      return NPY_TYPES::NPY_INT16;
+      return pybind11::detail::npy_api::NPY_INT16_;
     case pten::DataType::INT32:
-      return NPY_TYPES::NPY_INT32;
+      return pybind11::detail::npy_api::NPY_INT32_;
     case pten::DataType::INT64:
-      return NPY_TYPES::NPY_INT64;
+      return pybind11::detail::npy_api::NPY_INT64_;
     case pten::DataType::FLOAT16:
-      return NPY_TYPES::NPY_FLOAT16;
+      return pybind11::detail::NPY_FLOAT16_;
     case pten::DataType::FLOAT32:
-      return NPY_TYPES::NPY_FLOAT;
+      return pybind11::detail::npy_api::NPY_FLOAT_;
     case pten::DataType::FLOAT64:
-      return NPY_TYPES::NPY_DOUBLE;
+      return pybind11::detail::npy_api::NPY_DOUBLE_;
     case pten::DataType::COMPLEX64:
-      return NPY_TYPES::NPY_COMPLEX64;
+      return pybind11::detail::NPY_COMPLEX64;
     case pten::DataType::COMPLEX128:
-      return NPY_TYPES::NPY_COMPLEX128;
+      return pybind11::detail::NPY_COMPLEX128;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow pten::DataType, the int value = %d.",
