@@ -319,12 +319,10 @@ def print_desc_error_message(error_message):
                     format(arg, name, ori_value, new_value))
 
         for name in Inputs_error.get(QUANT, {}):
-            # TODO(Wilber):
             print(" * The added Input '{}' is `quant`, need slim to review.".
                   format(name))
 
         for name in Inputs_error.get(DEF, {}):
-            # TODO(Wilber):
             print(" * The added Input '{}' is `def`, need inference to review.".
                   format(name))
 
@@ -345,12 +343,10 @@ def print_desc_error_message(error_message):
                     format(arg, name, ori_value, new_value))
 
         for name in Outputs_error.get(QUANT, {}):
-            # TODO(Wilber):
             print(" * The added Output '{}' is `quant`, need slim to review.".
                   format(name))
 
         for name in Outputs_error.get(DEF, {}):
-            # TODO(Wilber):
             print(
                 " * The added Output '{}' is `def`, need inference to review.".
                 format(name))
