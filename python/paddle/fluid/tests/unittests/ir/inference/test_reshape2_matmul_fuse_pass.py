@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
@@ -58,7 +58,7 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
 
-    def add_skip_pass_case(self):
+    def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
         def teller1(program_config, predictor_config):
             if predictor_config.tensorrt_engine_enabled():
@@ -75,9 +75,9 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
                     return True
             return False
 
-        self.add_skip_case(
+        self.add_ignore_check_case(
             teller1,
-            SkipReasons.PASS_ACCURACY_ERROR,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
             "The pass error on TRT while shape of bias is not [out_size].", )
 
     def sample_program_config(self, draw):
