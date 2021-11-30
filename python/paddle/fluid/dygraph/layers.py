@@ -921,7 +921,7 @@ class Layer(core.Layer):
 
         if in_declarative_mode() and not framework.in_dygraph_mode():
             with param_guard(self._parameters), param_guard(self._buffers):
-                self._dygraph_call_func(*inputs, **kwargs)
+                return self._dygraph_call_func(*inputs, **kwargs)
         else:
             return self._dygraph_call_func(*inputs, **kwargs)
 
