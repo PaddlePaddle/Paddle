@@ -167,7 +167,7 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
 static PyObject* eager_api_retain_grad_for_tensor(PyObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
-  RetainGradForTensor(CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0));
+  egr::RetainGradForTensor(CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0));
   Py_INCREF(Py_None);
   return Py_None;
 }
