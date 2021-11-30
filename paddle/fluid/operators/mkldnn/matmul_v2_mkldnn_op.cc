@@ -33,7 +33,7 @@ template <typename T>
 class MatMulV2MKLDNNHandler
     : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
  public:
-  MatMulV2MKLDNNHandler(const mkldnn::engine engine,
+  MatMulV2MKLDNNHandler(const dnnl::engine engine,
                         paddle::platform::Place cpu_place,
                         const std::vector<int64_t>& x_org_dims, bool trans_x,
                         const std::vector<int64_t>& y_org_dims, bool trans_y,
@@ -132,7 +132,7 @@ class MatMulV2MKLDNNKernel
  protected:
   void ExecuteMatMul(const ExecutionContext& ctx,
                      const MKLDNNDeviceContext& dev_ctx,
-                     const mkldnn::engine onednn_engine,
+                     const dnnl::engine onednn_engine,
                      paddle::platform::Place cpu_place, const Tensor* x,
                      std::vector<int64_t>& x_dims, bool trans_x,
                      const Tensor* y, std::vector<int64_t>& y_dims,
@@ -272,7 +272,7 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
 
   void ReduceSumForMatmulGradOutput(const ExecutionContext& ctx,
                                     const MKLDNNDeviceContext& dev_ctx,
-                                    const mkldnn::engine onednn_engine,
+                                    const dnnl::engine onednn_engine,
                                     const Tensor* dx_tmp, Tensor* dx,
                                     std::vector<int64_t> dx_dims) const {
     paddle::platform::ReductionMKLDNNHandler<T> handler(

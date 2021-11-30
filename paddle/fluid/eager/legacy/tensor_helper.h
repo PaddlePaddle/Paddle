@@ -19,6 +19,8 @@
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/include/core.h"
 namespace egr {
+namespace legacy {
+
 void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);
 paddle::framework::proto::VarType::Type GetDtypeFromVar(
@@ -27,4 +29,6 @@ const paddle::platform::Place& GetPlaceFromVar(
     const paddle::framework::Variable& var);
 void CopyVariable(const paddle::framework::Variable& src_var,
                   paddle::framework::Variable* dst_var);
-}
+
+}  // namespace legacy
+}  // namespace egr

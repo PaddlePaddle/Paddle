@@ -779,7 +779,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   ,ConstructDuplicableOutput(Out1Num)} };
 
         // According to op_proto->attrs()
-        egr::RunOp("op_type", ins, outs, attr_map,
+        egr::legacy::RunOp("op_type", ins, outs, attr_map,
   Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
@@ -894,7 +894,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   const char* FWD_TRACE_OP_TEMPLATE =
       "  paddle::framework::AttributeMap attrs = attr_map;\n"
       "  paddle::framework::AttributeMap default_attrs;\n"
-      "  egr::RunOp(\"%s\", ins, outs, attrs, \n"
+      "  egr::legacy::RunOp(\"%s\", ins, outs, attrs, \n"
       "     egr::Controller::Instance().GetExpectedPlace(),\n"
       "     &default_attrs, true, {});\n";
   std::string trace_op_str =
@@ -1052,7 +1052,7 @@ static std::string GenerateGradNodeCCContents(
     // Visit each OpBase
     for(auto iter = "grad_node->begin()"; iter < "grad_node->end()"; iter++) {
         // Simply pass entire attribute map to kernels
-        egr::RunOp("iter->Type()", ins, outs, this->attr_map_,
+        egr::legacy::RunOp("iter->Type()", ins, outs, this->attr_map_,
             egr::Controller::Instance().ExpectedPlace(), false, {});
     }
 
@@ -1180,7 +1180,7 @@ static std::string GenerateGradNodeCCContents(
         "  // Pass the entire attribute map to TraceOp\n"
         "  // The underlying kernel will pickup whatever attribute they need "
         "at runtime\n"
-        "  egr::RunOp(\"%s\", ins, outs, this->attr_map_,\n"
+        "  egr::legacy::RunOp(\"%s\", ins, outs, this->attr_map_,\n"
         "      egr::Controller::Instance().GetExpectedPlace(),\n"
         "      &this->default_attr_map_, false, {});\n";
     trace_opbase_str = paddle::string::Sprintf(TRACE_OP_TEMPLATE, op_base_type);
