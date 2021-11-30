@@ -51,8 +51,8 @@
     func : FullInferMeta
     param : [shape, dtype, layout]
   kernel : 
-    func : fill_constant.scalar
-    param : [value]
+    func : fill_constant
+    param : [shape, value]
     data_type : dtype
     backend : place
     layout : layout

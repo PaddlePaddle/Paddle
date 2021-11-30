@@ -252,7 +252,7 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
             elif param in attr_names:
                 param_code = param_code + param + ", "
             elif isinstance(param, str):
-                param_code = param_code + + "\"" + param + "\", "
+                param_code = param_code + "\"" + param + "\", "
             elif isinstance(param, bool):
                 param_code = param_code + str(param).lower() + ", "
             else:
