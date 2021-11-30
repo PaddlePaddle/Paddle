@@ -17,6 +17,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -89,6 +90,8 @@ class Carrier final {
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
+
+  std::vector<int64_t> source_interceptor_ids_;
 
   std::vector<InterceptorMessage> message_tmp_{};
   std::mutex tmp_message_mutex_;
