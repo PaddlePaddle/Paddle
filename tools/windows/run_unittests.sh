@@ -106,11 +106,7 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_depthwise_conv2d$|\
 ^test_trt_convert_emb_eltwise_layernorm$|\
 ^test_trt_convert_pool2d$|\
-^test_trt_conv3d_op$|\
 ^test_trt_matmul_quant_dequant$|\
-^test_trt_subgraph_pass$|\
-^test_trt_convert_dropout$|\
-^test_trt_convert_hard_sigmoid$|\
 ^test_trt_convert_reduce_mean$|\
 ^test_trt_convert_reduce_sum$|\
 ^test_trt_convert_group_norm$|\
