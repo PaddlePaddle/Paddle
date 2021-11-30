@@ -51,118 +51,82 @@ template <typename DeviceContext, typename T, size_t D>
 static void LerpFunction(const framework::ExecutionContext& ctx) {
   auto x = ctx.Input<framework::Tensor>("X");
   auto y = ctx.Input<framework::Tensor>("Y");
+  auto w = ctx.Input<framework::Tensor>("Weight");
   auto out = ctx.Output<framework::Tensor>("Out");
   out->mutable_data<T>(ctx.GetPlace());
 
   auto out_dims = out->dims();
   auto x_dims = GetNewDims(x->dims(), D);
   auto y_dims = GetNewDims(y->dims(), D);
+  auto w_dims = GetNewDims(w->dims(), D);
   Eigen::DSizes<int, D> x_bcast_dims;
   Eigen::DSizes<int, D> y_bcast_dims;
+  Eigen::DSizes<int, D> w_bcast_dims;
   GetBraodcastDims<D>(x_dims, out_dims, &x_bcast_dims);
   GetBraodcastDims<D>(y_dims, out_dims, &y_bcast_dims);
+  GetBraodcastDims<D>(w_dims, out_dims, &w_bcast_dims);
 
   auto eigen_x = framework::EigenTensor<T, D>::From(*x, x_dims);
   auto eigen_y = framework::EigenTensor<T, D>::From(*y, y_dims);
+  auto eigen_w = framework::EigenTensor<T, D>::From(*w, w_dims);
   auto eigen_out = framework::EigenTensor<T, D>::From(*out);
 
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-  if (ctx.HasInput("Weight")) {
-    auto w = ctx.Input<framework::Tensor>("Weight");
-    auto w_dims = GetNewDims(w->dims(), D);
-    Eigen::DSizes<int, D> w_bcast_dims;
-    GetBraodcastDims<D>(w_dims, out_dims, &w_bcast_dims);
-    auto eigen_w = framework::EigenTensor<T, D>::From(*w, w_dims);
-    eigen_out.device(place) =
-        eigen_x.broadcast(x_bcast_dims) +
-        eigen_w.broadcast(w_bcast_dims) *
-            (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
-  } else if (ctx.HasAttr("WeightValue")) {
-    float w = ctx.Attr<float>("WeightValue");
-    eigen_out.device(place) =
-        eigen_x.broadcast(x_bcast_dims) +
-        w * (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
-  } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Missing input of Weight."));
-  }
+  eigen_out.device(place) =
+      eigen_x.broadcast(x_bcast_dims) +
+      eigen_w.broadcast(w_bcast_dims) *
+          (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
 }
 
 template <typename DeviceContext, typename T, size_t D>
 static void LerpGradFunction(const framework::ExecutionContext& ctx) {
-  auto x = ctx.Input<framework::Tensor>("X");
-  auto y = ctx.Input<framework::Tensor>("Y");
-  auto out = ctx.Input<framework::Tensor>("Out");
+  auto w = ctx.Input<framework::Tensor>("Weight");
   auto dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
   auto dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
   auto dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
-  auto out_dims = out->dims();
-  auto x_dims = GetNewDims(x->dims(), D);
-  auto y_dims = GetNewDims(y->dims(), D);
-  Eigen::DSizes<int, D> x_bcast_dims;
-  Eigen::DSizes<int, D> y_bcast_dims;
-  GetBraodcastDims<D>(x_dims, out_dims, &x_bcast_dims);
-  GetBraodcastDims<D>(y_dims, out_dims, &y_bcast_dims);
+  auto dout_dims = dout->dims();
+  auto dx_dims = GetNewDims(dx->dims(), D);
+  auto dy_dims = GetNewDims(dy->dims(), D);
+  auto w_dims = GetNewDims(w->dims(), D);
+  Eigen::DSizes<int, D> dx_bcast_dims;
+  Eigen::DSizes<int, D> dy_bcast_dims;
+  Eigen::DSizes<int, D> w_bcast_dims;
+  GetBraodcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
+  GetBraodcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
+  GetBraodcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
 
+  auto eigen_w = framework::EigenTensor<T, D>::From(*w, w_dims);
   auto eigen_dout = framework::EigenTensor<T, D>::From(*dout);
 
-  Eigen::DSizes<int, D * 2> x_reshape_dims;
-  Eigen::DSizes<int, D * 2> y_reshape_dims;
+  Eigen::DSizes<int, D * 2> dx_reshape_dims;
+  Eigen::DSizes<int, D * 2> dy_reshape_dims;
   Eigen::DSizes<int, D> reduce_dims;
-  for (int i = 0; i < out_dims.size(); ++i) {
-    x_reshape_dims[2 * i] = x_bcast_dims[i];
-    x_reshape_dims[2 * i + 1] = x_dims[i];
-    y_reshape_dims[2 * i] = y_bcast_dims[i];
-    y_reshape_dims[2 * i + 1] = y_dims[i];
+  for (int i = 0; i < dout_dims.size(); ++i) {
+    dx_reshape_dims[2 * i] = dx_bcast_dims[i];
+    dx_reshape_dims[2 * i + 1] = dx_dims[i];
+    dy_reshape_dims[2 * i] = dy_bcast_dims[i];
+    dy_reshape_dims[2 * i + 1] = dy_dims[i];
     reduce_dims[i] = 2 * i;
   }
 
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-  if (ctx.HasInput("Weight")) {
-    auto w = ctx.Input<framework::Tensor>("Weight");
-    auto w_dims = GetNewDims(w->dims(), D);
-    Eigen::DSizes<int, D> w_bcast_dims;
-    GetBraodcastDims<D>(w_dims, out_dims, &w_bcast_dims);
-    auto eigen_w = framework::EigenTensor<T, D>::From(*w, w_dims);
-    if (dx) {
-      dx->mutable_data<T>(ctx.GetPlace());
-      auto eigen_dx = framework::EigenTensor<T, D>::From(*dx, x_dims);
-      auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
-      eigen_dx.device(place) = eigen_expr.reshape(x_reshape_dims)
-                                   .sum(reduce_dims)
-                                   .reshape(eigen_dx.dimensions());
-    }
-    if (dy) {
-      dy->mutable_data<T>(ctx.GetPlace());
-      auto eigen_dy = framework::EigenTensor<T, D>::From(*dy, y_dims);
-      auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
-      eigen_dy.device(place) = eigen_expr.reshape(y_reshape_dims)
-                                   .sum(reduce_dims)
-                                   .reshape(eigen_dy.dimensions());
-    }
-  } else if (ctx.HasAttr("WeightValue")) {
-    float w = ctx.Attr<float>("WeightValue");
-    if (dx) {
-      dx->mutable_data<T>(ctx.GetPlace());
-      auto eigen_dx = framework::EigenTensor<T, D>::From(*dx, x_dims);
-      auto eigen_expr = (1 - w) * eigen_dout;
-      eigen_dx.device(place) = eigen_expr.reshape(x_reshape_dims)
-                                   .sum(reduce_dims)
-                                   .reshape(eigen_dx.dimensions());
-    }
-    if (dy) {
-      dy->mutable_data<T>(ctx.GetPlace());
-      auto eigen_dy = framework::EigenTensor<T, D>::From(*dy, y_dims);
-      auto eigen_expr = w * eigen_dout;
-      eigen_dy.device(place) = eigen_expr.reshape(y_reshape_dims)
-                                   .sum(reduce_dims)
-                                   .reshape(eigen_dy.dimensions());
-    }
-  } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Missing input of Weight."));
+  if (dx) {
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto eigen_dx = framework::EigenTensor<T, D>::From(*dx, dx_dims);
+    auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
+    eigen_dx.device(place) = eigen_expr.reshape(dx_reshape_dims)
+                                 .sum(reduce_dims)
+                                 .reshape(eigen_dx.dimensions());
+  }
+  if (dy) {
+    dy->mutable_data<T>(ctx.GetPlace());
+    auto eigen_dy = framework::EigenTensor<T, D>::From(*dy, dy_dims);
+    auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
+    eigen_dy.device(place) = eigen_expr.reshape(dy_reshape_dims)
+                                 .sum(reduce_dims)
+                                 .reshape(eigen_dy.dimensions());
   }
 }
 
@@ -209,7 +173,9 @@ template <typename DeviceContext, typename T>
 class LerpGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    int rank = ctx.Input<framework::Tensor>("Out")->dims().size();
+    int rank = ctx.Input<framework::Tensor>(framework::GradVarName("Out"))
+                   ->dims()
+                   .size();
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(

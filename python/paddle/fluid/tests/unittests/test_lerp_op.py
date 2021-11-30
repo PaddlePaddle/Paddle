@@ -30,8 +30,8 @@ class TestLerp(OpTest):
         self.init_dtype()
         x = np.arange(1., 101.).astype(self.dtype)
         y = np.full(100, 10.).astype(self.dtype)
-        self.attrs = {'WeightValue': 0.5}
-        self.inputs = {'X': x, 'Y': y}
+        w = np.asarray([0.5]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + 0.5 * (y - x)}
 
     def init_dtype(self):
@@ -52,7 +52,7 @@ class TestLerpAPI(unittest.TestCase):
         self.init_dtype()
         self.x = np.arange(1., 5.).astype(self.dtype)
         self.y = np.full(4, 10.).astype(self.dtype)
-        self.w = 0.5
+        self.w = np.asarray([0.5]).astype(self.dtype)
         self.res_ref = self.x + 0.5 * (self.y - self.x)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -65,11 +65,13 @@ class TestLerpAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.fluid.data('x', [1, 4], dtype=self.dtype)
                 y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
-                out = paddle.lerp(x, y, 0.5)
+                w = paddle.fluid.data('w', [1], dtype=self.dtype)
+                out = paddle.lerp(x, y, w)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
                     'x': self.x.reshape([1, 4]),
-                    'y': self.y.reshape([1, 4])
+                    'y': self.y.reshape([1, 4]),
+                    'w': self.w
                 })
             for r in res:
                 self.assertEqual(np.allclose(self.res_ref, r), True)
@@ -82,7 +84,8 @@ class TestLerpAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
-            out = paddle.lerp(x, y, 0.5)
+            w = paddle.to_tensor(np.full(4, 0.5).astype(self.dtype))
+            out = paddle.lerp(x, y, w)
             self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
             paddle.enable_static()
 

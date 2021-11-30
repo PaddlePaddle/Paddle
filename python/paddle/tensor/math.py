@@ -2642,30 +2642,18 @@ def lerp(x, y, weight, name=None):
             # out: [5.5., 6., 6.5, 7.]
 
     """
-
     if in_dygraph_mode():
+        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
-            return _C_ops.lerp(x, y, 'WeightValue', weight)
-        elif isinstance(weight, (paddle.Tensor, Variable)):
-            return _C_ops.lerp(x, y, weight)
-
-        raise TypeError(
-            "The type of weight must float or Tensor, but received {}".format(type(weight)))
+            weight = paddle.to_tensor(weight, dtype=x.dtype, place=paddle.CPUPlace())
+        return _C_ops.lerp(x, y, weight)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(weight, 'Weight', ['float32', 'float64'], 'lerp')
 
     helper = LayerHelper('lerp', **locals())
-    inputs = {'X' : x, 'Y' : y}
-    attrs = {}
-    if isinstance(weight, float):
-        attrs['WeightValue'] = weight
-    elif isinstance(weight, (paddle.Tensor, Variable)):
-        inputs['Weight'] = weight
-    else:
-        raise TypeError(
-            "The type of weight must float or Tensor, but received {}".format(type(weight)))
+    inputs = {'X': x, 'Y': y, 'Weight': weight}
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-            type='lerp', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
     return out

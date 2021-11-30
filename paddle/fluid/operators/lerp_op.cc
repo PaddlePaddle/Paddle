@@ -24,14 +24,15 @@ class LerpOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lerp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "lerp");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "lerp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "lerp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
+    auto w_dims = ctx->GetInputDim("Weight");
     framework::DDim out_dims;
     out_dims = GetOutputDims(x_dims, y_dims);
-    if (ctx->HasInput("Weight")) {
-      auto w_dims = ctx->GetInputDim("Weight");
+    if (w_dims.size() > 1 || w_dims[0] != 1) {
       out_dims = GetOutputDims(out_dims, w_dims);
     }
 
@@ -73,10 +74,8 @@ class LerpOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of lerp op.");
     AddInput("Y", "(Tensor), The input tensor of lerp op.");
-    AddInput("Weight", "(Tensor, optional), The input tensor of lerp op.")
-        .AsDispensable();
+    AddInput("Weight", "(Tensor, optional), The input tensor of lerp op.");
     AddOutput("Out", "(Tensor), The output tensor of lerp op.");
-    AddAttr<float>("WeightValue", "(float, optional), The weight of lerp op.");
     AddComment(R"DOC(
 Lerp Operator.
 
@@ -116,9 +115,7 @@ class LerpOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("lerp_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
-    if (this->HasInput("Weight")) {
-      op->SetInput("Weight", this->Input("Weight"));
-    }
+    op->SetInput("Weight", this->Input("Weight"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
