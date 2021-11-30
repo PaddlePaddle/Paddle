@@ -177,7 +177,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         if program_config.ops[0].attrs['use_mkldnn']:
             config.enable_mkldnn()
             yield config, ['conv2d_transpose'], (1e-5, 1e-5)
-        # cpu
+        # for cpu
         else:
             yield config, ['conv2d_transpose', 'elementwise_add'], (1e-5, 1e-5)
 
