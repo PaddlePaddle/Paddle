@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/core.h"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
 namespace pybind {
