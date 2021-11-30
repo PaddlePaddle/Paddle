@@ -823,7 +823,7 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
-    def shrink(self, threshold):
+    def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
     def distributed_optimizer(self, optimizer, strategy=None):
