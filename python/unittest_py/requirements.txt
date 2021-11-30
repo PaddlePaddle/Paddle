@@ -11,4 +11,3 @@ scipy>=1.6
 prettytable
 distro
 numpy>=1.20
-pyyaml

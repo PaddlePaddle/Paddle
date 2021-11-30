@@ -110,6 +110,15 @@
   kernel : 
     func : reshape2
 
+- api : scale
+  args : (const Tensor& x, const Scalar& scale, float bias, bool bias_after_scale)
+  output : Tensor
+  infer_meta : 
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : scale
+
 - api : subtract
   args : (const Tensor& x, const Tensor& y)
   output : Tensor
