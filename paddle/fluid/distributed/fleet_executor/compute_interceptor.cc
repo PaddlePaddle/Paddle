@@ -51,6 +51,11 @@ void ComputeInterceptor::PrepareDeps() {
                           "times, but now max_run_times=%ld",
                           node_->max_run_times()));
   }
+
+  // If there is no downstream or every downstream is in different rank,
+  // then this interceptor is the last one for current rank.
+  // This can be get during init, can be cached for later use.
+  is_last_ = downstream.empty();
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
@@ -168,6 +173,10 @@ void ComputeInterceptor::Run() {
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
+    // Try to stop Carrier
+    if (step_ % node_->max_run_times() == 0 && is_last_) {
+      StopCarrier();
+    }
   }
 
   // If there is no limit, source interceptor can be executed
