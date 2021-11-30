@@ -697,7 +697,7 @@ void CPUQuantizePass::QuantizeSlice(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, slice_pattern);
 
     // skip if prev op and next op is not quantized
-    if (!(IsOpDequantized(prev_op)) && !(IsOpQuantized(next_op))) {
+    if (!IsOpDequantized(prev_op) && !IsOpQuantized(next_op)) {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(slice_in, slice_in, slice_pattern);

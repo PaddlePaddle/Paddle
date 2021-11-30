@@ -789,7 +789,7 @@ TEST(CpuQuantizePass, reshapeBetweenNonQuantizedOp) {
 }
 
 static const std::initializer_list<std::string> variable_names_slice = {
-    "a", "w1", "b", "c", "d", "e", "f"};
+    "a", "b", "c", "d"};
 
 // a->Dequantize->b
 // b->Slice->c
