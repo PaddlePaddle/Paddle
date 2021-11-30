@@ -248,14 +248,6 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
 #undef PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL
     } else {
       for (size_t idx = 0; idx < n; idx++) {
-        // std::string regularization_method = "";
-        // if (regularization_methods.size() != 0) {
-        //   regularization_method = regularization_methods[idx];
-        // }
-        // RegularizationType regularization_flag{RegularizationType::kNONE};
-        // if (regularization_method == "l2_decay") {
-        //   regularization_flag = RegularizationType::kL2DECAY;
-        // }
         RegularizationType regularization_flag =
             regularization_methods.size() > 0 &&
                     regularization_methods[idx] == "l2_decay"
