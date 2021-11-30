@@ -14,11 +14,13 @@
 
 #include "paddle/pten/kernels/cpu/math.h"
 
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/kernels/functions/cpu/elementwise.h"
-#include "paddle/pten/kernels/functions/eigen/mean.h"
+#include "paddle/pten/kernels/functions/eigen/reduce.h"
 #include "paddle/pten/kernels/functions/eigen/scale.h"
 #include "paddle/pten/kernels/functions/eigen/sign.h"
 #include "paddle/pten/kernels/functions/general/elementwise_functor.h"
+#include "paddle/pten/kernels/functions/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -33,58 +35,75 @@ void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 template <typename T>
-void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  eigen::Mean<CPUContext, T>(dev_ctx, x, out);
+void Mean(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          const std::vector<int64_t>& dims,
+          bool keep_dim,
+          bool reduce_all,
+          DataType in_dtype,
+          DataType out_dtype,
+          DenseTensor* out) {
+  pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T>
 void Scale(const CPUContext& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  eigen::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
-
-// TODO(chenweihang): now the ScaleTensor's dtype are same as x, so we cannot
-// register its dtype def
-template <typename T>
-void ScaleHost(const CPUContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out) {
-  eigen::Scale<CPUContext, T>(dev_ctx,
-                              x,
-                              static_cast<float>(*scale.data<T>()),
-                              bias,
-                              bias_after_scale,
-                              out);
+  eigen::Scale<CPUContext, T>(
+      dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
 }
 
 template <typename T>
-void ElementwiseAdd(const CPUContext& dev_ctx,
+void ElementwiseDiv(const CPUContext& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
-  if (x.dims() == y.dims()) {
-    SameDimsElementwiseCompute<general::SameDimsAddFunctor<CPUContext, T>>()(
+  // allocate memory for out
+  out->mutable_data<T>();
+  if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
+    SameDimsElementwiseCompute<general::SameDimsDivFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
   } else {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::AddFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::AddFunctor<T>(), out);
+      ElementwiseCompute<general::DivFunctor<T>, T>(
+          dev_ctx, x, y, axis, general::DivFunctor<T>(), out);
     } else {
-      ElementwiseCompute<general::InverseAddFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseAddFunctor<T>(), out);
+      ElementwiseCompute<general::InverseDivFunctor<T>, T>(
+          dev_ctx, x, y, axis, general::InverseDivFunctor<T>(), out);
     }
   }
 }
+
+template <typename T>
+void Sum(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         const std::vector<int64_t>& dims,
+         bool keep_dim,
+         bool reduce_all,
+         DataType in_dtype,
+         DataType out_dtype,
+         DenseTensor* out) {
+  pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+// Create the definition of ElementwiseAdd
+DEFINE_CPU_ELEMENTWISE_OP(Add)
+
+// Create the definition of ElementwiseSub
+DEFINE_CPU_ELEMENTWISE_OP(Sub)
+
+// Create the definition of ElementwiseMul
+DEFINE_CPU_ELEMENTWISE_OP(Mul)
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
@@ -97,7 +116,7 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 
 PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL("mean", CPU, ANY, pten::Mean, float, double) {}
+PT_REGISTER_KERNEL("reduce_mean", CPU, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
                    ANY,
@@ -110,20 +129,7 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.host",
-                   CPU,
-                   ANY,
-                   pten::ScaleHost,
-                   float,
-                   double,
-                   paddle::platform::bfloat16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-}
+
 PT_REGISTER_KERNEL("elementwise_add",
                    CPU,
                    ANY,
@@ -134,3 +140,49 @@ PT_REGISTER_KERNEL("elementwise_add",
                    int64_t,
                    complex64,
                    complex128) {}
+PT_REGISTER_KERNEL("elementwise_sub",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseSub,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_div",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseDiv,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL("elementwise_mul",
+                   CPU,
+                   ANY,
+                   pten::ElementwiseMul,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   complex64,
+                   complex128) {}
+
+PT_REGISTER_KERNEL("reduce_sum",
+                   CPU,
+                   ANY,
+                   pten::Sum,
+                   bool,
+                   float,
+                   double,
+                   paddle::platform::float16,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

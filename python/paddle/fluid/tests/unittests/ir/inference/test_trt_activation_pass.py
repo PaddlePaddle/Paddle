@@ -133,7 +133,7 @@ class TensorRTSubgraphPassDynamicSwishFp16SerializeTest(
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.swish(x)
@@ -169,7 +169,7 @@ class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.mish(x)
@@ -198,7 +198,7 @@ class TensorRTSubgraphPassPreluDynamicTest(TensorRTSubgraphPassActivationTest):
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.prelu(x, mode='all')
@@ -234,7 +234,7 @@ class TensorRTSubgraphPassPreluFp16DynamicTest(
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.prelu(x, mode='all')
@@ -249,7 +249,7 @@ class TensorRTSubgraphPassPreluFp16DynamicSerializeTest(
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.prelu(x, mode='all')
@@ -268,7 +268,7 @@ class TensorRTSubgraphPassGeluDynamicTest(TensorRTSubgraphPassActivationTest):
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.gelu(x)
@@ -304,7 +304,7 @@ class TensorRTSubgraphPassGeluFp16DynamicTest(
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.gelu(x)
@@ -319,7 +319,7 @@ class TensorRTSubgraphPassGeluFp16DynamicSerializeTest(
         self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
             {
                 'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+            }, {'data': [1, 6, 128, 128]}, {'data': [1, 6, 64, 64]}, False)
 
     def append_act(self, x):
         return fluid.layers.gelu(x)

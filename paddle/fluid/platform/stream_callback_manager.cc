@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include "paddle/fluid/platform/enforce.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -73,8 +75,7 @@ void StreamCallbackManager<Stream>::AddCallback(
 #if PADDLE_WITH_ASCEND_CL
   VLOG(3) << "aclrtLaunchCallback at stream: " << stream_;
   // TODO(zhiqiu): failed to call aclrtLaunchCallback
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtLaunchCallback(StreamCallbackFunc, func,
-                                                 ACL_CALLBACK_BLOCK, stream_));
+  NPULaunchCallback(StreamCallbackFunc, func, ACL_CALLBACK_BLOCK, stream_);
 #endif
 }
 
@@ -87,7 +88,7 @@ void StreamCallbackManager<Stream>::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
+  NPUStreamSync(stream_);
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);

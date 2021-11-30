@@ -53,8 +53,10 @@ void FillAnyLike(const CUDAContext& dev_ctx,
 
 template <typename T>
 void FillConstant(const CUDAContext& dev_ctx,
+                  const ScalarArray& shape,
                   const Scalar& val,
                   DenseTensor* out) {
+  out->Resize(paddle::framework::make_ddim(shape.GetData()));
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 
@@ -73,7 +75,7 @@ PT_REGISTER_KERNEL("fill_any_like",
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL("fill_constant.scalar",
+PT_REGISTER_KERNEL("fill_constant",
                    CUDA,
                    ANY,
                    pten::FillConstant,

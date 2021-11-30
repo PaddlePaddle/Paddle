@@ -69,7 +69,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
     auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
+    platform::NPUStreamSync(dev_ctx->stream());
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

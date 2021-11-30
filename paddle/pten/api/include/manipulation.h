@@ -19,7 +19,10 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor flatten(const Tensor& x, int start_axis, int stop_axis);
+PD_DLL_DECL Tensor flatten(const Tensor& x, int start_axis, int stop_axis);
 
+PD_DLL_DECL Tensor cast(const Tensor& x, DataType out_dtype);
+
+PD_DLL_DECL Tensor reshape(const Tensor& x, const std::vector<int64_t>& shape);
 }  // namespace experimental
 }  // namespace paddle

@@ -360,12 +360,12 @@ __device__ __forceinline__ void ReadDataBc(
  * reduce_last_dim: Used to indicate whether the dimension of reduce contains
  * the lowest dimension.
  */
-template <typename T, int NX, int NY, int BlockSize, int Rank,
-          typename IndexCal, bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, int BlockSize, int Rank,
+          typename IndexCal, typename Functor, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataReduce(
-    T* dst, const T* __restrict__ src, int block_offset,
+    Ty* dst, const Tx* __restrict__ src, int block_offset,
     const IndexCal& index_cal, int size_nx, int size_ny, int stride_nx,
-    int stride_ny, bool reduce_last_dim) {
+    int stride_ny, Functor func, bool reduce_last_dim) {
   int thread_offset = 0;
   int left_idx = 0;
   if (reduce_last_dim) {
@@ -385,7 +385,7 @@ __device__ __forceinline__ void ReadDataReduce(
         }
       }
       uint32_t index_src = index_cal(thread_offset + block_offset);
-      dst[ny] = src[index_src];
+      dst[ny] = static_cast<Ty>(func(src[index_src]));
       thread_offset += stride_ny;
     }
   } else {
@@ -400,7 +400,7 @@ __device__ __forceinline__ void ReadDataReduce(
           }
         }
         uint32_t index_src = index_cal(thread_offset + block_offset);
-        dst[nx + ny * NX] = src[index_src];
+        dst[nx + ny * NX] = static_cast<Ty>(func(src[index_src]));
         thread_offset += stride_ny;
       }
     }
