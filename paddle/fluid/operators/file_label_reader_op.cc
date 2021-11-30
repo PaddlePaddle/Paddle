@@ -21,11 +21,13 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
 
 using LoDTensorArray = framework::LoDTensorArray;
+using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
 enum BufferStatus {
   kBufferStatusSuccess = 0,
@@ -194,6 +196,22 @@ class FileDataReaderWrapper {
 
 FileDataReaderWrapper reader_wrapper;
 
+static void CheckAndInitQueue(framework::Variable* var, int capacity) {
+  if (var->IsInitialized()) {
+    PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
+        platform::errors::InvalidArgument(
+          "Variable should hold LoDTensorBlockingQueueHolder type"));
+    auto holder = var->Get<LoDTensorBlockingQueueHolder>();
+    if (holder.GetQueue() == nullptr) {
+      holder.InitOnce(capacity);
+    }
+  } else {
+    LOG(ERROR) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
+    auto* holder = var->GetMutable<LoDTensorBlockingQueueHolder>();
+    holder->InitOnce(capacity);
+  }
+}
+
 template <typename T>
 class CPUFileLabelKernel : public framework::OpKernel<T> {
  public:
@@ -236,11 +254,18 @@ class FileLabelReaderOp : public framework::OperatorBase {
     }
     LoDTensorArray samples = reader_wrapper.reader->Next();
     auto* out = scope.FindVar(Output("Out"));
-    auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    out_array.resize(samples.size());
-    for (size_t i = 0; i < samples.size(); ++i) {
-      copy_tensor(samples[i], &out_array[i]);
+    auto holder = out->Get<LoDTensorBlockingQueueHolder>();
+    auto out_queue = holder.GetQueue();
+    if (out_queue == nullptr) {
+      holder.InitOnce(2);
+      out_queue = holder.GetQueue();
     }
+    // framework::LoDTensorArray out_array;
+    // out_array.resize(samples.size());
+    // for (size_t i = 0; i < samples.size(); ++i) {
+    //   copy_tensor(samples[i], &out_array[i]);
+    // }
+    out_queue->Push(samples);
     LOG(ERROR) << "FileLabelReaderOp RunImpl finish";
   }
 

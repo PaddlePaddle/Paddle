@@ -349,6 +349,7 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
 size_t OpHandleBase::NotReadyInputSize() const {
   std::unordered_set<VarHandleBase *> res;
   for (auto *var : inputs_) {
+    LOG(ERROR) << "NotReadyInputSize: op " << Name() << ", var " << var->Name() << ", GeneratedOp " << var->GeneratedOp();
     if (var->GeneratedOp() != nullptr) {
       res.emplace(var);
     }

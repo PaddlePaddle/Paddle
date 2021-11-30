@@ -262,8 +262,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
       auto &outputs = op_to_run->Outputs();
       op_to_run = nullptr;
       for (auto &output : outputs) {
+        LOG(ERROR) << "op output " << output->Name();
         for (auto &pending_op : output->PendingOps()) {
           std::atomic<int> &deps = op_deps->at(pending_op);
+          LOG(ERROR) << "pending_op: " << pending_op->Name() << ", " << deps.load();
           if (deps.fetch_sub(1) != 1) continue;
 
           // NOTE(zjl): op with highest priority should run
