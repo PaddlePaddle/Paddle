@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
@@ -40,18 +41,10 @@ void Mean(const CPUContext& dev_ctx,
 template <typename T>
 void Scale(const CPUContext& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out);
-
-template <typename T>
-void ScaleHost(const CPUContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out);
 
 template <typename T>
 void ElementwiseAdd(const CPUContext& dev_ctx,
