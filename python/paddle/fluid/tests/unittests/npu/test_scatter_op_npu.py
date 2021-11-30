@@ -27,7 +27,7 @@ paddle.enable_static()
 SEED = 2021
 
 
-class TestCast1(OpTest):
+class TestCast1_FP32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -50,7 +50,7 @@ class TestCast1(OpTest):
         self.check_output_with_place(self.place)
 
 
-class TestCast2(OpTest):
+class TestCast_INT32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -73,7 +73,7 @@ class TestCast2(OpTest):
         self.check_output_with_place(self.place)
 
 
-class TestCast3(OpTest):
+class TestCast2_FP32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -96,7 +96,7 @@ class TestCast3(OpTest):
         self.check_output_with_place(self.place)
 
 
-class TestCast4(OpTest):
+class TestCast3_FP32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
