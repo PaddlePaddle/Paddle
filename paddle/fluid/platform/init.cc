@@ -34,6 +34,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/mlu/mlu_info.h"
+#endif
+
 #ifdef WITH_WIN_DUMP_DBG
 #include <stdio.h>
 #include <time.h>
@@ -165,6 +169,14 @@ void InitDevices() {
         << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  try {
+    // use user specified MLUs in single-node multi-process mode.
+    devices = platform::GetMLUSelectedDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
+  }
+#endif
   InitDevices(devices);
 }
 
@@ -187,6 +199,9 @@ void InitDevices(const std::vector<int> devices) {
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
     places.emplace_back(platform::NPUPlace(devices[i]));
+#endif
+#ifdef PADDLE_WITH_MLU
+    places.emplace_back(platform::MLUPlace(devices[i]));
 #endif
   }
   places.emplace_back(platform::CPUPlace());

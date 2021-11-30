@@ -24,15 +24,31 @@ thread_local std::unordered_map<const MLUDeviceContext*,
 thread_local std::mutex MLUDeviceContext::ctx_mtx_;
 
 MLUContext::MLUContext(const MLUPlace& place, const int priority) {
-  // TODO(mlu): adapt init context
+    place_ = place;
+  MLUDeviceGuard guard(place_.device);
+  InitMLUContext();
+  stream_.reset(new stream::MLUStream(place, priority));
 }
 
 MLUContext::~MLUContext() {
-  // TODO(mlu): adapt del context;
+  MLUDeviceGuard guard(place_.device);
+  DestoryMLUContext();
 }
 
 MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
-  // TODO(mlu): adapt dev context
+  MLUDeviceGuard guard(place_.device);
+  compute_capability_ = GetMLUComputeCapability(place_.device);
+  driver_version_ = GetMLUDriverVersion(place_.device);
+
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
+                          << ", MLU Compute Capability: "
+                          << compute_capability_ / 10 << "."
+                          << compute_capability_ % 10
+                          << ", Driver API Version: " << driver_version_.x
+                          << "." << driver_version_.y
+                          << "." << driver_version_.z;
+
+  default_ctx_.reset(new MLUContext(place_));
 }
 
 MLUDeviceContext::~MLUDeviceContext() {}

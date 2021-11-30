@@ -79,10 +79,6 @@ struct GpuDevice;
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
-// #ifdef PADDLE_WITH_MLU
-// #include "paddle/fluid/platform/mlu/device_context.h"
-// #endif
-
 namespace paddle {
 namespace platform {
 
@@ -147,6 +143,8 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 };
 
 #ifdef PADDLE_WITH_MLU
+class MLUDeviceContext;
+
 template <>
 struct DefaultDeviceContextType<platform::MLUPlace>;
 #endif

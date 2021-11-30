@@ -12,15 +12,16 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MLU
 #include <mutex>
-#include "paddle/fluid/platform/mlu/mlu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/mlu/enforce.h"
+#include "paddle/fluid/platform/mlu/mlu_stream.h"
 
 namespace Eigen {
 struct DefaultDevice;
 struct GpuDevice;
 }  // namespace Eigen
 
-class DeviceContext;
+// class DeviceContext;
 
 namespace paddle {
 namespace platform {
@@ -30,7 +31,7 @@ class MLUContext {
   MLUContext() = default;
   explicit MLUContext(
       const MLUPlace& place,
-      const int priority);
+      const int priority = 0);
 
   ~MLUContext();
 
@@ -54,11 +55,18 @@ class MLUContext {
 
  private:
   void InitMLUContext() {
-    // TODO(mlu): adapt init context
+    if (GetMLUDeviceHandle(place_.device, &mlu_handle_)) {
+      PADDLE_RETRY_MLU_SUCCESS(cnSharedContextAcquire(&context_, mlu_handle_));
+    } else {
+      context_ = nullptr;
+    }
   }
 
   void DestoryMLUContext() {
-    // TODO(mlu): adapt del context
+    if (context_) {
+      PADDLE_ENFORCE_MLU_SUCCESS(cnSharedContextRelease(mlu_handle_));
+    }
+    context_ = nullptr;
   }
 
   MLUPlace place_;
