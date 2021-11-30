@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
-class TestConvReluMkldnnFusePass(PassAutoScanTest):
+class TestConvActMkldnnFusePass(PassAutoScanTest):
     """
     x_var   f_var(persistable)
       \       /
@@ -33,9 +33,9 @@ class TestConvReluMkldnnFusePass(PassAutoScanTest):
           |
       conv2d_var    
           |
-         relu
+         act
           |
-       relu_var
+        act_var
     """
 
     def sample_predictor_configs(self, program_config):
@@ -130,6 +130,10 @@ class TestConvReluMkldnnFusePass(PassAutoScanTest):
                     min_size=4,
                     max_size=4))
 
+        # 10. Generate legal act type of conv2d
+        act_type = draw(
+            st.sampled_from(["relu", "leaky_relu", "relu6", "swish"]))
+
         conv2d_op = OpConfig(
             "conv2d",
             inputs={
@@ -145,11 +149,41 @@ class TestConvReluMkldnnFusePass(PassAutoScanTest):
             dilations=dilations,
             data_format=data_format)
 
-        relu_op = OpConfig(
-            "relu", inputs={"X": ["conv2d_out"]},
-            outputs={"Out": ["relu_out"]})
+        # 11. Generate legal attr of act
+        act_op = None
+        self.passes = None
+        if act_type == "relu6":
+            self.passes = ["conv_relu6_mkldnn_fuse_pass"]
+            threshold = draw(st.floats(min_value=1.0, max_value=10.0))
+            act_op = OpConfig(
+                "relu6",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["relu_out"]},
+                threshold=threshold)
+        if act_type == "leaky_relu":
+            self.passes = ["conv_leaky_relu_mkldnn_fuse_pass"]
+            alpha = draw(st.floats(min_value=0.1, max_value=1.0))
+            act_op = OpConfig(
+                "leaky_relu",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["relu_out"]},
+                alpha=alpha)
+        if act_type == "relu":
+            self.passes = ["conv_relu_mkldnn_fuse_pass"]
+            act_op = OpConfig(
+                "relu",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["relu_out"]})
+        if act_type == "swish":
+            self.passes = ["conv_swish_mkldnn_fuse_pass"]
+            beta = draw(st.floats(min_value=0.1, max_value=1.0))
+            act_op = OpConfig(
+                "swish",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["swish_out"]},
+                beta=beta)
 
-        ops = [conv2d_op, relu_op]
+        ops = [conv2d_op, act_op]
 
         program_config = ProgramConfig(
             ops=ops,
@@ -162,10 +196,7 @@ class TestConvReluMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            max_examples=350,
-            passes=["conv_relu_mkldnn_fuse_pass"])
+        self.run_and_statis(quant=False, max_examples=1000, passes=self.passes)
 
 
 if __name__ == "__main__":
