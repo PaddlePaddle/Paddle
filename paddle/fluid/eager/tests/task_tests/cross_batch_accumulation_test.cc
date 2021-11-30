@@ -31,17 +31,15 @@
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
-using namespace egr;  // NOLINT
-
-namespace eager_test {
+namespace egr {
 
 TEST(CrossBatchAccumulation, SingleScaleNode) {
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
-  egr::EagerTensor tensor = CreateTensorWithValue(
+  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
@@ -60,7 +58,7 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    RetainGradForTensor(target_tensor);  // result: 1.0
+    egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
 
     auto meta = AutogradMeta();
     meta.SetSingleOutRankWithSlot(0, 0);
@@ -71,18 +69,18 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
     auto_grad_meta1->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
-    RetainGradForTensor(leaf_tensor);
+    egr_utils_api::RetainGradForTensor(leaf_tensor);
   }
 
   RunBackward(target_tensors, {});
 
-  CompareGradTensorWithValue<float>(target_tensor, 1.0);
-  CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
+  eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
 
   RunBackward(target_tensors, {});
 
-  CompareGradTensorWithValue<float>(target_tensor, 1.0);
-  CompareGradTensorWithValue<float>(leaf_tensor, 10.0);
+  eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 10.0);
 }
 
-}  // namespace eager_test
+}  // namespace egr

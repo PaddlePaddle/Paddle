@@ -30,9 +30,7 @@
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
-using namespace egr;  // NOLINT
-
-namespace eager_test {
+namespace egr {
 
 egr::EagerTensor hook_function(const egr::EagerTensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
@@ -61,14 +59,14 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
 }
 
 TEST(RetainGrad, HookBeforeRetainGrad) {
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor tensor = CreateTensorWithValue(
+  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
@@ -99,8 +97,9 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
 
-    RegisterGradientHookForTensor(target_tensor, hook);
-    RetainGradForTensor(target_tensor);  // result: 1.0 + 3.0 = 4.0
+    egr_utils_api::RegisterGradientHookForTensor(target_tensor, hook);
+    egr_utils_api::RetainGradForTensor(
+        target_tensor);  // result: 1.0 + 3.0 = 4.0
   }
 
   // Connect ScaleNode -> AccumulationNode via Edge
@@ -126,25 +125,26 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
 
-    RegisterGradientHookForTensor(leaf_tensor, hook);
-    RetainGradForTensor(leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
+    egr_utils_api::RegisterGradientHookForTensor(leaf_tensor, hook);
+    egr_utils_api::RetainGradForTensor(
+        leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
   }
 
   RunBackward(target_tensors, {});
 
-  CompareGradTensorWithValue<float>(target_tensor, 4.0);
-  CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
+  eager_test::CompareGradTensorWithValue<float>(target_tensor, 4.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }
 
 TEST(RetainGrad, HookAfterRetainGrad) {
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor tensor = CreateTensorWithValue(
+  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
@@ -173,8 +173,8 @@ TEST(RetainGrad, HookAfterRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
 
-    RetainGradForTensor(target_tensor);  // result: 1.0
-    RegisterGradientHookForTensor(target_tensor, hook);
+    egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
+    egr_utils_api::RegisterGradientHookForTensor(target_tensor, hook);
   }
 
   // Connect ScaleNode -> AccumulationNode via Edge
@@ -200,15 +200,15 @@ TEST(RetainGrad, HookAfterRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
 
-    RetainGradForTensor(leaf_tensor);  // RetainGrad for leaf tensor gets
-                                       // postponed, result: 4.0*5.0 + 3.0 =
-                                       // 23.0
-    RegisterGradientHookForTensor(leaf_tensor, hook);
+    egr_utils_api::RetainGradForTensor(
+        leaf_tensor);  // RetainGrad for leaf tensor gets
+                       // postponed, result: 4.0*5.0 + 3.0 =
+                       // 23.0
+    egr_utils_api::RegisterGradientHookForTensor(leaf_tensor, hook);
   }
 
   RunBackward(target_tensors, {});
-  CompareGradTensorWithValue<float>(target_tensor, 1.0);
-  CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
+  eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }
-
-}  // namespace eager_test
+}  // namespace egr
