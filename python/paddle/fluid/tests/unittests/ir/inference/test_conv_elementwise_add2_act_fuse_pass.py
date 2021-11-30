@@ -110,12 +110,8 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                     max_size=2))
 
             # 4. Generate legal attr:padding_algorithm of conv2d
-            padding_algorithm_dict = {1: "EXPLICIT", 2: "SAME", 3: "VALID"}
-            padding_algorithm_index = draw(
-                st.integers(
-                    min_value=1, max_value=3))
-            # padding_algorithm_index = 2
-            padding_algorithm = padding_algorithm_dict[padding_algorithm_index]
+            padding_algorithm = draw(
+                st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
             # 5. Generate legal attr:padding of conv2d
             padding = draw(
@@ -137,9 +133,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                     max_size=2))
 
             # 8. Generate legal attr:data_format of conv2d
-            data_format_dict = {1: "NCHW", 2: "NHWC"}
-            data_format_index = draw(st.integers(min_value=1, max_value=2))
-            data_format = data_format_dict[data_format_index]
+            data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
 
             # 9. Generate legal elemntwise_add: X of conv2d
             bias_2_dict = dict()
