@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -25,89 +25,129 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestSimplifyWithBasicOpsPass(PassAutoScanTest):
+class TestSimplifyWithBasicOpsPassUpscale(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_config(self, draw):
-        scale = draw(st.floats(min_value=0.01, max_value=1.0))
-        bias = draw(st.floats(min_value=0.01, max_value=2.0))
-        bias_after_scale = draw(st.booleans())
+        #scale = draw(st.floats(min_value=0.01, max_value=1.0))
+        #bias = draw(st.floats(min_value=0.01, max_value=2.0))
+        #bias_after_scale = draw(st.booleans())
         fix_seed = draw(st.booleans())
         dropout_implementation = "upscale_in_train"
         dropout_prob = draw(st.floats(min_value=0.0, max_value=1.0))
-        seed = draw(st.integers(min_value=1, max_value=512))
+        seed = draw(st.integers(min_value=0, max_value=512))
         x_shape = draw(
             st.lists(
                 st.integers(
                     min_value=1, max_value=4), min_size=2, max_size=4))
         is_test = True
 
-        attrs = [{
-            "fix_seed": fix_seed,
-            "dropout_implementation": dropout_implementation,
-            "dropout_prob": dropout_prob,
-            "seed": seed,
-            "is_test": is_test,
-        }, {
-            "scale": scale,
-            "bias": bias,
-            "bias_after_scale": bias_after_scale
-        }]
-
-        ops_config = [
-            {
-                #"op_type": "dropout",
-                #"op_inputs": {
-                #    "X": ["input_data"]
-                #},
-                #"op_outputs": {
-                #    "Out": ["dropout_output"]
-                #},
-                #"op_attrs": {
-                #    "fix_seed": attrs[0]['fix_seed'],
-                #    "dropout_implementation": attrs[0]['dropout_implementation'],
-                #    "dropout_prob": attrs[0]['dropout_prob'],
-                #    "seed": attrs[0]['seed'],
-                #    "is_test": attrs[0]['is_test']
-                #},
-            },
-            {
-                "op_type": "scale",
-                "op_inputs": {
-                    "X": ["input_data"],
-                },
-                "op_outputs": {
-                    "Out": ["scale_output"]
-                },
-                "op_attrs": {
-                    "scale": attrs[1]['scale'],
-                    "bias": attrs[1]['bias'],
-                    "bias_after_scale": attrs[1]['bias_after_scale']
-                }
-            }
-        ]
-
-        ops = self.generate_op_config(ops_config)
+        dropout_op = OpConfig(
+            "dropout",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["dropout_output"]},
+            fix_seed=fix_seed,
+            dropout_implementation=dropout_implementation,
+            dropout_prob=dropout_prob,
+            seed=seed,
+            is_test=is_test)
+        relu_op = OpConfig(
+            "relu",
+            inputs={"X": ["dropout_output"]},
+            outputs={"Out": ["relu_out"]})
+        ops = [dropout_op, relu_op]
 
         program_config = ProgramConfig(
             ops=ops,
             weights={},
             inputs={"input_data": TensorConfig(shape=x_shape), },
-            outputs=["scale_output"])
+            outputs=["relu_out"])
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
-        yield config, ['scale'], (1e-5, 1e-5)
+        yield config, ['relu'], (1e-5, 1e-5)
+        config = self.create_inference_config(use_gpu=False)
+        yield config, ['relu'], (1e-5, 1e-5)
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=4,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
+        yield config, ['relu'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=10,
+            max_examples=30,
             passes=["simplify_with_basic_ops_pass"],
-            min_success_num=10)
+            min_success_num=30)
+
+
+class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+    def sample_program_config(self, draw):
+        fix_seed = draw(st.booleans())
+        dropout_implementation = "downgrade_in_infer"
+        dropout_prob = draw(st.floats(min_value=0.0, max_value=1.0))
+        seed = draw(st.integers(min_value=0, max_value=512))
+        x_shape = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=4), min_size=2, max_size=4))
+        is_test = True
+
+        dropout_op = OpConfig(
+            "dropout",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["dropout_output"]},
+            fix_seed=fix_seed,
+            dropout_implementation=dropout_implementation,
+            dropout_prob=dropout_prob,
+            seed=seed,
+            is_test=is_test)
+        relu_op = OpConfig(
+            "relu",
+            inputs={"X": ["dropout_output"]},
+            outputs={"Out": ["relu_out"]})
+        ops = [dropout_op, relu_op]
+
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={"input_data": TensorConfig(shape=x_shape), },
+            outputs=["relu_out"])
+
+        return program_config
+
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_gpu=True)
+        yield config, ['scale', 'relu'], (1e-5, 1e-5)
+        config = self.create_inference_config(use_gpu=False)
+        yield config, ['scale', 'relu'], (1e-5, 1e-5)
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=4,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
+        yield config, ['scale', 'relu'], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(
+            quant=False,
+            max_examples=30,
+            passes=["simplify_with_basic_ops_pass"],
+            min_success_num=30)
 
 
 if __name__ == "__main__":
