@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -83,19 +84,20 @@ class TestDoubleGrad(unittest.TestCase):
 
 class TestGradientWithPrune(unittest.TestCase):
     def test_prune(self):
-        x = fluid.data(name='x', shape=[3], dtype='float32')
-        x.stop_gradient = False
-        x1, x2, x3 = fluid.layers.split(x, dim=0, num_or_sections=3)
-        y = x1 * 2
-        x1_grad = fluid.gradients(y, x)
+        with paddle.fluid.scope_guard(paddle.static.Scope()):
+            x = fluid.data(name='x', shape=[3], dtype='float32')
+            x.stop_gradient = False
+            x1, x2, x3 = fluid.layers.split(x, dim=0, num_or_sections=3)
+            y = x1 * 2
+            x1_grad = fluid.gradients(y, x)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        main = fluid.default_main_program()
-        exe.run(fluid.default_startup_program())
-        out = exe.run(main,
-                      feed={'x': np.ones([3]).astype('float32')},
-                      fetch_list=[x1_grad])
-        self.assertTrue(np.array_equal(out[0], [2., 0., 0.]))
+            exe = fluid.Executor(fluid.CPUPlace())
+            main = fluid.default_main_program()
+            exe.run(fluid.default_startup_program())
+            out = exe.run(main,
+                          feed={'x': np.ones([3]).astype('float32')},
+                          fetch_list=[x1_grad])
+            self.assertTrue(np.array_equal(out[0], [2., 0., 0.]))
 
 
 if __name__ == "__main__":

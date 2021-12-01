@@ -33,6 +33,10 @@ class StartInterceptor : public Interceptor {
   }
 
   void NOP(const InterceptorMessage& msg) {
+    if (msg.message_type() == STOP) {
+      stop_ = true;
+      return;
+    }
     std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
               << std::endl;
     ++count_;

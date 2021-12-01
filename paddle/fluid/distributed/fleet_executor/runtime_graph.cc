@@ -112,6 +112,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
+
   std::unordered_map<int32_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
     int32_t op_role = op->Attr<int32_t>("op_role");
