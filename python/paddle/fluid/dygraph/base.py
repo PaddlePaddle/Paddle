@@ -56,6 +56,16 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 
 @signature_safe_contextmanager
+def _switch_declarative_mode_guard_(is_declarative=True):
+
+    global _in_declarative_mode_
+    original_val = _in_declarative_mode_
+    _in_declarative_mode_ = is_declarative
+    yield
+    _in_declarative_mode_ = original_val
+
+
+@signature_safe_contextmanager
 def program_desc_tracing_guard(enable):
     tracer = framework._dygraph_tracer()
     if tracer:
