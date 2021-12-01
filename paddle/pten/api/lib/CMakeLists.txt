@@ -19,3 +19,5 @@ cc_library(linalg_api SRCS linalg.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(creation_api SRCS creation.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(manipulation_api SRCS manipulation.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
+
+cc_library(sparse_coo_tensor_util_api SRCS sparse_coo_tensor_util.cc DEPS pten_tensor pten kernel_dispatch)

@@ -18,3 +18,5 @@ endif()
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
+
+add_subdirectory(sparse)

@@ -19,9 +19,10 @@ add_subdirectory(infermeta)
 add_subdirectory(tests)
 
 # make an unity target for compile deps
-set(PTEN_DEPS convert_utils dense_tensor kernel_factory kernel_context)
+set(PTEN_DEPS convert_utils dense_tensor sparse_coo_tensor kernel_factory kernel_context)
 set(PTEN_DEPS ${PTEN_DEPS} math_cpu linalg_cpu creation_cpu manipulation_cpu)
 set(PTEN_DEPS ${PTEN_DEPS} nary unary binary)
+set(PTEN_DEPS ${PTEN_DEPS} sparse_coo_tensor_util_cpu)
 if(WITH_GPU OR WITH_ROCM)
   set(PTEN_DEPS ${PTEN_DEPS} math_cuda linalg_cuda creation_cuda manipulation_cuda)
 endif()

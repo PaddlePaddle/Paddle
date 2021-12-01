@@ -14,10 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/core/sparse_coo_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/api/include/tensor.h"
+
+namespace paddle {
+namespace experimental {
+
+// TODO(chenweihang): add scale API
+// TODO(chenweihang): move mean API into stat.h/cc
+
+PD_DLL_DECL Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim);
+
+}  // namespace experimental
+}  // namespace paddle

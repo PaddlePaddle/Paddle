@@ -25,6 +25,8 @@ enum class DataLayout {
   NCHW,
   MKLDNN,
   NUM_DATA_LAYOUTS,
+  SPARSE_COO,
+  SPARSE_CSR,
 };
 
 inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
