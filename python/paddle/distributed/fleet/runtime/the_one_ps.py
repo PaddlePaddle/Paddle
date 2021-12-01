@@ -92,6 +92,7 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
         ctr_accessor_param.ssd_unseenday_threshold = 1
 
     for sgd_param in [accessor.embed_sgd_param, accessor.embedx_sgd_param]:
+        print("sgd_param.name:", sgd_param.name)
         if not sgd_param.HasField("name"):
             sgd_param.name = "SparseAdaGradSGDRule"
         if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
@@ -108,20 +109,20 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
                 sgd_param.naive.learning_rate = 0.05
             if not sgd_param.naive.HasField("initial_range"):
                 sgd_param.naive.initial_range = 0.0001
-            if len(sgd_param.adagrad.weight_bounds) == 0:
+            if len(sgd_param.naive.weight_bounds) == 0:
                 sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
         if sgd_param.name == "SparseAdamSGDRule":
             if not sgd_param.adam.HasField("learning_rate"):
                 sgd_param.adam.learning_rate = 0.001
-            if not sgd_param.adam.HasField("initial_g2sum"):
-                sgd_param.adam.initial_g2sum = 0.0001
+            if not sgd_param.adam.HasField("initial_range"):
+                sgd_param.adam.initial_range = 0.0001
             if not sgd_param.adam.HasField("beta1_decay_rate"):
                 sgd_param.adam.beta1_decay_rate = 0.9
             if not sgd_param.adam.HasField("beta2_decay_rate"):
                 sgd_param.adam.beta2_decay_rate = 0.999
             if not sgd_param.adam.HasField("ada_epsilon"):
                 sgd_param.adam.ada_epsilon = 1e-08
-            if len(sgd_param.adagrad.weight_bounds) == 0:
+            if len(sgd_param.adam.weight_bounds) == 0:
                 sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
 
@@ -991,6 +992,7 @@ class TheOnePSRuntime(RuntimeBase):
                         get_default_accessor_proto(table_proto.accessor,
                                                    common.table_name,
                                                    self.origin_main_program)
+                        print("get default_accessor_proto done.")
                         check_embedding_dim(table_proto.accessor,
                                             common.table_name,
                                             self.origin_main_program)
