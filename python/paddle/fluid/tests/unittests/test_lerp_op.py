@@ -28,20 +28,49 @@ class TestLerp(OpTest):
     def setUp(self):
         self.op_type = "lerp"
         self.init_dtype()
-        x = np.arange(1., 101.).astype(self.dtype)
-        y = np.full(100, 10.).astype(self.dtype)
+        self.init_shape()
+        x = np.arange(1., 101.).astype(self.dtype).reshape(self.shape)
+        y = np.full(100, 10.).astype(self.dtype).reshape(self.shape)
         w = np.asarray([0.5]).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
-        self.outputs = {'Out': x + 0.5 * (y - x)}
+        self.outputs = {'Out': x + w * (y - x)}
 
     def init_dtype(self):
         self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = [100]
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
+
+
+class TestLerpWithDim2(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 50]
+
+
+class TestLerpWithDim3(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 2, 25]
+
+
+class TestLerpWithDim4(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 2, 5, 5]
+
+
+class TestLerpWithDim5(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 1, 2, 5, 5]
+
+
+class TestLerpWithDim6(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 1, 2, 5, 1, 5]
 
 
 class TestLerpAPI(unittest.TestCase):
@@ -92,12 +121,23 @@ class TestLerpAPI(unittest.TestCase):
         for place in self.place:
             run(place)
 
-    def test_broadcast(self):
+    def test_x_broadcast_y(self):
         paddle.disable_static()
         x = np.arange(1., 21.).astype(self.dtype).reshape([2, 2, 5])
         y = np.full(30, 10.).astype(self.dtype).reshape([3, 2, 1, 5])
         out = paddle.lerp(paddle.to_tensor(x), paddle.to_tensor(y), 0.5)
         res_ref = x + 0.5 * (y - x)
+        self.assertEqual(np.allclose(res_ref, out.numpy()), True)
+        paddle.enable_static()
+
+    def test_x_y_broadcast_w(self):
+        paddle.disable_static()
+        x = np.arange(1., 11.).astype(self.dtype).reshape([2, 5])
+        y = np.full(20, 10.).astype(self.dtype).reshape([2, 2, 5])
+        w = np.full(40, 0.5).astype(self.dtype).reshape([2, 2, 2, 5])
+        out = paddle.lerp(
+            paddle.to_tensor(x), paddle.to_tensor(y), paddle.to_tensor(w))
+        res_ref = x + w * (y - x)
         self.assertEqual(np.allclose(res_ref, out.numpy()), True)
         paddle.enable_static()
 

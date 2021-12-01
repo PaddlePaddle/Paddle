@@ -41,31 +41,27 @@ class LerpOp : public framework::OperatorWithKernel {
   }
 
  private:
-  framework::DDim GetOutputDims(const framework::DDim& x_dims,
-                                const framework::DDim& y_dims) const {
-    auto functor = [](const framework::DDim& small,
-                      const framework::DDim& large) {
-      std::vector<int64_t> shapes = framework::vectorize<int64_t>(large);
-      for (int i = small.size() - 1, j = large.size() - 1; i >= 0; --i, --j) {
-        int64_t s = small[i];
-        int64_t l = large[j];
-        if (s != l) {
-          if (l == 1) {
-            shapes[j] = s;
-          } else if (s != 1) {
-            PADDLE_THROW(platform::errors::InvalidArgument(
-                "The shape of tensor a %s:%d must match shape of tensor b "
-                "%s:%d.",
-                small.to_str(), i, large.to_str(), j));
-          }
+  framework::DDim GetOutputDims(const framework::DDim& s_dims,
+                                const framework::DDim& l_dims) const {
+    if (s_dims.size() > l_dims.size()) {
+      return GetOutputDims(l_dims, s_dims);
+    }
+    std::vector<int64_t> shapes = framework::vectorize<int64_t>(l_dims);
+    for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
+      int64_t s = s_dims[i];
+      int64_t l = l_dims[j];
+      if (s != l) {
+        if (l == 1) {
+          shapes[j] = s;
+        } else if (s != 1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The shape of tensor a %s:%d must match shape of tensor b "
+              "%s:%d.",
+              s_dims.to_str(), i, l_dims.to_str(), j));
         }
       }
-      return framework::make_ddim(shapes);
-    };
-    if (x_dims.size() > y_dims.size()) {
-      functor(y_dims, x_dims);
     }
-    return functor(x_dims, y_dims);
+    return framework::make_ddim(shapes);
   }
 };
 
