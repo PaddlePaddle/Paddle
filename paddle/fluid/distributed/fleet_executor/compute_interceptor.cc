@@ -232,11 +232,6 @@ void ComputeInterceptor::TryStop() {
     Send(down_id, stop);
   }
   stop_ = true;
-
-  if (out_buffs_.size() == 0) {
-    // TODO(fleet executor dev) need a better place to notify
-    StopCarrier();
-  }
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
