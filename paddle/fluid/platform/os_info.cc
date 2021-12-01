@@ -13,12 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/os_info.h"
+#include <sstream>
 
 namespace paddle {
 namespace platform {
 
 ThreadId::ThreadId() {
   std_tid_ = std::hash<std::thread::id>()(std::this_thread::get_id());
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  cupti_tid_ = static_cast<uint32_t>(std::stoull(ss.str()));
 }
 
 ThreadIdRegistry::~ThreadIdRegistry() {

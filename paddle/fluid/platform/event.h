@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <string>
+#include <utility>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
@@ -87,6 +89,9 @@ class Event {
 #endif
 #endif
 };
+
+using EventWithStartNs = std::pair<Event*, uint64_t>;
+using ThreadEvents = std::map<uint64_t, EventWithStartNs>;
 
 class MemEvent {
  public:
