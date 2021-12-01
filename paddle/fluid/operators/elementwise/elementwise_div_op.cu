@@ -26,9 +26,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static __global__ void GARDYCUDAKernel(const T* y, int64_t size, T* t_y) {
-  // printf("\n####\n");
-}
+static __global__ void GARDYCUDAKernel(const T* y, int64_t size, T* t_y) {}
 
 template <>
 __global__ void GARDYCUDAKernel<paddle::platform::complex<float>>(
@@ -199,7 +197,10 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
         int size = y->numel();
         framework::Tensor t_y;
         t_y.Resize(y->dims());
+<<<<<<< 41291834704179377ab90d036093cf824e728ba7
         // paddle::platform::complex<double> y_conj(y[col].real, -y[col].imag);
+=======
+>>>>>>> add broadcast_div_bw
         dim3 grid_size = dim3(
             (size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
         GARDYCUDAKernel<T><<<
