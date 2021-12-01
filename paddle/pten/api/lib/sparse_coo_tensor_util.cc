@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infershape.h"
 
 PT_DECLARE_MODULE(SparseCooTensorUtilCPU);
 
