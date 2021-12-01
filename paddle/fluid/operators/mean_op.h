@@ -15,12 +15,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
-
-// only can include the headers in paddle/top/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
 
 namespace paddle {
 namespace operators {
@@ -33,40 +27,21 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-/** [ Why still keep the original kernel implementation? ]
- *
- * Removal of the original kernel implementation and kernel registration needs
- * to ensure that the new kernel mechanism adapts to multiple sets of execution
- * mechanisms, including:
- *
- * 1. Executor and ParallelExecutor
- * 2. Dygraph OpBase (Tracer and Engine)
- * 3. New Executor
- * 4. Predictor
- * 5. NPU and XPU lack kernel and need to reuse CPU Kernel
- *
- * Removal of the original Kernel requires a more complete solution to ensure
- * that it will not affect the current execution system.
- * Currently, only the first two cases are adapted.
- *
- * The principle here is that the implementation in the kernel must reuse the
- * corresponding functions in the Tensor Operation library and cannot maintain
- * two copies of the code.
- */
 template <typename DeviceContext, typename T>
 class MeanKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
-    auto& dev_ctx = context.device_context<DeviceContext>();
-    out->mutable_data<T>(x->place());
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
+    output->mutable_data<T>(context.GetPlace());
 
-    // call new kernel
-    pten::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    auto X = EigenVector<T>::Flatten(*input);
+    auto y = EigenScalar<T>::From(*output);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+
+    y.device(place) = X.mean();
   }
 };
 

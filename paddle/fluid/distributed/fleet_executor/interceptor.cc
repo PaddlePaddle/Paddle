@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
@@ -28,7 +29,13 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
   });
 }
 
-Interceptor::~Interceptor() { interceptor_thread_.join(); }
+Interceptor::~Interceptor() { Join(); }
+
+void Interceptor::Join() {
+  if (interceptor_thread_.joinable()) {
+    interceptor_thread_.join();
+  }
+}
 
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
@@ -39,13 +46,31 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
     VLOG(3) << "Interceptor is using default message handler. This handler is "
                "only used for test purpose. Check whether you init interceptor "
                "in the proper way.";
+
     if (msg.message_type() == DATA_IS_READY) {
+      if (node_->role() != 2) {
+        VLOG(3) << "Fake handler is sending DATA_IS_READY message to: "
+                << interceptor_id_ + 1 << ".";
+        InterceptorMessage data_is_ready_msg;
+        data_is_ready_msg.set_message_type(DATA_IS_READY);
+        Send(interceptor_id_ + 1, data_is_ready_msg);
+      }
       VLOG(3) << "Fake handler is sending stop message to it self.";
-      InterceptorMessage msg;
-      msg.set_message_type(STOP);
-      Send(interceptor_id_, msg);
+      InterceptorMessage stop_msg;
+      stop_msg.set_message_type(STOP);
+      Send(interceptor_id_, stop_msg);
+    } else if (msg.message_type() == STOP) {
+      stop_ = true;
+      StopCarrier();
     }
   }
+}
+
+void Interceptor::StopCarrier() {
+  Carrier& carrier_instance = Carrier::Instance();
+  std::condition_variable& cond_var = carrier_instance.GetCondVar();
+  // probably double notify, but ok for ut
+  cond_var.notify_all();
 }
 
 std::condition_variable& Interceptor::GetCondVar() {
@@ -91,13 +116,14 @@ void Interceptor::PoolTheMailbox() {
     VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
             << " from interceptor " << interceptor_message.src_id()
             << " with message: " << message_type << ".";
-    if (message_type == STOP) {
+
+    Handle(interceptor_message);
+
+    if (stop_) {
       // break the pooling thread
       VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
       break;
     }
-
-    Handle(interceptor_message);
   }
 }
 

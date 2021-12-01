@@ -271,7 +271,24 @@ XPUOpMap& get_kl2_ops() {
       {"masked_select",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
-                     pOpKernelType(vartype::FP32, XPUPlace())})}
+                     pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"expand_v2", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                                  pOpKernelType(vartype::INT64, XPUPlace()),
+                                  pOpKernelType(vartype::BOOL, XPUPlace()),
+                                  pOpKernelType(vartype::FP16, XPUPlace()),
+                                  pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"expand_as_v2",
+       XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                     pOpKernelType(vartype::INT64, XPUPlace()),
+                     pOpKernelType(vartype::BOOL, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace()),
+                     pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"depthwise_conv2d",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"depthwise_conv2d_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"conv2d", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"conv2d_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       // AddMore
   };
 

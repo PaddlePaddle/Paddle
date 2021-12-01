@@ -34,6 +34,8 @@ from .uniform import Uniform  # noqa: F401
 
 from .orthogonal import Orthogonal  # noqa: F401
 
+from .dirac import Dirac  # noqa: F401
+
 __all__ = [     #noqa
            'Bilinear',
            'Constant',
@@ -46,6 +48,7 @@ __all__ = [     #noqa
            'TruncatedNormal',
            'Uniform',
            'Orthogonal',
+           'Dirac',
            'set_global_initializer',
            'calculate_gain'
 ]

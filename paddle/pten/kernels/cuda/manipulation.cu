@@ -16,8 +16,8 @@
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/functions/cuda/cast_kernel_impl.h"
 #include "paddle/pten/kernels/functions/general/manipulation.h"
-#include "paddle/pten/kernels/functions/math/cast_func.h"
 
 namespace pten {
 
@@ -50,7 +50,7 @@ void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int64_t>& shape,
                           DenseTensor* out) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
   if (&x == out) {
     out->Resize(out_meta.dims);
     return;
@@ -123,8 +123,7 @@ void Cast(const CUDAContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                       math::CastKernelImpl<CUDAContext, T, data_t>(
-                           dev_ctx, x, out);
+                       detail::CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
                      }));
 }
 
@@ -158,23 +157,32 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
-// todo: Hip need support bfloat16
-PT_REGISTER_KERNEL("cast",
-                   CUDA,
-                   ANY,
-                   pten::Cast,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
+
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
+  PT_REGISTER_KERNEL("cast",                            \
+                     CUDA,                              \
+                     ANY,                               \
+                     pten::Cast,                        \
+                     float,                             \
+                     double,                            \
+                     int,                               \
+                     int64_t,                           \
+                     int16_t,                           \
+                     bool,                              \
+                     uint8_t,                           \
+                     paddle::platform::float16,         \
+                     paddle::platform::complex<float>,  \
+                     paddle::platform::complex<double>, \
+                     ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                    \
+        paddle::experimental::DataType::UNDEFINED);     \
+  }
+
+#if !defined(PADDLE_WITH_HIP)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
+#else
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
+#endif
 
 PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
                                 CUDA,

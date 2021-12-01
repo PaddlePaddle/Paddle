@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 
 PT_DECLARE_MODULE(CreationCPU);
 
@@ -52,8 +52,8 @@ PD_DLL_DECL Tensor full(const ScalarArray& shape,
   kernel_context.EmplaceBackAttr(pten::ScalarArray(shape));
   kernel_context.EmplaceBackAttr(pten::Scalar(value));
 
-  // 4. InferShape
-  auto out_meta = pten::FullInferShape(shape, dtype, layout);
+  // 4. InferMeta
+  auto out_meta = pten::FullInferMeta(shape, dtype, layout);
 
   // 5. Prepare outputs
   const auto allocator =
@@ -97,8 +97,8 @@ PD_DLL_DECL Tensor full_like(const Tensor& x,
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   kernel_context.EmplaceBackAttr(pten::Scalar(value));
 
-  // 4. InferShape
-  auto out_meta = FullLikeInferShape(dense_x->meta(), dtype, layout);
+  // 4. InferMeta
+  auto out_meta = FullLikeInferMeta(dense_x->meta(), dtype, layout);
 
   // 5. Prepare outputs
   Tensor out;
