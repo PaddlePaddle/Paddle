@@ -66,6 +66,7 @@ import time
 import six
 import copy
 import shlex
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -276,7 +277,7 @@ def cpuonly_check(args):
     return True
 
 
-def launch_collective(args):
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
     if args.enable_auto_mapping:
@@ -332,14 +333,23 @@ def launch_collective(args):
             cluster, pod = get_cluster_from_args(args, device_mode,
                                                  devices_per_proc)
             logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
 
+
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -368,8 +378,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):
