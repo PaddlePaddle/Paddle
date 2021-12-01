@@ -52,7 +52,7 @@ int eager_tensor_properties_set_name(EagerTensorObject* self, PyObject* value,
 PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
                                                     void* closure) {
   EAGER_TRY
-  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->eagertensor);
   return ToPyObject(meta->StopGradient());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -68,7 +68,7 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
 int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
                                               PyObject* value, void* closure) {
   EAGER_TRY
-  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->eagertensor);
   meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
@@ -77,7 +77,7 @@ int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
 PyObject* eager_tensor_properties_get_persistable(EagerTensorObject* self,
                                                   void* closure) {
   EAGER_TRY
-  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->eagertensor);
   return ToPyObject(meta->Persistable());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -85,7 +85,7 @@ PyObject* eager_tensor_properties_get_persistable(EagerTensorObject* self,
 int eager_tensor_properties_set_persistable(EagerTensorObject* self,
                                             PyObject* value, void* closure) {
   EAGER_TRY
-  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->eagertensor);
   meta->SetPersistable(CastPyArg2AttrBoolean(value, 0));
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
