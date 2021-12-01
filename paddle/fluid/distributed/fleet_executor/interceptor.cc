@@ -47,13 +47,25 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
                "only used for test purpose. Check whether you init interceptor "
                "in the proper way.";
     if (msg.message_type() == DATA_IS_READY) {
-      VLOG(3) << "Fake handler is sending stop message to it self.";
-      InterceptorMessage msg;
-      msg.set_message_type(STOP);
-      Send(interceptor_id_, msg);
+      if (node_->role() != 2) {
+        VLOG(3) << "Fake handler is sending DATA_IS_READY message to: "
+                << interceptor_id_ + 1 << ".";
+        InterceptorMessage data_is_ready_msg;
+        data_is_ready_msg.set_message_type(DATA_IS_READY);
+        Send(interceptor_id_ + 1, data_is_ready_msg);
+      } else {
+        // NOTE: max run time is reach for last interceptor
+        StopCarrier();
+      }
     } else if (msg.message_type() == STOP) {
       stop_ = true;
-      StopCarrier();
+      if (node_->role() != 2) {
+        VLOG(3) << "Fake handler is sending STOP message to: "
+                << interceptor_id_ + 1 << ".";
+        InterceptorMessage stop_msg;
+        stop_msg.set_message_type(STOP);
+        Send(interceptor_id_ + 1, stop_msg);
+      }
     }
   }
 }
