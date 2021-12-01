@@ -197,7 +197,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     GET_CONV_BN_NODES(conv_ac_pattern);
 
-    // Get affine_channel bias
+    // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
         scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
 

@@ -132,7 +132,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ['conv2d_fusion'], (1e-5, 1e-5)
 
-        # TRT
+        # for TRT
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
             workspace_size=1 << 20,

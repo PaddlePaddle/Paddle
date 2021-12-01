@@ -138,7 +138,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
-        # mkldnn Output has diff with bias!!!
+        # mkldnn Output has diff with bias!!
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
@@ -153,7 +153,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
-            Operator(Conv2DFusion) only supports data format of channel first (NCHW) now."
+            currently Conv2DFusion only supports data format of channel first (NCHW)!"
         )
 
     def test(self):
