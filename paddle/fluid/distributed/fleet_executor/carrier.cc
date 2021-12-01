@@ -16,6 +16,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -24,14 +25,14 @@ namespace distributed {
 
 USE_INTERCEPTOR(Compute);
 
-void Carrier::Init(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-    framework::Scope* root_scope, framework::Scope* minibatch_scope,
-    const std::vector<framework::Scope*>& microbatch_scopes,
-    const platform::Place& place) {
+void Carrier::Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+                   framework::Scope* root_scope,
+                   framework::Scope* minibatch_scope,
+                   const std::vector<framework::Scope*>& microbatch_scopes,
+                   const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "Carrier is already init."));
-  interceptor_id_to_node_ = interceptor_id_to_node;
+  runtime_graph_ = runtime_graph;
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
   place_ = place;
@@ -191,9 +192,9 @@ void Carrier::HandleTmpMessages() {
 
 void Carrier::CreateInterceptors() {
   // create each Interceptor
-  if (!interceptor_id_to_node_.empty()) {
+  if (!(runtime_graph_->intercepter_id_to_node().empty())) {
     // no auto init since there is no config
-    for (const auto& item : interceptor_id_to_node_) {
+    for (const auto& item : runtime_graph_->intercepter_id_to_node()) {
       int64_t interceptor_id = item.first;
       TaskNode* task_node = item.second;
 
