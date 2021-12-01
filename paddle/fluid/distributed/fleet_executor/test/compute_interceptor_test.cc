@@ -37,7 +37,7 @@ class StartInterceptor : public Interceptor {
       stop_ = true;
       InterceptorMessage stop;
       stop.set_message_type(STOP);
-      Send(msg.src_id(), stop);  // stop 1, compute
+      Send(1, stop);  // stop 1, compute
       return;
     }
     std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
