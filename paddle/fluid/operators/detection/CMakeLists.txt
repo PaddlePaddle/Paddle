@@ -25,7 +25,7 @@ endif()
 
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_xpu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu prior_box_op_xpu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_xpu.cc)
 elseif(WITH_ASCEND_CL)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_npu.cc)
   detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu prior_box_op_npu.cc)
