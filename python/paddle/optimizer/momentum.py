@@ -73,6 +73,7 @@ class Momentum(Optimizer):
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
             Often choose to be ``1.0/batch_size``.
         name (str, optional): The default value is None. Normally there is no need for user
@@ -285,10 +286,12 @@ class Momentum(Optimizer):
             param, grad, regularization)
 
     def _multi_tensor_init(self, target_block, parameters):
+        """ 
+        Init param_dict, velocity_dict and regularization_dict for multi-tensor strategy.
+        """
         self._create_accumulators(target_block, parameters)
         for param in parameters:
             if param.stop_gradient is False:
-                # if p not in (self.param_dict['FP32_LODTensor'], self.param_dict['FP16_LODTensor']):
                 if param.dtype == paddle.float32:
                     # param
                     self.param_dict['FP32_LODTensor'].append(param)
@@ -361,16 +364,9 @@ class Momentum(Optimizer):
             update ops and any other custom ops required by subclasses to manage
             their internal state.
         """
-        # This is a default implementation of create_optimization_pass that
-        # can be shared by most optimizers. This implementation assumes that
-        # the subclass will implement the _append_optimize_op method and the
-        #  _initialize_tensors method. The subclass can extend the
-        # _create_accumulators method if it needs to create accumulators
-        # for parameters and extend _finish_update method to add custom ops.
-
-        # Allways called under program_guard use global block as loss block
-        # But if current block is in control flow, append optimize op in the
-        # grad block of current block
+        # This is a Implemented create_optimization_pass of paddle.optimizer.
+        # If use_multi_tensor is True, it will call merged_momentum to update
+        # parameters, else it will use default implementation of create_optimization_pass.
 
         if self._use_multi_tensor:
             global_block = framework.default_main_program().global_block()

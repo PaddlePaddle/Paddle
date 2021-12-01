@@ -1035,7 +1035,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def clear_grads(self):
         """
-        Clear the gradients of all optimized parameters for model.
+        Clear the gradients of all optimized parameters for model .
         If not, new gradient will accumulat on previous gradient.
         
         Returns:
@@ -1054,7 +1054,7 @@ class Optimizer(object):
                 out = linear(a)
                 out.backward()
                 adam.step()
-                adam.clear_grad()
+                adam.clear_grads()
         """
         param_list = []
         if self._parameter_list is None or not isinstance(
