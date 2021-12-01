@@ -31,6 +31,22 @@ namespace ir {
 class Node;
 
 MulGRUFusePass::MulGRUFusePass() {
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
   AddOpCompat(OpCompat("gru"))
       .AddInput("Input")
       .IsTensor()
@@ -58,10 +74,10 @@ MulGRUFusePass::MulGRUFusePass() {
       .IsTensor()
       .End()
       .AddAttr("activation")
-      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .IsStringIn({"sigmoid", "tanh"})
       .End()
       .AddAttr("gate_activation")
-      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .IsStringIn({"sigmoid", "tanh"})
       .End()
       .AddAttr("is_reverse")
       .IsType<bool>()
@@ -69,22 +85,6 @@ MulGRUFusePass::MulGRUFusePass() {
       .AddAttr("origin_mode")
       .IsType<bool>()
       .IsOptional()
-      .End();
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(1)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
       .End();
 }
 
