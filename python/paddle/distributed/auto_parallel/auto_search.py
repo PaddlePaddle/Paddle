@@ -876,7 +876,6 @@ def mcmc(train_program,
          init_dist_context,
          loss,
          optimizer,
-         cluster=None,
          max_search_times=1,
          pipeline_process_mesh_list=None):
     times = 0
@@ -911,7 +910,8 @@ def get_ranks(cluster=None):
     if cluster is None:
         ranks = paddle.distributed.get_world_size()
     else:
-        ranks = cluster.processes
+        ranks = len(cluster.get_all_devices("GPU"))
+        assert ranks > 0, "Get ranks failed!"
     return ranks
 
 
@@ -1176,7 +1176,7 @@ def auto_search(serial_main_program,
         evenly dividing the pipeline stage of all ops, then enumerate all valid op dist attr of one op. 
         when select the op dist attr, it firstly selects dims_mapping and then select process mesh.
     """
-    processes = get_ranks(cluster=None)
+    processes = get_ranks(cluster)
     process_meshes = enumerate_process_mesh(processes)
     designated_process_mesh = None
     if len(process_meshes) > 1:
@@ -1195,7 +1195,6 @@ def auto_search(serial_main_program,
         init_dist_context,
         loss,
         optimizer,
-        pipeline_process_mesh_list=pipeline_process_mesh_list,
-        cluster=None)
+        pipeline_process_mesh_list=pipeline_process_mesh_list)
     best_dist_context._dist_op_context = DistributedOperatorContext()
     return best_dist_context, runtime
