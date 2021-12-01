@@ -61,7 +61,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   auto dst_ptr =
       platform::is_gpu_place(dst_place)
           ? dst->mutable_data(
-                BOOST_GET_CONST(platform::CUDAPlace(), dst_place), src.type(),
+                BOOST_GET_CONST(platform::CUDAPlace, dst_place), src.type(),
                 reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
                     .stream())
           : dst->mutable_data(dst_place, src.type());
