@@ -2008,7 +2008,8 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetWorkerScope(thread_id);
            },
            py::return_value_policy::reference)
-      .def("finalize", &TrainerBase::Finalize);
+      .def("finalize", &TrainerBase::Finalize)
+      .def("ResetDataset", &TrainerBase::ResetDataset);
 
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
@@ -2069,11 +2070,13 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
-  py::class_<framework::CostInfo>(m, "CostInfo")
+  py::class_<framework::interpreter::CostInfo>(m, "CostInfo")
       .def(py::init<>())
-      .def("total_time", [](CostInfo &self) { return self.total_time; })
-      .def("device_memory_bytes",
-           [](CostInfo &self) { return self.device_memory_bytes; });
+      .def("total_time",
+           [](interpreter::CostInfo &self) { return self.total_time; })
+      .def("device_memory_bytes", [](interpreter::CostInfo &self) {
+        return self.device_memory_bytes;
+      });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
@@ -2134,7 +2137,7 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(t);
              }
 
-             CostInfo cost_info;
+             framework::interpreter::CostInfo cost_info;
              {
                pybind11::gil_scoped_release release;
                cost_info = self.DryRun(feed_names, feed_tensors);
