@@ -59,6 +59,7 @@ function make_centos_dockerfile(){
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" ${dockerfile_name}
 }
 
+
 function make_cinn_dockerfile(){
   dockerfile_name="Dockerfile.cuda11_cudnn8_gcc82_ubuntu18_cinn"
   sed "s/<baseimg>/11.2.0-cudnn8-devel-ubuntu18.04/g" ./Dockerfile.ubuntu18 >${dockerfile_name}
@@ -75,6 +76,7 @@ function make_cinn_dockerfile(){
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub " ${dockerfile_name}
 }
+
 
 function make_ce_framework_dockcerfile(){
   dockerfile_name="Dockerfile.cuda11.2_cudnn8_gcc82_trt8"
@@ -103,6 +105,7 @@ function make_ce_framework_dockcerfile(){
     RUN dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN apt update \&\& apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
+
 
 function main() {
   make_ubuntu_dockerfile
