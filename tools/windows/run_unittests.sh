@@ -156,17 +156,12 @@ long_time_test="^test_gru_op$|\
 ^test_activation_op$|\
 ^test_bicubic_interp_v2_op$|\
 ^test_bilinear_interp_v2_op$|\
-^test_conv_nn_grad$|\
 ^test_crop_tensor_op$|\
 ^test_cross_entropy2_op$|\
 ^test_cross_op$|\
-^test_elementwise_div_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_group_norm_op$|\
-^test_gru_unit_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
-^test_imperative_optimizer$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_multiclass_nms_op$|\
@@ -175,8 +170,6 @@ long_time_test="^test_gru_op$|\
 ^test_norm_nn_grad$|\
 ^test_normal$|\
 ^test_pool3d_op$|\
-^test_pool2d_op$|\
-^test_softmax_with_cross_entropy_op$|\
 ^test_static_save_load$|\
 ^test_trilinear_interp_op$|\
 ^test_trilinear_interp_v2_op$|\
@@ -185,8 +178,6 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
-^test_lstmp_op$|\
-^test_conv2d_transpose_op$|\
 ^test_imperative_auto_mixed_precision$|\
 ^test_imperative_optimizer_v2$|\
 ^test_strided_slice_op$"
