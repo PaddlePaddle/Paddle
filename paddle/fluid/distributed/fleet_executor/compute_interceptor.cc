@@ -154,8 +154,8 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATE_IS_USELESS);
-    VLOG(3) << "ComputeInterceptor  " << interceptor_id_
-            << "  Reply data_is_useless msg to " << up_id;
+    VLOG(3) << "ComputeInterceptor " << interceptor_id_
+            << " Reply data_is_useless msg to " << up_id;
     Send(up_id, reply_msg);
   }
 }
