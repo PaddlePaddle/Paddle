@@ -15,16 +15,34 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/common/scalar.h"
 
 namespace paddle {
 namespace experimental {
 
-// TODO(chenweihang): add scale API
-// TODO(chenweihang): move mean API into stat.h/cc
-PD_DLL_DECL Tensor mean(const Tensor& x);
-
 PD_DLL_DECL Tensor add(const Tensor& x, const Tensor& y);
 
 PD_DLL_DECL Tensor subtract(const Tensor& x, const Tensor& y);
+
+PD_DLL_DECL Tensor divide(const Tensor& x, const Tensor& y);
+
+PD_DLL_DECL Tensor multiply(const Tensor& x, const Tensor& y);
+
+// TODO(chenweihang): move mean API into stat.h/cc
+PD_DLL_DECL Tensor mean(const Tensor& x,
+                        const std::vector<int64_t>& axis,
+                        bool keep_dim);
+
+PD_DLL_DECL Tensor sum(const Tensor& x,
+                       const std::vector<int64_t>& axis,
+                       DataType dtype,
+                       bool keep_dim);
+
+// TODO(chenweihang): Follow-up discussion on the handling of `act` argument
+PD_DLL_DECL Tensor scale(const Tensor& x,
+                         const Scalar& scale,
+                         float bias,
+                         bool bias_after_scale);
+
 }  // namespace experimental
 }  // namespace paddle

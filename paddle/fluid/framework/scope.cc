@@ -67,7 +67,7 @@ Variable* Scope::Var(const std::string& name) {
     ret = VarInternal(name);
   }
   for (auto l : listeners_) {
-    l->onCreateVariable(name);
+    l->onCreateVariable(name, ret);
   }
   return ret;
 }
@@ -85,7 +85,7 @@ Variable* Scope::Var(std::string* name) {
     ret = VarInternal(new_name);
   }
   for (auto l : listeners_) {
-    l->onCreateVariable(new_name);
+    l->onCreateVariable(new_name, ret);
   }
   return ret;
 }
@@ -141,6 +141,18 @@ std::vector<std::string> Scope::LocalVarNames() const {
     known_vars.reserve(this->vars_.size());
     for (auto& p : vars_) {
       known_vars.emplace_back(p.first);
+    }
+  }
+  return known_vars;
+}
+
+std::vector<Variable*> Scope::LocalVars() {
+  std::vector<Variable*> known_vars;
+  {
+    SCOPE_VARS_READER_LOCK
+    known_vars.reserve(this->vars_.size());
+    for (auto& p : vars_) {
+      known_vars.emplace_back(p.second.get());
     }
   }
   return known_vars;

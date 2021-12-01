@@ -66,7 +66,7 @@ CinnCompiler* CinnCompiler::GetInstance() {
 const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) {
+    const Target& target, void* stream) {
   VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
   bool exist = false;
@@ -77,7 +77,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
   if (!exist) {
     std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
     auto compiled_res =
-        CompileGraph(graph, input_tensors, target, compiled_num);
+        CompileGraph(graph, input_tensors, target, compiled_num, stream);
     AutoWRLock w_guard{&rwlock_};
     if (!cache_.count(cur_key)) {
       cache_[cur_key] = std::move(compiled_res);
@@ -91,9 +91,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
 const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) {
+    const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
-  return Compile(graph, input_tensors, target);
+  return Compile(graph, input_tensors, target, stream);
 }
 
 std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
@@ -139,7 +139,7 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
           node_id,
           {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
            Dot::Attr("color", "#303A3A"), Dot::Attr("fontcolor", "#ffffff")},
-          n->Name());
+          n->Name(), true);
     } else if (n->IsVar()) {
       auto label = n->Name();
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
@@ -155,7 +155,7 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
            Dot::Attr("color", n->Var()->IsParameter() ? "#148b97" : "#dddddd"),
            Dot::Attr("fontcolor",
                      n->Var()->IsParameter() ? "#ffffff" : "#000000")},
-          label);
+          label, true);
     }
     node2dot[n] = node_id;
   }
@@ -189,7 +189,7 @@ void CinnCompiler::Clear() {
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target, std::int64_t compiled_num) const {
+    const Target& target, std::int64_t compiled_num, void* stream) const {
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
@@ -209,7 +209,9 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  auto compiled_res = graph_compiler->Build(options, std::move(fetch_ids));
+  options.with_buffer_handle_instruction_inserted = true;
+  auto compiled_res =
+      graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(compiled_res.runtime_program), scope,

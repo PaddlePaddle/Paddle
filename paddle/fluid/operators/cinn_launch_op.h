@@ -50,23 +50,24 @@ class CinnLaunchContext {
   // Return whether a Paddle variable used on compiled kernels
   bool IsVariableUsed(const std::string& var_name);
 
-  // Allocate buffer to a Paddle tensor with assginment information from CINN
-  void MutableTensorData(const std::string& var_name,
-                         const platform::Place& place, LoDTensor* paddle_tensor,
-                         bool is_internal_var = false);
-
   // Assign tensor buffer to input or output variables
-  void AssignExternalVariable(const std::string& var_name, LoDTensor* tensor);
+  void AssignExternalVariable(const std::string& var_name,
+                              const platform::Place& place, LoDTensor* tensor);
 
   // Assign tensor buffer to internal variables
-  void AssignInternalVariable(const std::string& var_name, LoDTensor* tensor);
+  void AssignInternalVariable(const std::string& var_name,
+                              const platform::Place& place, LoDTensor* tensor);
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
-  std::vector<std::string> GetInternalVariableNames();
+  std::unordered_set<std::string> GetInternalVariableNames();
 
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
+
+  std::vector<std::unique_ptr<cinn_buffer_t>> HandoverBuffers() {
+    return std::move(hold_buffers_);
+  }
 
  private:
   // Get CinnTensor with CINN variable name
@@ -80,10 +81,12 @@ class CinnLaunchContext {
 
   // Share the buffer of a Paddle tensor to CINN by delivering memory address
   // to a cinn_buffer_t object
-  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(LoDTensor* tensor);
+  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(
+      const platform::Place& place, bool free_mem_callback, LoDTensor* tensor);
 
   // Set an argument with (cinn name)->(paddle tensor) pair
-  void SetArgument(const std::string& cinn_name, LoDTensor* paddle_tensor);
+  void SetArgument(const std::string& cinn_name, const platform::Place& place,
+                   bool free_mem_callback, LoDTensor* paddle_tensor);
 
  private:
   // a variable name map from paddle to cinn
@@ -111,10 +114,35 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result);
 
 // Launch cinn to execute compiled executable program and wait done
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context);
+                         const CinnLaunchContext& context, void* stream);
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
+
+template <typename DeviceContext>
+void ReleaseResource(const std::vector<void*>& resources, void* stream) {
+  auto* temp_scope = static_cast<framework::Scope*>(resources[0]);
+  auto* buffers =
+      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(resources[1]);
+  delete temp_scope;
+  delete buffers;
+}
+
+template <typename DeviceContext>
+void* GetStream(const framework::ExecutionContext& ctx) {
+  return nullptr;
+}
+
+#ifdef PADDLE_WITH_CUDA
+template <>
+void ReleaseResource<platform::CUDADeviceContext>(
+    const std::vector<void*>& resources, void* stream);
+
+template <>
+void* GetStream<platform::CUDADeviceContext>(
+    const framework::ExecutionContext& ctx);
+#endif
+
 }  // namespace details
 
 template <typename DeviceContext, typename T>
@@ -123,6 +151,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& scope = ctx.scope();
     const auto& place = ctx.GetPlace();
+    void* stream = details::GetStream<DeviceContext>(ctx);
     // Step 1. Find graph object and prepare input
     platform::RecordEvent record_event_1(
         "Step 1. Find graph object and prepare input");
@@ -151,7 +180,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         "Step 2. Get compilation result of the graph");
     auto target = details::PlaceToCinnTarget(place);
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
-        compilation_key, inputs_name2tensor, target);
+        compilation_key, inputs_name2tensor, target, stream);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
     auto launch_context =
@@ -174,7 +203,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       }
 
       launch_context->AssignExternalVariable(
-          var_name, scope.GetVar(var_name)->GetMutable<LoDTensor>());
+          var_name, place, scope.GetVar(var_name)->GetMutable<LoDTensor>());
     }
 
     // 3.2 Prepare output variables: all output variables should
@@ -191,11 +220,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                             "Output variable(%s) not used by cinn", var_name));
 
       auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      if (!tensor->IsInitialized()) {
-        launch_context->MutableTensorData(var_name, place, tensor);
-      }
-      launch_context->AssignExternalVariable(
-          var_name, scope.GetVar(var_name)->GetMutable<LoDTensor>());
+      launch_context->AssignExternalVariable(var_name, place, tensor);
     }
 
     // 3.3 Prepare internal or temporary variables: Create a temporary
@@ -205,11 +230,10 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     //     names, because they will not be used outside the graph
     //     and should be destructed after computation finished.
     auto internal_variable_names = launch_context->GetInternalVariableNames();
-    auto temp_scope = scope.NewTmpScope();
+    framework::Scope* temp_scope = scope.NewTmpScope().release();
     for (const auto& var_name : internal_variable_names) {
       auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
-      launch_context->MutableTensorData(var_name, place, tensor, true);
-      launch_context->AssignInternalVariable(var_name, tensor);
+      launch_context->AssignInternalVariable(var_name, place, tensor);
     }
 
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
@@ -218,8 +242,16 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     // Step 5. Launch CINN to execute the compiled executable program
     platform::RecordEvent record_event_5("Step 5. Execute CINN program.");
-    details::LaunchCinnExecution(cinn_compiled_object, *launch_context);
+    VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
+    details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
     VLOG(4) << "CinnLaunchOp launch execution done.";
+
+    // Step 6. Release some resources, such as `temp_scope` and cinn_buffers.
+    platform::RecordEvent record_event_6("Step 6. Release some resources.");
+    auto* buffers_holder = new std::vector<std::unique_ptr<cinn_buffer_t>>{
+        launch_context->HandoverBuffers()};
+    details::ReleaseResource<DeviceContext>({temp_scope, buffers_holder},
+                                            stream);
   }
 };
 
