@@ -44,6 +44,7 @@ class ComputeInterceptor : public Interceptor {
 
  private:
   bool is_source_{false};
+  bool is_last_{false};
   int64_t step_{0};
 
   // upstream_id-->(max_ready_size, ready_size)
