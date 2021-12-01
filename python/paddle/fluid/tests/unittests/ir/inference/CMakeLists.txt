@@ -75,6 +75,7 @@ set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
 if (WITH_MKLDNN AND TENSORRT_FOUND AND WITH_GPU)
 set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
+set_tests_properties(test_conv_eltwiseadd_affine_channel_fuse_pass PROPERTIES TIMEOUT 300)
 endif()
 
 if (WITH_MKLDNN)

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -197,19 +197,23 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     GET_CONV_BN_NODES(conv_ac_pattern);
 
-    // Create eltwise_y (conv bias) variable
-    VarDesc eltwise_y_in_desc(
-        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
-    eltwise_y_in_desc.SetPersistable(true);
-    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
-    auto* eltwise_y_in_tensor =
-        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
-
     // Get affine_channel bias
     auto* ac_bias_tensor =
         scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
 
+    // Create eltwise_y (conv bias) variable
+    VarDesc eltwise_y_in_desc(
+        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+    // Set shape && datatype manually
+    eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetDataType(ac_bias_tensor->type());
+    eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());
+    eltwise_y_in_desc.SetPersistable(true);
+
     // Initialize eltwise_y
+    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
+    auto* eltwise_y_in_tensor =
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
     std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
                 eltwise_y_in_tensor->numel(), 0.0f);

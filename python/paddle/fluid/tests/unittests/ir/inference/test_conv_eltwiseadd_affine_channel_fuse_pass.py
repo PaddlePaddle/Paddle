@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestConvAffineChannelFusePass(PassAutoScanTest):
+class TestConvEltwiseAddAffineChannelFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs
@@ -59,7 +59,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             return np.random.random([16, 16, 3, 3]).astype(np.float32)
 
         def generate_weight2():
-            return np.random.random([1]).astype(np.float32)
+            return np.random.random([16]).astype(np.float32)
 
         def generate_scale_bias():
             return np.random.random([16]).astype(np.float32)
@@ -95,13 +95,28 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
                     "groups": attrs[0]['groups'],
                     "paddings": attrs[0]['paddings'],
                     "strides": attrs[0]['strides'],
+                    #"output_size": [],
+                    #"output_padding": [],
                     "is_test": True
                 }
             },
             {
-                "op_type": "affine_channel",
+                "op_type": "elementwise_add",
                 "op_inputs": {
                     "X": ["conv_output"],
+                    "Y": ["conv2d_bias"]
+                },
+                "op_outputs": {
+                    "Out": ["elementwise_output"]
+                },
+                "op_attrs": {
+                    'axis': attrs[1]['axis']
+                },
+            },
+            {
+                "op_type": "affine_channel",
+                "op_inputs": {
+                    "X": ["elementwise_output"],
                     "Scale": ["affine_channel_scale"],
                     "Bias": ["affine_channel_bias"]
                 },
@@ -125,6 +140,8 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             weights={
                 "conv2d_weight":
                 TensorConfig(data_gen=partial(generate_weight1)),
+                "conv2d_bias":
+                TensorConfig(data_gen=partial(generate_scale_bias)),
                 "affine_channel_scale":
                 TensorConfig(data_gen=partial(generate_scale_bias)),
                 "affine_channel_bias":
@@ -140,6 +157,17 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
 
         # mkldnn Output has diff with bias!!!
         config = self.create_inference_config(use_mkldnn=True)
+        yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
+
+        # TRT
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 20,
+            max_batch_size=4,
+            min_subgraph_size=1,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
         yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
@@ -159,7 +187,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["conv_affine_channel_fuse_pass"], )
+            passes=["conv_eltwiseadd_affine_channel_fuse_pass"], )
 
 
 if __name__ == "__main__":
