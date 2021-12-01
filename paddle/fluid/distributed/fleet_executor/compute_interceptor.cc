@@ -160,15 +160,17 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
   }
 }
 
+void ComputeInterceptor::RunOps() {
+  for (auto op : node_->ops()) {
+    op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
+  }
+}
+
 void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput() && !ShouldReset()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
-    // step_ %= node_->max_run_times();
-    for (auto op : node_->ops()) {
-      auto* scope = microbatch_scopes_[step_ % node_->max_run_times()];
-      op->Run(*scope, place_);
-    }
+    RunOps();
     ++step_;
 
     // send to downstream and increase buff used

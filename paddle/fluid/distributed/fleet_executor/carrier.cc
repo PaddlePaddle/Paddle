@@ -24,6 +24,7 @@ namespace paddle {
 namespace distributed {
 
 USE_INTERCEPTOR(Compute);
+USE_INTERCEPTOR(Amplifier);
 
 void Carrier::Init(std::shared_ptr<RuntimeGraph> runtime_graph,
                    framework::Scope* root_scope,
