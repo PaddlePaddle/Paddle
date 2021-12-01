@@ -86,8 +86,7 @@ class AutoCastGuard {
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins);
 
-NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
-                                  const NameVarBaseMap& ins);
+void CastPureFp16Inputs(const std::string& op_type, NameVarBaseMap* ins);
 
 }  // namespace imperative
 }  // namespace paddle

@@ -175,14 +175,16 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
 
+  platform::RecordEvent auto_cast_record_event("auto_cast copy ins to new_ins");
   NameVarBaseMap new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
-    new_ins = AutoCastInputs(type, ins);
+    new_ins = AutoCastInputs(type, new_ins);
   } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
-    new_ins = CastPureFp16Inputs(type, ins);
+    CastPureFp16Inputs(type, &new_ins);
   }
+  platform::RecordEvent auto_cast_record_event2("auto_cast_end");
 
   try {
     if (platform::is_gpu_place(place)) {
