@@ -514,6 +514,7 @@ class AMPBackwardPass(PassBase):
             elementwise_mul_grad_op_desc._set_attr(
                 OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward)
             elementwise_mul_grad_op_desc._set_attr('axis', -1)
+            elementwise_mul_grad_op_desc._set_bool_attr('use_mkldnn', False)
             elementwise_mul_grad_op = paddle.fluid.framework.Operator(
                 main_block, elementwise_mul_grad_op_desc)
             main_block.ops.insert(loss_op_idx + 3, elementwise_mul_grad_op)

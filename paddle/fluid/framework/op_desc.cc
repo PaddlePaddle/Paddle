@@ -569,6 +569,24 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDesc::SetBoolAttr(const std::string &name, const Attribute &v) {
+  // In order to insert a new bool attr
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  proto::AttrType bool_type = proto::AttrType::INT;
+  PADDLE_ENFORCE_EQ(attr_type, bool_type,
+                    platform::errors::InvalidArgument(
+                        "Attribute %s's type should be bool", name));
+  int val = BOOST_GET_CONST(int, v);
+  if (val == 0 || val == 1) {
+    this->attrs_[name] = static_cast<bool>(val);
+    need_update_ = true;
+    return;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Attribute %s's type should be bool", name));
+  }
+}
+
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   this->attrs_[name] = block;
   need_update_ = true;
