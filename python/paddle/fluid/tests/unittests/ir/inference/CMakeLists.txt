@@ -73,7 +73,7 @@ set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 120)
-set_tests_properties(conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT 250)
+set_tests_properties(test_conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT 250)
 
 if (WITH_MKLDNN)
   set_tests_properties(test_mkldnn_prelu_op PROPERTIES TIMEOUT 300)
