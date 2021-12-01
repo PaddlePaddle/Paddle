@@ -21,6 +21,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 export CI_SKIP_CPP_TEST=OFF
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
