@@ -44,6 +44,23 @@ void Carrier::Init(
 Carrier::~Carrier() {
   // NOTE(wangxi): must join before `Derived Interceptor` destruct,
   // otherwise Derived object will be destructed before thread complete.
+
+  // Sending STOP msg to the source interceptor
+  MessageBus& msg_bus = MessageBus::Instance();
+  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Message bus has not been initialized."));
+  for (int64_t id : source_interceptor_ids_) {
+    VLOG(3) << "Carrier Start is sending stop to source interceptor " << id
+            << ".";
+    InterceptorMessage stop_msg;
+    // source node STOP is send by carrier, so set src_id=-1
+    stop_msg.set_src_id(-1);
+    stop_msg.set_dst_id(id);
+    stop_msg.set_message_type(STOP);
+    msg_bus.Send(stop_msg);
+  }
+
   // TODO(wangxi): Maybe need a better to use thread.
   for (auto& interceptor : interceptor_idx_to_interceptor_) {
     interceptor.second->Join();
