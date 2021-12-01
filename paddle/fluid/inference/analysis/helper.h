@@ -196,16 +196,20 @@ static std::string GetDirRoot(const std::string &path) {
   return path;
 }
 
-static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
-  std::string opt_cache_dir = model_root + "/_opt_cache/";
-  if (!PathExists(opt_cache_dir)) {
+static void MakeDirIfNotExists(const std::string &path) {
+  if (!PathExists(path)) {
     PADDLE_ENFORCE_NE(
-        MKDIR(opt_cache_dir.c_str()), -1,
+        MKDIR(path.c_str()), -1,
         platform::errors::PreconditionNotMet(
             "Can not create optimize cache directory: %s, Make sure you "
             "have permission to write",
-            opt_cache_dir));
+            path));
   }
+}
+
+static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
+  std::string opt_cache_dir = model_root + "/_opt_cache/";
+  MakeDirIfNotExists(opt_cache_dir);
   return opt_cache_dir;
 }
 

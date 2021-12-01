@@ -79,7 +79,7 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op cinn_launch_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -164,7 +164,6 @@ endif()
 
 if (WITH_ASCEND_CL)
   cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
-  cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
 endif()
 

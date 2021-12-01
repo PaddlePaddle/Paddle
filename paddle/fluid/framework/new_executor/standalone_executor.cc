@@ -24,12 +24,16 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       startup_prog_(startup_prog),
       main_prog_(main_prog),
       global_scope_(VariableScope(scope)) {
-  // init scope
-  BuildVariableScope(startup_prog, &global_scope_);
-
-  if (scope != nullptr) {
+  // NOTE(zhiqiu): it is needed to sync thhe variables in scope to
+  // variable_scope,
+  // since the some variable only exists in startup program, e.g,
+  // lod_tensor_blocking_queue_0 used in dataloader.
+  // These variables may be created in scope during runing startup program with
+  // original executor.
+  if (scope) {
     auto name_list = scope->LocalVarNames();
     for (auto name : name_list) {
+      VLOG(4) << "Sync Variable from variable scope: " << name;
       auto v = scope->Var(name);
       if (!global_scope_.HasVar(name)) {
         global_scope_.AddVar(name, *v);
@@ -37,17 +41,25 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     }
   }
 
-  // run startup program
-  std::vector<paddle::framework::OpFuncNode> vec_func_list;
-  paddle::framework::interpreter::build_op_func_list(
-      place_, startup_prog.Block(0), &vec_func_list, &global_scope_);
+  // NOTE(zhiqiu): for startup_program, initialize scope and run once
+  // if startup_program is empty, the scope is initialize during first run
+  if (startup_prog.Block(0).AllOps().size() > 0) {
+    VLOG(4) << "Run startup program";
+    // init scope
+    BuildVariableScope(startup_prog, &global_scope_);
+    std::vector<paddle::framework::OpFuncNode> vec_func_list;
+    // No need to use_local_scope for startup_program, its variables are
+    // persistable
+    paddle::framework::interpreter::build_op_func_list(
+        place_, startup_prog.Block(0), &vec_func_list, &global_scope_, false);
+  }
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors,
     const std::vector<std::string>& fetch_names) {
-  auto core = GetInterpreterCore(feed_names, fetch_names);
+  auto core = GetInterpreterCore(feed_names, fetch_names, true);
 
   return core->Run(feed_names, feed_tensors);
 }
@@ -55,15 +67,15 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names) {
-  auto core = GetInterpreterCore(feed_names, fetch_names);
-
-  return core->Run();
+  auto core = GetInterpreterCore(feed_names, fetch_names, false);
+  VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
+  return core->Run(feed_names);
 }
 
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-  auto core = GetInterpreterCore(feed_names, {});
+  auto core = GetInterpreterCore(feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);
 }
@@ -76,8 +88,9 @@ void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-
     if (!var_scope->HasVar(var->Name())) {
+      VLOG(4) << "Create variable from startup_prog: "
+              << var->Proto()->SerializeAsString();
       var_scope->AddVar(var->Name(), var);
     }
   }
@@ -85,7 +98,7 @@ void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
 
 std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names) {
+    const std::vector<std::string>& fetch_names, bool add_fetch_op) {
   std::ostringstream oss;
   oss << "feed:";
   for (auto& feedname : feed_names) {
@@ -100,15 +113,22 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
 
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str();
-    // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy a
-    // new program.
-    auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
-    auto* block = new_prog->MutableBlock(0);
-    interpreter::add_fetch(fetch_names, block);
+    VLOG(3) << "add fetch op: " << add_fetch_op;
+    std::shared_ptr<InterpreterCore> core = nullptr;
+    if (add_fetch_op) {
+      // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
+      // a
+      // new program.
+      auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
+      auto* block = new_prog->MutableBlock(0);
+      interpreter::add_fetch(fetch_names, block);
 
-    auto core =
-        std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
-    programs_.emplace(oss.str(), new_prog);
+      core = std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
+      core->SetCopyProgram(new_prog);
+    } else {
+      core = std::make_shared<InterpreterCore>(place_, main_prog_.Block(0),
+                                               &global_scope_);
+    }
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {

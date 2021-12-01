@@ -209,18 +209,13 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     endif()
 
-    cache_third_party(${TARGET_NAME}
-        REPOSITORY    ${PROTOBUF_REPOSITORY}
-        TAG           ${PROTOBUF_TAG}
-        DIR           PROTOBUF_SOURCE_DIR)
-
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${PROTOBUF_DOWNLOAD_CMD}"
+        GIT_REPOSITORY  ${PROTOBUF_REPOSITORY}
+        GIT_TAG         ${PROTOBUF_TAG}
         PREFIX          ${PROTOBUF_PREFIX_DIR}
-        SOURCE_DIR      ${PROTOBUF_SOURCE_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
         CONFIGURE_COMMAND

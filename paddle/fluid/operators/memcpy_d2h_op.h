@@ -41,17 +41,17 @@ class MemcpyD2HFunctor {
 
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+    CopyLoDTensor(lod_tensor, out_tensor);
+  }
 
-    if (dst_place_type_ == 1) {
-      framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
-                            &out_tensor);
-    } else if (dst_place_type_ == 0) {
-      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
+  void operator()(const framework::LoDTensorArray &array) const {
+    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
+    out_array.clear();
+    out_array.resize(array.size());
+
+    for (size_t i = 0; i < array.size(); i++) {
+      CopyLoDTensor(array[i], out_array[i]);
     }
-    out_tensor.set_lod(lod_tensor.lod());
   }
 
   void operator()(const framework::SelectedRows &rows) const {
@@ -69,6 +69,19 @@ class MemcpyD2HFunctor {
   }
 
  private:
+  void CopyLoDTensor(const framework::LoDTensor &src,
+                     framework::LoDTensor &dst) const {  // NOLINT
+    if (dst_place_type_ == 1) {
+      framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
+    } else if (dst_place_type_ == 0) {
+      framework::TensorCopySync(src, platform::CPUPlace(), &dst);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
+    }
+    dst.set_lod(src.lod());
+  }
+
   framework::Variable *out_;
   const platform::DeviceContext &dev_ctx_;
   const int dst_place_type_;

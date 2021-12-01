@@ -565,24 +565,6 @@ class Fleet(object):
         """
         return self._role_maker._is_server()
 
-    def is_heter_worker(self):
-        """
-        Check whether the node is an instance of heter worker.
-
-        Returns:
-            bool: True if this is a node of heter worker,
-                  False if not.
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.is_heter_worker()
-        """
-        return self._role_maker._is_heter_worker()
-
     def barrier_worker(self):
         """
         barrier all workers
@@ -616,30 +598,6 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker()
-
-    @is_non_distributed_check
-    @inited_runtime_handler
-    def init_heter_worker(self):
-        """
-        init_heter_worker executor to initialize startup program,
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-                # build net
-                # fleet.distributed_optimizer(...)
-
-                fleet.init_heter_worker()
-
-        """
-        self._runtime_handle._init_heter_worker()
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -689,31 +647,6 @@ class Fleet(object):
 
         """
         self._runtime_handle.load_model(path, mode)
-
-    @is_non_distributed_check
-    @inited_runtime_handler
-    def run_heter_worker(self, dataset):
-        """
-        run_heter_worker will run heter trainer main program with executor.
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-                # build net
-                # fleet.distributed_optimizer(...)
-                dataset = "" 
-                if fleet.is_heter_worker():
-                    fleet.run_heter_worker(dataset)
-
-        """
-        self._runtime_handle._run_heter_worker(dataset)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -890,7 +823,7 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
-    def shrink(self, threshold):
+    def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
     def distributed_optimizer(self, optimizer, strategy=None):
