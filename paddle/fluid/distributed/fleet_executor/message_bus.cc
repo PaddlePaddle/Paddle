@@ -57,6 +57,8 @@ bool MessageBus::IsInit() const { return is_init_; }
 
 MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
+  // NOTE: fleet_executor inits carrier before message bus,
+  // therefore the message bus's destructor will be called first
   Carrier& carrier = Carrier::Instance();
   carrier.Release();
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
