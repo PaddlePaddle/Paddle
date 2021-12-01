@@ -43,8 +43,7 @@ class MemcpyH2DFunctor {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopySync(lod_tensor, dev_ctx_.GetPlace(), &out_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
