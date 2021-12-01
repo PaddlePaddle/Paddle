@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+#include <thrust/reverse.h>
+#include <thrust/scan.h>
 #include "paddle/fluid/operators/collective/global_gather_op.h"
 
 #if defined(PADDLE_WITH_NCCL)
@@ -92,12 +96,39 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
       fwd_count += cpu_local_count_data[i];
     }
     framework::DDim out_dims = framework::make_ddim({fwd_count, in_feat});
-    int64_t* expert_ptr = new int64_t[n_expert * nranks];
-    expert_ptr[0] = 0;
-    auto tot_experts = n_expert * nranks;
-    for (auto i = 1; i < tot_experts; ++i) {
-      expert_ptr[i] = expert_ptr[i - 1] + cpu_local_count_data[i - 1];
-    }
+
+    framework::Tensor expert_gpu;
+    framework::DDim expert_dims = framework::make_ddim({n_expert * nranks});
+    const int64_t* in_data = local_count->data<int64_t>();
+    int64_t* expert_ptr_gpu =
+        expert_gpu.mutable_data<int64_t>(expert_dims, place);
+    thrust::device_ptr<const int64_t> dev_ptr =
+        thrust::device_pointer_cast(in_data);
+    thrust::device_vector<int64_t> vec(dev_ptr, dev_ptr + n_expert * nranks);
+    thrust::exclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
+                           expert_ptr_gpu);
+    framework::Tensor expert_cpu;
+    framework::TensorCopySync(expert_gpu, platform::CPUPlace(), &expert_cpu);
+    int64_t* expert_ptr = expert_cpu.data<int64_t>();
+    // VLOG(0) << "exclusive_scan begin";
+    // int64_t* expert_ptr = new int64_t[n_expert * nranks];
+    // thrust::exclusive_scan(thrust::host, cpu_local_count_data,
+    // cpu_local_count_data + n_expert * nranks,
+    //                              expert_ptr);
+    // VLOG(0) << "exclusive_scan end";
+
+    // auto tot_experts = n_expert * nranks;
+    // for (auto i = 0; i < tot_experts; ++i) {
+    //   VLOG(0) << expert_ptr[i];
+    // }
+
+    // int64_t* expert_ptr = new int64_t[n_expert * nranks];
+    // expert_ptr[0] = 0;
+    // auto tot_experts = n_expert * nranks;
+    // for (auto i = 1; i < tot_experts; ++i) {
+    //   expert_ptr[i] = expert_ptr[i - 1] + cpu_local_count_data[i - 1];
+    // }
+
     auto send_ptr = 0;
     auto send_buf = x->data<T>();
     auto recv_buf = out->mutable_data<T>(out_dims, place);
