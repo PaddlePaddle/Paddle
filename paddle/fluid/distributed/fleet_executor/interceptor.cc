@@ -53,10 +53,12 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
         InterceptorMessage data_is_ready_msg;
         data_is_ready_msg.set_message_type(DATA_IS_READY);
         Send(interceptor_id_ + 1, data_is_ready_msg);
+      } else {
+        // NOTE: max run time is reach for last interceptor
+        StopCarrier();
       }
     } else if (msg.message_type() == STOP) {
       stop_ = true;
-      StopCarrier();
     }
   }
 }
