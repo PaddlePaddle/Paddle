@@ -14,6 +14,12 @@
 
 #pragma once
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
+#endif
+
 #include "paddle/fluid/platform/eigen_ext.h"
 namespace paddle {
 namespace platform {
