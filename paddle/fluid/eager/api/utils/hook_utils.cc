@@ -20,6 +20,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace egr {
+namespace egr_utils_api {
 
 void RegisterGradientHookForTensor(
     const egr::EagerTensor& tensor,
@@ -90,4 +91,5 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
   }
 }
 
+}  // namespace egr_utils_api
 }  // namespace egr
