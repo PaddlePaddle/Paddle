@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_gather_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+// #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -86,11 +89,17 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto in_feat = x->dims()[1];
     auto n_expert = local_count->dims()[0] / nranks;
 
-    auto fwd_count = 0;
+    framework::Tensor count;
+    framework::DDim fwd_count_dims = framework::make_ddim({1});
+    std::vector<int> out_reduce_dims;
+    out_reduce_dims.push_back(0);
+    auto fwd_data_tmp = count.mutable_data<T>(fwd_count_dims, place);
+    TensorReduceFunctorImpl<int64_t, int64_t, CustomSum>(
+        *local_count, &count, out_reduce_dims, stream);
+    framework::Tensor count_tensor;
+    framework::TensorCopy(count, platform::CPUPlace(), &count_tensor);
+    auto fwd_count = count_tensor.data<int64_t>()[0];
 
-    for (auto i = 0; i < local_count_len; ++i) {
-      fwd_count += cpu_local_count_data[i];
-    }
     framework::DDim out_dims = framework::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
