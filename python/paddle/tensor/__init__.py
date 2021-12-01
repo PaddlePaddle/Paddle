@@ -189,6 +189,8 @@ from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
+from .math import rad2deg  # noqa: F401
+from .math import deg2rad  # noqa: F401
 from .math import diff  # noqa: F401
 
 from .random import multinomial  # noqa: F401
