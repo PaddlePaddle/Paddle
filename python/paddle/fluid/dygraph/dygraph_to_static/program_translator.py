@@ -573,18 +573,6 @@ class StaticFunction(object):
         return self._function_spec
 
 
-# Flag that indicates whether running code under `@declarative`
-_in_declarative_mode_ = False
-
-
-def in_declarative_mode():
-    """
-    Return a bool value that indicates whether running code under `@declarative`
-
-    """
-    return _in_declarative_mode_
-
-
 @signature_safe_contextmanager
 def _switch_declarative_mode_guard_(is_declarative=True):
 
