@@ -105,10 +105,9 @@ TEST(InterceptorTest, PingPong) {
 
   int pid = fork();
   if (pid == 0) {
+    Carrier& carrier = Carrier::Instance();
     MessageBus& msg_bus = MessageBus::Instance();
     msg_bus.Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip0);
-
-    Carrier& carrier = Carrier::Instance();
 
     Interceptor* a = carrier.SetInterceptor(
         0, InterceptorFactory::Create("PingPong", 0, nullptr));
@@ -117,10 +116,9 @@ TEST(InterceptorTest, PingPong) {
     InterceptorMessage msg;
     a->Send(1, msg);
   } else {
+    Carrier& carrier = Carrier::Instance();
     MessageBus& msg_bus = MessageBus::Instance();
     msg_bus.Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip1);
-
-    Carrier& carrier = Carrier::Instance();
 
     carrier.SetInterceptor(1,
                            InterceptorFactory::Create("PingPong", 1, nullptr));

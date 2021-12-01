@@ -61,10 +61,10 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
+  Carrier& carrier = Carrier::Instance();
+
   MessageBus& msg_bus = MessageBus::Instance();
   msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
-
-  Carrier& carrier = Carrier::Instance();
 
   // FIXME: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a =
