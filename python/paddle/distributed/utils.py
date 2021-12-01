@@ -980,9 +980,8 @@ def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     """
 
     if in_dygraph_mode():
-        return core.ops.prune_gate_by_capacity(gate_idx, expert_count,
-                                               "n_expert", n_expert, "n_worker",
-                                               n_worker)[0]
+        return core.ops.prune_gate_by_capacity(
+            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker)
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
     check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],
@@ -995,9 +994,15 @@ def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
         type='prune_gate_by_capacity',
         inputs={'GateIdx': gate_idx,
                 "ExpertCount": expert_count},
-        outputs={'NewGateIdx': new_gate_idx,
-                 'ExpertCountOut': expert_count},
+        outputs={'NewGateIdx': new_gate_idx},
         attrs={"n_expert": n_expert,
                "n_worker": n_worker})
 
     return new_gate_idx
+
+
+def random_routing(topk_idx, topk_value, prob):
+    """
+    """
+    if in_dygraph_mode():
+        return _C_ops.random_routing(prob, topk_value, topk_idx)

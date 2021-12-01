@@ -65,9 +65,9 @@ class PruneGateByCapacityFunctor {
 
     auto& dev_ctx = context_.template device_context<DeviceContext>();
     auto* expert_count_out_data = expert_count_out_->data<T2>();
-    framework::Tensor cpu_expert_count;
-    framework::TensorCopySync(*expert_count_out_, platform::CPUPlace(),
-                              &cpu_expert_count);
+    // framework::Tensor cpu_expert_count;
+    // framework::TensorCopySync(*expert_count_out_, platform::CPUPlace(),
+    // &cpu_expert_count);
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
 
@@ -102,13 +102,14 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* gate_idx = context.Input<LoDTensor>("GateIdx");
     auto* expert_count = context.Input<LoDTensor>("ExpertCount");
-    auto* expert_count_out = context.Output<LoDTensor>("ExpertCountOut");
+    // auto* expert_count_out = context.Output<LoDTensor>("ExpertCountOut");
     auto* new_gate_idx = context.Output<LoDTensor>("NewGateIdx");
     auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
 
-    framework::TensorCopy(*expert_count, context.GetPlace(), expert_count_out);
+    framework::LoDTensor expert_count_out;
+    framework::TensorCopy(*expert_count, context.GetPlace(), &expert_count_out);
     PruneGateByCapacityFunctor<DeviceContext, T> functor(
-        context, gate_idx, expert_count_out, new_gate_idx_data);
+        context, gate_idx, &expert_count_out, new_gate_idx_data);
     VisitDataType(expert_count->type(), functor);
   }
 };
