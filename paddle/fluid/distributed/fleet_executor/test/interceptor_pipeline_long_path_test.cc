@@ -51,21 +51,20 @@ void LinkNodes(const std::vector<TaskNode*>& nodes) {
 }
 
 TEST(AmplifierInterceptor, Amplifier) {
+  Carrier& carrier = Carrier::Instance();
   MessageBus& msg_bus = MessageBus::Instance();
   msg_bus.Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}},
                {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
-
-  Carrier& carrier = Carrier::Instance();
 
   int64_t micro_steps = 3;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a = new TaskNode(0, 0, 0, 1, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 0, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 0, 0);
-  TaskNode* node_d = new TaskNode(0, 0, 3, 0, 1);
-  TaskNode* node_e = new TaskNode(0, 0, 4, 0, 1);
-  TaskNode* node_f = new TaskNode(0, 0, 5, 1, 1);
+  TaskNode* node_b = new TaskNode(0, 0, 1, 1, 0);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 1, 0);
+  TaskNode* node_d = new TaskNode(0, 0, 3, 1, 0);
+  TaskNode* node_e = new TaskNode(0, 0, 4, 1, 0);
+  TaskNode* node_f = new TaskNode(0, 0, 5, 1, 0);
 
   // a->b->c->d->e->f
   LinkNodes({node_a, node_b, node_c, node_d, node_e, node_f});
@@ -89,13 +88,6 @@ TEST(AmplifierInterceptor, Amplifier) {
   msg.set_src_id(-1);
   msg.set_dst_id(0);
   carrier.EnqueueInterceptorMessage(msg);
-
-  // stop
-  InterceptorMessage stop;
-  stop.set_message_type(STOP);
-  stop.set_src_id(-1);
-  stop.set_dst_id(0);
-  carrier.EnqueueInterceptorMessage(stop);
 }
 
 }  // namespace distributed
