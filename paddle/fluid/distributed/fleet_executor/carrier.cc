@@ -158,6 +158,16 @@ void Carrier::SetCreatingFlag(bool flag) {
   creating_interceptors_ = flag;
   creating_flag_mutex_.unlock();
   if (!flag) {
+    for (auto& pair : interceptor_idx_to_interceptor_) {
+      // update the source interceptor id
+      if (std::find(source_interceptor_ids_.begin(),
+                    source_interceptor_ids_.end(),
+                    pair.first) == source_interceptor_ids_.end()) {
+        if (pair.second->GetTaskNode()->upstream().empty()) {
+          source_interceptor_ids_.emplace_back(pair.first);
+        }
+      }
+    }
     // finish create interceptors outside, handle tmp messsages
     HandleTmpMessages();
   }
