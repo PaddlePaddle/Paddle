@@ -59,6 +59,13 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
       }
     } else if (msg.message_type() == STOP) {
       stop_ = true;
+      if (node_->role() != 2) {
+        VLOG(3) << "Fake handler is sending STOP message to: "
+                << interceptor_id_ + 1 << ".";
+        InterceptorMessage stop_msg;
+        stop_msg.set_message_type(STOP);
+        Send(interceptor_id_ + 1, stop_msg);
+      }
     }
   }
 }
