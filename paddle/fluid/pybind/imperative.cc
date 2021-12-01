@@ -1548,6 +1548,25 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, framework::proto::VarType::Type type) {
              self.MutableGradVarBase()->SetType(type);
            })
+      .def("_reset_grad_inplace_version",
+           [](imperative::VarBase &self) {
+             /*
+             *** This interfaceis a complete hack ***
+             reset_grad_inplace_version removes all inplace related records to
+             Grad VarBase/VariableWrapper,
+             the essential purpose of which is to let you use inplace operations
+             as if using its non-inplaced version,
+             which of course will cause unexpected consequences if not used with
+             care.
+             Make sure you fully understand what you're doing before make use of
+             this interface, and prepare for the worst.
+             */
+             if (self.HasGradVar()) {
+               auto grad_var = self.GradVarBase();
+               auto var_wrapper = grad_var->SharedVar();
+               if (var_wrapper) var_wrapper->ResetInplaceVersion();
+             }
+           })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();

@@ -51,15 +51,11 @@ void MessageBus::Init(
 #endif
 
   ListenPort();
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { MessageBus::Instance().Release(); });
-  });
 }
 
 bool MessageBus::IsInit() const { return is_init_; }
 
-void MessageBus::Release() {
+MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
@@ -140,6 +136,9 @@ void MessageBus::ListenPort() {
 }
 
 bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
+  // -1 is sent by carrier to source interceptor
+  if (src_id == -1) src_id = dst_id;
+
   // check whether the dst is the same rank or different rank with src
   const auto& src_rank = interceptor_id_to_rank_.find(src_id);
   const auto& dst_rank = interceptor_id_to_rank_.find(dst_id);

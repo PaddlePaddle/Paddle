@@ -25,12 +25,25 @@ inline static int PADDLE_GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
-                                       T *output, size_t channel_num,
-                                       size_t plane_size, size_t numel) {
+__global__ void PReluChannelFirstWiseKernel(const T *input, const T *alpha,
+                                            T *output, size_t channel_num,
+                                            size_t plane_size, size_t numel) {
   CUDA_KERNEL_LOOP(index, numel) {
     size_t temp = index / plane_size;
     size_t channel_index = temp % channel_num;
+    T scale = alpha[channel_index];
+    T x = input[index];
+    T zero = static_cast<T>(0);
+    output[index] = (x > zero) ? x : scale * x;
+  }
+}
+
+template <typename T>
+__global__ void PReluChannelLastWiseKernel(const T *input, const T *alpha,
+                                           T *output, size_t channel_num,
+                                           size_t numel) {
+  CUDA_KERNEL_LOOP(index, numel) {
+    size_t channel_index = index % channel_num;
     T scale = alpha[channel_index];
     T x = input[index];
     T zero = static_cast<T>(0);
@@ -65,10 +78,16 @@ __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
 template <typename T>
 void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
     gpuStream_t stream, const T *input, const T *alpha, T *output,
-    size_t batch_size, size_t channel, size_t numel) {
-  PReluChannelWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
-                           stream>>>(input, alpha, output, channel,
-                                     numel / batch_size / channel, numel);
+    size_t batch_size, size_t channel, bool channel_last, size_t numel) {
+  if (channel_last) {
+    PReluChannelLastWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
+                                 stream>>>(input, alpha, output, channel,
+                                           numel);
+  } else {
+    PReluChannelFirstWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
+                                  stream>>>(
+        input, alpha, output, channel, numel / batch_size / channel, numel);
+  }
 }
 
 template <typename T>
