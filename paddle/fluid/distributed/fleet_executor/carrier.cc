@@ -92,19 +92,22 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
 }
 
 void Carrier::Start() {
-  // TODO(fleet_executor dev): this start is a faked one, need replace
-  for (const auto& pair : interceptor_idx_to_interceptor_) {
-    VLOG(3) << "Fake run is sending start to interceptor " << pair.first << ".";
-    InterceptorMessage tmp_msg;
-    tmp_msg.set_src_id(pair.first);
-    tmp_msg.set_dst_id(pair.first);
-    tmp_msg.set_message_type(DATA_IS_READY);
-    MessageBus& message_bus_instance = MessageBus::Instance();
-    PADDLE_ENFORCE_EQ(message_bus_instance.IsInit(), true,
-                      platform::errors::PreconditionNotMet(
-                          "Message bus has not been initialized."));
-    message_bus_instance.Send(tmp_msg);
+  MessageBus& msg_bus = MessageBus::Instance();
+  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Message bus has not been initialized."));
+
+  for (int64_t id : source_interceptor_ids_) {
+    VLOG(3) << "Carrier Start is sending start to source interceptor " << id
+            << ".";
+    InterceptorMessage start_msg;
+    // source node data_is_ready is send by carrier, so set src_id=-1
+    start_msg.set_src_id(-1);
+    start_msg.set_dst_id(id);
+    start_msg.set_message_type(DATA_IS_READY);
+    msg_bus.Send(start_msg);
   }
+
   std::unique_lock<std::mutex> lock(running_mutex_);
   cond_var_.wait(lock);
   dev_ctx_->Wait();
@@ -164,16 +167,26 @@ void Carrier::CreateInterceptors() {
       int64_t interceptor_id = item.first;
       TaskNode* task_node = item.second;
 
-      // TODO(wangxi): use node_type to select different Interceptor
-      auto interceptor =
-          std::make_unique<Interceptor>(interceptor_id, task_node);
+      std::unique_ptr<Interceptor> interceptor;
+      if (task_node->type().empty()) {
+        // TODO(wangxi): delete this in future
+        interceptor.reset(new Interceptor(interceptor_id, task_node));
+      } else {
+        interceptor = InterceptorFactory::Create(task_node->type(),
+                                                 interceptor_id, task_node);
+      }
       interceptor->SetPlace(place_);
       interceptor->SetMiniBatchScope(minibatch_scope_);
       interceptor->SetMicroBatchScope(microbatch_scopes_);
       interceptor->SetRootScope(root_scope_);
+
       SetInterceptor(interceptor_id, std::move(interceptor));
       VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
               << ".";
+
+      if (task_node->upstream().empty()) {
+        source_interceptor_ids_.emplace_back(interceptor_id);
+      }
     }
     // The carrier will be always waiting for outside initializer
     // since there is no interceptor has been created during auto init
