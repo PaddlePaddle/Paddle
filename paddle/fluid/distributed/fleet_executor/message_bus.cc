@@ -136,6 +136,9 @@ void MessageBus::ListenPort() {
 }
 
 bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
+  // -1 is sent by carrier to source interceptor
+  if (src_id == -1) src_id = dst_id;
+
   // check whether the dst is the same rank or different rank with src
   const auto& src_rank = interceptor_id_to_rank_.find(src_id);
   const auto& dst_rank = interceptor_id_to_rank_.find(dst_id);

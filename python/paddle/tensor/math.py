@@ -24,6 +24,7 @@ from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
 
 from paddle.tensor import cast
+from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable, convert_np_dtype_to_dtype_
@@ -2612,6 +2613,117 @@ def atan2(x, y, name=None):
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
 
+def rad2deg(x, name=None):
+    """
+    Convert each of the elements of input x from angles in radians to degrees.
+    
+    Equation:
+        .. math::
+
+            rad2deg(x)=180/ \pi * x
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
+            result1 = paddle.rad2deg(x1)
+            print(result1)
+            # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [180.02334595, -180.02334595,  359.98937988, -359.98937988,
+            #           9.95437622 , -89.95437622])
+
+            x2 = paddle.to_tensor(np.pi/2)
+            result2 = paddle.rad2deg(x2)
+            print(result2)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [90.])
+                     
+            x3 = paddle.to_tensor(1)
+            result3 = paddle.rad2deg(x3)
+            print(result3)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [57.29578018])
+    """
+    rad2deg_scale = 180 / np.pi
+    if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.scale(x, 'scale', rad2deg_scale)
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg')
+        helper = LayerHelper('rad2deg', **locals())
+        out_cast = x
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
+            helper.append_op(
+                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
+        helper.append_op(
+            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': rad2deg_scale})
+        return out
+
+def deg2rad(x, name=None):
+    """
+    Convert each of the elements of input x from degrees to angles in radians.
+    
+    Equation:
+        .. math::
+
+            deg2rad(x)=\pi * x / 180
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
+            result1 = paddle.deg2rad(x1)
+            print(result1)
+            # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [3.14159274, -3.14159274,  6.28318548, -6.28318548,  1.57079637,
+            #           -1.57079637])
+
+            x2 = paddle.to_tensor(180)
+            result2 = paddle.deg2rad(x2)
+            print(result2)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [3.14159274])
+    """
+    deg2rad_scale = np.pi / 180.0
+    if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.scale(x, 'scale', deg2rad_scale)
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad')
+        helper = LayerHelper('deg2rad', **locals())
+        out_cast = x
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
+            helper.append_op(
+                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
+        helper.append_op(
+            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
+        return out
 
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
@@ -2646,6 +2758,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         .. code-block:: python
 
             import paddle
+
             x = paddle.to_tensor([1, 4, 5, 2])
             out = paddle.diff(x)
             print(out)
@@ -2667,8 +2780,6 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             print(out)
             # out:
             # [[1, 1], [1, 1]]
-
-
     """
 
     if axis < 0:
@@ -2774,3 +2885,57 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             out = layers.elementwise_sub(input_back, input_front, axis=axis)
 
         return out
+
+
+def angle(x, name=None):
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
+    for negative real numbers, the angle is :math:`\pi`.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            z = x + 1j * y
+            print(z.numpy())
+            # [[-2.-2.j -2.-1.j -2.+0.j -2.+1.j]
+            #  [-1.-2.j -1.-1.j -1.+0.j -1.+1.j]
+            #  [ 0.-2.j  0.-1.j  0.+0.j  0.+1.j]
+            #  [ 1.-2.j  1.-1.j  1.+0.j  1.+1.j]]
+
+            theta = paddle.angle(z)
+            print(theta.numpy())
+            # [[-2.3561945 -2.6779451  3.1415927  2.6779451]
+            #  [-2.0344439 -2.3561945  3.1415927  2.3561945]
+            #  [-1.5707964 -1.5707964  0.         1.5707964]
+            #  [-1.1071488 -0.7853982  0.         0.7853982]]
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.angle(x)
+
+    check_variable_and_dtype(x, 'x',
+        ['float32', 'float64', 'complex64', 'complex128'], 'angle')
+    op_type = "angle"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(x.dtype))
+    outputs = {"Out": out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
