@@ -163,8 +163,8 @@ void Carrier::SetCreatingFlag(bool flag) {
       if (std::find(source_interceptor_ids_.begin(),
                     source_interceptor_ids_.end(),
                     pair.first) == source_interceptor_ids_.end()) {
-        if (pair.second->GetTaskNode() &&
-            pair.second->GetTaskNode()->upstream().empty()) {
+        auto task = pair.second->GetTaskNode();
+        if (task != nullptr && task->upstream().empty()) {
           source_interceptor_ids_.emplace_back(pair.first);
         }
       }
