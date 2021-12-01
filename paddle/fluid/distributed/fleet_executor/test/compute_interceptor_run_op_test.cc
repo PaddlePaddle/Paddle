@@ -90,13 +90,6 @@ TEST(ComputeInterceptor, Compute) {
   msg.set_src_id(-1);
   msg.set_dst_id(0);
   carrier.EnqueueInterceptorMessage(msg);
-
-  // stop
-  InterceptorMessage stop;
-  stop.set_message_type(STOP);
-  stop.set_src_id(-1);
-  stop.set_dst_id(0);
-  carrier.EnqueueInterceptorMessage(stop);
 }
 
 }  // namespace distributed
