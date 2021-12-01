@@ -219,4 +219,3 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
