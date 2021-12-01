@@ -107,20 +107,13 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
         self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor,
                                          self.v_tensor, self.attn_mask_tensor)
 
-        paddle.enable_static()
-
         self.path_with_coverting = '/tmp/paddle_mha_convert_with_to_static'
-        self.exe = paddle.static.Executor(self.place)
-
-        main_prog, startup_prog, inputs, outputs = \
-            CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
-                self.cudnn_mha, self.exe, [self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor])
-        paddle.static.save_inference_model(
-            self.path_with_coverting,
-            inputs,
-            outputs,
-            self.exe,
-            program=main_prog)
+        layer = CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
+            self.cudnn_mha, [
+                self.q_tensor, self.k_tensor, self.v_tensor,
+                self.attn_mask_tensor
+            ])
+        paddle.jit.save(layer, self.path_with_coverting)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -128,17 +121,20 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
         self.rtol = 1e-3
 
     def test_compatibility_with_save_inference_model(self):
-        [inference_program, feed_target_names, fetch_targets] = \
-            paddle.static.load_inference_model(self.path_with_coverting, self.exe)
+        paddle.enable_static()
+        exe = paddle.static.Executor(self.place)
 
-        loaded_output = self.exe.run(inference_program,
-                                     feed={
-                                         feed_target_names[0]: self.Q,
-                                         feed_target_names[1]: self.K,
-                                         feed_target_names[2]: self.V,
-                                         feed_target_names[3]: self.attn_mask
-                                     },
-                                     fetch_list=fetch_targets)
+        [inference_program, feed_target_names, fetch_targets] = \
+            paddle.static.load_inference_model(self.path_with_coverting, exe)
+
+        loaded_output = exe.run(inference_program,
+                                feed={
+                                    feed_target_names[0]: self.Q,
+                                    feed_target_names[1]: self.K,
+                                    feed_target_names[2]: self.V,
+                                    feed_target_names[3]: self.attn_mask
+                                },
+                                fetch_list=fetch_targets)
 
         self.assertTrue(
             compare(self.output_ref.numpy(), loaded_output[0], self.atol,
@@ -234,20 +230,14 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
         self.output_ref = self.cudnn_mha(self.q_tensor, self.k_tensor,
                                          self.v_tensor, self.attn_mask_tensor)
 
-        paddle.enable_static()
-
         self.path_with_coverting = '/tmp/paddle_mha_convert_with_to_static'
-        self.exe = paddle.static.Executor(self.place)
 
-        main_prog, startup_prog, inputs, outputs = \
-            CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
-                self.cudnn_mha, self.exe, [self.q_tensor, self.k_tensor, self.v_tensor, self.attn_mask_tensor])
-        paddle.static.save_inference_model(
-            self.path_with_coverting,
-            inputs,
-            outputs,
-            self.exe,
-            program=main_prog)
+        layer = CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
+            self.cudnn_mha, [
+                self.q_tensor, self.k_tensor, self.v_tensor,
+                self.attn_mask_tensor
+            ])
+        paddle.jit.save(layer, self.path_with_coverting)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -255,17 +245,20 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
         self.rtol = 1e-3
 
     def test_compatibility_with_save_inference_model(self):
-        [inference_program, feed_target_names, fetch_targets] = \
-            paddle.static.load_inference_model(self.path_with_coverting, self.exe)
+        paddle.enable_static()
+        exe = paddle.static.Executor(self.place)
 
-        loaded_output = self.exe.run(inference_program,
-                                     feed={
-                                         feed_target_names[0]: self.Q,
-                                         feed_target_names[1]: self.K,
-                                         feed_target_names[2]: self.V,
-                                         feed_target_names[3]: self.attn_mask
-                                     },
-                                     fetch_list=fetch_targets)
+        [inference_program, feed_target_names, fetch_targets] = \
+            paddle.static.load_inference_model(self.path_with_coverting, exe)
+
+        loaded_output = exe.run(inference_program,
+                                feed={
+                                    feed_target_names[0]: self.Q,
+                                    feed_target_names[1]: self.K,
+                                    feed_target_names[2]: self.V,
+                                    feed_target_names[3]: self.attn_mask
+                                },
+                                fetch_list=fetch_targets)
 
         self.assertTrue(
             compare(self.output_ref.numpy(), loaded_output[0], self.atol,

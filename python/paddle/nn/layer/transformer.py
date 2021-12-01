@@ -134,7 +134,7 @@ class CUDNNSeqInfoInfer(Layer):
         CUDNNSeqInfoInfer.id += 1
 
     def forward(self, attention_mask):
-        max_seq_len = attention_mask.shape[1]
+        max_seq_len = attention_mask.shape[-1]
         low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
         hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
         if (len(attention_mask.shape) == 4):
@@ -246,59 +246,56 @@ class CUDNNMultiHeadAttention(Layer):
             self.meta_data.hidden_size, self._dtype, name_str)
 
     @staticmethod
-    def convert_inference_program_with_paddleMHA_replacement(layer, exe,
-                                                             inputs):
+    def convert_inference_program_with_paddleMHA_replacement(layer, inputs):
+
         in_dygraph_mode_before = paddle.fluid.framework.in_dygraph_mode()
-        if in_dygraph_mode_before:
+        if not in_dygraph_mode_before:
+            paddle.disable_static()
+
+        from paddle.static import InputSpec
+        new_inputs = []
+        for i, input_ in enumerate(inputs):
+            shape = [None, *input_.shape[1:]]
+            new_inputs.append(
+                InputSpec(
+                    shape=shape, dtype=input_.dtype, name="input_{}".format(i)))
+
+        import types
+        for _, l in layer.named_sublayers():
+            if isinstance(l, CUDNNMultiHeadAttention):
+                l.paddle_mha = MultiHeadAttention(
+                    l._embed_dim, l.meta_data.nheads, l.meta_data.dropout_rate)
+
+                WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = \
+                    CUDNNMultiHeadAttention._split_W_into_WQKVO(np.array(l.weight), l._embed_dim)
+                l.paddle_mha.q_proj.weight.set_value(WQ_P)
+                l.paddle_mha.k_proj.weight.set_value(WK_P)
+                l.paddle_mha.v_proj.weight.set_value(WV_P)
+                l.paddle_mha.out_proj.weight.set_value(WO_P)
+                l.paddle_mha.q_proj.bias.set_value(WQ_B)
+                l.paddle_mha.k_proj.bias.set_value(WK_B)
+                l.paddle_mha.v_proj.bias.set_value(WV_B)
+                l.paddle_mha.out_proj.bias.set_value(WO_B)
+
+                def forward(self, q, k, v, seq_info):
+                    return self.paddle_mha(q, k, v, seq_info.attn_mask)
+
+                l.forward = types.MethodType(forward, l)
+
+        if isinstance(layer.forward, paddle.fluid.dygraph.dygraph_to_static.
+                      program_translator.StaticFunction):
+            dygraph_function = layer.forward._dygraph_function.__get__(
+                layer.forward._class_instance)
+            layer.forward = paddle.jit.to_static(
+                dygraph_function, input_spec=new_inputs)
+        else:
+            layer.forward = paddle.jit.to_static(
+                layer.forward, input_spec=new_inputs)
+
+        if not in_dygraph_mode_before:
             paddle.enable_static()
 
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-
-        with paddle.static.program_guard(main_prog, startup_prog):
-            new_inputs = []
-            for input_ in inputs:
-                new_inputs.append(
-                    paddle.static.data(
-                        name="input_{}".format(id(input_)),
-                        shape=input_.shape,
-                        dtype=input_.dtype))
-
-            import types
-            for _, l in layer.named_sublayers():
-                if isinstance(l, CUDNNMultiHeadAttention):
-                    l.paddle_mha = MultiHeadAttention(l._embed_dim,
-                                                      l.meta_data.nheads,
-                                                      l.meta_data.dropout_rate)
-
-                    def forward(self, q, k, v, seq_info):
-                        return self.paddle_mha(q, k, v, seq_info.attn_mask)
-
-                    l.forward = types.MethodType(forward, l)
-            exe.run(startup_prog)
-            with paddle.static.program_guard(main_prog, startup_prog):
-                for p, l in layer.named_sublayers():
-                    if isinstance(l, CUDNNMultiHeadAttention):
-                        WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = \
-                            CUDNNMultiHeadAttention._split_W_into_WQKVO(
-                                np.array(l.weight), l._embed_dim)
-                        l.paddle_mha.q_proj.weight.set_value(WQ_P)
-                        l.paddle_mha.k_proj.weight.set_value(WK_P)
-                        l.paddle_mha.v_proj.weight.set_value(WV_P)
-                        l.paddle_mha.out_proj.weight.set_value(WO_P)
-                        l.paddle_mha.q_proj.bias.set_value(WQ_B)
-                        l.paddle_mha.k_proj.bias.set_value(WK_B)
-                        l.paddle_mha.v_proj.bias.set_value(WV_B)
-                        l.paddle_mha.out_proj.bias.set_value(WO_B)
-                if isinstance(layer.forward,
-                              paddle.fluid.dygraph.dygraph_to_static.
-                              program_translator.StaticFunction):
-                    output = layer.forward._call_dygraph_function(*new_inputs)
-                else:
-                    output = layer(*new_inputs)
-            if in_dygraph_mode_before:
-                paddle.disable_static()
-            return main_prog, startup_prog, new_inputs, output
+        return layer
 
     @staticmethod
     def _split_W_into_WQKVO(weight, embed_dim):
