@@ -15,6 +15,7 @@
 #pragma once
 
 #ifdef _WIN32
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #endif
