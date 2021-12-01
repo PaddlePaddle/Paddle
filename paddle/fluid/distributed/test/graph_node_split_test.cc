@@ -246,7 +246,6 @@ void RunGraphSplit() {
   auto pull_status = worker_ptr_->load_graph_split_config(
       0, std::string(graph_split_file_name));
   pull_status.wait();
-  std::cerr << "load config done\n";
   pull_status =
       worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
   srand(time(0));

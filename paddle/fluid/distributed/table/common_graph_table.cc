@@ -143,15 +143,12 @@ Node *GraphShard::find_node(uint64_t id) {
 }
 
 int32_t GraphTable::load_graph_split_config(const std::string &path) {
-  std::cerr << "in server side load graph split config\n";
+  VLOG(4) << "in server side load graph split config\n";
   std::ifstream file(path);
   std::string line;
   while (std::getline(file, line)) {
     auto values = paddle::string::split_string<std::string>(line, "\t");
     if (values.size() < 2) continue;
-    for (auto x : values) {
-      std::cerr << "value " << x << std::endl;
-    }
     size_t index = (size_t)std::stoi(values[0]);
     if (index != _shard_idx) continue;
     auto dst_id = std::stoull(values[1]);
