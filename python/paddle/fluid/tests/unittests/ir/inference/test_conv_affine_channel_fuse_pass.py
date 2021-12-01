@@ -138,7 +138,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
-        # mkldnn Output has diff with bias!!
+        # mkldnn Output has diff with bias!!!
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
