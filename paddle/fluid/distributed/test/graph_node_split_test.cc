@@ -231,9 +231,10 @@ void RunGraphSplit() {
   // test-end
   // Srart Server
   std::thread* server_thread = new std::thread(RunServer);
-  std::thread* server_thread2 = new std::thread(RunServer2);
-  sleep(1);
 
+  std::thread* server_thread2 = new std::thread(RunServer2);
+
+  sleep(2);
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
   dense_regions.insert(
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));

@@ -354,7 +354,7 @@ class ScaledLRU {
 class GraphTable : public SparseTable {
  public:
   GraphTable() { use_cache = false; }
-  virtual ~GraphTable() {}
+  virtual ~GraphTable();
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
                                   int &actual_size, bool need_feature,

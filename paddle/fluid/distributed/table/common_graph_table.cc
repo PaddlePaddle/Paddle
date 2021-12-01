@@ -97,6 +97,7 @@ void GraphShard::clear() {
 }
 
 GraphShard::~GraphShard() { clear(); }
+
 void GraphShard::delete_node(uint64_t id) {
   auto iter = node_location.find(id);
   if (iter == node_location.end()) return;
@@ -140,6 +141,17 @@ void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
 Node *GraphShard::find_node(uint64_t id) {
   auto iter = node_location.find(id);
   return iter == node_location.end() ? nullptr : bucket[iter->second];
+}
+
+GraphTable::~GraphTable() {
+  for (auto p : shards) {
+    delete p;
+  }
+  for (auto p : extra_shards) {
+    delete p;
+  }
+  shards.clear();
+  extra_shards.clear();
 }
 
 int32_t GraphTable::load_graph_split_config(const std::string &path) {
@@ -398,8 +410,8 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
     extra_shards_copy.push_back(new GraphShard());
   }
   for (auto &shard : extra_shards) {
-    auto bucket = shard->get_bucket();
-    auto node_location = shard->get_node_location();
+    auto &bucket = shard->get_bucket();
+    auto &node_location = shard->get_node_location();
     while (bucket.size()) {
       Node *temp = bucket.back();
       bucket.pop_back();
@@ -407,6 +419,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       extra_shards_copy[extra_nodes_to_thread_index[temp->get_id()]]
           ->add_graph_node(temp);
     }
+    auto bucket1 = shard->get_bucket();
   }
   for (int i = 0; i < task_pool_size_; ++i) {
     delete extra_shards[i];
