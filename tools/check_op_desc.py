@@ -241,6 +241,8 @@ def check_attr_registry(op, diff, origin_attrs):
                         if not origin_attrs.get(attr_name).get(EXTRA):
                             results[update_type][attr_name] = attr_change
 
+    if ADD in results.keys() and len(results[ADD]) == 0:
+        del results[ADD]
     return results
 
 
