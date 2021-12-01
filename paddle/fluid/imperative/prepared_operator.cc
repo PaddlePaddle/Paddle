@@ -299,41 +299,28 @@ static void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
+    auto current_alloc_size = kernel_ctx->InputsSize();
 
-    // The current size of input/output in pt_kernel_context_ is at least equal
-    // the start_idx. For the reason of reusing the allocted of inputs or
-    // outputs in pt_kernel_context_, the current size of input/output can be
-    // greater then the index of which the tensort wanted to set to, so it will
-    // use MakePtenTensorBaseFromVar to reset input pointer.
-    if (kernel_ctx->InputsSize() == start_idx) {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-      for (const auto& var : ins_vector) {
-        const auto& variable = var->Var();
-        tmp_inputs.emplace_back(
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const auto& variable = ins_vector[offset]->Var();
+      if (current_alloc_size > start_idx + offset) {
+        auto& input_ptr = kernel_ctx->MutableInputPtrAt(start_idx + offset);
+        if (input_ptr == nullptr) {
+          input_ptr = experimental::MakePtenTensorBaseFromVar(variable, in_def);
+        } else {
+          experimental::ReMakePtenDenseTensorFromVar(
+              variable, in_def, kernel_ctx->MutableInputAt<pten::DenseTensor>(
+                                    start_idx + offset));
+        }
+      } else {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(
             experimental::MakePtenTensorBaseFromVar(variable, in_def));
       }
-      kernel_ctx->EmplaceBackInputs(std::move(tmp_inputs));
-    } else if (kernel_ctx->InputsSize() > start_idx) {
-      size_t input_size = kernel_ctx->InputsSize();
-      for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > start_idx + j) {
-          kernel_ctx->MutableInputPtrAt(start_idx + j) =
-              experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
-                                                      in_def);
-        } else {
-          kernel_ctx->EmplaceBackInputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(ins_vector[j]->Var(),
-                                                      in_def));
-        }
-      }
-      kernel_ctx->MutableInputRangeAt(i) = std::make_pair(start_idx, end_idx);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Error start index when trying to set new tensor to inputs, start "
-          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
-          "`%d`.",
-          start_idx, kernel_ctx->InputsSize()));
     }
+    kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -342,41 +329,22 @@ static void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
-
-    // The current size of input/output in pt_kernel_context_ is at least equal
-    // the start_idx. For the reason of reusing the allocted of inputs or
-    // outputs in pt_kernel_context_, the current size of input/output can be
-    // greater then the index of which the tensort wanted to set to, so it will
-    // use ReMakePtenDenseTensorFromVar to make pten tensor.
-    if (kernel_ctx->OutputsSize() == start_idx) {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-      for (auto& var : outs_vector) {
-        auto* variable = var->MutableVar();
-        tmp_outputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(variable, out_def));
+    auto current_alloc_size = kernel_ctx->OutputsSize();
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (current_alloc_size > start_idx + offset) {
+        experimental::ReMakePtenDenseTensorFromVar(
+            outs_vector[offset]->MutableVar(), out_def,
+            kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset));
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(
+                outs_vector[offset]->MutableVar(), out_def));
       }
-      kernel_ctx->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else if (kernel_ctx->OutputsSize() > start_idx) {
-      size_t output_size = kernel_ctx->OutputsSize();
-      for (size_t j = 0; j < outs_vector.size(); ++j) {
-        if (output_size > i + j) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[j]->MutableVar(), out_def,
-              kernel_ctx->MutableOutputAt<pten::DenseTensor>(i + j));
-        } else {
-          kernel_ctx->EmplaceBackOutputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(
-                  outs_vector[j]->MutableVar(), out_def));
-        }
-      }
-      kernel_ctx->MutableOutputRangeAt(i) = std::make_pair(start_idx, end_idx);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Error start index when trying to set new tensor to inputs, start "
-          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
-          "`%d`.",
-          start_idx, kernel_ctx->OutputsSize()));
     }
+    kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {

@@ -1181,9 +1181,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
-
       WriteBackToOutputs(runtime_ctx);
-
       pt_kernel_context_->ClearData();
     } else {
       (*kernel_func_)(
@@ -1814,39 +1812,31 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
+    auto current_alloc_size = pt_kernel_context_->InputsSize();
 
-    // The current size of input/output in pt_kernel_context_ is at least equal
-    // the start_idx. For the reason of reusing the allocted of inputs or
-    // outputs in pt_kernel_context_, the current size of input/output can be
-    // greater then the index of which the tensort wanted to set to, so it will
-    // use MakePtenTensorBaseFromVar to reset input pointer.
-    if (pt_kernel_context_->InputsSize() == start_idx) {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-      for (auto* var : ins_vector) {
-        tmp_inputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(*var, in_def));
-      }
-      pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
-    } else if (pt_kernel_context_->InputsSize() > start_idx) {
-      size_t input_size = pt_kernel_context_->InputsSize();
-      for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > start_idx + j) {
-          pt_kernel_context_->MutableInputPtrAt(start_idx + j) =
-              experimental::MakePtenTensorBaseFromVar(*ins_vector[j], in_def);
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      if (current_alloc_size > start_idx + offset) {
+        auto& input_ptr =
+            pt_kernel_context_->MutableInputPtrAt(start_idx + offset);
+        if (input_ptr == nullptr) {
+          input_ptr = experimental::MakePtenTensorBaseFromVar(
+              *ins_vector[offset], in_def);
         } else {
-          pt_kernel_context_->EmplaceBackInputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(*ins_vector[j], in_def));
+          experimental::ReMakePtenDenseTensorFromVar(
+              *ins_vector[offset], in_def,
+              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(start_idx +
+                                                                    offset));
         }
+      } else {
+        pt_kernel_context_->EmplaceBackInputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(*ins_vector[offset],
+                                                    in_def));
       }
-      pt_kernel_context_->MutableInputRangeAt(i) =
-          std::make_pair(start_idx, end_idx);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Error start index when trying to set new tensor to inputs, start "
-          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
-          "`%d`.",
-          start_idx, pt_kernel_context_->InputsSize()));
     }
+    pt_kernel_context_->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -1856,41 +1846,25 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
+    auto current_alloc_size = pt_kernel_context_->OutputsSize();
 
-    // The current size of input/output in pt_kernel_context_ is at least equal
-    // the start_idx. For the reason of reusing the allocted of inputs or
-    // outputs in pt_kernel_context_, the current size of input/output can be
-    // greater then the index of which the tensort wanted to set to, so it will
-    // use ReMakePtenDenseTensorFromVar to make pten tensor.
-    if (pt_kernel_context_->OutputsSize() == start_idx) {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-      for (auto* var : outs_vector) {
-        tmp_outputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(var, out_def));
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (current_alloc_size > start_idx + offset) {
+        experimental::ReMakePtenDenseTensorFromVar(
+            outs_vector[offset], out_def,
+            pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
+                                                                   offset));
+      } else {
+        pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(outs_vector[offset],
+                                                    out_def));
       }
-      pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else if (pt_kernel_context_->OutputsSize() > start_idx) {
-      size_t output_size = pt_kernel_context_->OutputsSize();
-      for (size_t j = 0; j < outs_vector.size(); ++j) {
-        if (output_size > start_idx + j) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[j], out_def,
-              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
-                                                                     j));
-        } else {
-          pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
-              experimental::MakePtenTensorBaseFromVar(outs_vector[j], out_def));
-        }
-      }
-      pt_kernel_context_->MutableOutputRangeAt(i) =
-          std::make_pair(start_idx, end_idx);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Error start index when trying to set new tensor to inputs, start "
-          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
-          "`%d`.",
-          start_idx, pt_kernel_context_->OutputsSize()));
     }
+    pt_kernel_context_->AssignOutputRange(std::make_pair(start_idx, end_idx),
+                                          i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {

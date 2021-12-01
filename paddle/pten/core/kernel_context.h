@@ -99,10 +99,6 @@ class KernelContext {
     attrs_.emplace_back(std::move(attr));
   }
 
-  void SetOutput(std::shared_ptr<TensorBase> output, size_t idx) {
-    outputs_[idx] = output;
-  }
-
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
@@ -113,11 +109,12 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+  std::vector<TensorType> InputBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
       v.emplace_back(std::move(*t.get()));
+      inputs_.at(i) = nullptr;
     }
 
     return v;
@@ -129,6 +126,34 @@ class KernelContext {
 
   const std::pair<int, int>& OutputRangeAt(size_t idx) const {
     return output_range_.at(idx);
+  }
+
+  void AssignInputRange(std::pair<int, int>&& range, size_t idx) {
+    if (idx < input_range_.size()) {
+      input_range_[idx] = range;
+    } else if (idx == input_range_.size()) {
+      input_range_.emplace_back(range);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Invalid idx when trying to set InputRange, "
+          "index is `%d`, it is greater than the size(%d) of InputRange.",
+          idx,
+          input_range_.size()));
+    }
+  }
+
+  void AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
+    if (idx < output_range_.size()) {
+      output_range_[idx] = range;
+    } else if (idx == output_range_.size()) {
+      output_range_.emplace_back(range);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Invalid idx when trying to set InputRange, "
+          "index is `%d`, it is greater than the size(%d) of InputRange.",
+          idx,
+          output_range_.size()));
+    }
   }
 
   std::pair<int, int>& MutableInputRangeAt(size_t idx) {
@@ -173,8 +198,10 @@ class KernelContext {
   // Only deal with DenseTensor now
   void ClearData() {
     for (auto& in : inputs_) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(in.get()));
+      if (in) {
+        CompatibleDenseTensorUtils::ClearStorage(
+            static_cast<DenseTensor*>(in.get()));
+      }
     }
     for (auto& out : outputs_) {
       CompatibleDenseTensorUtils::ClearStorage(
