@@ -112,7 +112,12 @@ void InterpreterCoreGarbageCollector::StreamSynchronize(
                            instr.DeviceContext())
                            .stream();
   auto TensorSynchronize = [&stream](Tensor& tensor) {
-    const platform::Place& place = tensor.place();
+    auto allocation = tensor.Holder();
+    if (allocation == nullptr) {
+      return;
+    }
+
+    const platform::Place& place = allocation->place();
     if (platform::is_gpu_place(place)) {
       tensor.RecordStream(stream);
     } else if (platform::is_cuda_pinned_place(place)) {
@@ -151,6 +156,9 @@ void InterpreterCoreGarbageCollector::StreamSynchronize(
    * supported later.
    */
   for (int var_id : instr.GCCheckVars()) {
+    VLOG(4) << "GC sync " << scope.GetNameById(var_id) << " "
+            << scope.VarDesc(var_id);
+
     // persistable var will be ignore while GC
     if (scope.VarDesc(var_id) && scope.VarDesc(var_id)->Persistable()) {
       continue;

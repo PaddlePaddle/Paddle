@@ -26,12 +26,14 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
       owning_stream_(std::move(owning_stream)) {}
 
 void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
+  VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
+    VLOG(9) << "Record the same stream of " << stream;
     return;
   }
 
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-  gpuEvent_t recored_event;
+  gpuEvent_t record_event;
   auto it = outstanding_event_map_.find(stream);
   if (it == outstanding_event_map_.end()) {
     gpuEvent_t new_event;
@@ -43,16 +45,19 @@ void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
         hipEventCreateWithFlags(&new_event, hipEventDisableTiming));
 #endif
     outstanding_event_map_[stream] = new_event;
-    recored_event = new_event;
+    record_event = new_event;
+    VLOG(9) << "Create a new event " << new_event;
   } else {
-    recored_event = it->second;
+    record_event = it->second;
+    VLOG(9) << "Reuse event " << record_event;
   }
 
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(recored_event, stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(record_event, stream));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(recored_event, stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(record_event, stream));
 #endif
+  VLOG(8) << "Record event " << record_event << " to stream " << stream;
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
@@ -82,6 +87,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     PADDLE_ENFORCE_CUDA_SUCCESS(err);
     PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
 #endif
+    VLOG(8) << "Destroy event " << event;
   }
   return true;
 }

@@ -26,6 +26,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -200,7 +201,10 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
   void *address = allocation_implicit_stream->ptr();
   allocation_implicit_stream.reset();
 
-  gpuStream_t default_stream = nullptr;
+  gpuStream_t default_stream =
+      dynamic_cast<platform::CUDADeviceContext *>(
+          paddle::platform::DeviceContextPool::Instance().Get(place))
+          ->stream();
   allocation::AllocationPtr allocation_unique =
       Alloc(place, alloc_size, default_stream);
   EXPECT_GE(allocation_unique->size(), alloc_size);

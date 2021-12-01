@@ -77,6 +77,8 @@ paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
 }
 
 int main(int argc, char* argv[]) {
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+
   paddle::framework::InitDevices();
   std::cout << "main" << std::endl;
   int64_t batch_size = std::stoi(argv[1]);
@@ -116,6 +118,7 @@ int main(int argc, char* argv[]) {
 
     exec.Run({}, {}, {});
   }
+
   // ProfilerStop();
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;

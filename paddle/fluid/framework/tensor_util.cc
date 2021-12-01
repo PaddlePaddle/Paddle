@@ -56,7 +56,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
       src.layout() == DataLayout::kMKLDNN
           ? dst->mutable_data(dst_place, src.type(), src.memory_size())
           : dst->mutable_data(dst_place, src.type());
-#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#else
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto dst_ptr =
       platform::is_gpu_place(dst_place)
           ? dst->mutable_data(
@@ -67,6 +68,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 #else
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 #endif
+#endif
+
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
             << dst_place;
