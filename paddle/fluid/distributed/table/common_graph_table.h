@@ -65,7 +65,7 @@ class GraphShard {
   void delete_node(uint64_t id);
   void clear();
   void add_neighbor(uint64_t id, uint64_t dst_id, float weight);
-  std::unordered_map<uint64_t, int> get_node_location() {
+  std::unordered_map<uint64_t, int> &get_node_location() {
     return node_location;
   }
 
@@ -434,7 +434,7 @@ class GraphTable : public SparseTable {
   }
 
  protected:
-  std::vector<GraphShard> shards, extra_shards;
+  std::vector<GraphShard *> shards, extra_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   const int task_pool_size_ = 24;
   const int random_sample_nodes_ranges = 3;
