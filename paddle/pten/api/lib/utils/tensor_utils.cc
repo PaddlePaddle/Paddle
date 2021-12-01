@@ -354,7 +354,6 @@ void MovesSharedStorage(pten::DenseTensor* src,
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move storage."));
   dst->Resize(src->dims());
-  dst->set_type(pten::TransToProtoVarType(src->dtype()));
   auto* storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
   dst->ResetHolderWithType(std::move(storage->GetAllocation()),
