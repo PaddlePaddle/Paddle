@@ -23,7 +23,6 @@ import logging
 import paddle
 from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 import paddle.fluid.core as core
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
@@ -139,7 +138,6 @@ class AutoParallelizer:
             rank_mapping_args = " ".join(
                 ["--rank_mapping_path", rank_mapping_path])
             if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
-                run_with_coverage(True)
                 coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
             else:
                 coverage_args = []

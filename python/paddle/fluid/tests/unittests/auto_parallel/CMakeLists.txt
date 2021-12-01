@@ -1,5 +1,5 @@
 # file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 # string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
-    list(APPEND DIST_TEST_OPS test_auto_parallel_launch)
+    list(APPEND DIST_TEST_OPS test_auto_parallel_relaunch)
 endif()

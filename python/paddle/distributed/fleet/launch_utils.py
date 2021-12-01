@@ -542,7 +542,8 @@ def start_local_trainers(cluster,
         current_env.update(proc_env)
 
         coverage_args = []
-        if run_with_coverage():
+        if run_with_coverage() or os.environ.get("WITH_COVERAGE",
+                                                 "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         cmd = [sys.executable, "-u"] + coverage_args + [training_script
                                                         ] + training_script_args
