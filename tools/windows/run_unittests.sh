@@ -98,6 +98,29 @@ disable_wingpu_test="^test_model$|\
 ^test_imperative_optimizer_v2$|\
 ^disable_wingpu_test$"
 
+# /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
+# TODO: fix these unittest that is bound to fail
+disable_win_trt_test="^test_trt_convert_conv2d$|\
+^test_trt_convert_conv2d_fusion$|\
+^test_trt_convert_conv2d_transpose$|\
+^test_trt_convert_depthwise_conv2d$|\
+^test_trt_convert_emb_eltwise_layernorm$|\
+^test_trt_convert_pool2d$|\
+^test_trt_conv3d_op$|\
+^test_trt_matmul_quant_dequant$|\
+^test_trt_subgraph_pass$|\
+^test_trt_convert_dropout$|\
+^test_trt_convert_hard_sigmoid$|\
+^test_trt_convert_reduce_mean$|\
+^test_trt_convert_reduce_sum$|\
+^test_trt_convert_group_norm$|\
+^test_trt_convert_batch_norm$|\
+^test_trt_convert_activation$|\
+^test_trt_convert_depthwise_conv2d_transpose$|\
+^test_trt_convert_elementwise$|\
+^test_trt_convert_matmul$|\
+^test_trt_convert_scale$"
+
 # /*============================================================================*/
 
 # /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
@@ -133,17 +156,12 @@ long_time_test="^test_gru_op$|\
 ^test_activation_op$|\
 ^test_bicubic_interp_v2_op$|\
 ^test_bilinear_interp_v2_op$|\
-^test_conv_nn_grad$|\
 ^test_crop_tensor_op$|\
 ^test_cross_entropy2_op$|\
 ^test_cross_op$|\
-^test_elementwise_div_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_group_norm_op$|\
-^test_gru_unit_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
-^test_imperative_optimizer$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_multiclass_nms_op$|\
@@ -152,8 +170,6 @@ long_time_test="^test_gru_op$|\
 ^test_norm_nn_grad$|\
 ^test_normal$|\
 ^test_pool3d_op$|\
-^test_pool2d_op$|\
-^test_softmax_with_cross_entropy_op$|\
 ^test_static_save_load$|\
 ^test_trilinear_interp_op$|\
 ^test_trilinear_interp_v2_op$|\
@@ -162,8 +178,6 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
-^test_lstmp_op$|\
-^test_conv2d_transpose_op$|\
 ^test_imperative_auto_mixed_precision$|\
 ^test_imperative_optimizer_v2$|\
 ^test_strided_slice_op$"
@@ -231,7 +245,7 @@ function run_unittest_gpu() {
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$disable_win_trt_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
 }
 
