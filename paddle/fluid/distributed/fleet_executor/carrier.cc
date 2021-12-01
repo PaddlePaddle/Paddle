@@ -41,7 +41,7 @@ void Carrier::Init(
   is_init_ = true;
 }
 
-Carrier::~Carrier() {
+void Carrier::Release() {
   // NOTE(wangxi): must join before `Derived Interceptor` destruct,
   // otherwise Derived object will be destructed before thread complete.
 
@@ -66,6 +66,8 @@ Carrier::~Carrier() {
     interceptor.second->Join();
   }
 }
+
+Carrier::~Carrier() {}
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {

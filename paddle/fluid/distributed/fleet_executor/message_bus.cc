@@ -57,6 +57,8 @@ bool MessageBus::IsInit() const { return is_init_; }
 
 MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
+  Carrier& carrier = Carrier::Instance();
+  carrier.Release();
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   server_.Stop(1000);

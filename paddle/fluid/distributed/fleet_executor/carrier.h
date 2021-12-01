@@ -55,6 +55,7 @@ class Carrier final {
       const platform::Place& place);
 
   ~Carrier();
+  void Release();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
