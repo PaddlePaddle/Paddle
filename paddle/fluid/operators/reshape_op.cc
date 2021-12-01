@@ -484,7 +484,8 @@ class ReshapeKernel {
     // non-inplace need move all result from pt_out to out, inplace need set
     // result dims.
     if (in != out) {
-      paddle::experimental::MovesStorage(pt_out, static_cast<Tensor *>(out));
+      paddle::experimental::MovesSharedStorage(pt_out,
+                                               static_cast<Tensor *>(out));
     } else {
       out->Resize(pt_out->dims());
     }
