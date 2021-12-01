@@ -23,6 +23,7 @@ import logging
 import paddle
 from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.fleet.launch_utils import run_with_coverage
 import paddle.fluid.core as core
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
@@ -137,8 +138,14 @@ class AutoParallelizer:
             original_cmd_args = os.getenv("PADDLE_ORIGINAL_CMD_ARGS")
             rank_mapping_args = " ".join(
                 ["--rank_mapping_path", rank_mapping_path])
-            new_cmd_args = "-u -m paddle.distributed.fleet.launch" + " " + rank_mapping_args + " " + original_cmd_args
-            new_cmd = [sys.executable] + shlex.split(new_cmd_args)
+            if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
+                run_with_coverage(True)
+                coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            else:
+                coverage_args = []
+            new_cmd_args = "-m paddle.distributed.fleet.launch" + " " + rank_mapping_args + " " + original_cmd_args
+            new_cmd = [sys.executable, "-u"] + coverage_args + shlex.split(
+                new_cmd_args)
             print(new_cmd)
             new_process = subprocess.Popen(new_cmd)
             new_process.wait()
