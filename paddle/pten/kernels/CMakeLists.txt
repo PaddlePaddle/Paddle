@@ -1,3 +1,5 @@
+# pten math functions called by kernels
+add_subdirectory(math)
 # pten basic functions called by kernels
 add_subdirectory(functions)
 # pten kernels for diff device

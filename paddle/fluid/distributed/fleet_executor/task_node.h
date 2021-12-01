@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -34,6 +35,8 @@ class TaskNode final {
            int64_t max_slot_nums);
   TaskNode(int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
            int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
+  TaskNode(const paddle::framework::ProgramDesc& program, int64_t rank,
+           int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
 
   int64_t rank() const { return rank_; }
@@ -44,9 +47,11 @@ class TaskNode final {
   const std::unordered_set<int64_t>& upstream() const { return upstream_; }
   const std::unordered_set<int64_t>& downstream() const { return downstream_; }
   const std::string& type() const { return type_; }
+  const paddle::framework::ProgramDesc& program() const { return program_; }
+  const std::vector<OperatorBase*>& ops() const { return ops_; }
 
-  void AddUpstreamTask(int64_t task_id);
-  void AddDownstreamTask(int64_t task_id);
+  bool AddUpstreamTask(int64_t task_id);
+  bool AddDownstreamTask(int64_t task_id);
   std::string DebugString() const;
 
   static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int32_t role,
@@ -64,6 +69,7 @@ class TaskNode final {
   std::vector<OperatorBase*> ops_;
   std::unordered_set<int64_t> upstream_;
   std::unordered_set<int64_t> downstream_;
+  framework::ProgramDesc program_;
   int32_t role_;
   int64_t rank_;
   int64_t task_id_;

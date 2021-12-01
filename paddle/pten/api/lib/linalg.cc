@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 
 PT_DECLARE_MODULE(LinalgCPU);
 
@@ -55,8 +55,8 @@ PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y) {
   kernel_context.EmplaceBackInput(dense_y);
   // TODO(chenweihang): add transform impl
 
-  // 4. InferShape
-  auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
+  // 4. InferMeta
+  auto out_meta = DotInferMeta(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
   Tensor out;
@@ -95,8 +95,8 @@ PD_DLL_DECL Tensor matmul(const Tensor& x,
   kernel_context.EmplaceBackAttr(transpose_y);
   // TODO(chenweihang): add transform impl
 
-  // 4. InferShape
-  auto out_meta = MatmulInferShape(
+  // 4. InferMeta
+  auto out_meta = MatmulInferMeta(
       dense_x->meta(), dense_y->meta(), transpose_x, transpose_y);
 
   // 5. Prepare outputs

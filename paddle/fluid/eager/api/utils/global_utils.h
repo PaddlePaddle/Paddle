@@ -15,8 +15,9 @@
 
 #pragma once
 
-#include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/platform/enforce.h"
+#include <atomic>
+#include <memory>
+#include "paddle/fluid/platform/place.h"
 
 namespace egr {
 
