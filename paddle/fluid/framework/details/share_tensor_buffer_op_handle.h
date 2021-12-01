@@ -56,7 +56,7 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
   void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);
 
-  void SetShareDims(bool share_dims);
+  void SetShareDimsAndDtype(bool share_dims_and_dtype);
 
   const ShareTensorBufferFunctor &Functor() const { return functor_; }
 
