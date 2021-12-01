@@ -100,9 +100,10 @@ class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
   PyObject* arr_;
 };
 
-static inline PyObject* eager_api_numpy_to_tensor(
-    PyObject* numpy_data, pten::DataType dtype,
-    const paddle::platform::Place& place, bool stop_gradient) {
+static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
+                                           pten::DataType dtype,
+                                           const paddle::platform::Place& place,
+                                           bool stop_gradient) {
   std::vector<int64_t> vec_dims;
   auto numpy_shape = pybind11::detail::array_proxy(numpy_data)->dimensions;
   int rank = pybind11::detail::array_proxy(numpy_data)->nd;
@@ -167,7 +168,8 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
 static PyObject* eager_api_retain_grad_for_tensor(PyObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
-  egr::RetainGradForTensor(CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0));
+  egr::egr_utils_api::RetainGradForTensor(
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0));
   Py_INCREF(Py_None);
   return Py_None;
 }
