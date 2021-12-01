@@ -153,7 +153,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
-            Operator(Conv2DFusion) only supports data format of channel first (NCHW) now."
+            currently Operator(Conv2DFusion) only supports data format of channel first (NCHW)!"
         )
 
     def test(self):

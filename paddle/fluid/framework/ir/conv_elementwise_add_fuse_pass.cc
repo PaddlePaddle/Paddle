@@ -139,7 +139,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   };
 
   gpd(graph, handler);
-  // check if detect subgraphs successfully!!
+  // check if detect subgraphs successfully!!!
   AddStatis(found_conv_eltwise_count);
 }
 
