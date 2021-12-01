@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -35,6 +36,7 @@ extern PyTypeObject* pEagerTensorType;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
   if (!self->eagertensor.initialized()) {
     Py_INCREF(Py_None);
     return Py_None;
@@ -84,12 +86,15 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
   }
 
   return array;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
+  EAGER_TRY
   return ToPyObject(self->eagertensor.initialized());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyMethodDef variable_methods[] = {

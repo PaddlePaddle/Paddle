@@ -47,9 +47,11 @@ class EagerScaleTestCase(unittest.TestCase):
 
             core.eager.retain_grad_for_tensor(data_eager)
 
-            for i in range(10):
-                out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-                core.eager.run_backward([out_eager], [grad_eager], False)
+            out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
+            self.assertFalse(data_eager.grad._is_initialized())
+            core.eager.run_backward([out_eager], [grad_eager], False)
+            self.assertTrue(data_eager.grad._is_initialized())
+            self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
 
 
 class EagerDtypeTestCase(unittest.TestCase):

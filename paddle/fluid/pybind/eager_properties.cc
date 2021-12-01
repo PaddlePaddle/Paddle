@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -35,49 +36,64 @@ extern PyTypeObject* p_eager_tensor_type;
 
 PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
                                            void* closure) {
+  EAGER_TRY
   return ToPyObject(self->eagertensor.name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 int eager_tensor_properties_set_name(EagerTensorObject* self, PyObject* value,
                                      void* closure) {
+  EAGER_TRY
   self->eagertensor.set_name(CastPyArg2AttrString(value, 0));
   return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
 PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
                                                     void* closure) {
+  EAGER_TRY
   auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
   return ToPyObject(meta->StopGradient());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
                                            void* closure) {
+  EAGER_TRY
   auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
   return ToPyObject(meta->Grad());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
                                               PyObject* value, void* closure) {
+  EAGER_TRY
   auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
   meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
   return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
 PyObject* eager_tensor_properties_get_persistable(EagerTensorObject* self,
                                                   void* closure) {
+  EAGER_TRY
   auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
   return ToPyObject(meta->Persistable());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 int eager_tensor_properties_set_persistable(EagerTensorObject* self,
                                             PyObject* value, void* closure) {
+  EAGER_TRY
   auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
   meta->SetPersistable(CastPyArg2AttrBoolean(value, 0));
   return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
 PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
                                             void* closure) {
+  EAGER_TRY
   auto ddim = self->eagertensor.shape();
   std::vector<int64_t> value;
   size_t rank = static_cast<size_t>(ddim.size());
@@ -87,23 +103,30 @@ PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
   }
 
   return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* eager_tensor_properties_get_place(EagerTensorObject* self,
                                             void* closure) {
+  EAGER_TRY
   return ToPyObject(self->eagertensor.place());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,
                                                 void* closure) {
+  EAGER_TRY
   std::stringstream ostr;
   ostr << self->eagertensor.place();
   return ToPyObject(ostr.str());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
                                             void* closure) {
+  EAGER_TRY
   return ToPyObject(pten::DataType2String(self->eagertensor.type()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 struct PyGetSetDef variable_properties[] = {

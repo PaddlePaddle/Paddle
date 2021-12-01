@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -41,28 +42,6 @@ namespace pybind {
 namespace py = ::pybind11;
 
 extern PyTypeObject* p_eager_tensor_type;
-
-static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
-                                              PyObject* kwargs) {
-  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
-  egr::Controller::Instance().SetExpectedPlace(place);
-
-  Py_INCREF(Py_None);
-  return Py_None;
-}
-
-static PyObject* eager_api_scale(PyObject* self, PyObject* args,
-                                 PyObject* kwargs) {
-  // TODO(jiabin): Sync Tensor and Variable here when we support
-  egr::EagerTensor ret =
-      egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
-                     ->eagertensor,
-                 CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
-                 CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2),
-                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3),
-                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4));
-  return ToPyObject(ret);
-}
 
 size_t PyArray_Size_(PyObject* numpy_data) {
   size_t res = 1;
@@ -99,6 +78,32 @@ class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
  private:
   PyObject* arr_;
 };
+
+static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+  egr::Controller::Instance().SetExpectedPlace(place);
+
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_scale(PyObject* self, PyObject* args,
+                                 PyObject* kwargs) {
+  EAGER_TRY
+  // TODO(jiabin): Sync Tensor and Variable here when we support
+  egr::EagerTensor ret =
+      egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
+                     ->eagertensor,
+                 CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
+                 CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2),
+                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3),
+                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4));
+  return ToPyObject(ret);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
                                            pten::DataType dtype,
@@ -146,6 +151,7 @@ static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
 
 static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
                                      PyObject* kwargs) {
+  EAGER_TRY
   // TODO(jiabin): Support Kwargs here
   PyObject* data = PyTuple_GET_ITEM(args, 0);
   auto str_dtype = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
@@ -163,19 +169,23 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
     Py_INCREF(Py_None);
     return Py_None;
   }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* eager_api_retain_grad_for_tensor(PyObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
+  EAGER_TRY
   egr::egr_utils_api::RetainGradForTensor(
       CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0));
   Py_INCREF(Py_None);
   return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
                                         PyObject* kwargs) {
+  EAGER_TRY
   auto tensors = CastPyArg2VectorOfEagerTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors =
       CastPyArg2VectorOfEagerTensor(PyTuple_GET_ITEM(args, 1), 1);
@@ -183,6 +193,7 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
               CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
   Py_INCREF(Py_None);
   return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyMethodDef variable_functions[] = {
