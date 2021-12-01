@@ -109,15 +109,6 @@ class FleetDistRunnerBase(object):
                 "dump_fields_path": self.dump_fields_path
             })
 
-        configs = {}
-        configs['deep_embedding'] = {
-            "table_parameters.deep_embedding.accessor.embed_sgd_param.name":
-            "SparseNaiveSGDRule",
-            "table_parameters.deep_embedding.accessor.embedx_sgd_param.name":
-            "SparseAdamSGDRule",
-        }
-        self.strategy.sparse_table_configs = configs
-
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):
