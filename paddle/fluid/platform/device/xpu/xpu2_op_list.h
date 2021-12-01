@@ -289,6 +289,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"conv2d", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"conv2d_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"prior_box", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       // AddMore
   };
 
