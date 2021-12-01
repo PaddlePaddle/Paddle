@@ -1246,4 +1246,32 @@ def _memcpy(input, place=None, output=None):
 
 
 def complex(real, imag, name=None):
+    """Return a compelx tensor given the real and image component.
+**Note**:
+    ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Args:
+        real (Tensor): The real component. The data type should be 'float32' or 'float64'.
+        imag (Tensor): The image component. The data type should be the same as ``real``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
+
+    **Note**:
+        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
+            y = paddle.arange(3, dtype=paddle.float32)
+            z = paddle.complex(x, y)
+            print(z.numpy())
+
+            # [[0.+0.j 0.+1.j 0.+2.j]
+            #  [1.+0.j 1.+1.j 1.+2.j]]
+    """
+    check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
+    check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
     return real + 1j * imag

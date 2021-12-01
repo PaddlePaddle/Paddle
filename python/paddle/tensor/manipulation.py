@@ -2394,6 +2394,33 @@ def tensordot(x, y, axes=2, name=None):
 
 
 def view_as_complex(x, name=None):
+    """View a real tensor as a complex tensor. 
+    
+    The data type of the input tensor is 'float32' or 'float64', and data
+    type of the returned tensor is 'complex64' or 'complex128', respectively.
+
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e. 
+    the size of the last axis shoule be 2, which represent the real and imag part
+    of a complex number. The shape of the returned tensor is ``(*,)``.
+
+    Args:
+        x (Tensor): The input tensor. Data type is 'float32' or 'float64'.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            y = paddle.view_as_complex(x)
+            print(y.numpy())
+
+            # [[ 0. +1.j  2. +3.j  4. +5.j]
+            #  [ 6. +7.j  8. +9.j 10.+11.j]]
+    """
     if in_dygraph_mode():
         return paddle._C_ops.view_as_complex(x)
 
@@ -2410,6 +2437,39 @@ def view_as_complex(x, name=None):
 
 
 def view_as_real(x, name=None):
+    """View a complex tensor as a real tensor. 
+    
+    The data type of the input tensor is 'complex64' or 'complex128',and data 
+    type of the returned tensor is 'float32' or 'float64', respectively.
+
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
+    the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
+    the shape of the input appended by an extra ``2``.
+
+    Args:
+        x (Tensor): The input tensor. Data type is 'complex64' or 'complex128'.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output. Data type is 'float32' or 'float64', with the same precision as the input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            y = paddle.view_as_complex(x)
+            z = paddle.view_as_real(y)
+            print(z.numpy())
+
+            # [[[ 0.  1.]
+            #   [ 2.  3.]
+            #   [ 4.  5.]]
+
+            #  [[ 6.  7.]
+            #   [ 8.  9.]
+            #   [10. 11.]]]
+    """
     if in_dygraph_mode():
         return paddle._C_ops.view_as_real(x)
 
