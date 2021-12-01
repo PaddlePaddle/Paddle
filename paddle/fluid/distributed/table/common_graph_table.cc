@@ -419,7 +419,6 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       extra_shards_copy[extra_nodes_to_thread_index[temp->get_id()]]
           ->add_graph_node(temp);
     }
-    auto bucket1 = shard->get_bucket();
   }
   for (int i = 0; i < task_pool_size_; ++i) {
     delete extra_shards[i];
