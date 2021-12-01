@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace py = pybind11;
 
@@ -283,6 +284,7 @@ void SetTensorFromPyArrayT(
     framework::Tensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     const P &place, bool zero_copy) {
+  paddle::platform::RecordEvent record_event("yoki: SetTensorFromPyArrayT");
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
@@ -368,6 +370,7 @@ void SetTensorFromPyArrayT(
 template <typename P>
 void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                           const P &place, bool zero_copy) {
+  paddle::platform::RecordEvent record_event("yoki: SetTensorFromPyArray");
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
     SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
@@ -764,9 +767,12 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
+    // platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    // auto &ctx = *pool.Get(tensor.place());
     auto p = BOOST_GET_CONST(platform::CUDAPlace, tensor.place());
     paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
                          tensor_buf_ptr, copy_bytes, nullptr);
+                        //  tensor_buf_ptr, copy_bytes, reinterpret_cast<const platform::CUDADeviceContext &>(ctx).stream());
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(

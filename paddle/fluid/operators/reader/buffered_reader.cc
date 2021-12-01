@@ -81,7 +81,9 @@ void BufferedReader::ReadTillBufferFullAsync() {
 }
 
 void BufferedReader::ReadAsync(size_t i) {
+  platform::RecordEvent record_event1("yoki: ReadAsync1");
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
+    platform::RecordEvent record_event2("yoki: ReadAsync2");
     TensorVec &cpu = cpu_buffer_[i];
     reader_->ReadNext(&cpu);
 
@@ -90,7 +92,9 @@ void BufferedReader::ReadAsync(size_t i) {
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)  // @{ Group GPU Place
+    platform::RecordEvent record_event3("yoki: ReadAsync3");
     if (platform::is_gpu_place(place_)) {
+      platform::RecordEvent record_event4("yoki: ReadAsync4");
       TensorVec &cuda = cuda_buffer_[i];
       if (cuda.empty()) {
         cuda.resize(cpu.size());
@@ -114,7 +118,7 @@ void BufferedReader::ReadAsync(size_t i) {
         platform::CUDAPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event("BufferedReader:MemoryCopy pin");
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
         // cuda lib into device, it will cost hundreds of MB of GPU memory.
@@ -215,6 +219,7 @@ void BufferedReader::ReadAsync(size_t i) {
       }
     }
 #endif
+    platform::RecordEvent record_event("yoki: ReadAsync5");
 
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
@@ -286,6 +291,7 @@ void BufferedReader::StartImpl() {
 }
 
 void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+  platform::RecordEvent record_event("yoki: ReadNextImpl");
   if (position_.empty()) {
     out->clear();
     return;

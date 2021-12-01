@@ -405,9 +405,9 @@ class DataLoader(object):
         self.auto_collate_batch = self.batch_sampler is not None
 
         self.pin_memory = False
-        if in_dygraph_mode():
-            self.pin_memory = True if use_pinned_memory(
-            ) is None else use_pinned_memory()
+        # if in_dygraph_mode():
+        #     self.pin_memory = True if use_pinned_memory(
+        #     ) is None else use_pinned_memory()
 
         self._persistent_workers = persistent_workers
         self._iterator = None
@@ -866,8 +866,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
         # mode, this thread is used to get next batch data from self._batch_reader, then 
         # push it into self._blocking_queue
         self._thread = None
-        self._pin_memory = True if use_pinned_memory(
-        ) is None else use_pinned_memory()
+        self._pin_memory = False
+        # self._pin_memory = True if use_pinned_memory(
+        # ) is None else use_pinned_memory()
 
     @property
     def queue(self):
