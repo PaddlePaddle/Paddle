@@ -55,6 +55,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
     {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
