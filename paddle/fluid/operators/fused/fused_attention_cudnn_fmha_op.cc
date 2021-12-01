@@ -182,6 +182,7 @@ class FusedAttentionCuDNNFMHAOpMaker
              "It is applied to the output.")
         .AsDispensable();
 
+    // todo: add .AsDispensable().
     AddInput("OutLinearBias", "The out_linear bias tensor.");
 
     AddInput("Ln2Scale",

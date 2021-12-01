@@ -201,11 +201,9 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.key, self.value = self.query, self.query
 
         self.seq_len = np.full((self.batch_size, ), self.query_length, dtype=np.int32)
-        # lo_win = np.zeros((max_seq_len, ), dtype=np.int32)
-        # hi_win = np.full(
-        #     (max_seq_len, ), max_seq_len, dtype=np.int32)  # set a large number
         self.attn_low_window = np.zeros((self.query_length, ), dtype=np.int32)
         self.attn_high_window = np.full((self.query_length, ), self.query_length, dtype=np.int32)
+        
 
     def run_imperative(self):
         fused_attn = FusedCudnnMultiHeadAttention(
@@ -234,7 +232,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     fused_attn.linear_bias.numpy())
         # np.testing.assert_allclose(ref_ln, ln_out, rtol=1e-5, atol=1e-5)
         # np.testing.assert_allclose(ref_out_linear, linear_out, rtol=1e-5, atol=1e-3)
-        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-2)
+        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-3)
+
 
     def run_static(self):
         fused_attn = FusedCudnnMultiHeadAttention(
@@ -246,13 +245,6 @@ class TestFusedAttentionAPI(unittest.TestCase):
             name='X',
             shape=[self.batch_size, self.query_length, self.embed_dim],
             dtype=self.x_type)
-        attn_mask = paddle.static.data(
-            name='SrcMask',
-            shape=[
-                self.batch_size, self.num_heads, self.query_length,
-                self.key_length
-            ],
-            dtype=self.attn_mask_type)
         seq_len = paddle.static.data(
             name='SeqLen',
             shape=[
@@ -283,14 +275,33 @@ class TestFusedAttentionAPI(unittest.TestCase):
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
+
+        compiled_prog = paddle.static.CompiledProgram(
+            paddle.static.default_main_program())
+
+        query_tensor = core.LoDTensor()
+        query_tensor.set(self.query, core.CUDAPlace(0))
+        attn_mask_tensor = core.LoDTensor()
+        attn_mask_tensor.set(self.attn_mask, core.CUDAPlace(0))
+        seq_len_tensor = core.LoDTensor()
+        seq_len_tensor.set(self.seq_len, core.CUDAPlace(0))
+
+        attn_low_window_cpu_tensor = core.LoDTensor()
+        attn_low_window_cpu_tensor.set(self.attn_low_window, core.CPUPlace())
+        attn_high_window_cpu_tensor = core.LoDTensor()
+        attn_high_window_cpu_tensor.set(self.attn_high_window, core.CPUPlace())
+        seq_len_cpu_tensor = core.LoDTensor()
+        seq_len_cpu_tensor.set(self.seq_len, core.CPUPlace())
+
+        # here, we use paralle executor, so the cpu tensor in feed list won't be transfered to device.
+        # if use executor, the cpu tensor will be transfered to device.
         final_out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
-            paddle.static.default_main_program(),
-            feed={"X": self.query,
-                  "SrcMask": self.attn_mask,
+            compiled_prog,
+            feed=[{"X": self.query,
                   "SeqLen": self.seq_len,
-                  "AttnLowWin": self.attn_low_window,
-                  "AttnHighWin": self.attn_high_window,
-                  "SeqLenHost": self.seq_len},
+                  "AttnLowWin": attn_low_window_cpu_tensor,
+                  "AttnHighWin": attn_high_window_cpu_tensor,
+                  "SeqLenHost": seq_len_cpu_tensor}],
             fetch_list=[
                 final_out, fused_attn.weight, fused_attn.linear_bias,
                 fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
@@ -299,17 +310,20 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
         return final_out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
 
+
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(Program()):
-            out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = self.run_static(
-            )
+            out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = self.run_static()
+            #out = self.run_static()
         ref_out = compute_reference(self.pre_layer_norm, self.num_heads, self.query,
                                     self.attn_mask, ln_scale, ln_bias,
                                     ln_2_scale, ln_2_bias, weight, linear_bias)
+
         # np.testing.assert_allclose(ref_ln, ln_out, rtol=1e-5, atol=1e-5)
         # np.testing.assert_allclose(ref_linear_out, linear_out, rtol=1e-5, atol=1e-3)
         np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-3)
+
 
     def test_dynamic_api(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
