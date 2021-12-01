@@ -39,6 +39,7 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     
     // multi-phrase decode thread pool
     if (!decode_pool) {
+      LOG(ERROR) << "decode_pool init";
       decode_pool = new NvjpegDecoderThreadPool(num_threads, mode);
     }
 
@@ -53,20 +54,20 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     auto in_queue = in_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
 
     auto* out_var = ctx.OutputVar("Out");
-    auto holder = out_var->Get<LoDTensorBlockingQueueHolder>();
-    auto out_queue = holder.GetQueue();
+    auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     if (out_queue == nullptr) {
-      holder.InitOnce(2);
-      out_queue = holder.GetQueue();
+      LOG(ERROR) << "decode init output queue";
+      auto* holder = out_var->template GetMutable<LoDTensorBlockingQueueHolder>();
+      holder->InitOnce(2);
+      out_queue = holder->GetQueue();
     }
 
     bool success = true;
     auto inputs = in_queue->Pop(&success);
     PADDLE_ENFORCE_EQ(success, true, 
         platform::errors::PreconditionNotMet("Read from input queue failed"));
-
     framework::LoDTensorArray out_array;
-    out_array.reserve(inputs.size());
+    out_array.resize(inputs.size());
 
     for (size_t i = 0; i < inputs.size(); i++) {
       const framework::LoDTensor x = inputs.at(i);

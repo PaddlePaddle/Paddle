@@ -254,18 +254,21 @@ class FileLabelReaderOp : public framework::OperatorBase {
     }
     LoDTensorArray samples = reader_wrapper.reader->Next();
     auto* out = scope.FindVar(Output("Out"));
-    auto holder = out->Get<LoDTensorBlockingQueueHolder>();
-    auto out_queue = holder.GetQueue();
+    // auto* holder = out->template GetMutable<LoDTensorBlockingQueueHolder>();
+    auto out_queue = out->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     if (out_queue == nullptr) {
-      holder.InitOnce(2);
-      out_queue = holder.GetQueue();
+      LOG(ERROR) << "init output queue";
+      auto* holder = out->template GetMutable<LoDTensorBlockingQueueHolder>();
+      holder->InitOnce(2);
+      out_queue = holder->GetQueue();
     }
-    // framework::LoDTensorArray out_array;
-    // out_array.resize(samples.size());
-    // for (size_t i = 0; i < samples.size(); ++i) {
-    //   copy_tensor(samples[i], &out_array[i]);
-    // }
-    out_queue->Push(samples);
+
+    framework::LoDTensorArray out_array;
+    out_array.resize(samples.size());
+    for (size_t i = 0; i < samples.size(); ++i) {
+      copy_tensor(samples[i], &out_array[i]);
+    }
+    out_queue->Push(out_array);
     LOG(ERROR) << "FileLabelReaderOp RunImpl finish";
   }
 

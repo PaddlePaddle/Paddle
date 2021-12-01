@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -30,6 +31,7 @@ class CPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(LieLinJiang): add cpu implement.
+    LOG(ERROR) << "CPUBatchDecodeJpegKernel enter";
     PADDLE_THROW(platform::errors::Unimplemented(
         "DecodeJpeg op only supports GPU now."));
   }
@@ -63,13 +65,16 @@ class BatchDecodeJpegOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    // return framework::OpKernelType(
+    //     OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        framework::proto::VarType::UINT8, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
+    LOG(ERROR) << "GetKernelTypeForVar enter ";
     if (var_name == "X") {
       return expected_kernel_type;
     }

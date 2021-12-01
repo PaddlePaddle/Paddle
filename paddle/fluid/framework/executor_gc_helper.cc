@@ -46,7 +46,8 @@ static bool VarCanBeDeleted(const std::string &name, const BlockDesc &block,
 
   return type == proto::VarType::LOD_TENSOR ||
          type == proto::VarType::SELECTED_ROWS ||
-         type == proto::VarType::LOD_TENSOR_ARRAY;
+         type == proto::VarType::LOD_TENSOR_ARRAY ||
+         type == proto::VarType::LOD_TENSOR_BLOCKING_QUEUE;
 }
 
 std::unordered_map<const OperatorBase *, std::vector<std::string>>

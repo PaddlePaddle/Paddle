@@ -82,8 +82,14 @@ void Pipeline::StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
                          "The output variable %s is not found in DataLoader "
                          "program's internal scope",
                          output_var_names_[i]));
-        CheckOutputVarStatus(*out_var, output_var_names_[i]);
-        copy_tensor(out_var->Get<LoDTensor>(), &t_arr[i]);
+        // CheckOutputVarStatus(*out_var, output_var_names_[i]);
+        // copy_tensor(out_var->Get<LoDTensor>(), &t_arr[i]);
+        auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+        bool success = true;
+        auto outputs = out_queue->Pop(&success);
+        PADDLE_ENFORCE_EQ(success, true, 
+            platform::errors::PreconditionNotMet("Read from input queue failed"));
+        copy_tensor(outputs.at(0), &t_arr[i]);
       }
 
       // TODO: dataset drain check

@@ -38,6 +38,7 @@ class DataIOQueuePass: public Pass {
         auto *op = n->Op();
         if (op->Type() == "file_label_reader"
             || op->Type() == "batch_decode"
+            || op->Type() == "random_crop_and_resize"
             || op->Type() == "map") {
           auto& outputs = op->Outputs();
           for (auto iter = outputs.begin(); iter != outputs.end(); iter++) {
