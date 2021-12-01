@@ -39,7 +39,6 @@ class ComputeInterceptor : public Interceptor {
   void Run();
   void Compute(const InterceptorMessage& msg);
 
-  void HandleStop(const InterceptorMessage& msg) override;
   void ReceivedStop(int64_t up_id);
   void TryStop();
 

@@ -154,18 +154,6 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::Run() {
-  // If there is no limit, source interceptor can be executed
-  // an unlimited number of times.
-  // Now source node can only run
-  if (ShouldReset()) {
-    for (auto& out_buff : out_buffs_) {
-      // buffer is using
-      if (out_buff.second.second != 0) return;
-    }
-    step_ = 0;  // reset
-    return;
-  }
-
   while (IsInputReady() && CanWriteOutput() && !ShouldReset()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
@@ -180,6 +168,18 @@ void ComputeInterceptor::Run() {
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
+  }
+
+  // If there is no limit, source interceptor can be executed
+  // an unlimited number of times.
+  // Now source node can only run max_run_times.
+  if (ShouldReset()) {
+    for (auto& out_buff : out_buffs_) {
+      // buffer is using
+      if (out_buff.second.second != 0) return;
+    }
+    step_ = 0;  // reset
+    return;
   }
 }
 
@@ -221,12 +221,11 @@ void ComputeInterceptor::TryStop() {
     Send(down_id, stop);
   }
   stop_ = true;
-}
 
-void ComputeInterceptor::HandleStop(const InterceptorMessage& msg) {
-  ReceivedStop(msg.src_id());
-
-  TryStop();
+  if (out_buffs_.size() == 0) {
+    // TODO(fleet executor dev) need a better place to notify
+    StopCarrier();
+  }
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
@@ -236,6 +235,8 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   } else if (msg.message_type() == DATE_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
+  } else if (msg.message_type() == STOP) {
+    ReceivedStop(msg.src_id());
   }
 
   TryStop();
