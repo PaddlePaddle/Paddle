@@ -31,15 +31,15 @@ namespace framework {
 std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
     const Instruction& cur_instr, const Instruction& next_instr) {
   std::unordered_set<size_t> unique_var_ids;
-  for (auto& item : cur_instr.output_index_) {
+  for (auto& item : cur_instr.Outputs()) {
     unique_var_ids.insert(item.second.begin(), item.second.end());
   }
 
   std::vector<size_t> new_event_var_ids;
-  for (auto& item : next_instr.input_index_) {
+  for (auto& item : next_instr.Inputs()) {
     for (auto var_id : item.second) {
       if (unique_var_ids.count(var_id) > 0 &&
-          next_instr.no_data_transform_index_.count(var_id) == 0) {
+          next_instr.NoDataTransformVars().count(var_id) == 0) {
         new_event_var_ids.push_back(var_id);
       }
     }
@@ -57,8 +57,7 @@ void StreamAnalyzer::AssociateInputWithEvents(
       var_id2event_.emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
-    next_instr->intput_events_.emplace_back(var_id, var_id2event_.at(var_id),
-                                            waiter_type);
+    next_instr->AddInputEvent(var_id, var_id2event_.at(var_id), waiter_type);
   }
 }
 
@@ -66,13 +65,13 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
                               std::vector<Instruction>* instructions,
                               size_t op_index) {
   auto& cur_instr = instructions->at(op_index);
-  auto& next_instruction = cur_instr.next_instruction_;
+  auto& next_instruction = cur_instr.NextInstructions();
   std::vector<size_t> event_var_ids;
   for (auto next_op_id : downstream_ops) {
     auto& next_instr = instructions->at(next_op_id);
 
     if (IsDirectRun(cur_instr, next_instr)) {
-      next_instruction.direct_run_.emplace_back(next_op_id);
+      next_instruction.AddDirectRun(next_op_id);
     } else {
       // Always insert events between different stream
       auto new_event_var_ids = ParseEventVarIds(cur_instr, next_instr);
@@ -83,29 +82,29 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
       AssociateInputWithEvents(new_event_var_ids, &next_instr, waiter_type);
 
       if (waiter_type == platform::kCPU) {  // GPU -> CPU
-        next_instruction.synchronize_run_.emplace_back(next_op_id);
+        next_instruction.AddSyncRun(next_op_id);
       } else {  // GPU -> GPU(different stream)
-        next_instruction.event_wait_run_.emplace_back(next_op_id);
+        next_instruction.ADDEventRun(next_op_id);
       }
     }
   }
   // Create events for these cross-stream vars
-  VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
+  VLOG(3) << cur_instr.OpBase()->Type()
           << " event_var_ids.size: " << event_var_ids.size();
   for (auto var_id : event_var_ids) {
-    cur_instr.output_events_.emplace_back(var_id, var_id2event_.at(var_id),
-                                          platform::kCUDA /*not used*/);
+    cur_instr.AddOutputEvent(var_id, var_id2event_.at(var_id),
+                             platform::kCUDA /*not used*/);
   }
 }
 
 platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
-    const OpFuncNode& op_func_node, const OperatorBase& op_base) {
-  auto& op_type = op_base.Type();
+    const OpFuncNode& op_func_node) {
+  auto& op_type = op_func_node.operator_base_->Type();
   auto* dev_ctx = op_func_node.dev_ctx_;
-  if (op_type == interpretercore::kMemcpyH2D) {
+  if (op_type == interpreter::kMemcpyH2D) {
     VLOG(3) << "Get dev_ctx from d2h_context_pool_";
     dev_ctx = d2h_ctx_pool_.Get(place_);
-  } else if (op_type == interpretercore::kMemcpyD2H) {
+  } else if (op_type == interpreter::kMemcpyD2H) {
     VLOG(3) << "Get dev_ctx from h2d_context_pool_";
     dev_ctx = h2d_ctx_pool_.Get(place_);
   }
@@ -122,13 +121,13 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
  */
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
-  return (cur_instr.dev_ctx_ == next_instr.dev_ctx_ ||
-          interpretercore::IsMemcpyD2H(cur_instr) ||
-          interpretercore::IsMemcpyH2D(next_instr));
+  return (&cur_instr.DeviceContext() == &next_instr.DeviceContext() ||
+          interpreter::IsMemcpyD2H(cur_instr) ||
+          interpreter::IsMemcpyH2D(next_instr));
 }
 
 platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {
-  if (instr.type_ == OpFuncType::kQueueSync) {
+  if (instr.KernelType() == OpFuncType::kQueueSync) {
     return platform::kCPU;
   } else {
     return platform::kCUDA;

@@ -503,7 +503,7 @@ void RegisterOperatorKernel(const std::string& name,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kCPU, inputs, outputs, attrs);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kGPU, inputs, outputs, attrs);
 #endif

@@ -515,10 +515,28 @@ class TestParallelDyGraphRunnerBase(object):
             return batch
         elif args.update_method != "local":
             new_batch = []
-            for offset, item in enumerate(batch):
-                if offset % 2 == args.trainer_id:
-                    new_batch.append(item)
-            return new_batch
+
+            # NOTE(@xiongkun03) args.diff_batch means batch length is different: 
+            # such as : batch = [2,3,4,5], then the first rank will get [2]  and 
+            # the second rank will get [3,4,5]. 
+            # this function is for test sparse_embedding_differ_length
+            if hasattr(args, "diff_batch") and args.diff_batch:
+                assert len(
+                    batch) > 2, "in differ_batch mode, len(batch) must > 2."
+                if paddle.distributed.get_rank() == 0:
+                    new_batch.append(batch[0])
+                elif paddle.distributed.get_rank() == 1:
+                    new_batch.extend([_ for _ in batch[1:]])
+                else:
+                    raise NotImplementedError(
+                        "Current TestParallelDyGraphRunnerBase don't support world_size > 2"
+                    )
+                return new_batch
+            else:
+                for offset, item in enumerate(batch):
+                    if offset % 2 == args.trainer_id:
+                        new_batch.append(item)
+                return new_batch
         else:
             return batch
 
@@ -699,6 +717,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_fleet_api', action='store_true')
     parser.add_argument('--use_fleet_api_20', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
+    parser.add_argument('--diff_batch', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
@@ -798,6 +817,7 @@ class TestDistBase(unittest.TestCase):
         self._gloo_mode = False  # now, support gloo backend
         self._pipeline_mode = False
         self._mp_mode = False
+        self._diff_batch = False
         # FIXME(typhoonzero): I added this stupid argument to enable
         # testing allreduce layers, which users can call layers.allreduce
         # to accumulate tensors at anywhere. Find a better way to do this
@@ -1100,6 +1120,8 @@ class TestDistBase(unittest.TestCase):
         #assert self._use_reader_alloc == False, "gloo not support _use_reduce"
         if self._save_model:
             tr_cmd += " --save_model"
+        if self._diff_batch:
+            tr_cmd += " --diff_batch"
         self.__use_cuda = False
         self.__use_xpu = False
         assert self.__use_cuda == False, "gloo not support use cuda"

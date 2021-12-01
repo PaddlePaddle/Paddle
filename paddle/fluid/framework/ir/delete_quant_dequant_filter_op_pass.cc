@@ -181,7 +181,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                               "Weight scale should be nonzero, but get zero."));
         weight_scale[i] = weight_scale[i] / range;
       }
-    } else {
+    } else if (dequant_type == "fake_quantize_dequantize_abs_max") {
       // Implement quantize_dequantize_abs_max quantization algorithm
       float abs_max_weight = 0.;
       for (int j = 0; j < weight_tensor->numel(); j++) {
@@ -192,6 +192,9 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                         platform::errors::InvalidArgument(
                             "Weight scale should be nonzero, but get zero"));
       weight_scale.push_back(abs_max_weight / range);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported quantize_dequantize op type: %s", dequant_type));
     }
 
     nodes2rm.insert(quant_dequant_op_outscale);

@@ -64,9 +64,51 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    framework::OpKernelType kt = framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
+    // TODO(zyfncg) The force_cpu and place_type are conflicted, it's a issue
+    // lefted before, and we may merge them in the future.
+    // In order to invoke new fill_constant kernel, the place of OpKernelType
+    // will be setted by force_cpu and place_type here.
+    if (ctx.Attr<bool>("force_cpu")) {
+      kt.place_ = platform::CPUPlace();
+    }
+    auto place_type = ctx.Attr<int>("place_type");
+    if (place_type != -1) {
+      switch (place_type) {
+        case 0:
+          kt.place_ = platform::CPUPlace();
+          break;
+        case 1:
+        case 2:
+          kt.place_ = platform::CUDAPlace();
+          break;
+        case 3:
+          kt.place_ = platform::XPUPlace();
+          break;
+        default:
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Could NOT determine the place of variable, place_type = %d .",
+              place_type));
+      }
+    }
+
+    return kt;
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    if (!ctx.HasInput("ShapeTensor") &&
+        ctx.MultiInput<framework::Tensor>("ShapeTensorList").empty() &&
+        !ctx.HasInput("ValueTensor") &&
+        !ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
+      const auto& str_value = ctx.Attr<std::string>("str_value");
+      std::string value = str_value.empty() ? "value" : "str_value";
+      return framework::KernelSignature("fill_constant.scalar", {}, {value},
+                                        {"Out"});
+    }
+    return framework::KernelSignature("fill_constant.unregistered", {}, {}, {});
   }
 };
 

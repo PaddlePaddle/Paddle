@@ -69,6 +69,7 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
+class ScopeBase;
 class LoDTensor;
 class ReaderHolder;
 class Scope;

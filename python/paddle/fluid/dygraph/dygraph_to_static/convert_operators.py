@@ -214,7 +214,7 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
 
 
 def _remove_no_value_return_var(out):
-    if out and isinstance(out, tuple):
+    if isinstance(out, tuple) and len(out) > 0:
         processed_out = out
         align_ret = out[0]
         if isinstance(align_ret, tuple):

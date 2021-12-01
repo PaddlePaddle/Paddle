@@ -120,5 +120,29 @@ class TestFillConstantFP16(OpTest):
         self.check_output_with_place(self.place, atol=1e-3)
 
 
+class TestFillConstantBool(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "fill_constant"
+
+        self.inputs = {}
+        self.attrs = {
+            'shape': [123, 92],
+            'value': True,
+            'dtype': core.VarDesc.VarType.BOOL
+        }
+        self.outputs = {'Out': np.full((123, 92), True).astype(self.dtype)}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.BOOL
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
 if __name__ == '__main__':
     unittest.main()

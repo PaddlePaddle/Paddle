@@ -17,15 +17,21 @@ import paddle.fluid as fluid
 from paddle.device.cuda.graphs import CUDAGraph
 import unittest
 import numpy as np
+import os
+import pathlib
+import shutil
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from simple_nets import simple_fc_net_with_inputs
 
 
+def can_use_cuda_graph():
+    return paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
+
+
 class TestCUDAGraph(unittest.TestCase):
     def setUp(self):
-        if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(
-        ):
-            fluid.set_flags({
+        if can_use_cuda_graph():
+            paddle.set_flags({
                 'FLAGS_allocator_strategy': 'auto_growth',
                 'FLAGS_sync_nccl_allreduce': False,
                 'FLAGS_cudnn_deterministic': True
@@ -38,7 +44,7 @@ class TestCUDAGraph(unittest.TestCase):
 
     @switch_to_static_graph
     def test_cuda_graph_static_graph(self):
-        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+        if not can_use_cuda_graph():
             return
 
         seed = 100
@@ -116,7 +122,7 @@ class TestCUDAGraph(unittest.TestCase):
         return np.array(loss_t)
 
     def test_cuda_graph_dynamic_graph(self):
-        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+        if not can_use_cuda_graph():
             return
 
         shape = [2, 3]
@@ -141,6 +147,45 @@ class TestCUDAGraph(unittest.TestCase):
             self.assertTrue((z_np - z_np_init == x_np).all())
 
         g.reset()
+
+    def test_concat_and_split(self):
+        if not can_use_cuda_graph():
+            return
+
+        concat_num = 100
+        xs = []
+        xs_np = []
+
+        for i in range(concat_num):
+            x_np = np.random.random(size=[1]).astype(np.float32)
+            xs.append(paddle.to_tensor(x_np))
+            xs_np.append(x_np)
+
+        graph = CUDAGraph()
+        graph.capture_begin()
+        y = paddle.concat(xs)
+        zs = paddle.split(y, len(xs))
+        graph.capture_end()
+        graph.replay()
+
+        y_np = y.numpy()
+        y_np_expected = np.concatenate(xs_np)
+        self.assertTrue(np.array_equal(y_np, y_np_expected))
+        self.assertEqual(len(zs), len(xs_np))
+        for i, z in enumerate(zs):
+            self.assertTrue(np.array_equal(z.numpy(), xs_np[i]))
+
+        output_dir = 'cuda_graph_dot_{}'.format(os.getpid())
+        try:
+            graph.print_to_dot_files(pathlib.Path(output_dir))
+            graph.reset()
+            shutil.rmtree(output_dir)
+        except Exception as e:
+            msg = str(e)
+            sub_msg = "The print_to_dot_files() method is only supported when CUDA version >= 11.3"
+            self.assertTrue(sub_msg in msg)
+        finally:
+            graph.reset()
 
 
 if __name__ == "__main__":
