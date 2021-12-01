@@ -51,7 +51,7 @@ void Carrier::Release() {
                     platform::errors::PreconditionNotMet(
                         "Message bus has not been initialized."));
   for (int64_t id : source_interceptor_ids_) {
-    VLOG(3) << "Carrier Start is sending stop to source interceptor " << id
+    VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
             << ".";
     InterceptorMessage stop_msg;
     // source node STOP is send by carrier, so set src_id=-1
@@ -67,7 +67,7 @@ void Carrier::Release() {
   }
 }
 
-Carrier::~Carrier() {}
+Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
