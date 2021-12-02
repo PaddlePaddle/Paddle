@@ -25,55 +25,65 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-class StartInterceptor : public Interceptor {
- public:
-  StartInterceptor(int64_t interceptor_id, TaskNode* node)
-      : Interceptor(interceptor_id, node) {
-    RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
+void LinkNodes(const std::vector<TaskNode*>& nodes) {
+  size_t size = nodes.size();
+  if (size <= 1) return;
+
+  {  // i = 0
+    TaskNode* now = nodes[0];
+    TaskNode* next = nodes[1];
+    now->AddDownstreamTask(next->task_id());
+  }
+  {  // i = size - 1
+    TaskNode* prev = nodes[size - 2];
+    TaskNode* now = nodes[size - 1];
+    now->AddUpstreamTask(prev->task_id());
   }
 
-  void NOP(const InterceptorMessage& msg) {
-    if (msg.message_type() == STOP) {
-      stop_ = true;
-      InterceptorMessage stop;
-      stop.set_message_type(STOP);
-      Send(1, stop);  // stop 1, compute
-      return;
-    }
-    std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
-              << std::endl;
-  }
-};
+  for (size_t i = 1; i < size - 1; ++i) {
+    TaskNode* prev = nodes[i - 1];
+    TaskNode* now = nodes[i];
+    TaskNode* next = nodes[i + 1];
 
-TEST(ComputeInterceptor, Compute) {
+    now->AddUpstreamTask(prev->task_id());
+    now->AddDownstreamTask(next->task_id());
+  }
+}
+
+TEST(AmplifierInterceptor, Amplifier) {
   Carrier& carrier = Carrier::Instance();
   MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}}, {{0, ""}}, "");
+
+  int64_t micro_steps = 3;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
+  TaskNode* node_a =
+      new TaskNode(0, 0, 0, micro_steps, 0);  // role, rank, task_id
   TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
   TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
+  TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps, 0);
 
-  // a->b->c
-  node_a->AddDownstreamTask(1);
-  node_b->AddUpstreamTask(0);
-  node_b->AddDownstreamTask(2);
-  node_c->AddUpstreamTask(1);
+  // a->b->c->d
+  LinkNodes({node_a, node_b, node_c, node_d});
 
-  Interceptor* a =
-      carrier.SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
+  node_a->SetRunPerSteps(micro_steps);
+  node_d->SetRunPerSteps(micro_steps);
+  node_d->SetRunAtOffset(micro_steps - 1);
+
+  carrier.SetInterceptor(0, InterceptorFactory::Create("Amplifier", 0, node_a));
   carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
   carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
+  carrier.SetInterceptor(3, InterceptorFactory::Create("Amplifier", 3, node_d));
 
   carrier.SetCreatingFlag(false);
 
+  // start
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
-  // test run three times
-  a->Send(1, msg);
-  a->Send(1, msg);
-  a->Send(1, msg);
+  msg.set_src_id(-1);
+  msg.set_dst_id(0);
+  carrier.EnqueueInterceptorMessage(msg);
 }
 
 }  // namespace distributed

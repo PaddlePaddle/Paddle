@@ -78,7 +78,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(core.Layer):
+class Layer(object):
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -976,7 +976,7 @@ class Layer(core.Layer):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert (isinstance(sublayer, core.Layer) or sublayer == None)
+        assert (isinstance(sublayer, Layer) or sublayer == None)
 
         self._sub_layers[name] = sublayer
         return sublayer
@@ -1143,7 +1143,7 @@ class Layer(core.Layer):
             params[name] = None
         else:
             layers = self.__dict__.get('_sub_layers', None)
-            if isinstance(value, core.Layer):
+            if isinstance(value, Layer):
                 if layers is None:
                     raise ValueError(
                         "super(YourLayer, self).__init__() should be called first"
