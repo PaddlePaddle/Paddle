@@ -62,7 +62,7 @@ function make_centos_dockerfile(){
 
 function make_cinn_dockerfile(){
   dockerfile_name="Dockerfile.cuda11_cudnn8_gcc82_ubuntu18_cinn"
-  sed "s/<baseimg>/11.2.0-cudnn8-devel-ubuntu18.04/g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed "s/<baseimg>/11.2.0-cudnn8-devel-ubuntu16.04/g" ./Dockerfile.ubuntu18 >${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
   sed -i "9i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev" ${dockerfile_name}
