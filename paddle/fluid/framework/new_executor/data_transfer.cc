@@ -137,7 +137,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_layout_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(new_var_name);
+  auto* ptr = local_scope->Var(*new_var_name);
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
@@ -171,8 +171,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(new_var_name);
-  var_scope->SetVarDesc(var_name, nullptr);
+  auto* ptr = local_scope->Var(*new_var_name);
+
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
 
@@ -211,7 +211,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_device_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(new_var_name);
+  auto* ptr = local_scope->Var(*new_var_name);
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
@@ -258,11 +258,16 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
-      if (!(var->IsType<LoDTensor>() || var->IsType<SelectedRows>())) {
+      auto& var_name = new_ins[var_name_item.first].at(i);
+      const Tensor* tensor_in;
+      if (var->IsType<LoDTensor>() || var->IsType<SelectedRows>()) {
+        tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      } else if (var->IsType<LoDTensorArray>()) {
+        tensor_in =
+            static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
+      } else {
         continue;
       }
-      auto& var_name = new_ins[var_name_item.first].at(i);
-      auto tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       if (!tensor_in->IsInitialized()) {
         continue;
       }

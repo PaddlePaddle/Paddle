@@ -59,18 +59,6 @@ PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;
 
-class Layer : public imperative::Layer {
- public:
-  using imperative::Layer::Layer;  // Inherit constructors
-
-  std::vector<std::shared_ptr<imperative::VarBase>> Forward(
-      const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
-      override {
-    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
-                      Forward, inputs);  // NOLINT
-  }
-};
-
 template <typename T>
 static T PyObjectCast(PyObject *obj) {
   try {
@@ -1548,6 +1536,25 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, framework::proto::VarType::Type type) {
              self.MutableGradVarBase()->SetType(type);
            })
+      .def("_reset_grad_inplace_version",
+           [](imperative::VarBase &self) {
+             /*
+             *** This interfaceis a complete hack ***
+             reset_grad_inplace_version removes all inplace related records to
+             Grad VarBase/VariableWrapper,
+             the essential purpose of which is to let you use inplace operations
+             as if using its non-inplaced version,
+             which of course will cause unexpected consequences if not used with
+             care.
+             Make sure you fully understand what you're doing before make use of
+             this interface, and prepare for the worst.
+             */
+             if (self.HasGradVar()) {
+               auto grad_var = self.GradVarBase();
+               auto var_wrapper = grad_var->SharedVar();
+               if (var_wrapper) var_wrapper->ResetInplaceVersion();
+             }
+           })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
@@ -2031,18 +2038,6 @@ void BindImperative(py::module *m_ptr) {
                              })
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
-
-  // NOTE(zhiqiu): set the metaclass of Layer.
-  // See details: https://github.com/pybind/pybind11/pull/679
-  // https://github.com/pybind/pybind11/blob/028812ae7eee307dca5f8f69d467af7b92cc41c8/tests/test_methods_and_attributes.cpp#L284
-  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(
-      m, "Layer", py::metaclass((PyObject *)&PyType_Type));  // NOLINT
-  layer.def(py::init<>())
-      .def("forward",
-           [](imperative::Layer &self,
-              const std::vector<std::shared_ptr<imperative::VarBase>> &inputs) {
-             return self.Forward(inputs);
-           });
 
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",

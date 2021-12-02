@@ -100,11 +100,25 @@ std::vector<OpRole> RuntimeGraph::functionality_order = {
 RuntimeGraph::RuntimeGraph(const ProgramDesc& program,
                            const FleetExecutorDesc& exe_desc)
     : exe_desc_(exe_desc) {
-  if (exe_desc.grain() == "coarse") {
+  if (exe_desc.strategy() == "1F1B") {
     SplitProgramBasedFunctionality(program);
     AssignTaskToIntercepter();
     FakeDependence();
     FakeRuntimeInfo();
+  } else if (exe_desc.strategy() == "Origin") {
+    int64_t cur_rank = exe_desc_.cur_rank();
+    int64_t max_run_times = exe_desc_.num_micro_batches();
+    int64_t max_slot_nums = exe_desc_.num_slots();
+    auto task_node = std::make_unique<TaskNode>(program, cur_rank,
+                                                max_run_times, max_slot_nums);
+    task_node->SetType("Compute");
+    task_nodes_.emplace_back(std::move(task_node));
+    int64_t task_id = task_nodes_[0]->task_id();
+    intercepter_id_to_rank_.insert({task_id, cur_rank});
+    intercepter_id_to_node_.insert({task_id, task_nodes_[0].get()});
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Strategy %s is None of 1F1B or Origin.", exe_desc.strategy()));
   }
 }
 
@@ -112,6 +126,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
+
   std::unordered_map<int32_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
     int32_t op_role = op->Attr<int32_t>("op_role");

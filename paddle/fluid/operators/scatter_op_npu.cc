@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/kron_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/scatter_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -48,18 +48,49 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
       index = &tmp_tensor;
     }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    const auto& dev_ctx =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>();
+    auto op_func_update = [](const std::vector<Tensor>& inputs,
+                             const std::vector<Tensor>& outputs,
+                             const NPUAttributeMap& attrs,
+                             const platform::NPUDeviceContext& dev_ctx) {
+      const auto& runner =
+          NpuOpRunner("TensorScatterUpdate", inputs, outputs, attrs);
+      runner.Run(dev_ctx.stream());
+    };
+    auto op_func_add = [](const std::vector<Tensor>& inputs,
+                          const std::vector<Tensor>& outputs,
+                          const NPUAttributeMap& attrs,
+                          const platform::NPUDeviceContext& dev_ctx) {
+      const auto& runner =
+          NpuOpRunner("TensorScatterAdd", inputs, outputs, attrs);
+      runner.Run(dev_ctx.stream());
+    };
 
     if (overwrite) {
-      const auto& runner_update = NpuOpRunner(
-          "TensorScatterUpdate", {*x, *index, *updates}, {*out}, {});
-      runner_update.Run(stream);
+      if (x->type() == framework::proto::VarType::INT64) {
+        NpuOpRunner::TypeAdapter(
+            {*x, *index, *updates}, {*out}, {}, dev_ctx, op_func_update,
+            {framework::proto::VarType::INT32, framework::proto::VarType::INT32,
+             framework::proto::VarType::INT32},
+            {framework::proto::VarType::INT32});
+      } else {
+        const auto& runner_update = NpuOpRunner(
+            "TensorScatterUpdate", {*x, *index, *updates}, {*out}, {});
+        runner_update.Run(dev_ctx.stream());
+      }
     } else {
-      const auto& runner_add =
-          NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
-      runner_add.Run(stream);
+      if (x->type() == framework::proto::VarType::INT64) {
+        NpuOpRunner::TypeAdapter(
+            {*x, *index, *updates}, {*out}, {}, dev_ctx, op_func_add,
+            {framework::proto::VarType::INT32, framework::proto::VarType::INT32,
+             framework::proto::VarType::INT32},
+            {framework::proto::VarType::INT32});
+      } else {
+        const auto& runner_add =
+            NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
+        runner_add.Run(dev_ctx.stream());
+      }
     }
   }
 };
@@ -70,6 +101,10 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     scatter, ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+#endif
+    ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 #endif

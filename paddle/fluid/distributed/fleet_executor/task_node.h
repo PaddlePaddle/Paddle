@@ -44,10 +44,21 @@ class TaskNode final {
   int32_t role() const { return role_; }
   int64_t max_run_times() const { return max_run_times_; }
   int64_t max_slot_nums() const { return max_slot_nums_; }
+  int64_t run_per_steps() const { return run_per_steps_; }
+  int64_t run_at_offset() const { return run_at_offset_; }
+  int64_t reply_up_per_steps() const { return reply_up_per_steps_; }
+  int64_t send_down_per_steps() const { return send_down_per_steps_; }
   const std::unordered_set<int64_t>& upstream() const { return upstream_; }
   const std::unordered_set<int64_t>& downstream() const { return downstream_; }
   const std::string& type() const { return type_; }
   const paddle::framework::ProgramDesc& program() const { return program_; }
+  const std::vector<OperatorBase*>& ops() const { return ops_; }
+
+  void SetRunPerSteps(int64_t value) { run_per_steps_ = value; }
+  void SetRunAtOffset(int64_t value) { run_at_offset_ = value; }
+  void SetReplyUpPerSteps(int64_t value) { reply_up_per_steps_ = value; }
+  void SetSendDownPerSteps(int64_t value) { send_down_per_steps_ = value; }
+  void SetType(const std::string& type) { type_ = type; }
 
   bool AddUpstreamTask(int64_t task_id);
   bool AddDownstreamTask(int64_t task_id);
@@ -65,15 +76,24 @@ class TaskNode final {
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
   TaskNode() = default;
+  // ops_ will be removed in the future
   std::vector<OperatorBase*> ops_;
   std::unordered_set<int64_t> upstream_;
   std::unordered_set<int64_t> downstream_;
   framework::ProgramDesc program_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   int32_t role_;
   int64_t rank_;
   int64_t task_id_;
   int64_t max_run_times_;
   int64_t max_slot_nums_;
+
+  int64_t run_per_steps_{1};
+  int64_t run_at_offset_{0};
+  // one input produces multi times output
+  int64_t reply_up_per_steps_{1};
+  // one output need multi times input
+  int64_t send_down_per_steps_{1};
 
   std::string type_;
 };

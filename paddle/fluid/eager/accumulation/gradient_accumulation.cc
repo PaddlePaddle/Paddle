@@ -34,7 +34,7 @@
 #include "xpu/refactor/math.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 
 namespace egr {
@@ -193,13 +193,14 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
   // TODO(jiabin): Support NPU here
   PADDLE_TENSOR_ADD(float);
-  // NOTE(phlrain): xpu only support float
+// NOTE(phlrain): xpu only support float
+#ifndef PADDLE_WITH_XPU
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
   PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
-
+#endif
 #undef PADDLE_TENSOR_ADD
 
   if (data_type == paddle::framework::proto::VarType::FP16) {
@@ -268,13 +269,14 @@ void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
   // TODO(jiabin): Support NPU here
   PADDLE_TENSOR_ADD(float);
-  // NOTE(phlrain): xpu only support float
+// NOTE(phlrain): xpu only support float
+#ifndef PADDLE_WITH_XPU
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
   PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
-
+#endif
 #undef PADDLE_TENSOR_ADD
 
   if (data_type == paddle::framework::proto::VarType::FP16) {

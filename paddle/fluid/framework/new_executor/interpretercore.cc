@@ -88,6 +88,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -122,9 +126,26 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
+}
+
+// At the end of each step, the holder of Tensor in LoDTensorArray is null.
+// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
+// will occur in the next step
+void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
+  auto vars = local_scope_->LocalVars();
+  for (auto var : vars) {
+    if (var->IsType<LoDTensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+      lod_tensor_arr->clear();
+    }
+  }
 }
 
 void InterpreterCore::BuildOperatorDependences() {
@@ -493,7 +514,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(op->Type());
+    platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
 
     try {
@@ -607,6 +628,10 @@ interpreter::CostInfo InterpreterCore::DryRun(
     interpreter::ProfilerGuard(place_, &cost_info);
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
   }
 
   return cost_info;

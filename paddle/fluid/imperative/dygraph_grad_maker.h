@@ -365,9 +365,10 @@ class TracedGradOp {
       }
     }
 
-    VariableWrapper new_var_wrapper = *var_wrapper.get();
-    new_var_wrapper.ResetInplaceVersion();
-    return std::make_shared<VariableWrapper>(new_var_wrapper);
+    auto new_var_wrapper =
+        std::make_shared<VariableWrapper>(*var_wrapper.get());
+    new_var_wrapper->ResetInplaceVersion();
+    return new_var_wrapper;
   }
 
  private:

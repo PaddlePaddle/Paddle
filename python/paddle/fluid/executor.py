@@ -682,6 +682,8 @@ class Executor(object):
         self._enable_interpreter_core = _is_enable_standalone_executor()
         self._executor_cache = _ExecutorCache(self.place)
 
+        self._fleet_executor_cache = None
+
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
 
@@ -1310,6 +1312,38 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
+        # use_prune can be overrided by putting optimize_ops in fetch_list
+        _origin_fetch_list = fetch_list
+        _origin_program = program
+        fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
+            fetch_list)
+        if optimize_ops:
+            use_prune = True
+        if use_prune:
+            cache_key = _get_strong_program_cache_key(program, feed,
+                                                      _origin_fetch_list)
+            cached_pruned_program = self._get_pruned_program_cache(cache_key)
+            if cached_pruned_program is None:
+                if isinstance(program, compiler.CompiledProgram):
+                    program_scope_cache = self._get_pruned_program_scope_cache(
+                        str(id(_origin_program)))
+                    # copy the original program, so it can be cached.
+                    program = copy.copy(program)
+                    # share the local scopes for same original CompiledProgram.
+                    program._share_vars_from = program_scope_cache
+                    if self._get_pruned_program_scope_cache(
+                            str(id(_origin_program))) is None:
+                        self._add_pruned_program_scope_cache(
+                            str(id(_origin_program)), program)
+                pruned_program = self._prune_program(program, feed, fetch_list,
+                                                     optimize_ops)
+                self._add_pruned_program_cache(cache_key, pruned_program)
+            else:
+                pruned_program = cached_pruned_program
+
+            feed = self._update_feed(pruned_program, feed)
+            program = pruned_program
+
         def _can_use_interpreter_core(program, place):
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): do not support compiled program now
@@ -1378,38 +1412,6 @@ class Executor(object):
                     tensor.set(data, self.place)
 
                 return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
-
-        # use_prune can be overrided by putting optimize_ops in fetch_list
-        _origin_fetch_list = fetch_list
-        _origin_program = program
-        fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
-            fetch_list)
-        if optimize_ops:
-            use_prune = True
-        if use_prune:
-            cache_key = _get_strong_program_cache_key(program, feed,
-                                                      _origin_fetch_list)
-            cached_pruned_program = self._get_pruned_program_cache(cache_key)
-            if cached_pruned_program is None:
-                if isinstance(program, compiler.CompiledProgram):
-                    program_scope_cache = self._get_pruned_program_scope_cache(
-                        str(id(_origin_program)))
-                    # copy the original program, so it can be cached.
-                    program = copy.copy(program)
-                    # share the local scopes for same original CompiledProgram.
-                    program._share_vars_from = program_scope_cache
-                    if self._get_pruned_program_scope_cache(
-                            str(id(_origin_program))) is None:
-                        self._add_pruned_program_scope_cache(
-                            str(id(_origin_program)), program)
-                pruned_program = self._prune_program(program, feed, fetch_list,
-                                                     optimize_ops)
-                self._add_pruned_program_cache(cache_key, pruned_program)
-            else:
-                pruned_program = cached_pruned_program
-
-            feed = self._update_feed(pruned_program, feed)
-            program = pruned_program
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -1960,45 +1962,52 @@ class Executor(object):
                                   print_period=100,
                                   fetch_handler=None,
                                   use_program_cache=False):
-        scope, real_fetch_list, trainer_instance = \
-            self._prepare_pipeline_ctx(program, dataset, scope, thread,
-                                       is_infer, debug, fetch_list, fetch_info,
-                                       print_period, fetch_handler,
-                                       use_program_cache)
-        from ..distributed.fleet.proto import fleet_executor_desc_pb2
-        from google.protobuf import text_format
-        cur_rank = os.getenv("PADDLE_TRAINER_ID")
-        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        nrank = 1
-        if cur_rank and trainer_endpoints_str:
-            fleet_exe_desc.cur_rank = int(cur_rank)
-            trainer_endpoints = trainer_endpoints_str.split(',')
-            for rank, endpoint in enumerate(trainer_endpoints):
+        if self._fleet_executor_cache is None:
+            from ..distributed.fleet.proto import fleet_executor_desc_pb2
+            from google.protobuf import text_format
+            cur_rank = os.getenv("PADDLE_TRAINER_ID")
+            trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+            fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
+            nrank = 1
+            if cur_rank and trainer_endpoints_str:
+                fleet_exe_desc.cur_rank = int(cur_rank)
+                trainer_endpoints = trainer_endpoints_str.split(',')
+                for rank, endpoint in enumerate(trainer_endpoints):
+                    rank_info = fleet_executor_desc_pb2.RankInfo()
+                    rank_info.rank = rank
+                    rank_info.ip_port = endpoint
+                    fleet_exe_desc.cluster_info.append(rank_info)
+                nrank = len(trainer_endpoints)
+            else:
+                fleet_exe_desc.cur_rank = 0
                 rank_info = fleet_executor_desc_pb2.RankInfo()
-                rank_info.rank = rank
-                rank_info.ip_port = endpoint
+                rank_info.rank = 0
+                rank_info.ip_port = ''
                 fleet_exe_desc.cluster_info.append(rank_info)
-            nrank = len(trainer_endpoints)
-        else:
-            fleet_exe_desc.cur_rank = 0
-            rank_info = fleet_executor_desc_pb2.RankInfo()
-            rank_info.rank = 0
-            rank_info.ip_port = ''
-            fleet_exe_desc.cluster_info.append(rank_info)
-            logging.warning("Fleet Executor will run on single device only.")
-        fleet_opt = program._pipeline_opt["fleet_opt"]
-        if "dist_strategy" in fleet_opt:
-            fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
-            fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
-            fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
-        if "num_micro_batches" in fleet_opt:
-            fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
-        num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
-        assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
-        fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
-        fleet_exe.init(program._pipeline_opt["section_program"].desc)
-        fleet_exe.run()
+                logging.warning(
+                    "Fleet Executor will run on single device only.")
+            fleet_opt = program._pipeline_opt["fleet_opt"]
+            if "dist_strategy" in fleet_opt:
+                fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"][
+                    "dp_degree"]
+                fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"][
+                    "mp_degree"]
+                fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"][
+                    "pp_degree"]
+            if "num_micro_batches" in fleet_opt:
+                fleet_exe_desc.num_micro_batches = fleet_opt[
+                    "num_micro_batches"]
+            num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
+            assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
+            fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
+            place = core.Place()
+            place.set_place(self.place)
+            if scope is None:
+                scope = global_scope()
+            fleet_exe.init(program._pipeline_opt["section_program"].desc, scope,
+                           place)
+            self._fleet_executor_cache = fleet_exe
+        self._fleet_executor_cache.run()
         return None
 
     def _run_pipeline(self,
