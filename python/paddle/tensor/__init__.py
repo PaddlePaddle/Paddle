@@ -188,6 +188,9 @@ from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
+from .math import acosh  # noqa: F401
+from .math import asinh  # noqa: F401
+from .math import atanh  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -398,7 +401,10 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
-           'triangular_solve'
+           'triangular_solve',
+           'asinh',
+           'atanh',
+           'acosh'
 ]
 
 #this list used in math_op_patch.py for magic_method bind

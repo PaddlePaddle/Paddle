@@ -1048,7 +1048,7 @@ struct AcoshGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =
-        dout * static_cast<T>(1) / (x.square() - static_cast<T>(1)).sqrt();
+        dout * static_cast<T>(1) / (x * x - static_cast<T>(1)).sqrt();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1105,11 +1105,11 @@ template <typename T>
 struct AtanhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Acosh<T>());
+    out.device(d) = x.unaryExpr(Atanh<T>());
   }
 };
 
-// atanh'(x) =  1/(1- x^2)
+// atanh'(x) =  1/(1 - x^2)
 template <typename T>
 struct AtanhGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
@@ -2702,6 +2702,9 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(asin, Asin, AsinFunctor, AsinGradFunctor);                          \
   __macro(sinh, Sinh, SinhFunctor, SinhGradFunctor);                          \
   __macro(cosh, Cosh, CoshFunctor, CoshGradFunctor);                          \
+  __macro(asinh, Asinh, AsinhFunctor, AsinhGradFunctor);                      \
+  __macro(acosh, Acosh, AcoshFunctor, AcoshGradFunctor);                      \
+  __macro(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);                      \
   __macro(round, Round, RoundFunctor, ZeroGradFunctor);                       \
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
   __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                      \

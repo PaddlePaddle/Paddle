@@ -539,14 +539,17 @@ struct CudaAtanhFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaAtanhGradFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
   // dx = dout * 1/(1- x^2)
-  __device__ __forceinline__ T operator()(const T& dout, const T& out) const {
-    return dout * (one / (one - out * out));
+  __device__ __forceinline__ T operator()(const T& arg_dout,
+                                          const T& arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(dout * one / (one - x * x));
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 template <typename T>

@@ -222,6 +222,9 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import acosh  # noqa: F401
+from .tensor.math import asinh  # noqa: F401
+from .tensor.math import atanh  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -532,5 +535,8 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags'
+           'get_flags',
+           'asinh',
+           'acosh',
+           'atanh'
 ]
