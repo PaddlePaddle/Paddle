@@ -51,6 +51,11 @@ void ComputeInterceptor::PrepareDeps() {
                           "times, but now max_run_times=%ld",
                           node_->max_run_times()));
   }
+
+  // If there is no downstream or every downstream is in different rank,
+  // then this interceptor is the last one for current rank.
+  // This can be get during init, can be cached for later use.
+  is_last_ = downstream.empty();
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
@@ -129,7 +134,8 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
 
     InterceptorMessage ready_msg;
     ready_msg.set_message_type(DATA_IS_READY);
-    VLOG(3) << "ComputeInterceptor Send data_is_ready msg to " << down_id;
+    VLOG(3) << "ComputeInterceptor " << interceptor_id_
+            << " Send data_is_ready msg to " << down_id;
     Send(down_id, ready_msg);
   }
 }
@@ -148,7 +154,8 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATE_IS_USELESS);
-    VLOG(3) << "ComputeInterceptor Reply data_is_useless msg to " << up_id;
+    VLOG(3) << "ComputeInterceptor " << interceptor_id_
+            << " Reply data_is_useless msg to " << up_id;
     Send(up_id, reply_msg);
   }
 }
@@ -159,7 +166,7 @@ void ComputeInterceptor::Run() {
 
     // step_ %= node_->max_run_times();
     for (auto op : node_->ops()) {
-      auto* scope = microbatch_scopes_[step_ % node_->max_slot_nums()];
+      auto* scope = microbatch_scopes_[step_ % node_->max_run_times()];
       op->Run(*scope, place_);
     }
     ++step_;
@@ -168,6 +175,10 @@ void ComputeInterceptor::Run() {
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
+    // Try to stop Carrier
+    if (step_ % node_->max_run_times() == 0 && is_last_) {
+      StopCarrier();
+    }
   }
 
   // If there is no limit, source interceptor can be executed
@@ -221,11 +232,6 @@ void ComputeInterceptor::TryStop() {
     Send(down_id, stop);
   }
   stop_ = true;
-
-  if (out_buffs_.size() == 0) {
-    // TODO(fleet executor dev) need a better place to notify
-    StopCarrier();
-  }
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
