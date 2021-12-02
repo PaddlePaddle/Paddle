@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "bfloat16.h"  // NOLINT
-#include "complex.h"   // NOLINT
-#include "float16.h"   // NOLINT
+#include "complex.h"                         // NOLINT
+#include "float16.h"                         // NOLINT
+#include "paddle/fluid/platform/bfloat16.h"  // NOLINT
 
 #include "paddle/pten/api/ext/exception.h"
 
