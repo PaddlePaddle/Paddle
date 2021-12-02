@@ -90,8 +90,6 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
                 x_shape = list(program_config.inputs["input_data"].shape)
                 if x_shape[-1] != 1 or x_shape[-2] != 1:
                     return True
-            if program_config.ops[0].attrs["padding_algorithm"] == "SAME":
-                return True
             return False
 
         def teller2(program_config, predictor_config):
