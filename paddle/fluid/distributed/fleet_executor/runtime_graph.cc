@@ -170,18 +170,14 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     //   max_run_times = 1;
     //   max_slot_nums = 1;
     // }
-    if (role_to_ops.find(role_id) == role_to_ops.end()) {
-      std::unique_ptr<TaskNode> task_node = TaskNode::CreateEmptyTaskNode(
-          role_id, cur_rank, task_id, max_run_times, max_slot_nums);
-      SetTaskNodeType(task_node.get(), role_id, max_run_times);
-      task_nodes_.emplace_back(task_node.get());
-    } else {
-      std::unique_ptr<TaskNode> task_node =
-          TaskNode::CreateTaskNode(role_id, role_to_ops.at(role_id), cur_rank,
-                                   task_id, max_run_times, max_slot_nums);
-      SetTaskNodeType(task_node.get(), role_id, max_run_times);
-      task_nodes_.emplace_back(task_node.get());
+    std::vector<OperatorBase*> task_ops{};
+    if (role_to_ops.find(role_id) != role_to_ops.end()) {
+      task_ops = role_to_ops.at(role_id);
     }
+    std::unique_ptr<TaskNode> task_node = TaskNode::CreateTaskNode(
+        role_id, task_ops, cur_rank, task_id, max_run_times, max_slot_nums);
+    SetTaskNodeType(task_node.get(), role_id, max_run_times);
+    task_nodes_.emplace_back(task_node.get());
     ++task_id;
   }
 }
