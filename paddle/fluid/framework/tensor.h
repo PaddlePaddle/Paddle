@@ -260,6 +260,8 @@ class Tensor {
     // should not be copied.
   }
 
+  void ShareDataTypeWith(const Tensor& tensor) { type_ = tensor.type_; }
+
   bool IsSharedBufferWith(const Tensor& src) const {
     return holder_ && holder_ == src.Holder();
   }
