@@ -21,7 +21,6 @@
 #endif
 #endif
 
-#ifndef EXTENSION
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -58,4 +57,3 @@ struct is_unsigned<paddle::platform::bfloat16> {
   static const bool value = false;
 };
 }  // namespace std
-#endif

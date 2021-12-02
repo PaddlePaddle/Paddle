@@ -33,10 +33,13 @@ limitations under the License. */
 #include "paddle/pten/api/include/utils.h"
 
 // pten common headers
-#include "paddle/pten/common/backend.h"
+#ifndef EXTENSION
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/layout.h"
 #include "paddle/pten/common/scalar.h"
+#endif
+
+#include "paddle/pten/common/backend.h"
+#include "paddle/pten/common/layout.h"
 #include "paddle/pten/common/scalar_array.h"
 
 // original custom op headers
