@@ -27,28 +27,6 @@ AmplifierInterceptor::AmplifierInterceptor(int64_t interceptor_id,
   run_at_offset_ = node->run_at_offset();
   reply_up_per_steps_ = node->reply_up_per_steps();
   send_down_per_steps_ = node->send_down_per_steps();
-
-  PADDLE_ENFORCE_GE(
-      run_per_steps_, 1,
-      platform::errors::InvalidArgument(
-          "run_per_steps must >= 1, but now is %ld", run_per_steps_));
-  PADDLE_ENFORCE_GE(
-      run_at_offset_, 0,
-      platform::errors::InvalidArgument(
-          "run_at_offset must >= 0, but now is %ld", run_at_offset_));
-  PADDLE_ENFORCE_LT(run_at_offset_, run_per_steps_,
-                    platform::errors::InvalidArgument(
-                        "run_at_offset must < run_per_steps, must now "
-                        "run_at_offset=%ld run_per_steps=%ld",
-                        run_at_offset_, run_per_steps_));
-  PADDLE_ENFORCE_GE(
-      reply_up_per_steps_, 1,
-      platform::errors::InvalidArgument(
-          "reply_up_per_steps must >= 1, but now is %ld", reply_up_per_steps_));
-  PADDLE_ENFORCE_GE(send_down_per_steps_, 1,
-                    platform::errors::InvalidArgument(
-                        "send_down_per_steps must >= 1, but now is %ld",
-                        send_down_per_steps_));
 }
 
 void AmplifierInterceptor::RunOps() {
