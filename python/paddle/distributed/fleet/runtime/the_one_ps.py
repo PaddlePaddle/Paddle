@@ -56,10 +56,7 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
     embedding_dim = 0
     for var in o_main_program.list_vars():
         if var.name == varname:
-            print("var:", var)
-            print("var.shape:", var.shape)
             embedding_dim = var.shape[1]
-            print("sparse dim:", embedding_dim)
             break
 
     if not accessor.HasField("accessor_class"):
@@ -92,7 +89,6 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
         ctr_accessor_param.ssd_unseenday_threshold = 1
 
     for sgd_param in [accessor.embed_sgd_param, accessor.embedx_sgd_param]:
-        print("sgd_param.name:", sgd_param.name)
         if not sgd_param.HasField("name"):
             sgd_param.name = "SparseAdaGradSGDRule"
         if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
@@ -130,10 +126,7 @@ def check_embedding_dim(accessor, varname, o_main_program):
     embedding_dim = 0
     for var in o_main_program.list_vars():
         if var.name == varname:
-            print("var:", var)
-            print("var.shape:", var.shape)
             embedding_dim = var.shape[1]
-            print("sparse dim:", embedding_dim)
             break
     fea_dim = accessor.fea_dim
     if fea_dim != embedding_dim + 2:
@@ -953,19 +946,9 @@ class TheOnePSRuntime(RuntimeBase):
                         table_proto = all_table_proto.add()
                         for proto in all_table_proto:
                             if proto.table_name == common.table_name:
-                                print("table name:", proto.table_name)
                                 table_proto = proto
                                 break
-                        print('table proto:', table_proto)
-                        print('table_class:', table_proto.table_class)
-                        print('shard_num:', table_proto.shard_num)
-                        print('table_proto.accessor:', table_proto.accessor)
-                        print('accessor.IsInitialized',
-                              table_proto.accessor.IsInitialized())
-                        print('accessor.ByteSize',
-                              table_proto.accessor.ByteSize())
                         if table_proto.HasField("table_class"):
-                            print('table_proto.table_class is true')
                             table.table_class = table_proto.table_class
                         else:
                             table.table_class = parse_table_class(
@@ -976,7 +959,6 @@ class TheOnePSRuntime(RuntimeBase):
                                 "The PS mode must use MemorySparseTable.")
 
                         if table_proto.HasField("shard_num"):
-                            print('table_proto.shard_num is true')
                             table.shard_num = table_proto.shard_num
                         else:
                             table.shard_num = 1000
@@ -985,23 +967,18 @@ class TheOnePSRuntime(RuntimeBase):
                             )
 
                         if table_proto.accessor.ByteSize() == 0:
-                            print('table_proto.accessor is false')
                             warnings.warn(
                                 "The accessor of sparse table is not set, use default value."
                             )
                         get_default_accessor_proto(table_proto.accessor,
                                                    common.table_name,
                                                    self.origin_main_program)
-                        print("get default_accessor_proto done.")
                         check_embedding_dim(table_proto.accessor,
                                             common.table_name,
                                             self.origin_main_program)
-                        print('accessor.ByteSize',
-                              table_proto.accessor.ByteSize())
                         from google.protobuf import text_format
                         table.accessor_proto = text_format.MessageToString(
                             table_proto.accessor)
-                        print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -1312,10 +1289,8 @@ class TheOnePSRuntime(RuntimeBase):
             is_dense=False,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
-        print("the one ps sparses:", sparses)
         sparse_names = self._save_sparse_params(executor, dirname, sparses,
                                                 main_program, mode)
-        print("the one ps sparse names:", sparse_names)
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
@@ -1330,7 +1305,7 @@ class TheOnePSRuntime(RuntimeBase):
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),
                 infer_program.list_vars()))
-        print("remain_vars:", [var.name for var in remaining_vars])
+
         for var in remaining_vars:
             tensor = var.get_value()
             paddle.save(

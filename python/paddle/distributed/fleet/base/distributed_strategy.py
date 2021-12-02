@@ -474,12 +474,12 @@ class DistributedStrategy(object):
             for field in msg.DESCRIPTOR.fields:
                 name = config_name + "." + field.name
                 if field.type == FieldDescriptor.TYPE_MESSAGE:
-                    print("message:", name)
+                    # print("message:", name)
                     if field.label == FieldDescriptor.LABEL_REPEATED:
                         if name + ".num" not in configs:
                             continue
                         num = configs[name + ".num"]
-                        print("message num:", name, num)
+                        # print("message num:", name, num)
                         for i in range(num):
                             data = getattr(msg, field.name).add()
                             set_table_config(data, name, configs, i)
@@ -487,7 +487,7 @@ class DistributedStrategy(object):
                         set_table_config(
                             getattr(msg, field.name), name, configs)
                 else:
-                    print("not message:", name)
+                    # print("not message:", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
