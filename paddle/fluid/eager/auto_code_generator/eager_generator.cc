@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gflags/gflags.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -25,6 +26,9 @@
 #include "paddle/fluid/pybind/op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
+
+DEFINE_bool(generate_all, false,
+            "Generate all operators currently registered in Paddle");
 
 static std::unordered_set<std::string> operators_to_skip = {
     "fused_elemwise_add_activation",  // No Default Attr
@@ -40,12 +44,10 @@ static std::unordered_set<std::string> operators_to_skip = {
     "pull_box_sparse",
     "fused_attention",
     "diag_v2",
-};
+    "transfer_dtype",
+    "c_split"};
 
-static std::unordered_set<std::string> operators_to_codegen = {
-    "sigmoid",      "matmul_v2",   "reduce_sum", "elementwise_add",
-    "share_buffer", "var_conv_2d", "split"};
-
+static std::unordered_set<std::string> operators_to_codegen = {};
 static std::unordered_set<std::string> skipped_operators = {};
 
 namespace paddle {
@@ -353,7 +355,10 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   // Only handle matmul_v2 for now
   VLOG(1) << "------ Analyzing Op ------: " << op_type;
 
-  if (!operators_to_codegen.count(op_type)) return false;
+  if (!FLAGS_generate_all) {
+    if (!operators_to_codegen.count(op_type)) return false;
+  }
+
   if (operators_to_skip.count(op_type)) return false;
 
   return true;
@@ -976,7 +981,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, outnum);
       dygraph_function_args_str += arg_str;
       const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::ConstructDuplicableOutput(%s) },";
+          "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput(%s) },";
       outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
                                                    output_name, outnum);
     } else {
@@ -1253,7 +1258,7 @@ static std::string GenerateGradNodeCCContents(
 
       if (duplicable_input_name_set.count(fwd_input_name)) {
         const char* GRAD_OUTS_CONTENT_TEMPLATE =
-            "{ \"%s\", egr::ConstructDuplicableOutput( "
+            "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput( "
             "this->OutputMeta()[%d].Size() ) },";
         outs_contents_str += paddle::string::Sprintf(
             GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
@@ -1639,13 +1644,30 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
 }  // namespace framework
 }  // namespace paddle
 
+static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
+  std::string line;
+  std::ifstream op_list_file(op_list_path);
+  if (op_list_file.is_open()) {
+    while (getline(op_list_file, line)) {
+      operators_to_codegen.insert(line);
+    }
+    op_list_file.close();
+  } else {
+    PADDLE_THROW(
+        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
+  }
+}
+
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
+  if (argc != 3) {
     std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
 
   std::string eager_root = argv[1];
+  std::string op_list_path = argv[2];
+
+  CollectOperatorsToCodeGen(op_list_path);
   paddle::framework::DygraphCodeGeneration(eager_root);
 
   return 0;
