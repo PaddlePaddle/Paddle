@@ -44,7 +44,7 @@ void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
   comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
-void HeterPs::build_ps(int num, FeatureKey* h_keys, HBMMemoryPool* pool,
+void HeterPs::build_ps(int num, FeatureKey* h_keys, char* pool,
                        size_t len, size_t chunk_size, int stream_num) {
   comm_->build_ps(num, h_keys, pool, len, chunk_size, stream_num);
 }

@@ -52,6 +52,29 @@ struct CustomGradMerger {
 
     return out;
   }
+
+  template <typename T>
+  __device__ __forceinline__
+  void copy_basic_field(T& output, const T& input) {
+      output.slot    = input.slot;
+      output.show    = input.show;
+      output.clk     = input.clk;
+      output.mf_dim = input.mf_dim;
+      output.lr_g = input.lr_g;
+      for(int i = 0; i < output.mf_dim ; ++i) {
+          output.mf_g[i] = input.mf_g[i];
+      }
+  }
+  template <typename T>
+  __device__ __forceinline__
+  void add_basic_field(T& output, const T& input) {
+      output.show    += input.show;
+      output.clk     += input.clk;
+      output.lr_g += input.lr_g;
+      for(int i = 0; i < output.mf_dim; ++i) {
+          output.mf_g[i] += input.mf_g[i];
+      }
+  }
 };
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -71,7 +94,7 @@ class HeterComm {
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
                 size_t chunk_size, int stream_num);
-  void build_ps(int num, KeyType* h_keys, HBMMemoryPool* pool, size_t len,
+  void build_ps(int num, KeyType* h_keys, char* pool, size_t len,
                 size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
@@ -187,12 +210,16 @@ class HeterComm {
       std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
   void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
                     KeyType* src_key, GradType* src_val);
+  void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
+                    KeyType* src_key, char* src_val, size_t val_size);
   void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
                    ValType* src_val);
+  void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
+                   char* src_val, size_t val_size);
 
  private:
   using Table = HashTable<KeyType, ValType>;
-  using PtrTable = HashTable<KeyType, uint64_t>;
+  using PtrTable = HashTable<KeyType, ValType*>;
   int block_size_{256};
   float load_factor_{0.75};
   std::vector<Table*> tables_;

@@ -55,7 +55,7 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
               gpuStream_t stream);
-  void insert(const KeyType* d_keys, size_t len, HBMMemoryPool* pool,
+  void insert(const KeyType* d_keys, size_t len, char* pool,
               size_t start_index, gpuStream_t stream);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            gpuStream_t stream);
@@ -78,7 +78,7 @@ class HashTable {
                               size_t push_grad_value_size) {
     pull_feature_value_size_ = pull_feature_value_size;
     push_grad_value_size_ = push_grad_value_size;
-    VLOG(1) << "hashtable set pull value size: " << pull_feature_value_size_
+    VLOG(3) << "hashtable set pull value size: " << pull_feature_value_size_
             << " push value size: " << push_grad_value_size_;
   }
 

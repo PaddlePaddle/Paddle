@@ -297,6 +297,7 @@ class PSGPUWrapper {
       dim_index_map_[index_dim_vec_[i]] = i;
     }
     hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
+    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map_.size() >= 1) ? dim_index_map_.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
@@ -348,9 +349,11 @@ class PSGPUWrapper {
   std::vector<int> slot_index_vec_;
   std::vector<int> index_dim_vec_;
   int multi_mf_dim_{0};
-  int max_mf_dim_;
-  size_t val_type_size_;
-  size_t grad_type_size_;
+  int max_mf_dim_{0};
+  size_t val_type_size_{0};
+  size_t grad_type_size_{0};
+  //std::vector<std::shared_ptr<memory::Allocation>> hbm_pools_;
+  std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
                                            // pools of totol dims number
 

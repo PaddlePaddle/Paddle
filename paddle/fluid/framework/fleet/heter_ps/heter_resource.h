@@ -66,8 +66,8 @@ class HeterPsResource {
   std::vector<std::shared_ptr<GPUResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;
-  int multi_mf_dim_;
-  int max_mf_dim_;
+  int multi_mf_dim_{0};
+  int max_mf_dim_{0};
 };
 
 }  // end namespace framework

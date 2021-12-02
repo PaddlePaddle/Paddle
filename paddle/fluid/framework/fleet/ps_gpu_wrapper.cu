@@ -138,6 +138,9 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
     (dest + i)->show = *(src[x] + y * hidden);
     (dest + i)->clk = *(src[x] + y * hidden + 1);
     (dest + i)->lr_g = *(src[x] + y * hidden + 2) * -1. * bs;
+    for (int j = 0; j < hidden - 3; j++) {
+      (dest + i)->mf_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
+    }
   }
 }
 

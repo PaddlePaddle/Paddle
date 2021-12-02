@@ -46,7 +46,7 @@ __global__ void insert_kernel(Table* table,
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
-                              size_t len, HBMMemoryPool* pool,
+                              size_t len, char* pool,
                               int start_index) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
@@ -55,7 +55,7 @@ __global__ void insert_kernel(Table* table,
 
   if (i < len) {
     kv.first = keys[i];
-    kv.second = (uint64_t)pool->mem_address(start_index + i);
+    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
   }
@@ -86,7 +86,25 @@ __global__ void dy_mf_search_kernel(Table* table,
 
     if (it != table->end()) {
       *(FeatureValue*)(vals + i * pull_feature_value_size) =
-          *(FeatureValue*)(it->second);
+          *(it->second);
+    } else {
+      printf("yxf::pull miss key: %d",keys[i]);
+      //it = table->find(0);
+      //*(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
+      FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
+      cur->delta_score = 0;
+      cur->show = 0;
+      cur->clk = 0;
+      cur->slot = -1;
+      cur->lr = 0;
+      cur->lr_g2sum = 0;
+      cur->mf_size = 0;
+      cur->mf_dim = 8;
+      cur->cpu_ptr;
+      for (int j = 0; j < cur->mf_dim + 1; j++) {
+        cur->mf[j] = 0;
+      }
+      
     }
   }
 }
@@ -116,6 +134,8 @@ __global__ void dy_mf_update_kernel(Table* table,
     if (it != table->end()) {
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value((it.getter())->second, *cur);
+    } else {
+      printf("yxf::push miss key: %d",keys[i]);
     }
   }
 }
@@ -155,7 +175,6 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  VLOG(0) << "yxf;:hashtable pull size: " << pull_feature_value_size_;
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len, pull_feature_value_size_);
 }
@@ -174,7 +193,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         HBMMemoryPool* pool,
+                                         char* pool,
                                          size_t start_index,
                                          gpuStream_t stream) {
   if (len == 0) {
@@ -235,8 +254,9 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::dy_mf_dump_to_cpu(int devid,
                                                     cudaStream_t stream) {
-  container_->clear_async(stream);
-  VLOG(0) << "yxf clear container";
+  return;
+  //container_->clear_async(stream);
+  //VLOG(0) << "yxf clear container";
   //container_->prefetch(cudaCpuDeviceId, stream);
   /*
   size_t num = container_->size();
@@ -295,6 +315,7 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
 }
