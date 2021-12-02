@@ -1000,6 +1000,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
       }
+      if (y_var_desc->Persistable() && y_shape.size() == 1 && x_shape.size() > 2) {
+        VLOG(3) << "elementwise_add with weight(Y) not support broadcast in trt. "
+                << "X var_name : " << desc.Input("X")[0];
+        return false;
+      }
     }
 
     if (op_type == "stack") {
