@@ -166,11 +166,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     int32_t role_id = static_cast<int64_t>(role);
     int64_t max_run_times = num_micro_batches;
     int64_t max_slot_nums = start_up_steps;
-    // NOTE: use short path, each interceptor should cun for max_run_times
-    // if (IsLRSched(role_id) || IsOptimize(role_id)) {
-    //   max_run_times = 1;
-    //   max_slot_nums = 1;
-    // }
+    // NOTE: use short path, each interceptor should run for max_run_times
     std::vector<OperatorBase*> task_ops{};
     if (role_to_ops.find(role_id) != role_to_ops.end()) {
       task_ops = role_to_ops.at(role_id);
