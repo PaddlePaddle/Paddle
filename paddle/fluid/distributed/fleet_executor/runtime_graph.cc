@@ -180,13 +180,10 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     if (IsLRSched(role_id) || IsOptimize(role_id)) {
       task_node->SetType("Amplifier");
       if (IsLRSched(role_id)) {
-        task_node->SetRunAtOffset(0);
         task_node->SetRunPerSteps(max_run_times);
-        task_node->SetSendDownPerSteps(1);
       } else {
         task_node->SetRunAtOffset(max_run_times - 1);
         task_node->SetRunPerSteps(max_run_times);
-        task_node->SetReplyUpPerSteps(max_run_times - 1);
       }
     } else {
       task_node->SetType("Compute");
