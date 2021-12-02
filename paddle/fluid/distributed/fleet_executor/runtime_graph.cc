@@ -166,10 +166,10 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     int64_t max_run_times = num_micro_batches;
     int64_t max_slot_nums = start_up_steps;
     // NOTE: use short path, each interceptor should cun for max_run_times
-    //    if (IsLRSched(role_id) || IsOptimize(role_id)) {
-    //      max_run_times = 1;
-    //      max_slot_nums = 1;
-    //    }
+    // if (IsLRSched(role_id) || IsOptimize(role_id)) {
+    //   max_run_times = 1;
+    //   max_slot_nums = 1;
+    // }
     if (role_to_ops.find(role_id) == role_to_ops.end()) {
       std::unique_ptr<TaskNode> task_node = TaskNode::CreateEmptyTaskNode(
           role_id, cur_rank, task_id, max_run_times, max_slot_nums);
