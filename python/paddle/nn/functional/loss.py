@@ -2138,14 +2138,16 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                                  'hinge_embedding_loss')
 
-    if {i.item() for i in paddle.unique(label)} <= {-1., 1.}:
+    label_item_set = {i.item() for i in label.flatten()}
+
+    if label_item_set <= {-1., 1.}:
         loss = paddle.where(
             label == 1., input,
             paddle.maximum(paddle.to_tensor(0.), delta - input))
     else:
         raise ValueError("'label' should contain 1. or -1., "
                          "but received label containing {}.".format(
-                             paddle.unique(label)))
+                             label_item_set))
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
