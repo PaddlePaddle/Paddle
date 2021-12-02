@@ -47,7 +47,9 @@ class KernelContext {
   void SetDeviceContext(DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   template <typename CtxType>
-  const CtxType& GetDeviceContext() const;
+  const CtxType& GetDeviceContext() const {
+    return static_cast<const CtxType&>(*dev_ctx_);
+  }
 
   void EmplaceBackInput(std::shared_ptr<TensorBase> input);
 
@@ -65,12 +67,6 @@ class KernelContext {
 
   void EmplaceBackAttr(paddle::any attr);
 
-  template <typename TensorType>
-  const TensorType& InputAt(size_t idx) const;
-
-  template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) const;
-
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
 
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
@@ -80,15 +76,49 @@ class KernelContext {
   std::pair<int, int>& MutableOutputRangeAt(size_t idx);
 
   template <typename TensorType>
-  TensorType* MutableInputAt(size_t idx);
+  const TensorType& InputAt(size_t idx) const {
+    return static_cast<const TensorType&>(*(inputs_.at(idx)));
+  }
 
   template <typename TensorType>
-  TensorType* MutableOutputAt(size_t idx);
+  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+    std::vector<TensorType> v;
+    for (size_t i = start; i < end; ++i) {
+      auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
+      v.emplace_back(std::move(*t.get()));
+    }
+    return v;
+  }
 
   template <typename TensorType>
-  std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end);
+  TensorType* MutableInputAt(size_t idx) {
+    return static_cast<TensorType*>(inputs_.at(idx).get());
+  }
+
+  template <typename TensorType>
+  TensorType* MutableOutputAt(size_t idx) {
+    return static_cast<TensorType*>(outputs_.at(idx).get());
+  }
+
+  template <typename TensorType>
+  std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
+    std::vector<TensorType*> v;
+    for (size_t i = start; i < end; ++i) {
+      v.emplace_back(static_cast<TensorType*>(outputs_.at(i).get()));
+    }
+
+    return v;
+  }
+
   template <typename AttrType>
-  AttrType AttrAt(size_t idx) const;
+  AttrType AttrAt(size_t idx) const {
+    try {
+      return paddle::any_cast<AttrType>(attrs_.at(idx));
+    } catch (paddle::bad_any_cast&) {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Attribute cast error in Op Kernel Context."));
+    }
+  }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   // Only deal with DenseTensor now

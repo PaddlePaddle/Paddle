@@ -15,10 +15,7 @@
 #include "paddle/pten/core/kernel_context.h"
 
 namespace pten {
-template <typename CtxType>
-const CtxType& KernelContext::GetDeviceContext() const {
-  return static_cast<const CtxType&>(*dev_ctx_);
-}
+
 void KernelContext::EmplaceBackInput(std::shared_ptr<TensorBase> input) {
   int index = inputs_.size();
   inputs_.emplace_back(std::move(input));
@@ -68,23 +65,6 @@ void KernelContext::EmplaceBackAttr(paddle::any attr) {
   attrs_.emplace_back(std::move(attr));
 }
 
-template <typename TensorType>
-const TensorType& KernelContext::InputAt(size_t idx) const {
-  return static_cast<const TensorType&>(*(inputs_.at(idx)));
-}
-
-template <typename TensorType>
-std::vector<TensorType> KernelContext::InputBetween(size_t start,
-                                                    size_t end) const {
-  std::vector<TensorType> v;
-  for (size_t i = start; i < end; ++i) {
-    auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
-    v.emplace_back(std::move(*t.get()));
-  }
-
-  return v;
-}
-
 const std::pair<int, int>& KernelContext::InputRangeAt(size_t idx) const {
   return input_range_.at(idx);
 }
@@ -99,37 +79,6 @@ std::pair<int, int>& KernelContext::MutableInputRangeAt(size_t idx) {
 
 std::pair<int, int>& KernelContext::MutableOutputRangeAt(size_t idx) {
   return output_range_[idx];
-}
-
-template <typename TensorType>
-TensorType* KernelContext::MutableInputAt(size_t idx) {
-  return static_cast<TensorType*>(inputs_.at(idx).get());
-}
-
-template <typename TensorType>
-TensorType* KernelContext::MutableOutputAt(size_t idx) {
-  return static_cast<TensorType*>(outputs_.at(idx).get());
-}
-
-template <typename TensorType>
-std::vector<TensorType*> KernelContext::MutableOutputBetween(size_t start,
-                                                             size_t end) {
-  std::vector<TensorType*> v;
-  for (size_t i = start; i < end; ++i) {
-    v.emplace_back(static_cast<TensorType*>(outputs_.at(i).get()));
-  }
-
-  return v;
-}
-
-template <typename AttrType>
-AttrType KernelContext::AttrAt(size_t idx) const {
-  try {
-    return paddle::any_cast<AttrType>(attrs_.at(idx));
-  } catch (paddle::bad_any_cast&) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Attribute cast error in Op Kernel Context."));
-  }
 }
 
 // Temporary method: For compatible with fluid Tensor and improve performance
