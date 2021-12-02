@@ -1742,7 +1742,7 @@ class TestSoftReluOpError(unittest.TestCase):
 
 
 def elu(x, alpha):
-    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+    out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
 
 
@@ -1753,7 +1753,7 @@ class TestELU(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
-        alpha = 1.
+        alpha = self.get_alpha()
         out = elu(x, alpha)
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
         # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
@@ -1765,6 +1765,14 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def get_alpha(self):
+        return 1.
+
+
+class TestELUAlpha(TestELU):
+    def get_alpha(self):
+        return -0.2
 
 
 class TestELUAPI(unittest.TestCase):
@@ -1825,6 +1833,18 @@ class TestELUAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
             self.elu(x_fp16)
+
+
+class TestELUInplaceAPI(TestELUAPI):
+    # test paddle.nn.functional.elu_
+    def executed_api(self):
+        self.elu = F.elu_
+
+    def test_alpha_error(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        self.assertRaises(Exception, F.elu_, x, -0.2)
+        paddle.enable_static()
 
 
 def celu(x, alpha):
@@ -1913,12 +1933,6 @@ class TestCELUAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
             self.celu(x_fp16)
-
-
-class TestELUInplaceAPI(TestELUAPI):
-    # test paddle.nn.functional.elu_
-    def executed_api(self):
-        self.elu = F.elu_
 
 
 class TestReciprocal(TestActivation):
