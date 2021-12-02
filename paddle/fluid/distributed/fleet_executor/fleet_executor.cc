@@ -31,9 +31,7 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
                                  "Error occurs while parsing string to proto"));
 }
 
-FleetExecutor::~FleetExecutor() {
-  // Destroy Executor
-}
+FleetExecutor::~FleetExecutor() { root_scope_->DropKids(); }
 
 void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
                          framework::Scope* scope,
@@ -112,8 +110,6 @@ void FleetExecutor::Run() {
       platform::errors::Unavailable("MessageBus has not been init yet."));
   carrier_instance.Start();
 }
-
-void FleetExecutor::Release() { root_scope_->DropKids(); }
 
 void FleetExecutor::CopyParameters(int microbatch_id,
                                    const framework::ProgramDesc& program) {

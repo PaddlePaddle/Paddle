@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -30,6 +31,12 @@ TaskNode::TaskNode(const framework::ProgramDesc& program, int64_t rank,
   // Should be serially invoked, not thread-safe
   static int64_t task_node_cnt = 0;
   task_id_ = task_node_cnt++;
+  for (const auto& op_desc : program.Block(0).AllOps()) {
+    ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+  }
+  for (const auto& op : ops_vec_) {
+    ops_.emplace_back(op.get());
+  }
 }
 
 TaskNode::TaskNode(int32_t role, const std::vector<OperatorBase*>& ops,
