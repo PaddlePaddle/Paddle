@@ -80,12 +80,17 @@ class KernelContext {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
   }
 
+  std::shared_ptr<TensorBase>& MutableInputPtrAt(size_t idx) {
+    return inputs_.at(idx);
+  }
+
   template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+  std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
       v.emplace_back(std::move(*t.get()));
+      inputs_.at(i) = nullptr;
     }
     return v;
   }
