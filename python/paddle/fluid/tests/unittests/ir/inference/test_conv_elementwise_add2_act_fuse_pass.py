@@ -158,7 +158,12 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
             bias_2_dict[3] = [x_shape[0], f_shape[0], \
                 int(((x_shape[2] - (dilations[0] * (f_shape[2] - 1) + 1)) / strides[0] + 1)), \
                 int(((x_shape[3] - (dilations[1] * (f_shape[3] - 1) + 1)) / strides[1] + 1))]
-            bias_2_shape = bias_2_dict[padding_algorithm_index]
+            bias_index = 1
+            if padding_algorithm == "SAME":
+                bias_index = 2
+            if padding_algorithm == "VALID":
+                bias_index = 3
+            bias_2_shape = bias_2_dict[bias_index]
 
             if np.sum(np.array(bias_2_shape) <= 0) == 0:
                 is_not_valid = False

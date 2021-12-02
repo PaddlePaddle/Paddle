@@ -80,7 +80,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=5, max_value=100), min_size=4, max_size=4))
+                    min_value=1, max_value=100), min_size=4, max_size=4))
         x_shape[1] = draw(st.integers(min_value=1, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
@@ -130,17 +130,46 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         else:
             axis = 3
 
+        # 11. Generate legal shape of input:bias of conv2d
+        conv_bias_shape = []
+        inputs = dict()
+        weights = dict()
+        use_mkldnn = None
+        if draw(st.booleans()):
+            conv_bias_shape = [f_shape[0]]
+            inputs = {
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+                "Bias": ["conv_bias"],
+            }
+            weights = {
+                "filter": TensorConfig(shape=f_shape),
+                "bias": TensorConfig(shape=bias_shape),
+                "conv_bias": TensorConfig(shape=conv_bias_shape)
+            }
+            use_mkldnn = True
+        else:
+            inputs = {
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+            }
+            weights = {
+                "filter": TensorConfig(shape=f_shape),
+                "bias": TensorConfig(shape=bias_shape)
+            }
+            use_mkldnn = False
+
         conv2d_op = OpConfig(
             "conv2d",
-            inputs={"Input": ["input_x"],
-                    "Filter": ["filter"]},
+            inputs=inputs,
             outputs={"Output": ["conv2d_out"]},
             strides=strides,
             padding_algorithm=padding_algorithm,
             paddings=padding,
             groups=groups,
             dilations=dilations,
-            data_format=data_format)
+            data_format=data_format,
+            use_mkldnn=use_mkldnn)
 
         add_op = OpConfig(
             "elementwise_add",
@@ -153,12 +182,9 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
 
         program_config = ProgramConfig(
             ops=ops,
-            weights={
-                "filter": TensorConfig(shape=f_shape),
-                "bias": TensorConfig(shape=bias_shape),
-            },
-            inputs={"input_x": TensorConfig(shape=x_shape), },
-            outputs=ops[-1].outputs["Out"], )
+            weights=weights,
+            inputs={"input_x": TensorConfig(shape=x_shape)},
+            outputs=ops[-1].outputs["Out"])
         return program_config
 
     def test(self):

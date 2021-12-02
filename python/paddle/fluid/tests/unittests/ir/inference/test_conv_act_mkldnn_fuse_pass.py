@@ -80,7 +80,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=5, max_value=100), min_size=4, max_size=4))
+                    min_value=1, max_value=100), min_size=4, max_size=4))
         x_shape[1] = draw(st.integers(min_value=1, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
@@ -130,24 +130,48 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                     min_size=4,
                     max_size=4))
 
-        # 10. Generate legal act type of conv2d
+        # 10. Generate legal shape of input:bias of conv2d
+        conv_bias_shape = []
+        inputs = dict()
+        weights = dict()
+        use_mkldnn = None
+        if draw(st.booleans()):
+            conv_bias_shape = [f_shape[0]]
+            inputs = {
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+                "ResidualData": ["residualdata"],
+                "Bias": ["conv_bias"],
+            }
+            weights = {
+                "filter": TensorConfig(shape=f_shape),
+                "conv_bias": TensorConfig(shape=conv_bias_shape)
+            }
+            use_mkldnn = True
+        else:
+            inputs = {
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+                "ResidualData": ["residualdata"]
+            }
+            weights = {"filter": TensorConfig(shape=f_shape)}
+            use_mkldnn = False
+
+        # 11. Generate legal act type of conv2d
         act_type = draw(
             st.sampled_from(["relu", "leaky_relu", "relu6", "swish"]))
 
         conv2d_op = OpConfig(
             "conv2d",
-            inputs={
-                "Input": ["input_x"],
-                "Filter": ["filter"],
-                "ResidualData": ["residualdata"]
-            },
+            inputs=inputs,
             outputs={"Output": ["conv2d_out"]},
             strides=strides,
             padding_algorithm=padding_algorithm,
             paddings=padding,
             groups=groups,
             dilations=dilations,
-            data_format=data_format)
+            data_format=data_format,
+            use_mkldnn=True)
 
         # 11. Generate legal attr of act
         act_op = None
@@ -187,7 +211,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         program_config = ProgramConfig(
             ops=ops,
-            weights={"filter": TensorConfig(shape=f_shape), },
+            weights=weights,
             inputs={
                 "input_x": TensorConfig(shape=x_shape),
                 "residualdata": TensorConfig(shape=res_shape)

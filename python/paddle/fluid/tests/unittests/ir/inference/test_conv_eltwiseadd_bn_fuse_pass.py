@@ -231,6 +231,12 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
 
         ops = [conv2d_op, add_op, bn_op]
 
+        # 17. if the output of bias is more than one
+        if draw(st.booleans()):
+            outputs = ops[-1].outputs["Y"]
+        else:
+            outputs = ops[-1].outputs["Y"] + ["bias"]
+
         program_config = ProgramConfig(
             ops=ops,
             weights={
@@ -245,7 +251,7 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
                 "input_x": TensorConfig(shape=x_shape),
                 "residualdata": TensorConfig(shape=res_shape)
             },
-            outputs=ops[-1].outputs["Y"])
+            outputs=outputs)
         return program_config
 
     def test(self):
