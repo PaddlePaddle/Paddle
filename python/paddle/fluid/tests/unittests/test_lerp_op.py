@@ -75,7 +75,7 @@ class TestLerpWithDim6(TestLerp):
 
 class TestLerpAPI(unittest.TestCase):
     def init_dtype(self):
-        self.dtype = 'float64'
+        self.dtype = 'float32'
 
     def setUp(self):
         self.init_dtype()
