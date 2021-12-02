@@ -76,10 +76,12 @@ class TaskNode final {
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
   TaskNode() = default;
+  // ops_ will be removed in the future
   std::vector<OperatorBase*> ops_;
   std::unordered_set<int64_t> upstream_;
   std::unordered_set<int64_t> downstream_;
   framework::ProgramDesc program_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   int32_t role_;
   int64_t rank_;
   int64_t task_id_;
