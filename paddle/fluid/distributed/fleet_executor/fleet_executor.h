@@ -39,7 +39,6 @@ class FleetExecutor final {
   void Init(const framework::ProgramDesc& program_desc, framework::Scope* scope,
             const platform::Place& place);
   void Run();
-  void Release();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
