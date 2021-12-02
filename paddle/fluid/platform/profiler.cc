@@ -777,8 +777,11 @@ static void EmulateCorrelation(
 }
 
 static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
   std::map<uint64_t, ThreadEvents> thr_events;
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return thr_events;
+  }
+  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return std::move(thr_events);
@@ -786,6 +789,9 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
 
 static void DockHostEventRecorderDevicePart(
     const std::map<uint64_t, ThreadEvents> &thr_events) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
   EmulateCorrelation(thr_events);
 }
 
