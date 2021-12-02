@@ -43,32 +43,34 @@ CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
 }
 
 size_t CinnCacheKey::HashGraph(const ir::Graph& graph) {
-  // using Dot to unqiue graph
-  inference::analysis::Dot dot;
-  std::unordered_map<const ir::Node*, std::string> node2dot;
-  int id = 0;
-  // Create nodes
-  // graph.Nodes() return unordered_set, the same graph may
-  // return different result?
-  for (const ir::Node* n : graph.Nodes()) {
-    std::string node_id = std::to_string(id++);
-    dot.AddNode(node_id, {}, n->Name(), true);
-    node2dot[n] = node_id;
-  }
+  // sort grad node by name and id.
+  auto compare = [](ir::Node* n1, ir::Node* n2) {
+    if (n1->Name() == n2->Name()) {
+      return n1->id() < n2->id();
+    }
+    return n1->Name() < n2->Name();
+  };
 
-  // Create edges
-  for (const ir::Node* n : graph.Nodes()) {
-    const auto& src_id = node2dot.at(n);
-    for (auto* out : n->outputs) {
-      const auto& dest_id = node2dot.at(out);
-      dot.AddEdge(src_id, dest_id, {});
+  // graph.Nodes() return unordered_set, here using map to avoid the same graph
+  // may return different result?
+  std::set<ir::Node *, bool (*)(ir::Node *, ir::Node *)> node_set(compare),
+      output_set(compare);
+  node_set.insert(graph.Nodes().begin(), graph.Nodes().end());
+
+  std::string hash_str;
+  for (ir::Node* n : node_set) {
+    hash_str.append(n->Name());
+
+    output_set.clear();
+    output_set.insert(n->outputs.begin(), n->outputs.end());
+    for (auto* out : output_set) {
+      hash_str.append(out->Name());
     }
   }
 
-  const std::string& viz_graph = dot.Build();
-  VLOG(1) << "The hash graph:\n" << viz_graph;
+  VLOG(1) << "The hash graph:\n" << hash_str;
 
-  size_t hash_val = std::hash<std::string>()(viz_graph);
+  size_t hash_val = std::hash<std::string>()(hash_str);
   VLOG(4) << "The graph's hash value is: " << hash_val;
   return hash_val;
 }
