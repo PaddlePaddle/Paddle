@@ -19,14 +19,33 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/port.h"
+#ifdef _POSIX_C_SOURCE
+#include <time.h>
+#endif
 
 namespace paddle {
 namespace platform {
+
+// Get current time in nanoseconds
+inline uint64_t PosixInNsec() {
+#ifdef _POSIX_C_SOURCE
+  struct timespec tp;
+  clock_gettime(CLOCK_REALTIME, &tp);
+  return tp.tv_sec * 1000 * 1000 * 1000 + tp.tv_nsec;
+#else
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+#endif
+}
 
 // All kinds of Ids for OS thread
 class ThreadId {
  public:
   ThreadId();
+
+  uint64_t MainTid() const { return std_tid_; }
 
   uint64_t StdTid() const { return std_tid_; }
 
@@ -35,7 +54,7 @@ class ThreadId {
   uint64_t SysTid() const { return sys_tid_; }
 
  private:
-  uint64_t std_tid_ = 0;    // main id, std::hash<std::thread::id>
+  uint64_t std_tid_ = 0;    // std::hash<std::thread::id>
   uint32_t cupti_tid_ = 0;  // thread_id used by Nvidia CUPTI
   uint64_t sys_tid_ = 0;    // OS-specific, Linux: gettid
 };

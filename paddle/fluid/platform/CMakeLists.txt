@@ -45,7 +45,7 @@ IF(WITH_XBYAK)
 ENDIF()
 cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
-cc_library(os_info SRCS os_info.cc DEPS enforce)
+cc_library(os_info SRCS os_info.cc DEPS enforce device_tracer)
 
 IF(WITH_GPU)
     nv_library(cuda_graph SRCS cuda_graph.cc DEPS enforce allocator_facade)
