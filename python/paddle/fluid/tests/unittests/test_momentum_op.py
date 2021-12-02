@@ -808,6 +808,8 @@ class TestMomentumV2Group(TestMomentumV2):
 class TestMultiTensorMomentum(unittest.TestCase):
     def _momentum_optimize_dygraph(self,
                                    place,
+                                   use_param_attr=False,
+                                   use_param_group=False,
                                    use_amp=False,
                                    use_multi_tensor=False):
         paddle.disable_static()
@@ -820,32 +822,47 @@ class TestMultiTensorMomentum(unittest.TestCase):
             learning_rate=0.5,
             regularizer=paddle.regularizer.L2Decay(1.0),
             trainable=True)
-        model = paddle.nn.Linear(5, 5, weight_attr)
+        if use_param_attr:
+            model = paddle.nn.Linear(5, 5, weight_attr)
+        else:
+            model = paddle.nn.Linear(5, 5)
 
-        optimizer = paddle.optimizer.Momentum(
-            parameters=model.parameters(),
-            use_multi_tensor=use_multi_tensor,
-            multi_precision=use_amp)
+        if use_param_group:
+            optimizer = paddle.optimizer.Momentum(
+                parameters=model.parameters(),
+                use_multi_tensor=use_multi_tensor,
+                multi_precision=use_amp)
+        else:
+            optimizer = paddle.optimizer.Momentum(
+                parameters=[{
+                    'params': model.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                    'momentum': 0.99
+                }],
+                use_multi_tensor=use_multi_tensor,
+                multi_precision=use_amp)
 
-        if place == 'gpu' and use_amp == True:
-            model = paddle.amp.decorate(models=model, level='O2')
-            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        for idx in range(2):
+            if place == 'gpu' and use_amp == True:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        if place == 'gpu' and use_amp == True:
-            with paddle.amp.auto_cast(level='O2'):
+            if place == 'gpu' and use_amp == True:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grads()
+            else:
                 output = model(input)
                 loss = paddle.mean(output)
-            scaled = scaler.scale(loss)
-            scaled.backward()
-            scaler.minimize(optimizer, scaled)
-            optimizer.clear_grads()
-        else:
-            output = model(input)
-            loss = paddle.mean(output)
-            # This can be any optimizer supported by dygraph.
-            loss.backward()
-            optimizer.step()
-            optimizer.clear_grads()
+                # This can be any optimizer supported by dygraph.
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grads()
 
         return output, model.parameters()
 
@@ -867,11 +884,49 @@ class TestMultiTensorMomentum(unittest.TestCase):
                 np.allclose(
                     params1[idx], params2[idx], rtol=1e-05), True)
 
+    def _check_with_param_arrt(self, place, use_amp):
+        output1, params1 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_attr=True,
+            use_multi_tensor=True)
+        output2, params2 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_attr=True,
+            use_multi_tensor=False)
+
+        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        for idx in range(len(params1)):
+            self.assertEqual(
+                np.allclose(
+                    params1[idx], params2[idx], rtol=1e-05), True)
+
+    def _check_with_param_group(self, place, use_amp):
+        output1, params1 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_group=True,
+            use_multi_tensor=True)
+        output2, params2 = self._momentum_optimize_dygraph(
+            place=place,
+            use_amp=use_amp,
+            use_param_group=True,
+            use_multi_tensor=False)
+
+        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        for idx in range(len(params1)):
+            self.assertEqual(
+                np.allclose(
+                    params1[idx], params2[idx], rtol=1e-05), True)
+
     def test_main(self):
         for place in self._get_places():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)
+                self._check_with_param_arrt(place, use_amp)
+                self._check_with_param_group(place, use_amp)
 
 
 if __name__ == "__main__":
