@@ -81,11 +81,12 @@ def diff_vars(origin_vars, new_vars):
             continue
         else:
             error, var_error = True, True
-            var_changed_error_massage[var_name] = {}
             for arg_name in origin_vars.get(var_name):
                 new_arg_value = new_vars.get(var_name, {}).get(arg_name)
                 origin_arg_value = origin_vars.get(var_name, {}).get(arg_name)
                 if new_arg_value != origin_arg_value:
+                    if var_name not in var_changed_error_massage.keys():
+                        var_changed_error_massage[var_name] = {}
                     var_changed_error_massage[var_name][arg_name] = (
                         origin_arg_value, new_arg_value)
 
@@ -152,11 +153,12 @@ def diff_attr(ori_attrs, new_attrs):
             continue
         else:
             error, attr_error = True, True
-            attr_changed_error_massage[attr_name] = {}
             for arg_name in ori_attrs.get(attr_name):
                 new_arg_value = new_attrs.get(attr_name, {}).get(arg_name)
                 origin_arg_value = ori_attrs.get(attr_name, {}).get(arg_name)
                 if new_arg_value != origin_arg_value:
+                    if attr_name not in attr_changed_error_massage.keys():
+                        attr_changed_error_massage[attr_name] = {}
                     attr_changed_error_massage[attr_name][arg_name] = (
                         origin_arg_value, new_arg_value)
 
@@ -213,6 +215,7 @@ def check_io_registry(io_type, op, diff):
                 def_ios = diff.get(DEF, [])
                 if item in qaunt_ios or item in def_ios:
                     results[update_type].append((op, item, io_type))
+
     return results
 
 
@@ -241,8 +244,9 @@ def check_attr_registry(op, diff, origin_attrs):
                         if not origin_attrs.get(attr_name).get(EXTRA):
                             results[update_type][attr_name] = attr_change
 
-    if ADD in results.keys() and len(results[ADD]) == 0:
-        del results[ADD]
+    for update_type in [ADD, CHANGE]:
+        if update_type in results.keys() and len(results[update_type]) == 0:
+            del results[update_type]
     return results
 
 
@@ -278,11 +282,11 @@ def compare_op_desc(origin_op_desc, new_op_desc):
         attrs_version_errors = check_attr_registry(op_type, attrs_diff,
                                                    origin_attrs)
 
-        if ins_error:
+        if ins_diff:
             desc_error_message.setdefault(op_type, {})[INPUTS] = ins_diff
-        if outs_error:
+        if outs_diff:
             desc_error_message.setdefault(op_type, {})[OUTPUTS] = outs_diff
-        if attrs_error:
+        if attrs_diff:
             desc_error_message.setdefault(op_type, {})[ATTRS] = attrs_diff
 
         if ins_version_errors:
