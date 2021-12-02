@@ -54,10 +54,10 @@ class TaskNode final {
   const paddle::framework::ProgramDesc& program() const { return program_; }
   const std::vector<OperatorBase*>& ops() const { return ops_; }
 
-  void SetRunPerSteps(int64_t value) { run_per_steps_ = value; }
-  void SetRunAtOffset(int64_t value) { run_at_offset_ = value; }
-  void SetReplyUpPerSteps(int64_t value) { reply_up_per_steps_ = value; }
-  void SetSendDownPerSteps(int64_t value) { send_down_per_steps_ = value; }
+  void SetRunPerSteps(int64_t value);
+  void SetRunAtOffset(int64_t value);
+  void SetReplyUpPerSteps(int64_t value);
+  void SetSendDownPerSteps(int64_t value);
   void SetType(const std::string& type) { type_ = type; }
 
   bool AddUpstreamTask(int64_t task_id);

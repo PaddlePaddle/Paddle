@@ -92,5 +92,34 @@ std::string TaskNode::DebugString() const {
   os << "\n";
   return os.str();
 }
+
+void TaskNode::SetRunPerSteps(int64_t value) {
+  PADDLE_ENFORCE_GE(value, 1,
+                    platform::errors::InvalidArgument(
+                        "run_per_steps must >= 1, but received %ld", value));
+  run_per_steps_ = value;
+}
+
+void TaskNode::SetRunAtOffset(int64_t value) {
+  PADDLE_ENFORCE_GE(value, 0,
+                    platform::errors::InvalidArgument(
+                        "run_at_offset must >= 0, but received %ld", value));
+  run_at_offset_ = value;
+}
+
+void TaskNode::SetReplyUpPerSteps(int64_t value) {
+  PADDLE_ENFORCE_GE(
+      value, 1, platform::errors::InvalidArgument(
+                    "reply_up_per_steps must >= 1, but received %ld", value));
+  reply_up_per_steps_ = value;
+}
+
+void TaskNode::SetSendDownPerSteps(int64_t value) {
+  PADDLE_ENFORCE_GE(
+      value, 1, platform::errors::InvalidArgument(
+                    "send_down_per_steps must >= 1, but received %ld", value));
+  send_down_per_steps_ = value;
+}
+
 }  // namespace distributed
 }  // namespace paddle

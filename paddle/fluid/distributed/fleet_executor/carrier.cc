@@ -199,6 +199,13 @@ void Carrier::CreateInterceptors() {
       int64_t interceptor_id = item.first;
       TaskNode* task_node = item.second;
 
+      PADDLE_ENFORCE_LT(
+          task_node->run_at_offset(), task_node->run_per_steps(),
+          platform::errors::InvalidArgument(
+              "Interceptor's run_at_offset must < run_per_steps, must now "
+              "run_at_offset=%ld run_per_steps=%ld",
+              task_node->run_at_offset(), task_node->run_per_steps()));
+
       std::unique_ptr<Interceptor> interceptor;
       if (task_node->type().empty()) {
         // TODO(wangxi): delete this in future
