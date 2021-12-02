@@ -48,8 +48,6 @@ class RuntimeGraph final {
 
  private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
-  void SetTaskNodeType(TaskNode* task_node, int32_t role_id,
-                       int64_t max_run_times);
   void SplitProgramBasedFunctionality(const ProgramDesc& program);
   void FakeDependence();
   void AssignTaskToIntercepter();
