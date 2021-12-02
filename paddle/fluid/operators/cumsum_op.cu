@@ -24,9 +24,9 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/cum_op.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/operators/math/inclusive_scan.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 using Tensor = paddle::framework::Tensor;
 using LoDTensor = paddle::framework::LoDTensor;
@@ -234,7 +234,8 @@ class CumCUDAKernel : public framework::OpKernel<T> {
           thrust::exclusive_scan(thrust::device, in_data, in_data + size,
                                  out_data);
         } else {
-          math::InclusiveScan<T>(in_data, out_data, 1, size, 1, 0, cub::Sum(), false, dev_ctx);
+          math::InclusiveScan<T>(in_data, out_data, 1, size, 1, 0, cub::Sum(),
+                                 false, dev_ctx);
         }
       }
       return;
