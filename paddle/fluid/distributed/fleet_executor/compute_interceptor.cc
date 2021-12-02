@@ -181,6 +181,8 @@ void ComputeInterceptor::Run() {
     ReplyCompletedToUpStream();
     // Try to stop Carrier
     if (is_last_ && (step_ % node_->max_run_times() == 0)) {
+      VLOG(3) << "Interceptor " << GetInterceptorId()
+              << " is stopping carrier.";
       StopCarrier();
     }
   }
