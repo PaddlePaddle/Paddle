@@ -47,10 +47,7 @@ class MemcpyH2DFunctor {
         static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream());
 
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {
-      dev_ctx_.Wait();
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
-      dev_ctx_.Wait();
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
