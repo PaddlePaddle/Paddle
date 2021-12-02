@@ -97,19 +97,21 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
     }
     framework::DDim out_dims = framework::make_ddim({fwd_count, in_feat});
 
+    auto tot_experts = n_expert * nranks;
     framework::Tensor expert_gpu;
-    framework::DDim expert_dims = framework::make_ddim({n_expert * nranks});
+    framework::DDim expert_dims = framework::make_ddim({tot_experts});
     const int64_t* in_data = local_count->data<int64_t>();
     int64_t* expert_ptr_gpu =
         expert_gpu.mutable_data<int64_t>(expert_dims, place);
-    thrust::device_ptr<const int64_t> dev_ptr =
-        thrust::device_pointer_cast(in_data);
-    thrust::device_vector<int64_t> vec(dev_ptr, dev_ptr + n_expert * nranks);
-    thrust::exclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
-                           expert_ptr_gpu);
+    // thrust::device_ptr<const int64_t> dev_ptr =
+    //     thrust::device_pointer_cast(in_data);
+    // thrust::device_vector<int64_t> vec(dev_ptr, dev_ptr + n_expert * nranks);
+    thrust::exclusive_scan(thrust::device, in_data, in_data + tot_experts,
+                           expert_ptr_gpu, 0);
     framework::Tensor expert_cpu;
     framework::TensorCopySync(expert_gpu, platform::CPUPlace(), &expert_cpu);
     int64_t* expert_ptr = expert_cpu.data<int64_t>();
+
     // VLOG(0) << "exclusive_scan begin";
     // int64_t* expert_ptr = new int64_t[n_expert * nranks];
     // thrust::exclusive_scan(thrust::host, cpu_local_count_data,
