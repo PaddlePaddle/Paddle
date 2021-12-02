@@ -97,7 +97,7 @@ class TestPureFP16(TestMNIST):
                         .format(epoch, batch_id,
                                 avg_loss.numpy(), acc.numpy(), time() - start))
                     start = time()
-                if batch_id == 20:
+                if batch_id == 10:
                     break
         return loss_data
 
