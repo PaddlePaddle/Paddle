@@ -57,22 +57,6 @@ TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {}
 
-std::unique_ptr<TaskNode> TaskNode::CreateEmptyTaskNode(int32_t role,
-                                                        int64_t rank,
-                                                        int64_t task_id,
-                                                        int64_t max_run_times,
-                                                        int64_t max_slot_nums) {
-  return std::make_unique<TaskNode>(role, rank, task_id, max_run_times,
-                                    max_slot_nums);
-}
-
-std::unique_ptr<TaskNode> TaskNode::CreateTaskNode(
-    int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
-    int64_t task_id, int64_t max_run_times, int64_t max_slot_nums) {
-  return std::make_unique<TaskNode>(role, ops, rank, task_id, max_run_times,
-                                    max_slot_nums);
-}
-
 bool TaskNode::AddUpstreamTask(int64_t task_id) {
   const auto& ret = upstream_.insert(task_id);
   return *ret.first == task_id;

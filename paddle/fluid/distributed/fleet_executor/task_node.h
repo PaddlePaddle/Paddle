@@ -64,15 +64,6 @@ class TaskNode final {
   bool AddDownstreamTask(int64_t task_id);
   std::string DebugString() const;
 
-  static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int32_t role,
-                                                       int64_t rank,
-                                                       int64_t task_id,
-                                                       int64_t max_run_times,
-                                                       int64_t max_slot_nums);
-  static std::unique_ptr<TaskNode> CreateTaskNode(
-      int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
-      int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
-
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
   TaskNode() = default;

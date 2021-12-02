@@ -49,8 +49,7 @@ class TestFleetExecutor(unittest.TestCase):
             "num_micro_batches": strategy.pipeline_configs["accumulate_steps"]
         }
         if fluid.is_compiled_with_cuda():
-            # TODO(fleet executor dev): support multi cards UT
-            pass
+            self.run_fleet_executor(fluid.CUDAPlace(0))
 
 
 if __name__ == "__main__":
