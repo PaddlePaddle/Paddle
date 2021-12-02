@@ -109,14 +109,13 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) {
+  std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
       v.emplace_back(std::move(*t.get()));
       inputs_.at(i) = nullptr;
     }
-
     return v;
   }
 
@@ -154,14 +153,6 @@ class KernelContext {
           idx,
           output_range_.size()));
     }
-  }
-
-  std::pair<int, int>& MutableInputRangeAt(size_t idx) {
-    return input_range_[idx];
-  }
-
-  std::pair<int, int>& MutableOutputRangeAt(size_t idx) {
-    return output_range_[idx];
   }
 
   template <typename TensorType>

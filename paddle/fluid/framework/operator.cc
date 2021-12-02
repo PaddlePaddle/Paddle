@@ -1812,13 +1812,13 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
-    auto current_alloc_size = pt_kernel_context_->InputsSize();
+    auto current_vector_size = pt_kernel_context_->InputsSize();
 
     // If the memory needed is less than the current memory allocated, we will
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      if (current_alloc_size > start_idx + offset) {
+      if (current_vector_size > start_idx + offset) {
         auto& input_ptr =
             pt_kernel_context_->MutableInputPtrAt(start_idx + offset);
         if (input_ptr == nullptr) {
@@ -1846,13 +1846,13 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
-    auto current_alloc_size = pt_kernel_context_->OutputsSize();
+    auto current_vector_size = pt_kernel_context_->OutputsSize();
 
     // If the memory needed is less than the current memory allocated, we will
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      if (current_alloc_size > start_idx + offset) {
+      if (current_vector_size > start_idx + offset) {
         experimental::ReMakePtenDenseTensorFromVar(
             outs_vector[offset], out_def,
             pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +

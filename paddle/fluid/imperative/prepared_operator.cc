@@ -299,14 +299,14 @@ static void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
-    auto current_alloc_size = kernel_ctx->InputsSize();
+    auto current_vector_size = kernel_ctx->InputsSize();
 
     // If the memory needed is less than the current memory allocated, we will
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const auto& variable = ins_vector[offset]->Var();
-      if (current_alloc_size > start_idx + offset) {
+      if (current_vector_size > start_idx + offset) {
         auto& input_ptr = kernel_ctx->MutableInputPtrAt(start_idx + offset);
         if (input_ptr == nullptr) {
           input_ptr = experimental::MakePtenTensorBaseFromVar(variable, in_def);
@@ -329,12 +329,12 @@ static void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
-    auto current_alloc_size = kernel_ctx->OutputsSize();
+    auto current_vector_size = kernel_ctx->OutputsSize();
     // If the memory needed is less than the current memory allocated, we will
     // reuse the current memory by using ReMakePtenDenseTensorFromVar.
     // Otherwise，we will create new storage.
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      if (current_alloc_size > start_idx + offset) {
+      if (current_vector_size > start_idx + offset) {
         experimental::ReMakePtenDenseTensorFromVar(
             outs_vector[offset]->MutableVar(), out_def,
             kernel_ctx->MutableOutputAt<pten::DenseTensor>(start_idx + offset));
