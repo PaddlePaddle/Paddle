@@ -214,7 +214,7 @@ void Carrier::CreateInterceptors() {
 
       SetInterceptor(interceptor_id, std::move(interceptor));
       VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
-              << ".";
+              << " with type: " << task_node->type() << ".";
 
       if (task_node->upstream().empty()) {
         source_interceptor_ids_.emplace_back(interceptor_id);

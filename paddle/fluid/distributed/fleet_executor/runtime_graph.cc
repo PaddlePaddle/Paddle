@@ -175,7 +175,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     if (role_to_ops.find(role_id) != role_to_ops.end()) {
       task_ops = role_to_ops.at(role_id);
     }
-    std::unique_ptr<TaskNode> task_node = TaskNode::CreateTaskNode(
+    std::unique_ptr<TaskNode> task_node = std::make_unique<TaskNode>(
         role_id, task_ops, cur_rank, task_id, max_run_times, max_slot_nums);
     if (IsLRSched(role_id) || IsOptimize(role_id)) {
       task_node->SetType("Amplifier");
@@ -243,7 +243,7 @@ void RuntimeGraph::AssignTaskToIntercepter() {
   for (const auto& task : task_nodes_) {
     int64_t intercepter_id = task->task_id();
     VLOG(3) << "Runtime graph is assigning task to interceptor: "
-            << intercepter_id << ".";
+            << intercepter_id << " with type: " << task->type() << ".";
     if (intercepter_id_to_node_.find(intercepter_id) !=
         intercepter_id_to_node_.end()) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
