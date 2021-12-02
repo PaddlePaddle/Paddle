@@ -188,7 +188,7 @@ static inline void HandleViewBetweenInputAndOutput(
 
     auto* view_output_tensor =
         view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    view_output_tensor->ShareDataWith(input_tensor);
+    view_output_tensor->ShareBufferWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 
     VLOG(3) << "Perform View between Output Var(" << view_output_var->Name()
@@ -314,7 +314,7 @@ static inline void CastPyArg2AttrString(
     Py_ssize_t size;
     const char* data;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
-    attrs[key] = std::string(data, (size_t)size);
+    attrs[key] = std::string(data, static_cast<size_t>(size));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -674,7 +674,7 @@ static inline void CastPyArg2AttrStrings(
         Py_ssize_t size;
         const char* data;
         data = PyUnicode_AsUTF8AndSize(item, &size);
-        value.emplace_back(std::string(data, (size_t)size));
+        value.emplace_back(std::string(data, static_cast<size_t>(size)));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -737,7 +737,7 @@ static inline void ConstructAttrMapFromPyArgs(
           op_type, arg_pos, ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
     }
 
-    std::string key(key_ptr, (size_t)key_len);
+    std::string key(key_ptr, static_cast<size_t>(key_len));
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
@@ -827,7 +827,7 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
                        bool dispensable = false) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (list == nullptr) {
+  if (list == nullptr || list == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "

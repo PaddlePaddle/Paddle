@@ -410,7 +410,7 @@ def get_ports(num, offset):
         if ports is not None:
             ports = list(ports)
     else:
-        start_port = os.environ.get('FLAGS_START_PORT')
+        start_port = int(os.environ.get('FLAGS_START_PORT'))
         ports = range(start_port + offset, start_port + offset + num, 1)
     return ports
 
@@ -1088,8 +1088,6 @@ class ParameterServerLauncher(object):
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
-                    if self.heter_worker_endpoints != "":
-                        self.heter_worker_endpoints += ","
                     heter_worker_endpoints = heter_worker_endpoints_list[
                         i].split(",")
                     self.stage_heter_trainer_num.append(
@@ -1131,12 +1129,12 @@ class ParameterServerLauncher(object):
 
         # get http_port
         if args.http_port:
-            self.http_port = args.http_port
+            http_port = [args.http_port]
         else:
             http_port = get_ports(
                 1, self.server_num + self.worker_num + self.heter_worker_num)
-            http_ip = self.server_endpoints.split(",")[0].split(":")[0]
-            self.http_port = http_ip + ":" + str(http_port[0])
+        http_ip = self.server_endpoints.split(",")[0].split(":")[0]
+        self.http_port = http_ip + ":" + str(http_port[0])
 
         # check local or user define
         self.server_endpoints_ips = [
@@ -1183,9 +1181,8 @@ class ParameterServerLauncher(object):
             else:
                 self.current_node_ip = pod_ip
             assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (self.current_node_ip, self.node_ips)
+                  % (self.current_node_ip, self.node_ips)
         self.node_rank = self.node_ips.index(self.current_node_ip)
-
         logger.debug(
             "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
             format(self.node_ips, self.current_node_ip, self.node_rank))

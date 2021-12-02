@@ -112,6 +112,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
+
   std::unordered_map<int32_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
     int32_t op_role = op->Attr<int32_t>("op_role");
@@ -142,7 +143,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   int pipeline_stage = coord.pp_idx;
   int64_t num_pipeline_stages = exe_desc_.pp_degree();
   // TODO(fleet_executor dev): start up steps should be a config `num_slots`
-  int64_t start_up_steps = num_pipeline_stages - pipeline_stage - 1;
+  int64_t start_up_steps = num_pipeline_stages - pipeline_stage;
   int64_t num_micro_batches = exe_desc_.num_micro_batches();
   int64_t task_id = cur_rank * functionality_order.size();
   for (std::size_t i = 0; i < functionality_order.size(); ++i) {

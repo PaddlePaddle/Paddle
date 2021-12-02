@@ -134,10 +134,10 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
     const OpFuncNode& op_func_node) {
   auto& op_type = op_func_node.operator_base_->Type();
   auto* dev_ctx = op_func_node.dev_ctx_;
-  if (op_type == interpreter::kMemcpyH2D) {
+  if (op_type == interpreter::kMemcpyD2H) {
     VLOG(3) << "Get dev_ctx from d2h_context_pool_";
     dev_ctx = d2h_ctx_pool_.Get(place_);
-  } else if (op_type == interpreter::kMemcpyD2H) {
+  } else if (op_type == interpreter::kMemcpyH2D) {
     VLOG(3) << "Get dev_ctx from h2d_context_pool_";
     dev_ctx = h2d_ctx_pool_.Get(place_);
   }
