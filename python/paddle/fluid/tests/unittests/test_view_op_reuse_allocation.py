@@ -114,5 +114,164 @@ class TestFlattenDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
         return paddle.flatten(var)
 
 
+# NOTE(chenfeiyu): TestCases for operators with complex view mechanism.
+# a kind of view that shares storage between complex and real tensors
+# though the storage retains, the shape and data type of the two tensors differ
+class TestDygraphViewAsComplexReuseAllocation(unittest.TestCase):
+    def setUp(self):
+        self.init_shape()
+        self.init_dtype()
+
+    def init_shape(self):
+        self.input_shape = [2, 3, 2]
+        self.output_shape = [2, 3]
+
+    def init_dtype(self):
+        self.input_dtype = paddle.float32
+        self.output_dtype = paddle.complex64
+
+    def view_api_processing(self, var):
+        return paddle.view_as_complex(var)
+
+    def test_view_api(self):
+        var = paddle.rand(self.input_shape, dtype=self.input_dtype)
+        view_var = self.view_api_processing(var)
+
+        self.assertEqual(var.shape, self.input_shape)
+        self.assertEqual(view_var.shape, self.output_shape)
+
+        view_var.add_(paddle.to_tensor([1.0]))
+        var_numpy = var.numpy()
+        view_var_numpy = view_var.numpy()
+        self.assertTrue(
+            np.array_equal(
+                np.take(
+                    var_numpy, 0, axis=-1), view_var_numpy.real))
+        self.assertTrue(
+            np.array_equal(
+                np.take(
+                    var_numpy, 1, axis=-1), view_var_numpy.imag))
+
+    def test_forward_version(self):
+        var = paddle.rand(self.input_shape, dtype=self.input_dtype)
+        self.assertEqual(var.inplace_version, 0)
+        view_var = self.view_api_processing(var)
+        self.assertEqual(view_var.inplace_version, 0)
+
+        view_var.add_(paddle.to_tensor([1.0]))
+        self.assertEqual(var.inplace_version, 1)
+        self.assertEqual(view_var.inplace_version, 1)
+
+        view_var_2 = self.view_api_processing(var)
+        self.assertEqual(view_var_2.inplace_version, 1)
+
+        var.add_(paddle.to_tensor([1.0]))
+        self.assertEqual(view_var.inplace_version, 2)
+        self.assertEqual(view_var_2.inplace_version, 2)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones(shape=self.input_shape, dtype=self.input_dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            view_var_b = self.view_api_processing(var_b)
+            view_var_b.add_(paddle.to_tensor(
+                [1.0]))  # var_b is modified inplace
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
+
+
+class TestDygraphViewAsRealReuseAllocation(unittest.TestCase):
+    def setUp(self):
+        self.init_shape()
+        self.init_dtype()
+
+    def init_shape(self):
+        self.input_shape = [2, 3]
+        self.output_shape = [2, 3, 2]
+
+    def init_dtype(self):
+        self.input_dtype = paddle.complex64
+        self.output_dtype = paddle.float32
+
+    def view_api_processing(self, var):
+        return paddle.view_as_real(var)
+
+    def test_view_api(self):
+        var = (
+            paddle.rand(self.input_shape) + 1j * paddle.rand(self.input_shape)
+        ).astype(self.input_dtype)
+        view_var = self.view_api_processing(var)
+
+        self.assertEqual(var.shape, self.input_shape)
+        self.assertEqual(view_var.shape, self.output_shape)
+
+        view_var[0, 0, 0] = 2.0
+        var_numpy = var.numpy()
+        view_var_numpy = view_var.numpy()
+        self.assertTrue(
+            np.array_equal(
+                np.take(
+                    view_var_numpy, 0, axis=-1), var_numpy.real))
+        self.assertTrue(
+            np.array_equal(
+                np.take(
+                    view_var_numpy, 1, axis=-1), var_numpy.imag))
+
+    def test_forward_version(self):
+        var = (
+            paddle.rand(self.input_shape) + 1j * paddle.rand(self.input_shape)
+        ).astype(self.input_dtype)
+        self.assertEqual(var.inplace_version, 0)
+
+        view_var = self.view_api_processing(var)
+        self.assertEqual(view_var.inplace_version, 0)
+
+        view_var[0, 0, 0] = 2.0
+        self.assertEqual(var.inplace_version, 1)
+        self.assertEqual(view_var.inplace_version, 1)
+
+        view_var_2 = self.view_api_processing(var)
+        self.assertEqual(view_var_2.inplace_version, 1)
+
+        var.add_(paddle.to_tensor([1.0]))
+        self.assertEqual(view_var.inplace_version, 2)
+        self.assertEqual(view_var_2.inplace_version, 2)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = (paddle.ones(shape=self.input_shape) + 1j * paddle.ones(
+                shape=self.input_shape)).astype(self.input_dtype)
+            var_a.stop_gradient = False
+
+            var_b = paddle.conj(var_a)
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b * var_b
+            view_var_b = self.view_api_processing(var_b)
+            view_var_b.add_(paddle.to_tensor(
+                [1.0]))  # var_b is modified inplace
+
+            loss = paddle.abs(var_c).sum()
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
+
+
 if __name__ == "__main__":
     unittest.main()
