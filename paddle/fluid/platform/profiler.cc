@@ -25,9 +25,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/fluid/platform/os_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
                             "Enable rpc profiler or not.");
+
+DEFINE_bool(enable_host_event_recorder_hook, false,
+            "enable HostEventRecorder, hook Profiler");
 
 namespace paddle {
 namespace platform {
@@ -298,12 +302,8 @@ class HostEventRecorder {
   std::unordered_map<uint64_t, ThreadEventRecorder *> thread_recorders_;
 };
 
-static uint64_t GetThreadId() {
-  return std::hash<std::thread::id>{}(std::this_thread::get_id());
-}
-
 ThreadEventRecorder::ThreadEventRecorder() {
-  thread_id_ = GetThreadId();
+  thread_id_ = ThreadIdRegistry::GetInstance().CurrentThreadId().MainTid();
   HostEventRecorder::GetInstance().RegisterThreadRecorder(thread_id_, this);
 }
 
@@ -352,7 +352,7 @@ RecordEvent::RecordEvent(const char *name, const EventRole role) {
   }
 #endif
 #endif
-  if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
+  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
     RecordEvent(name, role, "none");
     return;
   }
@@ -370,7 +370,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   }
 #endif
 #endif
-  if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
+  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
     RecordEvent(name, role, "none");
     return;
   }
@@ -389,7 +389,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
-  if (g_enable_host_event_recorder_hook) {
+  if (FLAGS_enable_host_event_recorder_hook) {
     name_ = new std::string(name);
     start_ns_ = PosixInNsec();
     attr_ = new std::string(attr);
@@ -420,7 +420,7 @@ RecordEvent::~RecordEvent() {
 #endif
 #endif
   uint64_t end_ns = PosixInNsec();
-  if (LIKELY(g_enable_host_event_recorder_hook)) {
+  if (LIKELY(FLAGS_enable_host_event_recorder_hook)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
       HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
                                                    start_ns_, end_ns, role_);
@@ -431,10 +431,10 @@ RecordEvent::~RecordEvent() {
       } else {
         HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
                                                      role_, *attr_);
+        delete attr_;
       }
+      delete name_;
     }
-    delete name_;
-    delete attr_;
     return;
   }
 
@@ -593,9 +593,14 @@ void ResetProfiler() {
   }
 }
 
+static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart();
+static void DockHostEventRecorderDevicePart(
+    const std::map<uint64_t, ThreadEvents> &thr_events);
+
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {
   SynchronizeAllDevice();
+  auto thr_events = DockHostEventRecorderHostPart();
   MemEvenRecorder::Instance().Flush();
 
   std::lock_guard<std::mutex> l(profiler_mu);
@@ -607,6 +612,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
     tracer->Disable();
+    DockHostEventRecorderDevicePart(thr_events);
     tracer->GenEventKernelCudaElapsedTime();
     tracer->GenProfile(profile_path);
   }
@@ -629,6 +635,7 @@ void CompleteProfilerEvents(proto::Profile *tracer_profile,
                             std::vector<std::vector<Event>> *time_events,
                             std::vector<std::vector<MemEvent>> *mem_events) {
   SynchronizeAllDevice();
+  auto thr_events = DockHostEventRecorderHostPart();
   MemEvenRecorder::Instance().Flush();
 
   std::lock_guard<std::mutex> l(profiler_mu);
@@ -640,6 +647,7 @@ void CompleteProfilerEvents(proto::Profile *tracer_profile,
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled() && tracer_profile != nullptr) {
     tracer->Disable();
+    DockHostEventRecorderDevicePart(thr_events);
     tracer->GenEventKernelCudaElapsedTime();
     *tracer_profile = tracer->GetProfile();
   }
@@ -714,7 +722,7 @@ void NvprofEnableRecordEvent() {
 
 void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
-void EnableHostEventRecorder() { g_enable_host_event_recorder_hook = true; }
+void EnableHostEventRecorder() { FLAGS_enable_host_event_recorder_hook = true; }
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
@@ -727,6 +735,58 @@ std::string PrintHostEvents() {
     }
   }
   return oss.str();
+}
+
+static void EmulateEventPushAndPop(const HostEventSection &host_sec,
+                                   std::map<uint64_t, ThreadEvents> *out) {
+  for (const auto &thr_sec : host_sec.thr_sections) {
+    uint64_t tid = thr_sec.thread_id;
+    auto cur_thr_list = std::make_shared<EventList<Event>>();
+    g_all_event_lists.emplace_front(cur_thr_list);
+    for (const auto &evt : thr_sec.events) {
+      const char *attr = (evt.attr == nullptr ? "none" : evt.attr);
+      Event *old_evt = cur_thr_list->Record(EventType::kPushRange, evt.name,
+                                            tid, evt.role, attr);
+      (*out)[tid][evt.end_ns] = std::make_pair(old_evt, evt.start_ns);
+      cur_thr_list->Record(EventType::kPopRange, evt.name, tid, evt.role, attr);
+    }
+  }
+}
+
+static void EmulateCPURecordsAdd(const HostEventSection &host_sec) {
+  DeviceTracer *tracer = GetDeviceTracer();
+  if (tracer == nullptr) {
+    return;
+  }
+  for (const auto &thr_sec : host_sec.thr_sections) {
+    uint64_t tid = thr_sec.thread_id;
+    for (const auto &evt : thr_sec.events) {
+      tracer->AddCPURecords(evt.name, evt.start_ns, evt.end_ns, BlockDepth(),
+                            tid);
+    }
+  }
+}
+
+static void EmulateCorrelation(
+    const std::map<uint64_t, ThreadEvents> &thr_events) {
+  DeviceTracer *tracer = GetDeviceTracer();
+  if (tracer == nullptr) {
+    return;
+  }
+  tracer->AddAnnotations(thr_events);
+}
+
+static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
+  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  std::map<uint64_t, ThreadEvents> thr_events;
+  EmulateEventPushAndPop(host_evt_sec, &thr_events);
+  EmulateCPURecordsAdd(host_evt_sec);
+  return std::move(thr_events);
+}
+
+static void DockHostEventRecorderDevicePart(
+    const std::map<uint64_t, ThreadEvents> &thr_events) {
+  EmulateCorrelation(thr_events);
 }
 
 }  // namespace platform
