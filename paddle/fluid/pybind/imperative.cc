@@ -1572,6 +1572,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
+
              if (grad_var && grad_var->Var().IsInitialized()) {
                auto *tensor =
                    grad_var->MutableVar()->IsType<framework::LoDTensor>()
@@ -1580,6 +1581,10 @@ void BindImperative(py::module *m_ptr) {
                        : grad_var->MutableVar()
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
+
+               VLOG(1) << "VarWrapper address: " << grad_var->SharedVar();
+               VLOG(1) << "Tensor address: " << tensor;
+
                if (tensor->IsInitialized()) {
                  return grad_var;
                }
