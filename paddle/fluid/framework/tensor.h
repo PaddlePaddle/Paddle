@@ -149,6 +149,11 @@ class Tensor {
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void* mutable_data(const platform::CUDAPlace& place,
+                     proto::VarType::Type type, const gpuStream_t& stream);
+#endif
+
   /**
    * @brief     Return a pointer to mutable memory block.
    *
