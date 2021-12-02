@@ -32,11 +32,12 @@ class PReluPlugin : public PluginTensorRT {
   std::vector<float> weight_;
   float* p_gpu_weight_;
   std::string mode_;
+  std::string data_format_;
 
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(mode_.c_str()) +
-           SerializedSize(weight_);
+           SerializedSize(data_format_.c_str()) + SerializedSize(weight_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
@@ -46,11 +47,12 @@ class PReluPlugin : public PluginTensorRT {
     serializeBase(buffer);
     SerializeValue(&buffer, weight_);
     SerializeValue(&buffer, mode_.c_str());
+    SerializeValue(&buffer, data_format_.c_str());
   }
 
   PReluPlugin(const float* weight, const int weight_num,
-              std::string const& mode)
-      : mode_(mode) {
+              std::string const& mode, std::string const& data_format)
+      : mode_(mode), data_format_(data_format) {
     weight_.resize(weight_num);
     std::copy(weight, weight + weight_num, weight_.data());
   }
@@ -63,13 +65,17 @@ class PReluPlugin : public PluginTensorRT {
     const char* prelu_mode;
     DeserializeValue(&serialData, &serialLength, &prelu_mode);
     mode_ = std::string(prelu_mode);
+    const char* prelu_data_format;
+    DeserializeValue(&serialData, &serialLength, &prelu_data_format);
+    data_format_ = std::string(prelu_data_format);
   }
   ~PReluPlugin() {}
   int initialize() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
 
   PReluPlugin* clone() const TRT_NOEXCEPT override {
-    auto* ptr = new PReluPlugin(weight_.data(), weight_.size(), mode_);
+    auto* ptr =
+        new PReluPlugin(weight_.data(), weight_.size(), mode_, data_format_);
     ptr->p_gpu_weight_ = p_gpu_weight_;
     return ptr;
   }
@@ -108,8 +114,8 @@ REGISTER_TRT_PLUGIN_V2(PReluPluginCreator);
 class PReluPluginDynamic : public DynamicPluginTensorRT {
  public:
   PReluPluginDynamic(const float* weight, const int weight_num,
-                     std::string const& mode)
-      : mode_(mode) {
+                     std::string const& mode, std::string const& data_format)
+      : mode_(mode), data_format_(data_format) {
     weight_.resize(weight_num);
     std::copy(weight, weight + weight_num, weight_.data());
   }
@@ -117,7 +123,8 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
   PReluPluginDynamic(void const* serialData, size_t serialLength);
   ~PReluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_);
+    auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_,
+                                      data_format_);
     ptr->p_gpu_weight_ = p_gpu_weight_;
     return ptr;
   }
@@ -167,6 +174,7 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> weight_;
   float* p_gpu_weight_;
   std::string mode_;
+  std::string data_format_;
 };
 #endif
 
