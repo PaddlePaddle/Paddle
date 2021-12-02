@@ -161,7 +161,8 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops.";
+  VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
+          << step_ << " time.";
   for (auto op : node_->ops()) {
     op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
   }
