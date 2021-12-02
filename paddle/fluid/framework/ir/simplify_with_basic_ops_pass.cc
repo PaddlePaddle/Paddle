@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -231,3 +232,7 @@ void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
 
 REGISTER_PASS(simplify_with_basic_ops_pass,
               paddle::framework::ir::SimplifyWithBasicOpsPass);
+REGISTER_PASS_CAPABILITY(simplify_with_basic_ops_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "scale", 0));
