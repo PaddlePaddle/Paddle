@@ -2396,7 +2396,7 @@ def tensordot(x, y, axes=2, name=None):
 def view_as_complex(x, name=None):
     """View a real tensor as a complex tensor. 
     
-    The data type of the input tensor is 'float32' or 'float64', and data
+    The data type of the input tensor is 'float32' or 'float64', and the data
     type of the returned tensor is 'complex64' or 'complex128', respectively.
 
     The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e. 
@@ -2439,7 +2439,7 @@ def view_as_complex(x, name=None):
 def view_as_real(x, name=None):
     """View a complex tensor as a real tensor. 
     
-    The data type of the input tensor is 'complex64' or 'complex128',and data 
+    The data type of the input tensor is 'complex64' or 'complex128', and the data 
     type of the returned tensor is 'float32' or 'float64', respectively.
 
     When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
