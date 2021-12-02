@@ -27,6 +27,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/gpu_launch_config.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/operators/math/inclusive_scan.h"
+
 using Tensor = paddle::framework::Tensor;
 using LoDTensor = paddle::framework::LoDTensor;
 
@@ -221,31 +222,19 @@ class CumCUDAKernel : public framework::OpKernel<T> {
             thrust::device_pointer_cast(in_data);
         thrust::device_vector<T> vec(dev_ptr, dev_ptr + size);
         if (exclusive) {
-          const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-          thrust::exclusive_scan(exec_policy, vec.rbegin(), vec.rend(),
+          thrust::exclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
                                  out_data);
-          printf("1................");
         } else {
-          const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-          thrust::inclusive_scan(exec_policy, vec.rbegin(), vec.rend(),
+          thrust::inclusive_scan(thrust::device, vec.rbegin(), vec.rend(),
                                  out_data);
-          printf("2.................");
         }
-        const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-        thrust::reverse(exec_policy, out_data, out_data + size);
+        thrust::reverse(thrust::device, out_data, out_data + size);
       } else {
         if (exclusive) {
-          const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-          thrust::exclusive_scan(exec_policy, in_data, in_data + size,
+          thrust::exclusive_scan(thrust::device, in_data, in_data + size,
                                  out_data);
-          printf("3...............");
         } else {
-    
           math::InclusiveScan<T>(in_data, out_data, 1, size, 1, 0, cub::Sum(), false, dev_ctx);
-          // const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-          // thrust::inclusive_scan(exec_policy, in_data, in_data + size,
-          //                       out_data);
-          printf("4...............");
         }
       }
       return;
@@ -268,7 +257,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     dim3 transpose_grids((width + tile_size - 1) / tile_size,
                          (height + tile_size - 1) / tile_size);
 
-    Tensor tmp;
+    framework::Tensor tmp;
     tmp.Resize(out_dims);
     auto* tmp_data = tmp.mutable_data<T>(context.GetPlace());
     T* next_in_data = out_data;

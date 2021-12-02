@@ -43,10 +43,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
-      allow_free_idle_chunk_(allow_free_idle_chunk) {
-  VLOG(1) << "using structor function: " << allow_free_idle_chunk_ << " "
-          << this;
-}
+      allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
 Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
   size_t size = AlignedSize(unaligned_size, alignment_);
@@ -148,7 +145,6 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
 }
 
 uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
-  VLOG(1) << "using FreeIdleChunks: " << allow_free_idle_chunk_ << " " << this;
   if (!allow_free_idle_chunk_) {
     return 0;
   }
