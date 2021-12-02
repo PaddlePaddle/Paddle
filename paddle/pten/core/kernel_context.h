@@ -95,6 +95,10 @@ class KernelContext {
     return v;
   }
 
+  void AssignInputRange(std::pair<int, int>&& range, size_t idx);
+
+  void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
+
   template <typename TensorType>
   TensorType* MutableInputAt(size_t idx) {
     return static_cast<TensorType*>(inputs_.at(idx).get());

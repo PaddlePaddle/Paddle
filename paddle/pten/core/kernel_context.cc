@@ -65,6 +65,34 @@ void KernelContext::EmplaceBackAttr(paddle::any attr) {
   attrs_.emplace_back(std::move(attr));
 }
 
+void KernelContext::AssignInputRange(std::pair<int, int>&& range, size_t idx) {
+  if (idx < input_range_.size()) {
+    input_range_[idx] = range;
+  } else if (idx == input_range_.size()) {
+    input_range_.emplace_back(range);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "Invalid idx when trying to set InputRange, "
+        "index is `%d`, it is greater than the size(%d) of InputRange.",
+        idx,
+        input_range_.size()));
+  }
+}
+
+void KernelContext::AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
+  if (idx < output_range_.size()) {
+    output_range_[idx] = range;
+  } else if (idx == output_range_.size()) {
+    output_range_.emplace_back(range);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "Invalid idx when trying to set InputRange, "
+        "index is `%d`, it is greater than the size(%d) of InputRange.",
+        idx,
+        output_range_.size()));
+  }
+}
+
 const std::pair<int, int>& KernelContext::InputRangeAt(size_t idx) const {
   return input_range_.at(idx);
 }

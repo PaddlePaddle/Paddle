@@ -161,22 +161,30 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   int64_t num_micro_batches = exe_desc_.num_micro_batches();
   int64_t task_id = cur_rank * functionality_order.size();
   for (std::size_t i = 0; i < functionality_order.size(); ++i) {
+    VLOG(3) << "Runtime graph is creating task node for: " << task_id << ".";
     OpRole role = functionality_order[i];
     int32_t role_id = static_cast<int64_t>(role);
     int64_t max_run_times = num_micro_batches;
     int64_t max_slot_nums = start_up_steps;
+    // NOTE: use short path, each interceptor should run for max_run_times
+    std::vector<OperatorBase*> task_ops{};
+    if (role_to_ops.find(role_id) != role_to_ops.end()) {
+      task_ops = role_to_ops.at(role_id);
+    }
+    std::unique_ptr<TaskNode> task_node = std::make_unique<TaskNode>(
+        role_id, task_ops, cur_rank, task_id, max_run_times, max_slot_nums);
     if (IsLRSched(role_id) || IsOptimize(role_id)) {
-      max_run_times = 1;
-      max_slot_nums = 1;
-    }
-    if (role_to_ops.find(role_id) == role_to_ops.end()) {
-      task_nodes_.emplace_back(TaskNode::CreateEmptyTaskNode(
-          role_id, cur_rank, task_id, max_run_times, max_slot_nums));
+      task_node->SetType("Amplifier");
+      if (IsLRSched(role_id)) {
+        task_node->SetRunPerSteps(max_run_times);
+      } else {
+        task_node->SetRunAtOffset(max_run_times - 1);
+        task_node->SetRunPerSteps(max_run_times);
+      }
     } else {
-      task_nodes_.emplace_back(
-          TaskNode::CreateTaskNode(role_id, role_to_ops.at(role_id), cur_rank,
-                                   task_id, max_run_times, max_slot_nums));
+      task_node->SetType("Compute");
     }
+    task_nodes_.emplace_back(std::move(task_node));
     ++task_id;
   }
 }
@@ -227,6 +235,8 @@ void RuntimeGraph::FakeDependence() {
 void RuntimeGraph::AssignTaskToIntercepter() {
   for (const auto& task : task_nodes_) {
     int64_t intercepter_id = task->task_id();
+    VLOG(3) << "Runtime graph is assigning task to interceptor: "
+            << intercepter_id << " with type: " << task->type() << ".";
     if (intercepter_id_to_node_.find(intercepter_id) !=
         intercepter_id_to_node_.end()) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
