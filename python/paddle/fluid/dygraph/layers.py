@@ -31,7 +31,7 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
@@ -918,7 +918,6 @@ class Layer(core.Layer):
         # In case of ControlFlow, true_fn and false_fn will contain
         # parameters that may not trigger logic of `Operator` to create
         # them. we add this to make sure all parameters is available.
-        from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
 
         if in_declarative_mode() and not framework.in_dygraph_mode():
             with param_guard(self._parameters), param_guard(self._buffers):
