@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,74 +12,147 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+from functools import reduce
 
 
-class FcGruFusePassTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            dict_dim, emb_dim = 128, 64
-            data = fluid.data(
-                name='step_data', shape=[None], dtype='int64', lod_level=1)
-            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
-            hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            hidden = fluid.layers.dynamic_gru(
-                input=x,
-                size=hidden_dim,
-                bias_attr=True,
-                origin_mode=False,
-                is_reverse=True)
+class TestMulGruFusePass(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
 
-        batch = 16
-        lod_tensor = fluid.LoDTensor()
-        lod_tensor.set(np.random.randint(
-            0, dict_dim, size=[batch]).astype("int64"),
-                       fluid.CPUPlace())
-        lod_tensor.set_lod([[0, batch]])
-        self.feeds = {"step_data": lod_tensor}
-        self.fetch_list = [hidden]
+    def sample_program_config(self, draw):
+        x_col = draw(st.sampled_from([1]))
+        y_col = draw(st.sampled_from([1]))
+        axis = draw(st.sampled_from([-1]))
+        activation = draw(st.sampled_from(['sigmoid', 'tanh']))
+        is_reverse = draw(st.booleans())
+        has_origin_mode = draw(st.booleans())
+        origin_mode = False
+        gate_activation = draw(st.sampled_from(['sigmoid', 'tanh']))
+        batch_size = draw(st.integers(min_value=1, max_value=4))
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
-        self.assertTrue(PassVersionChecker.IsCompatible('fc_gru_fuse_pass'))
+        def generate_input(attrs):
+            shape = [attrs[3]['batch_size'], 128, 6, 120]
+            return np.full(shape, 0.001).astype(np.float32)
 
+        def generate_weight(shape):
+            return np.full(shape, 0.0001).astype(np.float32)
 
-class MulGruFusePassTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            dict_dim, emb_dim = 128, 64
-            data = fluid.data(
-                name='step_data', shape=[None], dtype='int64', lod_level=1)
-            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
-            hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3, bias_attr=False)
-            hidden = fluid.layers.dynamic_gru(
-                input=x,
-                size=hidden_dim,
-                bias_attr=True,
-                origin_mode=False,
-                is_reverse=True)
+        attrs = [{
+            'x_col': x_col,
+            'y_col': y_col
+        }, {
+            'axis': axis
+        }, {
+            'activation': activation,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'origin_mode': origin_mode
+        }, {
+            'batch_size': batch_size
+        }]
 
-        batch = 16
-        lod_tensor = fluid.LoDTensor()
-        lod_tensor.set(np.random.randint(
-            0, dict_dim, size=[batch]).astype("int64"),
-                       fluid.CPUPlace())
-        lod_tensor.set_lod([[0, batch]])
-        self.feeds = {"step_data": lod_tensor}
-        self.fetch_list = [hidden]
+        ops_config = [{
+            "op_type": "im2sequence",
+            "op_inputs": {
+                "X": ["input_data"]
+            },
+            "op_outputs": {
+                "Out": ["seq_out"]
+            },
+            "op_attrs": {
+                "kernels": [6, 1],
+                "out_stride": [1, 1],
+                "paddings": [0, 0, 0, 0],
+                "strides": [1, 1]
+            }
+        }, {
+            "op_type": "mul",
+            "op_inputs": {
+                "X": ["seq_out"],
+                "Y": ["mul_weight"]
+            },
+            "op_outputs": {
+                "Out": ["mul_out"]
+            },
+            "op_attrs": {
+                "x_num_col_dims": attrs[0]['x_col'],
+                "y_num_col_dims": attrs[0]['y_col']
+            }
+        }, {
+            "op_type": "elementwise_add",
+            "op_inputs": {
+                "X": ["mul_out"],
+                "Y": ["elt_weight"]
+            },
+            "op_outputs": {
+                "Out": ["elt_out"]
+            },
+            "op_attrs": {
+                "axis": attrs[1]['axis'],
+            }
+        }, {
+            "op_type": "gru",
+            "op_inputs": {
+                "Input": ["elt_out"],
+                "Weight": ["gru_weight"],
+                "Bias": ["gru_bias"]
+            },
+            "op_outputs": {
+                "BatchGate": ["batch_gate"],
+                "BatchHidden": ["batch_hidden"],
+                "BatchResetHiddenPrev": ["batch_reset"],
+                "Hidden": ["hidden"]
+            },
+            "op_attrs": {
+                'activation': attrs[2]['activation'],
+                'is_reverse': attrs[2]['is_reverse'],
+                'gate_activation': attrs[2]['gate_activation'],
+                'is_test': True,
+            }
+        }]
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
-        self.assertTrue(PassVersionChecker.IsCompatible('mul_gru_fuse_pass'))
+        if has_origin_mode:
+            ops_config[3]["op_attrs"]['origin_mode'] = origin_mode
+
+        ops = self.generate_op_config(ops_config)
+
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={
+                "mul_weight":
+                TensorConfig(data_gen=partial(generate_weight, [768, 600])),
+                "elt_weight":
+                TensorConfig(data_gen=partial(generate_weight, [600])),
+                "gru_weight":
+                TensorConfig(data_gen=partial(generate_weight, [200, 600])),
+                "gru_bias":
+                TensorConfig(data_gen=partial(generate_weight, [1, 600]))
+            },
+            inputs={
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, attrs))
+            },
+            outputs=["hidden"])
+
+        return program_config
+
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config()
+        yield config, ["im2sequence", "fusion_gru"], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False, passes=["fc_gru_fuse_pass"])
 
 
 if __name__ == "__main__":
