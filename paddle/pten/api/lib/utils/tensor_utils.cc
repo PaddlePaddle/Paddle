@@ -348,15 +348,15 @@ void MovesSharedStorage(pten::DenseTensor* src,
   PADDLE_ENFORCE_NOT_NULL(
       src,
       platform::errors::InvalidArgument(
-          "The source DenseTensor is nullptr when move storage."));
+          "The source DenseTensor is nullptr when move allocation."));
   PADDLE_ENFORCE_NOT_NULL(
       dst,
       platform::errors::InvalidArgument(
-          "The destination Tensor is nullptr when move storage."));
+          "The destination Tensor is nullptr when move allocation."));
   dst->Resize(src->dims());
   auto* storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
-  dst->ResetHolderWithType(std::move(storage->GetAllocation()),
+  dst->ResetHolderWithType(storage->GetAllocation(),
                            pten::TransToProtoVarType(src->dtype()));
 }
 

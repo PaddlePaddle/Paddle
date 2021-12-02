@@ -383,13 +383,13 @@ class ReshapeKernel {
     // 3. out tensor is view of input
     // We can't MakePtenDenseTensor for case 2, so we solve this case by
     // creating a temporary tensor here:
-    const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-        ctx.GetPlace());
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
                                in->dims(),
                                pten::TransToPtenDataLayout(in->layout())};
-    auto pt_out_tmp =
-        std::make_shared<pten::DenseTensor>(alloc, std::move(meta));
+    auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            ctx.GetPlace()),
+        std::move(meta));
     pten::DenseTensor *pt_out = nullptr;
     if (in == out) {
       pt_out = pt_x.get();
