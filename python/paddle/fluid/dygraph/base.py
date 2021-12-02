@@ -23,7 +23,7 @@ from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
-from .data_feeder import convert_dtype
+from ..data_feeder import convert_dtype
 import warnings
 from ..framework import _get_paddle_place
 import paddle
