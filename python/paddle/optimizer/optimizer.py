@@ -1043,6 +1043,7 @@ class Optimizer(object):
         
         Examples:
             .. code-block:: python
+            
                 import numpy as np
                 import paddle
                 value = np.arange(26).reshape(2, 13).astype("float32")

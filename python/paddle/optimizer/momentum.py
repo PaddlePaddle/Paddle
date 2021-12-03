@@ -309,7 +309,7 @@ class Momentum(Optimizer):
                             regularization_method = "l2_decay"
                             regularization_coeff = param.regularizer._regularization_coeff
                         # the param's regularization has been done before, we avoid do l2decay in momentum.
-                        elif param.regularizer is not None:
+                        else:
                             regularization_method = ""
                             regularization_coeff = 0
                     self.regularization_method_dict['FP32_LODTensor'].append(
@@ -339,7 +339,7 @@ class Momentum(Optimizer):
                             regularization_method = "l2_decay"
                             regularization_coeff = param.regularizer._regularization_coeff
                         # the param's regularization has been done before, we avoid do l2decay in momentum.
-                        elif param.regularizer is not None:
+                        else:
                             regularization_method = ""
                             regularization_coeff = 0
                     self.regularization_method_dict['FP16_LODTensor'].append(
