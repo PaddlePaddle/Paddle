@@ -27,8 +27,8 @@ using XPUKernelSet =
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
 XPUOpMap& get_kl1_ops() {
+  // KL1支持的op，通过op_name, data_type, place来索引
   static XPUOpMap s_xpu1_kernels{
-      // KL1支持的op，通过op_name, data_type, place来索引
       {"abs", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"accuracy", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"adamw", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
