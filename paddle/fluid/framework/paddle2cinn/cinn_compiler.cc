@@ -68,23 +68,41 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target, void* stream) {
   VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
-  CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
+  CinnCacheKeyByAddress cur_key_by_address(graph, input_tensors,
+                                           target.arch_str());
+  CinnCacheKeyByStructure cur_key_by_struct;
+
   bool exist = false;
   {
     AutoRDLock r_guard{&rwlock_};
-    exist = cache_.count(cur_key) != 0;
+    exist = cache_by_address_.count(cur_key_by_address) != 0;
+    // if cannot find graph by address, checkout whether the graph structure
+    // have been stored in cache.
+    if (!exist) {
+      // generate the structure cache key
+      cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
+
+      // if the graph structure can be found, storing the graph address in
+      // cache for next query.
+      if (cache_by_struct_.count(cur_key_by_struct) != 0) {
+        exist = true;
+        cache_by_address_[cur_key_by_address] =
+            cache_by_struct_.at(cur_key_by_struct).get();
+      }
+    }
   }
   if (!exist) {
     std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
     auto compiled_res =
         CompileGraph(graph, input_tensors, target, compiled_num, stream);
     AutoWRLock w_guard{&rwlock_};
-    if (!cache_.count(cur_key)) {
-      cache_[cur_key] = std::move(compiled_res);
+    if (!cache_by_struct_.count(cur_key_by_struct)) {
+      cache_by_address_[cur_key_by_address] = compiled_res.get();
+      cache_by_struct_[cur_key_by_struct] = std::move(compiled_res);
     }
   }
   AutoRDLock guard{&rwlock_};
-  const auto& cached_boj = *cache_[cur_key];
+  const auto& cached_boj = *cache_by_address_[cur_key_by_address];
   return cached_boj;
 }
 
@@ -181,7 +199,8 @@ void CinnCompiler::Clear() {
   {
     AutoWRLock guard{&rwlock_};
     graphs_.clear();
-    cache_.clear();
+    cache_by_address_.clear();
+    cache_by_struct_.clear();
   }
   real_compiled_num_.store(0);
 }

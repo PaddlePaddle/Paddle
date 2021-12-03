@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <map>
 
 #include "paddle/fluid/framework/ddim.h"
@@ -33,12 +34,16 @@ namespace paddle2cinn {
 // shapes.
 class CinnCacheKey {
  public:
+  using GraphHashProto = std::function<size_t(const ir::Graph&)>;
+
+  explicit CinnCacheKey(GraphHashProto graph_hash);
+
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, const LoDTensor*>& input_tensors,
-               const std::string& arch_str);
+               const std::string& arch_str, GraphHashProto graph_hash);
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, DDim>& input_shapes,
-               const std::string& arch_str);
+               const std::string& arch_str, GraphHashProto graph_hash);
 
   ~CinnCacheKey() {}
 
@@ -58,11 +63,50 @@ class CinnCacheKey {
   };
 
  private:
-  size_t HashGraph(const ir::Graph& graph);
-
+  GraphHashProto graph_hash_;
   std::string graph_serialize_str_;
   std::map<std::string, DDim> input_shapes_;
   std::string arch_str_;
+};
+
+// Class to store the keys by graph structure for compiling CINN.
+class CinnCacheKeyByStructure : public CinnCacheKey {
+ public:
+  CinnCacheKeyByStructure() : CinnCacheKey(HashGraph) {}
+
+  CinnCacheKeyByStructure(
+      const ir::Graph& graph,
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const std::string& arch_str)
+      : CinnCacheKey(graph, input_tensors, arch_str, HashGraph) {}
+
+  CinnCacheKeyByStructure(const ir::Graph& graph,
+                          const std::map<std::string, DDim>& input_shapes,
+                          const std::string& arch_str)
+      : CinnCacheKey(graph, input_shapes, arch_str, HashGraph) {}
+
+ private:
+  static size_t HashGraph(const ir::Graph& graph);
+};
+
+// Class to store the keys by graph address for compiling CINN.
+class CinnCacheKeyByAddress : public CinnCacheKey {
+ public:
+  CinnCacheKeyByAddress() : CinnCacheKey(HashGraph) {}
+
+  CinnCacheKeyByAddress(
+      const ir::Graph& graph,
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const std::string& arch_str)
+      : CinnCacheKey(graph, input_tensors, arch_str, HashGraph) {}
+
+  CinnCacheKeyByAddress(const ir::Graph& graph,
+                        const std::map<std::string, DDim>& input_shapes,
+                        const std::string& arch_str)
+      : CinnCacheKey(graph, input_shapes, arch_str, HashGraph) {}
+
+ private:
+  static size_t HashGraph(const ir::Graph& graph);
 };
 
 }  // namespace paddle2cinn
