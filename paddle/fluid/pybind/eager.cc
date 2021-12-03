@@ -15,9 +15,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/autograd_meta.h"
-// #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -31,6 +30,7 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/exception.h"
+
 namespace paddle {
 namespace pybind {
 

@@ -54,24 +54,15 @@ class TaskNode final {
   const paddle::framework::ProgramDesc& program() const { return program_; }
   const std::vector<OperatorBase*>& ops() const { return ops_; }
 
-  void SetRunPerSteps(int64_t value) { run_per_steps_ = value; }
-  void SetRunAtOffset(int64_t value) { run_at_offset_ = value; }
-  void SetReplyUpPerSteps(int64_t value) { reply_up_per_steps_ = value; }
-  void SetSendDownPerSteps(int64_t value) { send_down_per_steps_ = value; }
+  void SetRunPerSteps(int64_t value);
+  void SetRunAtOffset(int64_t value);
+  void SetReplyUpPerSteps(int64_t value);
+  void SetSendDownPerSteps(int64_t value);
   void SetType(const std::string& type) { type_ = type; }
 
   bool AddUpstreamTask(int64_t task_id);
   bool AddDownstreamTask(int64_t task_id);
   std::string DebugString() const;
-
-  static std::unique_ptr<TaskNode> CreateEmptyTaskNode(int32_t role,
-                                                       int64_t rank,
-                                                       int64_t task_id,
-                                                       int64_t max_run_times,
-                                                       int64_t max_slot_nums);
-  static std::unique_ptr<TaskNode> CreateTaskNode(
-      int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
-      int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
 
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
