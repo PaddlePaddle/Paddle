@@ -49,10 +49,10 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       platform::CUDADeviceGuard guard(
           BOOST_GET_CONST(platform::CUDAPlace, place).device);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event_, hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
 #endif
       PADDLE_ENFORCE_NOT_NULL(event_, platform::errors::InvalidArgument(
@@ -75,9 +75,9 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_->GetPlace());
     platform::CUDADeviceGuard guard(gpu_place.device);
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
 #endif
   }
 #endif
@@ -160,12 +160,12 @@ void EagerDeletionOpHandle::ClearGarbages(
         reinterpret_cast<StreamGarbageCollector *>(gc_)->stream();
     auto callback_func = [=]() {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipStreamWaitEvent(callback_stream, event_, 0));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamWaitEvent(callback_stream, event_, 0));
 #endif
     };
