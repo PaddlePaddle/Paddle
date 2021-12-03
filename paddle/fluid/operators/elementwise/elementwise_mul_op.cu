@@ -141,14 +141,10 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
 
-      framework::Tensor wayto_dx;
-      wayto_dx.Resize(dout->dims());
-      default_elementwise_mul<DeviceContext, T>(ctx, dout, y, &wayto_dx);
-
-      const framework::Tensor* const_to_dx =
-          const_cast<const framework::Tensor*>(&wayto_dx);
-      TensorReduceFunctorImpl<T, T, CustomSum>(*const_to_dx, dx, reduce_dims,
-                                               stream);
+      framework::Tensor dx_tmp;
+      dx_tmp.Resize(dout->dims());
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, y, &dx_tmp);
+      TensorReduceFunctorImpl<T, T, CustomSum>(dx_tmp, dx, reduce_dims, stream);
     }
   }
   // dy
@@ -160,14 +156,10 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
 
-      framework::Tensor wayto_dy;
-      wayto_dy.Resize(dout->dims());
-      default_elementwise_mul<DeviceContext, T>(ctx, dout, x, &wayto_dy);
-
-      const framework::Tensor* const_to_dy =
-          const_cast<const framework::Tensor*>(&wayto_dy);
-      TensorReduceFunctorImpl<T, T, CustomSum>(*const_to_dy, dy, reduce_dims,
-                                               stream);
+      framework::Tensor dy_tmp;
+      dy_tmp.Resize(dout->dims());
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, x, &dy_tmp);
+      TensorReduceFunctorImpl<T, T, CustomSum>(dy_tmp, dy, reduce_dims, stream);
     }
   }
 }
