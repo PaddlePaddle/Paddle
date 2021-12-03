@@ -298,6 +298,15 @@ def convert_len(var):
         return len(var)
 
 
+def convert_zip(*args):
+    for i, arg in enumerate(args):
+        if isinstance(arg, Variable) and arg.shape[0] == -1:
+            raise ValueError(
+                "If the parameter is Variable in 'zip', its first dimension should not be -1. "
+                "But args[{}].shape[0] == -1 in 'zip'".format(str(i)))
+    return zip(*args)
+
+
 def convert_var_shape(x, idx=None, in_control_flow=False):
     """
     A function representation of the shape of variable.
