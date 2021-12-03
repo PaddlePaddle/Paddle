@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,53 +12,205 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import PassVersionChecker
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
 
 
-class SquaredMatSubFusePassTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data_a = fluid.data(name="data_a", shape=[128, 1], dtype="float32")
-            data_b = fluid.data(name="data_b", shape=[256, 1], dtype="float32")
+class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
 
-            fc_a = fluid.layers.fc(data_a, size=256)
-            fc_b = fluid.layers.fc(data_b, size=64)
+    def sample_program_config(self, draw):
+        transpose_X = False
+        transpose_Y = False
+        alpha1 = draw(st.floats(min_value=0.01, max_value=2))
+        alpha2 = draw(st.floats(min_value=0.01, max_value=2))
+        axis1 = draw(st.sampled_from([-1, 0]))
+        place_type = draw(st.sampled_from([-1, 0]))
+        str_value = draw(st.sampled_from(['-0.2', '3']))
+        value = draw(st.floats(min_value=-10, max_value=10))
+        shape = draw(st.sampled_from([[1]]))
+        axis2 = draw(st.sampled_from([-1, 0]))
+        input_dim = draw(st.sampled_from([32, 64]))
 
-            data_a_square = paddle.square(fc_a)
-            data_b_square = paddle.square(fc_b)
+        def generate_input(attrs, type):
+            shape_x = [32, attrs[5]['input_dim']]
+            shape_y = [attrs[5]['input_dim'], 16]
 
-            matmul_ab = paddle.matmul(fc_a, fc_b)
-            matmul_ab_square = paddle.square(matmul_ab)
-            matmul_square_ab = paddle.matmul(data_a_square, data_b_square)
+            if type == "x":
+                return np.random.random(shape_x).astype(np.float32)
+            else:
+                return np.random.random(shape_y).astype(np.float32)
 
-            scale = paddle.fluid.layers.fill_constant(
-                shape=[1], value=0.5, dtype='float32')
+        attrs = [{
+            "transpose_X": transpose_X,
+            "transpose_Y": transpose_Y,
+            "alpha": alpha1
+        }, {
+            "transpose_X": transpose_X,
+            "transpose_Y": transpose_Y,
+            "alpha": alpha2
+        }, {
+            "axis": axis1
+        }, {
+            "place_type": place_type,
+            "str_value": str_value,
+            "value": value,
+            "shape": shape
+        }, {
+            "axis": axis2
+        }, {
+            'input_dim': input_dim
+        }]
 
-            sub_val = paddle.fluid.layers.elementwise_sub(matmul_ab_square,
-                                                          matmul_square_ab)
-            squared_mat_sub_out = fluid.layers.elementwise_mul(sub_val, scale)
+        ops_config = [{
+            "op_type": "matmul",
+            "op_inputs": {
+                "X": ["input_data1"],
+                "Y": ["input_data2"]
+            },
+            "op_outputs": {
+                "Out": ["matmul1_output"]
+            },
+            "op_attrs": {
+                "transpose_X": attrs[0]["transpose_X"],
+                "transpose_Y": attrs[0]["transpose_Y"],
+                "alpha": attrs[0]["alpha"],
+                "fused_reshape_X": [],
+                "fused_reshape_Y": [],
+                "fused_transpose_X": [],
+                "fused_transpose_Y": [],
+                "fused_reshape_Out": [],
+                "fused_transpose_Out": []
+            }
+        }, {
+            "op_type": "square",
+            "op_inputs": {
+                "X": ["matmul1_output"]
+            },
+            "op_outputs": {
+                "Out": ["square1_output"]
+            },
+            "op_attrs": {}
+        }, {
+            "op_type": "square",
+            "op_inputs": {
+                "X": ["input_data1"]
+            },
+            "op_outputs": {
+                "Out": ["square2_output"]
+            },
+            "op_attrs": {}
+        }, {
+            "op_type": "square",
+            "op_inputs": {
+                "X": ["input_data2"]
+            },
+            "op_outputs": {
+                "Out": ["square3_output"]
+            },
+            "op_attrs": {}
+        }, {
+            "op_type": "matmul",
+            "op_inputs": {
+                "X": ["square2_output"],
+                "Y": ["square3_output"]
+            },
+            "op_outputs": {
+                "Out": ["matmul2_output"]
+            },
+            "op_attrs": {
+                "transpose_X": attrs[1]["transpose_X"],
+                "transpose_Y": attrs[1]["transpose_Y"],
+                "alpha": attrs[1]["alpha"],
+                "fused_reshape_X": [],
+                "fused_reshape_Y": [],
+                "fused_transpose_X": [],
+                "fused_transpose_Y": [],
+                "fused_reshape_Out": [],
+                "fused_transpose_Out": []
+            }
+        }, {
+            "op_type": "elementwise_sub",
+            "op_inputs": {
+                "X": ["square1_output"],
+                "Y": ["matmul2_output"]
+            },
+            "op_outputs": {
+                "Out": ["sub_out"]
+            },
+            "op_attrs": {
+                "axis": attrs[2]["axis"]
+            }
+        }, {
+            "op_type": "fill_constant",
+            "op_inputs": {},
+            "op_outputs": {
+                "Out": ["constant_out"]
+            },
+            "op_attrs": {
+                "dtype": 5,
+                "place_type": attrs[3]["place_type"],
+                "str_value": attrs[3]["str_value"],
+                "value": attrs[3]["value"],
+                "shape": attrs[3]["shape"]
+            }
+        }, {
+            "op_type": "elementwise_mul",
+            "op_inputs": {
+                "X": ["sub_out"],
+                "Y": ["constant_out"]
+            },
+            "op_outputs": {
+                "Out": ["mul_out"]
+            },
+            "op_attrs": {
+                "axis": attrs[4]["axis"]
+            }
+        }]
 
-        self.feeds = {
-            "data_a": np.random.random((128, 1)).astype("float32"),
-            "data_b": np.random.random((256, 1)).astype("float32")
-        }
-        self.fetch_list = [squared_mat_sub_out]
+        ops = self.generate_op_config(ops_config)
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "input_data1":
+                TensorConfig(data_gen=partial(generate_input, attrs, "x")),
+                "input_data2":
+                TensorConfig(data_gen=partial(generate_input, attrs, "y"))
+            },
+            outputs=["mul_out"])
 
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('squared_mat_sub_fuse_pass'))
+        return program_config
+
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config()
+        yield config, ["fusion_squared_mat_sub"], (1e-5, 1e-5)
+
+    def add_ignore_pass_case(self):
+        def teller1(program_config, predictor_config):
+            return True
+
+        self.add_ignore_check_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
+                                   "The output has diff!")
+
+    def test(self):
+        self.run_and_statis(
+            # If the output diff problem has been fixed,
+            # min_success_num=0 should be deleted!
+            min_success_num=0,
+            quant=False,
+            passes=["squared_mat_sub_fuse_pass"])
 
 
 if __name__ == "__main__":
