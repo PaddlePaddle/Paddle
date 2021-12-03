@@ -65,7 +65,7 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
             inputs={
                 "X": ["unsqueeze2_x"],
                 "AxesTensor": [],
-                "AxesTensorList": [],
+                "AxesTensorList": []
             },
             axes=unsqueeze2_axes,
             outputs={"Out": ["unsqueeze2_out"],
