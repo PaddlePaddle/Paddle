@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -218,6 +219,9 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     elastic_group = parser.add_argument_group("Elastic Parameters")
     elastic_group.add_argument(
         "--elastic_server", type=str, help="etcd server host:port")
+    elastic_group.add_argument(
+        "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
+
     elastic_group.add_argument("--job_id", type=str, help="job unique id")
     elastic_group.add_argument("--np", type=int, help="job pod/node number")
     elastic_group.add_argument("--scale", type=int, default=0, help="scale np")
@@ -280,7 +284,7 @@ def cpuonly_check(args):
     return True
 
 
-def launch_collective(args):
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
@@ -313,14 +317,23 @@ def launch_collective(args):
             cluster, pod = get_cluster_from_args(args, device_mode,
                                                  devices_per_proc)
             logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
 
+
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -349,8 +362,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):

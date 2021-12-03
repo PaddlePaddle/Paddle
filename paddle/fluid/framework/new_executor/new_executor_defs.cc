@@ -497,7 +497,14 @@ VariableScope::~VariableScope() {
   }
 }
 
-const Scope* VariableScope::GetScope() const { return scope_; }
+Scope* VariableScope::GetMutableScope() const { return scope_; }
+
+Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
+
+void VariableScope::SetLocalScope(Scope* local_scope) {
+  VLOG(4) << "Set local scope: " << local_scope;
+  local_scope_ = local_scope;
+}
 
 Variable* VariableScope::FindVar(const std::string& name) const {
   auto it = name2id_.find(name);
@@ -554,8 +561,9 @@ Variable* VariableScope::Var(const std::string& name) const {
 size_t VariableScope::VarSize() const { return var_list_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
-                           framework::VarDesc* var_desc) {  // NOLINT
-  auto v = scope_->Var(name);
+                           framework::VarDesc* var_desc,
+                           bool local_scope) {  // NOLINT
+  auto v = local_scope ? local_scope_->Var(name) : scope_->Var(name);
   if (nullptr == var_desc) {
     v->GetMutable<LoDTensor>();
   } else {
@@ -590,6 +598,16 @@ paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   return vec_meta_info_[id].var_desc_;
 }
 
+void VariableScope::SetVarSikpInplace(const std::string& name, bool skip) {
+  CheckExist(name);
+  vec_meta_info_[VarId(name)].sikp_inplace_ = skip;
+}
+
+bool VariableScope::GetVarSikpInplace(int id) const {
+  CheckExist(id);
+  return vec_meta_info_[id].sikp_inplace_;
+}
+
 void VariableScope::CheckExist(int id) const {
   PADDLE_ENFORCE_LT(id, var_list_.size(),
                     platform::errors::PreconditionNotMet(
@@ -606,9 +624,9 @@ VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
   var_scope_ = var_scope;
 }
 
-void VariableScopeListener::onCreateVariable(const std::string& name) {
-  auto v = var_scope_->scope_->GetVar(name);  // must exsit in outer_scope_
-  if (!var_scope_->HasVar(name)) {            // may exist in variable scope.
+void VariableScopeListener::onCreateVariable(const std::string& name,
+                                             Variable* v) {
+  if (!var_scope_->HasVar(name)) {  // may exist in variable scope.
     VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
             << name;
     var_scope_->name2id_[name] = var_scope_->VarSize();

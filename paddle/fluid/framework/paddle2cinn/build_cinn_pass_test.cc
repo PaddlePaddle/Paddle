@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/operators/cinn_launch_op.h"
 
 namespace paddle {
 namespace framework {
@@ -91,8 +92,8 @@ std::vector<std::string> GetCompilationKeys(const Graph& graph) {
   std::vector<std::string> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(
-          BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)));
+      compilation_keys.emplace_back(BOOST_GET_CONST(
+          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;

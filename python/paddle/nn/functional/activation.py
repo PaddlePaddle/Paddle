@@ -81,7 +81,13 @@ def elu(x, alpha=1.0, name=None):
 
     .. math::
 
-        elu(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        elu(x)=
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -124,6 +130,7 @@ def elu_(x, alpha=1.0, name=None):
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
+    assert alpha >= 0., "elu_ only support alpha >= 0, please use elu instead."
     return _C_ops.elu_(x, 'alpha', alpha)
 
 
@@ -435,7 +442,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     return out
 
 
-def prelu(x, weight, name=None):
+def prelu(x, weight, data_format="NCHW", name=None):
     """
     prelu activation.
 
@@ -449,6 +456,8 @@ def prelu(x, weight, name=None):
             The weight shape is [1] or [in], where `in` is the input channel of ``x``.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -483,19 +492,34 @@ def prelu(x, weight, name=None):
     assert len(weight.shape
                ) == 1, "The dim count of weight shape should be 1 in prelu()."
 
-    # NOTE(): The input of this API should be ``N,C,...`` format,
-    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     mode = 'all'
     if weight.shape[0] > 1:
+
+        true_data_format = [
+            'NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC'
+        ]
+        if data_format not in true_data_format:
+            raise ValueError(
+                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
         assert len(
             x.shape
         ) > 1, "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
-        assert weight.shape[0] == x.shape[
-            1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+
+        #NOTE(GuoxiaWang): support NHWC data format
+        if data_format == 'NHWC':
+            assert weight.shape[0] == x.shape[
+                -1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+        else:
+            assert weight.shape[0] == x.shape[
+                1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
         mode = 'channel'
 
     if in_dygraph_mode():
-        return _C_ops.prelu(x, weight, 'mode', mode)
+        return _C_ops.prelu(x, weight, 'mode', mode, 'data_format', data_format)
 
     helper = LayerHelper('prelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -504,7 +528,8 @@ def prelu(x, weight, name=None):
         inputs={"X": x,
                 "Alpha": weight},
         outputs={"Out": out},
-        attrs={"mode": mode})
+        attrs={"mode": mode,
+               "data_format": data_format})
     return out
 
 
