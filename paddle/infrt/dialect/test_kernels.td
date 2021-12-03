@@ -9,7 +9,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 
 // Base class for Test dialect ops.
 class Test_Op<string mnemonic, list<OpTrait> traits = []> :
-    Op<CINN_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+    Op<INFRT_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 
   // Each registered op in the Test namespace needs to provide all of a printer,
   // parser and verifier.

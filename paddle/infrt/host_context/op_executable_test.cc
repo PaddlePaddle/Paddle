@@ -28,7 +28,7 @@ int add(int a, int b) { return a + b; }
 TEST(OpExecutable, basic) {
   // register kernel
   KernelRegistry registry;
-  registry.AddKernel("cinn.test.add.i32", CINN_KERNEL(add));
+  registry.AddKernel("cinn.test.add.i32", INFRT_KERNEL(add));
 
   SymbolTable table;
   table.Register("a", 1);

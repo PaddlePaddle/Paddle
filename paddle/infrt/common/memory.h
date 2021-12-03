@@ -46,7 +46,7 @@ class MemoryManager final {
     return *x;
   }
 
-  MemoryInterface* Retrieve(key_t key) CINN_RESULT_SHOULD_USE {
+  MemoryInterface* Retrieve(key_t key) INFRT_RESULT_SHOULD_USE {
     auto it = memory_mngs_.find(key);
     if (it != memory_mngs_.end()) return it->second.get();
     return nullptr;
@@ -71,7 +71,7 @@ class MemoryManager final {
                      std::unique_ptr<MemoryInterface>>
       memory_mngs_;
 
-  CINN_DISALLOW_COPY_AND_ASSIGN(MemoryManager);
+  INFRT_DISALLOW_COPY_AND_ASSIGN(MemoryManager);
 };
 
 }  // namespace infrt

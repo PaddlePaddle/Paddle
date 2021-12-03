@@ -1,6 +1,6 @@
-#ifdef CINN_OPS
+#ifdef INFRT_OPS
 #else
-#define CINN_OPS
+#define INFRT_OPS
 
 include "paddle/infrt/dialect/cinn_base.td"
 include "paddle/infrt/dialect/tensor_shape_base.td"

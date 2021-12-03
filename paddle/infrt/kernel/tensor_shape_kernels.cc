@@ -32,7 +32,7 @@ void PrintShape(const tensor::TensorShape& shape) {
 }
 
 void RegisterTensorShapeKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("ts.print_shape", CINN_KERNEL(PrintShape));
+  registry->AddKernel("ts.print_shape", INFRT_KERNEL(PrintShape));
 }
 
 }  // namespace infrt::kernel

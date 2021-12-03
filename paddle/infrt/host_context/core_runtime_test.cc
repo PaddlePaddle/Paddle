@@ -29,8 +29,8 @@ int sub(int a, int b) { return a - b; }
 
 TEST(CoreRuntime, basic) {
   KernelRegistry registry;
-  registry.AddKernel("cinn.test.addi32", CINN_KERNEL(add));
-  registry.AddKernel("cinn.test.subi32", CINN_KERNEL(sub));
+  registry.AddKernel("cinn.test.addi32", INFRT_KERNEL(add));
+  registry.AddKernel("cinn.test.subi32", INFRT_KERNEL(sub));
 
   CoreRuntimeBuilder builder(&registry);
   auto* table = builder.symbol_table();
@@ -64,8 +64,8 @@ TEST(CoreRuntime, function) {
   //   return c
   // }
   KernelRegistry registry;
-  registry.AddKernel("cinn.test.addi32", CINN_KERNEL(add));
-  registry.AddKernel("cinn.test.subi32", CINN_KERNEL(sub));
+  registry.AddKernel("cinn.test.addi32", INFRT_KERNEL(add));
+  registry.AddKernel("cinn.test.subi32", INFRT_KERNEL(sub));
 
   CoreRuntimeBuilder builder(&registry);
   auto* table = builder.symbol_table();

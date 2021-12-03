@@ -20,7 +20,7 @@ include "paddle/infrt/dialect/pd_ops.td"
 //  2. Consider the case of : out = bias + z
 //===----------------------------------------------------------------------===//
 def FuseMulAdd : Pat<(PD_ElementwiseAdd (PD_MatmulOp $x, $y, $transpose_x, $transpose_y, $alpha), $bias, $axis),
-                     (PD_FusedFC $x, $y, $bias, (CINN_createI32Attr<"1">)),
+                     (PD_FusedFC $x, $y, $bias, (INFRT_createI32Attr<"1">)),
                      [(IsBoolAttrEq<"false"> $transpose_x),(IsBoolAttrEq<"false"> $transpose_y)]>;
 
 
@@ -36,7 +36,7 @@ def FuseMulAdd : Pat<(PD_ElementwiseAdd (PD_MatmulOp $x, $y, $transpose_x, $tran
 // 
 //===----------------------------------------------------------------------===//
 def FuseFCRelu : Pat<(PD_ReluOp (PD_FusedFC $x, $y, $bias, $_)),
-                     (PD_FusedRepeatedFCRelu $x, (CINN_cvtValueToValueRange $y), (CINN_cvtValueToValueRange $bias))>;
+                     (PD_FusedRepeatedFCRelu $x, (INFRT_cvtValueToValueRange $y), (INFRT_cvtValueToValueRange $bias))>;
 
 //===----------------------------------------------------------------------===//
 // This is to fold 'FusedRepeatedFCRelu' op.
@@ -50,7 +50,7 @@ def FuseFCRelu : Pat<(PD_ReluOp (PD_FusedFC $x, $y, $bias, $_)),
 // 
 //===----------------------------------------------------------------------===//
 def FuseRepeatedFCRelu2 : Pat<(PD_FusedRepeatedFCRelu (PD_FusedRepeatedFCRelu $x, $y, $bias), $y_2, $bias_2),
-                     (PD_FusedRepeatedFCRelu $x, (CINN_concatTwoValueRange $y, $y_2), (CINN_concatTwoValueRange $bias, $bias_2))>;
+                     (PD_FusedRepeatedFCRelu $x, (INFRT_concatTwoValueRange $y, $y_2), (INFRT_concatTwoValueRange $bias, $bias_2))>;
 
 
 //===----------------------------------------------------------------------===//
@@ -77,14 +77,14 @@ def FuseBatchNormWithConvPattern: Pat<
         (PD_MulOp $filter,
             (PD_ElementwiseDiv:$coefficientW
                 $scale,
-                (PD_SqrtOp (PD_ElementwiseAdd $var, (PD_ConstantOp $epsilon), (CINN_createI32Attr<"1">))),
-                (CINN_createI32Attr<"1">))),
+                (PD_SqrtOp (PD_ElementwiseAdd $var, (PD_ConstantOp $epsilon), (INFRT_createI32Attr<"1">))),
+                (INFRT_createI32Attr<"1">))),
         (PD_ElementwiseAdd
             $bias,
             (PD_MulOp 
-                (PD_ElementwiseSub $bias, $mean, (CINN_createI32Attr<"1">)),
+                (PD_ElementwiseSub $bias, $mean, (INFRT_createI32Attr<"1">)),
                 $coefficientW),
-            (CINN_createI32Attr<"1">)))
+            (INFRT_createI32Attr<"1">)))
 >;
 
 #endif // INFRT_REWRITE

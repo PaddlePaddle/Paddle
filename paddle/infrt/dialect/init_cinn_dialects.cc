@@ -26,7 +26,7 @@ namespace infrt {
 
 void RegisterCinnDialects(mlir::DialectRegistry& registry) {  // NOLINT
   registry.insert<ts::TensorShapeDialect>();
-  registry.insert<dialect::CINNDialect>();
+  registry.insert<dialect::INFRTDialect>();
   registry.insert<dt::DTDialect>();
   registry.insert<mlir::pd::PaddleDialect>();
 }

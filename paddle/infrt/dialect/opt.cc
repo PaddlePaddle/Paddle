@@ -41,5 +41,5 @@ int main(int argc, char **argv) {
   mlir::registerCanonicalizerPass();
 
   return mlir::failed(
-      mlir::MlirOptMain(argc, argv, "CINN mlir pass driver", registry));
+      mlir::MlirOptMain(argc, argv, "INFRT mlir pass driver", registry));
 }

@@ -1,13 +1,13 @@
-#ifndef CINN_BASE
-#define CINN_BASE
+#ifndef INFRT_BASE
+#define INFRT_BASE
 
 include "mlir/IR/OpBase.td"
 
-def CINN_Dialect : Dialect {
+def INFRT_Dialect : Dialect {
   let name = "cinn";
 
   let description = [{
-    The CINN host dialect.
+    The INFRT host dialect.
   }];
 
   let cppNamespace = "::infrt::dialect";
@@ -27,16 +27,16 @@ def TensorMapType :
 
 def BufferType : OpaqueType<"b", "buffer", "buffer">;
 
-class CINN_createI32Attr<string value> : NativeCodeCall<
+class INFRT_createI32Attr<string value> : NativeCodeCall<
     "mlir::createI32Attr($_builder, $_loc, " # value # ")">;
 
-def CINN_cvtValueToValueRange : NativeCodeCall<
+def INFRT_cvtValueToValueRange : NativeCodeCall<
     "mlir::cvtValueToValueRange($0)">;
 
-def CINN_concatTwoValueRange : NativeCodeCall<
+def INFRT_concatTwoValueRange : NativeCodeCall<
     "mlir::concatTwoValueRange($0, $1)">;
 
 class IsBoolAttrEq<string value> : Constraint<
     CPred<"($0.getValue() ==" # value # ")">,
     "Bool attrbute value constraint">;
-#endif  // CINN_BASE
+#endif  // INFRT_BASE

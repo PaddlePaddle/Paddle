@@ -28,9 +28,9 @@ namespace infrt {
 extern "C" {
 #endif
 
-#define CINN_ALWAYS_INLINE __attribute__((always_inline)) inline
+#define INFRT_ALWAYS_INLINE __attribute__((always_inline)) inline
 
-//! Code for the primitive types supported in CINN.
+//! Code for the primitive types supported in INFRT.
 typedef enum cinn_type_code_t {
   cinn_type_unk = -1,   //! Unknown type
   cinn_type_int = 0,    //! signed int
@@ -39,16 +39,16 @@ typedef enum cinn_type_code_t {
   cinn_type_handle = 3  //! void*
 } cinn_type_code_t;
 
-#ifndef CINN_ATTRIBUTE_ALIGN
-#define CINN_ATTRIBUTE_ALIGN(n) __attribute__((aligned(n)))
+#ifndef INFRT_ATTRIBUTE_ALIGN
+#define INFRT_ATTRIBUTE_ALIGN(n) __attribute__((aligned(n)))
 #endif
 
 /**
- * A tuntime tag for type in CINN system.
+ * A tuntime tag for type in INFRT system.
  */
 typedef struct cinn_type_t {
 #if __cplusplus >= 201103L
-  CINN_ATTRIBUTE_ALIGN(1) cinn_type_code_t code;
+  INFRT_ATTRIBUTE_ALIGN(1) cinn_type_code_t code;
 #else
   uint8_t code;
 #endif
@@ -64,19 +64,19 @@ typedef struct cinn_type_t {
   uint8_t num_asterisks{0};
 
 #ifdef __cplusplus
-  CINN_ALWAYS_INLINE cinn_type_t() : code(cinn_type_int), bits(0), lanes(0) {}
-  CINN_ALWAYS_INLINE cinn_type_t(cinn_type_code_t code,
-                                 uint8_t bits,
-                                 uint16_t lanes = 1,
-                                 uint8_t num_asterisks = 0)
+  INFRT_ALWAYS_INLINE cinn_type_t() : code(cinn_type_int), bits(0), lanes(0) {}
+  INFRT_ALWAYS_INLINE cinn_type_t(cinn_type_code_t code,
+                                  uint8_t bits,
+                                  uint16_t lanes = 1,
+                                  uint8_t num_asterisks = 0)
       : code(code), bits(bits), lanes(lanes), num_asterisks(num_asterisks) {}
-  CINN_ALWAYS_INLINE bool operator==(const cinn_type_t& other) const {
+  INFRT_ALWAYS_INLINE bool operator==(const cinn_type_t& other) const {
     return code == other.code && bits == other.bits && lanes == other.lanes;
   }
-  CINN_ALWAYS_INLINE bool operator!=(const cinn_type_t& other) const {
+  INFRT_ALWAYS_INLINE bool operator!=(const cinn_type_t& other) const {
     return !(*this == other);
   }
-  CINN_ALWAYS_INLINE uint16_t bytes() const { return (bits + 7) / 8; }
+  INFRT_ALWAYS_INLINE uint16_t bytes() const { return (bits + 7) / 8; }
 #endif  // __cplusplus
 } cinn_type_t;
 
@@ -96,7 +96,7 @@ typedef enum cinn_device_kind_t {
 struct cinn_buffer_t;
 
 /**
- * All CINN backends implementation should provide an interface to be used.
+ * All INFRT backends implementation should provide an interface to be used.
  */
 struct cinn_device_interface_impl_t;
 
@@ -115,7 +115,7 @@ struct cinn_device_interface_t {
 };
 
 //! The raw representation of a buffer,used in the generated code/lib.
-#define CINN_BUFFER_MAX_DIMS 8
+#define INFRT_BUFFER_MAX_DIMS 8
 typedef struct cinn_buffer_t {
   //! Tell which kind of device this buffer locates.
   cinn_device_kind_t device;
@@ -134,7 +134,7 @@ typedef struct cinn_buffer_t {
 
   //! Number of dimensions.
   int32_t dimensions;
-  cinn_dimension_t dims[CINN_BUFFER_MAX_DIMS];
+  cinn_dimension_t dims[INFRT_BUFFER_MAX_DIMS];
 
   //! Allocate and deallocate lazily, default true.
   char lazy;
@@ -165,12 +165,13 @@ typedef struct cinn_buffer_t {
 
   //! Set the shape of the buffer. NOTE this just record the shape, not allocate
   //! the memory.
-  CINN_ALWAYS_INLINE void resize(const cinn_dimension_t* dims, int dimensions) {
+  INFRT_ALWAYS_INLINE void resize(const cinn_dimension_t* dims,
+                                  int dimensions) {
     this->dimensions = dimensions;
     memcpy(this->dims, dims, dimensions * sizeof(cinn_dimension_t));
   }
 
-  CINN_ALWAYS_INLINE uint64_t num_elements() const {
+  INFRT_ALWAYS_INLINE uint64_t num_elements() const {
     uint64_t res = 1;
     for (int i = 0; i < dimensions; i++) {
       res *= dims[i];
@@ -178,15 +179,15 @@ typedef struct cinn_buffer_t {
     return res;
   }
 
-  CINN_ALWAYS_INLINE int device_sync(void* ctx = NULL) {
+  INFRT_ALWAYS_INLINE int device_sync(void* ctx = NULL) {
     if (device_interface && device_interface->sync) {
       return device_interface->sync(ctx, this);
     }
     return 0;
   }
 
-  CINN_ALWAYS_INLINE uint8_t* begin() const { return 0; }
-  CINN_ALWAYS_INLINE uint8_t* end() const {
+  INFRT_ALWAYS_INLINE uint8_t* begin() const { return 0; }
+  INFRT_ALWAYS_INLINE uint8_t* end() const {
     return memory + num_elements() * type.bytes();
   }
 
@@ -214,7 +215,7 @@ extern struct cinn_device_interface_t* cinn_x86_device_interface();
 }  // extern "C"
 #endif
 
-#define CINN_LOG(fmt, ...)      \
+#define INFRT_LOG(fmt, ...)     \
   do {                          \
     fprintf(stderr,             \
             "%s:%d:%s(): " fmt, \
@@ -224,10 +225,10 @@ extern struct cinn_device_interface_t* cinn_x86_device_interface();
             __VA_ARGS__);       \
   } while (0)
 
-#define CINN_CHECK(cond)                \
-  if (!(cond)) {                        \
-    CINN_LOG("check %s failed", #cond); \
-    abort();                            \
+#define INFRT_CHECK(cond)                \
+  if (!(cond)) {                         \
+    INFRT_LOG("check %s failed", #cond); \
+    abort();                             \
   }
 /**
  * Buffer helps to hold the memory, and offers a set of methods to help manage
@@ -269,13 +270,13 @@ struct Buffer final {
   }
 
  private:
-  inline void* Malloc(uint32_t size) CINN_RESULT_SHOULD_USE {
+  inline void* Malloc(uint32_t size) INFRT_RESULT_SHOULD_USE {
     CHECK(memory_mng_cache_) << "Should set target first";
     return memory_mng_cache_->malloc(size);
   }
 
   inline void* AlignedAlloc(uint32_t alignment,
-                            uint32_t size) CINN_RESULT_SHOULD_USE {
+                            uint32_t size) INFRT_RESULT_SHOULD_USE {
     CHECK(memory_mng_cache_) << "Should set target first";
     return memory_mng_cache_->aligned_alloc(alignment, size);
   }

@@ -26,7 +26,7 @@ namespace infrt {
 namespace common {
 
 /**
- * Types in the CINN type system. They can be ints, unsigned ints, or floats of
+ * Types in the INFRT type system. They can be ints, unsigned ints, or floats of
  * various bit-widths.
  * They can also be vectors of the same (by setting the `lanes` field to
  * something larger than one).
@@ -59,37 +59,37 @@ struct Type {
   explicit Type(Type&& other);
   Type& operator=(const Type& other);
 
-  CINN_NODISCARD bool is_primitive() const;
-  CINN_NODISCARD bool is_customized() const;
-  CINN_NODISCARD bool valid() const;
+  INFRT_NODISCARD bool is_primitive() const;
+  INFRT_NODISCARD bool is_customized() const;
+  INFRT_NODISCARD bool valid() const;
 
   //! Some helper functions to check a type.
   // @{
-  CINN_NODISCARD bool is_unk() const;
-  CINN_NODISCARD bool is_void() const;
-  CINN_NODISCARD bool is_bool() const;
-  CINN_NODISCARD bool is_vector() const;
-  CINN_NODISCARD bool is_scalar() const;
-  CINN_NODISCARD bool is_float(int bits = -1) const;
-  CINN_NODISCARD bool is_int(int bits = -1) const;
-  CINN_NODISCARD bool is_integer(int bits = -1) const;
-  CINN_NODISCARD bool is_uint(int bits = -1) const;
-  CINN_NODISCARD bool is_string() const;
-  CINN_NODISCARD bool is_index_type();
+  INFRT_NODISCARD bool is_unk() const;
+  INFRT_NODISCARD bool is_void() const;
+  INFRT_NODISCARD bool is_bool() const;
+  INFRT_NODISCARD bool is_vector() const;
+  INFRT_NODISCARD bool is_scalar() const;
+  INFRT_NODISCARD bool is_float(int bits = -1) const;
+  INFRT_NODISCARD bool is_int(int bits = -1) const;
+  INFRT_NODISCARD bool is_integer(int bits = -1) const;
+  INFRT_NODISCARD bool is_uint(int bits = -1) const;
+  INFRT_NODISCARD bool is_string() const;
+  INFRT_NODISCARD bool is_index_type();
   // @}
 
   Type& set_cpp_handle(bool x = true);
-  CINN_NODISCARD bool is_cpp_handle() const;
+  INFRT_NODISCARD bool is_cpp_handle() const;
 
   Type& set_cpp_handle2(bool x = true);
-  CINN_NODISCARD bool is_cpp_handle2() const;
+  INFRT_NODISCARD bool is_cpp_handle2() const;
 
   Type& set_cpp_const(bool is_const = true);
-  CINN_NODISCARD bool is_cpp_const() const;
+  INFRT_NODISCARD bool is_cpp_const() const;
 
   Type& set_customized_type(const std::string& t);
   const std::string& customized_type() const;
-  CINN_NODISCARD bool is_customized_type() const;
+  INFRT_NODISCARD bool is_customized_type() const;
 
   // Get a new type with bits set to \p x.
   Type with_bits(int x) const;

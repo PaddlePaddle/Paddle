@@ -20,8 +20,8 @@
 
 namespace infrt::dialect {
 
-// ----CINNDialect definition begin----
-void CINNDialect::initialize() {
+// ----INFRTDialect definition begin----
+void INFRTDialect::initialize() {
   allowUnknownTypes();
   allowUnknownOperations();
 
@@ -39,7 +39,7 @@ void CINNDialect::initialize() {
       >();
 }
 
-mlir::Type CINNDialect::parseType(mlir::DialectAsmParser &parser) const {
+mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef keyword;
   if (parser.parseKeyword(&keyword)) return mlir::Type();
   // parse TensorType, for example: !cinn.tensor<X86, CUDA, F32>
@@ -100,8 +100,8 @@ mlir::Type CINNDialect::parseType(mlir::DialectAsmParser &parser) const {
   return mlir::Type();
 }
 
-void CINNDialect::printType(mlir::Type type,
-                            mlir::DialectAsmPrinter &printer) const {
+void INFRTDialect::printType(mlir::Type type,
+                             mlir::DialectAsmPrinter &printer) const {
   // print TensorType, for example: !cinn.tensor<X86, CUDA, F32>
   if (type.isa<infrt::dt::TensorType>()) {
     auto tensorType = type.cast<infrt::dt::TensorType>();
@@ -122,6 +122,6 @@ void CINNDialect::printType(mlir::Type type,
   llvm_unreachable("unknown cinn type.");
 }
 
-// ----CINNDialect definition end----
+// ----INFRTDialect definition end----
 
 }  // namespace infrt::dialect

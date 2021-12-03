@@ -30,7 +30,7 @@ TEST(KernelImpl, i32) {
   fbuilder.AddArgument(b.get());
   fbuilder.SetNumResults(1);
 
-  CINN_KERNEL(add_i32)(&fbuilder);
+  INFRT_KERNEL(add_i32)(&fbuilder);
   auto results = fbuilder.GetResults();
   ASSERT_EQ(results.size(), 1UL);
   ASSERT_EQ(results.front()->get<int>(), 3);
@@ -44,7 +44,7 @@ TEST(KernelImpl, f32) {
   fbuilder.AddArgument(b.get());
   fbuilder.SetNumResults(1);
 
-  CINN_KERNEL(add_f32)(&fbuilder);
+  INFRT_KERNEL(add_f32)(&fbuilder);
   auto results = fbuilder.GetResults();
   ASSERT_EQ(results.size(), 1UL);
   ASSERT_EQ(results.front()->get<float>(), 3.f);
@@ -59,7 +59,7 @@ TEST(KernelImpl, pair) {
   fbuilder.AddArgument(b.get());
   fbuilder.SetNumResults(2);
 
-  CINN_KERNEL(add_pair)(&fbuilder);
+  INFRT_KERNEL(add_pair)(&fbuilder);
   auto results = fbuilder.GetResults();
   ASSERT_EQ(results.size(), 2UL);
   ASSERT_EQ(results[0]->get<int>(), 1);

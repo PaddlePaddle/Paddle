@@ -22,7 +22,7 @@
 namespace infrt {
 namespace kernel {
 
-static void CINNCall(
+static void INFRTCall(
     host_context::RemainingArguments args,
     host_context::RemainingResults results,
     host_context::Attribute<host_context::MlirFunctionExecutable*> fn) {
@@ -37,7 +37,7 @@ static void CINNCall(
 }
 
 void RegisterControlFlowKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("cinn.call", CINN_KERNEL(CINNCall));
+  registry->AddKernel("cinn.call", INFRT_KERNEL(INFRTCall));
 }
 
 }  // namespace kernel

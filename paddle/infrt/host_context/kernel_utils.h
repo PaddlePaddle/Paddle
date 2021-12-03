@@ -133,7 +133,7 @@ struct KernelImpl;
 template <typename T>
 struct TypeTag {};
 
-#define CINN_KERNEL(...)                                    \
+#define INFRT_KERNEL(...)                                   \
   ::infrt::host_context::KernelImpl<decltype(&__VA_ARGS__), \
                                     &__VA_ARGS__>::Invoke
 

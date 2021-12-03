@@ -24,7 +24,7 @@ namespace common {
 template <typename T>
 class Shared;
 /**
- * Object is the basic element in the CINN, with `Shared` wrapper, the object
+ * Object is the basic element in the INFRT, with `Shared` wrapper, the object
  * can be shared accross the system.
  */
 struct Object {

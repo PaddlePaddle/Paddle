@@ -26,11 +26,11 @@
 
 namespace infrt::dialect {
 
-class CINNDialect : public ::mlir::Dialect {
-  explicit CINNDialect(::mlir::MLIRContext *context)
+class INFRTDialect : public ::mlir::Dialect {
+  explicit INFRTDialect(::mlir::MLIRContext *context)
       : ::mlir::Dialect(getDialectNamespace(),
                         context,
-                        ::mlir::TypeID::get<CINNDialect>()) {
+                        ::mlir::TypeID::get<INFRTDialect>()) {
     initialize();
   }
 

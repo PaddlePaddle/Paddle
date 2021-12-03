@@ -108,7 +108,7 @@ void TensorFromStream(std::istream &is,
     LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
   } else {
-    CINN_NOT_IMPLEMENTED
+    INFRT_NOT_IMPLEMENTED
   }
 }
 

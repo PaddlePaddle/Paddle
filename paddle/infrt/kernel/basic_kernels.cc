@@ -62,24 +62,24 @@ static void PrintString(const std::string &str) {
 void RegisterBasicKernels(host_context::KernelRegistry *registry) {
   RegisterIntBasicKernels(registry);
   RegisterFloatBasicKernels(registry);
-  registry->AddKernel("cinn.get_string", CINN_KERNEL(GetString));
-  registry->AddKernel("cinn.print_string", CINN_KERNEL(PrintString));
+  registry->AddKernel("cinn.get_string", INFRT_KERNEL(GetString));
+  registry->AddKernel("cinn.print_string", INFRT_KERNEL(PrintString));
 }
 
 void RegisterIntBasicKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernel("cinn.add.i32", CINN_KERNEL(add<int32_t>));
-  registry->AddKernel("cinn.sub.i32", CINN_KERNEL(sub<int32_t>));
-  registry->AddKernel("cinn.mul.i32", CINN_KERNEL(mul<int32_t>));
-  registry->AddKernel("cinn.div.i32", CINN_KERNEL(div<int32_t>));
-  registry->AddKernel("cinn.print.i32", CINN_KERNEL(print<int32_t>));
+  registry->AddKernel("cinn.add.i32", INFRT_KERNEL(add<int32_t>));
+  registry->AddKernel("cinn.sub.i32", INFRT_KERNEL(sub<int32_t>));
+  registry->AddKernel("cinn.mul.i32", INFRT_KERNEL(mul<int32_t>));
+  registry->AddKernel("cinn.div.i32", INFRT_KERNEL(div<int32_t>));
+  registry->AddKernel("cinn.print.i32", INFRT_KERNEL(print<int32_t>));
 }
 
 void RegisterFloatBasicKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernel("cinn.add.f32", CINN_KERNEL(add<float>));
-  registry->AddKernel("cinn.sub.f32", CINN_KERNEL(sub<float>));
-  registry->AddKernel("cinn.mul.f32", CINN_KERNEL(mul<float>));
-  registry->AddKernel("cinn.div.f32", CINN_KERNEL(div<float>));
-  registry->AddKernel("cinn.print.f32", CINN_KERNEL(print<float>));
+  registry->AddKernel("cinn.add.f32", INFRT_KERNEL(add<float>));
+  registry->AddKernel("cinn.sub.f32", INFRT_KERNEL(sub<float>));
+  registry->AddKernel("cinn.mul.f32", INFRT_KERNEL(mul<float>));
+  registry->AddKernel("cinn.div.f32", INFRT_KERNEL(div<float>));
+  registry->AddKernel("cinn.print.f32", INFRT_KERNEL(print<float>));
 }
 
 }  // namespace infrt::kernel

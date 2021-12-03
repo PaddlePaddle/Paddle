@@ -51,7 +51,7 @@ class Scope {
  private:
   std::unordered_map<std::string, std::unique_ptr<_Variable>> data_;
 
-  CINN_DISALLOW_COPY_AND_ASSIGN(Scope);
+  INFRT_DISALLOW_COPY_AND_ASSIGN(Scope);
 };
 
 template <typename T>

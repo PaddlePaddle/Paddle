@@ -270,7 +270,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
   }
   impl_->cur_op->SetResults(res_values);
 
-#ifdef CINN_DEBUG
+#ifdef INFRT_DEBUG
   {
     VLOG(3) << "check result";
     for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
