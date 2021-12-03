@@ -108,7 +108,7 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         if axis == 0 or axis == -1:
             bias_shape = [x_shape[0], y_shape[1]]
         else:
-            bias_shape = [y_shape[1]]
+            bias_shape = [y_shape[1], ]
         if draw(st.booleans()):
             bias_shape[-1] = 1
             if len(bias_shape) == 2 and draw(st.booleans()):
