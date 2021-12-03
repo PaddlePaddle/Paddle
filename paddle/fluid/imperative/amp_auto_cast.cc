@@ -179,11 +179,9 @@ static inline framework::proto::VarType::Type GetPromoteType(
   return dst_type;
 }
 
-NameVarBaseMap AutoCastInputs(const std::string& op_type,
-                              const NameVarBaseMap& ins) {
-  NameVarBaseMap new_ins(ins);
+void AutoCastInputs(const std::string& op_type, NameVarBaseMap* new_ins) {
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
-    for (auto& pair : new_ins) {
+    for (auto& pair : *new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
@@ -205,18 +203,16 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
         var = CastToFP16(var);
       }
     }
-    return new_ins;
   } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
-    for (auto& pair : new_ins) {
+    for (auto& pair : *new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
       for (auto& var : pair.second) {
         var = CastToFP32(var);
       }
     }
-    return new_ins;
   } else {
-    auto dst_type = GetPromoteType(op_type, ins);
+    auto dst_type = GetPromoteType(op_type, *new_ins);
 
     // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
     if (dst_type == framework::proto::VarType::FP16 &&
@@ -224,7 +220,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
             op_type)) {
       dst_type = framework::proto::VarType::FP32;
     }
-    for (auto& pair : new_ins) {
+    for (auto& pair : *new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
@@ -247,20 +243,16 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
                                                            : CastToFP16(var));
       }
     }
-    return new_ins;
   }
-  return new_ins;
 }
 
-NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
-                                  const NameVarBaseMap& ins) {
-  NameVarBaseMap new_ins(ins);
+void CastPureFp16Inputs(const std::string& op_type, NameVarBaseMap* new_ins) {
   auto dst_type = framework::proto::VarType::FP16;
   if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
       AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
     dst_type = framework::proto::VarType::FP32;
   }
-  for (auto& pair : new_ins) {
+  for (auto& pair : *new_ins) {
     // NOTE: The run_program OP only has FP32 kernel. In dy2stat pure fp16
     // training, we have correctly cast the inputs of run_program OP before,
     // so here should avoid casting for run_program OP.
@@ -288,7 +280,6 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
                                                          : CastToFP16(var));
     }
   }
-  return new_ins;
 }
 
 }  // namespace imperative
