@@ -119,7 +119,7 @@ class TestCUDNNMHALayerWithJitToStatic(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_fwd_output(self):
         ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,

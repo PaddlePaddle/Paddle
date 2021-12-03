@@ -138,7 +138,7 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-1
-        self.rtol = 0.9
+        self.rtol = 5e-2
 
     def test_trt_variable_length(self):
         config = paddle_infer.Config(self.path_with_coverting + ".pdmodel",

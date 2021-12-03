@@ -168,7 +168,7 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_fwd_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -272,7 +272,7 @@ class TestFP16CUDNNMHALayerStatic(TestFP32CUDNNMHALayerStatic):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-3
-        self.rtol = 1e-2
+        self.rtol = 1e-4
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -386,7 +386,7 @@ class TestFP32CUDNNMHALayerStaticWithSeqDataCache(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_fwd_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -495,4 +495,4 @@ class TestFP16CUDNNMHALayerStaticWithSeqDataCache(
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-3
-        self.rtol = 1e-2
+        self.rtol = 1e-4

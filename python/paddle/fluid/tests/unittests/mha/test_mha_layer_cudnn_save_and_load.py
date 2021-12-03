@@ -134,7 +134,7 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_jit_save_and_load(self):
         path = '/tmp/paddle_mha_jit_save'
@@ -299,7 +299,7 @@ class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_jit_save_and_load(self):
         ref_out = self.ref_exe.run(self.ref_main_prog,

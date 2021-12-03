@@ -196,7 +196,7 @@ class TestMHAOpFP16(OpTest):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-2
-        self.grad_rtol = 1.0
+        self.grad_rtol = 1e-1
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -221,7 +221,7 @@ class TestMHAOpFP32(TestMHAOpFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-3
-        self.grad_rtol = 0.5
+        self.grad_rtol = 1e-4
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -294,7 +294,7 @@ class TestMHAOpPadVarLenFP16(OpTest):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-2
-        self.grad_rtol = 1.0
+        self.grad_rtol = 1e-1
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -319,7 +319,7 @@ class TestMHAOpPadVarLenFP32(TestMHAOpPadVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-3
-        self.grad_rtol = 0.5
+        self.grad_rtol = 1e-4
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -398,7 +398,7 @@ class TestMHAOpVarLenFP16(OpTest):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-2
-        self.grad_rtol = 1.0
+        self.grad_rtol = 1e-1
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -420,7 +420,7 @@ class TestMHAOpVarLenFP32(TestMHAOpVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-3
-        self.grad_rtol = 0.5
+        self.grad_rtol = 1e-4
 
 
 class TestMHAOpVarLenFP64(TestMHAOpVarLenFP16):

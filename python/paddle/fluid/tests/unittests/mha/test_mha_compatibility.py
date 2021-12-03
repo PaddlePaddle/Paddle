@@ -118,7 +118,7 @@ class TestCUDNNMHALayerConvertToPaddleMHA(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_compatibility_with_save_inference_model(self):
         paddle.enable_static()
@@ -242,7 +242,7 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithJitToStatic(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-6
-        self.rtol = 1e-3
+        self.rtol = 1e-4
 
     def test_compatibility_with_save_inference_model(self):
         paddle.enable_static()
