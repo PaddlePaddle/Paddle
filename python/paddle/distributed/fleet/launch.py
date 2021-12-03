@@ -65,7 +65,6 @@ import os
 import time
 import six
 import copy
-import shlex
 import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
@@ -301,8 +300,17 @@ def get_cluster_info(args):
     if args.enable_auto_mapping == True:
         assert args.cluster_topo_path is not None, \
             "The cluster topology must be provied when enabling auto mapping."
-        if args.rank_mapping_path is None:
-            # original_args = [shlex.quote(c) for c in sys.argv[1:]]
+        rank_mapping_path = args.rank_mapping_path or os.getenv(
+            "PADDLE_RANK_MAPPING_PATH")
+        if not rank_mapping_path:
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(
+                enable_elastic(args, device_mode))
+            cwd = pathlib.Path().resolve()
+            rank_mapping_path = os.path.join(cwd,
+                                             "auto_parallel_rank_mapping.json")
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
+
             original_args = sys.argv[1:]
             os.environ["PADDLE_ORIGINAL_CMD_ARGS"] = " ".join(original_args)
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
@@ -311,8 +319,12 @@ def get_cluster_info(args):
             cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
                 args, device_mode)
         else:
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(False)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(
+                enable_elastic(args, device_mode))
+
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
-            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(args.rank_mapping_path)
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
             os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
                 args.enable_auto_mapping)
             cluster, pod = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
