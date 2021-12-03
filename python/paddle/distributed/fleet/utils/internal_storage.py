@@ -25,6 +25,7 @@ from paddle.fluid import core
 from ..meta_parallel.sharding.sharding_utils import Type, device_guard
 
 
+# test ci
 class InternalStorage:
     """
     This is a basic class, which is responsible for consolidating the basic storage tensor.
