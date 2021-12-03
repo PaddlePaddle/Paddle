@@ -543,14 +543,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
-  m.def("clear_gradients",
-        [](std::vector<std::shared_ptr<imperative::VarBase>> param_list) {
-          VLOG(1) << "clear_gradients";
-          for (auto param : param_list) {
-            param->ClearGradient(false);
-          }
-        });
-
   m.def("disable_signal_handler", &DisableSignalHandler);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
