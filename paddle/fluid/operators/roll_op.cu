@@ -19,6 +19,8 @@
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
+namespace plat = paddle::platform;
+
 namespace paddle {
 namespace operators {
 
@@ -208,6 +210,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     roll, ops::RollKernel<paddle::platform::CUDADeviceContext, float>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::RollKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::RollKernel<paddle::platform::CUDADeviceContext,
@@ -217,6 +220,7 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     roll_grad, ops::RollGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext,
