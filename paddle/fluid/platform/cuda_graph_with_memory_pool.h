@@ -17,7 +17,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_graph.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #endif
 
 namespace paddle {
@@ -59,6 +59,31 @@ inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
 #endif
   callback();
 }
+
+class SkipCUDAGraphCaptureGuard {
+  DISABLE_COPY_AND_ASSIGN(SkipCUDAGraphCaptureGuard);
+
+ public:
+  SkipCUDAGraphCaptureGuard() {
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10010
+    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+      CUDAGraph::EndSegmentCapture();
+    }
+#endif
+#endif
+  }
+
+  ~SkipCUDAGraphCaptureGuard() {
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10010
+    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+      CUDAGraph::BeginSegmentCapture();
+    }
+#endif
+#endif
+  }
+};
 
 }  // namespace platform
 }  // namespace paddle

@@ -73,7 +73,13 @@ class ELU(Layer):
 
     .. math::
 
-        ELU(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        ELU(x)=
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
@@ -370,6 +376,8 @@ class PReLU(Layer):
             Default is None. For more information, please refer to :ref:`api_paddle_ParamAttr`.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
     Shape:
         - input: Tensor with any shape. Default dtype is float32.
@@ -400,13 +408,18 @@ class PReLU(Layer):
             #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
 
-    def __init__(self, num_parameters=1, init=0.25, weight_attr=None,
+    def __init__(self,
+                 num_parameters=1,
+                 init=0.25,
+                 weight_attr=None,
+                 data_format="NCHW",
                  name=None):
         super(PReLU, self).__init__()
         self._num_parameters = num_parameters
         self._init = init
         self._weight_attr = weight_attr
         self._name = name
+        self._data_format = data_format
 
         self._weight = self.create_parameter(
             attr=self._weight_attr,
@@ -416,12 +429,13 @@ class PReLU(Layer):
             default_initializer=Constant(self._init))
 
     def forward(self, x):
-        return F.prelu(x, self._weight)
+        return F.prelu(x, self._weight, data_format=self._data_format)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'num_parameters={}, init={}, dtype={}{}'.format(
-            self._num_parameters, self._init, self._dtype, name_str)
+        return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
+            self._num_parameters, self._data_format, self._init, self._dtype,
+            name_str)
 
 
 class ReLU(Layer):

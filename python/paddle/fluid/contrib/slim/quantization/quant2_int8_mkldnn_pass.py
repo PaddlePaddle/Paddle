@@ -69,7 +69,7 @@ class Quant2Int8MkldnnPass(object):
         self._mul_ops = ['mul']
         self._fc_ops = ['fc']
         self._relu_ops = ['relu', 'relu6']
-        self._matmul_ops = ['matmul']
+        self._matmul_ops = ['matmul', 'matmul_v2']
         self._gru_ops = ['fusion_gru', 'multi_gru']
         self._lstm_ops = ['fusion_lstm']
         self._weight_thresholds = {}
@@ -328,14 +328,18 @@ class Quant2Int8MkldnnPass(object):
     def _dequantize_weights(self, graph):
         def _is_int8_weights(op_node, weight_name):
             weight_var_name = op_node.input(weight_name)[0]
+            if self._scope.find_var(weight_var_name) is None:
+                return False
             weight = self._load_param(self._scope, weight_var_name)
             return np.all(np.mod(weight, 1) == 0)
 
+        mul_and_matmul_ops = self._mul_ops + self._matmul_ops
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops and _is_int8_weights(op, "Filter"):
                 self._dequantize_op_weights(graph, op, "Filter", "Output")
-            elif op.name() in self._mul_ops and _is_int8_weights(op, "Y"):
+            elif op.name() in mul_and_matmul_ops and _is_int8_weights(op, "Y"):
                 self._dequantize_op_weights(graph, op, "Y", "Out")
+
         return graph
 
     def _dequantize_op_weights(self, graph, op_node, weight_name, output_name):
@@ -419,6 +423,7 @@ class Quant2Int8MkldnnPass(object):
         if self._is_fc_quantized(graph):
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
+        graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
         graph = self._apply_pass(graph, 'runtime_context_cache_pass')
         return graph

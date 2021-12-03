@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/creation.h"
 #include "paddle/pten/kernels/cuda/creation.h"
 
@@ -24,15 +24,19 @@ namespace pten {
 // TODO(YuanRisheng) This function name should be same as User API name.
 // TODO(zyfncg) Automatic code generation
 template <typename T, typename ContextT>
-DenseTensor FillAnyLike(const ContextT& dev_ctx,
-                        const DenseTensor& x,
-                        const Scalar& val) {
-  auto out_meta = UnchangedInferShape(x.meta());
+DenseTensor FillAnyLike(
+    const ContextT& dev_ctx,
+    const DenseTensor& x,
+    const Scalar& val,
+    DataType dtype = DataType::UNDEFINED,
+    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
+    DataLayout layout = DataLayout::UNDEFINED) {
+  auto out_meta = FullLikeInferMeta(x.meta(), dtype, layout);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  FillAnyLike<T>(dev_ctx, x, val, &dense_out);
+  FillAnyLike<T>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 

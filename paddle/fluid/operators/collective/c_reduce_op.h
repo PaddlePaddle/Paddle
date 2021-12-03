@@ -30,11 +30,11 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -43,7 +43,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -316,7 +316,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
                                            "kRedMax, kRedMin, kRedProd."));
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, root, comm->comm(),
         stream));
 #else

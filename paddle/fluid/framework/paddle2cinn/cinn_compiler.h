@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -54,24 +55,26 @@ class CinnCompiler {
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target);
+      const ::cinn::common::Target& target, void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
       const std::string& compilation_key,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target);
+      const ::cinn::common::Target& target, void* stream = nullptr);
 
   std::string AddGraph(std::unique_ptr<ir::Graph> graph);
 
-  const ir::Graph& FindGraph(const std::string& key) const;
+  const ir::Graph& FindGraph(const std::string& graph_key) const;
 
-  std::string VizGraph(const std::string& key) const;
+  std::string VizGraph(const std::string& graph_key) const;
 
-  std::string ReadableKey(const std::string& key) const;
+  std::string VizGraph(const ir::Graph& graph) const;
+
+  std::string ReadableKey(const std::string& compilation_key) const;
 
   void Clear();
 
-  std::int64_t real_compiled_num() const { return real_compiled_num_; }
+  std::int64_t real_compiled_num() const { return real_compiled_num_.load(); }
 
   ~CinnCompiler() = default;
 
@@ -80,7 +83,8 @@ class CinnCompiler {
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target) const;
+      const ::cinn::common::Target& target, std::int64_t compiled_num,
+      void* stream = nullptr) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,

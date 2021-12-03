@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
 namespace paddle {
 namespace operators {
@@ -1161,11 +1161,12 @@ struct CudaELUFunctor : public BaseActivationFunctor<T> {
     return {{"alpha", &alpha}};
   }
 
-  // elu(x) = max(0, x) + min(0, alpha * (exp(x) - 1))
+  // elu(x) = x, if x > 0
+  // elu(x) = alpha * (e^x - 1), if x <= 0
   __device__ __forceinline__ T operator()(const T& arg_x) const {
     CT x = static_cast<CT>(arg_x);
     CT temp = static_cast<CT>(alpha) * (exp(x) - one);
-    CT res = (x > zero ? x : zero) + (temp > zero ? zero : temp);
+    CT res = x > zero ? x : temp;
     return static_cast<T>(res);
   }
 };
@@ -1174,32 +1175,82 @@ template <typename T>
 struct CudaELUGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
   MPType zero = static_cast<MPType>(0.0f);
-  MPType one = static_cast<MPType>(1.0f);
   float alpha;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
-  // dx = dout, if alpha > 0 and x > 0
-  // dx = dout * alpha * x.exp(), if alpha > 0 and x <= 0
-  // dx = dout * (1 + alpha * x.exp()), if alpha <= 0 and x > 0
-  // dx = 0, if alpha <= 0 and x <=0
+  // case 1: alpha >= 0
+  // dx = dout, if out > 0
+  // dx = dout * (out + alpha), if out <= 0
   __device__ __forceinline__ T operator()(const T& arg_dout,
+                                          const T& arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    MPType a = static_cast<MPType>(alpha);
+    MPType out_pos = static_cast<MPType>(out > zero);
+    MPType out_neg = static_cast<MPType>(out <= zero);
+    return static_cast<T>(dout * (out_pos + out_neg * (out + a)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
+template <typename T>
+struct CudaELUGradNegativeAlphaFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // case 2: alpha < 0
+  // dx = dout, if x > 0
+  // dx = dout * (out + alpha), if x <=0
+  __device__ __forceinline__ T operator()(const T& arg_dout, const T& arg_out,
                                           const T& arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
     MPType x = static_cast<MPType>(arg_x);
     MPType a = static_cast<MPType>(alpha);
-    MPType temp_a_pos = static_cast<MPType>(alpha > 0.0f);
-    MPType temp_a_neg = static_cast<MPType>(alpha <= 0.0f);
-    MPType temp_x_pos = static_cast<MPType>(x > zero);
-    MPType temp_x_neg = static_cast<MPType>(x <= zero);
-    return static_cast<T>(
-        dout * (temp_a_pos * temp_x_pos + temp_a_pos * temp_x_neg * a * exp(x) +
-                temp_a_neg * temp_x_pos * (one + a * exp(x))));
+    MPType x_pos = static_cast<MPType>(x > zero);
+    MPType x_neg = static_cast<MPType>(x <= zero);
+    return static_cast<T>(dout * (x_pos + x_neg * (out + a)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename DeviceContext, typename T>
+class ELUGradCudaKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<framework::Tensor>("Out");
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    d_x->mutable_data<T>(ctx.GetPlace());
+    const float alpha = ctx.Attr<float>("alpha");
+
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    std::vector<const framework::Tensor*> ins = {d_out, out};
+    std::vector<framework::Tensor*> outs = {d_x};
+    if (alpha > 0) {
+      CudaELUGradFunctor<T> functor;
+      functor.alpha = alpha;
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, functor);
+    } else {
+      CudaELUGradNegativeAlphaFunctor<T> functor;
+      functor.alpha = alpha;
+      ins.push_back(x);
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, functor);
+    }
+  }
 };
 
 template <typename T>
@@ -1383,7 +1434,17 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ======================== elu register  ============================ */
-REGISTER_ACTIVATION_CUDA_KERNEL(elu, ELU, CudaELUFunctor, CudaELUGradFunctor);
+REGISTER_OP_CUDA_KERNEL(
+    elu, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                                   ops::CudaELUFunctor<float>>,
+    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                              ops::CudaELUFunctor<double>>,
+    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+                              ops::CudaELUFunctor<plat::float16>>);
+REGISTER_OP_CUDA_KERNEL(
+    elu_grad, ops::ELUGradCudaKernel<plat::CUDADeviceContext, float>,
+    ops::ELUGradCudaKernel<plat::CUDADeviceContext, double>,
+    ops::ELUGradCudaKernel<plat::CUDADeviceContext, plat::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CUDADeviceContext,

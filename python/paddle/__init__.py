@@ -117,6 +117,7 @@ from .tensor.logic import bitwise_or  # noqa: F401
 from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
+from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
@@ -222,6 +223,10 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import rad2deg  # noqa: F401
+from .tensor.math import deg2rad  # noqa: F401
+from .tensor.math import diff  # noqa: F401
+from .tensor.math import angle  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -322,6 +327,7 @@ __all__ = [  # noqa
            'complex128',
            'addmm',
            'allclose',
+           'isclose',
            't',
            'add',
            'subtract',
@@ -395,7 +401,6 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
-           'norm',
            'logical_or',
            'bitwise_and',
            'bitwise_or',
@@ -424,7 +429,6 @@ __all__ = [  # noqa
            'load',
            'numel',
            'median',
-           'inverse',
            'no_grad',
            'set_grad_enabled',
            'mod',
@@ -457,6 +461,8 @@ __all__ = [  # noqa
            'ceil',
            'atan',
            'atan2',
+           'rad2deg',
+           'deg2rad',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -505,7 +511,6 @@ __all__ = [  # noqa
            'expand_as',
            'stack',
            'sqrt',
-           'cholesky',
            'randperm',
            'linspace',
            'reshape',
@@ -532,5 +537,7 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags'
+           'get_flags',
+           'diff',
+           'angle',
 ]

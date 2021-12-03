@@ -53,6 +53,10 @@ void BasicEngine::Init(
                     platform::errors::AlreadyExists(
                         "Accumulators are not empty before preparing it for "
                         "backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators with grad_node as the key are not empty "
+                        "before preparing it for backward network execution."));
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto var = tensors[i];
@@ -73,7 +77,6 @@ void BasicEngine::Init(
       VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
               << " because of retain_graph=False when calling backward";
       var->GradVarBase()->SetGraphIsFreed(true);
-      var->GradVarBase()->ClearGradNode();
     }
 
     if (init_node == nullptr || var->OverridedStopGradient()) {
@@ -108,7 +111,9 @@ void BasicEngine::Init(
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
-    auto& accumulator = accumulators_[init_grad_var];
+    auto& accumulator =
+        accumulators_with_grad_node_[init_grad_var->GetGradNode()]
+                                    [init_grad_var];
     if (!accumulator) {
       if (FLAGS_sort_sum_gradient) {
         accumulator.reset(new SortedGradientAccumulator(init_grad_var));
@@ -116,6 +121,8 @@ void BasicEngine::Init(
         accumulator.reset(new EagerGradientAccumulator(init_grad_var));
       }
     }
+    accumulator->IncreaseRefCnt();
+    accumulator->IncreaseCurCnt();
 
     init_nodes_.push_back(init_node);
   }
@@ -253,10 +260,6 @@ void BasicEngine::PrepareDeps() {
       node_deps_.empty(), true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
                                       "it for backward network execution."));
-  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
-                    platform::errors::AlreadyExists(
-                        "Accumulators with grad_node as the key are not empty "
-                        "before preparing it for backward network execution."));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
@@ -566,6 +569,13 @@ void BasicEngine::Execute() {
         } catch (std::exception& ex) {
           Clear();
           PADDLE_THROW(platform::errors::External("%s", ex.what()));
+        }
+      }
+
+      // Function Post Hook
+      if (cur_op.HasVoidFunctionPostHook()) {
+        for (const auto& hook : cur_op.GetVoidFunctionPostHooks()) {
+          (*hook)();
         }
       }
 

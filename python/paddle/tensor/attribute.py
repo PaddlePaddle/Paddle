@@ -60,7 +60,7 @@ def is_floating_point(x):
     return is_fp_dtype
 
 
-def is_interger(x):
+def is_integer(x):
     dtype = x.dtype
     is_int_dtype = (dtype == core.VarDesc.VarType.UINT8 or
                     dtype == core.VarDesc.VarType.INT8 or

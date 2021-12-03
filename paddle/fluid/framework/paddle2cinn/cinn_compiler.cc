@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 
+#include <cstdint>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -65,7 +66,8 @@ CinnCompiler* CinnCompiler::GetInstance() {
 const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) {
+    const Target& target, void* stream) {
+  VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKey cur_key(graph, input_tensors, target.arch_str());
   bool exist = false;
   {
@@ -73,8 +75,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
     exist = cache_.count(cur_key) != 0;
   }
   if (!exist) {
-    real_compiled_num_++;
-    auto compiled_res = CompileGraph(graph, input_tensors, target);
+    std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
+    auto compiled_res =
+        CompileGraph(graph, input_tensors, target, compiled_num, stream);
     AutoWRLock w_guard{&rwlock_};
     if (!cache_.count(cur_key)) {
       cache_[cur_key] = std::move(compiled_res);
@@ -88,10 +91,9 @@ const CinnCompiledObject& CinnCompiler::Compile(
 const CinnCompiledObject& CinnCompiler::Compile(
     const std::string& compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) {
-  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(compilation_key);
+    const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
-  return Compile(graph, input_tensors, target);
+  return Compile(graph, input_tensors, target, stream);
 }
 
 std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
@@ -120,10 +122,14 @@ const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
   return *graphs_.at(graph_key);
 }
 
-std::string CinnCompiler::VizGraph(const std::string& key) const {
+std::string CinnCompiler::VizGraph(const std::string& graph_key) const {
+  const Graph& graph = FindGraph(graph_key);
+  return VizGraph(graph);
+}
+
+std::string CinnCompiler::VizGraph(const Graph& graph) const {
   Dot dot;
   std::unordered_map<const Node*, std::string> node2dot;
-  const Graph& graph = FindGraph(key);
   int id = 0;
   // Create nodes
   for (const Node* n : graph.Nodes()) {
@@ -133,7 +139,7 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
           node_id,
           {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
            Dot::Attr("color", "#303A3A"), Dot::Attr("fontcolor", "#ffffff")},
-          n->Name());
+          n->Name(), true);
     } else if (n->IsVar()) {
       auto label = n->Name();
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
@@ -149,7 +155,7 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
            Dot::Attr("color", n->Var()->IsParameter() ? "#148b97" : "#dddddd"),
            Dot::Attr("fontcolor",
                      n->Var()->IsParameter() ? "#ffffff" : "#000000")},
-          label);
+          label, true);
     }
     node2dot[n] = node_id;
   }
@@ -164,9 +170,10 @@ std::string CinnCompiler::VizGraph(const std::string& key) const {
   return dot.Build();
 }
 
-std::string CinnCompiler::ReadableKey(const std::string& key) const {
+std::string CinnCompiler::ReadableKey(
+    const std::string& compilation_key) const {
   proto::ProgramDesc desc;
-  desc.ParseFromString(key);
+  desc.ParseFromString(compilation_key);
   return desc.DebugString();
 }
 
@@ -176,30 +183,36 @@ void CinnCompiler::Clear() {
     graphs_.clear();
     cache_.clear();
   }
-  real_compiled_num_ = 0;
+  real_compiled_num_.store(0);
 }
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target) const {
-  CinnGraphSymbolization symbol{real_compiled_num_, graph, target,
-                                input_tensors};
+    const Target& target, std::int64_t compiled_num, void* stream) const {
+  CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
+  auto fetch_ids = symbol.GetFetchIds();
+  ::cinn::frontend::ApplyPass(&frontend_program, fetch_ids, "RemoveIdentity");
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
-  VLOG(4) << "-- The " << real_compiled_num_ << "-th compilation ("
+  VLOG(1) << "-- The " << compiled_num << "-th compilation ("
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
   ApplyPass(cinn_graph.get(), "OpFusion");
   auto scope = BuildScope(target, cinn_graph);
 
+  VLOG(4) << "All fetch var ids in CINN: "
+          << string::join_strings(fetch_ids, ',');
+
   auto graph_compiler =
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  auto compiled_res = graph_compiler->Build(options);
+  options.with_buffer_handle_instruction_inserted = true;
+  auto compiled_res =
+      graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(compiled_res.runtime_program), scope,
