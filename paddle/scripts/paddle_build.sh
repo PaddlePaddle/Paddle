@@ -316,6 +316,10 @@ function check_style() {
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
 
+    # pre-commit use python3.8.0 
+    OLD_PATH=$PATH
+    export PATH=export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
+
     pre-commit install
     clang-format --version
 
@@ -325,6 +329,7 @@ function check_style() {
             commit_files=off
         fi
     done 
+    export PATH=${OLD_PATH}
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
