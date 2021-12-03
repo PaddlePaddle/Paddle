@@ -27,19 +27,15 @@ ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
 }
 
 void ComputeInterceptor::PrepareDeps() {
-  auto& upstream = GetTaskNode()->upstream();
-  auto& downstream = GetTaskNode()->downstream();
+  auto& upstream = node_->upstream();
+  auto& downstream = node_->downstream();
 
-  // TODO(wangxi): get from task node
-  int64_t in_buff_size = std::numeric_limits<int64_t>::max();
-  int64_t out_buff_size = 2;
-
-  for (auto up_id : upstream) {
-    in_readys_.emplace(up_id, std::make_pair(in_buff_size, 0));
-    in_stops_.emplace(up_id, false);
+  for (auto up : upstream) {
+    in_readys_.emplace(up.first, std::make_pair(up.second, 0));
+    in_stops_.emplace(up.first, false);
   }
-  for (auto down_id : downstream) {
-    out_buffs_.emplace(down_id, std::make_pair(out_buff_size, 0));
+  for (auto down : downstream) {
+    out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
   }
 
   // source compute node, should we add a new SourceInterceptor?
@@ -114,8 +110,7 @@ bool ComputeInterceptor::CanWriteOutput() {
 
 // only source node need reset
 bool ComputeInterceptor::ShouldReset() {
-  if (is_source_ && step_ == node_->max_run_times()) return true;
-  return false;
+  return is_source_ && (step_ == node_->max_run_times());
 }
 
 void ComputeInterceptor::SendDataReadyToDownStream() {
