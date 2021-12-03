@@ -62,9 +62,8 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             return False
 
         self.add_ignore_pass_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass error on TRT while shape of mul_x > 5.", )
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The pass error on TRT while shape of mul_x > 5.")
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
