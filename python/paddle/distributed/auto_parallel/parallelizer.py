@@ -178,8 +178,8 @@ class AutoParallelizer:
 
         # serial backward pass
         params_grads = self._generate_backward(
-            completed_main_program, startup_program, loss, parameter_list,
-            no_grad_set, callbacks)
+            completed_main_program, startup_program, loss, self._parameter_list,
+            self._no_grad_set, self._callbacks)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
@@ -212,13 +212,15 @@ class AutoParallelizer:
                     loss,
                     startup_program,
                     parameter_list=None,
-                    no_grad_set=None):
+                    no_grad_set=None,
+                    callbacks=None):
         assert startup_program is not None
         self._loss = loss
         self._startup_program = startup_program
         self._main_program = loss.block.program
         self._parameter_list = parameter_list
         self._no_grad_set = no_grad_set
+        self._callbacks = callbacks
 
         if self._enable_auto_mapping and self._rank_mapping_path is None:
             # Do the mapping pass before parallelization
