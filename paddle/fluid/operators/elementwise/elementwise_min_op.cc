@@ -70,6 +70,23 @@ class ElementwiseMinGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class ElementwiseFMinGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elementwise_fmin_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -102,4 +119,33 @@ REGISTER_OP_VERSION(elementwise_min)
             "Scale_y",
             "In order to support the function of scaling the input Y when "
             "using the operator of elementwise_min.",
+            1.0f));
+
+REGISTER_OPERATOR(elementwise_fmin, ops::ElementwiseOp,
+                  ops::ElementwiseMinOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseFMinGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseFMinGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(elementwise_fmin_grad, ops::ElementwiseOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    elementwise_fmin,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    elementwise_fmin_grad,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_VERSION(elementwise_fmin)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_min for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_fmin.",
             1.0f));

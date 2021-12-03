@@ -113,5 +113,21 @@ struct MinFunctor {
   }
 };
 
+// Fmax
+template <typename T>
+struct FMaxFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+     return std::fmax(a, b);
+ }
+};
+
+// Fmin
+template <typename T>
+struct FMinFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+    return std::fmin(a, b);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
