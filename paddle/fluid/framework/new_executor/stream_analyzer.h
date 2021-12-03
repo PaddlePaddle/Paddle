@@ -34,10 +34,6 @@ class StreamAnalyzer {
 
   platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  bool InAsyncStream(const Instruction& instr, const VariableScope& scope);
-#endif
-
  private:
   std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,
                                          const Instruction& next_instr);

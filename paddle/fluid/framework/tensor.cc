@@ -232,7 +232,8 @@ void* Tensor::mutable_data(const platform::CUDAPlace& place,
 
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
-      holder_->size() < size + offset_ || !(holder_->stream() == stream)) {
+      holder_->size() < size + offset_ ||
+      !(platform::is_gpu_place(place) && holder_->stream() == stream)) {
     holder_.reset();
     holder_ = memory::AllocShared(place, size, stream);
     offset_ = 0;
