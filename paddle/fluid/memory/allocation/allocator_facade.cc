@@ -703,7 +703,8 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      FLAGS_use_system_allocator == false) {
+      FLAGS_use_system_allocator == false &&
+      !platform::CUDAGraph::IsCapturing()) {
     return m_->GetAllocator(BOOST_GET_CONST(platform::CUDAPlace, place),
                             m_->GetDefaultStream());
   }
@@ -720,7 +721,8 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      size > 0 && FLAGS_use_system_allocator == false) {
+      size > 0 && FLAGS_use_system_allocator == false &&
+      !platform::CUDAGraph::IsCapturing()) {
     return Alloc(BOOST_GET_CONST(platform::CUDAPlace, place), size,
                  m_->GetDefaultStream());
   }
@@ -731,7 +733,8 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      FLAGS_use_system_allocator == false) {
+      FLAGS_use_system_allocator == false &&
+      !platform::CUDAGraph::IsCapturing()) {
     return Release(BOOST_GET_CONST(platform::CUDAPlace, place),
                    m_->GetDefaultStream());
   }
