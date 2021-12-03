@@ -30,14 +30,10 @@ static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
   if (std::is_same<T, platform::complex<float>>::value ||
       std::is_same<T, platform::complex<double>>::value) {
-    // The current dlpack library version is v0.2, and does not define
-    // kDLComplex value. But kDLComplex is defined by 5U in v0.4, so we set
-    // dtype.code to 5U directly here. After the dlpack library version being
-    // upgraded to v0.4, it should be written as follow.
-    // dtype.code = kDLComplex;
-    dtype.code = 5U;
+    dtype.code = kDLComplex;
+  } else if (std::is_same<T, platform::bfloat16>::value) {
+    dtype.code = kDLBfloat;
   } else if (std::is_same<T, platform::float16>::value ||
-             std::is_same<T, platform::bfloat16>::value ||
              std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
@@ -77,47 +73,47 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
 #undef REG_DL_DATA_TYPE
 }
 
-struct DLContextVisitor : public boost::static_visitor<::DLContext> {
-  inline ::DLContext operator()(const platform::CPUPlace &place) const {
-    ::DLContext ctx;
-    ctx.device_type = kDLCPU;
-    ctx.device_id = 0;
-    return ctx;
+struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
+  inline ::DLDevice operator()(const platform::CPUPlace &place) const {
+    ::DLDevice device;
+    device.device_type = kDLCPU;
+    device.device_id = 0;
+    return device;
   }
 
-  inline ::DLContext operator()(const platform::XPUPlace &place) const {
+  inline ::DLDevice operator()(const platform::XPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
   }
 
-  inline ::DLContext operator()(const platform::NPUPlace &place) const {
+  inline ::DLDevice operator()(const platform::NPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::NPUPlace is not supported"));
   }
 
-  inline ::DLContext operator()(const platform::NPUPinnedPlace &place) const {
+  inline ::DLDevice operator()(const platform::NPUPinnedPlace &place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "platform::NPUPinnedPlace is not supported"));
   }
 
-  inline ::DLContext operator()(const platform::CUDAPlace &place) const {
+  inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    ::DLContext ctx;
-    ctx.device_type = kDLGPU;
-    ctx.device_id = place.device;
-    return ctx;
+    ::DLDevice device;
+    device.device_type = kDLGPU;
+    device.device_id = place.device;
+    return device;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "platform::CUDAPlace is not supported in CPU only version."));
 #endif
   }
 
-  inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
+  inline ::DLDevice operator()(const platform::CUDAPinnedPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    ::DLContext ctx;
-    ctx.device_type = kDLCPUPinned;
-    ctx.device_id = 0;
-    return ctx;
+    ::DLDevice device;
+    device.device_type = kDLCPUPinned;
+    device.device_id = 0;
+    return device;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "platform::CUDAPinnedPlace is not supported in CPU only version."));
@@ -130,9 +126,9 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // init data, data buffer
   t_.data = const_cast<void *>(tensor.data<void>());
 
-  // init ctx, DLContext type with device_type and device_id
+  // init device, DLDevice type with device_type and device_id
   auto place = tensor.place();
-  t_.ctx = boost::apply_visitor(internal::DLContextVisitor(), place);
+  t_.device = boost::apply_visitor(internal::DLDeviceVisitor(), place);
 
   // init dtype
   t_.dtype = internal::GetDLDataTypeFromTypeIndex(tensor.type());
@@ -156,10 +152,8 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   t_.byte_offset = 0;
 }
 
-::DLManagedTensor *DLPackTensor::ToCudfCompatibleDLManagedTensor() {
-  // init shape, tensor dims
-  // for DLManagedTensor shape need to be compatible with ndim
-  // refer to cupy and cudf, we new int64[ndim]
+::DLManagedTensor *DLPackTensor::ToDLManagedTensor() {
+  // init shape
   auto shape = new int64_t[t_.ndim];
   using DimType = decltype(t_.ndim);  // int
   for (DimType i = 0; i < t_.ndim; ++i) {
@@ -167,19 +161,15 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   }
   t_.shape = shape;
 
-  // init strides, nullptr means the tensor is compact
-  // refer to cupy and cudf, the compact tensor first dim's strides need to be 1
-  // and second dim's strides need to be length of rows of cudf
-  // cudf now only support dim=2
-  PADDLE_ENFORCE_LE(t_.ndim, 2, platform::errors::InvalidArgument(
-                                    "cudf now only supports dimension is 2, "
-                                    "but received dimension is %d.",
-                                    t_.ndim));
-
-  if (t_.ndim > 1)
-    t_.strides = new int64_t[2]{1, t_.shape[1]};
-  else
-    t_.strides = new int64_t[1]{1};
+  // init strides
+  auto strides = new int64_t[t_.ndim];
+  for (DimType i = 0; i < t_.ndim; ++i) {
+    strides[i] = 1;
+  }
+  for (DimType i = t_.ndim - 2; i >= 0; --i) {
+    strides[i] = t_.shape[i + 1] * strides[i + 1];
+  }
+  t_.strides = strides;
 
   auto tensor = new DLManagedTensor;
   tensor->dl_tensor = t_;

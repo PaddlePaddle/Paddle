@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -185,11 +185,6 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
       dilations[2] = dilation[0];
       dilations[3] = dilation[1];
     }
-
-    // LOG(INFO) << "strides = " << framework::make_ddim(strides).to_str();
-    // LOG(INFO) << "dilations = " << framework::make_ddim(dilations).to_str();
-    // LOG(INFO) << "padding = " << framework::make_ddim(padding).to_str();
-    // LOG(INFO) << "data_format = " << data_format;
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());

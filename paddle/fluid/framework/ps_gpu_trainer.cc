@@ -29,9 +29,12 @@ namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
-  dataset_ = dataset;
+  SetDataset(dataset);
   thread_num_ = trainer_desc.thread_num();
   param_ = trainer_desc.downpour_param();
+  ParseDumpConfig(trainer_desc);
+  mpi_rank_ = trainer_desc.mpi_rank();
+  mpi_size_ = trainer_desc.mpi_size();
   for (int i = 0; i < param_.dense_table_size(); ++i) {
     uint64_t table_id = static_cast<uint64_t>(param_.dense_table(i).table_id());
     auto table = param_.dense_table(i);
@@ -44,6 +47,8 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   int place_num = trainer_desc.worker_places_size();
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
+  dump_file_num_ = trainer_desc.dump_file_num();
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   std::vector<int> dev_ids;
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
@@ -64,6 +69,11 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
     workers_[i]->SetDeviceIndex(i);
+    workers_[i]->SetNeedDumpField(need_dump_field_);
+    workers_[i]->SetNeedDumpParam(need_dump_param_);
+    workers_[i]->SetDumpFieldVector(dump_fields_);
+    workers_[i]->SetDumpParamVector(dump_param_);
+    workers_[i]->InitRandomDumpConfig(trainer_desc);
     workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetWorkerNum(place_num);
@@ -71,7 +81,14 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   return;
 }
 
-void PSGPUTrainer::DumpWork(int tid) {}
+std::string PSGPUTrainer::GetDumpPath(int tid) {
+  if (user_define_dump_filename_ != "") {
+    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(), tid);
+  }
+  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
+                               mpi_rank_, tid);
+}
 
 void PSGPUTrainer::RegisterHeterCallback() {
   /*
@@ -124,7 +141,28 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   return;
 }
 
+void PSGPUTrainer::InitDumpEnv() {
+  queue_ = paddle::framework::MakeChannel<std::string>();
+  for (size_t i = 0; i < places_.size(); ++i) {
+    workers_[i]->SetChannelWriter(queue_.get());
+  }
+  dump_thread_num_ = 1;
+  if (dump_file_num_ > mpi_size_) {
+    dump_thread_num_ = dump_file_num_ / mpi_size_;
+    if (dump_file_num_ % mpi_size_ > mpi_rank_) {
+      dump_thread_num_ += 1;
+    }
+  }
+  for (int i = 0; i < dump_thread_num_; i++) {
+    dump_thread_.push_back(
+        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+  }
+}
+
 void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+  if (need_dump_field_ || need_dump_param_) {
+    InitDumpEnv();
+  }
   VLOG(3) << "init other env done.";
 }
 
@@ -204,6 +242,9 @@ void PSGPUTrainer::Finalize() {
     }
   }
   MergeDenseParam();
+  if (need_dump_field_ || need_dump_param_) {
+    FinalizeDumpEnv();
+  }
   root_scope_->DropKids();
 }
 }  // namespace framework

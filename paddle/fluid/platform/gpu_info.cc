@@ -14,15 +14,23 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
 #include <cstdlib>
+#include <mutex>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
+#include "paddle/fluid/platform/cuda_graph.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#endif
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
@@ -38,6 +46,10 @@ DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
+static std::vector<paddle::gpuDeviceProp> g_device_props;
 
 USE_GPU_MEM_STAT;
 namespace paddle {
@@ -297,6 +309,44 @@ std::vector<int> GetSelectedDevices() {
   return devices;
 }
 
+const gpuDeviceProp &GetDeviceProperties(int id) {
+  std::call_once(g_device_props_size_init_flag, [&] {
+    int gpu_num = 0;
+    gpu_num = platform::GetCUDADeviceCount();
+    g_device_props_init_flags.resize(gpu_num);
+    g_device_props.resize(gpu_num);
+    for (int i = 0; i < gpu_num; ++i) {
+      g_device_props_init_flags[i] = std::make_unique<std::once_flag>();
+    }
+  });
+
+  if (id == -1) {
+    id = platform::GetCurrentDeviceId();
+  }
+
+  if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
+    PADDLE_THROW(platform::errors::OutOfRange(
+        "The device id %d is out of range [0, %d), where %d is the number of "
+        "devices on this machine. Because the device id should be greater than "
+        "or equal to zero and smaller than the number of gpus. Please input "
+        "appropriate device again!",
+        id, static_cast<int>(g_device_props.size()),
+        static_cast<int>(g_device_props.size())));
+  }
+
+  std::call_once(*(g_device_props_init_flags[id]), [&] {
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaGetDeviceProperties(&g_device_props[id], id));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipGetDeviceProperties(&g_device_props[id], id));
+#endif
+  });
+
+  return g_device_props[id];
+}
+
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(),
@@ -513,6 +563,7 @@ class RecordedCudaMallocHelper {
 #ifdef PADDLE_WITH_HIP
     auto result = hipMalloc(ptr, size);
 #else
+    CUDAGraphCaptureModeGuard capture_mode_guard;
     auto result = cudaMalloc(ptr, size);
 #endif
     if (result == gpuSuccess) {
@@ -595,6 +646,30 @@ class RecordedCudaMallocHelper {
 
   uint64_t LimitSize() const { return limit_size_; }
 
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+  CUresult MemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                     const CUmemAllocationProp *prop,
+                     unsigned long long flags) {  // NOLINT
+    auto result =
+        paddle::platform::dynload::cuMemCreate(handle, size, prop, flags);
+    if (result == CUDA_SUCCESS) {
+      cur_size_.fetch_add(size);
+    }
+    return result;
+  }
+
+  CUresult MemRelease(CUmemGenericAllocationHandle handle, size_t size) {
+    auto result = paddle::platform::dynload::cuMemRelease(handle);
+    if (result == CUDA_SUCCESS) {
+      cur_size_.fetch_sub(size);
+    }
+    return result;
+  }
+
+#endif
+#endif
+
  private:
   const int dev_id_;
   const uint64_t limit_size_;
@@ -617,6 +692,22 @@ gpuError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id) {
 void RecordedCudaFree(void *p, size_t size, int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->Free(p, size);
 }
+
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+CUresult RecordedCuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                             const CUmemAllocationProp *prop,
+                             unsigned long long flags, int dev_id) {  // NOLINT
+  return RecordedCudaMallocHelper::Instance(dev_id)->MemCreate(handle, size,
+                                                               prop, flags);
+}
+
+CUresult RecordedCuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
+                              int dev_id) {
+  return RecordedCudaMallocHelper::Instance(dev_id)->MemRelease(handle, size);
+}
+#endif
+#endif
 
 bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
                             size_t *actual_total, int dev_id) {

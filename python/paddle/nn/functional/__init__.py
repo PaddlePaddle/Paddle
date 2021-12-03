@@ -15,6 +15,7 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
+from .activation import celu  # noqa: F401
 from .activation import elu  # noqa: F401
 from .activation import elu_  # noqa: F401
 from .activation import gelu  # noqa: F401
@@ -51,6 +52,7 @@ from .common import dropout3d  # noqa: F401
 from .common import alpha_dropout  # noqa: F401
 from .common import label_smooth  # noqa: F401
 from .common import pad  # noqa: F401
+from .common import zeropad2d  # noqa: F401
 from .common import cosine_similarity  # noqa: F401
 from .common import unfold  # noqa: F401
 from .common import interpolate  # noqa: F401
@@ -112,7 +114,10 @@ from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
+from .sparse_attention import sparse_attention
+
 __all__ = [     #noqa
+           'celu',
            'conv1d',
            'conv1d_transpose',
            'conv2d',
@@ -158,6 +163,7 @@ __all__ = [     #noqa
            'label_smooth',
            'linear',
            'pad',
+           'zeropad2d',
            'unfold',
            'interpolate',
            'upsample',
@@ -207,4 +213,5 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+           'sparse_attention',
 ]

@@ -29,14 +29,16 @@ void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
                                        "Tensor holds no memory. "
                                        "Call Tensor::mutable_data firstly."));
+  size_t size = numel() * SizeOfType(type());
+
   PADDLE_ENFORCE_LE(
-      numel() * SizeOfType(type()), memory_size(),
+      size, memory_size(),
       platform::errors::PreconditionNotMet(
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
           "But received  Tensor's dimension is d%, memory's size is %d.",
-          numel() * SizeOfType(type()), memory_size()));
+          size, memory_size()));
 }
 
 Tensor::Tensor(const proto::VarType::Type& dtype)
@@ -202,10 +204,12 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
 }
 
 void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                                 const proto::VarType::Type type) {
-  ResetHolder(holder);
+                                 const proto::VarType::Type& type) {
   type_ = type;
+  ResetHolder(holder);
 }
+
+void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 }  // namespace framework
 }  // namespace paddle

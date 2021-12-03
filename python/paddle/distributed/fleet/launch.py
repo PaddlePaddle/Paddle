@@ -65,6 +65,8 @@ import os
 import time
 import six
 import copy
+import pathlib
+import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
@@ -103,7 +105,12 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="log",
         help="The path for each process's log. Default --log_dir=log/")
-
+    base_group.add_argument(
+        "--backend",
+        type=str,
+        default="auto",
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto. Default value is auto which perfers nccl or bkcl."
+    )
     base_group.add_argument(
         "--nproc_per_node",
         type=int,
@@ -157,6 +164,31 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
+    collective_group.add_argument(
+        "--rank_mapping_file",
+        type=argparse.FileType('r'),
+        default=sys.stdin,
+        help="This rank mapping information in json format is used specifically "
+        "for lazy launch for auto parallel. Some of the ranks in each node "
+        "may not be used, and the indices of rank should be kept the same "
+        "as the indices of sub-task splited by auto parallel. "
+        " { "
+        "   \"ip_ranks\": [ "
+        "     { "
+        "       \"ip\": \"127.0.0.1\", "
+        "       \"ranks\": [0,1] "
+        "     }, "
+        "     { "
+        "       \"ip\": \"127.0.0.2\", "
+        "       \"ranks\": [2,3,4] "
+        "     } "
+        "   ] "
+        " } ")
+    collective_group.add_argument(
+        "--enable_auto_mapping",
+        type=bool,
+        default=False,
+        help="Set true to enable the lazy launch for auto-parallel scenario.")
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
     # for parameter server
@@ -168,18 +200,28 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--heter_workers",
         type=str,
         default="",
-        help="User defined heter workers ip:port")
+        help="User defined heter workers in each stage ip1:port1;ip2:port2")
+    ps_group.add_argument(
+        "--heter_devices",
+        type=str,
+        default="",
+        help="User defined heter devices in each stage cpu;gpu;cpu")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument(
-        "--heter_worker_num", type=int, help="number of heter_workers")
+        "--heter_worker_num",
+        type=str,
+        help="number of heter_workers in each stage 1;2;3")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")
     elastic_group.add_argument(
         "--elastic_server", type=str, help="etcd server host:port")
+    elastic_group.add_argument(
+        "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
+
     elastic_group.add_argument("--job_id", type=str, help="job unique id")
     elastic_group.add_argument("--np", type=int, help="job pod/node number")
     elastic_group.add_argument("--scale", type=int, default=0, help="scale np")
@@ -230,8 +272,21 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
                        devices_per_proc)
 
 
-def launch_collective(args):
+def cpuonly_check(args):
+    if args.ips and len(args.ips.split(',')) > 1:
+        raise RuntimeError(
+            "CPUONLY launch only support single trainer, that is len(ips)=1, but got %s."
+            % args.ips)
+    if args.run_mode:
+        assert args.run_mode == 'cpuonly', "CPUONLY launch only support run mode is CPUONLY"
+    if args.servers:
+        raise RuntimeError("CPUONLY launch can't have --servers as arguments.")
+    return True
+
+
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
+    if args.backend == 'gloo': cpuonly_check(args)
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
@@ -243,28 +298,42 @@ def launch_collective(args):
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-    if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(
-            args.ips, device_mode, devices_per_proc, start_port)
-        logger.debug("get cluster from cloud:{}".format(cluster))
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port)
+    # lazy launch for auto-parallel
+    if args.enable_auto_mapping == True:
+        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
     else:
-        # trainers_num = 1 or not use paddlecloud ips="a,b"
-        cluster, pod = get_cluster_from_args(args, device_mode,
-                                             devices_per_proc)
-        logger.debug("get cluster from args:{}".format(cluster))
+        # for ascend
+        if device_mode == DeviceMode.ASCEND_NPU:
+            cluster, pod = ascend_utils.get_cloud_cluster(
+                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+                device_mode=device_mode,
+                start_port=start_port)
+        elif cloud_utils.use_paddlecloud() and trainers_num != 1:
+            cluster, pod = cloud_utils.get_cloud_cluster(
+                args.ips, device_mode, devices_per_proc, start_port)
+            logger.debug("get cluster from cloud:{}".format(cluster))
+        else:
+            # trainers_num = 1 or not use paddlecloud ips="a,b"
+            cluster, pod = get_cluster_from_args(args, device_mode,
+                                                 devices_per_proc)
+            logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
 
+
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
+    global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -293,8 +362,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):
@@ -304,18 +373,31 @@ def launch_ps(args, distribute_mode):
     if cloud_flag and distribute_mode == DistributeMode.PS:
         direct_start(args)
         return
-    elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
-        cloud_ps_heter_env_set(args)
-        args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
-        args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
+    #elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
+    #    cloud_ps_heter_env_set(args)
+    #    args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+    #    args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
+    #    args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
 
     ps_launcher = ParameterServerLauncher(args, distribute_mode)
     ps_launcher.start_ps()
     return
 
 
+def infer_backend(args):
+    if args.backend != "auto": return
+    if fluid.core.is_compiled_with_cuda():
+        args.backend = 'nccl'
+    elif fluid.core.is_compiled_with_npu():
+        args.backend = 'unknown'
+    elif fluid.core.is_compiled_with_xpu():
+        args.backend = 'bkcl'
+    else:
+        args.backend = 'gloo'
+
+
 def which_distributed_mode(args):
+    infer_backend(args)  # modify the args.backend
     if args.run_mode is not None:
         assert args.run_mode in ["collective", "ps", "ps-heter"]
 
@@ -328,11 +410,11 @@ def which_distributed_mode(args):
 
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_workers', '--http_port'
+        '--workers', '--heter_workers', '--heter_devices', '--http_port'
     ]
     collective_args = ['--ips']
 
-    ps_heter_args = ["--heter_worker_num", "--heter_workers"]
+    ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
 
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
@@ -372,10 +454,13 @@ def which_distributed_mode(args):
     else:
         if not fluid.core.is_compiled_with_cuda(
         ) and not fluid.core.is_compiled_with_xpu():
-            logger.warning(
-                "Not found distinct arguments and not compiled with cuda or xpu. Default use ps mode"
-            )
-            return DistributeMode.PS
+            if args.servers:
+                logger.warning(
+                    "Not found distinct arguments and not compiled with cuda or xpu. \
+But found args.servers not empty, default use ps mode")
+                return DistributeMode.PS
+            else:
+                return DistributeMode.COLLECTIVE
         else:
             logger.warning(
                 "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
@@ -426,13 +511,15 @@ def launch():
 
         - ``--workers``: User defined workers ip:port, e.g., ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
 
-        - ``--heter_workers``: User defined heter workers ip:port, e.g., ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
+        - ``--heter_workers``: User defined heter workers ip1:port1;ip2:port2, e.g., ``--heter_workers="192.168.0.16:6172;192.168.0.17:6172"``
 
         - ``--worker_num``: Number of workers (It recommend to set when in the emulated distributed environment using single node)
 
         - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
-        - ``--heter_worker_num``: Number of heter_workers (It recommend to set when in the emulated distributed environment using single node)
+        - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
+        
+        - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--http_port``: Gloo http Port
 
@@ -556,7 +643,21 @@ def launch():
     logger = get_logger()
     _print_arguments(args)
 
-    distribute_mode = which_distributed_mode(args)
+    if args.backend == 'auto':
+        distribute_mode = which_distributed_mode(
+            args)  # which_distributed_mode must modify args.backend
+    else:
+        assert args.run_mode == 'collective' or args.run_mode == None, "When backend is not 'auto', run mode must be collective"
+        check_backend(args.backend)
+        distribute_mode = DistributeMode.COLLECTIVE
+
+    assert args.backend in ['gloo', 'nccl', 'bkcl', 'unknown']
+
+    if args.backend == 'gloo':
+        logger.warning("launch start with CPUONLY mode")
+
+    block_windows_and_macos(
+        args.backend)  # raise error when using gloo on windows or macos
 
     if enable_elastic(args, distribute_mode):
         launch_elastic(args, distribute_mode)

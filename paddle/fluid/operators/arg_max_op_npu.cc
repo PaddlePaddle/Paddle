@@ -13,34 +13,53 @@ See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
 #include "paddle/fluid/operators/arg_min_max_op_base.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
-template <typename DeviceContext, typename T>
+using Tensor = framework::Tensor;
+using NPUDeviceContext = platform::NPUDeviceContext;
+
+template <typename T>
+struct VisitDataArgNPUMaxFunctor {
+  const framework::ExecutionContext& ctx;
+
+  explicit VisitDataArgNPUMaxFunctor(const framework::ExecutionContext& ctx)
+      : ctx(ctx) {}
+  template <typename Tout>
+  void apply() const {
+    auto& x = *(ctx.Input<framework::Tensor>("X"));
+    auto& out = *(ctx.Output<framework::Tensor>("Out"));
+    out.template mutable_data<Tout>(ctx.GetPlace());
+    auto axis = ctx.Attr<int64_t>("axis");
+    auto dtype = ctx.Attr<int>("dtype");
+
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+    NpuOpRunner runner;
+    runner.SetType("ArgMaxV2")
+        .AddInput(x)
+        .AddInput(std::vector<int64_t>{axis})
+        .AddOutput(out)
+        .AddAttrDataType("dtype", dtype)
+        .Run(stream);
+  }
+};
+
+template <typename T>
 class ArgMaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    int64_t axis = ctx.Attr<int64_t>("axis");
-    auto dtype = ctx.Attr<int>("dtype");
-
-    auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<int32_t>(ctx.GetPlace());
-
-    NpuOpRunner runner;
-    runner.SetType("ArgMaxV2")
-        .AddInput(*x)
-        .AddInput(std::vector<int64_t>{axis})
-        .AddOutput(*out)
-        .AddAttr("dtype", dtype);
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+    auto& dtype = ctx.Attr<int>("dtype");
+    if (dtype < 0) {
+      framework::VisitDataTypeTiny(static_cast<framework::proto::VarType::Type>(
+                                       framework::proto::VarType::INT64),
+                                   VisitDataArgNPUMaxFunctor<T>(ctx));
+      return;
+    }
+    framework::VisitDataTypeTiny(
+        static_cast<framework::proto::VarType::Type>(dtype),
+        VisitDataArgNPUMaxFunctor<T>(ctx));
   }
 };
 
@@ -48,7 +67,5 @@ class ArgMaxNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(
-    arg_max, ops::ArgMaxNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ArgMaxNPUKernel<paddle::platform::NPUDeviceContext,
-                         paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(arg_max, ops::ArgMaxNPUKernel<float>,
+                       ops::ArgMaxNPUKernel<paddle::platform::float16>);

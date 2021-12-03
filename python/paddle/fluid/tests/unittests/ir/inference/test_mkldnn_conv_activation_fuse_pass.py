@@ -102,5 +102,14 @@ class ConvActivationMkldnnFusePassTest_5(ConvActivationMkldnnFusePassTest):
         self.pass_name = 'conv_hard_swish_mkldnn_fuse_pass'
 
 
+class ConvHardSigmoidOneDNNFusePassTest(ConvActivationMkldnnFusePassTest):
+    def set_params(self):
+        self.conv_num_filters = 5
+        self.conv_filter_size = 5
+        self.conv_bias_attr = True
+        self.act = "hard_sigmoid"
+        self.pass_name = 'conv_hard_sigmoid_mkldnn_fuse_pass'
+
+
 if __name__ == "__main__":
     unittest.main()

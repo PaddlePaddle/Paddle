@@ -142,10 +142,15 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
 
 static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
+                               const BlockDesc &global_block,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
+    // NOTE: In case of setting out_tmp.stop_gradient = True in model code, all
+    // parameters before generating out_tmp have no @GRAD, it will raise error
+    // because we can't findthem in scope. So we skip sharing these vars or
+    // var@GRAD if they don't appear in global block.
     if (var_names[i] == framework::kEmptyVarName ||
-        var_names[i] == "Fake_var") {
+        var_names[i] == "Fake_var" || !global_block.HasVar(var_names[i])) {
       VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
@@ -214,8 +219,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
+    auto *global_block = ctx.Attr<BlockDesc *>("global_block");
+
     if (end_op_index > start_op_index) {
-      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto *program = global_block->Program();
       auto cache_info = framework::GetExecutorInfoFromCache(
           *program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope);
@@ -240,8 +247,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     // Step 4. Get Output
-    details::ShareVarsFromScope(output_vars, output_var_names, &scope);
-    details::ShareVarsFromScope(dout_vars, dout_var_names, &scope);
+    details::ShareVarsFromScope(output_vars, output_var_names, *global_block,
+                                &scope);
+    details::ShareVarsFromScope(dout_vars, dout_var_names, *global_block,
+                                &scope);
 
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
@@ -307,10 +316,11 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                           "least one sub scope."));
 
     auto &scope = *(global_inner_scope->kids().front());
+    auto *global_block = ctx.Attr<BlockDesc *>("global_block");
 
     if (end_op_index > start_op_index) {
       // Step 2. prepare executor and scope
-      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto *program = global_block->Program();
       auto cache_info = framework::GetExecutorInfoFromCache(
           *program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ true, program_id, &scope);
@@ -341,8 +351,10 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     }
 
     // Step 4. get outputs
-    details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
-    details::ShareVarsFromScope(param_grad_vars, param_grad_names, &scope);
+    details::ShareVarsFromScope(input_grad_vars, input_grad_var_names,
+                                *global_block, &scope);
+    details::ShareVarsFromScope(param_grad_vars, param_grad_names,
+                                *global_block, &scope);
 
     // Step5. drop current scope
     global_inner_scope->DeleteScope(&scope);

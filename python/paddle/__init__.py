@@ -64,7 +64,6 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 
-from .tensor import fft
 from .tensor.random import bernoulli  # noqa: F401
 
 from .tensor.attribute import rank  # noqa: F401
@@ -94,19 +93,15 @@ from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
-from .tensor.linalg import cond  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
+from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
-from .tensor.linalg import det  # noqa: F401
-from .tensor.linalg import slogdet  # noqa: F401
-from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
-from .tensor.linalg import solve  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
+from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
 from .tensor.logic import is_empty  # noqa: F401
@@ -122,6 +117,7 @@ from .tensor.logic import bitwise_or  # noqa: F401
 from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
+from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
@@ -158,6 +154,7 @@ from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
+from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -226,6 +223,10 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import rad2deg  # noqa: F401
+from .tensor.math import deg2rad  # noqa: F401
+from .tensor.math import diff  # noqa: F401
+from .tensor.math import angle  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -234,6 +235,7 @@ from .tensor.random import uniform  # noqa: F401
 from .tensor.random import randn  # noqa: F401
 from .tensor.random import rand  # noqa: F401
 from .tensor.random import randint  # noqa: F401
+from .tensor.random import randint_like  # noqa: F401
 from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
@@ -300,6 +302,8 @@ from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
+from . import fft  # noqa: F401
+from . import signal  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -323,6 +327,7 @@ __all__ = [  # noqa
            'complex128',
            'addmm',
            'allclose',
+           'isclose',
            't',
            'add',
            'subtract',
@@ -378,6 +383,7 @@ __all__ = [  # noqa
            'ParamAttr',
            'stanh',
            'randint',
+           'randint_like',
            'assign',
            'gather',
            'scale',
@@ -395,7 +401,6 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
-           'norm',
            'logical_or',
            'bitwise_and',
            'bitwise_or',
@@ -403,6 +408,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
+           'bincount',
            'histogram',
            'multiplex',
            'CUDAPlace',
@@ -423,7 +429,6 @@ __all__ = [  # noqa
            'load',
            'numel',
            'median',
-           'inverse',
            'no_grad',
            'set_grad_enabled',
            'mod',
@@ -456,6 +461,8 @@ __all__ = [  # noqa
            'ceil',
            'atan',
            'atan2',
+           'rad2deg',
+           'deg2rad',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -476,6 +483,7 @@ __all__ = [  # noqa
            'bmm',
            'chunk',
            'tolist',
+           'tensordot',
            'greater_than',
            'shard_index',
            'argsort',
@@ -503,8 +511,6 @@ __all__ = [  # noqa
            'expand_as',
            'stack',
            'sqrt',
-           'cholesky',
-           'matrix_power',
            'randperm',
            'linspace',
            'reshape',
@@ -531,5 +537,7 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags'
+           'get_flags',
+           'diff',
+           'angle',
 ]

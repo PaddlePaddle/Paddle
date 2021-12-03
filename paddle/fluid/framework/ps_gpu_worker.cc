@@ -34,11 +34,6 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
-  /*
-  for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
-    send_var_list_.push_back(trainer_desc_.xpu_recv_list(i));
-  }
-  */
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -89,19 +84,7 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
-  }
   for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
     check_nan_var_names_.push_back(desc.check_nan_var_names(i));
   }
@@ -134,12 +117,6 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
-void PSGPUWorker::SetNeedDump(bool need_dump_field) {
-  need_dump_field_ = need_dump_field;
-}
-
-void PSGPUWorker::DumpParam() {}
-
 void PSGPUWorker::TrainFiles() {
   platform::SetNumThreads(1);
   platform::Timer timeline;
@@ -150,6 +127,7 @@ void PSGPUWorker::TrainFiles() {
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
+  int batch_cnt = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     for (auto& op : ops_) {
@@ -164,9 +142,19 @@ void PSGPUWorker::TrainFiles() {
         op->Run(*thread_scope_, place_);
       }
     }
+    if (need_dump_field_) {
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
+    }
 
     PrintFetchVars();
     thread_scope_->DropKids();
+    ++batch_cnt;
+  }
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
   }
   timeline.Pause();
   VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "

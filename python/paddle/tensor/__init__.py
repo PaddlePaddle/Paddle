@@ -44,11 +44,15 @@ from .linalg import cross  # noqa: F401
 from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
+from .linalg import bincount  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
+from .linalg import qr  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
+from .linalg import eigvalsh  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
@@ -68,6 +72,7 @@ from .logic import bitwise_xor  # noqa: F401
 from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
+from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
 from .manipulation import cast  # noqa: F401
@@ -104,6 +109,7 @@ from .manipulation import flip  # noqa: F401
 from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
+from .manipulation import tensordot  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -183,6 +189,10 @@ from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
+from .math import rad2deg  # noqa: F401
+from .math import deg2rad  # noqa: F401
+from .math import diff  # noqa: F401
+from .math import angle  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -192,6 +202,7 @@ from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
+from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
@@ -217,8 +228,6 @@ from .array import array_write  # noqa: F401
 from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
-from . import fft
-from . import signal
 
 #this list used in math_op_patch.py for _binary_creator_
 tensor_method_func  = [ #noqa
@@ -233,9 +242,12 @@ tensor_method_func  = [ #noqa
            'cholesky',
            'bmm',
            'histogram',
+           'bincount',
            'mv',
            'matrix_power',
+           'qr',
            'eigvals',
+           'eigvalsh',
            'abs',
            'acos',
            'all',
@@ -324,6 +336,7 @@ tensor_method_func  = [ #noqa
            'logical_xor',
            'not_equal',
            'allclose',
+           'isclose',
            'is_tensor',
            'cast',
            'concat',
@@ -345,6 +358,7 @@ tensor_method_func  = [ #noqa
            'slice',
            'split',
            'chunk',
+           'tensordot',
            'squeeze',
            'squeeze_',
            'stack',
@@ -386,9 +400,13 @@ tensor_method_func  = [ #noqa
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'eig',
            'uniform_',
            'multi_dot',
            'solve',
+           'triangular_solve',
+           'diff',
+           'angle',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

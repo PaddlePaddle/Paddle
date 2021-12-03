@@ -91,7 +91,7 @@ DeviceType Place2DeviceType(const platform::Place& place) {
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
-  VLOG(4) << "DeviceContextPool Get: " << place;
+  VLOG(6) << "DeviceContextPool Get: " << place;
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -222,8 +222,12 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
 
   context_ = xpu::create_context();
   const int MAX_XPU_NUM = 16;
-  const int l3_size = 13.5 * 1024 * 1024;
   static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
+
+  int l3_size = 13.5 * 1024 * 1024;
+  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
+    l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
+  }
 
   auto selected_xpus = GetXPUSelectedDevices();
   for (unsigned int i = 0; i < selected_xpus.size(); i++) {
@@ -270,7 +274,7 @@ NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
   // NOTE(zhiqiu): Usually, no need to create context explicitly,
   // ACL creates a default context which contains 1 default stream
   // and 1 sync strean after aclrtSetDevice.
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  platform::GetCurrentNPUContext(&context_);
   stream_.reset(new stream::NPUStream(place));
 }
 
@@ -585,7 +589,7 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 MKLDNNDeviceContextThreadLocals::Body::Body()
-    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
+    : cur_engine(dnnl::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
@@ -643,11 +647,11 @@ void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
   }
 }
 
-const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
+const dnnl::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
   return cur_engine;
 }
 
-mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 

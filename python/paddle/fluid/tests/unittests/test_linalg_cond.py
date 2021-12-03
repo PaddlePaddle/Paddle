@@ -28,20 +28,22 @@ def test_static_assert_true(self, x_list, p_list):
         for x in x_list:
             with static.program_guard(static.Program(), static.Program()):
                 input_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                output = paddle.cond(input_data, p)
+                output = paddle.linalg.cond(input_data, p)
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
-                self.assertTrue(np.allclose(result, expected_output))
+                np.testing.assert_allclose(
+                    result[0], expected_output, rtol=5e-5)
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
     for p in p_list:
         for x in x_list:
             input_tensor = paddle.to_tensor(x)
-            output = paddle.cond(input_tensor, p)
+            output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
-            self.assertTrue(np.allclose(output, expected_output))
+            np.testing.assert_allclose(
+                output.numpy(), expected_output, rtol=5e-5)
 
 
 def gen_input():
@@ -103,12 +105,12 @@ class TestCondAPIError(unittest.TestCase):
         for p in p_list_error:
             for x in (x_list_n_n + x_list_m_n):
                 x_tensor = paddle.to_tensor(x)
-                self.assertRaises(ValueError, paddle.cond, x_tensor, p)
+                self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
         for p in p_list_n_n:
             for x in x_list_m_n:
                 x_tensor = paddle.to_tensor(x)
-                self.assertRaises(ValueError, paddle.cond, x_tensor, p)
+                self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
     def test_static_api_error(self):
         paddle.enable_static()
@@ -119,13 +121,13 @@ class TestCondAPIError(unittest.TestCase):
             for x in (x_list_n_n + x_list_m_n):
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
         for p in p_list_n_n:
             for x in x_list_m_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
     # it's not supported when input is an empty tensor in static mode
     def test_static_empty_input_error(self):
@@ -136,13 +138,13 @@ class TestCondAPIError(unittest.TestCase):
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
         for p in (p_list_n_n + p_list_m_n):
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
 
 class TestCondEmptyTensorInput(unittest.TestCase):
@@ -156,5 +158,4 @@ class TestCondEmptyTensorInput(unittest.TestCase):
 
 if __name__ == "__main__":
     paddle.enable_static()
-    # paddle.device.set_device("cpu")
     unittest.main()
