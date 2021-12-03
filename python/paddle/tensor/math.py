@@ -2630,6 +2630,20 @@ def logit(x, eps=1e-8, name=None):
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.logit(x, 'eps', eps)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
+    helper = LayerHelper("logit", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='logit',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'eps': eps})
+    return out
 
 def rad2deg(x, name=None):
     """
@@ -2714,20 +2728,6 @@ def deg2rad(x, name=None):
             x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
             out1 = paddle.logit(x)
             # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.logit(x, 'eps', eps)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
-    helper = LayerHelper("logit", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='logit',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'eps': eps})
-    return out
 
 
             import numpy as np
