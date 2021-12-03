@@ -20,13 +20,9 @@ if (WITH_GPU)
     nv_test(stream_safe_cuda_alloc_test
             SRCS stream_safe_cuda_alloc_test.cu
             DEPS malloc)
-    
-    if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
-        set_tests_properties(stream_safe_cuda_alloc_test PROPERTIES 
-                             ENVIRONMENT "FLAGS_use_system_allocator=false"
-                             ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true"
-                             ENVIRONMENT "FLAGS_allocator_strategy=auto_growth")   
-    endif()
+    set_tests_properties(stream_safe_cuda_alloc_test PROPERTIES 
+                         ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true;
+                                      FLAGS_allocator_strategy=auto_growth")  
 endif()
 
 if (WITH_ROCM)
