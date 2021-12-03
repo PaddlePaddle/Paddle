@@ -226,6 +226,7 @@ from .tensor.math import lgamma  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
 from .tensor.math import gcd  # noqa: F401
+from .tensor.math import lcm  # noqa: F401
 from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
 
@@ -464,6 +465,8 @@ __all__ = [  # noqa
            'atan2',
            'rad2deg',
            'deg2rad',
+           'gcd',
+           'lcm',
            'expand',
            'broadcast_to',
            'ones_like',
