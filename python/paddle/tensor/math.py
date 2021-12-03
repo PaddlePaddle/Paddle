@@ -2646,18 +2646,31 @@ def lerp(x, y, weight, name=None):
     if in_dygraph_mode():
         check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
-            weight = paddle.to_tensor(weight, dtype=x.dtype, place=paddle.CPUPlace())
+            weight = paddle.to_tensor(weight, dtype=x.dtype)
         return _C_ops.lerp(x, y, weight)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
-    check_variable_and_dtype(weight, 'Weight', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'], 'lerp')
 
     helper = LayerHelper('lerp', **locals())
     inputs = {'X': x, 'Y': y, 'Weight': weight}
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
     return out
+
+@inplace_apis_in_dygraph_only
+def lerp_(x, y, weight, name=None):
+    r"""
+    Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_lerp`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if isinstance(weight, (paddle.Tensor, Variable)):
+        out_shape = broadcast_shape(out_shape, weight.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    return lerp(x, y, weight, name)
 
 def rad2deg(x, name=None):
     """

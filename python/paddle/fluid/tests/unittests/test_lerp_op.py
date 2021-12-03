@@ -81,8 +81,8 @@ class TestLerpAPI(unittest.TestCase):
         self.init_dtype()
         self.x = np.arange(1., 5.).astype(self.dtype)
         self.y = np.full(4, 10.).astype(self.dtype)
-        self.w = np.asarray([0.5]).astype(self.dtype)
-        self.res_ref = self.x + 0.5 * (self.y - self.x)
+        self.w = np.asarray([0.75]).astype(self.dtype)
+        self.res_ref = self.x + self.w * (self.y - self.x)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -113,8 +113,20 @@ class TestLerpAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
-            w = paddle.to_tensor(np.full(4, 0.5).astype(self.dtype))
+            w = paddle.to_tensor(np.full(4, 0.75).astype(self.dtype))
             out = paddle.lerp(x, y, w)
+            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_inplace_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            y = paddle.to_tensor(self.y)
+            out = x.lerp_(y, 0.75)
             self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
             paddle.enable_static()
 
@@ -132,9 +144,9 @@ class TestLerpAPI(unittest.TestCase):
 
     def test_x_y_broadcast_w(self):
         paddle.disable_static()
-        x = np.arange(1., 11.).astype(self.dtype).reshape([2, 5])
-        y = np.full(20, 10.).astype(self.dtype).reshape([2, 2, 5])
-        w = np.full(40, 0.5).astype(self.dtype).reshape([2, 2, 2, 5])
+        x = np.arange(11., 21.).astype(self.dtype).reshape([2, 5])
+        y = np.full(20, 7.5).astype(self.dtype).reshape([2, 2, 5])
+        w = np.full(40, 0.225).astype(self.dtype).reshape([2, 2, 2, 5])
         out = paddle.lerp(
             paddle.to_tensor(x), paddle.to_tensor(y), paddle.to_tensor(w))
         res_ref = x + w * (y - x)

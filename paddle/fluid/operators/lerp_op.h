@@ -16,14 +16,17 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
+#ifdef _WIN32
 #ifndef NOMINMAX
-#define NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #endif
 
 namespace paddle {
 namespace operators {
 
-static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
+static framework::DDim ExtendDims2Rank(const framework::DDim& in_dims,
+                                       int rank) {
   if (in_dims.size() == rank) {
     return in_dims;
   }
@@ -35,7 +38,7 @@ static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
 }
 
 template <size_t D>
-static void GetBraodcastDims(const framework::DDim& in_dims,
+static void GetBroadcastDims(const framework::DDim& in_dims,
                              const framework::DDim& out_dims,
                              Eigen::DSizes<int, D>* bcast_dims) {
   for (size_t i = 0; i < D; ++i) {
@@ -56,15 +59,15 @@ static void LerpFunction(const framework::ExecutionContext& ctx) {
   out->mutable_data<T>(ctx.GetPlace());
 
   auto out_dims = out->dims();
-  auto x_dims = GetNewDims(x->dims(), D);
-  auto y_dims = GetNewDims(y->dims(), D);
-  auto w_dims = GetNewDims(w->dims(), D);
+  auto x_dims = ExtendDims2Rank(x->dims(), D);
+  auto y_dims = ExtendDims2Rank(y->dims(), D);
+  auto w_dims = ExtendDims2Rank(w->dims(), D);
   Eigen::DSizes<int, D> x_bcast_dims;
   Eigen::DSizes<int, D> y_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  GetBraodcastDims<D>(x_dims, out_dims, &x_bcast_dims);
-  GetBraodcastDims<D>(y_dims, out_dims, &y_bcast_dims);
-  GetBraodcastDims<D>(w_dims, out_dims, &w_bcast_dims);
+  GetBroadcastDims<D>(x_dims, out_dims, &x_bcast_dims);
+  GetBroadcastDims<D>(y_dims, out_dims, &y_bcast_dims);
+  GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
 
   auto eigen_x = framework::EigenTensor<T, D>::From(*x, x_dims);
   auto eigen_y = framework::EigenTensor<T, D>::From(*y, y_dims);
@@ -86,15 +89,15 @@ static void LerpGradFunction(const framework::ExecutionContext& ctx) {
   auto dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
   auto dout_dims = dout->dims();
-  auto dx_dims = GetNewDims(dx->dims(), D);
-  auto dy_dims = GetNewDims(dy->dims(), D);
-  auto w_dims = GetNewDims(w->dims(), D);
+  auto dx_dims = ExtendDims2Rank(dx->dims(), D);
+  auto dy_dims = ExtendDims2Rank(dy->dims(), D);
+  auto w_dims = ExtendDims2Rank(w->dims(), D);
   Eigen::DSizes<int, D> dx_bcast_dims;
   Eigen::DSizes<int, D> dy_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  GetBraodcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
-  GetBraodcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
-  GetBraodcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
+  GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
+  GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
+  GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
 
   auto eigen_w = framework::EigenTensor<T, D>::From(*w, w_dims);
   auto eigen_dout = framework::EigenTensor<T, D>::From(*dout);
