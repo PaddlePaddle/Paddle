@@ -61,7 +61,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
                     return True
             return False
 
-        self.add_ignore_pass_case(
+        self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The pass error on TRT while shape of mul_x > 5.")
 
