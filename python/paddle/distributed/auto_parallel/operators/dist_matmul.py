@@ -18,6 +18,7 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
+from .common import set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -220,7 +221,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 stop_gradient=Out_grad.stop_gradient)
 
             # copy X_var's dist_attr to intermediate_var_0's dist_attr
-            copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_grad)
+            out_grad_dist_attr = dist_attr.get_input_dist_attr(Out_grad.name)
+            assert out_grad_dist_attr is not None
+            ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                                 out_grad_dist_attr)
 
             group_ranks = _get_comm_group(
                 process_mesh_group, process_mesh_shape, parallel_axis, rank_id)
@@ -240,8 +244,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                      'linear')
             check_dtype(intermediate_var_0.dtype, 'dtype',
                         ['float16', 'float32', 'float64'], 'linear')
-            copy_distributed_attr_for_dist_op(ctx, c_identity_op, main_block,
-                                              dist_attr)
+            set_comm_op_dist_attr_for_program(
+                c_identity_op, dist_attr.process_mesh, out_grad_dist_attr, ctx)
 
             new_kwargs = copy.deepcopy(kwargs)
             new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
@@ -267,7 +271,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                     persistable=False,
                     stop_gradient=X_grad.stop_gradient)
 
-                copy_distributed_attr_for_var(ctx, intermediate_var_0, X_grad)
+                X_grad_dist_attr = dist_attr.get_output_dist_attr(X_grad.name)
+                assert X_grad_dist_attr is not None
+                ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                                     X_grad_dist_attr)
                 new_kwargs['X@GRAD'] = [intermediate_var_0.name]
 
             matmul_op_desc = copy_op_with_new_input_output(
@@ -289,8 +296,9 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                         'use_model_parallel': True,
                         OP_ROLE_KEY: OpRole.Backward
                     })
-                copy_distributed_attr_for_dist_op(ctx, c_allreduce_sum_op,
-                                                  main_block, dist_attr)
+                set_comm_op_dist_attr_for_program(c_allreduce_sum_op,
+                                                  dist_attr.process_mesh,
+                                                  X_grad_dist_attr, ctx)
     else:
         # replicate
         matmul_op_desc = copy_op_with_new_input_output(main_block, backward_op,

@@ -16,7 +16,7 @@ from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -383,7 +383,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             stop_gradient=Out_grad.stop_gradient)
 
         # copy X_var's dist_attr to intermediate_var_0's dist_attr
-        copy_distributed_attr_for_var(ctx, intermediate_var_0, Out_grad)
+        out_grad_dist_attr = dist_attr.get_input_dist_attr(Out_grad.name)
+        assert out_grad_dist_attr is not None
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                             out_grad_dist_attr)
 
         group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
                                       embedding_row_dim_mapping, rank_id)
@@ -403,8 +406,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                  ['float16', 'float32', 'float64'], 'linear')
         check_dtype(intermediate_var_0.dtype, 'dtype',
                     ['float16', 'float32', 'float64'], 'linear')
-        copy_distributed_attr_for_dist_op(ctx, c_identity_op, main_block,
-                                          dist_attr)
+
+        set_comm_op_dist_attr_for_program(c_identity_op, dist_attr.process_mesh,
+                                          out_grad_dist_attr, ctx)
 
         main_block._sync_with_cpp()
         c_embedding_grad_op_desc = main_block.desc.append_op()
@@ -420,8 +424,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         c_embedding_grad_op = main_block.ops[-1]
         assert c_embedding_grad_op.type == "c_embedding_grad"
-        copy_distributed_attr_for_dist_op(ctx, c_embedding_grad_op, main_block,
-                                          dist_attr)
+        naive_copy_op_dist_attr_for_program(c_embedding_grad_op, backward_op,
+                                            ctx)
 
         # check if need gradient allreduce
         need_gradient_allreduce = False

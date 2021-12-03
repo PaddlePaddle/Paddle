@@ -174,18 +174,19 @@ class AutoParallelizer:
             self._dist_context = copy.deepcopy(dist_context)
 
         # serial forward pass
-        self._apply_serial_forward_pass(completed_main_program, startup_program)
+        self._apply_serial_forward_pass(completed_main_program,
+                                        self._startup_program)
 
         # serial backward pass
         params_grads = self._generate_backward(
-            completed_main_program, startup_program, loss, self._parameter_list,
-            self._no_grad_set, self._callbacks)
+            completed_main_program, self._startup_program, self._loss,
+            self._parameter_list, self._no_grad_set, self._callbacks)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
-            completed_main_program, startup_program, params_grads)
+            completed_main_program, self._startup_program, params_grads)
 
         # TODO refactor the placement of optimizer
         # generate optimize program
