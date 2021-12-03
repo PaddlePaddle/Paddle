@@ -130,7 +130,7 @@ class MultiStreamModelTestCase(unittest.TestCase):
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])
 
-        res = self.run_new_executor_sequential()
+        res_sequential = self.run_new_executor_sequential()
         for gt, out in zip(ground_truths, res_sequential):
             self.assertEqual(gt[0], out[0])
 
