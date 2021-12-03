@@ -94,7 +94,7 @@ class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Logit Operator. 
 
-input the predit_prob, output the logits
+this function is defined as follow:
 $ logit=ln\left ( {\frac {x} {1-x}} \right ) $
 
 )DOC");
