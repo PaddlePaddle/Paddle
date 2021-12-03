@@ -45,6 +45,8 @@ __all__ = [
     'Program',
     'default_startup_program',
     'default_main_program',
+    'eager_guard',
+    'in_eager_mode',
     'program_guard',
     'name_scope',
     'cuda_places',
@@ -75,6 +77,21 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _global_flags_ = core.globals()
+_eager_mode_ = False
+
+
+@signature_safe_contextmanager
+def eager_guard():
+    global _eager_mode_
+    _eager_mode_ = True
+    try:
+        yield
+    finally:
+        _eager_mode_ = False
+
+
+def in_eager_mode():
+    return _eager_mode_
 
 
 def require_version(min_version, max_version=None):
@@ -340,7 +357,10 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
-    _set_dygraph_tracer_expected_place(place)
+    if in_eager_mode():
+        return core.eager._set_expected_place(place)
+    else:
+        _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
