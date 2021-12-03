@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace platform {

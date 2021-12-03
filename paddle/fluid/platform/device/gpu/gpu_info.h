@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,49 +11,42 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
-
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// Note: this header for simplify HIP and CUDA type string
+
 #include <stddef.h>
 #include <string>
 #include <vector>
-#include "paddle/fluid/platform/type_defs.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 
 namespace paddle {
 namespace platform {
-//! Get the version of cudnn
-int CudnnVersion();
+//! Get the version of dnn
+int DnnVersion();
 
 //! Get the total number of GPU devices in system.
-int GetCUDADeviceCount();
+int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
-int GetCUDAComputeCapability(int i);
+int GetGPUComputeCapability(int id);
 
 //! Get the runtime version of the ith GPU
-int GetCUDARuntimeVersion(int id);
+int GetGPURuntimeVersion(int id);
 
 //! Get the driver version of the ith GPU
-int GetCUDADriverVersion(int id);
+int GetGPUDriverVersion(int id);
 
 //! Wheter the current device support TensorCore
 bool TensorCoreAvailable();
 
 //! Get the MultiProcessors of the ith GPU.
-int GetCUDAMultiProcessors(int i);
+int GetGPUMultiProcessors(int id);
 
 //! Get the MaxThreads of each MultiProcessor of the ith GPU.
-int GetCUDAMaxThreadsPerMultiProcessor(int i);
+int GetGPUMaxThreadsPerMultiProcessor(int id);
 
 //! Get the MaxThreads of each block of the ith GPU.
-int GetCUDAMaxThreadsPerBlock(int i);
+int GetGPUMaxThreadsPerBlock(int id);
 
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
@@ -97,19 +87,11 @@ size_t GpuMaxChunkSize();
 
 //! Copy memory from address src to dst asynchronously.
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
-#ifdef PADDLE_WITH_HIP
-                    enum hipMemcpyKind kind, hipStream_t stream);
-#else
-                    enum cudaMemcpyKind kind, cudaStream_t stream);
-#endif
+                    gpuMemcpyKind kind, gpuStream_t stream);
 
 //! Copy memory from address src to dst synchronously.
 void GpuMemcpySync(void *dst, const void *src, size_t count,
-#ifdef PADDLE_WITH_HIP
-                   enum hipMemcpyKind kind);
-#else
-                   enum cudaMemcpyKind kind);
-#endif
+                   gpuMemcpyKind kind);
 
 //! Copy memory from one device to another device asynchronously.
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
@@ -125,34 +107,40 @@ void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
 //! Blocks until stream has completed all operations.
 void GpuStreamSync(gpuStream_t stream);
 
+void GpuDestroyStream(gpuStream_t stream);
+
+// ! Blocks until device has completed all operations.
+void GpuDeviceync();
+
 //! CudaMalloc with recorded info
-gpuError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id);
+gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id);
 
 //! CudaFree with recorded info
-void RecordedCudaFree(void *p, size_t size, int dev_id);
+void RecordedGpuFree(void *p, size_t size, int dev_id);
+
+gpuError_t GpuGetLastError();
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-
 //! cuMemCreate with recorded info
-CUresult RecordedCuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
-                             const CUmemAllocationProp *prop,
-                             unsigned long long flags, int dev_id);  // NOLINT
+CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+                              const CUmemAllocationProp *prop,
+                              unsigned long long flags, int dev_id);  // NOLINT
 
 //! cuMemRelease with recorded info
-CUresult RecordedCuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
-                              int dev_id);
+CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
+                               int dev_id);
 #endif
 #endif
 
 //! Get available and total gpu memory with considering limitation
-bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                            size_t *actual_total, int dev_id);
+bool RecordedGpuMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
+                           size_t *actual_total, int dev_id);
 
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
-uint64_t RecordedCudaMallocSize(int dev_id);
+uint64_t RecordedGpuMallocSize(int dev_id);
 
-bool IsCudaMallocRecorded(int dev_id);
+bool IsGpuMallocRecorded(int dev_id);
 
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
