@@ -129,5 +129,25 @@ KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
 }
 
+DataType ParseDataType(DataType dtype);
+DataType ParseDataType(const Tensor& tensor);
+DataType ParseDataType(const std::vector<Tensor>& tensors);
+DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
+
+Backend ParseBackend(Backend backend);
+Backend ParseBackend(const Tensor& tensor);
+template <typename T, typename... Args>
+Backend ParseBackend(T t, Args... args) {
+  auto backend_set =
+      BackendSet(ParseBackend(t)) | BackendSet(ParseBackend(args...));
+  return static_cast<Backend>(64 -
+                              detail::CountLeadingZeros(backend_set.bitset()));
+}
+Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor);
+
+DataLayout ParseLayout(DataLayout layout);
+DataLayout ParseLayout(const Tensor& tensor);
+DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
+
 }  // namespace experimental
 }  // namespace paddle

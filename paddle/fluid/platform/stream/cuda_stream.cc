@@ -30,18 +30,18 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
   CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
   if (priority == Priority::kHigh) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), -1));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), -1));
 #endif
   } else if (priority == Priority::kNormal) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithPriority(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
         &stream_, static_cast<unsigned int>(flag), 0));
 #endif
   }
@@ -58,9 +58,9 @@ void CUDAStream::Destroy() {
   WaitCallback();
   if (stream_) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
 #endif
   }
   stream_ = nullptr;
@@ -89,7 +89,7 @@ void CUDAStream::Wait() const {
 #endif
 #endif  // PADDLE_WITH_HIP
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+  PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
 }
 
 CUDAStream* get_current_stream(int deviceId) {
