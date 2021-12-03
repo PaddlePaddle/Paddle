@@ -31,14 +31,12 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
                                  "Error occurs while parsing string to proto"));
 }
 
-FleetExecutor::~FleetExecutor() {
-  // Destroy Executor
-}
+FleetExecutor::~FleetExecutor() { root_scope_->DropKids(); }
 
 void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
                          framework::Scope* scope,
                          const platform::Place& place) {
-  runtime_graph_ = std::make_unique<RuntimeGraph>(program_desc, exe_desc_);
+  runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
   root_scope_ = scope;
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
@@ -58,8 +56,8 @@ void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
 void FleetExecutor::InitCarrier() {
   Carrier& carrier_instance = Carrier::Instance();
   if (!carrier_instance.IsInit()) {
-    carrier_instance.Init(runtime_graph_->intercepter_id_to_node(), root_scope_,
-                          minibatch_scope_, microbatch_scopes_, place_);
+    carrier_instance.Init(runtime_graph_, root_scope_, minibatch_scope_,
+                          microbatch_scopes_, place_);
   }
 }
 
@@ -112,8 +110,6 @@ void FleetExecutor::Run() {
       platform::errors::Unavailable("MessageBus has not been init yet."));
   carrier_instance.Start();
 }
-
-void FleetExecutor::Release() { root_scope_->DropKids(); }
 
 void FleetExecutor::CopyParameters(int microbatch_id,
                                    const framework::ProgramDesc& program) {

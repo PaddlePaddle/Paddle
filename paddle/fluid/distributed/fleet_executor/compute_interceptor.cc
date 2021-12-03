@@ -27,19 +27,15 @@ ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
 }
 
 void ComputeInterceptor::PrepareDeps() {
-  auto& upstream = GetTaskNode()->upstream();
-  auto& downstream = GetTaskNode()->downstream();
+  auto& upstream = node_->upstream();
+  auto& downstream = node_->downstream();
 
-  // TODO(wangxi): get from task node
-  int64_t in_buff_size = std::numeric_limits<int64_t>::max();
-  int64_t out_buff_size = 2;
-
-  for (auto up_id : upstream) {
-    in_readys_.emplace(up_id, std::make_pair(in_buff_size, 0));
-    in_stops_.emplace(up_id, false);
+  for (auto up : upstream) {
+    in_readys_.emplace(up.first, std::make_pair(up.second, 0));
+    in_stops_.emplace(up.first, false);
   }
-  for (auto down_id : downstream) {
-    out_buffs_.emplace(down_id, std::make_pair(out_buff_size, 0));
+  for (auto down : downstream) {
+    out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
   }
 
   // source compute node, should we add a new SourceInterceptor?
@@ -51,6 +47,11 @@ void ComputeInterceptor::PrepareDeps() {
                           "times, but now max_run_times=%ld",
                           node_->max_run_times()));
   }
+
+  // If there is no downstream or every downstream is in different rank,
+  // then this interceptor is the last one for current rank.
+  // This can be get during init, can be cached for later use.
+  is_last_ = downstream.empty();
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
@@ -109,8 +110,7 @@ bool ComputeInterceptor::CanWriteOutput() {
 
 // only source node need reset
 bool ComputeInterceptor::ShouldReset() {
-  if (is_source_ && step_ == node_->max_run_times()) return true;
-  return false;
+  return is_source_ && (step_ == node_->max_run_times());
 }
 
 void ComputeInterceptor::SendDataReadyToDownStream() {
@@ -129,7 +129,8 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
 
     InterceptorMessage ready_msg;
     ready_msg.set_message_type(DATA_IS_READY);
-    VLOG(3) << "ComputeInterceptor Send data_is_ready msg to " << down_id;
+    VLOG(3) << "ComputeInterceptor " << interceptor_id_
+            << " Send data_is_ready msg to " << down_id;
     Send(down_id, ready_msg);
   }
 }
@@ -148,8 +149,17 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATE_IS_USELESS);
-    VLOG(3) << "ComputeInterceptor Reply data_is_useless msg to " << up_id;
+    VLOG(3) << "ComputeInterceptor " << interceptor_id_
+            << " Reply data_is_useless msg to " << up_id;
     Send(up_id, reply_msg);
+  }
+}
+
+void ComputeInterceptor::RunOps() {
+  VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
+          << step_ << " time.";
+  for (auto op : node_->ops()) {
+    op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
   }
 }
 
@@ -157,17 +167,19 @@ void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput() && !ShouldReset()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
-    // step_ %= node_->max_run_times();
-    for (auto op : node_->ops()) {
-      auto* scope = microbatch_scopes_[step_ % node_->max_slot_nums()];
-      op->Run(*scope, place_);
-    }
+    RunOps();
     ++step_;
 
     // send to downstream and increase buff used
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
+    // Try to stop Carrier
+    if (is_last_ && (step_ % node_->max_run_times() == 0)) {
+      VLOG(3) << "Interceptor " << GetInterceptorId()
+              << " is stopping carrier.";
+      StopCarrier();
+    }
   }
 
   // If there is no limit, source interceptor can be executed
@@ -221,11 +233,6 @@ void ComputeInterceptor::TryStop() {
     Send(down_id, stop);
   }
   stop_ = true;
-
-  if (out_buffs_.size() == 0) {
-    // TODO(fleet executor dev) need a better place to notify
-    StopCarrier();
-  }
 }
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {

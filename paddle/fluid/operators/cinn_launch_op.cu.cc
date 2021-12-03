@@ -18,9 +18,9 @@ limitations under the License. */
 #include "cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/type_defs.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -45,9 +45,9 @@ void CUDART_CB ReleaseBuffers(void* data) {
 template <>
 void ReleaseResource<platform::CUDADeviceContext>(
     const std::vector<void*>& resources, void* stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaLaunchHostFunc(
       static_cast<gpuStream_t>(stream), ReleaseScope, resources[0]));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaLaunchHostFunc(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaLaunchHostFunc(
       static_cast<gpuStream_t>(stream), ReleaseBuffers, resources[1]));
 }
 
