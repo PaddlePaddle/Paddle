@@ -10,3 +10,8 @@ ENDIF()
 IF(WITH_ASCEND OR WITH_ASCEND_CL)
   add_subdirectory(npu)
 ENDIF()
+
+# IPU
+IF(WITH_IPU)
+  add_subdirectory(ipu)
+ENDIF()
