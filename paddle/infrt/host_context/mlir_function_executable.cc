@@ -16,8 +16,9 @@
 
 #include <glog/logging.h>
 
-#include <string>
+#include <string>  // NOLINT
 
+#include "paddle/infrt/common/common.h"
 #include "paddle/infrt/host_context/core_runtime.h"
 
 namespace infrt {
@@ -122,11 +123,10 @@ void MlirFunctionExecutable::Execute(llvm::ArrayRef<Value*> arguments,
   CHECK_EQ(results.size(), num_results());
 
   if (core_runtime_builder_.num_ops() == 0) {
-    const_cast<MlirFunctionExecutable*>(this)->BuildExecutables(
-        arguments, results, is_region);
+    Reference(this).BuildExecutables(arguments, results, is_region);
   }
 
-  const_cast<CoreRuntimeBuilder*>(&core_runtime_builder_)->Execute();
+  Reference(&core_runtime_builder_).Execute();
 
   copy_res_fn_();
 }

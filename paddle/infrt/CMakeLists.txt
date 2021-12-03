@@ -42,8 +42,6 @@ function(cc_test_tiny TARGET_NAME)
     if (${cc_test_tiny_SERIAL})
       set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
-    # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 6000)
   endif()
 
 endfunction()
