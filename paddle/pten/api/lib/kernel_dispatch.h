@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/backend_set.h"
+#include "paddle/pten/api/lib/data_type_set.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
@@ -88,6 +89,9 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
+  // this dtype_set is used for cache multi-inputs dtype and used for
+  // data_promote
+  DataTypeSet dtype_set{DataType::UNDEFINED};
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
@@ -96,6 +100,11 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // TODO(chenweihang): selecte multi layout and dtype
     key_set.layout = x.layout();
     key_set.dtype = x.type();
+    dtype_set = dtype_set | DataTypeSet(x.dtype());
+    auto promote_result = PromoteTypes(dtype_set);
+    if (promote_result != DataType::UNDEFINED) {
+      key_set.dtype = promote_result;
+    }
   }
 
   void operator()(const std::vector<Tensor>& x) {

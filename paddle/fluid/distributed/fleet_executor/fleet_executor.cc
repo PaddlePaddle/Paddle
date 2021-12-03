@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -30,16 +35,38 @@ FleetExecutor::~FleetExecutor() {
   // Destroy Executor
 }
 
-void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
-  // Compile and Initialize
+void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
+                         framework::Scope* scope,
+                         const platform::Place& place) {
+  runtime_graph_ = std::make_unique<RuntimeGraph>(program_desc, exe_desc_);
+  root_scope_ = scope;
+  place_ = place;
+  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
+                                           "root_scope_ can not be nullptr"));
+  minibatch_scope_ = &root_scope_->NewScope();
+  int64_t num_micro_batches = exe_desc_.num_micro_batches();
+  microbatch_scopes_.resize(num_micro_batches);
+  for (int i = 0; i < num_micro_batches; ++i) {
+    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+    CopyParameters(i, program_desc);
+  }
+  VLOG(5) << runtime_graph_->DebugString();
+  InitCarrier();
   InitMessageBus();
+}
+
+void FleetExecutor::InitCarrier() {
+  Carrier& carrier_instance = Carrier::Instance();
+  if (!carrier_instance.IsInit()) {
+    carrier_instance.Init(runtime_graph_->intercepter_id_to_node(), root_scope_,
+                          minibatch_scope_, microbatch_scopes_, place_);
+  }
 }
 
 void FleetExecutor::InitMessageBus() {
   std::stringstream ss;
   ss << "\nThe DNS table of the message bus is: \n";
   int64_t cur_rank = exe_desc_.cur_rank();
-  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank;
   std::unordered_map<int64_t, std::string> rank_to_addr;
   std::string addr;
   for (const auto& rank_info : exe_desc_.cluster_info()) {
@@ -47,8 +74,6 @@ void FleetExecutor::InitMessageBus() {
     int64_t rank = rank_info.rank();
     std::string ip_port = rank_info.ip_port();
     ss << rank << "\t->\t" << ip_port << "\n";
-    // TODO(Yuang): init interceptor_id_to_rank out of this loop
-    interceptor_id_to_rank.insert(std::make_pair(rank, rank));
     rank_to_addr.insert(std::make_pair(rank, ip_port));
     if (rank == cur_rank) {
       addr = ip_port;
@@ -56,7 +81,7 @@ void FleetExecutor::InitMessageBus() {
   }
   if (addr == "") {
     PADDLE_ENFORCE_EQ(
-        rank_to_addr.size(), 0,
+        rank_to_addr.size(), 1,
         platform::errors::NotFound("Empty address is not valid for "
                                    "paddle.distributed.launch method."));
     PADDLE_ENFORCE_EQ(
@@ -70,16 +95,43 @@ void FleetExecutor::InitMessageBus() {
   VLOG(5) << ss.str();
   MessageBus& message_bus_instance = MessageBus::Instance();
   if (!message_bus_instance.IsInit()) {
-    message_bus_instance.Init(interceptor_id_to_rank, rank_to_addr, addr);
+    message_bus_instance.Init(runtime_graph_->intercepter_id_to_rank(),
+                              rank_to_addr, addr);
   }
 }
 
 void FleetExecutor::Run() {
   // Run
+  Carrier& carrier_instance = Carrier::Instance();
+  MessageBus& message_bus_instance = MessageBus::Instance();
+  PADDLE_ENFORCE_EQ(
+      carrier_instance.IsInit(), true,
+      platform::errors::Unavailable("Carrier has not been init yet."));
+  PADDLE_ENFORCE_EQ(
+      message_bus_instance.IsInit(), true,
+      platform::errors::Unavailable("MessageBus has not been init yet."));
+  carrier_instance.Start();
 }
 
-void FleetExecutor::Release() {
-  // Release
+void FleetExecutor::Release() { root_scope_->DropKids(); }
+
+void FleetExecutor::CopyParameters(int microbatch_id,
+                                   const framework::ProgramDesc& program) {
+  auto& global_block = program.Block(0);
+
+  for (auto& var : global_block.AllVars()) {
+    if (var->Persistable() && microbatch_id == 0) {
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(5) << "Create persistable var: " << var->Name()
+              << ", which pointer is " << ptr;
+    } else if (!var->Persistable()) {
+      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+              << microbatch_id << ", which pointer is " << ptr << ".";
+      InitializeVariable(ptr, var->GetType());
+    }
+  }
 }
 
 }  // namespace distributed

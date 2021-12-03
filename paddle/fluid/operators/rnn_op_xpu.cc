@@ -13,8 +13,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {

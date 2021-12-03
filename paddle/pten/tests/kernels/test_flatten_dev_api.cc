@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+namespace pten {
+namespace tests {
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -56,7 +59,7 @@ TEST(DEV_API, flatten) {
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.dims()[2], expect_shape[2]);
   ASSERT_EQ(out.numel(), 36);
-  ASSERT_EQ(out.meta().type, pten::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
 
   bool value_equal = true;
@@ -67,3 +70,6 @@ TEST(DEV_API, flatten) {
   }
   ASSERT_EQ(value_equal, true);
 }
+
+}  // namespace tests
+}  // namespace pten

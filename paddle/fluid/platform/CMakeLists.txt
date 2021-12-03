@@ -4,18 +4,6 @@ if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
 endif(WITH_GPU)
 
-if(WITH_XPU)
-  set(XPU_CTX_DEPS xpulib ssl crypto rt z resolv dl)
-ELSE()
-  set(XPU_CTX_DEPS)
-endif(WITH_XPU)
-
-if(WITH_ASCEND)
-    set(ASCEND_DEPS xpulib)
-ELSE()
-  set(ASCEND_DEPS)
-endif(WITH_ASCEND)
-
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -74,19 +62,7 @@ ENDIF()
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
-if(WITH_XPU)
-cc_library(xpu_info SRCS xpu/xpu_info.cc DEPS gflags glog enforce xpulib)
-cc_library(xpu_op_list SRCS xpu/xpu_op_list.cc DEPS gflags glog enforce xpulib device_context)
-endif()
-
-if(WITH_ASCEND)
-    cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce atlas_acl)
-endif()
-
-if(WITH_ASCEND_CL)
-    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
-endif()
-
+add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
 
@@ -143,7 +119,10 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
-cc_library(collective_helper SRCS collective_helper.cc collective_helper_npu.cc gen_comm_id_helper.cc DEPS framework_proto  device_context enforce)
+cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
+if(WITH_ASCEND_CL)
+    target_link_libraries(collective_helper npu_collective_helper)
+endif()
 
 if(WITH_GPU OR WITH_ROCM)
     cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
@@ -151,7 +130,6 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_ASCEND_CL)
-    cc_library(npu_resource_pool SRCS npu_resource_pool.cc DEPS npu_info)
     target_link_libraries(device_context npu_resource_pool)
 endif()
 
