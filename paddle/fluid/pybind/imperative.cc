@@ -1744,7 +1744,7 @@ void BindImperative(py::module *m_ptr) {
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetCUDADeviceCount();
+             int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
              if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
