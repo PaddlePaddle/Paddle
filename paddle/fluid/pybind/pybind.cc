@@ -75,6 +75,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
@@ -150,6 +151,14 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 namespace paddle {
 namespace pybind {
+
+PyTypeObject *g_place_pytype = nullptr;
+PyTypeObject *g_cudaplace_pytype = nullptr;
+PyTypeObject *g_cpuplace_pytype = nullptr;
+PyTypeObject *g_xpuplace_pytype = nullptr;
+PyTypeObject *g_npuplace_pytype = nullptr;
+PyTypeObject *g_cudapinnedplace_pytype = nullptr;
+
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   return false;
@@ -524,6 +533,7 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+  BindEager(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -1599,7 +1609,7 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
+  py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
     It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
@@ -1622,7 +1632,9 @@ All parameter, weight, gradient are variables in Paddle.
 
           place = paddle.CUDAPlace(0)
 
-        )DOC")
+        )DOC");
+  g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
+  cudaplace
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1680,13 +1692,15 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
+  py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
     **Note**:
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
           xpu_place = fluid.XPUPlace(0)
-        )DOC")
+        )DOC");
+  g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
+  xpuplace
       .def("__init__",
            [](platform::XPUPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_XPU
@@ -1756,7 +1770,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
+  py::class_<paddle::platform::CPUPlace> cpuplace(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
 
@@ -1766,8 +1780,9 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
           cpu_place = paddle.CPUPlace()
 
-        )DOC")
-      .def(py::init<>())
+        )DOC");
+  g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
+  cpuplace.def(py::init<>())
       .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
@@ -1779,7 +1794,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CPUPlace &>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
+  py::class_<paddle::platform::CUDAPinnedPlace> cudapinnedplace(
+      m, "CUDAPinnedPlace", R"DOC(
     CUDAPinnedPlace is a descriptor of a device.
     It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
     The host operating system will not paging and exchanging the memory.
@@ -1793,7 +1809,10 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
           place = paddle.CUDAPinnedPlace()
 
-        )DOC")
+        )DOC");
+  g_cudapinnedplace_pytype =
+      reinterpret_cast<PyTypeObject *>(cudapinnedplace.ptr());
+  cudapinnedplace
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -1819,7 +1838,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   // NPUPlace
-  py::class_<platform::NPUPlace>(m, "NPUPlace", R"DOC(
+  py::class_<platform::NPUPlace> npuplace(m, "NPUPlace", R"DOC(
     NPUPlace is a descriptor of a device.
     It represents a NPU device on which a tensor will be allocated and a model will run.
 
@@ -1828,7 +1847,9 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
           npu_place = paddle.NPUPlace(0)
 
-        )DOC")
+        )DOC");
+  g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());
+  npuplace
       .def("__init__",
            [](platform::NPUPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -1879,8 +1900,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
-  py::class_<platform::Place>(m, "Place")
-      .def(py::init<>())
+  py::class_<platform::Place> platformplace(m, "Place");
+  g_place_pytype = reinterpret_cast<PyTypeObject *>(platformplace.ptr());
+  platformplace.def(py::init<>())
       .def("_type", &PlaceIndex<platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)

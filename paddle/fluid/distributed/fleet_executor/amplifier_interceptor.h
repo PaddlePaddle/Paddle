@@ -14,17 +14,30 @@
 
 #pragma once
 
-#include "paddle/pten/api/include/tensor.h"
+#include <utility>
+
+#include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
 
 namespace paddle {
-namespace experimental {
+namespace distributed {
 
-PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y);
+class AmplifierInterceptor : public ComputeInterceptor {
+ public:
+  AmplifierInterceptor(int64_t interceptor_id, TaskNode* node);
 
-PD_DLL_DECL Tensor matmul(const Tensor& x,
-                          const Tensor& y,
-                          bool transpose_x = false,
-                          bool transpose_y = false);
+ private:
+  void RunOps() override;
+  void SendDataReadyToDownStream() override;
+  void ReplyCompletedToUpStream() override;
 
-}  // namespace experimental
+  int64_t run_per_steps_{1};
+  int64_t run_at_offset_{0};
+
+  // one input produces multi times output
+  int64_t reply_up_per_steps_{1};
+  // one output need multi times input
+  int64_t send_down_per_steps_{1};
+};
+
+}  // namespace distributed
 }  // namespace paddle

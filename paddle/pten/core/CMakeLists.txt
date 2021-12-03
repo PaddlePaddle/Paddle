@@ -1,9 +1,9 @@
 if(WITH_GPU)
-  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info python)
 elseif(WITH_ROCM)
-  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info python)
 else()
-  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place)
+  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place python)
 endif()
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce)

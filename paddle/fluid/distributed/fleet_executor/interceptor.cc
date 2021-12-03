@@ -40,30 +40,9 @@ void Interceptor::Join() {
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
-  if (handle_) {
-    handle_(msg);
-  } else {
-    VLOG(3) << "Interceptor is using default message handler. This handler is "
-               "only used for test purpose. Check whether you init interceptor "
-               "in the proper way.";
-
-    if (msg.message_type() == DATA_IS_READY) {
-      if (node_->role() != 2) {
-        VLOG(3) << "Fake handler is sending DATA_IS_READY message to: "
-                << interceptor_id_ + 1 << ".";
-        InterceptorMessage data_is_ready_msg;
-        data_is_ready_msg.set_message_type(DATA_IS_READY);
-        Send(interceptor_id_ + 1, data_is_ready_msg);
-      }
-      VLOG(3) << "Fake handler is sending stop message to it self.";
-      InterceptorMessage stop_msg;
-      stop_msg.set_message_type(STOP);
-      Send(interceptor_id_, stop_msg);
-    } else if (msg.message_type() == STOP) {
-      stop_ = true;
-      StopCarrier();
-    }
-  }
+  PADDLE_ENFORCE_NOT_NULL(handle_, platform::errors::PreconditionNotMet(
+                                       "Message handle is not registered."));
+  handle_(msg);
 }
 
 void Interceptor::StopCarrier() {
