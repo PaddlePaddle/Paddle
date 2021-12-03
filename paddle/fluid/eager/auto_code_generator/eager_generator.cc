@@ -37,9 +37,9 @@ static std::unordered_map<std::string, paddle::framework::AttributeMap>
 
 static std::unordered_set<std::string> operators_to_skip = {
     "chunk_eval",  // Stupid tensor name
-    "pull_sparse",     "pull_box_extended_sparse", "pull_sparse_v2",
-    "pull_box_sparse", "fused_attention",          "diag_v2",
-    "c_split"};
+    "minus",          "pull_sparse",     "pull_box_extended_sparse",
+    "pull_sparse_v2", "pull_box_sparse", "fused_attention",
+    "diag_v2",        "c_split"};
 
 static std::unordered_set<std::string> operators_to_codegen = {};
 static std::unordered_set<std::string> skipped_operators = {};
@@ -608,8 +608,6 @@ static bool CollectGradInformationFromOpInfo(
   if (operators_with_attrs.count(op_type)) {
     VLOG(6) << "Found operator " << op_type << " using special AttributeMap";
     attrs = operators_with_attrs[op_type];
-    // default_attrs.insert(operators_with_attrs[op_type].begin(),
-    // operators_with_attrs[op_type].end());
   }
 
   VLOG(6) << "Prepared Default Attributes Map, size = " << default_attrs.size();
@@ -642,8 +640,8 @@ static bool CollectGradInformationFromOpInfo(
 
   /* ------ Run GradOpMaker ------ */
   if (!op_info.dygraph_grad_op_maker_) {
-    VLOG(6) << op_type << " has no GradOpMaker, skip it";
-    skipped_operators.insert(op_type);
+    VLOG(6) << op_type << " has no GradOpMaker";
+    *generate_forward_only = true;
     return false;
   }
 
@@ -658,12 +656,14 @@ static bool CollectGradInformationFromOpInfo(
     return false;
   }
 
+  /*
   if (grad_node->size() > 1) {
     // Backward attributes can be super complicated
     VLOG(6) << "Skip GradOpNode with multiple OpBases for now: " << op_type;
     skipped_operators.insert(op_type);
     return false;
   }
+  */
 
   VLOG(6) << "Prepared GradOpNode";
 
@@ -1030,13 +1030,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   VLOG(6) << "Generated Outs Map";
 
   // [Generation] Get Attrs
-  if (dygraph_function_args_str.size() > 0) {
-    dygraph_function_args_str +=
-        ", const paddle::framework::AttributeMap& attr_map";
-  } else {
-    dygraph_function_args_str +=
-        "const paddle::framework::AttributeMap& attr_map";
-  }
+  dygraph_function_args_str +=
+      ", const paddle::framework::AttributeMap& attr_map";
 
   // [Generation] Get TraceOp
   const char* FWD_TRACE_OP_TEMPLATE =
@@ -1138,6 +1133,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   // [Generation] Get Full Function
   std::string function_name = op_type + "_dygraph_function";
+
+  if (dygraph_function_args_str.size() > 0) {
+    auto iter = dygraph_function_args_str.begin();
+    if ((*iter) == ',') dygraph_function_args_str.erase(iter);
+  }
 
   const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
