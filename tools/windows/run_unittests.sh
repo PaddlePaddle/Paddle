@@ -123,6 +123,7 @@ disable_win_inference_api_test="^test_analyzer_capi_exp_pd_config$|\
 ^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
 ^lite_resnet50_test$|\
 ^test_trt_dynamic_shape_transformer_prune$|\
+^lite_mul_model_test$|\
 ^paddle_infer_api_copy_tensor_tester$"
 
 # /*============================================================================*/
