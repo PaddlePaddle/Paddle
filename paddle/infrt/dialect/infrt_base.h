@@ -22,7 +22,7 @@
 #include <mlir/IR/TypeUtilities.h>
 #include <mlir/IR/Types.h>
 
-#include "paddle/infrt/dialect/cinn_base.hpp.inc"
+#include "paddle/infrt/dialect/infrt_base.hpp.inc"
 
 namespace infrt::dialect {
 
@@ -44,7 +44,7 @@ class INFRTDialect : public ::mlir::Dialect {
   friend class ::mlir::MLIRContext;
 
  public:
-  static ::llvm::StringRef getDialectNamespace() { return "cinn"; }
+  static ::llvm::StringRef getDialectNamespace() { return "infrt"; }
 };
 
 }  // namespace infrt::dialect

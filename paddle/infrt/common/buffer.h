@@ -31,13 +31,13 @@ extern "C" {
 #define INFRT_ALWAYS_INLINE __attribute__((always_inline)) inline
 
 //! Code for the primitive types supported in INFRT.
-typedef enum cinn_type_code_t {
-  cinn_type_unk = -1,   //! Unknown type
-  cinn_type_int = 0,    //! signed int
-  cinn_type_uint = 1,   //! unsigned int
-  cinn_type_float = 2,  //! floating point
-  cinn_type_handle = 3  //! void*
-} cinn_type_code_t;
+typedef enum infrt_type_code_t {
+  infrt_type_unk = -1,   //! Unknown type
+  infrt_type_int = 0,    //! signed int
+  infrt_type_uint = 1,   //! unsigned int
+  infrt_type_float = 2,  //! floating point
+  infrt_type_handle = 3  //! void*
+} infrt_type_code_t;
 
 #ifndef INFRT_ATTRIBUTE_ALIGN
 #define INFRT_ATTRIBUTE_ALIGN(n) __attribute__((aligned(n)))
@@ -46,9 +46,9 @@ typedef enum cinn_type_code_t {
 /**
  * A tuntime tag for type in INFRT system.
  */
-typedef struct cinn_type_t {
+typedef struct infrt_type_t {
 #if __cplusplus >= 201103L
-  INFRT_ATTRIBUTE_ALIGN(1) cinn_type_code_t code;
+  INFRT_ATTRIBUTE_ALIGN(1) infrt_type_code_t code;
 #else
   uint8_t code;
 #endif
@@ -64,64 +64,65 @@ typedef struct cinn_type_t {
   uint8_t num_asterisks{0};
 
 #ifdef __cplusplus
-  INFRT_ALWAYS_INLINE cinn_type_t() : code(cinn_type_int), bits(0), lanes(0) {}
-  INFRT_ALWAYS_INLINE cinn_type_t(cinn_type_code_t code,
-                                  uint8_t bits,
-                                  uint16_t lanes = 1,
-                                  uint8_t num_asterisks = 0)
+  INFRT_ALWAYS_INLINE infrt_type_t()
+      : code(infrt_type_int), bits(0), lanes(0) {}
+  INFRT_ALWAYS_INLINE infrt_type_t(infrt_type_code_t code,
+                                   uint8_t bits,
+                                   uint16_t lanes = 1,
+                                   uint8_t num_asterisks = 0)
       : code(code), bits(bits), lanes(lanes), num_asterisks(num_asterisks) {}
-  INFRT_ALWAYS_INLINE bool operator==(const cinn_type_t& other) const {
+  INFRT_ALWAYS_INLINE bool operator==(const infrt_type_t& other) const {
     return code == other.code && bits == other.bits && lanes == other.lanes;
   }
-  INFRT_ALWAYS_INLINE bool operator!=(const cinn_type_t& other) const {
+  INFRT_ALWAYS_INLINE bool operator!=(const infrt_type_t& other) const {
     return !(*this == other);
   }
   INFRT_ALWAYS_INLINE uint16_t bytes() const { return (bits + 7) / 8; }
 #endif  // __cplusplus
-} cinn_type_t;
+} infrt_type_t;
 
 //! Help to define the size of a dimension, due to polyhedral representation, we
 //! no need to record the extend or
 //! min(default to 0).
-typedef int cinn_dimension_t;
+typedef int infrt_dimension_t;
 
 //! Help to tell the kind of the device.
-typedef enum cinn_device_kind_t {
-  cinn_unk_device = -1,    // Undefined device.
-  cinn_x86_device = 0,     // X86 device
-  cinn_opencl_device = 1,  // OpenCL device
-  cinn_arm_device = 2      // ARM device
-} cinn_device_kind_t;
+typedef enum infrt_device_kind_t {
+  infrt_unk_device = -1,    // Undefined device.
+  infrt_x86_device = 0,     // X86 device
+  infrt_opencl_device = 1,  // OpenCL device
+  infrt_arm_device = 2      // ARM device
+} infrt_device_kind_t;
 
-struct cinn_buffer_t;
+struct infrt_buffer_t;
 
 /**
  * All INFRT backends implementation should provide an interface to be used.
  */
-struct cinn_device_interface_impl_t;
+struct infrt_device_interface_impl_t;
 
-struct cinn_device_interface_t {
-  int (*malloc)(void* context, struct cinn_buffer_t* buf);
-  int (*free)(void* context, struct cinn_buffer_t* buf);
-  int (*sync)(void* context, struct cinn_buffer_t* buf);
+struct infrt_device_interface_t {
+  int (*malloc)(void* context, struct infrt_buffer_t* buf);
+  int (*free)(void* context, struct infrt_buffer_t* buf);
+  int (*sync)(void* context, struct infrt_buffer_t* buf);
   int (*release)(void* context,
-                 const struct cinn_device_interface_t* device_interface);
-  int (*copy_to_host)(void* context, struct cinn_buffer_t* buf);
-  int (*copy_to_device)(void* context, struct cinn_buffer_t* buf);
+                 const struct infrt_device_interface_t* device_interface);
+  int (*copy_to_host)(void* context, struct infrt_buffer_t* buf);
+  int (*copy_to_device)(void* context, struct infrt_buffer_t* buf);
   int (*buffer_copy)(void* context,
-                     struct cinn_buffer_t* src,
-                     struct cinn_buffer_t* dst);
-  struct cinn_device_interface_impl_t* impl;
+                     struct infrt_buffer_t* src,
+                     struct infrt_buffer_t* dst);
+  struct infrt_device_interface_impl_t* impl;
 };
 
 //! The raw representation of a buffer,used in the generated code/lib.
 #define INFRT_BUFFER_MAX_DIMS 8
-typedef struct cinn_buffer_t {
+typedef struct infrt_buffer_t {
   //! Tell which kind of device this buffer locates.
-  cinn_device_kind_t device;
+  infrt_device_kind_t device;
 
   //! The interface used to operate on device.
-  const struct cinn_device_interface_t* device_interface;
+  const struct infrt_device_interface_t* device_interface;
 
   //! A pointer to the memory in host.
   uint8_t* memory;
@@ -130,11 +131,11 @@ typedef struct cinn_buffer_t {
   uint64_t flag;
 
   //! Data type.
-  cinn_type_t type;
+  infrt_type_t type;
 
   //! Number of dimensions.
   int32_t dimensions;
-  cinn_dimension_t dims[INFRT_BUFFER_MAX_DIMS];
+  infrt_dimension_t dims[INFRT_BUFFER_MAX_DIMS];
 
   //! Allocate and deallocate lazily, default true.
   char lazy;
@@ -145,30 +146,30 @@ typedef struct cinn_buffer_t {
   uint16_t align;
 
 #ifdef __cplusplus
-  cinn_buffer_t()
-      : device(cinn_unk_device),
+  infrt_buffer_t()
+      : device(infrt_unk_device),
         device_interface(NULL),
         memory(NULL),
         flag(0UL),
-        type(cinn_type_t()),
+        type(infrt_type_t()),
         dimensions(0),
         lazy(true),
         memory_size(0),
         align(0) {}
 
-  static void delete_(struct cinn_buffer_t* x) { delete x; }
+  static void delete_(struct infrt_buffer_t* x) { delete x; }
 
-  ~cinn_buffer_t() {}
+  ~infrt_buffer_t() {}
 
   // NOTE the buffer should be resized first.
-  static void alloc(struct cinn_buffer_t*);
+  static void alloc(struct infrt_buffer_t*);
 
   //! Set the shape of the buffer. NOTE this just record the shape, not allocate
   //! the memory.
-  INFRT_ALWAYS_INLINE void resize(const cinn_dimension_t* dims,
+  INFRT_ALWAYS_INLINE void resize(const infrt_dimension_t* dims,
                                   int dimensions) {
     this->dimensions = dimensions;
-    memcpy(this->dims, dims, dimensions * sizeof(cinn_dimension_t));
+    memcpy(this->dims, dims, dimensions * sizeof(infrt_dimension_t));
   }
 
   INFRT_ALWAYS_INLINE uint64_t num_elements() const {
@@ -192,23 +193,23 @@ typedef struct cinn_buffer_t {
   }
 
 #endif  // __cplusplus
-} cinn_buffer_t;
+} infrt_buffer_t;
 
 #ifdef __cplusplus
-struct cinn_device_interface_impl_t {
-  int (*malloc)(void* context, struct cinn_buffer_t* buf);
-  int (*free)(void* context, struct cinn_buffer_t* buf);
-  int (*sync)(void* context, struct cinn_buffer_t* buf);
+struct infrt_device_interface_impl_t {
+  int (*malloc)(void* context, struct infrt_buffer_t* buf);
+  int (*free)(void* context, struct infrt_buffer_t* buf);
+  int (*sync)(void* context, struct infrt_buffer_t* buf);
   int (*release)(void* context);
-  int (*copy_to_host)(void* context, struct cinn_buffer_t* buf);
-  int (*copy_to_device)(void* context, struct cinn_buffer_t* buf);
+  int (*copy_to_host)(void* context, struct infrt_buffer_t* buf);
+  int (*copy_to_device)(void* context, struct infrt_buffer_t* buf);
   int (*buffer_copy)(void* context,
-                     struct cinn_buffer_t* src,
-                     struct cinn_buffer_t* dst);
+                     struct infrt_buffer_t* src,
+                     struct infrt_buffer_t* dst);
 };
 
 // The device implementations
-extern struct cinn_device_interface_t* cinn_x86_device_interface();
+extern struct infrt_device_interface_t* infrt_x86_device_interface();
 #endif  // __cplusplus
 
 #ifdef __cplusplus
@@ -236,7 +237,7 @@ extern struct cinn_device_interface_t* cinn_x86_device_interface();
  */
 struct Buffer final {
   Buffer() = default;
-  explicit Buffer(const infrt::common::Target& target) { SetTarget(target); }
+  explicit Buffer(const common::Target& target) { SetTarget(target); }
 
   //! Resize the memory hold by this buffer *exactlly* to \p size.
   void Resize(uint32_t size);
@@ -247,21 +248,19 @@ struct Buffer final {
   void ResizeLazy(uint32_t alignment, uint32_t size);
 
   //! Resize the memory to \p size in target \p target.
-  void Resize(uint32_t size, const infrt::common::Target& target);
-  void Resize(uint32_t alignment,
-              uint32_t size,
-              const infrt::common::Target& target);
+  void Resize(uint32_t size, const common::Target& target);
+  void Resize(uint32_t alignment, uint32_t size, const common::Target& target);
 
   //! Lazily resize the memory to \p size in target \p target.
-  void ResizeLazy(uint32_t size, const infrt::common::Target& target);
+  void ResizeLazy(uint32_t size, const common::Target& target);
   void ResizeLazy(uint32_t alignment,
                   uint32_t size,
-                  const infrt::common::Target& target);
+                  const common::Target& target);
 
-  void SetTarget(const infrt::common::Target& target);
+  void SetTarget(const common::Target& target);
 
-  const cinn_buffer_t* data() const { return &data_; }
-  cinn_buffer_t* data() { return &data_; }
+  const infrt_buffer_t* data() const { return &data_; }
+  infrt_buffer_t* data() { return &data_; }
 
   //! Free all the memory owned by this buffer.
   void Free() {
@@ -282,10 +281,10 @@ struct Buffer final {
   }
 
  private:
-  cinn_buffer_t data_;
+  infrt_buffer_t data_;
 
   //! The place where this buffer locates.
-  infrt::common::Target target_;
+  common::Target target_;
 
   //! Number of bytes of this buffer.
   uint32_t size_{};

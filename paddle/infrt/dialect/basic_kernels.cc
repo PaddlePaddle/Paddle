@@ -90,7 +90,7 @@ static ParseResult parseReturnOp(OpAsmParser &parser,       // NOLINT
 }
 
 static void print(OpAsmPrinter &p, CallOp op) {  // NOLINT
-  p << "cinn.call " << op.getAttr("callee") << "(";
+  p << "infrt.call " << op.getAttr("callee") << "(";
   p.printOperands(op.getOperands());
   p << ")";
   p.printOptionalAttrDict(op.getAttrs(), {"callee"});
@@ -128,7 +128,7 @@ static void print(OpAsmPrinter &p, ConstantI64Op op) {  // NOLINT
 }
 
 static void print(OpAsmPrinter &p, ReturnOp op) {  // NOLINT
-  p << "cinn.return";
+  p << "infrt.return";
   if (op.getNumOperands() > 0) {
     p << ' ';
     p.printOperands(op.getOperands());

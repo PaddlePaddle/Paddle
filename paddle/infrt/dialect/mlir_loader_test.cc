@@ -22,7 +22,7 @@
 
 #include <string>
 
-#include "paddle/infrt/dialect/init_cinn_dialects.h"
+#include "paddle/infrt/dialect/init_infrt_dialects.h"
 
 namespace infrt::dialect {
 
@@ -31,13 +31,13 @@ TEST(MlirLoader, basic) {
 
   auto source = R"ROC(
 func @main() -> f32 {
-  %v0 = cinn.constant.f32 1.0
-  %v1 = cinn.constant.f32 2.0
-  %value = "cinn.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v0 = infrt.constant.f32 1.0
+  %v1 = infrt.constant.f32 2.0
+  %value = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
 
-  "cinn.print.f32"(%v0) : (f32) -> ()
+  "infrt.print.f32"(%v0) : (f32) -> ()
 
-  cinn.return %value : f32
+  infrt.return %value : f32
 }
 )ROC";
 

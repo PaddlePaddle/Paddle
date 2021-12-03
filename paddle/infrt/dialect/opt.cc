@@ -29,7 +29,7 @@
 #include <iostream>
 
 #include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/init_cinn_dialects.h"
+#include "paddle/infrt/dialect/init_infrt_dialects.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 
 int main(int argc, char **argv) {

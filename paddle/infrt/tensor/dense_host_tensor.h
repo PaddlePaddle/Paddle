@@ -74,7 +74,7 @@ class DenseHostTensor : public HostTensor {
   void Init(const std::vector<int64_t>& shape, DType dtype);
   const TensorShape& shape() const;
 
-  const infrt::Buffer* buffer() const;
+  const Buffer* buffer() const;
 
   void* raw_data() const;
 
@@ -84,9 +84,9 @@ class DenseHostTensor : public HostTensor {
   virtual ~DenseHostTensor();
 
  private:
-  // TODO(Superjomn) Discard the dependency of the Buffer in cinncore or create
+  // TODO(Superjomn) Discard the dependency of the Buffer in infrtcore or create
   // a general buffer in common.
-  std::shared_ptr<infrt::Buffer> buffer_;
+  std::shared_ptr<Buffer> buffer_;
 };
 
 }  // namespace infrt::tensor

@@ -19,7 +19,7 @@
 #include <vector>
 
 namespace infrt {
-namespace cinn {
+namespace infrt {
 
 //! Get the content of a stream.
 template <typename T>
@@ -80,5 +80,5 @@ std::string GetStreamCnt(const T& x) {
 
 std::string TransValidVarName(std::string name);
 
-}  // namespace cinn
+}  // namespace infrt
 }  // namespace infrt

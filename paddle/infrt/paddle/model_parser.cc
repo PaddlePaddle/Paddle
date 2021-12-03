@@ -45,8 +45,8 @@ int SizeOfType(framework_proto::VarType::Type type) {
 }
 
 void TensorFromStream(std::istream &is,
-                      infrt::paddle::_Tensor_ *tensor,
-                      const infrt::common::Target &target) {
+                      _Tensor_ *tensor,
+                      const common::Target &target) {
   using Type = framework_proto::VarType::Type;
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -67,12 +67,12 @@ void TensorFromStream(std::istream &is,
   std::vector<int32_t> dims_vec;
   std::copy(
       desc.dims().begin(), desc.dims().end(), std::back_inserter(dims_vec));
-  infrt::paddle::Shape dims(dims_vec);
+  Shape dims(dims_vec);
   tensor->Resize(dims);
   void *buf;
   size_t size = tensor->shape().numel() * SizeOfType(desc.data_type());
   // alllocate memory
-  if (target.arch == infrt::common::Target::Arch::X86) {
+  if (target.arch == Target::Arch::X86) {
     switch (static_cast<int>(desc.data_type())) {
 #define SET_TENSOR(desc, type, precision)     \
   case Type::VarType_Type_##desc:             \
@@ -80,18 +80,18 @@ void TensorFromStream(std::istream &is,
     tensor->set_type(precision);              \
     break
 
-      SET_TENSOR(FP32, float, infrt::common::Float(32));
-      SET_TENSOR(INT8, int8_t, infrt::common::Int(8));
-      SET_TENSOR(INT16, int16_t, infrt::common::Int(16));
-      SET_TENSOR(INT32, int32_t, infrt::common::Int(32));
-      SET_TENSOR(INT64, int64_t, infrt::common::Int(64));
+      SET_TENSOR(FP32, float, Float(32));
+      SET_TENSOR(INT8, int8_t, Int(8));
+      SET_TENSOR(INT16, int16_t, Int(16));
+      SET_TENSOR(INT32, int32_t, Int(32));
+      SET_TENSOR(INT64, int64_t, Int(64));
 #undef SET_TENSOR
       default:
         LOG(FATAL) << "unknown type " << desc.data_type();
     }
     // tensor->set_persistable(true);
     is.read(static_cast<char *>(buf), size);
-  } else if (target.arch == infrt::common::Target::Arch::NVGPU) {
+  } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef INFRT_WITH_CUDA
     if (desc.data_type() != Type::VarType_Type_FP32)
       LOG(FATAL) << "[CUDA] The type is not fp32!!";
@@ -112,10 +112,8 @@ void TensorFromStream(std::istream &is,
   }
 }
 
-void LoadLoDTensor(std::istream &is,
-                   infrt::paddle::_Variable *var,
-                   const infrt::common::Target &target) {
-  auto &tensor = var->get<infrt::paddle::Tensor>();
+void LoadLoDTensor(std::istream &is, _Variable *var, const Target &target) {
+  auto &tensor = var->get<Tensor>();
   uint32_t version{};
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
   VLOG(3) << "model version " << version;
@@ -165,9 +163,7 @@ std::unique_ptr<framework_proto::ProgramDesc> LoadProgram(
 void LoadParams(const std::string &path) {}
 
 // Load directly to CPU, and latter transfer to other devices.
-void LoadParam(const std::string &path,
-               infrt::paddle::_Variable *out,
-               const infrt::common::Target &target) {
+void LoadParam(const std::string &path, _Variable *out, const Target &target) {
   std::ifstream fin(path, std::ios::binary);
   CHECK(fin.is_open()) << "failed to open file " << path;
   LoadLoDTensor(fin, out, target);

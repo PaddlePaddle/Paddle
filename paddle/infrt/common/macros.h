@@ -39,11 +39,11 @@
  *
  * INFRT_USE_REGISTER(some_key);
  */
-#define INFRT_REGISTER_HELPER(symbol__) bool __cinn__##symbol__##__registrar()
-#define INFRT_USE_REGISTER(symbol__)                                \
-  extern bool __cinn__##symbol__##__registrar();                    \
-  [[maybe_unused]] static bool __cinn_extern_registrar_##symbol__ = \
-      __cinn__##symbol__##__registrar();
+#define INFRT_REGISTER_HELPER(symbol__) bool __infrt__##symbol__##__registrar()
+#define INFRT_USE_REGISTER(symbol__)                                 \
+  extern bool __infrt__##symbol__##__registrar();                    \
+  [[maybe_unused]] static bool __infrt_extern_registrar_##symbol__ = \
+      __infrt__##symbol__##__registrar();
 
 #if __cplusplus >= 201703L
 #define INFRT_NODISCARD [[nodiscard]]

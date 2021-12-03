@@ -4,7 +4,7 @@
 #else
 #define BASIC_OPS
 
-include "paddle/infrt/dialect/cinn_base.td"
+include "paddle/infrt/dialect/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 class INFRT_Op<string mnemonic, list<OpTrait> traits = []> : Op<INFRT_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
@@ -18,9 +18,9 @@ class INFRT_Op<string mnemonic, list<OpTrait> traits = []> : Op<INFRT_Dialect, m
 def CallOp : INFRT_Op<"call"> {
   let summary = "call a host operation";
   let description = [{
-      The "cinn.call" operation represents a direct call to a function. The operands and result types of the call must match the specified function type.
+      The "infrt.call" operation represents a direct call to a function. The operands and result types of the call must match the specified function type.
 
-          %2 = cinn.call @add(%0, %1) : (f32, f32) -> f32
+          %2 = infrt.call @add(%0, %1) : (f32, f32) -> f32
     }];
 
   let arguments = (ins FlatSymbolRefAttr:$callee, Variadic<AnyType>:$operands);
@@ -48,10 +48,10 @@ def ConstantF64Op : ConstantOp<"f64", F64, F64Attr>;
 def ReturnOp : INFRT_Op<"return", [Terminator]> {
   let summary = "host executor return operation";
   let description = [{
-      The "cinn.return" operation represents a return operation within a function.
+      The "infrt.return" operation represents a return operation within a function.
 
         func @foo() : (i32, f8) {
-        cinn.return %0, %1 : i32, f8
+        infrt.return %0, %1 : i32, f8
         }
     }];
 
@@ -63,7 +63,7 @@ def ReturnOp : INFRT_Op<"return", [Terminator]> {
 }
 
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {
-  let summary = "cinn.add operation";
+  let summary = "infrt.add operation";
   let description = [{
       An operation that takes two inputs and returns their sum as result.
     }];
@@ -80,7 +80,7 @@ def AddF32Op : AddOp<"f32", F32>;
 def AddF64Op : AddOp<"f64", F64>;
 
 class MulOp<string suffix, Type type> : INFRT_Op<"mul." # suffix, [NoSideEffect]> {
-    let summary = "cinn.mul operation";
+    let summary = "infrt.mul operation";
     let description = [{
         An operation that takes two inputs and returns their mul as result.
     }];
@@ -97,7 +97,7 @@ def MulF32Op : MulOp<"f32", F32>;
 def MulF64Op : MulOp<"f64", F64>;
 
 class PrintOp<string suffix, Type type> : INFRT_Op<"print." # suffix> {
-  let summary = "cinn.print operation";
+  let summary = "infrt.print operation";
   let description = [{
       An operation takes a number as input and prints to stdout.
     }];
@@ -113,9 +113,9 @@ def PrintF32Op : PrintOp<"f32", F32>;
 //def PrintF64Op : PrintOp<"f64", F64>;
 
 def GetStringOp : INFRT_Op<"get_string"> {
-  let summary = "cinn.get_string";
+  let summary = "infrt.get_string";
   let description = [{
-    Get a !cinn.string value from the given string attribute.
+    Get a !infrt.string value from the given string attribute.
   }];
 
   let arguments = (ins StrAttr:$value);
@@ -125,7 +125,7 @@ def GetStringOp : INFRT_Op<"get_string"> {
 }
 
 def PrintStringOp : INFRT_Op<"print_string"> {
-  let summary = "cinn.print_string";
+  let summary = "infrt.print_string";
   let description = [{
       An operation that prints a string.
   }];

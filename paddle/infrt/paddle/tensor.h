@@ -49,7 +49,7 @@ struct Shape {
   std::vector<dim_t> data_;
 };
 
-class _Tensor_ : public infrt::common::Object {
+class _Tensor_ : public common::Object {
  public:
   _Tensor_() : buffer_(std::make_shared<Buffer>()) {}
 
@@ -58,7 +58,7 @@ class _Tensor_ : public infrt::common::Object {
   void Resize(const Shape& shape) {
     shape_ = shape;
     buffer_->data()->resize(
-        reinterpret_cast<const cinn_dimension_t*>(shape.data().data()),
+        reinterpret_cast<const infrt_dimension_t*>(shape.data().data()),
         shape.size());
   }
 
@@ -84,7 +84,7 @@ class _Tensor_ : public infrt::common::Object {
   void set_type(Type type) { type_ = type; }
   const Type& type() const { return type_; }
 
-  cinn_buffer_t* buffer() { return buffer_->data(); }
+  infrt_buffer_t* buffer() { return buffer_->data(); }
 
   const char* type_info() const override { return __type_info__; }
 

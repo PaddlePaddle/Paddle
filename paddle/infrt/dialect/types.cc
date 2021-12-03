@@ -14,4 +14,4 @@
 
 #include "paddle/infrt/dialect/types.h"
 
-namespace cinn::hlir::mlir {}  // namespace cinn::hlir::mlir
+namespace infrt::hlir::mlir {}  // namespace infrt::hlir::mlir

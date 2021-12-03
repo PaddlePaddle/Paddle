@@ -49,8 +49,8 @@ struct Type {
   enum class cpp_type_t : uint8_t {
     None = 0,               // None information.
     Const = 1,              // const.
-    Handle = 1 << 1,        // pointer type, such as `cinn_buffer_t*`.
-    HandleHandle = 1 << 2,  // pointer of pointer, such as `cinn_buffer_t**`.
+    Handle = 1 << 1,        // pointer type, such as `infrt_buffer_t*`.
+    HandleHandle = 1 << 2,  // pointer of pointer, such as `infrt_buffer_t**`.
   };
 
   Type();

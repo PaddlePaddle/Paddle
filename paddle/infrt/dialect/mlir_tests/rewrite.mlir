@@ -20,5 +20,5 @@ func @main() -> tensor<?xf32> {
   %c2 = "pd.Matmul"(%e1, %b2) {transpose_x=true, transpose_y=false} : (tensor<?xf32>, tensor<?xf32>) -> tensor<?xf32>
   %d2 = "pd.ElementwiseAdd"(%c2, %bias2) {axis=1:i32} : (tensor<?xf32>, tensor<?xf32>) -> tensor<?xf32>
   %e2 = "pd.Relu"(%d2) {} : (tensor<?xf32>) -> tensor<?xf32>
-  cinn.return %e2 : tensor<?xf32>
+  infrt.return %e2 : tensor<?xf32>
 }

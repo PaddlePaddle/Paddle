@@ -27,7 +27,7 @@ namespace infrt::dialect {
 //===----------------------------------------------------------------------===//
 
 // Parse the BenchmarkOp in the following format
-// cinn.benchmark "add.i32"(%c : i32, %d : f32)
+// infrt.benchmark "add.i32"(%c : i32, %d : f32)
 //       max_count = 100, duration_secs = 1 {
 // ...
 // }
@@ -98,12 +98,12 @@ static ParseResult parseBenchmarkOp(OpAsmParser &parser,       // NOLINT
 }
 
 // Print the BenchmarkOp in the following format
-// cinn.benchmark "add.i32"(%c : i32, %d : f32)
+// infrt.benchmark "add.i32"(%c : i32, %d : f32)
 //       max_count = 100, duration_secs = 1 {
 // ...
 // }
 static void print(OpAsmPrinter &p, BenchmarkOp op) {  // NOLINT
-  p << "cinn.benchmark ";
+  p << "infrt.benchmark ";
 
   // Print the name attribute, e.g "add.i32"
   auto name_attr = op.getAttr("name");
@@ -146,7 +146,7 @@ static LogicalResult verify(BenchmarkOp op) {
   // Verify that the target benchmark region has exactly one return value.
   auto &region = op.region();
   auto &last_op = region.front().back();
-  if (last_op.getName().getStringRef() != "cinn.return") {
+  if (last_op.getName().getStringRef() != "infrt.return") {
     return op.emitOpError("missing return statement");
   }
   if (last_op.getNumOperands() != 1) {

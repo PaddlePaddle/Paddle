@@ -54,9 +54,9 @@ class MlirToRuntimeTranslator {
   virtual ~MlirToRuntimeTranslator();
 
  protected:
-  //! Emit a "cinn.constant.*" operation, return true if succeed.
+  //! Emit a "infrt.constant.*" operation, return true if succeed.
   bool EmitConstantOp(mlir::Operation* op);
-  //! Emit a "cinn.return" operation.
+  //! Emit a "infrt.return" operation.
   bool EmitReturnOp(mlir::Operation* op,
                     llvm::SmallVectorImpl<mlir::Value>* results);
   //! Emit a "ts.build_shape" operation.

@@ -28,7 +28,9 @@ class CinnDialect : public ::mlir::Dialect {
   explicit CinnDialect(::mlir::MLIRContext* ctx);
 
   //! We should register this function in dialect
-  static llvm::StringRef getDialectNamespace() { return "cinn::hlir::dialect"; }
+  static llvm::StringRef getDialectNamespace() {
+    return "infrt::hlir::dialect";
+  }
 };
 
 }  // namespace infrt::hlir::dialect

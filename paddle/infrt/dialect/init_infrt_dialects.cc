@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/init_cinn_dialects.h"
+#include "paddle/infrt/dialect/init_infrt_dialects.h"
 
 #include <glog/logging.h>
 
 #include "paddle/infrt/dialect/basic_kernels.h"
-#include "paddle/infrt/dialect/cinn_base.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
+#include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 

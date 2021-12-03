@@ -4,7 +4,7 @@
 include "mlir/IR/OpBase.td"
 
 def INFRT_Dialect : Dialect {
-  let name = "cinn";
+  let name = "infrt";
 
   let description = [{
     The INFRT host dialect.
@@ -15,14 +15,14 @@ def INFRT_Dialect : Dialect {
 
 // Type definitions
 def StringType :
-    Type<CPred<"$_self.isa<::infrt::dt::StringType>()">, "!cinn.string type">,
+    Type<CPred<"$_self.isa<::infrt::dt::StringType>()">, "!infrt.string type">,
     BuildableType<"$_builder.getType<::infrt::dt::StringType>()">;
 
 def TensorType :
-    Type<CPred<"$_self.isa<::infrt::dt::TensorType>()">, "!cinn.tensor type">;
+    Type<CPred<"$_self.isa<::infrt::dt::TensorType>()">, "!infrt.tensor type">;
 
 def TensorMapType :
-    Type<CPred<"$_self.isa<::infrt::dt::TensorMapType>()">, "!cinn.tensor_map type">,
+    Type<CPred<"$_self.isa<::infrt::dt::TensorMapType>()">, "!infrt.tensor_map type">,
     BuildableType<"$_builder.getType<::infrt::dt::TensorMapType>()">;
 
 def BufferType : OpaqueType<"b", "buffer", "buffer">;

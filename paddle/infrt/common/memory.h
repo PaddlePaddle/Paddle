@@ -39,7 +39,7 @@ class MemoryInterface {
  */
 class MemoryManager final {
  public:
-  using key_t = infrt::common::Target::Arch;
+  using key_t = common::Target::Arch;
 
   static MemoryManager& Global() {
     static auto* x = new MemoryManager;
@@ -67,8 +67,7 @@ class MemoryManager final {
  private:
   MemoryManager();
 
-  std::unordered_map<infrt::common::Target::Arch,
-                     std::unique_ptr<MemoryInterface>>
+  std::unordered_map<common::Target::Arch, std::unique_ptr<MemoryInterface>>
       memory_mngs_;
 
   INFRT_DISALLOW_COPY_AND_ASSIGN(MemoryManager);

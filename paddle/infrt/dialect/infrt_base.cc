@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/cinn_base.h"
+#include "paddle/infrt/dialect/infrt_base.h"
 
 #include "paddle/infrt/dialect/basic_kernels.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
@@ -42,7 +42,7 @@ void INFRTDialect::initialize() {
 mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef keyword;
   if (parser.parseKeyword(&keyword)) return mlir::Type();
-  // parse TensorType, for example: !cinn.tensor<X86, CUDA, F32>
+  // parse TensorType, for example: !infrt.tensor<X86, CUDA, F32>
   if (keyword == "tensor") {
     llvm::StringRef target;
     llvm::StringRef layout;
@@ -86,40 +86,40 @@ mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
 
     return infrt::dt::TensorType::get(*targetType, *layoutType, *precisionType);
   }
-  // parse TensorMapType, for example: !cinn.tensor_map
+  // parse TensorMapType, for example: !infrt.tensor_map
   if (keyword == "tensor_map") {
     return infrt::dt::TensorMapType::get();
   }
-  // parse StringType, for example: !cinn.string
+  // parse StringType, for example: !infrt.string
   if (keyword == "string") {
     return infrt::dt::StringType::get();
   }
 
-  parser.emitError(parser.getCurrentLocation(), "unknown cinn type: ")
+  parser.emitError(parser.getCurrentLocation(), "unknown infrt type: ")
       << keyword;
   return mlir::Type();
 }
 
 void INFRTDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter &printer) const {
-  // print TensorType, for example: !cinn.tensor<X86, CUDA, F32>
+  // print TensorType, for example: !infrt.tensor<X86, CUDA, F32>
   if (type.isa<infrt::dt::TensorType>()) {
     auto tensorType = type.cast<infrt::dt::TensorType>();
     printer << "tensor<" << tensorType.target() << ", " << tensorType.layout()
             << ", " << tensorType.precision() << ">";
     return;
   }
-  // print TensorMapType, for example: !cinn.tensor_map
+  // print TensorMapType, for example: !infrt.tensor_map
   if (type.isa<infrt::dt::TensorMapType>()) {
     printer << "tensor_map";
     return;
   }
-  // print StringType, for example: !cinn.string
+  // print StringType, for example: !infrt.string
   if (type.isa<infrt::dt::StringType>()) {
     printer << "string";
     return;
   }
-  llvm_unreachable("unknown cinn type.");
+  llvm_unreachable("unknown infrt type.");
 }
 
 // ----INFRTDialect definition end----

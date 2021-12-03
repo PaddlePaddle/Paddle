@@ -30,7 +30,7 @@ struct KernelRegistry;
 /**
  * Executable function for a given MLIR function definition, mainly used in two
  * scenerios:
- * 1. cinn.call op
+ * 1. infrt.call op
  * 2. main function call
  *
  * A MlirFunctionExecutable might have one or more arguments and results.

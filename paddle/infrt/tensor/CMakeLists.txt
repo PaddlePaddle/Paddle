@@ -16,5 +16,5 @@ gather_srcs(infrt_src SRCS
 # Disable temporarily for the external-kernel's mkldnn is outdate
 # add_test(
 #     NAME run_and_check_tensor_map
-#     COMMAND sh -c "sed -e 's|/cinn/build|${CMAKE_BINARY_DIR}|' ${tensor_map_mlir} > /tmp/tensor_map.mlir && ${CMAKE_BINARY_DIR}/infrt/host_context/cinn-exec -i /tmp/tensor_map.mlir --shared_libs=${external_kernels_lib} | ${LLVM_PATH}/bin/FileCheck ${tensor_map_mlir}"
+#     COMMAND sh -c "sed -e 's|/infrt/build|${CMAKE_BINARY_DIR}|' ${tensor_map_mlir} > /tmp/tensor_map.mlir && ${CMAKE_BINARY_DIR}/infrt/host_context/infrt-exec -i /tmp/tensor_map.mlir --shared_libs=${external_kernels_lib} | ${LLVM_PATH}/bin/FileCheck ${tensor_map_mlir}"
 # )

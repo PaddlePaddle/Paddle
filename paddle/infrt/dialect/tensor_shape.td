@@ -2,15 +2,15 @@
 #else
 #define INFRT_OPS
 
-include "paddle/infrt/dialect/cinn_base.td"
+include "paddle/infrt/dialect/infrt_base.td"
 include "paddle/infrt/dialect/tensor_shape_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 // Base class for the operation in the TensorShape dialect
 class TS_Op<string mnemonic, list<OpTrait> traits = []> :
     Op<TensorShapeDialect, mnemonic, traits> {
-  let parser = [{ return cinn::dialect::parse$cppClass(parser, result); }];
-  let printer = " return cinn::dialect::printOpWithOperands(p, *this)" ";";
+  let parser = [{ return infrt::dialect::parse$cppClass(parser, result); }];
+  let printer = " return infrt::dialect::printOpWithOperands(p, *this)" ";";
 }
 
 def TS_BuildShapeOp : TS_Op<"build_shape", [NoSideEffect]> {

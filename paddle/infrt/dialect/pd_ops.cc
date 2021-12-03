@@ -16,7 +16,7 @@
 
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
-#include "paddle/infrt/dialect/cinn_base.h"
+#include "paddle/infrt/dialect/infrt_base.h"
 
 namespace mlir {
 namespace pd {

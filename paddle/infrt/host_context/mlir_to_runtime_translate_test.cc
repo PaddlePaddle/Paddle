@@ -36,14 +36,14 @@ TEST(MlirToRuntimeTranslate, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = cinn.constant.f32 1.0
-  %v1 = cinn.constant.f32 2.0
-  %v2 = "cinn.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "cinn.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = infrt.constant.f32 1.0
+  %v1 = infrt.constant.f32 2.0
+  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "cinn.print.f32"(%v1) : (f32) -> ()
+  "infrt.print.f32"(%v1) : (f32) -> ()
 
-  cinn.return
+  infrt.return
 }
 )ROC";
 
@@ -62,14 +62,14 @@ TEST(TestMlir, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = cinn.constant.f32 1.0
-  %v1 = cinn.constant.f32 2.0
-  %v2 = "cinn.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "cinn.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = infrt.constant.f32 1.0
+  %v1 = infrt.constant.f32 2.0
+  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "cinn.print.f32"(%v1) : (f32) -> ()
+  "infrt.print.f32"(%v1) : (f32) -> ()
 
-  cinn.return
+  infrt.return
 }
 )ROC";
 
@@ -87,18 +87,18 @@ TEST(TestMlir, shadow_copy_tensor_profile) {
   mlir::MLIRContext* context = infrt::Global::getMLIRContext();
 
   auto head = R"ROC(
-func @predict(%a: !cinn.tensor<X86, NCHW, F32>, %b: !cinn.tensor<X86, NCHW, F32>) -> (!cinn.tensor<X86, NCHW, F32>, !cinn.tensor<X86, NCHW, F32>) {
+func @predict(%a: !infrt.tensor<X86, NCHW, F32>, %b: !infrt.tensor<X86, NCHW, F32>) -> (!infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>) {
 )ROC";
 
   auto tpl0 =
-      "%a{0} = dt.shallow_copy_tensor %a : !cinn.tensor<X86, NCHW, F32> -> "
-      "!cinn.tensor<X86, NCHW, F32>";
+      "%a{0} = dt.shallow_copy_tensor %a : !infrt.tensor<X86, NCHW, F32> -> "
+      "!infrt.tensor<X86, NCHW, F32>";
   auto tpl1 =
-      "%b{0} = dt.shallow_copy_tensor %b : !cinn.tensor<X86, NCHW, F32> -> "
-      "!cinn.tensor<X86, NCHW, F32>";
+      "%b{0} = dt.shallow_copy_tensor %b : !infrt.tensor<X86, NCHW, F32> -> "
+      "!infrt.tensor<X86, NCHW, F32>";
 
   auto end = R"ROC(
-cinn.return %a0, %b0: !cinn.tensor<X86, NCHW, F32>, !cinn.tensor<X86, NCHW, F32>
+infrt.return %a0, %b0: !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>
 }
   )ROC";
 

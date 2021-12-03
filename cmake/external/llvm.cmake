@@ -101,10 +101,10 @@ function(mlir_add_rewriter td_base)
   add_custom_target(${td_base}_inc DEPENDS ${td_base}_IncGen)
 endfunction()
 
-# Execute the mlir script with cinn-exec program.
+# Execute the mlir script with infrt-exec program.
 # @name: name of the test
 # @script: path to the mlir script file
-function (cinn_exec_check name script)
+function (infrt_exec_check name script)
   add_test(NAME ${name}
-    COMMAND sh -c "${CMAKE_BINARY_DIR}/infrt/host_context/cinn-exec -i ${CMAKE_CURRENT_SOURCE_DIR}/${script}| ${LLVM_PATH}/bin/FileCheck  ${CMAKE_CURRENT_SOURCE_DIR}/${script}")
+    COMMAND sh -c "${CMAKE_BINARY_DIR}/infrt/host_context/infrt-exec -i ${CMAKE_CURRENT_SOURCE_DIR}/${script}| ${LLVM_PATH}/bin/FileCheck  ${CMAKE_CURRENT_SOURCE_DIR}/${script}")
 endfunction()

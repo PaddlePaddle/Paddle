@@ -2,7 +2,7 @@
 #else
 #define DT_OPS
 
-include "paddle/infrt/dialect/cinn_base.td"
+include "paddle/infrt/dialect/infrt_base.td"
 include "paddle/infrt/dialect/tensor_shape_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
