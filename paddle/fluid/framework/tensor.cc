@@ -110,7 +110,8 @@ void* Tensor::mutable_data(const platform::CUDAPlace& place,
 
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
-      holder_->size() < size + offset_) {
+      holder_->size() < size + offset_ ||
+      !(platform::is_gpu_place(place) && holder_->stream() == stream)) {
     holder_.reset();
     holder_ = memory::AllocShared(place, size, stream);
     offset_ = 0;
@@ -243,34 +244,6 @@ void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
 void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void* Tensor::mutable_data(const platform::CUDAPlace& place,
-                           proto::VarType::Type type,
-                           const gpuStream_t& stream) {
-  if (!FLAGS_use_stream_safe_cuda_allocator) {
-    return mutable_data(place, type);
-  }
-
-  type_ = type;
-  PADDLE_ENFORCE_GE(
-      numel(), 0,
-      platform::errors::PreconditionNotMet(
-          "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(), "] now"));
-  size_t size = numel() * SizeOfType(type);
-
-  /* some versions of boost::variant don't have operator!= */
-  if (holder_ == nullptr || !(holder_->place() == place) ||
-      holder_->size() < size + offset_ ||
-      !(platform::is_gpu_place(place) && holder_->stream() == stream)) {
-    holder_.reset();
-    holder_ = memory::AllocShared(place, size, stream);
-    offset_ = 0;
-  }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 offset_);
-}
-
 void Tensor::RecordStream(const gpuStream_t& stream) {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
                                        "The tensor is not initialized."));

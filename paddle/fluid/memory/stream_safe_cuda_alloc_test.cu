@@ -89,11 +89,11 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   void CopyResultAsync() {
     for (size_t i = 0; i < stream_num_; ++i) {
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
           reinterpret_cast<int *>(result_->ptr()) + i * data_num_,
           workspaces_[i]->ptr(), workspace_size_, cudaMemcpyDeviceToDevice));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpyAsync(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
           reinterpret_cast<int *>(result_->ptr()) + i * data_num_,
           workspaces_[i]->ptr(), workspace_size_, hipMemcpyDeviceToDevice));
 #endif

@@ -168,7 +168,7 @@ class AllocatorFacadePrivate {
         allow_free_idle_chunk_ = allow_free_idle_chunk;
         if (FLAGS_use_stream_safe_cuda_allocator) {
           default_streams_ =
-              std::vector<gpuStream_t>(platform::GetCUDADeviceCount(), nullptr);
+              std::vector<gpuStream_t>(platform::GetGPUDeviceCount(), nullptr);
           // TODO(Ruibiao): Support multi-stream allocator for other strategies
           for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount();
                ++dev_id) {

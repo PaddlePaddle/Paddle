@@ -290,8 +290,6 @@ class Tensor {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void* mutable_data(const platform::CUDAPlace& place,
-                     proto::VarType::Type type, const gpuStream_t& stream);
   void RecordStream(const gpuStream_t& stream);
 #endif
 

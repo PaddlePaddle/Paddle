@@ -38,10 +38,10 @@ void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
   if (it == outstanding_event_map_.end()) {
     gpuEvent_t new_event;
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&new_event, cudaEventDisableTiming));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&new_event, hipEventDisableTiming));
 #endif
     outstanding_event_map_[stream] = new_event;
@@ -53,9 +53,9 @@ void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
   }
 
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(record_event, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(record_event, stream));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(record_event, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(record_event, stream));
 #endif
   VLOG(8) << "Record event " << record_event << " to stream " << stream;
 }
@@ -74,8 +74,8 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(err);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #else
     gpuError_t err = hipEventQuery(event);
     if (err == hipErrorNotReady) {
