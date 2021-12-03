@@ -2611,3 +2611,46 @@ def atan2(x, y, name=None):
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
+    
+def logit(x, eps=None, name=None):
+    r"""
+    This function generates a new tensor with the logit of the elements of input.
+
+
+    .. math::
+
+        logit=ln\left ( {\frac {x} {1-x}} \right )   (x = eps when (x < eps || x > 1 - eps)) 
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64. If x[i] < eps or x[i] > 1 - eps, x[i] = eps.
+        eps (bool, optional):  the epsilon for input clamp bound. Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
+            out1 = paddle.logit(x)
+            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.logit(x, 'eps', eps)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
+    helper = LayerHelper("logit", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='logit',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'eps': eps})
+    return out
+
+
