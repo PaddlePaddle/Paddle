@@ -126,6 +126,10 @@ class GraphBrpcService : public PsBaseService {
                                      PsResponseMessage &response,
                                      brpc::Controller *cntl);
 
+  int32_t load_graph_split_config(Table *table, const PsRequestMessage &request,
+                                  PsResponseMessage &response,
+                                  brpc::Controller *cntl);
+
  private:
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;

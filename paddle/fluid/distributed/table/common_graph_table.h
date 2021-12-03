@@ -47,7 +47,6 @@ class GraphShard {
  public:
   size_t get_size();
   GraphShard() {}
-  GraphShard(int shard_num) { this->shard_num = shard_num; }
   ~GraphShard();
   std::vector<Node *> &get_bucket() { return bucket; }
   std::vector<Node *> get_batch(int start, int end, int step);
@@ -60,18 +59,18 @@ class GraphShard {
   }
 
   GraphNode *add_graph_node(uint64_t id);
+  GraphNode *add_graph_node(Node *node);
   FeatureNode *add_feature_node(uint64_t id);
   Node *find_node(uint64_t id);
   void delete_node(uint64_t id);
   void clear();
   void add_neighbor(uint64_t id, uint64_t dst_id, float weight);
-  std::unordered_map<uint64_t, int> get_node_location() {
+  std::unordered_map<uint64_t, int> &get_node_location() {
     return node_location;
   }
 
  private:
   std::unordered_map<uint64_t, int> node_location;
-  int shard_num;
   std::vector<Node *> bucket;
 };
 
@@ -355,7 +354,7 @@ class ScaledLRU {
 class GraphTable : public SparseTable {
  public:
   GraphTable() { use_cache = false; }
-  virtual ~GraphTable() {}
+  virtual ~GraphTable();
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
                                   int &actual_size, bool need_feature,
@@ -374,6 +373,7 @@ class GraphTable : public SparseTable {
   virtual int32_t initialize();
 
   int32_t load(const std::string &path, const std::string &param);
+  int32_t load_graph_split_config(const std::string &path);
 
   int32_t load_edges(const std::string &path, bool reverse);
 
@@ -434,7 +434,7 @@ class GraphTable : public SparseTable {
   }
 
  protected:
-  std::vector<GraphShard> shards;
+  std::vector<GraphShard *> shards, extra_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   const int task_pool_size_ = 24;
   const int random_sample_nodes_ranges = 3;
@@ -449,7 +449,9 @@ class GraphTable : public SparseTable {
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
   std::shared_ptr<ScaledLRU<SampleKey, SampleResult>> scaled_lru;
-  bool use_cache;
+  std::unordered_set<uint64_t> extra_nodes;
+  std::unordered_map<uint64_t, size_t> extra_nodes_to_thread_index;
+  bool use_cache, use_duplicate_nodes;
   mutable std::mutex mutex_;
 };
 }  // namespace distributed

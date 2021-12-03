@@ -15,7 +15,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
 
-#include "paddle/fluid/platform/cuda_resource_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 
 namespace paddle {
 namespace platform {
@@ -96,7 +96,7 @@ NCCLComm* NCCLCommContext::CreateComm(ncclUniqueId* nccl_id, int nranks,
 
   ncclComm_t comm = nullptr;
   SetDeviceId(dev_id);
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 
   auto* comm_wrapper = AssignNCCLComm(comm, nranks, rank, dev_id, ring_id);
@@ -121,7 +121,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitAll(
       comms, dev_ids.size(), dev_ids.data()));
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
@@ -153,18 +153,18 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
           << ", rind_id: " << ring_id;
   ncclComm_t comms[kDevices];
   {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
     for (int i = 0; i < kDevices; i++) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipSetDevice(i));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipSetDevice(i));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(i));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(i));
 #endif
       platform::dynload::ncclCommInitRank(comms + i, kDevices * ntrainers,
                                           *nccl_id, train_id * kDevices + i);
       VLOG(1) << "ncclCommInitRank: " << i;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
     VLOG(1) << "nccl group end seccessss";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
