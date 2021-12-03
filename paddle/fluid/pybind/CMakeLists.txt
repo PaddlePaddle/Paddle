@@ -261,7 +261,7 @@ if(WITH_PYTHON)
   endif()
 
   list(APPEND PYBIND_DEPS interpretercore standalone_executor)
-  cc_library(op_function_common SRCS op_function_common.cc DEPS framework_proto extern_xxhash extern_boost)
+  cc_library(op_function_common SRCS op_function_common.cc DEPS ${PYBIND_DEPS})
   list(APPEND PYBIND_DEPS op_function_common)
 
   if(NOT ON_INFER)
