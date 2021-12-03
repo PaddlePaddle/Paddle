@@ -253,7 +253,7 @@ def _pickle_save(obj, f, protocol):
         dispatch_table_layer[layer.__class__] = reduce_Layer
         return layer
 
-    _parse_every_object(obj, lambda v: isinstance(v, core.Layer),
+    _parse_every_object(obj, lambda v: isinstance(v, fluid.Layer),
                         create_layer_dispatch_table)
 
     def add_dispatch_table():
@@ -316,7 +316,7 @@ def _is_state_dict(obj):
     if isinstance(obj, dict):
 
         def condition(obj):
-            return isinstance(obj, (core.Layer, Program, core.VarBase,
+            return isinstance(obj, (fluid.Layer, Program, core.VarBase,
                                     core.LoDTensor, core.SelectedRows))
 
         # If the value of a dict is a core.VarBase/LoDTensor or a dict 
@@ -422,7 +422,7 @@ def _parse_every_object(obj, condition_func, convert_func):
 
 def _parse_load_result(obj, return_numpy):
     def is_layer(obj):
-        return isinstance(obj, core.Layer)
+        return isinstance(obj, fluid.Layer)
 
     def parse_layer(obj):
         temp_dict = _parse_load_result(obj.__dict__, False)

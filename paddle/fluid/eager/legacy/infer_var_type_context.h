@@ -29,6 +29,7 @@
 #include "paddle/pten/include/core.h"
 
 namespace egr {
+namespace legacy {
 
 // infer var type context for imperative mode
 class TensorRuntimeInferVarTypeContext
@@ -255,4 +256,5 @@ class TensorRuntimeInferVarTypeContext
   const paddle::framework::AttributeMap& default_attrs_;
 };
 
+}  // namespace legacy
 }  // namespace egr

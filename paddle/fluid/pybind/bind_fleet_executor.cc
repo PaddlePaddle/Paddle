@@ -16,7 +16,10 @@
 #include <pybind11/stl.h>
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace py = pybind11;
 

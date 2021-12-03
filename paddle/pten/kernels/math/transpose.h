@@ -14,17 +14,21 @@
 
 #pragma once
 
-#include "paddle/pten/api/include/tensor.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/core/dense_tensor.h"
 
-namespace paddle {
-namespace experimental {
+namespace pten {
 
-PD_DLL_DECL Tensor dot(const Tensor& x, const Tensor& y);
+namespace math {
 
-PD_DLL_DECL Tensor matmul(const Tensor& x,
-                          const Tensor& y,
-                          bool transpose_x = false,
-                          bool transpose_y = false);
+template <typename DeviceContext, typename T>
+struct TransposeNormal {
+  // for dims >= 7 situation
+  void operator()(const DeviceContext& dev_ctx,
+                  const pten::DenseTensor& in,
+                  pten::DenseTensor* out,
+                  const std::vector<int64_t>& axis);
+};
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace math
+}  // namespace pten

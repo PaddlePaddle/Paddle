@@ -19,9 +19,8 @@ PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
-TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/TensorRT/include
-TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
-MSVC_STATIC_CRT=$7
+TENSORRT_ROOT_DIR=$5 # TensorRT root dir, default to /usr
+MSVC_STATIC_CRT=$6
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
@@ -39,7 +38,7 @@ else
 fi
 
 USE_TENSORRT=OFF
-if [ -d "$TENSORRT_INCLUDE_DIR" -a -d "$TENSORRT_LIB_DIR" ]; then
+if [ -d "$TENSORRT_ROOT_DIR" ]; then
   USE_TENSORRT=ON
 fi
 
@@ -132,6 +131,28 @@ for WITH_STATIC_LIB in ON OFF; do
         fi
       done
     done
+
+    # --------tensorrt mobilenet on windows------
+    if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+      rm -rf *
+      cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=trt_mobilenet_demo \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+        -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR
+      msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+      Release/trt_mobilenet_demo.exe \
+        --modeldir=$DATA_DIR/mobilenet/model \
+        --data=$DATA_DIR/mobilenet/data.txt \
+        --refer=$DATA_DIR/mobilenet/result.txt 
+      if [ $? -ne 0 ]; then
+        echo "trt demo trt_mobilenet_demo runs fail."
+        exit 1
+      fi
+    fi
   else
     # -----simple_on_word2vec on linux/mac-----
     rm -rf *
@@ -183,8 +204,7 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_GPU=$TEST_GPU_CPU \
         -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
         -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
-        -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR
       make -j$(nproc)
       ./trt_mobilenet_demo \
         --modeldir=$DATA_DIR/mobilenet/model \

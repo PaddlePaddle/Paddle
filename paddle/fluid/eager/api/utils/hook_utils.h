@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/pten/api/all.h"
 namespace egr {
+namespace egr_utils_api {
 
 void RegisterGradientHookForTensor(
     const egr::EagerTensor& tensor,
@@ -27,4 +28,5 @@ void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
                                  const std::function<void(void)>& hook);
 void RetainGradForTensor(const egr::EagerTensor& tensor);
 
+}  // namespace egr_utils_api
 }  // namespace egr
