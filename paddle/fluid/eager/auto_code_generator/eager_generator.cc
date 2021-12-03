@@ -897,18 +897,6 @@ static std::string GenerateGradNodeCreationContent(
   return grad_node_creation_body_str;
 }
 
-static std::string AppendUseOp(const std::string& op_type) {
-  // [Generation] Append USE_OP
-  const char* USE_OP_TEMPLATE = "USE_OP(%s);\n";
-  std::string return_str = paddle::string::Sprintf(USE_OP_TEMPLATE, op_type);
-
-  // Special Ops
-  if (op_type == "reduce_sum")
-    return_str += paddle::string::Sprintf(USE_OP_TEMPLATE, "reduce_sum_grad");
-
-  return return_str;
-}
-
 /* -------------------------------- */
 /* --------- CodeGen: Forward ----- */
 /* -------------------------------- */
@@ -1155,9 +1143,6 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
       dygraph_function_args_str, generated_function_body);
-
-  // [Generation] Append USE_OP
-  // fwd_function_str += AppendUseOp(op_type);
 
   // [Generation] Generate forward functions header
   const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
