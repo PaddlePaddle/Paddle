@@ -2618,18 +2618,29 @@ def logit(x, eps=1e-8, name=None):
     This function generates a new tensor with the logit of the elements of input.
 
 
-    .. math::
+    Equation:
+        .. math::
 
-        logit=ln\left ( {\frac {x} {1-x}} \right )   (x = eps when (x < eps || x > 1 - eps)) 
+            logit=ln\left ( {\frac {x} {1-x}} \right )   (x = eps when (x < eps || x > 1 - eps)) 
 
-    Parameters:
+    Args:
         x (Tensor): The input Tensor with data type float32, float64. If x[i] < eps or x[i] > 1 - eps, x[i] = eps.
-        eps (bool, optional):  the epsilon for input clamp bound. Default is 1e-8.
+        eps (float, optional):  the epsilon for input clamp bound. Default is 1e-8.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor with the same data type and shape as ``x`` .
+        out(Tensor): A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+            import paddle
+
+            x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
+            out1 = paddle.logit(x)
+            print(out1)
+            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
+
     """
 
     if in_dygraph_mode():
@@ -2724,12 +2735,6 @@ def deg2rad(x, name=None):
         .. code-block:: python
 
             import paddle
-
-            x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
-            out1 = paddle.logit(x)
-            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
-
-
             import numpy as np
             
             x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
