@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,28 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
+#include "paddle/fluid/platform/device/gpu/rocm/rocm_device_function.h"
 #else
-#include <cuda_runtime.h>
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_device_function.h"
 #endif
 
-namespace paddle {
-
-#ifdef PADDLE_WITH_HIP
-#define gpuSuccess hipSuccess
-using gpuStream_t = hipStream_t;
-using gpuError_t = hipError_t;
-using gpuEvent_t = hipEvent_t;
-using gpuDeviceProp = hipDeviceProp_t;
-#else
-#define gpuSuccess cudaSuccess
-using gpuStream_t = cudaStream_t;
-using gpuError_t = cudaError_t;
-using gpuEvent_t = cudaEvent_t;
-using gpuDeviceProp = cudaDeviceProp;
 #endif
-
-using CUDAGraphID = unsigned long long;  // NOLINT
-}  // namespace paddle

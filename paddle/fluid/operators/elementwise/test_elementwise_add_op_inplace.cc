@@ -30,10 +30,9 @@ namespace operators {
 static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
   if (copy_to_gpu) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
 #elif defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
         platform::errors::InvalidArgument("Check your paddle version, current "

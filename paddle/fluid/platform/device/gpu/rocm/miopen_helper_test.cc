@@ -15,7 +15,7 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #define GOOGLE_GLOG_DLL_DECL
 
-#include "paddle/fluid/platform/miopen_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #include <gtest/gtest.h>
 
