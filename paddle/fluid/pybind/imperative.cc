@@ -1963,10 +1963,6 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "Tensor %s has not been initialized!", self->Name()));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
