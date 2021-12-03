@@ -102,9 +102,12 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1,-1,-1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1,-1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1], [-1,-1,-1,-1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
@@ -112,6 +115,7 @@ class Testcompatible(unittest.TestCase):
                         self.assertTrue(impl.is_auto_compatible(dist_op))
                     else:
                         self.assertFalse(impl.is_auto_compatible(dist_op))
+
     def test_transpose_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
@@ -123,9 +127,12 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1,-1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1,-1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1], [-1,-1,-1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
@@ -142,8 +149,10 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1,-1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1,-1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
@@ -160,8 +169,10 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1,-1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1,-1])                
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
@@ -178,9 +189,12 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1, -1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1], [-1, -1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1, -1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
@@ -198,9 +212,12 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1, 1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1], [1, -1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1, -1])                
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, 1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
@@ -218,9 +235,12 @@ class Testcompatible(unittest.TestCase):
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1, -1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1], [-1, 1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0], [-1, 1])                
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [-1, 1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, 1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
                 for idx, impl in enumerate(impls):
