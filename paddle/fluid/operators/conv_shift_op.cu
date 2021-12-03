@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

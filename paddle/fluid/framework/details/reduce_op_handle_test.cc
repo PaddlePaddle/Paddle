@@ -59,7 +59,7 @@ struct TestReduceOpHandle {
     use_gpu_ = use_gpu;
     if (use_gpu) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      int count = p::GetCUDADeviceCount();
+      int count = p::GetGPUDeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
                         "device count is "

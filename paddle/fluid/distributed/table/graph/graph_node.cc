@@ -65,6 +65,9 @@ void GraphNode::build_edges(bool is_weighted) {
   }
 }
 void GraphNode::build_sampler(std::string sample_type) {
+  if (sampler != nullptr) {
+    return;
+  }
   if (sample_type == "random") {
     sampler = new RandomSampler();
   } else if (sample_type == "weighted") {

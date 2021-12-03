@@ -16,6 +16,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -23,15 +24,16 @@ namespace paddle {
 namespace distributed {
 
 USE_INTERCEPTOR(Compute);
+USE_INTERCEPTOR(Amplifier);
 
-void Carrier::Init(
-    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-    framework::Scope* root_scope, framework::Scope* minibatch_scope,
-    const std::vector<framework::Scope*>& microbatch_scopes,
-    const platform::Place& place) {
+void Carrier::Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+                   framework::Scope* root_scope,
+                   framework::Scope* minibatch_scope,
+                   const std::vector<framework::Scope*>& microbatch_scopes,
+                   const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "Carrier is already init."));
-  interceptor_id_to_node_ = interceptor_id_to_node;
+  runtime_graph_ = runtime_graph;
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
   place_ = place;
@@ -41,14 +43,33 @@ void Carrier::Init(
   is_init_ = true;
 }
 
-Carrier::~Carrier() {
+void Carrier::Release() {
   // NOTE(wangxi): must join before `Derived Interceptor` destruct,
   // otherwise Derived object will be destructed before thread complete.
+
+  // Sending STOP msg to the source interceptor
+  MessageBus& msg_bus = MessageBus::Instance();
+  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Message bus has not been initialized."));
+  for (int64_t id : source_interceptor_ids_) {
+    VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
+            << ".";
+    InterceptorMessage stop_msg;
+    // source node STOP is send by carrier, so set src_id=-1
+    stop_msg.set_src_id(-1);
+    stop_msg.set_dst_id(id);
+    stop_msg.set_message_type(STOP);
+    msg_bus.Send(stop_msg);
+  }
+
   // TODO(wangxi): Maybe need a better to use thread.
   for (auto& interceptor : interceptor_idx_to_interceptor_) {
     interceptor.second->Join();
   }
 }
+
+Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
@@ -139,6 +160,17 @@ void Carrier::SetCreatingFlag(bool flag) {
   creating_interceptors_ = flag;
   creating_flag_mutex_.unlock();
   if (!flag) {
+    for (auto& pair : interceptor_idx_to_interceptor_) {
+      // update the source interceptor id
+      if (std::find(source_interceptor_ids_.begin(),
+                    source_interceptor_ids_.end(),
+                    pair.first) == source_interceptor_ids_.end()) {
+        auto task = pair.second->GetTaskNode();
+        if (task != nullptr && task->upstream().empty()) {
+          source_interceptor_ids_.emplace_back(pair.first);
+        }
+      }
+    }
     // finish create interceptors outside, handle tmp messsages
     HandleTmpMessages();
   }
@@ -161,11 +193,18 @@ void Carrier::HandleTmpMessages() {
 
 void Carrier::CreateInterceptors() {
   // create each Interceptor
-  if (!interceptor_id_to_node_.empty()) {
+  if (!(runtime_graph_->intercepter_id_to_node().empty())) {
     // no auto init since there is no config
-    for (const auto& item : interceptor_id_to_node_) {
+    for (const auto& item : runtime_graph_->intercepter_id_to_node()) {
       int64_t interceptor_id = item.first;
       TaskNode* task_node = item.second;
+
+      PADDLE_ENFORCE_LT(
+          task_node->run_at_offset(), task_node->run_per_steps(),
+          platform::errors::InvalidArgument(
+              "Interceptor's run_at_offset must < run_per_steps, must now "
+              "run_at_offset=%ld run_per_steps=%ld",
+              task_node->run_at_offset(), task_node->run_per_steps()));
 
       std::unique_ptr<Interceptor> interceptor;
       if (task_node->type().empty()) {
@@ -182,7 +221,7 @@ void Carrier::CreateInterceptors() {
 
       SetInterceptor(interceptor_id, std::move(interceptor));
       VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
-              << ".";
+              << " with type: " << task_node->type() << ".";
 
       if (task_node->upstream().empty()) {
         source_interceptor_ids_.emplace_back(interceptor_id);

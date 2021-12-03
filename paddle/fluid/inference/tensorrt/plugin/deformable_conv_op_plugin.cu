@@ -43,16 +43,16 @@ nvinfer1::Weights DeformableConvPlugin::copyToDevice(const void* hostData,
                                                      size_t count) {
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   void* deviceData;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&deviceData, count * num_bytes));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-      deviceData, hostData, count * num_bytes, cudaMemcpyHostToDevice));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&deviceData, count * num_bytes));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(deviceData, hostData, count * num_bytes,
+                                        cudaMemcpyHostToDevice));
   return nvinfer1::Weights{data_type_, deviceData, int64_t(count)};
 }
 
 void DeformableConvPlugin::serializeFromDevice(
     void** hostBuffer, const nvinfer1::Weights& deviceWeights) const {
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemcpy(static_cast<char*>(*hostBuffer), deviceWeights.values,
                  deviceWeights.count * num_bytes, cudaMemcpyDeviceToHost));
   hostBuffer += deviceWeights.count * num_bytes;
