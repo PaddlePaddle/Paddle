@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/pten/include/core.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
-#include "paddle/fluid/pybind/exception.h"
 
 namespace paddle {
 namespace pybind {
