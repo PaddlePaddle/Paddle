@@ -31,6 +31,8 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
   if (FLAGS_new_executor_sequential_run) {
+    VLOG(4) << "FLAGS_new_executor_sequential_run:"
+            << FLAGS_new_executor_sequential_run;
     queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
                           std::move(fn));
   } else {
