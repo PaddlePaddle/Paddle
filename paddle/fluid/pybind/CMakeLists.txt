@@ -212,6 +212,12 @@ if(WITH_PYTHON)
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
 
   list(APPEND PYBIND_DEPS interpretercore standalone_executor)
+
+  cc_library(paddle_eager
+  SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
+  DEPS autograd_meta grad_node_info pten global_utils utils eager_api accumulation_node backward python)
+  list(APPEND PYBIND_DEPS paddle_eager)
+
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})

@@ -47,6 +47,8 @@ static TracerOption g_tracer_option = TracerOption::kDefault;
 static ProfilerState g_state = ProfilerState::kDisabled;
 // To hook RecordEvent's events, use it to nvtx timeline
 static bool g_enable_nvprof_hook = false;
+// To hook RecordEvent, use HostEventRecorder
+static bool g_enable_host_event_recorder_hook = false;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
 static thread_local int32_t g_thread_id;
@@ -119,17 +121,17 @@ std::vector<std::vector<MemEvent>> GetMemEvents() {
 
 void SynchronizeAllDevice() {
 #ifdef PADDLE_WITH_CUDA
-  int count = GetCUDADeviceCount();
+  int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 #endif
 #ifdef PADDLE_WITH_HIP
-  int count = GetCUDADeviceCount();
+  int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
 #endif
 }

@@ -75,6 +75,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
@@ -113,15 +114,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifndef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/cuda_profiler.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/npu_info.h"
-#include "paddle/fluid/platform/npu_profiler.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -150,6 +151,14 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 namespace paddle {
 namespace pybind {
+
+PyTypeObject *g_place_pytype = nullptr;
+PyTypeObject *g_cudaplace_pytype = nullptr;
+PyTypeObject *g_cpuplace_pytype = nullptr;
+PyTypeObject *g_xpuplace_pytype = nullptr;
+PyTypeObject *g_npuplace_pytype = nullptr;
+PyTypeObject *g_cudapinnedplace_pytype = nullptr;
+
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   return false;
@@ -498,7 +507,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetVersion(&ver));
   return ver;
 #else
   PADDLE_THROW(platform::errors::External(
@@ -524,6 +533,7 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+  BindEager(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -546,7 +556,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("disable_signal_handler", &DisableSignalHandler);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("cudnn_version", &platform::CudnnVersion);
+  m.def("cudnn_version", &platform::DnnVersion);
   m.def("gpu_memory_available", []() {
     size_t available = 0;
     size_t total = 0;
@@ -554,6 +564,7 @@ PYBIND11_MODULE(core_noavx, m) {
     return available;
   });
 #endif
+
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
 #endif
@@ -1599,7 +1610,7 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
+  py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
     It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
@@ -1622,7 +1633,9 @@ All parameter, weight, gradient are variables in Paddle.
 
           place = paddle.CUDAPlace(0)
 
-        )DOC")
+        )DOC");
+  g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
+  cudaplace
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1634,8 +1647,8 @@ All parameter, weight, gradient are variables in Paddle.
                std::exit(-1);
              }
 
-             if (UNLIKELY(dev_id >= platform::GetCUDADeviceCount())) {
-               if (platform::GetCUDADeviceCount() == 0) {
+             if (UNLIKELY(dev_id >= platform::GetGPUDeviceCount())) {
+               if (platform::GetGPUDeviceCount() == 0) {
                  LOG(ERROR) << "Cannot use GPU because there is no GPU "
                                "detected on your "
                                "machine.";
@@ -1644,8 +1657,8 @@ All parameter, weight, gradient are variables in Paddle.
                  LOG(ERROR) << string::Sprintf(
                      "Invalid CUDAPlace(%d), must inside [0, %d), because GPU "
                      "number on your machine is %d",
-                     dev_id, platform::GetCUDADeviceCount(),
-                     platform::GetCUDADeviceCount());
+                     dev_id, platform::GetGPUDeviceCount(),
+                     platform::GetGPUDeviceCount());
                  std::exit(-1);
                }
              }
@@ -1680,13 +1693,15 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
+  py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
     **Note**:
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
           xpu_place = fluid.XPUPlace(0)
-        )DOC")
+        )DOC");
+  g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
+  xpuplace
       .def("__init__",
            [](platform::XPUPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_XPU
@@ -1756,7 +1771,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
+  py::class_<paddle::platform::CPUPlace> cpuplace(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
 
@@ -1766,8 +1781,9 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
           cpu_place = paddle.CPUPlace()
 
-        )DOC")
-      .def(py::init<>())
+        )DOC");
+  g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
+  cpuplace.def(py::init<>())
       .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
@@ -1779,7 +1795,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::CPUPlace &>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
+  py::class_<paddle::platform::CUDAPinnedPlace> cudapinnedplace(
+      m, "CUDAPinnedPlace", R"DOC(
     CUDAPinnedPlace is a descriptor of a device.
     It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
     The host operating system will not paging and exchanging the memory.
@@ -1793,7 +1810,10 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
           place = paddle.CUDAPinnedPlace()
 
-        )DOC")
+        )DOC");
+  g_cudapinnedplace_pytype =
+      reinterpret_cast<PyTypeObject *>(cudapinnedplace.ptr());
+  cudapinnedplace
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -1819,7 +1839,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   // NPUPlace
-  py::class_<platform::NPUPlace>(m, "NPUPlace", R"DOC(
+  py::class_<platform::NPUPlace> npuplace(m, "NPUPlace", R"DOC(
     NPUPlace is a descriptor of a device.
     It represents a NPU device on which a tensor will be allocated and a model will run.
 
@@ -1828,7 +1848,9 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle
           npu_place = paddle.NPUPlace(0)
 
-        )DOC")
+        )DOC");
+  g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());
+  npuplace
       .def("__init__",
            [](platform::NPUPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -1879,8 +1901,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
-  py::class_<platform::Place>(m, "Place")
-      .def(py::init<>())
+  py::class_<platform::Place> platformplace(m, "Place");
+  g_place_pytype = reinterpret_cast<PyTypeObject *>(platformplace.ptr());
+  platformplace.def(py::init<>())
       .def("_type", &PlaceIndex<platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
@@ -2217,7 +2240,7 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetCUDAComputeCapability(place.device) >= 53;
+    return platform::GetGPUComputeCapability(place.device) >= 53;
   });
 #endif
 
@@ -2397,7 +2420,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+  m.def("get_cuda_device_count", platform::GetGPUDeviceCount);
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(

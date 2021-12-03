@@ -25,7 +25,7 @@ class SoftplusMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusMKLDNNHandler(const framework::ExecutionContext& ctx, const Tensor* x,
-                        const float beta, const mkldnn::engine engine)
+                        const float beta, const dnnl::engine engine)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine,
                                                            ctx.GetPlace()) {
     auto x_tz = framework::vectorize(x->dims());
@@ -53,7 +53,7 @@ class SoftplusMKLDNNHandler
                                             x_md, beta_md, x_md);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireBetaMemory(const float* beta) {
+  std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src1_desc(), platform::to_void_cast<float>(beta));
   }

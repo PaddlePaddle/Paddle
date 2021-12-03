@@ -22,6 +22,8 @@
 
 namespace egr {
 
+class TensorWrapper;
+
 /**
  * EagerUtils is utils used to do some static conversion or autograd
  * members access, this class is desinged to be a full static functional
@@ -112,7 +114,7 @@ class EagerUtils {
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
-      std::vector<egr::EagerTensor>* targets);
+      const std::vector<egr::EagerTensor>& targets);
 
   template <typename T, typename... Args>
   static bool ComputeRequireGrad(T trace_backward, Args&&... args) {
@@ -130,6 +132,13 @@ class EagerUtils {
     iter.SetStopGradient(stop_gradient);
     iter.apply(std::forward<Args>(args)...);
   }
+
+  // TensorWrapper Utils
+  static egr::EagerTensor RecoverTensorWrapper(
+      egr::TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
+  static std::vector<egr::EagerTensor> RecoverTensorWrapper(
+      std::vector<egr::TensorWrapper>* tw,
+      const std::shared_ptr<GradNodeBase>& grad_node);
 
   // Intermidate needed remove this once we don't need legacy
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
