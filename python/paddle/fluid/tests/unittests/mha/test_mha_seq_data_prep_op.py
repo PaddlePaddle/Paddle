@@ -36,17 +36,15 @@ class TestMHASeqDataPrepOp(OpTest):
         lo_windows = np.full((seq_len, ), 0, dtype=np.int32)
         high_windows = np.full((seq_len, ), seq_len, dtype=np.int32)
 
-        qkvo_seqlen_ref = np.concatenate((qo_slen, kv_slen))
         self.inputs = {
-            'QKVO_seqlen': qkvo_seqlen_ref,
+            'QKVO_seqlen': np.concatenate((qo_slen, kv_slen)),
             'lo_hi_windows': np.concatenate((lo_windows, high_windows))
         }
 
-        self.attrs = {'cache_key': str(id(type(self)))}
-
-        # The op donot set False value to output, we rely on compilers (NVCC) to do so.
-        # That could save about 20 mu seconds.
-        self.outputs = {'fake_output': np.array([False], dtype=np.bool)}
+        self.outputs = {
+            'QKVO_seqlen_host': np.concatenate((qo_slen, kv_slen)),
+            'lo_hi_windows_host': np.concatenate((lo_windows, high_windows))
+        }
 
     def init_dtype_type(self):
         self.dtype = np.int32

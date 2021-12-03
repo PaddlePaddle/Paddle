@@ -32,11 +32,20 @@ class MHASeqDataPrepOp : public framework::OperatorWithKernel {
                    "MHASeqDataPrep");
 
     auto qkvo_input_dims = ctx->GetInputDim("QKVO_seqlen");
-
     std::vector<int64_t> qkvo_output_dims;
     for (int i = 0; i < qkvo_input_dims.size(); ++i) {
       qkvo_output_dims.push_back(qkvo_input_dims[i]);
     }
+    ctx->SetOutputDim("QKVO_seqlen_host",
+                      framework::make_ddim(qkvo_output_dims));
+
+    auto lo_hi_input_dims = ctx->GetInputDim("lo_hi_windows");
+    std::vector<int64_t> lo_hi_output_dims;
+    for (int i = 0; i < lo_hi_input_dims.size(); ++i) {
+      lo_hi_output_dims.push_back(lo_hi_input_dims[i]);
+    }
+    ctx->SetOutputDim("lo_hi_windows_host",
+                      framework::make_ddim(lo_hi_output_dims));
   }
 };
 
@@ -46,16 +55,8 @@ class MHASeqDataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("QKVO_seqlen", "(Tensor), QKVO_seqlen");
     AddInput("lo_hi_windows", "(Tensor), lo_hi_windows");
 
-    // This is for connecting computing graphs with MHA Op when converting
-    // dygraph to static.
-    // Since to_static would build ParallelExecutor which would run ops async if
-    // there is
-    // no dependence. Moreover, static.save_inference_model would prune graphs.
-    // If the nodes is
-    // not related the data flow from inputs to outputs, it would be removed.
-    AddOutput("fake_output", "(bool), fake_output");
-
-    AddAttr<std::string>("cache_key", "");
+    AddOutput("QKVO_seqlen_host", "(Tensor), QKVO_seqlen_host");
+    AddOutput("lo_hi_windows_host", "(Tensor), lo_hi_windows_host");
 
     AddComment(R"DOC(MHA Sequence data preparation OP Test)DOC");
   }

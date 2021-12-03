@@ -18,7 +18,6 @@ limitations under the License. */
 #include <cudnn.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/mha_seq_data_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -32,9 +31,6 @@ class MHAMetaData {
   cudnnSeqDataDescriptor_t v_desc = nullptr;
   cudnnSeqDataDescriptor_t o_desc = nullptr;
   cudnnHandle_t cudnn_handle = nullptr;
-
-  //   cudaStream_t memcpy_stream = nullptr;
-  cudaEvent_t memcpy_event = nullptr;
 
   memory::allocation::AllocationPtr workspace = nullptr;
   memory::allocation::AllocationPtr reserve_space = nullptr;
@@ -58,8 +54,6 @@ class MHAMetaData {
         platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
-    // PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&memcpy_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreate(&memcpy_event));
   }
 
   ~MHAMetaData() {
@@ -73,8 +67,6 @@ class MHAMetaData {
         platform::dynload::cudnnDestroySeqDataDescriptor(v_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroySeqDataDescriptor(o_desc));
-    // PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(memcpy_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(memcpy_event));
   }
 };
 
@@ -129,29 +121,21 @@ class MHAKernel : public framework::OpKernel<T> {
 
     // TODO(Ming Huang): Work around now is using user-defined key
     const std::string key = context.Attr<std::string>("cache_key");
-    const std::string seq_data_key = context.Attr<std::string>("seq_data_key");
 
     const Tensor* qo_kv_slen = context.Input<Tensor>("QO_KV_Seqlen");
     const int* qo_kv_slen_data = qo_kv_slen->data<int>();
+    const Tensor* qo_kv_slen_host = context.Input<Tensor>("QO_KV_Seqlen_host");
     int* qo_kv_slen_data_host;
     memory::allocation::AllocationPtr qo_kv_slen_allc_ptr = nullptr;
-
-    const Tensor* low_high_windows = context.Input<Tensor>("low_high_windows");
-    int* low_high_windows_data_host;
-    memory::allocation::AllocationPtr low_high_windows_ptr = nullptr;
-
-    if (seq_data_key.length() > 0) {
-      qo_kv_slen_data_host =
-          reinterpret_cast<int*>(MHASeqDataSingleton::Instance()
-                                     .Data(seq_data_key)
-                                     .qkvo_seq_len->ptr());
-      low_high_windows_data_host =
-          reinterpret_cast<int*>(MHASeqDataSingleton::Instance()
-                                     .Data(seq_data_key)
-                                     .lo_hi_windows->ptr());
+    if (qo_kv_slen_host &&
+        (platform::is_cpu_place(qo_kv_slen_host->place()) ||
+         platform::is_cuda_pinned_place(qo_kv_slen_host->place()))) {
+      qo_kv_slen_data_host = const_cast<int*>(qo_kv_slen_host->data<int>());
     } else {
-      platform::Place host_pinned_place = platform::CUDAPinnedPlace();
+      VLOG(0) << "[MHA Op]: QO_KV_Seqlen_host is not given."
+              << " Copy from QO_KV_Seqlen (CUDA place, Hurt performance).";
 
+      platform::Place host_pinned_place = platform::CUDAPinnedPlace();
       size_t qkvo_seqlen_size = qo_kv_slen->dims()[0] * sizeof(int);
       qo_kv_slen_allc_ptr = memory::Alloc(host_pinned_place, qkvo_seqlen_size);
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -159,23 +143,43 @@ class MHAKernel : public framework::OpKernel<T> {
                      reinterpret_cast<const void*>(qo_kv_slen_data),
                      qkvo_seqlen_size, cudaMemcpyDeviceToHost));
       qo_kv_slen_data_host = reinterpret_cast<int*>(qo_kv_slen_allc_ptr->ptr());
+    }
 
+    const Tensor* low_high_windows_host =
+        context.Input<Tensor>("low_high_windows_host");
+    int* low_high_windows_data_host;
+    memory::allocation::AllocationPtr low_high_windows_ptr = nullptr;
+    if (low_high_windows_host &&
+        (platform::is_cpu_place(low_high_windows_host->place()) ||
+         platform::is_cuda_pinned_place(low_high_windows_host->place()))) {
+      low_high_windows_data_host =
+          const_cast<int*>(low_high_windows_host->data<int>());
+    } else {
+      platform::Place host_pinned_place = platform::CUDAPinnedPlace();
       size_t low_high_windows_size = 2 * seq_len * sizeof(int);
       low_high_windows_ptr =
           memory::Alloc(host_pinned_place, low_high_windows_size);
-      if (low_high_windows) {
-        const int* low_high_windows_data = low_high_windows->data<int>();
+
+      if (low_high_windows_host &&
+          platform::is_gpu_place(low_high_windows_host->place())) {
+        VLOG(0) << "[MHA Op]: low_high_windows_host is given but in CUDA place."
+                << " Copy from CUDA to CUDAPinned place (Hurt performance).";
+        const int* low_high_windows_data = low_high_windows_host->data<int>();
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaMemcpy(low_high_windows_ptr->ptr(),
                        reinterpret_cast<const void*>(low_high_windows_data),
                        low_high_windows_size, cudaMemcpyDeviceToHost));
       } else {
+        VLOG(0) << "[MHA Op]: low_high_windows_host is not given or not in CPU"
+                << ", CUDAPinned and CUDAPinnded place. Gernereate 0s for low "
+                   "and IMA_MAX for high.";
         int* lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
         for (int i = 0; i < seq_len; ++i) {
           lo_hi_ptr[i] = 0;
           lo_hi_ptr[i + seq_len] = INT_MAX;
         }
       }
+
       low_high_windows_data_host =
           reinterpret_cast<int*>(low_high_windows_ptr->ptr());
     }
@@ -323,24 +327,25 @@ class MHAGradKernel : public framework::OpKernel<T> {
     // TODO(Ming Huang): Work around now is using user-defined key
     const std::string key = context.Attr<std::string>("cache_key");
 
-    const std::string seq_data_key = context.Attr<std::string>("seq_data_key");
-    const Tensor* low_high_windows = context.Input<Tensor>("low_high_windows");
     int seq_len = q->dims()[1];
+    const Tensor* low_high_windows_host =
+        context.Input<Tensor>("low_high_windows_host");
     int* low_high_windows_data_host;
     memory::allocation::AllocationPtr low_high_windows_ptr = nullptr;
-    if (seq_data_key.length() > 0) {
+    if (low_high_windows_host &&
+        (platform::is_cpu_place(low_high_windows_host->place()) ||
+         platform::is_cuda_pinned_place(low_high_windows_host->place()))) {
       low_high_windows_data_host =
-          reinterpret_cast<int*>(MHASeqDataSingleton::Instance()
-                                     .Data(seq_data_key)
-                                     .lo_hi_windows->ptr());
+          const_cast<int*>(low_high_windows_host->data<int>());
     } else {
       platform::Place host_pinned_place = platform::CUDAPinnedPlace();
-
       size_t low_high_windows_size = 2 * seq_len * sizeof(int);
       low_high_windows_ptr =
           memory::Alloc(host_pinned_place, low_high_windows_size);
-      if (low_high_windows) {
-        const int* low_high_windows_data = low_high_windows->data<int>();
+
+      if (low_high_windows_host &&
+          platform::is_gpu_place(low_high_windows_host->place())) {
+        const int* low_high_windows_data = low_high_windows_host->data<int>();
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaMemcpy(low_high_windows_ptr->ptr(),
                        reinterpret_cast<const void*>(low_high_windows_data),
@@ -352,6 +357,7 @@ class MHAGradKernel : public framework::OpKernel<T> {
           lo_hi_ptr[i + seq_len] = INT_MAX;
         }
       }
+
       low_high_windows_data_host =
           reinterpret_cast<int*>(low_high_windows_ptr->ptr());
     }

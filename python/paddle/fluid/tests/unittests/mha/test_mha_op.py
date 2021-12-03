@@ -361,7 +361,7 @@ class TestMHAOpVarLenFP16(OpTest):
             'V': V,
             'W': W,
             'QO_KV_Seqlen': np.concatenate((qo_slens, kv_slens)),
-            'low_high_windows': np.concatenate((lo_win, hi_win))
+            'low_high_windows_host': np.concatenate((lo_win, hi_win))
         }
 
         self.attrs = {
