@@ -329,6 +329,7 @@ function check_style() {
             commit_files=off
         fi
     done 
+
     export PATH=${OLD_PATH}
     
     if [ $commit_files == 'off' ];then
