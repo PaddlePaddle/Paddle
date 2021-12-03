@@ -72,22 +72,22 @@ static std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
 }
 
 std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
-                                     const std::string in_name) {
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + in_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + in_name);
-  auto input_dims = ctx.Input<Tensor>(in_name)->dims();
+                                     const std::string input_name) {
+  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
+  auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   auto new_dims = input_dims;
   if (!shape.empty() && !axis.empty()) {
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
   auto& MatrixDimsFromVector =
-      in_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
+      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
   paddle::operators::math::MatDescriptor mat_dim =
       paddle::operators::math::CreateMatrixDescriptor(
           MatrixDimsFromVector(new_dims), 0,
           ctx.Attr<bool>(std::string("trans_") +
-                         static_cast<char>(std::tolower(in_name[0]))));
+                         static_cast<char>(std::tolower(input_name[0]))));
 
   std::vector<int64_t> strides;
   if (!shape.empty()) {
@@ -266,10 +266,10 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
 }
 
 DDim GetDimForInput(const paddle::framework::ExecutionContext& ctx,
-                    const std::string& in_name) {
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + in_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + in_name);
-  auto dim = ctx.Input<paddle::framework::Tensor>(in_name)->dims();
+                    const std::string& input_name) {
+  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
+  auto dim = ctx.Input<paddle::framework::Tensor>(input_name)->dims();
   if (!shape.empty() && !axis.empty()) {
     dim = dim.reshape(shape).transpose(axis);
   }
