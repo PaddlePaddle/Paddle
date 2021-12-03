@@ -517,6 +517,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import numpy as np
 
