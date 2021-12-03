@@ -29,6 +29,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/imperative.h"
 
 namespace py = pybind11;
@@ -827,7 +828,7 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
                        bool dispensable = false) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (list == nullptr) {
+  if (list == nullptr || list == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "
@@ -988,50 +989,6 @@ void InitOpsAttrTypeMap() {
     auto attrs_proto = op_proto->attrs();
     for (auto& attr : attrs_proto) {
       OpAttrTypeMap::Instance().Map()[iter->first][attr.name()] = attr.type();
-    }
-  }
-}
-
-void ThrowExceptionToPython(std::exception_ptr p) {
-  static PyObject* EOFExceptionException =
-      PyErr_NewException("paddle.EOFException", PyExc_Exception, NULL);
-  static PyObject* EnforceNotMetException =
-      PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
-  try {
-    if (p) std::rethrow_exception(p);
-  } catch (const platform::EOFException& e) {
-    PyErr_SetString(EOFExceptionException, e.what());
-  } catch (const platform::EnforceNotMet& e) {
-    switch (e.code()) {
-      case paddle::platform::error::INVALID_ARGUMENT:
-        PyErr_SetString(PyExc_ValueError, e.what());
-        break;
-      case paddle::platform::error::NOT_FOUND:
-      case paddle::platform::error::ALREADY_EXISTS:
-      case paddle::platform::error::PRECONDITION_NOT_MET:
-      case paddle::platform::error::PERMISSION_DENIED:
-      case paddle::platform::error::EXECUTION_TIMEOUT:
-      case paddle::platform::error::UNAVAILABLE:
-        PyErr_SetString(PyExc_RuntimeError, e.what());
-        break;
-      case paddle::platform::error::OUT_OF_RANGE:
-        PyErr_SetString(PyExc_IndexError, e.what());
-        break;
-      case paddle::platform::error::RESOURCE_EXHAUSTED:
-        PyErr_SetString(PyExc_MemoryError, e.what());
-        break;
-      case paddle::platform::error::UNIMPLEMENTED:
-        PyErr_SetString(PyExc_NotImplementedError, e.what());
-        break;
-      case paddle::platform::error::FATAL:
-        PyErr_SetString(PyExc_SystemError, e.what());
-        break;
-      case paddle::platform::error::EXTERNAL:
-        PyErr_SetString(PyExc_OSError, e.what());
-        break;
-      default:
-        PyErr_SetString(EnforceNotMetException, e.what());
-        break;
     }
   }
 }

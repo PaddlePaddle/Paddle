@@ -24,10 +24,7 @@
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 
-// TODO(jiabin): remove nolint here!!!
-using namespace egr;  // NOLINT
-
-namespace eager_test {
+namespace egr {
 
 TEST(EagerUtils, AutoGradMeta) {
   // Construct Eager Tensor
@@ -63,7 +60,7 @@ TEST(EagerUtils, AutoGradMeta) {
   std::vector<AutogradMeta*> autograd_metas =
       EagerUtils::multi_autograd_meta(&ets);
   std::vector<AutogradMeta*> unsafe_autograd_metas =
-      EagerUtils::unsafe_autograd_meta(&ets);
+      EagerUtils::unsafe_autograd_meta(ets);
   CHECK_NOTNULL(unsafe_autograd_metas[0]);
   CHECK_NOTNULL(unsafe_autograd_metas[1]);
 
@@ -167,7 +164,7 @@ TEST(EagerUtils, PassStopGradient) {
 
 TEST(EagerUtils, SyncToVarsSingle) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  auto tensor = eager_test::CreateTestCPUTensor(5.0f, ddim);
+  auto tensor = CreateTestCPUTensor(5.0f, ddim);
   std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
       egr::EagerUtils::SyncToVars(tensor);
 
@@ -185,9 +182,8 @@ TEST(EagerUtils, SyncToVarsSingle) {
 
 TEST(EagerUtils, SyncToVarsMultiple) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  std::vector<egr::EagerTensor> tensors = {
-      eager_test::CreateTestCPUTensor(1.0f, ddim),
-      eager_test::CreateTestCPUTensor(2.0f, ddim)};
+  std::vector<egr::EagerTensor> tensors = {CreateTestCPUTensor(1.0f, ddim),
+                                           CreateTestCPUTensor(2.0f, ddim)};
 
   std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
       egr::EagerUtils::SyncToVars(tensors);
@@ -280,4 +276,4 @@ TEST(EagerUtils, ConstructDuplicableOutput) {
   CHECK(outs[0]->initialized() == false);
 }
 
-}  // namespace eager_test
+}  // namespace egr
