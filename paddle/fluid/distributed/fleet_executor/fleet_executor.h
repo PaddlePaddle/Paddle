@@ -18,10 +18,12 @@
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 class ProgramDesc;
+class Scope;
 }
 
 namespace distributed {
@@ -34,16 +36,21 @@ class FleetExecutor final {
   FleetExecutor() = delete;
   explicit FleetExecutor(const std::string& exe_desc_str);
   ~FleetExecutor();
-  void Init(const paddle::framework::ProgramDesc& program_desc);
+  void Init(const framework::ProgramDesc& program_desc, framework::Scope* scope,
+            const platform::Place& place);
   void Run();
-  void Release();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
-  FleetExecutorDesc exe_desc_;
-  std::unique_ptr<RuntimeGraph> runtime_graph_;
   void InitMessageBus();
   void InitCarrier();
+  void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
+  FleetExecutorDesc exe_desc_;
+  std::shared_ptr<RuntimeGraph> runtime_graph_;
+  framework::Scope* root_scope_;
+  framework::Scope* minibatch_scope_;
+  platform::Place place_;
+  std::vector<framework::Scope*> microbatch_scopes_;
 };
 
 }  // namespace distributed

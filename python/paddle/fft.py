@@ -15,7 +15,7 @@
 from typing import Sequence
 import numpy as np
 import paddle
-from .tensor.attribute import is_complex, is_floating_point, is_interger, _real_to_complex_dtype, _complex_to_real_dtype
+from .tensor.attribute import is_complex, is_floating_point, is_integer, _real_to_complex_dtype, _complex_to_real_dtype
 from .fluid.framework import in_dygraph_mode
 from . import _C_ops
 from .fluid.data_feeder import check_variable_and_dtype
@@ -196,7 +196,7 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
 
 
     """
-    if is_interger(x) or is_floating_point(x):
+    if is_integer(x) or is_floating_point(x):
         return fft_r2c(
             x, n, axis, norm, forward=True, onesided=False, name=name)
     else:
@@ -260,7 +260,7 @@ def ifft(x, n=None, axis=-1, norm="backward", name=None):
             #   0.14285714+6.25898038e-01j]
 
     """
-    if is_interger(x) or is_floating_point(x):
+    if is_integer(x) or is_floating_point(x):
         return fft_r2c(
             x, n, axis, norm, forward=False, onesided=False, name=name)
     else:
@@ -521,7 +521,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]]
     """
-    if is_interger(x) or is_floating_point(x):
+    if is_integer(x) or is_floating_point(x):
         return fftn_r2c(
             x, s, axes, norm, forward=True, onesided=False, name=name)
     else:
@@ -585,7 +585,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
             #   [ 0.33333333+0.j         -0.16666667-0.28867513j -0.16666667+0.28867513j]]
 
     """
-    if is_interger(x) or is_floating_point(x):
+    if is_integer(x) or is_floating_point(x):
         return fftn_r2c(
             x, s, axes, norm, forward=False, onesided=False, name=name)
     else:
@@ -1355,7 +1355,7 @@ def ifftshift(x, axes=None, name=None):
 
 # internal functions
 def fft_c2c(x, n, axis, norm, forward, name):
-    if is_interger(x):
+    if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
         x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
@@ -1388,7 +1388,7 @@ def fft_c2c(x, n, axis, norm, forward, name):
 
 
 def fft_r2c(x, n, axis, norm, forward, onesided, name):
-    if is_interger(x):
+    if is_integer(x):
         x = paddle.cast(x, paddle.get_default_dtype())
     _check_normalization(norm)
     axis = axis if axis is not None else -1
@@ -1425,7 +1425,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
 
 
 def fft_c2r(x, n, axis, norm, forward, name):
-    if is_interger(x):
+    if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
         x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
@@ -1464,7 +1464,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
 
 
 def fftn_c2c(x, s, axes, norm, forward, name):
-    if is_interger(x):
+    if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
         x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
@@ -1512,7 +1512,7 @@ def fftn_c2c(x, s, axes, norm, forward, name):
 
 
 def fftn_r2c(x, s, axes, norm, forward, onesided, name):
-    if is_interger(x):
+    if is_integer(x):
         x = paddle.cast(x, paddle.get_default_dtype())
     _check_normalization(norm)
     if s is not None:
@@ -1567,7 +1567,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
 
 
 def fftn_c2r(x, s, axes, norm, forward, name):
-    if is_interger(x):
+    if is_integer(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     elif is_floating_point(x):
         x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
