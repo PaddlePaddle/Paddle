@@ -534,7 +534,7 @@ def find_heter_ops(program, default_device="cpu"):
 
                 """
                 output_vars_no_grad = []
-                for key in pre_op.output_names:
+                for key in op.output_names:
                     for varname in op.output(key):
                         if varname == "@EMPTY@":
                             continue
