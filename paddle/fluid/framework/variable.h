@@ -69,12 +69,11 @@ class Variable {
     return holder_->Type();
   }
 
- private:
+ public:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
   framework::TensorInplaceVersion* InplaceVersionCounter();
 
- public:
   uint32_t CurrentInplaceVersion();
   void BumpInplaceVersion();
 

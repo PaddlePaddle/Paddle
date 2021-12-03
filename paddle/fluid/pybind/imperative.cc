@@ -1552,7 +1552,15 @@ void BindImperative(py::module *m_ptr) {
              if (self.HasGradVar()) {
                auto grad_var = self.GradVarBase();
                auto var_wrapper = grad_var->SharedVar();
-               if (var_wrapper) var_wrapper->ResetInplaceVersion();
+               if (var_wrapper) {
+                 auto var = var_wrapper->MutableVar();
+                 if (var) {
+                   auto version_counter_ptr = var->InplaceVersionCounter();
+                   if (version_counter_ptr)
+                     version_counter_ptr->ResetInplaceVersion();
+                 }
+                 var_wrapper->ResetInplaceVersion();
+               }
              }
            })
       .def("_grad_ivar",
