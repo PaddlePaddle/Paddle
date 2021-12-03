@@ -468,6 +468,26 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Only used in cudnn kernel, need install cudnn.")
         .SetDefault(false)
         .AsExtra();
+    AddAttr<std::string>(
+        "fuse_activation_type",
+        "Fused activation type used in softplus OneDNN kernel.")
+        .SetDefault("")
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_alpha",
+        "Fused activation alpha parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_beta",
+        "Fused activation beta parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_scale",
+        "Fused activation scale parameter type used in softplus OneDNN kernel.")
+        .SetDefault(1.0f)
+        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 
@@ -569,6 +589,10 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output is a multi-dimensional Tensor which has same "
               "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 ELU Activation Operator.
 
@@ -578,6 +602,22 @@ https://arxiv.org/abs/1511.07289.
 $$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$$
 
 )DOC");
+  }
+};
+
+template <typename T>
+class ELUGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elu_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -744,6 +784,10 @@ class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(6.0f);
     AddAttr<float>("offset", "The offset parameter of HardSwish operator")
         .SetDefault(3.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 HardSwish Activation Operator.
 
@@ -1439,13 +1483,11 @@ REGISTER_OP_CPU_KERNEL(
 /* ========================================================================== */
 
 /* ========================    elu  register     ============================ */
-REGISTER_OPERATOR(
-    elu, ops::ActivationOp, ops::ELUOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(elu, ops::ActivationOp, ops::ELUOpMaker,
+                  ops::ActivationOpInferVarType,
+                  ops::ELUGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ELUGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
@@ -1455,7 +1497,14 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(elu,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ELUFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ELUFunctor<double>>);
+REGISTER_OP_CPU_KERNEL(
+    elu_grad, ops::ELUGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ELUGradKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                                             ops::ELUGradGradFunctor<float>>,

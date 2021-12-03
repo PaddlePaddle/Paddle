@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -199,18 +200,28 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--heter_workers",
         type=str,
         default="",
-        help="User defined heter workers ip:port")
+        help="User defined heter workers in each stage ip1:port1;ip2:port2")
+    ps_group.add_argument(
+        "--heter_devices",
+        type=str,
+        default="",
+        help="User defined heter devices in each stage cpu;gpu;cpu")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument(
-        "--heter_worker_num", type=int, help="number of heter_workers")
+        "--heter_worker_num",
+        type=str,
+        help="number of heter_workers in each stage 1;2;3")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")
     elastic_group.add_argument(
         "--elastic_server", type=str, help="etcd server host:port")
+    elastic_group.add_argument(
+        "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
+
     elastic_group.add_argument("--job_id", type=str, help="job unique id")
     elastic_group.add_argument("--np", type=int, help="job pod/node number")
     elastic_group.add_argument("--scale", type=int, default=0, help="scale np")
@@ -273,7 +284,7 @@ def cpuonly_check(args):
     return True
 
 
-def launch_collective(args):
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
@@ -306,14 +317,23 @@ def launch_collective(args):
             cluster, pod = get_cluster_from_args(args, device_mode,
                                                  devices_per_proc)
             logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
 
+
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -342,8 +362,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):
@@ -353,11 +373,11 @@ def launch_ps(args, distribute_mode):
     if cloud_flag and distribute_mode == DistributeMode.PS:
         direct_start(args)
         return
-    elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
-        cloud_ps_heter_env_set(args)
-        args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
-        args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
+    #elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
+    #    cloud_ps_heter_env_set(args)
+    #    args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+    #    args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
+    #    args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
 
     ps_launcher = ParameterServerLauncher(args, distribute_mode)
     ps_launcher.start_ps()
@@ -390,11 +410,11 @@ def which_distributed_mode(args):
 
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_workers', '--http_port'
+        '--workers', '--heter_workers', '--heter_devices', '--http_port'
     ]
     collective_args = ['--ips']
 
-    ps_heter_args = ["--heter_worker_num", "--heter_workers"]
+    ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
 
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
@@ -491,13 +511,15 @@ def launch():
 
         - ``--workers``: User defined workers ip:port, e.g., ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
 
-        - ``--heter_workers``: User defined heter workers ip:port, e.g., ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
+        - ``--heter_workers``: User defined heter workers ip1:port1;ip2:port2, e.g., ``--heter_workers="192.168.0.16:6172;192.168.0.17:6172"``
 
         - ``--worker_num``: Number of workers (It recommend to set when in the emulated distributed environment using single node)
 
         - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
-        - ``--heter_worker_num``: Number of heter_workers (It recommend to set when in the emulated distributed environment using single node)
+        - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
+        
+        - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--http_port``: Gloo http Port
 

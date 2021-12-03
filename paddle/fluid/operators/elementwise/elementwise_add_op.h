@@ -20,6 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+#include "paddle/fluid/framework/pten_utils.h"
+
+// only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
+
 namespace paddle {
 namespace operators {
 
@@ -55,12 +62,14 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    if (x->dims() == y->dims()) {
-      SameDimsElemwiseAdd<DeviceContext, T> LaunchElementwiseCpuKernel;
-      LaunchElementwiseCpuKernel(ctx, x, y, z);
-    } else {
-      LaunchBroadcastElementwiseCpuKernel<DeviceContext, T>(ctx, x, y, z);
-    }
+
+    auto &dev_ctx = ctx.device_context<DeviceContext>();
+    int axis = ctx.Attr<int>("axis");
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    pten::ElementwiseAdd<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                            pt_z.get());
   }
 };
 

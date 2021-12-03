@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 class TestFleetBase(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36000"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
             "127.0.0.1:36001,127.0.0.2:36001"
@@ -75,6 +76,7 @@ class TestFleetBase(unittest.TestCase):
         fleet.fleet.save(dirname="/tmp")
 
         fleet.load_model(path="/tmp", mode=0)
+        fleet.load_model(path="/tmp", mode=1)
 
         self.assertRaises(
             Exception,
@@ -88,6 +90,15 @@ class TestFleetBase(unittest.TestCase):
             Exception,
             fleet.save_inference_model,
             dirname='/tmp/',
+            feeded_var_names=['x', 'y'],
+            target_vars=[avg_cost],
+            executor=exe,
+            main_program=compiled_prog)
+
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='afs:/tmp/',
             feeded_var_names=['x', 'y'],
             target_vars=[avg_cost],
             executor=exe,

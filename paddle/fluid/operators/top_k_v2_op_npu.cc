@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/top_k_v2_op.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
