@@ -7,6 +7,7 @@ multihead_matmul
 addmm
 gru
 round
+push_dense
 rank_attention
 fused_embedding_fc_lstm
 where_index
@@ -16,13 +17,13 @@ tile
 bilinear_tensor_product
 ctc_align
 pow2_decay_with_linear_warmup
+marker
 split
 fc
 clear_float_status
 load
 elementwise_max
 adadelta
-chunk_eval
 check_finite_and_unscale
 sparse_momentum
 tan
@@ -216,7 +217,6 @@ floor
 gelu
 retinanet_detection_output
 minus
-push_dense
 silu
 sequence_erase
 real
@@ -358,7 +358,6 @@ eigvalsh
 diagonal
 trunc
 log2
-marker
 tanh
 yolov3_loss
 graph_send_recv
