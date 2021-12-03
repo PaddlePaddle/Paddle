@@ -147,13 +147,25 @@ class DistPassTestBase(unittest.TestCase):
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
 
+    @classmethod
+    def _get_default_gpu_lists(cls):
+        visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if visible_devices is None:
+            visible_devices = os.getenv("FLAGS_selected_gpus")
+
+        if visible_devices is None:
+            num_gpus = paddle.device.cuda.device_count()
+            return list(range(num_gpus))
+        else:
+            return [
+                int(s.strip()) for s in visible_devices.split(",") if s.strip()
+            ]
+
     def _distributed_launch(self, apply_pass, gpus=None, **kwargs):
         if gpus is None:
-            num_gpus = paddle.device.cuda.device_count()
-            gpus = list(range(num_gpus))
-        else:
-            num_gpus = len(gpus)
+            gpus = self._get_default_gpu_lists()
 
+        num_gpus = len(gpus)
         gpus = ','.join([str(gpu_id) for gpu_id in gpus])
 
         pid = os.getpid()
