@@ -28,14 +28,16 @@ template <typename T, typename IndexT = int>
 __global__ void IndexSampleForward(const IndexT* index, const T* in_data,
                                    T* out_data, size_t index_length,
                                    size_t input_length, size_t batch_size) {
-  int index_i = blockDim.x * blockIdx.x + threadIdx.x;
-  int index_j = blockDim.y * blockIdx.y + threadIdx.y;
-  int index_idx = index_j * index_length + index_i;
-  int in_idx = index_j * input_length + index_i;
-
-  if (index_i < index_length & index_j < batch_size) {
-    IndexT sample_idx = index[index_idx];
-    out_data[index_idx] = in_data[in_idx - index_i + sample_idx];
+  unsigned int index_i = blockDim.x * blockIdx.x + threadIdx.x;
+  unsigned int index_j = blockDim.y * blockIdx.y + threadIdx.y;
+  for (; index_j < batch_size; index_j += blockDim.y * gridDim.y) {
+    index_i = blockDim.x * blockIdx.x + threadIdx.x;
+    for (; index_i < index_length; index_i += blockDim.x * gridDim.x) {
+        unsigned int index_idx = index_j * index_length + index_i;
+        unsigned int in_idx = index_j * input_length + index_i;
+        IndexT sample_idx = index[index_idx];
+        out_data[index_idx] = in_data[in_idx - index_i + sample_idx];
+    }
   }
 }
 
@@ -44,18 +46,21 @@ __global__ void IndexSampleGrad(const IndexT* index, T* in_grad,
                                 const T* out_grad, size_t index_length,
                                 size_t input_length, size_t batch_size,
                                 bool same_data_in_row = true) {
-  int index_i = blockDim.x * blockIdx.x + threadIdx.x;
-  int index_j = blockDim.y * blockIdx.y + threadIdx.y;
-  int index_idx = index_j * index_length + index_i;
-  int in_idx = index_j * input_length + index_i;
+  unsigned int index_i = blockDim.x * blockIdx.x + threadIdx.x;
+  unsigned int index_j = blockDim.y * blockIdx.y + threadIdx.y;
 
-  if (index_i < index_length & index_j < batch_size) {
-    IndexT sample_idx = index[index_idx];
-    if (same_data_in_row) {
-      platform::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
-                              out_grad[sample_idx]);
-    } else {
-      in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
+  for (; index_j < batch_size; index_j += blockDim.y * gridDim.y) {
+    index_i = blockDim.x * blockIdx.x + threadIdx.x;
+    for (; index_i < index_length; index_i += blockDim.x * gridDim.x) {
+        unsigned int index_idx = index_j * index_length + index_i;
+        unsigned int in_idx = index_j * input_length + index_i;
+        IndexT sample_idx = index[index_idx];
+        if (same_data_in_row) {
+          platform::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                                  out_grad[sample_idx]);
+        } else {
+          in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
+        }
     }
   }
 }
@@ -97,8 +102,16 @@ class IndexSampleKernel<platform::CUDADeviceContext, T>
         platform::RoundToPowerOfTwo(index_length * batch_size) / block_width;
 
     dim3 block_dim(block_width, block_height);
+    unsigned int threads = 512;
+    block_dim.x = block_dim.x < threads ? block_dim.x : threads;
+    block_dim.y = block_dim.y < threads ? block_dim.y : threads;
     dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                   (batch_size + block_dim.y - 1) / block_dim.y);
+    dim3 max_grid_dim =
+      ctx.template device_context<platform::CUDADeviceContext>()
+        .GetCUDAMaxGridDimSize();
+    grid_dim.x = grid_dim.x < max_grid_dim.x ? grid_dim.x : max_grid_dim.x;
+    grid_dim.y = grid_dim.y < max_grid_dim.y ? grid_dim.y : max_grid_dim.y;
 
     if (index_type == framework::proto::VarType::INT64) {
       const int64_t* index_data = index->data<int64_t>();
@@ -153,9 +166,16 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
     auto block_height =
         platform::RoundToPowerOfTwo(index_length * batch_size) / block_width;
     dim3 block_dim(block_width, block_height);
+    unsigned int threads = 512;
+    block_dim.x = block_dim.x < threads ? block_dim.x : threads;
+    block_dim.y = block_dim.y < threads ? block_dim.y : threads;
     dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                   (batch_size + block_dim.y - 1) / block_dim.y);
-
+    dim3 max_grid_dim =
+      ctx.template device_context<platform::CUDADeviceContext>()
+        .GetCUDAMaxGridDimSize();
+    grid_dim.x = grid_dim.x < max_grid_dim.x ? grid_dim.x : max_grid_dim.x;
+    grid_dim.y = grid_dim.y < max_grid_dim.y ? grid_dim.y : max_grid_dim.y;
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
