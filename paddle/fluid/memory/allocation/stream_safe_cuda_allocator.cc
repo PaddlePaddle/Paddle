@@ -84,8 +84,8 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(err);
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
 #endif
     VLOG(8) << "Destroy event " << event;
   }
