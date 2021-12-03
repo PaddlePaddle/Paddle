@@ -23,10 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -35,37 +31,8 @@ struct LogitFunctor {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out, float eps) const {
       // logit(x) = ln(x/(1-x))
-      // auto tmp_x = (x.cwiseMin(static_cast<T>(1.0f - eps))).cwiseMax(eps);
       auto tmp_x = (x.cwiseMin(static_cast<T>(1.0f - eps))).cwiseMax(static_cast<T>(eps));
-#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA) &&                       \
-    !defined(PADDLE_WITH_HIP)
-      auto x_data = tmp_x.data();
-      auto out_data = tmp_x.data();
-      int n = std::min(tmp_x.size(), out.size());
-
-      //std::memset(out_data, 0, n * sizeof(T));
-      math::CBlas<T>::SCAL(n, -1, x_data, 1);
-      for (int i = 0; i < n; ++i) {
-        x_data[i] += static_cast<T>(1);
-      }
-      math::CBlas<T>::VDIV(n, out_data, x_data, out_data);
-
-      for (int i = 0; i < n; ++i) {
-        out_data[i] = std::log(out_data[i]);
-      }
-#else
-      /*
-      if (std::is_same<T, platform::float16>::value) {
-        VLOG(4) << "cast from float16 to float before computing";
-        auto casted_x = x.template cast<float>();
-        out.device(d) = (casted_x/(static_cast<T>(1)-casted_x)).log().template cast<T>();
-      } else {
-        out.device(d) = (x/(static_cast<T>(1)-x)).log();
-      }
-      */
-       out.device(d) = (tmp_x/(static_cast<T>(1)-tmp_x)).log();
-#endif
+      out.device(d) = (tmp_x/(static_cast<T>(1)-tmp_x)).log();
     
   }
 };
