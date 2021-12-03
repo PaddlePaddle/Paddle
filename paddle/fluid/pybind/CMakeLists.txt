@@ -1,7 +1,7 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
+set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper metrics prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-  gloo_wrapper infer_io_utils)
+  gloo_wrapper gloo_context infer_io_utils)
 
 if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
@@ -32,7 +32,9 @@ set(PYBIND_SRCS
   reader_py.cc
   fleet_wrapper_py.cc
   gloo_wrapper_py.cc
+  gloo_context_py.cc
   box_helper_py.cc
+  metrics_py.cc
   data_set_py.cc
   imperative.cc
   ir.cc
