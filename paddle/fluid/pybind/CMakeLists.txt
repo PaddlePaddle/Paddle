@@ -210,11 +210,13 @@ if(WITH_PYTHON)
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
       COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
       DEPENDS ${OP_IMPL_DEPS})
-    add_custom_command(OUTPUT ${eager_impl_file}
-      COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_op_function_generator_retry.bat
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
-      COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
-      DEPENDS ${EAGER_OP_IMPL_DEPS})
+    if(NOT ON_INFER)
+      add_custom_command(OUTPUT ${eager_impl_file}
+        COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_op_function_generator_retry.bat
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
+        COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
+        DEPENDS ${EAGER_OP_IMPL_DEPS})
+    endif()
   else(WIN32)
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
@@ -242,28 +244,34 @@ if(WITH_PYTHON)
           COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
           DEPENDS ${OP_IMPL_DEPS}
           VERBATIM)
-    add_custom_command(OUTPUT ${eager_impl_file}
-          COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
-              "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
-              "${tmp_eager_impl_file}"
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
-          COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
-          DEPENDS ${EAGER_OP_IMPL_DEPS}
-          VERBATIM)
+    if(NOT ON_INFER)
+      add_custom_command(OUTPUT ${eager_impl_file}
+            COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+                "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
+                "${tmp_eager_impl_file}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
+            COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
+            DEPENDS ${EAGER_OP_IMPL_DEPS}
+            VERBATIM)
+      endif()
   endif(WIN32)
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
-  add_custom_target(eager_op_function_generator_cmd ALL DEPENDS ${eager_impl_file})
+  if(NOT ON_INFER)
+    add_custom_target(eager_op_function_generator_cmd ALL DEPENDS ${eager_impl_file})
+  endif()
 
   list(APPEND PYBIND_DEPS interpretercore standalone_executor)
   cc_library(op_function_common SRCS op_function_common.cc DEPS framework_proto)
-
-  cc_library(paddle_eager
-  SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-  DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node math_cpu linalg_cpu creation_cpu utils_cpu manipulation_cpu accumulation_node global_utils utils python)
-  add_dependencies(paddle_eager eager_codegen)
-  add_dependencies(paddle_eager eager_op_function_generator_cmd)
-  list(APPEND PYBIND_DEPS paddle_eager)
   list(APPEND PYBIND_DEPS op_function_common)
+
+  if(NOT ON_INFER)
+    cc_library(paddle_eager
+    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node math_cpu linalg_cpu creation_cpu utils_cpu manipulation_cpu accumulation_node global_utils utils python)
+    add_dependencies(paddle_eager eager_codegen)
+    add_dependencies(paddle_eager eager_op_function_generator_cmd)
+    list(APPEND PYBIND_DEPS paddle_eager)
+  endif()
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
