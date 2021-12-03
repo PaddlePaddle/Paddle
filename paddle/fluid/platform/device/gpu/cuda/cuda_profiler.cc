@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/cuda_profiler.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 
 namespace paddle {
 namespace platform {
@@ -25,13 +25,13 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
                      "`csv`, but received `%s`.",
                      output_mode));
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
 }
 
-void CudaProfilerStart() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStart()); }
+void CudaProfilerStart() { PADDLE_ENFORCE_GPU_SUCCESS(cudaProfilerStart()); }
 
-void CudaProfilerStop() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStop()); }
+void CudaProfilerStop() { PADDLE_ENFORCE_GPU_SUCCESS(cudaProfilerStop()); }
 
 #ifndef _WIN32
 void CudaNvtxRangePush(std::string name) {

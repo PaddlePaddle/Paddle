@@ -28,7 +28,7 @@ limitations under the License. */
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/platform/type_defs.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 
 namespace paddle {
 namespace framework {

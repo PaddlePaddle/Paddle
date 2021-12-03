@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 template <typename T>
 using vec = paddle::framework::Vector<T>;
@@ -63,7 +63,7 @@ TEST(mixed_vector, GPU_VECTOR) {
 }
 
 TEST(mixed_vector, MultiGPU) {
-  if (paddle::platform::GetCUDADeviceCount() < 2) {
+  if (paddle::platform::GetGPUDeviceCount() < 2) {
     LOG(WARNING) << "Skip mixed_vector.MultiGPU since there are not multiple "
                     "GPUs in your machine.";
     return;

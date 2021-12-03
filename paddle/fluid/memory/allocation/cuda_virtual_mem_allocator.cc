@@ -23,8 +23,8 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #endif
 #if CUDA_VERSION >= 10020
 
@@ -49,10 +49,10 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
   // Prepare the access descriptor array indicating where and how the backings
   // should be visible.
-  for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+  for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
     if (place.device != dev_id) {
       int capable = 0;
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaDeviceCanAccessPeer(&capable, place.device, dev_id));
       if (!capable) {
         VLOG(1) << "device(" << place.device
@@ -73,10 +73,10 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   // Get the minimum granularity needed for all devices
   // (the max of the minimum granularity of each participating device)
   granularity_ = 0;
-  for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+  for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
     size_t granularity;
     prop.location.id = dev_id;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         paddle::platform::dynload::cuMemGetAllocationGranularity(
             &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
     granularity_ = std::max(granularity, granularity_);
@@ -84,7 +84,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
   size_t actual_avail, actual_total;
   paddle::platform::CUDADeviceGuard guard(place.device);
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
 
   virtual_mem_size_ = AlignedSize(actual_total, granularity_);
 
@@ -93,7 +93,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   // GPU,
   // so the virtual address space size we reserve is equal to the GPU video
   // memory size
-  PADDLE_ENFORCE_CUDA_SUCCESS(paddle::platform::dynload::cuMemAddressReserve(
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cuMemAddressReserve(
       &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
   virtual_mem_alloced_offset_ = 0;
@@ -123,11 +123,11 @@ void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
   auto result =
       paddle::platform::dynload::cuMemUnmap(iter->first, iter->second.second);
   if (result != CUDA_ERROR_DEINITIALIZED) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
+    PADDLE_ENFORCE_GPU_SUCCESS(result);
   }
 
   if (result != CUDA_ERROR_DEINITIALIZED) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::RecordedCuMemRelease(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::RecordedGpuMemRelease(
         iter->second.first, iter->second.second, place_.device));
   }
 
@@ -166,12 +166,12 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   // Create physical memory backing allocation.
   auto result =
-      platform::RecordedCuMemCreate(&handle, size, &prop_, 0, place_.device);
+      platform::RecordedGpuMemCreate(&handle, size, &prop_, 0, place_.device);
 
   if (result != CUDA_SUCCESS) {
     if (result == CUDA_ERROR_OUT_OF_MEMORY) {
       size_t actual_avail, actual_total;
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
       size_t actual_allocated = actual_total - actual_avail;
 
       PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
@@ -186,7 +186,7 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
           string::HumanReadableSize(actual_allocated),
           string::HumanReadableSize(actual_avail), place_.device));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(result);
+      PADDLE_ENFORCE_GPU_SUCCESS(result);
     }
     return nullptr;
   }
@@ -197,8 +197,8 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   result = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
 
   if (result != CUDA_SUCCESS) {
-    platform::RecordedCuMemRelease(handle, size, place_.device);
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
+    platform::RecordedGpuMemRelease(handle, size, place_.device);
+    PADDLE_ENFORCE_GPU_SUCCESS(result);
     return nullptr;
   }
 
@@ -208,8 +208,8 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   if (result != CUDA_SUCCESS) {
     paddle::platform::dynload::cuMemUnmap(ptr, size);
-    platform::RecordedCuMemRelease(handle, size, place_.device);
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
+    platform::RecordedGpuMemRelease(handle, size, place_.device);
+    PADDLE_ENFORCE_GPU_SUCCESS(result);
     return nullptr;
   }
 

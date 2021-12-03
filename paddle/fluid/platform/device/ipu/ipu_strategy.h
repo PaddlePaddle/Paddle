@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,27 +14,26 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#else
-#include <cuda_runtime.h>
-#endif
+#include <popart/sessionoptions.hpp>
 
 namespace paddle {
+namespace platform {
+namespace ipu {
 
-#ifdef PADDLE_WITH_HIP
-#define gpuSuccess hipSuccess
-using gpuStream_t = hipStream_t;
-using gpuError_t = hipError_t;
-using gpuEvent_t = hipEvent_t;
-using gpuDeviceProp = hipDeviceProp_t;
-#else
-#define gpuSuccess cudaSuccess
-using gpuStream_t = cudaStream_t;
-using gpuError_t = cudaError_t;
-using gpuEvent_t = cudaEvent_t;
-using gpuDeviceProp = cudaDeviceProp;
-#endif
+using VirtualGraphMode = popart::VirtualGraphMode;
 
-using CUDAGraphID = unsigned long long;  // NOLINT
+struct IpuStrategy {
+  int num_ipus = 1;
+  int batches_per_step = 1;
+  int batch_size = 1;
+  bool is_training = true;
+  bool save_init_onnx = false;
+  bool save_last_onnx = true;
+  popart::SessionOptions popart_options_;
+  bool need_avg_shard = false;
+  bool enable_fp16 = false;
+};
+
+}  // namespace ipu
+}  // namespace platform
 }  // namespace paddle

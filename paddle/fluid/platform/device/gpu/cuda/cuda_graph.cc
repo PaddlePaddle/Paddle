@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/cuda_graph.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 
 namespace paddle {
 namespace platform {
@@ -23,11 +23,11 @@ void CUDAGraph::Reset() {
   if (is_reset_) return;
 #if CUDA_VERSION >= 10010
   for (auto graph : graphs_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(graph));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(graph));
   }
   graphs_.clear();
   for (auto exec_graph : exec_graphs_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(exec_graph));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphExecDestroy(exec_graph));
   }
   exec_graphs_.clear();
 #endif
@@ -46,7 +46,7 @@ void CUDAGraph::Replay() {
                     errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
   for (auto exec_graph : exec_graphs_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphLaunch(exec_graph, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphLaunch(exec_graph, stream_));
   }
 #endif
 }
@@ -58,7 +58,7 @@ void CUDAGraph::BeginSegmentCapture() {
       IsCapturing(), true,
       errors::PermissionDenied("BeginSegmentCapture should be called when CUDA "
                                "Graph is capturing."));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamBeginCapture(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
   PADDLE_ENFORCE_EQ(IsValidCapturing(), true,
                     platform::errors::PermissionDenied(
@@ -92,19 +92,19 @@ void CUDAGraph::EndSegmentCapture() {
   PADDLE_ENFORCE_EQ(IsCapturing(), true,
                     errors::PermissionDenied("No CUDA Graph is capturing."));
   cudaGraph_t graph;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamEndCapture(capturing_graph_->stream_, &graph));
   auto num_nodes = static_cast<size_t>(-1);
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
   if (num_nodes == 0) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(graph));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(graph));
     VLOG(10) << "Skip empty CUDA Graph with ID " << capturing_graph_->id_
              << ", segment id " << capturing_graph_->graphs_.size();
     return;
   }
 
   cudaGraphExec_t exec_graph;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size();
@@ -123,7 +123,7 @@ bool CUDAGraph::IsValidCapturing() {
   if (!IsCapturing()) return false;
   cudaStreamCaptureStatus status;
   CUDAGraphID id;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamGetCaptureInfo(capturing_graph_->stream_, &status, &id));
   return status == cudaStreamCaptureStatusActive;
 #else
@@ -154,7 +154,7 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
     VLOG(10) << "Save the " << i << "-th segment of graph " << id_ << " to "
              << filename;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
   }
 #else
