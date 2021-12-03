@@ -60,7 +60,6 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    // TODO(mlu)
     auto* default_dev_ctx = static_cast<platform::MLUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     auto& desired_dev_ctx =
@@ -68,7 +67,6 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
       return Alloc(place, size);
     } else {
-      // TODO(mlu): MLUDeviceContextAllocatorPool
       return allocation::MLUDeviceContextAllocatorPool::Instance().Alloc(
           desired_dev_ctx, size);
     }

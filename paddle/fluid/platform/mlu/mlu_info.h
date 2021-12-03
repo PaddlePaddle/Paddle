@@ -25,8 +25,8 @@ namespace paddle {
 using cnStatus = CNresult;
 using cnrtStatus = cnrtRet_t;
 using cnnlStatus = cnnlStatus_t;
-using mluStream = CNqueue;
-using mluCnnlHandle = cnnlHandle_t;                                                                
+using mluStream = cnrtQueue_t;
+using mluCnnlHandle = cnnlHandle_t;                                                            
 using mluEventHandle = CNnotifier;
 using mluDeviceHandle = CNdev;
 
@@ -38,7 +38,7 @@ typedef struct {
 
 namespace platform {
 
-//! Get the driver version of the ith MLU
+//! Get the driver version of the ith MLU.
 mluDim3 GetMLUDriverVersion(int id);
 
 //! Get the total number of MLU devices in system.
@@ -54,7 +54,7 @@ int GetMLUCurrentDeviceId();
 void SetMLUDeviceId(int device_id);
 
 //! Get a handle of device ids.
-bool GetMLUDeviceHandle(int device_ordinal, mluDeviceHandle* device);
+void GetMLUDeviceHandle(int device_ordinal, mluDeviceHandle* device);
 
 //! Get the compute capability of the ith MLU (format: major * 10 + minor)
 int GetMLUComputeCapability(int id);

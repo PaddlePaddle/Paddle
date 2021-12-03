@@ -36,13 +36,27 @@ TEST(Device, Init) {
 TEST(Device, MLUDeviceContext) {
   using paddle::platform::MLUDeviceContext;
   using paddle::platform::MLUPlace;
-  using paddle::mluDeviceHandle;
+  using paddle::mluCnnlHandle;
 
   int count = paddle::platform::GetMLUDeviceCount();
   for (int i = 0; i < count; i++) {
     MLUDeviceContext* device_context = new MLUDeviceContext(MLUPlace(i));
-    mluDeviceHandle mlu_handle = device_context->mlu_handle();
-    ASSERT_NE(nullptr, &mlu_handle);
+    mluCnnlHandle mlu_handle = device_context->cnnl_handle();
+    ASSERT_NE(nullptr, mlu_handle);
+    delete device_context;
+  }
+}
+
+TEST(Device, MLUStream) {
+  using paddle::platform::MLUDeviceContext;
+  using paddle::platform::MLUPlace;
+  using paddle::mluStream;
+
+  int count = paddle::platform::GetMLUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    MLUDeviceContext* device_context = new MLUDeviceContext(MLUPlace(i));
+    mluStream mlu_stream = device_context->stream();
+    ASSERT_NE(nullptr, mlu_stream);
     delete device_context;
   }
 }

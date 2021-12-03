@@ -17,9 +17,11 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 
-#include "paddle/fluid/platform/mlu/mlu_info.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/mlu/enforce.h"
+#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
 namespace platform {
@@ -29,60 +31,64 @@ namespace stream {
 class MLUStream final {
  public:
   MLUStream() = default;
-  explicit MLUStream(const Place& place,
+  explicit MLUStream(const MLUPlace& place,
                      const int priority = 0) {
-    // TODO(mlu): adapt init queue
+    Init(place, priority);
   }
   virtual ~MLUStream() { Destroy(); }
 
-  bool Init(const Place& place, const int priority = 0);
+  bool Init(const MLUPlace& place, const int priority = 0);
 
   template <typename Callback>
   void AddCallback(Callback&& callback) const {
-    // TODO(mlu): support AddCallback
-    // callback_manager_->AddCallback(callback);
+    // TODO(mlu): mlu not support AddCallback
+    callback_manager_->AddCallback(callback);
   }
 
   template <typename Callback>
   void RecordEvent(mluEventHandle event, Callback callback) const {
     callback();
-    // TODO(mlu): support notifier and event
-    // PADDLE_ENFORCE_MLU_SUCCESS(cnPlaceNotifier(event, stream_));
+    PADDLE_ENFORCE_MLU_SUCCESS(cnPlaceNotifier(event, stream_));
   }
 
   void RecordEvent(mluEventHandle event) const {
-    // TODO(mlu): support notifier and event
-    // PADDLE_ENFORCE_MLU_SUCCESS(cnPlaceNotifier(event, stream_));
+    PADDLE_ENFORCE_MLU_SUCCESS(cnPlaceNotifier(event, stream_));
   }
 
   void WaitEvent(mluEventHandle event) const {
-    // TODO(mlu): support notifier and event
-    // PADDLE_ENFORCE_MLU_SUCCESS(cnWaitNotifier(event));
+    PADDLE_ENFORCE_MLU_SUCCESS(cnWaitNotifier(event));
   }
 
   void Wait() const;
-  void WaitCallback() const { /*callback_manager_->Wait();*/ }
+  void WaitCallback() const { callback_manager_->Wait(); }
 
   const mluStream& raw_stream() const { return stream_; }
+
   void Destroy();
 
   bool Query() const {
-    // TODO(mlu): adapt query queue
-    return true;
+    cnrtStatus stat = cnrtQueueQuery(stream_);
+    if (stat == cnrtSuccess) {
+      return true;
+    }
+    if (stat == cnrtErrorNotReady) {
+      return false;
+    }
+    PADDLE_ENFORCE_MLU_SUCCESS(stat);
+    return false;
   }
 
   void Synchronize() const {
-    // TODO(mlu): adapt Sync queue
-    // PADDLE_ENFORCE_MLU_SUCCESS(cnQueueSync(stream_));
+    PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
   }
 
-  const Place& GetPlace() const { return place_; }
+  const MLUPlace& GetPlace() const { return place_; }
 
  private:
-  Place place_;
+  MLUPlace place_;
   mluStream stream_{nullptr};
   int priority_{0};
-  // std::unique_ptr<StreamCallbackManager<mluStream>> callback_manager_;
+  std::unique_ptr<StreamCallbackManager<mluStream>> callback_manager_;
 
   DISABLE_COPY_AND_ASSIGN(MLUStream);
 };

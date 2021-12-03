@@ -51,29 +51,25 @@ class MLUContext {
 
   const mluStream& RawStream() { return stream_->raw_stream(); }
 
-  const mluDeviceHandle& MluHandle() const { return mlu_handle_; }
+  const mluCnnlHandle& CnnlHandle() const { return cnnl_handle_; }
 
  private:
-  void InitMLUContext() {
-    if (GetMLUDeviceHandle(place_.device, &mlu_handle_)) {
-      PADDLE_RETRY_MLU_SUCCESS(cnSharedContextAcquire(&context_, mlu_handle_));
-    } else {
-      context_ = nullptr;
-    }
+  void InitCNNLContext() {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreate(&cnnl_handle_));
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetQueue(cnnl_handle_, RawStream()));
   }
 
-  void DestoryMLUContext() {
-    if (context_) {
-      PADDLE_ENFORCE_MLU_SUCCESS(cnSharedContextRelease(mlu_handle_));
+  void DestoryCNNLContext() {
+    if (cnnl_handle_) {
+      PADDLE_ENFORCE_MLU_SUCCESS(cnnlDestroy(cnnl_handle_));
     }
-    context_ = nullptr;
+    cnnl_handle_ = nullptr;
   }
 
   MLUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
   std::unique_ptr<stream::MLUStream> stream_;
-  mluDeviceHandle mlu_handle_;
-  CNcontext context_;
+  mluCnnlHandle cnnl_handle_;
 
   DISABLE_COPY_AND_ASSIGN(MLUContext);
 };
@@ -90,8 +86,8 @@ class MLUDeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
-  /*! \brief  Return mlu handle in the device context. */
-  mluDeviceHandle mlu_handle() const;
+  /*! \brief  Return cnnl handle in the device context. */
+  mluCnnlHandle cnnl_handle() const;
 
   /*! \brief  Return mlu stream in the device context. */
   mluStream stream() const;

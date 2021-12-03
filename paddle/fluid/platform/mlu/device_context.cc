@@ -24,15 +24,15 @@ thread_local std::unordered_map<const MLUDeviceContext*,
 thread_local std::mutex MLUDeviceContext::ctx_mtx_;
 
 MLUContext::MLUContext(const MLUPlace& place, const int priority) {
-    place_ = place;
+  place_ = place;
   MLUDeviceGuard guard(place_.device);
-  InitMLUContext();
-  stream_.reset(new stream::MLUStream(place, priority));
+  stream_.reset(new stream::MLUStream(place_, priority));
+  InitCNNLContext();
 }
 
 MLUContext::~MLUContext() {
   MLUDeviceGuard guard(place_.device);
-  DestoryMLUContext();
+  DestoryCNNLContext();
 }
 
 MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
@@ -61,8 +61,8 @@ int MLUDeviceContext::GetComputeCapability() const {
   return compute_capability_;
 }
 
-mluDeviceHandle MLUDeviceContext::mlu_handle() const {
-  return context()->MluHandle();
+mluCnnlHandle MLUDeviceContext::cnnl_handle() const {
+  return context()->CnnlHandle();
 }
 
 mluStream MLUDeviceContext::stream() const { return context()->RawStream(); }

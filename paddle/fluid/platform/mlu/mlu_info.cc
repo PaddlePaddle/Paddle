@@ -16,23 +16,12 @@ PADDLE_DEFINE_EXPORTED_string(
 namespace paddle {
 namespace platform {
 
-bool InitMLUDevice() {
-  cnStatus res = cnInit(0 /* = flags */);
-  if (res == CN_SUCCESS) {
-    return true;
-  }
-  VLOG(2) << "failed to init MLU Device.";
-  PADDLE_ENFORCE_MLU_SUCCESS(res);
-  return false;
-}
-
 static int GetMLUDeviceCountImpl() {
-  if (!InitMLUDevice()) {
-    return 0;
-  }
   mluDim3 ver;
-  cnStatus stat = cnGetDriverVersion(&ver.x, &ver.y, &ver.z);
-  if (stat != CN_SUCCESS) {
+  // When cnrtDriverGetVersion is executed, the device is initialized, 
+  // no longer needs to call cnrtInit().
+  cnrtStatus stat = cnrtDriverGetVersion(&ver.x, &ver.y, &ver.z);
+  if (stat != cnrtSuccess) {
     VLOG(2) << "MLU Driver Version can't be detected. No MLU driver!";
     return 0;
   }
@@ -111,19 +100,17 @@ void SetMLUDeviceId(int id) {
   PADDLE_RETRY_MLU_SUCCESS(cnrtSetDevice(id));
 }
 
-bool GetMLUDeviceHandle(int device_ordinal, mluDeviceHandle* device) {
+void GetMLUDeviceHandle(int device_ordinal, mluDeviceHandle* device) {
   cnStatus res = cnDeviceGet(device, device_ordinal);
-  if (res == CN_SUCCESS) {
-    return true;
+  if (res != CN_SUCCESS) {
+    VLOG(2) << "failed to get handle of MLU Device.";
   }
-  VLOG(2) << "failed to get handle of MLU Device.";
   PADDLE_ENFORCE_MLU_SUCCESS(res);
-  return false;
 }
 
 int GetMLUComputeCapability(int id) {
   CheckDeviceId(id);
-  CNdev device;
+  mluDeviceHandle device;
   GetMLUDeviceHandle(id, &device);
 
   int major, minor;
