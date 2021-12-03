@@ -26,7 +26,7 @@ def clear_grad_test_0(w, a):
     def warp(*_):
         assert w.grad is not None
         _C_ops.scale_(w.grad, 'scale', 0.5)
-        w._reset_grad_inplace_version()
+        w._reset_grad_inplace_version(True)
 
     return warp
 
@@ -59,7 +59,7 @@ def clear_grad_test_1(w, c):
         assert w.grad is not None
         if c.step == 1:
             w.grad.scale_(scale=0.5)
-            w._reset_grad_inplace_version()
+            w._reset_grad_inplace_version(True)
 
         c.num_calls += 1
 
@@ -86,6 +86,19 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
 
             assert c.num_calls == 1
             c.num_calls = 0
+
+
+class TestInplaceClearGradAccumulationAlt(unittest.TestCase):
+    def test(self):
+        input_data = np.ones([1, 1])
+        w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
+        out = _C_ops.scale(w, 'scale', 0.1)
+        out.backward()
+
+        w.grad.scale_(scale=0.5)
+        w._reset_grad_inplace_version(False)
+
+        assert w.grad._inplace_version() == 1
 
 
 if __name__ == '__main__':

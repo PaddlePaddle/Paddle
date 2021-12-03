@@ -69,11 +69,13 @@ class Variable {
     return holder_->Type();
   }
 
- public:
+ private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
   framework::TensorInplaceVersion* InplaceVersionCounter();
 
+ public:
+  void SetInplaceVersionToZero();
   uint32_t CurrentInplaceVersion();
   void BumpInplaceVersion();
 
@@ -131,6 +133,12 @@ inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
             << platform::demangle(framework::ToTypeName(Type()));
   }
   return version_counter_ptr;
+}
+
+inline void Variable::SetInplaceVersionToZero() {
+  auto inplace_version_counter = this->InplaceVersionCounter();
+  if (inplace_version_counter)
+    inplace_version_counter->SetInplaceVersionToZero();
 }
 
 inline uint32_t Variable::CurrentInplaceVersion() {
