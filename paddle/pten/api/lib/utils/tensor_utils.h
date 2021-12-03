@@ -21,6 +21,8 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_factory.h"
@@ -33,6 +35,18 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::LoDTensor& src);
+
+pten::Scalar MakePtenScalar(const paddle::framework::LoDTensor& src);
+
+pten::ScalarArray MakePtenScalarArray(const paddle::framework::LoDTensor& src);
+
+pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable);
+
+pten::ScalarArray MakePtenScalarArrayFromVar(
+    const framework::Variable& variable);
+
+pten::ScalarArray MakePtenScalarArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list);
 
 std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def);

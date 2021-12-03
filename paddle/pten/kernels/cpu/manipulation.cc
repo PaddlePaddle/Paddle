@@ -50,8 +50,8 @@ void ReshapeFromVectorVal(const CPUContext& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int64_t>& shape,
                           DenseTensor* out) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
-  if (&x == out) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
+  if (x.data() == out->data() && x.numel() == out->numel()) {
     out->Resize(out_meta.dims);
     return;
   }
@@ -185,3 +185,34 @@ PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mid",
                                 CPU,
                                 ANY,
                                 pten::ReshapeFromVectorValWithXShape) {}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.host",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromDT) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.host.mid",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromDTWithXShape) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mulhost",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromVectorDT) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mulhost.mid",
+                                CPU,
+                                ANY,
+                                pten::ReshapeFromVectorDTWithXShape) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}

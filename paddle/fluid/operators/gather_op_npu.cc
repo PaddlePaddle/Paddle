@@ -18,8 +18,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/kron_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {

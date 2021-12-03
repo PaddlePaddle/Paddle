@@ -1088,8 +1088,6 @@ class ParameterServerLauncher(object):
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
-                    if self.heter_worker_endpoints != "":
-                        self.heter_worker_endpoints += ","
                     heter_worker_endpoints = heter_worker_endpoints_list[
                         i].split(",")
                     self.stage_heter_trainer_num.append(
@@ -1183,9 +1181,8 @@ class ParameterServerLauncher(object):
             else:
                 self.current_node_ip = pod_ip
             assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (self.current_node_ip, self.node_ips)
+                  % (self.current_node_ip, self.node_ips)
         self.node_rank = self.node_ips.index(self.current_node_ip)
-
         logger.debug(
             "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
             format(self.node_ips, self.current_node_ip, self.node_rank))

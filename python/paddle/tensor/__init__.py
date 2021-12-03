@@ -404,7 +404,9 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
-           'triangular_solve'
+           'triangular_solve',
+           'diff',
+           'angle',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

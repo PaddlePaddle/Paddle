@@ -461,6 +461,8 @@ __all__ = [  # noqa
            'ceil',
            'atan',
            'atan2',
+           'rad2deg',
+           'deg2rad',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -535,5 +537,7 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags'
+           'get_flags',
+           'diff',
+           'angle',
 ]
