@@ -36,8 +36,8 @@ class TestLcmAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x1 = fluid.data(name='input1', dtype='int64', shape=self.x1_shape)
-            x2 = fluid.data(name='input2', dtype='int64', shape=self.x2_shape)
+            x1 = fluid.data(name='input1', dtype='int32', shape=self.x1_shape)
+            x2 = fluid.data(name='input2', dtype='int32', shape=self.x2_shape)
             out = paddle.lcm(x1, x2)
 
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
@@ -63,8 +63,8 @@ class TestLcmAPI(unittest.TestCase):
 
 class TestLcmAPI2(TestLcmAPI):
     def setUp(self):
-        self.x1_np = np.arange(6)
-        self.x2_np = 20
+        self.x1_np = np.arange(6).astype(np.int32)
+        self.x2_np = np.array([20]).astype(np.int32)
         self.x1_shape = [6]
         self.x2_shape = [1]
 
