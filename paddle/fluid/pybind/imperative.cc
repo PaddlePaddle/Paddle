@@ -1576,9 +1576,6 @@ void BindImperative(py::module *m_ptr) {
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
 
-               VLOG(1) << "VarWrapper address: " << grad_var->SharedVar();
-               VLOG(1) << "Tensor address: " << tensor;
-
                if (tensor->IsInitialized()) {
                  return grad_var;
                }
