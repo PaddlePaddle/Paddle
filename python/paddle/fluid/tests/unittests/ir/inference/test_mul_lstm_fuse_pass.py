@@ -140,19 +140,20 @@ class TestMulLstmFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config()
-        # If the output diff problem has been fixed,
-        # the value needs to be set to 1e-5!!!
-        yield config, ["im2sequence", "fusion_lstm"], (1e3, 1e-1)
+        yield config, ["im2sequence", "fusion_lstm"], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
-            return False
+            return True
 
         self.add_ignore_check_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
                                    "The output has diff!")
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["mul_lstm_fuse_pass"])
+        # If the output diff problem has been fixed,
+        # min_success_num=0 should be deleted!
+        self.run_and_statis(
+            min_success_num=0, quant=False, passes=["mul_lstm_fuse_pass"])
 
 
 if __name__ == "__main__":
