@@ -32,6 +32,9 @@ namespace framework {
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
+static std::unordered_map<std::string, paddle::framework::AttributeMap>
+    operators_with_attrs = {};
+
 static std::unordered_set<std::string> operators_to_skip = {
     "chunk_eval",  // Stupid tensor name
     "pull_sparse",     "pull_box_extended_sparse", "pull_sparse_v2",
@@ -1648,6 +1651,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
             fwd_outputs_name_pos_map, grad_ins_fwd_slotname_map,
             grad_ins_grad_slotname_map, grad_outs_slotname_map, grad_ins,
             grad_outs, op_type, in_vars, out_vars);
+
     fwd_function_str += body_and_declaration.first + "\n";
 
     /* ---- dygraph_forward_api.h ---- */

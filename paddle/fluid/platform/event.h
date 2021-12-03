@@ -148,9 +148,9 @@ class CudaEvent {
 
   void Record(const paddle::platform::stream::CUDAStream& stream) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
 #endif
   }
 
@@ -172,15 +172,15 @@ class CudaEvent {
       return false;
     }
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
     return false;
   }
 
   void Synchronize() {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventSynchronize(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventSynchronize(event_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event_));
 #endif
   }
   gpuEvent_t GetRawCudaEvent() { return event_; }

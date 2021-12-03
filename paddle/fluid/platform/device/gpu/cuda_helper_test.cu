@@ -21,11 +21,11 @@
 #include <random>
 
 #define PADDLE_CUDA_FP16
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;

@@ -1744,7 +1744,7 @@ void BindImperative(py::module *m_ptr) {
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetCUDADeviceCount();
+             int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
              if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
@@ -1963,10 +1963,6 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "Tensor %s has not been initialized!", self->Name()));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
