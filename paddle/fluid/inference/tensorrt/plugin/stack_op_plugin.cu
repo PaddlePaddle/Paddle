@@ -109,7 +109,7 @@ bool StackPluginDynamic::supportsFormatCombination(
     if (with_fp16_) {
       return (
 // It's workaround for ernie fix len model.
-// Enable float, half on the same time leaads to trt hang.
+// Enabling float, half on the same time will cause trt hang.
 #if IS_TRT_VERSION_LT(8000)
                  in.type == nvinfer1::DataType::kFLOAT ||
 #endif
