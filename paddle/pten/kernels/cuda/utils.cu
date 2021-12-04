@@ -22,7 +22,7 @@ namespace pten {
 
 void Copy(const CUDAContext& dev_ctx,
           const DenseTensor& src,
-          bool is_sync,
+          bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
@@ -48,8 +48,8 @@ void Copy(const CUDAContext& dev_ctx,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   CHECK(dst->layout() == src.layout());
 
-  auto size = src.numel() * paddle::framework::SizeOfType(
-                                TransToProtoVarType(src.data_type()));
+  auto size = src.numel() *
+              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
       paddle::platform::is_cuda_pinned_place(dst_place)) {
@@ -97,10 +97,10 @@ void Copy(const CUDAContext& dev_ctx,
                           src_gpu_place,
                           ctx_gpu_place));
     auto stream =
-        is_sync ? nullptr
-                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                      dev_ctx)
-                      .stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                       dev_ctx)
+                       .stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -125,10 +125,10 @@ void Copy(const CUDAContext& dev_ctx,
                           dst_gpu_place,
                           ctx_gpu_place));
     auto stream =
-        is_sync ? nullptr
-                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                      dev_ctx)
-                      .stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                       dev_ctx)
+                       .stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -155,10 +155,10 @@ void Copy(const CUDAContext& dev_ctx,
                           src_gpu_place.device,
                           ctx_gpu_place.device));
     auto stream =
-        is_sync ? nullptr
-                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                      dev_ctx)
-                      .stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                       dev_ctx)
+                       .stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
@@ -185,10 +185,10 @@ void Copy(const CUDAContext& dev_ctx,
                           dst_gpu_place.device,
                           ctx_gpu_place.device));
     auto stream =
-        is_sync ? nullptr
-                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                      dev_ctx)
-                      .stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                       dev_ctx)
+                       .stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -205,10 +205,10 @@ void Copy(const CUDAContext& dev_ctx,
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream =
-        is_sync ? nullptr
-                : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                      dev_ctx)
-                      .stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
+                       dev_ctx)
+                       .stream();
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       paddle::memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);

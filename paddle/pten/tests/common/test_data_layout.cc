@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/layout.h"
 
+namespace pten {
+namespace tests {
+
 TEST(DataLayout, OStream) {
   std::ostringstream oss;
   oss << pten::DataLayout::UNDEFINED;
@@ -44,3 +47,6 @@ TEST(DataLayout, OStream) {
                 std::string::npos);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

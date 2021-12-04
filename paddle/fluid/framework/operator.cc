@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 
 namespace paddle {
 namespace framework {
@@ -37,8 +38,8 @@ class LoDTensor;
 }  // namespace framework
 }  // namespace paddle
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_info.h"
-#include "paddle/fluid/platform/xpu/xpu_op_list.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -477,10 +478,6 @@ void OperatorBase::GenerateTemporaryNames() {
       }
     }
   }
-}
-
-static bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
@@ -1068,8 +1065,9 @@ bool OperatorWithKernel::SupportsMKLDNN(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  bool use_mkldnn_ctx =
-      ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
+  bool use_mkldnn_ctx = ctx.HasAttr("use_mkldnn") &&
+                        ctx.Attr<bool>("use_mkldnn") &&
+                        platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
@@ -1183,6 +1181,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
+
+      WriteBackToOutputs(runtime_ctx);
+
       pt_kernel_context_->ClearData();
     } else {
       (*kernel_func_)(
@@ -1275,8 +1276,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
       new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
-
-  VLOG(1) << KernelSignatureToString(*pt_kernel_signature_.get());
+  VLOG(6) << KernelSignatureToString(*pt_kernel_signature_.get());
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
@@ -1288,11 +1288,11 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
           pt_kernel_name, pt_kernel_key)));
 
   if (pt_kernel_->IsValid()) {
-    VLOG(1) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
             << " | kernel key: " << pt_kernel_key
             << " | kernel: " << *pt_kernel_;
   } else {
-    VLOG(1) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
             << "` not found.";
   }
 }
@@ -1809,74 +1809,155 @@ void OperatorWithKernel::BuildPtenKernelContext(
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx.inputs.at(input_names[i]);
-    if (pt_kernel_context_->InputsSize() <= i) {
+
+    // calcute the start and end index of the input tensors
+    size_t start_idx =
+        (i == 0 ? 0 : pt_kernel_context_->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
+
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
+    if (pt_kernel_context_->InputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
       for (auto* var : ins_vector) {
         tmp_inputs.emplace_back(
             experimental::MakePtenTensorBaseFromVar(*var, in_def));
       }
       pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
-    } else {
+    } else if (pt_kernel_context_->InputsSize() > start_idx) {
       size_t input_size = pt_kernel_context_->InputsSize();
       for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > i + j) {
+        if (input_size > start_idx + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               *ins_vector[j], in_def,
-              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(i + j));
+              pt_kernel_context_->MutableInputAt<pten::DenseTensor>(start_idx +
+                                                                    j));
+          // TODO(chentianyu03): When multi input kernel, open this code
+          /*
+          } else {
+            pt_kernel_context_->EmplaceBackInputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(*ins_vector[j],
+          in_def));
+          */
         }
-        // TODO(chenweihang): adapt multi-input case later
       }
       pt_kernel_context_->MutableInputRangeAt(i) =
-          std::make_pair(i, i + ins_vector.size());
+          std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
+          "`%d`.",
+          start_idx, pt_kernel_context_->InputsSize()));
     }
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto& out_def = output_defs.at(i);
     auto& outs_vector = ctx.outputs.at(output_names[i]);
-    if (pt_kernel_context_->OutputsSize() <= i) {
+
+    size_t start_idx =
+        (i == 0 ? 0 : pt_kernel_context_->OutputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + outs_vector.size();
+
+    // The current size of input/output in pt_kernel_context_ is at least equal
+    // the start_idx. For the reason of reusing the allocted of inputs or
+    // outputs in pt_kernel_context_, the current size of input/output can be
+    // greater then the index of which the tensort wanted to set to, so it will
+    // use ReMakePtenDenseTensorFromVar to make pten tensor.
+    if (pt_kernel_context_->OutputsSize() == start_idx) {
       paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
       for (auto* var : outs_vector) {
         tmp_outputs.emplace_back(
             experimental::MakePtenTensorBaseFromVar(var, out_def));
       }
       pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else {
+    } else if (pt_kernel_context_->OutputsSize() > start_idx) {
       size_t output_size = pt_kernel_context_->OutputsSize();
       for (size_t j = 0; j < outs_vector.size(); ++j) {
-        if (output_size > i + j) {
+        if (output_size > start_idx + j) {
           experimental::ReMakePtenDenseTensorFromVar(
               outs_vector[j], out_def,
-              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(i + j));
+              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
+                                                                     j));
+
+          // TODO(chentianyu03): When multi output kernel, open this code
+          /*
+          } else {
+            pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
+                experimental::MakePtenTensorBaseFromVar(outs_vector[j],
+          out_def));
+              */
         }
-        // TODO(chenweihang): adapt multi-output case later
       }
       pt_kernel_context_->MutableOutputRangeAt(i) =
-          std::make_pair(i, i + outs_vector.size());
+          std::make_pair(start_idx, end_idx);
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Error start index when trying to set new tensor to inputs, start "
+          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
+          "`%d`.",
+          start_idx, pt_kernel_context_->OutputsSize()));
     }
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    auto& attr = Attrs().at(attr_names[i]);
-    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      auto attr_iter = Attrs().find(attr_names[i]);
+      if (attr_iter != Attrs().end()) {  // shape is in the attribute
+        if (std::type_index(attr_iter->second.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(
+              BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to ScalarArray when "
+              "construct KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ctx.inputs.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          pt_kernel_context_->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVar(*ins_vector.front())));
+        } else {  // ShapeTensorList
+          pt_kernel_context_->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVarList(ins_vector)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
-      if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        pt_kernel_context_->EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::string))) {
-        pt_kernel_context_->EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+      auto attr_iter = Attrs().find(attr_names[i]);
+      if (attr_iter != Attrs().end()) {  // scalar is in the attribute
+        auto& attr = Attrs().at(attr_names[i]);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          pt_kernel_context_->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          pt_kernel_context_->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "KernelContext.",
+              attr_names[i]));
+        }
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "unsupported cast op attribute `%s` to Scalar when construct "
-            "KernelContext.",
-            attr_names[i]));
+        auto& ins_vector = ctx.inputs.at(attr_names[i]);
+        pt_kernel_context_->EmplaceBackAttr(std::move(
+            experimental::MakePtenScalarFromVar(*ins_vector.front())));
       }
+
     } else {
       // TODO(chenweihang): support other attrs later
+      auto& attr = Attrs().at(attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
@@ -1884,20 +1965,50 @@ void OperatorWithKernel::BuildPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
-                     std::type_index(typeid(std::vector<int64_t>)) &&
-                 std::type_index(attr.type()) ==
-                     std::type_index(typeid(std::vector<int>))) {
-        // Emplace Back Attr according to the type of Pten_Kernel args.
-        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
-        const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
-                                                     vector_int_attr.end());
-        pt_kernel_context_->EmplaceBackAttr(vector_int64_attr);
+                 std::type_index(typeid(pten::DataType))) {
+        auto data_type = pten::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        pt_kernel_context_->EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Emplace Back Attr according to the type of Pten_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          pt_kernel_context_->EmplaceBackAttr(vector_int64_attr);
+        }
+        // TODO(YuanRisheng) Need support vector<int64_t> attr
+
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "unsupported cast op attribute `%s` when construct "
+            "Unsupported cast op attribute `%s` when construct "
             "KernelContext.",
             attr_names[i]));
       }
+    }
+  }
+}
+
+void OperatorWithKernel::WriteBackToOutputs(RuntimeContext* ctx) const {
+  // auto& input_names = std::get<0>(pt_kernel_signature_->args);
+  // auto& attr_names = std::get<1>(pt_kernel_signature_->args);
+  auto& output_names = std::get<2>(pt_kernel_signature_->args);
+
+  // pt_kernel_context_
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto& outs_vector = ctx->outputs.at(output_names[i]);
+
+    auto& range_pair = pt_kernel_context_->OutputRangeAt(i);
+    auto pten_outs =
+        pt_kernel_context_->MutableOutputBetween<pten::DenseTensor>(
+            range_pair.first, range_pair.second);
+
+    for (size_t j = 0; j < pten_outs.size(); ++j) {
+      experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
     }
   }
 }

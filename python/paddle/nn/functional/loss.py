@@ -903,7 +903,15 @@ def kl_div(input, label, reduction='mean', name=None):
         label = paddle.cast(label, 'float64')
 
     if paddle.in_dynamic_mode():
-        out = _C_ops.kldiv_loss(input, label, 'reduction', reduction)
+        out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
+        if reduction == 'mean':
+            out = paddle.mean(out)
+        elif reduction == 'sum':
+            out = paddle.sum(out)
+        elif reduction == 'batchmean':
+            if len(input.shape) > 0:
+                batch_size = input.shape[0]
+                out = paddle.sum(out) / batch_size
         return out
 
     helper = LayerHelper('kl_div', **locals())
@@ -920,7 +928,15 @@ def kl_div(input, label, reduction='mean', name=None):
         inputs={'X': input,
                 'Target': label},
         outputs={'Loss': loss},
-        attrs={'reduction': reduction})
+        attrs={'reduction': 'none'})
+
+    if reduction == 'mean':
+        loss = paddle.mean(loss)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+    elif reduction == 'batchmean':
+        batch_size = paddle.shape(input)[0]
+        loss = paddle.sum(loss) / batch_size
     return loss
 
 
