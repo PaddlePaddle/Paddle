@@ -1104,3 +1104,19 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
     tensor_dist_attr.process_mesh = process_mesh
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
+
+
+def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(new_op, process_mesh,
+                                                           ref_mapping, ctx):
+    assert process_mesh is not None
+    assert ref_mapping is not None
+
+    new_op_dist_attr = OperatorDistributedAttribute()
+
+    for input_varname in new_op.desc.input_arg_names():
+        new_op_dist_attr.set_input_dims_mapping(input_varname, ref_mapping)
+    for output_varname in new_op.desc.output_arg_names():
+        new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
+
+    new_op_dist_attr.process_mesh = process_mesh
+    ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
