@@ -213,7 +213,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 '_c_identity')
 
             intermediate_var_0 = main_block.create_var(
-                name=None,
+                name=unique_name.generate_with_ignorable_key(".".join(
+                    ["c_identity", 'tmp'])) + "@GRAD",
                 dtype=Out_grad.dtype,
                 shape=Out_grad.shape,
                 type=core.VarDesc.VarType.LOD_TENSOR,
@@ -264,7 +265,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 X_grad = main_block.var(kwargs['X@GRAD'][0])
                 intermediate_var_0 = main_block.create_var(
                     name=unique_name.generate_with_ignorable_key(".".join(
-                        ["c_identity", 'tmp'])),
+                        ["c_identity", 'tmp'])) + "@GRAD",
                     dtype=X_grad.dtype,
                     shape=X_grad.shape,
                     type=core.VarDesc.VarType.LOD_TENSOR,

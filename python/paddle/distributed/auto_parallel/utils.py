@@ -990,7 +990,9 @@ def set_grad_var_shape(program, dist_context):
     block = program.global_block()
     vars = block.vars
     for op in block.ops:
-        if op.type == "sum":
+        if op.type in [
+                "sum", "check_finite_and_unscale", "update_loss_scaling"
+        ]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -1001,6 +1003,15 @@ def set_grad_var_shape(program, dist_context):
                 forward_var_name = var_name[:var_name.find("@GRAD")]
                 if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
                     forward_var_name = op.input_arg_names[0]
+                elif op.type == "matmul_v2_grad":
+                    forward_var_name = None
+                    for output_name in op.output_names:
+                        if var_name in op.output(output_name):
+                            assert "@GRAD" in output_name
+                            input_name = output_name[:output_name.find("@GRAD")]
+                            assert len(op.input(input_name)) == 1
+                            forward_var_name = op.input(input_name)[0]
+                    assert forward_var_name is not None
 
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
