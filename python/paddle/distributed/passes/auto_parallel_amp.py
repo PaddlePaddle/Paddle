@@ -578,7 +578,8 @@ class AMPBackwardPass(PassBase):
             'decr_every_n_nan_or_inf': self.get_attr("decr_every_n_nan_or_inf"),
             'incr_ratio': self.get_attr("incr_ratio"),
             'decr_ratio': self.get_attr("decr_ratio"),
-            'stop_update': self.get_attr("stop_update")
+            'stop_update': self.get_attr("stop_update"),
+            'op_role': BACKWARD
         }
 
         new_op = main_block.append_op(

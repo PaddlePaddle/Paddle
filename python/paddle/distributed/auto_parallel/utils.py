@@ -991,6 +991,8 @@ def set_grad_var_shape(program, dist_context):
     block = program.global_block()
     vars = block.vars
     for op in block.ops:
+        if op.type == "check_finite_and_unscale":
+            break
         if op.type in [
                 "sum", "check_finite_and_unscale", "update_loss_scaling"
         ]:
@@ -1000,9 +1002,12 @@ def set_grad_var_shape(program, dist_context):
             assert op_dist_attr is not None
 
             for var_name in op.output_arg_names:
+
                 assert "@GRAD" in var_name
                 forward_var_name = var_name[:var_name.find("@GRAD")]
-                if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
+                if op.type in [
+                        "c_allreduce_sum", "c_identity", "scale", "cast"
+                ]:
                     forward_var_name = op.input_arg_names[0]
                 elif op.type == "matmul_v2_grad":
                     forward_var_name = None
@@ -1036,6 +1041,7 @@ def set_grad_var_shape(program, dist_context):
 
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
+
                 assert forward_input_dist_attr is not None, f"{forward_var_name}"
                 forward_var = vars[forward_var_name]
                 forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
