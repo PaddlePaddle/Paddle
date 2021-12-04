@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
+#include <iostream>
 #include <sstream>
 
 #include "glog/logging.h"
@@ -419,6 +420,17 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
+
+  // print feasigns
+  int table_feasigns = 0;
+  for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
+    auto& block = shard_values_[shard_id];
+    table_feasigns += block->feasigns();
+  }
+  std::cout << "===========server feasigns size============" << std::endl;
+  std::cout << "server " << _shard_idx << " feasign size: " << table_feasigns
+            << " parameter size: " << table_feasigns * 10 << std::endl;
+
   return 0;
 }
 
@@ -463,6 +475,12 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
                                         const float* values, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
+
+  for (int x = 0; x < num; ++x) {
+    std::cout << x;
+    if (x != num - 1) std::cout << " ";
+  }
+  std::cout << std::endl;
 
   for (int x = 0; x < num; ++x) {
     auto y = keys[x] % task_pool_size_;

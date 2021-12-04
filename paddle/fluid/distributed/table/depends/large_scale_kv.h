@@ -319,6 +319,14 @@ class ValueBlock {
     }
   }
 
+  int feasigns() {
+    int total_feasigns = 0;
+    for (auto &map_ : values_) {
+      total_feasigns += map_.size();
+    }
+    return total_feasigns;
+  }
+
  private:
   bool Has(const uint64_t id) {
     size_t hash = _hasher(id);
