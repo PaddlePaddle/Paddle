@@ -156,13 +156,10 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     # # serial forward & backward completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
-    # params_grads = parallelizer._apply_serial_passes_and_backward(
-    #     complete_train_program, startup_program, loss)
-    # serial forward pass
+
     parallelizer._apply_serial_forward_pass(complete_train_program,
                                             startup_program)
 
-    # serial backward pass
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,
