@@ -48,7 +48,12 @@ def _load_variable_data(scope, var_name):
     var_node = scope.find_var(var_name)
     assert var_node is not None, \
         "Cannot find " + var_name + " in scope."
-    return np.array(var_node.get_tensor())
+    out = np.array(var_node.get_tensor())
+    # TODO(yghstill): In some scenarios, get_tensor from var node 
+    # in sub blocks is empty, and it will fix in the future.
+    if not out.any():
+        out = np.zeros([1], dtype=np.float32)
+    return out
 
 
 def _set_variable_data(scope, place, var_name, np_value):
@@ -149,7 +154,6 @@ class PostTrainingQuantization(object):
                  weight_quantize_type='channel_wise_abs_max',
                  optimize_model=False,
                  is_use_cache_file=False,
-                 quant_blocks=-1,
                  cache_dir=None):
         '''
         Constructor.
@@ -222,8 +226,6 @@ class PostTrainingQuantization(object):
                 be different. In address this problem, fuse the pattern before
                 quantization. Default False.
             is_use_cache_file(bool, optional): This param is deprecated.
-            quant_blocks(int|list, optional): The bolck id list with quantization.
-                Default is -1, it will quant all blocks. And it can be set [0, 1] etc.
             cache_dir(str, optional): This param is deprecated.
         Returns:
             None
@@ -312,7 +314,6 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._is_full_quantize = is_full_quantize
-        self._quant_blocks = quant_blocks
         if is_full_quantize:
             self._quantizable_op_type = self._support_quantize_op_type
         else:
@@ -414,6 +415,23 @@ class PostTrainingQuantization(object):
                for op_type in self._dynamic_quantize_op_type):
             self._collect_dynamic_quantize_op_threshold(
                 self._dynamic_quantize_op_type)
+
+        # Move sub blocks persistable var to global block
+        global_block = self._program.global_block()
+        for _op in global_block.ops:
+            if _op.type == "while":
+                _block_id = _op.attr("sub_block").id
+                _block = self._program.block(_block_id)
+                persistables = []
+                for _name, _var in _block.vars.items():
+                    if _var.persistable:
+                        global_block._clone_variable(_var)
+                        persistables.append(_name)
+                for _name in persistables:
+                    _block._remove_var(_name)
+                persistables.extend(_op.input('X'))
+                _op.desc.set_input("X", persistables)
+
         return self._program
 
     def save_quantized_model(self,
@@ -506,10 +524,6 @@ class PostTrainingQuantization(object):
 
         persistable_var_names = _all_persistable_var_names(self._program)
         for block_id in range(len(self._program.blocks)):
-            if self._quant_blocks != -1 and isinstance(
-                    self._quant_blocks,
-                    list) and block_id not in self._quant_blocks:
-                continue
             for op in self._program.blocks[block_id].ops:
                 op_type = op.type
                 if self._is_full_quantize and \
@@ -704,10 +718,6 @@ class PostTrainingQuantization(object):
         assert self._algo == "min_max", \
             "The algo should be min_max to save input threshold."
         for block_id in range(len(self._program.blocks)):
-            if self._quant_blocks != -1 and isinstance(
-                    self._quant_blocks,
-                    list) and block_id not in self._quant_blocks:
-                continue
             for op in self._program.blocks[block_id].ops:
                 if op.type in self._quantizable_op_type:
                     for var_name in _get_op_input_var_names(op):
@@ -808,10 +818,9 @@ class PostTrainingQuantization(object):
             weight_quantize_type=self._weight_quantize_type,
             quantizable_op_type=major_quantizable_op_types)
 
-        for i, sub_graph in enumerate(graph.all_sub_graphs()):
-            if self._quant_blocks != -1 and isinstance(
-                    self._quant_blocks, list) and i not in self._quant_blocks:
-                continue
+        for sub_graph in graph.all_sub_graphs():
+            # Insert fake_quant/fake_dequantize op must in test graph, so
+            # set per graph's _for_test is True.
             sub_graph._for_test = True
             transform_pass.apply(sub_graph)
 
@@ -825,10 +834,7 @@ class PostTrainingQuantization(object):
             place=self._place,
             quantizable_op_type=minor_quantizable_op_types)
 
-        for i, sub_graph in enumerate(graph.all_sub_graphs()):
-            if self._quant_blocks != -1 and isinstance(
-                    self._quant_blocks, list) and i not in self._quant_blocks:
-                continue
+        for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
             add_quant_dequant_pass.apply(sub_graph)
 
@@ -861,10 +867,7 @@ class PostTrainingQuantization(object):
             weight_quantize_type=self._weight_quantize_type,
             quantizable_op_type=major_quantizable_op_types)
 
-        for i, sub_graph in enumerate(graph.all_sub_graphs()):
-            if self._quant_blocks != -1 and isinstance(
-                    self._quant_blocks, list) and i not in self._quant_blocks:
-                continue
+        for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
             freeze_pass.apply(sub_graph)
 
@@ -920,10 +923,6 @@ class PostTrainingQuantization(object):
                           "out_max", "post_min_max")
 
         for block_id in range(len(self._program.blocks)):
-            if self._quant_blocks != -1 and isinstance(
-                    self._quant_blocks,
-                    list) and block_id not in self._quant_blocks:
-                continue
             for op in self._program.blocks[block_id].ops:
                 if op.type in (
                         self._quantizable_op_type + self._out_scale_op_list):
