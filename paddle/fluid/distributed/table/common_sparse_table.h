@@ -184,6 +184,10 @@ class CommonSparseTable : public SparseTable {
   int param_dim_ = 0;
   int param_offset_ = 0;
 
+  std::mutex mu_;
+  int print_cnt_;
+
+
   std::unordered_map<std::string, int> value_idx_;
   std::vector<std::string> value_names_;
   std::vector<int> value_dims_;

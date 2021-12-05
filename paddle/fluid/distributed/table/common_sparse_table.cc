@@ -421,16 +421,21 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
     tasks[shard_id].wait();
   }
 
-  // print feasigns
-  int table_feasigns = 0;
-  for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
-    auto& block = shard_values_[shard_id];
-    table_feasigns += block->feasigns();
+  {
+    std::unique_lock<std::mutex> lk_(mu_);
+    print_cnt_++;
+    if (print_cnt_ % 200 == 0) {
+      // print feasigns
+      int table_feasigns = 0;
+      for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
+        auto& block = shard_values_[shard_id];
+        table_feasigns += block->feasigns();
+      }
+      std::cout << "===========server feasigns size============" << std::endl;
+      std::cout << "server " << _shard_idx << " feasign size: " << table_feasigns
+                << " parameter size: " << table_feasigns * 10 << std::endl;
+    }
   }
-  std::cout << "===========server feasigns size============" << std::endl;
-  std::cout << "server " << _shard_idx << " feasign size: " << table_feasigns
-            << " parameter size: " << table_feasigns * 10 << std::endl;
-
   return 0;
 }
 
