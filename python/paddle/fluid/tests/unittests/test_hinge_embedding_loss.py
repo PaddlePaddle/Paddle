@@ -36,24 +36,24 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         label = paddle.to_tensor(self.label_np, dtype=paddle.float32)
         dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
         expected = np.mean(
-            np.where(label.numpy() == 1.,
-                     input.numpy(), np.maximum(0., self.delta - input.numpy())))
+            np.where(label.numpy() == -1.,
+                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='sum')
         expected = np.sum(
-            np.where(label.numpy() == 1.,
-                     input.numpy(), np.maximum(0., self.delta - input.numpy())))
+            np.where(label.numpy() == -1.,
+                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='none')
-        expected = np.where(label.numpy() == 1.,
-                            input.numpy(),
-                            np.maximum(0., self.delta - input.numpy()))
+        expected = np.where(label.numpy() == -1.,
+                            np.maximum(0., self.delta - input.numpy()),
+                            input.numpy())
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
@@ -76,15 +76,6 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
 
         self.assertRaises(ValueError, test_value_error)
 
-    def test_label_errors(self):
-        paddle.disable_static()
-
-        def test_value_error():
-            loss = paddle.nn.functional.hinge_embedding_loss(
-                paddle.to_tensor(self.input_np), self.wrong_label)
-
-        self.assertRaises(ValueError, test_value_error)
-
 
 class TestClassHingeEmbeddingLoss(unittest.TestCase):
     def setUp(self):
@@ -102,8 +93,8 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
         dy_result = hinge_embedding_loss(input, label)
         expected = np.mean(
-            np.where(label.numpy() == 1.,
-                     input.numpy(), np.maximum(0., self.delta - input.numpy())))
+            np.where(label.numpy() == -1.,
+                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
@@ -111,17 +102,17 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
             reduction='sum')
         dy_result = hinge_embedding_loss(input, label)
         expected = np.sum(
-            np.where(label.numpy() == 1.,
-                     input.numpy(), np.maximum(0., self.delta - input.numpy())))
+            np.where(label.numpy() == -1.,
+                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='none')
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.where(label.numpy() == 1.,
-                            input.numpy(),
-                            np.maximum(0., self.delta - input.numpy()))
+        expected = np.where(label.numpy() == -1.,
+                            np.maximum(0., self.delta - input.numpy()),
+                            input.numpy())
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
@@ -142,16 +133,6 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
             hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
                 reduction='reduce_mean')
             loss = hinge_embedding_loss(self.input_np, self.label_np)
-
-        self.assertRaises(ValueError, test_value_error)
-
-    def test_label_errors(self):
-        paddle.disable_static()
-
-        def test_value_error():
-            hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
-            loss = hinge_embedding_loss(
-                paddle.to_tensor(self.input_np), self.wrong_label)
 
         self.assertRaises(ValueError, test_value_error)
 
