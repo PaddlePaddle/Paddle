@@ -19,6 +19,9 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
 
 DECLARE_bool(use_pinned_memory);
 
@@ -77,11 +80,7 @@ TEST(GPUAllocator, AllocFailure) {
     allocator.Alloc(&index, alloc_size);
     ASSERT_TRUE(false);
   } catch (paddle::memory::allocation::BadAlloc&) {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-#endif
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::GpuGetLastError());
   }
 }
 #endif
