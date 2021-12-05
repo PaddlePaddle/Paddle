@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -36,6 +37,14 @@ __global__ void add_kernel(int *x, int n) {
   for (int i = tid; i < n; i += blockDim.x * gridDim.x) {
     atomicAdd(x + i, tid);
   }
+}
+
+void CheckMemLeak(const platform::CUDAPlace &place) {
+  uint64_t cuda_malloc_size =
+      platform::RecordedCudaMallocSize(place.GetDeviceId());
+  ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
+                                 << " bytes memory that not released yet,"
+                                 << " there may be a memory leak problem";
 }
 
 class StreamSafeCUDAAllocTest : public ::testing::Test {
@@ -143,11 +152,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 #endif
     }
 
-    uint64_t cuda_malloc_size =
-        platform::RecordedCudaMallocSize(place_.GetDeviceId());
-    ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
-                                   << " bytes memory that not released yet,"
-                                   << " there may be a memory leak problem";
+    CheckMemLeak(place_);
   }
 
   size_t stream_num_;
@@ -186,6 +191,32 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
       Alloc(place, alloc_size, default_stream);
   EXPECT_GE(allocation_unique->size(), alloc_size);
   EXPECT_EQ(allocation_unique->ptr(), address);
+  allocation_unique.reset();
+
+  Release(place);
+  CheckMemLeak(place);
+}
+
+TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  auto &instance = allocation::AllocatorFacade::Instance();
+  const std::shared_ptr<Allocator> &allocator = instance.GetAllocator(place);
+
+  size_t alloc_size = 256;
+  std::shared_ptr<Allocation> allocation_from_allocator =
+      allocator->Allocate(alloc_size);
+  EXPECT_GE(allocation_from_allocator->size(), alloc_size);
+  void *address = allocation_from_allocator->ptr();
+  allocation_from_allocator.reset();
+
+  std::shared_ptr<Allocation> allocation_implicit_stream =
+      AllocShared(place, alloc_size);
+  EXPECT_GE(allocation_implicit_stream->size(), alloc_size);
+  EXPECT_EQ(allocation_implicit_stream->ptr(), address);
+  allocation_implicit_stream.reset();
+
+  Release(place);
+  CheckMemLeak(place);
 }
 
 TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
@@ -223,6 +254,7 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
 
   Release(place, stream1);
   Release(place, stream2);
+  CheckMemLeak(place);
 }
 
 }  // namespace memory
