@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
@@ -218,6 +219,26 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   Release(place);
   CheckMemLeak(place);
 }
+
+#ifdef PADDLE_WITH_CUDA
+TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  size_t alloc_size = 1;
+  std::shared_ptr<Allocation> allocation = AllocShared(place, alloc_size);
+
+  platform::BeginCUDAGraphCapture(place, cudaStreamCaptureModeGlobal);
+  EXPECT_THROW(AllocShared(place, alloc_size), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Alloc(place, alloc_size), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Release(place), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(RecordStream(allocation.get(), nullptr),
+               paddle::platform::EnforceNotMet);
+  platform::EndCUDAGraphCapture();
+
+  allocation.reset();
+  Release(place);
+  CheckMemLeak(place);
+}
+#endif
 
 TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
