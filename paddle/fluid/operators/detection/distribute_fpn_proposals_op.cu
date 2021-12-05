@@ -26,7 +26,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {

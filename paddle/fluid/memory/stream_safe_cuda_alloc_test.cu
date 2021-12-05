@@ -27,7 +27,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -41,7 +41,7 @@ __global__ void add_kernel(int *x, int n) {
 
 void CheckMemLeak(const platform::CUDAPlace &place) {
   uint64_t cuda_malloc_size =
-      platform::RecordedCudaMallocSize(place.GetDeviceId());
+      platform::RecordedGpuMallocSize(place.GetDeviceId());
   ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
                                  << " bytes memory that not released yet,"
                                  << " there may be a memory leak problem";
@@ -62,9 +62,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     for (size_t i = 1; i < stream_num_; ++i) {
       gpuStream_t stream;
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
       streams_.emplace_back(stream);
     }
@@ -74,10 +74,10 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       std::shared_ptr<Allocation> allocation =
           AllocShared(place_, allocation_size, streams_[i]);
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemset(allocation->ptr(), 0, allocation->size()));
 #endif
       allocations_.emplace_back(allocation);
@@ -120,13 +120,13 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 // tricky code, the allocations are still accessible even though
 // allocations_.clear() has been called
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemcpy(host_x.get(), allocations_[i]->ptr(),
                      data_num_ * sizeof(int), cudaMemcpyDeviceToHost));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          hipMemcpy(host_x.get(), allocations_[i]->ptr(),
-                    data_num_ * sizeof(int), hipMemcpyDeviceToHost));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(host_x.get(), allocations_[i]->ptr(),
+                                           data_num_ * sizeof(int),
+                                           hipMemcpyDeviceToHost));
 #endif
       for (int j = 0; j < data_num_; ++j) {
         EXPECT_TRUE(host_x[j] == (j % thread_num) * stream_num_);
@@ -136,9 +136,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
   void TearDown() override {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
     for (gpuStream_t stream : streams_) {
       Release(place_, stream);
@@ -146,9 +146,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
     for (size_t i = 1; i < stream_num_; ++i) {
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(streams_[i]));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(streams_[i]));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(streams_[i]));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(streams_[i]));
 #endif
     }
 
@@ -223,11 +223,11 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   gpuStream_t stream1, stream2;
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream1));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream2));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream1));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream2));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream1));
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream2));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream1));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream2));
 #endif
   size_t available_size = platform::GpuAvailableMemToAlloc();
   // alloc_size < available_size < 2 * alloc_size
@@ -247,9 +247,9 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   allocation2.reset();
 
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
 
   Release(place, stream1);

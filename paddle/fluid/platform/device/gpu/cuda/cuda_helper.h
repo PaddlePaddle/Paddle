@@ -16,12 +16,7 @@
 
 #include <mutex>  // NOLINT
 
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rocblas.h"
-#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -72,28 +67,13 @@ namespace platform {
  *
 */
 
-#ifdef __HIPCC__
-#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                     \
-  int64_t __index__ = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; \
-  for (index_type i = __index__; __index__ < (num);                   \
-       __index__ += hipBlockDim_x * hipGridDim_x, i = __index__)
-#else
 #define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
   for (index_type i = __index__; __index__ < (num);          \
        __index__ += blockDim.x * gridDim.x, i = __index__)
-#endif
-
-#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
 
 class CublasHandleHolder {
  public:
-#ifdef PADDLE_WITH_HIP
-  explicit CublasHandleHolder(hipStream_t stream) {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_create_handle(&handle_));
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_set_stream(handle_, stream));
-  }
-#else
   CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
@@ -109,20 +89,11 @@ class CublasHandleHolder {
     }
 #endif  // CUDA_VERSION >= 9000
   }
-#endif
 
-#ifdef PADDLE_WITH_HIP
-  const rocblas_handle& GetCublasHandle() const { return handle_; }
-#else
   const cublasHandle_t& GetCublasHandle() const { return handle_; }
-#endif
 
   ~CublasHandleHolder() PADDLE_MAY_THROW {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_destroy_handle(handle_));
-#else
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
-#endif
   }
 
   template <typename Callback>
@@ -134,11 +105,7 @@ class CublasHandleHolder {
  private:
   DISABLE_COPY_AND_ASSIGN(CublasHandleHolder);
 
-#ifdef PADDLE_WITH_HIP
-  rocblas_handle handle_;
-#else
   cublasHandle_t handle_;
-#endif
   mutable std::mutex mtx_;
 };
 
