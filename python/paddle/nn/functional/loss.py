@@ -2138,7 +2138,7 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                                  'hinge_embedding_loss')
 
-    label_item_set = {i.item() for i in label.flatten()}
+    label_item_set = {i.item() for i in label.cpu().flatten()}
 
     if label_item_set <= {-1., 1.}:
         loss = paddle.where(
