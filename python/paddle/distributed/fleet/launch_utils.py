@@ -409,7 +409,7 @@ def get_ports(num, offset):
         if ports is not None:
             ports = list(ports)
     else:
-        start_port = os.environ.get('FLAGS_START_PORT')
+        start_port = int(os.environ.get('FLAGS_START_PORT'))
         ports = range(start_port + offset, start_port + offset + num, 1)
     return ports
 
