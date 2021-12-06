@@ -23,9 +23,9 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr
 from ..process_group import new_process_group
 from ..dist_attribute import OperatorDistributedAttribute
+from paddle.distributed.auto_parallel.process_group import get_world_process_groups
 
-# FIXME
-global_process_mesh = [0, 1]
+global_process_mesh = get_world_process_groups()
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):

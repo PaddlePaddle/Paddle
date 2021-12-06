@@ -20,13 +20,14 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLi
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
+from paddle.distributed.auto_parallel.process_group import get_world_process_groups
 
 from collections import OrderedDict
 import numpy as np
 
 BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
 # FIXME
-global_process_mesh = [0, 1]
+global_process_mesh = get_world_process_groups()
 
 
 def _mark_black_white_ops(main_prog, amp_lists):
