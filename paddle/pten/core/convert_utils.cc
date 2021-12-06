@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace pten {
 

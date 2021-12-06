@@ -25,19 +25,34 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-void LinkNodes(const std::vector<TaskNode*>& nodes) {
+int64_t GetBuffSize(
+    const std::map<std::pair<TaskNode*, TaskNode*>, int64_t> buffs,
+    TaskNode* from, TaskNode* to) {
+  if (buffs.find({from, to}) != buffs.end()) {
+    return buffs.at({from, to});
+  }
+  if (buffs.find({to, from}) != buffs.end()) {
+    return buffs.at({to, from});
+  }
+  return 2;  // set default 2
+}
+
+void LinkNodes(const std::vector<TaskNode*>& nodes,
+               const std::map<std::pair<TaskNode*, TaskNode*>, int64_t> buffs) {
   size_t size = nodes.size();
   if (size <= 1) return;
 
   {  // i = 0
     TaskNode* now = nodes[0];
     TaskNode* next = nodes[1];
-    now->AddDownstreamTask(next->task_id());
+    auto buff_size = GetBuffSize(buffs, now, next);
+    now->AddDownstreamTask(next->task_id(), buff_size);
   }
   {  // i = size - 1
     TaskNode* prev = nodes[size - 2];
     TaskNode* now = nodes[size - 1];
-    now->AddUpstreamTask(prev->task_id());
+    auto buff_size = GetBuffSize(buffs, prev, now);
+    now->AddUpstreamTask(prev->task_id(), buff_size);
   }
 
   for (size_t i = 1; i < size - 1; ++i) {
@@ -45,8 +60,11 @@ void LinkNodes(const std::vector<TaskNode*>& nodes) {
     TaskNode* now = nodes[i];
     TaskNode* next = nodes[i + 1];
 
-    now->AddUpstreamTask(prev->task_id());
-    now->AddDownstreamTask(next->task_id());
+    auto buff_size = GetBuffSize(buffs, prev, now);
+    now->AddUpstreamTask(prev->task_id(), buff_size);
+
+    buff_size = GetBuffSize(buffs, now, next);
+    now->AddDownstreamTask(next->task_id(), buff_size);
   }
 }
 
@@ -55,7 +73,7 @@ TEST(AmplifierInterceptor, Amplifier) {
   MessageBus& msg_bus = MessageBus::Instance();
   msg_bus.Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}}, {{0, ""}}, "");
 
-  int64_t micro_steps = 3;
+  int64_t micro_steps = 6;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a =
@@ -65,7 +83,8 @@ TEST(AmplifierInterceptor, Amplifier) {
   TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps, 0);
 
   // a->b->c->d
-  LinkNodes({node_a, node_b, node_c, node_d});
+  // LR->F->B->U
+  LinkNodes({node_a, node_b, node_c, node_d}, {{{node_b, node_c}, 1}});
 
   node_a->SetRunPerSteps(micro_steps);
   node_d->SetRunPerSteps(micro_steps);

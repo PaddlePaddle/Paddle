@@ -17,7 +17,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_graph.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #endif
 
 namespace paddle {
