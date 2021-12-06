@@ -34,16 +34,16 @@ namespace paddle2cinn {
 // shapes.
 class CinnCacheKey {
  public:
-  using GraphHashProto = std::function<size_t(const ir::Graph&)>;
+  using GraphHashStrategy = std::function<size_t(const ir::Graph&)>;
 
-  explicit CinnCacheKey(GraphHashProto graph_hash);
+  explicit CinnCacheKey(GraphHashStrategy graph_hash);
 
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, const LoDTensor*>& input_tensors,
-               const std::string& arch_str, GraphHashProto graph_hash);
+               const std::string& arch_str, GraphHashStrategy graph_hash);
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, DDim>& input_shapes,
-               const std::string& arch_str, GraphHashProto graph_hash);
+               const std::string& arch_str, GraphHashStrategy graph_hash);
 
   ~CinnCacheKey() {}
 
@@ -63,7 +63,7 @@ class CinnCacheKey {
   };
 
  private:
-  GraphHashProto graph_hash_;
+  GraphHashStrategy graph_hash_;
   std::string graph_serialize_str_;
   std::map<std::string, DDim> input_shapes_;
   std::string arch_str_;

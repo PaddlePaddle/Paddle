@@ -29,15 +29,15 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-using GraphHashProto = CinnCacheKey::GraphHashProto;
+using GraphHashStrategy = CinnCacheKey::GraphHashStrategy;
 
-CinnCacheKey::CinnCacheKey(GraphHashProto graph_hash)
+CinnCacheKey::CinnCacheKey(GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {}
 
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const std::string& arch_str, GraphHashProto graph_hash)
+    const std::string& arch_str, GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
   this->SetKey(graph, input_tensors, arch_str);
 }
@@ -45,7 +45,7 @@ CinnCacheKey::CinnCacheKey(
 CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
                            const std::map<std::string, DDim>& input_shapes,
                            const std::string& arch_str,
-                           GraphHashProto graph_hash)
+                           GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
   this->SetKey(graph, input_shapes, arch_str);
 }
