@@ -36,7 +36,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
@@ -479,9 +479,9 @@ struct ReduceConfig {
       reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->y);
     }
     int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetCUDAMultiProcessors(device_id);
+    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
@@ -521,9 +521,9 @@ struct ReduceConfig {
     left_num = last_dim_num;
     grid_dim->z = grid_z;
     int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetCUDAMultiProcessors(device_id);
+    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     // init
     int num_block = (max_threads / left_num);
