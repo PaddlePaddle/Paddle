@@ -17,6 +17,7 @@ limitations under the License. */
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -42,18 +43,10 @@ void Mean(const CUDAContext& dev_ctx,
 template <typename T>
 void Scale(const CUDAContext& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out);
-
-template <typename T>
-void ScaleHost(const CUDAContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out);
 
 template <typename T>
 void ElementwiseAdd(const CUDAContext& dev_ctx,

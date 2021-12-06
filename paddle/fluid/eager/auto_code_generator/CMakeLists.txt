@@ -17,13 +17,42 @@ execute_process(
 )
 
 if(WIN32)
+    set(EAGER_CODEGEN_DEPS eager_generator)
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+      set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
+    else()
+      set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+    endif()
+    
+    if(${CBLAS_PROVIDER} STREQUAL MKLML)
+      message("Copied libiomp5md.dll for Eager AutoCodeGen")
+      ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/libiomp5md.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${eager_generator_path}
+        DEPENDS mklml)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/libiomp5md.dll)
+    else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+      message("Copied openblas.dll for Eager AutoCodeGen")
+      ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/openblas.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${eager_generator_path}
+        DEPENDS extern_openblas)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/openblas.dll)
+    endif()
+
+    if(WITH_MKLDNN)
+      message("Copied mkldnn.dll for Eager AutoCodeGen")
+      ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/mkldnn.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${eager_generator_path}
+        DEPENDS mkldnn)
+        list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
+    endif()
+
     add_custom_target(eager_codegen
-      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated" 
-      DEPENDS eager_generator
+      COMMAND "${eager_generator_path}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
+      DEPENDS ${EAGER_CODEGEN_DEPS}
       VERBATIM)
 else()
     add_custom_target(eager_codegen
-          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
+          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
           DEPENDS eager_generator
           VERBATIM)
 endif()
