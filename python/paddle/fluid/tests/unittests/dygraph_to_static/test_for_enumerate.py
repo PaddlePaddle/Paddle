@@ -323,7 +323,7 @@ def for_original_tuple():
     return z
 
 
-# 22. for zip error
+# 23. for zip error
 @paddle.jit.to_static(
     input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])])
 def for_zip_error(x, y):
@@ -332,7 +332,7 @@ def for_zip_error(x, y):
     return x + y
 
 
-# 22. for zip
+# 24. for zip
 @paddle.jit.to_static(
     input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])])
 def for_zip(x, y):
