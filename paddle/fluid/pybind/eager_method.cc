@@ -94,7 +94,9 @@ static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
   EAGER_TRY
-  self->eagertensor.SyncToTensor();
+  if (self->eagertensor.Var().IsInitialized()) {
+    self->eagertensor.SyncToTensor();
+  }
   return ToPyObject(self->eagertensor.initialized());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
