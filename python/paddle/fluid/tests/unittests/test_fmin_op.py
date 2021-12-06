@@ -22,8 +22,10 @@ from op_test import OpTest
 
 paddle.enable_static()
 
+
 class ApiFMinTest(unittest.TestCase):
     """ApiFMinTest"""
+
     def setUp(self):
         """setUp"""
         if core.is_compiled_with_cuda():
@@ -121,6 +123,7 @@ class ApiFMinTest(unittest.TestCase):
 
 class TestElementwiseFminOp(OpTest):
     """TestElementwiseFminOp"""
+
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmin"
@@ -154,6 +157,7 @@ class TestElementwiseFminOp(OpTest):
 
 class TestElementwiseFmin2Op(OpTest):
     """TestElementwiseFmin2Op"""
+
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmin"
@@ -163,7 +167,7 @@ class TestElementwiseFmin2Op(OpTest):
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
         y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        y[2, 10:] = np.nan 
+        y[2, 10:] = np.nan
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.fmin(self.inputs['X'], self.inputs['Y'])}
 

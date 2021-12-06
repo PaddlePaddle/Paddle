@@ -47,10 +47,9 @@ class ElementwiseFMaxKernel : public framework::OpKernel<T> {
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<FMaxFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          FMaxFunctor<T>(), z);
+                                                           FMaxFunctor<T>(), z);
   }
 };
-
 
 template <typename T>
 struct MaxGradDx {
@@ -88,14 +87,14 @@ class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
 template <typename T>
 struct FMaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x >= y) || isnan(y));
+    return dout * static_cast<T>((x >= y) || std::isnan(y));
   }
 };
 
 template <typename T>
 struct FMaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T> (!((x >= y) || isnan(y)));
+    return dout * static_cast<T>(!((x >= y) || std::isnan(y)));
   }
 };
 
@@ -114,7 +113,8 @@ class ElementwiseFMaxGradKernel : public ElemwiseGradKernel<T> {
     auto* out = dout;  // Fake out, not used
     int axis = ctx.Attr<int>("axis");
     ElemwiseGradCompute<DeviceContext, T, FMaxGradDx<T>, FMaxGradDy<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, FMaxGradDx<T>(), FMaxGradDy<T>());
+        ctx, *x, *y, *out, *dout, axis, dx, dy, FMaxGradDx<T>(),
+        FMaxGradDy<T>());
   }
 };
 }  // namespace operators
