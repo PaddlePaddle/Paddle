@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -32,107 +32,80 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             for i in range(len(program_config.ops))
         ]
 
-        if attrs[0]['data_format'] == "NHWC":
+        if attrs[0]['data_format'] == "NHWC" and attrs[1]['axis'] != 3:
             return False
 
         return True
 
     def sample_program_config(self, draw):
-        strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
-        dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
+        groups = draw(st.integers(min_value=1, max_value=3))
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         axis = draw(st.sampled_from([1]))
+        filter_channel = draw(st.integers(min_value=1, max_value=16)) * 4
+        filter_size = draw(st.integers(min_value=1, max_value=4))
+        in_channel = groups * filter_channel
+        out_channel_factor = draw(st.integers(min_value=1, max_value=16)) * 4
+        out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
+        dilations = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=2), min_size=2, max_size=2))
+        paddings = draw(
+            st.lists(
+                st.integers(
+                    min_value=0, max_value=2), min_size=2, max_size=2))
+        strides = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=2), min_size=2, max_size=2))
 
-        def generate_input(attrs):
-            if attrs[0]['data_format'] == "NCHW":
-                return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
-            else:
-                return np.random.random(
-                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
+        x_shape = [
+            batch_size, in_channel, 64, 64
+        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
+        w_shape = [out_channel, filter_channel, filter_size, filter_size]
+        scale_shape = [out_channel]
+        bias_shape = [out_channel]
 
-        def generate_weight1():
-            return np.random.random([16, 16, 3, 3]).astype(np.float32)
-
-        def generate_weight2():
-            return np.random.random([16]).astype(np.float32)
-
-        def generate_scale_bias():
-            return np.random.random([16]).astype(np.float32)
-
-        attrs = [{
-            "data_format": data_format,
-            "dilations": dilations,
-            "padding_algorithm": padding_algorithm,
-            "groups": groups,
-            "paddings": paddings,
-            "strides": strides
-        }, {
-            "axis": axis
-        }, {
-            'batch_size': batch_size
-        }]
-
-        ops_config = [{
-            "op_type": "conv2d",
-            "op_inputs": {
+        conv2d_op = OpConfig(
+            "conv2d",
+            inputs={
                 "Input": ["input_data"],
                 "Filter": ["conv2d_weight"],
             },
-            "op_outputs": {
-                "Output": ["conv_output"]
-            },
-            "op_attrs": {
-                "data_format": attrs[0]['data_format'],
-                "dilations": attrs[0]['dilations'],
-                "padding_algorithm": attrs[0]['padding_algorithm'],
-                "groups": attrs[0]['groups'],
-                "paddings": attrs[0]['paddings'],
-                "strides": attrs[0]['strides'],
-                "use_cudnn": False,
-                "is_test": True
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["conv_output"],
-                "Y": ["conv2d_bias"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise_output"]
-            },
-            "op_attrs": {
-                'axis': attrs[1]['axis']
-            },
-        }]
-
-        ops = self.generate_op_config(ops_config)
+            outputs={"Output": ["conv_output"]},
+            data_format=data_format,
+            dilations=dilations,
+            padding_algorithm=padding_algorithm,
+            groups=groups,
+            paddings=paddings,
+            strides=strides,
+            is_test=True)
+        eltwise_op = OpConfig(
+            "elementwise_add",
+            inputs={"X": ["conv_output"],
+                    "Y": ["conv2d_bias"]},
+            outputs={"Out": ["elementwise_output"]},
+            axis=axis)
+        ops = [conv2d_op, eltwise_op]
 
         program_config = ProgramConfig(
             ops=ops,
-            inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
-            },
             weights={
-                "conv2d_weight":
-                TensorConfig(data_gen=partial(generate_weight1)),
-                "conv2d_bias":
-                TensorConfig(data_gen=partial(generate_scale_bias)),
+                "conv2d_weight": TensorConfig(shape=w_shape),
+                "conv2d_bias": TensorConfig(shape=bias_shape)
             },
-            outputs=["elementwise_output"])
+            inputs={"input_data": TensorConfig(shape=x_shape), },
+            outputs=ops[-1].outputs["Out"], )
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
-        yield config, ['conv2d_fusion'], (1e-5, 1e-5)
+        yield config, ['conv2d_fusion'], (1e-4, 1e-4)
 
-        # for TRT
+        # # TRT
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
             workspace_size=1 << 20,
@@ -141,7 +114,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
             use_calib_mode=False)
-        yield config, ['conv2d_fusion'], (1e-5, 1e-5)
+        yield config, ['conv2d_fusion'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
         # If the problem has been fixed, the judgment 
@@ -154,7 +127,8 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
-            Operator(Conv2DFusion) only supports data format of channel first (NCHW) now."
+            it will trigger Broadcast dimension mismatch bug \
+            when data_format attribute is NHWC and axis of eltwise op is 1 for this pass."
         )
 
     def test(self):

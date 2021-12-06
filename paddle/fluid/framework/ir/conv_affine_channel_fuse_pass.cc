@@ -282,7 +282,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
       .End();
   AddOpCompat(OpCompat("affine_channel"))
       .AddInput("X")
@@ -299,7 +299,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
