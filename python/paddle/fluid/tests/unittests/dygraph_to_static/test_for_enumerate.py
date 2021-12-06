@@ -533,7 +533,7 @@ class TestForOriginalTuple(TestTransformForOriginalList):
 
 class TestForZip(unittest.TestCase):
     def test_for_zip_error(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             paddle.jit.save(for_zip_error, './for_zip_error')
 
     def test_for_zip(self):

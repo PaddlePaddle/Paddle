@@ -80,9 +80,7 @@ def is_builtin_len(func):
 
 
 def is_builtin_zip(func):
-    if is_builtin(func) and func.__name__ == 'zip':
-        return True
-    return False
+    return is_builtin(func) and func.__name__ == 'zip'
 
 
 def is_unsupported(func):
