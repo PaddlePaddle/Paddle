@@ -2,7 +2,7 @@
 # to avoid exposing the path of the underlying file, remove it after moving
 # float16.h/complex.h/bfloat16.h into pten
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
+include_directories(${PADDLE_SOURCE_DIR}/build/third_party/eigen3/src/extern_eigen3/)
 
 # paddle experimental common components
 add_subdirectory(common)
