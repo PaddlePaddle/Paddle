@@ -116,3 +116,24 @@ def set_grad_enabled(mode):
             tracer._has_grad = prev_mode
     else:
         yield
+
+
+def is_grad_enabled():
+    """
+    Returns currently dygraph gradient calculation mode which is enabled.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            
+            paddle.is_grad_enabled() # True
+
+            with paddle.set_grad_enabled(False):
+                paddle.is_grad_enabled() # False
+
+            paddle.enable_static()
+            paddle.is_grad_enabled() # False
+    """
+    tracer = _dygraph_tracer()
+    return tracer._has_grad if tracer else False

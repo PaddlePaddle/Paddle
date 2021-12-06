@@ -70,6 +70,7 @@ from .tensor.attribute import rank  # noqa: F401
 from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
+from .tensor.attribute import is_floating_point  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -265,6 +266,7 @@ from .framework import CUDAPinnedPlace  # noqa: F401
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
 from .autograd import set_grad_enabled  # noqa: F401
+from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
