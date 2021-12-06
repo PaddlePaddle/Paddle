@@ -230,6 +230,13 @@ TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
   EXPECT_THROW(AllocShared(place, alloc_size), paddle::platform::EnforceNotMet);
   EXPECT_THROW(Alloc(place, alloc_size), paddle::platform::EnforceNotMet);
   EXPECT_THROW(Release(place), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(allocation::AllocatorFacade::Instance().GetAllocator(place),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(AllocShared(place, alloc_size, nullptr),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Alloc(place, alloc_size, nullptr),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Release(place, nullptr), paddle::platform::EnforceNotMet);
   EXPECT_THROW(RecordStream(allocation.get(), nullptr),
                paddle::platform::EnforceNotMet);
   platform::EndCUDAGraphCapture();
