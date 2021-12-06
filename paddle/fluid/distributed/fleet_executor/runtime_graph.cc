@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -101,16 +102,7 @@ RuntimeGraph::RuntimeGraph(const ProgramDesc& program,
                            const FleetExecutorDesc& exe_desc)
     : exe_desc_(exe_desc) {
   if (exe_desc.pp_degree() == 1) {
-    int64_t cur_rank = exe_desc_.cur_rank();
-    int64_t max_run_times = exe_desc_.num_micro_batches();
-    int64_t max_slot_nums = exe_desc_.num_slots();
-    auto task_node = std::make_unique<TaskNode>(program, cur_rank,
-                                                max_run_times, max_slot_nums);
-    task_node->SetType("Compute");
-    task_nodes_.emplace_back(std::move(task_node));
-    int64_t task_id = task_nodes_[0]->task_id();
-    intercepter_id_to_rank_.insert({task_id, cur_rank});
-    intercepter_id_to_node_.insert({task_id, task_nodes_[0].get()});
+    OriginProgramCompile(program);
   } else {
     SplitProgramBasedFunctionality(program);
     AssignTaskToIntercepter();
@@ -119,10 +111,31 @@ RuntimeGraph::RuntimeGraph(const ProgramDesc& program,
   }
 }
 
+void RuntimeGraph::OriginProgramCompile(const ProgramDesc& program) {
+  int64_t cur_rank = exe_desc_.cur_rank();
+  int64_t max_run_times = exe_desc_.num_micro_batches();
+  int64_t max_slot_nums = exe_desc_.num_slots();
+
+  auto task_node = std::make_unique<TaskNode>(program, cur_rank, max_run_times,
+                                              max_slot_nums);
+  // TODO(wangxi): add skip vars
+  auto unused_vars =
+      framework::GetUnusedVars(program.Block(0), task_node->unique_ops(), {});
+  task_node->SetType("Compute");
+  task_node->SetUnusedVars(unused_vars);
+
+  task_nodes_.emplace_back(std::move(task_node));
+  int64_t task_id = task_nodes_[0]->task_id();
+  intercepter_id_to_rank_.insert({task_id, cur_rank});
+  intercepter_id_to_node_.insert({task_id, task_nodes_[0].get()});
+}
+
 void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
+  // TODO(wangxi): how to gc pipeline backward send
+  auto unused_vars = framework::GetUnusedVars(program.Block(0), ops_, {});
 
   std::unordered_map<int32_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
@@ -183,6 +196,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     } else {
       task_node->SetType("Compute");
     }
+    task_node->SetUnusedVars(unused_vars);
     task_nodes_.emplace_back(std::move(task_node));
     ++task_id;
   }
