@@ -80,9 +80,7 @@ def is_builtin_len(func):
 
 
 def is_builtin_zip(func):
-    # NOTE: `zip` is `<class zip>` in python. If user define a class named `zip`, 
-    # there may be some problems when dy2stat.
-    if isinstance(func, type) and func.__name__ == 'zip':
+    if is_builtin(func) and func.__name__ == 'zip':
         return True
     return False
 
