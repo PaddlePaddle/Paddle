@@ -44,6 +44,11 @@ using XPUContext = paddle::platform::XPUDeviceContext;
 #define PT_KERNEL(...) \
   ::pten::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
+#define PT_VARIADIC_ARGS_KERNEL(...)              \
+  reinterpret_cast<void*>(                        \
+      &::pten::KernelImpl<decltype(&__VA_ARGS__), \
+                          &__VA_ARGS__>::VariadicArgsCompute)
+
 #define PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
   template <typename... Tail>                                                \
   struct KernelCallHelper<const dev_ctx&, Tail...> {                         \
@@ -169,10 +174,19 @@ struct TypeTag {};
 template <typename Fn, Fn fn>
 struct KernelImpl;
 
-template <typename Return, typename... Args, Return (*kernel_fn)(Args...)>
-struct KernelImpl<Return (*)(Args...), kernel_fn> {
+template <typename Return,
+          typename DevCtx,
+          typename... Args,
+          Return (*kernel_fn)(const DevCtx&, Args...)>
+struct KernelImpl<Return (*)(const DevCtx&, Args...), kernel_fn> {
   static void Compute(KernelContext* ctx) {
-    KernelCallHelper<Args..., TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+    KernelCallHelper<const DevCtx&,
+                     Args...,
+                     TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+  }
+
+  static void VariadicArgsCompute(const DeviceContext& dev_ctx, Args&... args) {
+    return kernel_fn(dynamic_cast<const DevCtx&>(dev_ctx), args...);
   }
 
  private:
@@ -224,12 +238,14 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   template <typename T>
   struct KernelCallHelper<TypeTag<T>> {
     template <int dev_ctx_idx, int in_idx, int attr_idx, int out_idx>
-    static void Compute(KernelContext* ctx, Args&... args) {
+    static void Compute(KernelContext* ctx,
+                        const DevCtx& dev_ctx,
+                        Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       static_assert(out_idx > 0, "Kernel should have output argument.");
       // TODO(chenweihang): check dev_ctx, in, attr, out number
-      return kernel_fn(args...);
+      return kernel_fn(dev_ctx, args...);
     }
   };
 };

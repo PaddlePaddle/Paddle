@@ -231,6 +231,14 @@ class Kernel {
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
 
+  template <typename Fn, typename... Args>
+  void operator()(Args&... args) const {
+    auto* func = reinterpret_cast<Fn>(variadic_args_kernel_fn_);
+    return (*func)(args...);
+  }
+
+  void set_variadic_args_kernel_fn(void* fn) { variadic_args_kernel_fn_ = fn; }
+
   KernelArgsDef* mutable_args_def() { return &args_def_; }
 
   const KernelArgsDef& args_def() const { return args_def_; }
@@ -243,6 +251,7 @@ class Kernel {
 
  private:
   KernelFn fn_{nullptr};
+  void* variadic_args_kernel_fn_ = nullptr;
   KernelArgsDef args_def_;
 };
 
