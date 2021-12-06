@@ -13,6 +13,5 @@
 from .hybrid_parallel_optimizer import HybridParallelOptimizer
 from .hybrid_parallel_gradscaler import HybridParallelGradScaler
 from .dygraph_sharding_optimizer import DygraphShardingOptimizer
-from .heter_parallel_optimizer import HeterParallelOptimizer
 
 __all__ = []

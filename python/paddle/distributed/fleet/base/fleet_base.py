@@ -33,7 +33,7 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
-from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
+from ..meta_optimizers import HybridParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
@@ -277,15 +277,13 @@ class Fleet(object):
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
 
-            # hybrid parallel not support for npu/xpu
-            if self._user_defined_strategy.heter_ccl_mode == False:
-                # init hybrid parallel environment in dygraph
-                if tp._HYBRID_PARALLEL_GROUP is None:
-                    self._init_hybrid_parallel_env()
-                else:
-                    warnings.warn(
-                        "The dygraph hybrid parallel environment has been initialized."
-                    )
+            # init hybrid parallel environment in dygraph
+            if tp._HYBRID_PARALLEL_GROUP is None:
+                self._init_hybrid_parallel_env()
+            else:
+                warnings.warn(
+                    "The dygraph hybrid parallel environment has been initialized."
+                )
         elif self._is_collective:
             use_sharding = self._user_defined_strategy.sharding
 
@@ -874,12 +872,8 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() > 1:
-                if self._user_defined_strategy.heter_ccl_mode == False:
-                    return HybridParallelOptimizer(optimizer, self._hcg,
-                                                   self._user_defined_strategy)
-                else:
-                    return HeterParallelOptimizer(optimizer,
-                                                  self._user_defined_strategy)
+                return HybridParallelOptimizer(optimizer, self._hcg,
+                                               self._user_defined_strategy)
             else:
                 return optimizer
         return self
@@ -943,17 +937,6 @@ class Fleet(object):
         assert model is not None, "model should not be None"
         if self.worker_num() <= 1:
             return model
-
-        if self._user_defined_strategy.heter_ccl_mode == True:
-            distributed_model = paddle.DataParallel(
-                model,
-                comm_buffer_size=self._user_defined_strategy.
-                fuse_grad_size_in_MB,
-                last_comm_buffer_size=self._user_defined_strategy.
-                last_comm_group_size_MB,
-                find_unused_parameters=self._user_defined_strategy.
-                find_unused_parameters)
-            return distributed_model
 
         if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
             distributed_model = ShardingParallel(
@@ -1586,13 +1569,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and
-                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and
-                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
