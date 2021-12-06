@@ -111,7 +111,7 @@ void Broadcast(int local_rank, int device_id) {
 }
 
 TEST(Broadcast, Run) {
-  if (platform::GetCUDADeviceCount() >= 2) {
+  if (platform::GetGPUDeviceCount() >= 2) {
     std::thread t0(Broadcast, 0, 0);
     std::thread t1(Broadcast, 1, 1);
     t0.join();
