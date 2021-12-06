@@ -1,0 +1,28 @@
+/*========================================================
+	Preloader
+========================================================*/
+#preloader{
+    position:fixed;
+    top:0;
+    left:0;
+    z-index:999999999999;
+    height:100%;
+    width:100%;
+    -webkit-transition:all .5s .5s ease;
+    -moz-transition:all .5s .5s ease;
+    transition:all .5s .2s ease;
+    background: #1c2021;
+}
+.loader{
+    position:absolute;
+    top:50%;
+    left:0;
+    right:0;
+    width:100px;
+    height:100px;
+    display:block;
+    margin: -50px auto 0;
+}
+.loader{
+    display: none;
+}

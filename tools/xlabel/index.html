@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+    />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>图像标注工具</title>
+    <link rel="Shortcut Icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="stylesheet" href="./assets/css/preloader.css" />
+    <link rel="stylesheet" href="./assets/css/style.css" />
+    <link rel="stylesheet" href="./assets/css/font-awesome.min.css" />
+    <link rel="stylesheet" href="./assets/css/switch.css" />
+  </head>
+
+  <body>
+    <div id="preloader">
+      <div class="loader" hidden>
+        <img src="assets/images/loader.gif" alt />
+      </div>
+    </div>
+    <div class="LabelImage">
+      <div class="toolHead">
+        <div class="toolMuster">
+          <div class="logoGroup">
+            <div class="logo"></div>
+          </div>
+          <div class="buttonGroup">
+            <div class="assistFeatures">
+              <p class="openFolder" title="打开图像路径"></p>
+            </div>
+            <div class="pageControl">
+              <div class="pagePrev pageSwitch" title="上一张"></div>
+              <div class="pageNext pageSwitch" title="下一张"></div>
+              <p class="pageName" title="图片名称" style="display: none">
+                File Name
+              </p>
+              <div class="pageInfo inline-block" style="display: none">
+                <p class="nameProcess" title="图片位置">
+                  <span class="processIndex">0</span> /
+                  <span class="processSum">0</span>
+                </p>
+              </div>
+            </div>
+            <div class="assistFeatures" style="display: none">
+              <p class="saveJson" title="生出Json并保存到本地"></p>
+            </div>
+          </div>
+          <div id="tools">
+            <div class="toolSet toolSet-2">
+              <div class="toolBtn toolRect" title="矩形工具"></div>
+              <div class="toolBtn toolPolygon" title="多边形工具"></div>
+            </div>
+            <div class="toolSet toolSet-2">
+              <div
+                class="toolBtn toolResize2"
+                onclick="resize(2)"
+                title="四宫格标注"
+              ></div>
+              <div
+                class="toolBtn toolResize3"
+                onclick="resize(3)"
+                title="九宫格标注"
+              ></div>
+            </div>
+            <div class="toolSet">
+              <div class="toolBtn toolMask" title="掩膜标注"></div>
+            </div>
+          </div>
+          <!-- <div class="assistTool">
+                <div class="generalFeatures">
+                    <p class="featureList crossLine" title="十字线开关">
+                        <input class="mui-switch mui-switch-anim" type="checkbox">
+                        <span>十字线</span>
+                    </p>
+                    <p class="featureList labelShower focus" title="标注结果显示开关">
+                        <input class="mui-switch mui-switch-anim" type="checkbox">
+                        <span>标注结果</span>
+                    </p>
+                    <p class="featureList screenShot" title="标注内容截图">
+                        <i class="bg"></i>
+                        <span>快照</span>
+                    </p>
+                    <p class="featureList screenFull" title="全屏开关">
+                        <i class="bg"></i>
+                        <span>全屏</span>
+                    </p>
+                </div>
+            </div> -->
+        </div>
+      </div>
+
+      <div class="canvasMainContainer">
+        <div class="canvasMain">
+          <div class="canvasContent">
+            <div class="pagePrev pageSwitch" title="上一张"></div>
+            <div class="pageNext pageSwitch" title="下一张"></div>
+            <canvas id="canvas"></canvas>
+            <div class="scaleBoxContainer">
+              <div class="scaleBox scale3" style="display: none">
+                <div class="scale-row scale3-1">
+                  <div class="scale-shell scale3-11"></div>
+                  <div class="scale-shell scale3-12"></div>
+                  <div class="scale-shell scale3-13"></div>
+                </div>
+                <div class="scale-row scale3-2">
+                  <div class="scale-shell scale3-21"></div>
+                  <div class="scale-shell scale3-22"></div>
+                  <div class="scale-shell scale3-23"></div>
+                </div>
+                <div class="scale-row scale3-3">
+                  <div class="scale-shell scale3-31"></div>
+                  <div class="scale-shell scale3-32"></div>
+                  <div class="scale-shell scale3-33"></div>
+                </div>
+              </div>
+              <div class="scaleBox scale2">
+                <div class="scale-row scale3-1">
+                  <div class="scale-shell scale2-11"></div>
+                  <div class="scale-shell scale2-12"></div>
+                </div>
+                <div class="scale-row scale3-2">
+                  <div class="scale-shell scale2-21"></div>
+                  <div class="scale-shell scale2-22"></div>
+                </div>
+              </div>
+              <!-- <div class="scaleCanvas"></div> -->
+              <!-- <div class="scalePanel"></div> -->
+            </div>
+            <div class="pictureName">图片1</div>
+            <div class="progressContainer">
+              <div class="progressBar">
+                <div class="progressInner"></div>
+              </div>
+              <div class="progressDescription">标注进度12/123</div>
+            </div>
+          </div>
+          <div class="commentResult">
+            <!--  标签管理  -->
+            <div class="labelManage">
+              <div class="labelManage-Info">
+                <div class="labelManage-menu">
+                  <div class="labelManage-search">
+                    <input
+                      type="text"
+                      class="labelSearch-input"
+                      placeholder="按回车搜索"
+                    />
+                  </div>
+                  <div class="labelManage-createLabel">
+                    <button class="button btn-primary labelManage-createButton">
+                      创建
+                    </button>
+                  </div>
+                </div>
+                <div class="labelManage-subList">标签列表：</div>
+                <div class="labelManage-group">
+                  <p class="labelTip" hidden>请先创建标签</p>
+                  <ul class="labelManage-ul"></ul>
+                </div>
+              </div>
+              <div class="labelManage-create" hidden>
+                <div class="labelManage-Title">创建标签</div>
+                <div class="labelCreate labelCreate-name">
+                  <label>标签名称：</label>
+                  <input type="text" class="labelCreate-nameInput" />
+                </div>
+                <div class="labelCreate labelCreate-color">
+                  <label>标签颜色：</label>
+                  <span class="colorPicker" id="colorPicker"></span>
+                  <input
+                    class="colorHex"
+                    id="colorHex"
+                    value="#ff0000"
+                    data-r="255"
+                    data-g="0"
+                    data-b="0"
+                    readonly
+                  />
+                </div>
+                <div class="labelCreate">
+                  <button class="button btn-error removeLabel" title="删除标签">
+                    删除
+                  </button>
+                </div>
+                <div class="labelCreateButtons">
+                  <button class="button btn-success addLabel">确定</button>
+                  <button class="button btn-default closeAdd">取消</button>
+                </div>
+              </div>
+              <div class="closeLabelManage">
+                <span class="icon-remove-sign"></span>
+              </div>
+            </div>
+            <!-- 标注结果 -->
+            <div class="resultArea">
+              <p class="title">
+                标注结果 (<span class="resultLength">0</span>)
+              </p>
+              <div class="resultList_head">
+                <div class="headChildren">
+                  <p class="headName">名称</p>
+                  <p class="headEdit">修改</p>
+                  <p class="headDelete">删除</p>
+                  <p class="headDisplay">显/隐</p>
+                </div>
+              </div>
+              <div class="resultGroup"></div>
+              <!--    选择标签操作    -->
+              <div class="resultSelectLabel">
+                <p class="selectLabelTip" hidden>请先创建标签</p>
+                <ul class="selectLabel-ul"></ul>
+                <div class="closeLabelManage">
+                  <span class="icon-remove-sign"></span>
+                </div>
+              </div>
+            </div>
+            <!-- 标签列表 -->
+            <div class="labelList">
+              <p class="title">
+                标签列表 (<span class="resultLength">0</span>)
+              </p>
+              <div class="resultList_head">
+                <div class="headChildren">
+                  <p class="headName">名称</p>
+                  <p class="headEdit">颜色</p>
+                </div>
+              </div>
+              <div class="resultGroup"></div>
+              <!--    选择标签操作    -->
+              <div class="resultSelectLabel">
+                <p class="selectLabelTip" hidden>请先创建标签</p>
+                <ul class="selectLabel-ul"></ul>
+                <div class="closeLabelManage">
+                  <span class="icon-remove-sign"></span>
+                </div>
+              </div>
+            </div>
+            <!-- <div class="historyContent">
+              <p class="title">历史记录</p>
+              <div class="historyGroup"></div>
+            </div> -->
+            <div class="tabBtn focus">
+              <span class="icon-double-angle-right"></span>
+            </div>
+
+            <!-- 按钮组 -->
+            <div class="buttonGroup">
+              <!-- <div class="button ">
+                <div class="buttonInner">
+                  <p class="openFolderText openFolder" title="打开图像路径">
+                    打开图像路径
+                  </p>
+                  <input
+                    class="openFolderInput"
+                    type="file"
+                    multiple
+                    onchange="changeFolder(this)"
+                    hidden
+                  />
+                </div>
+              </div> -->
+              <div class="button button-2">
+                <div
+                  class="buttonInner buttonEdit"
+                  title="标注编辑"
+                  onclick="toolTagsManager()"
+                >
+                  标注编辑
+                </div>
+              </div>
+              <div class="button button-1">
+                <div class="buttonInner buttonCancel" title="全部取消">
+                  全部取消
+                </div>
+                <div class="buttonInner buttonSave" title="保存">保存</div>
+              </div>
+              <div class="button button-2">
+                <div
+                  class="buttonInner buttonTransform"
+                  onclick="transform()"
+                  title="格式转存"
+                >
+                  格式转存
+                </div>
+              </div>
+              <div class="button button-2">
+                <div
+                  class="buttonInner buttonExportPaddleX"
+                  onclick="exportPaddleX()"
+                  title="数据导出PaddleX格式"
+                >
+                  数据导出PaddleX格式
+                </div>
+              </div>
+              <!-- <div class="button">
+                <div class="buttonInner">
+                  <p class="importPaddleX" title="数据导入PaddleX">
+                    数据导入PaddleX
+                  </p>
+                </div>
+              </div> -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mask_box" hidden></div>
+      <div class="loading_box" hidden id="loading">
+        <div class="loaderSpinner">
+          <span class="icon-spinner"></span>
+        </div>
+        <b class="closes"></b>
+      </div>
+    </div>
+
+    <script src="./assets/js/axios.min.js"></script>
+    <script src="./assets/js/preloader.js"></script>
+    <script src="./assets/js/colorPicker.js"></script>
+    <script src="./assets/js/webAnnotate.js"></script>
+    <script src="./assets/js/operator.js"></script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+opencv-python
+flask
+flask_cors
+numpy
+paddlex
