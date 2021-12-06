@@ -121,9 +121,6 @@ class LerpOpGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 DECLARE_INPLACE_OP_INFERER(LerpInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(LerpGradInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
