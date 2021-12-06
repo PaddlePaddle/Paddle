@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/hccl_context.h"
+#include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -2330,6 +2331,15 @@ void BindImperative(py::module *m_ptr) {
       .def("init_with_ring_id",
            &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HeterParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HeterParallelContext>>(
+      m, "HeterParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &, const int &>())
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
 
   m.def("pylayer_apply",
