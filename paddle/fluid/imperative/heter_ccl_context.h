@@ -13,26 +13,40 @@
 // limitations under the License.
 #pragma once
 
-#if defined(PADDLE_WITH_XPU_BKCL)
 #include <memory>
 #include <string>
 #include <vector>
 
+#ifdef PADDLE_WITH_NCCL
+#include "paddle/fluid/imperative/nccl_context.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU_BKCL
+#include "paddle/fluid/imperative/bkcl_context.h"
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/imperative/hccl_context.h"
+#endif
+
+#include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "xpu/bkcl.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
 
-class BKCLParallelContext : public ParallelContext {
+class HeterParallelContext : public ParallelContext {
  public:
-  explicit BKCLParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
-      : ParallelContext(strategy, place) {}
+  explicit HeterParallelContext(const ParallelStrategy& strategy,
+                                const int& device_id);
 
-  ~BKCLParallelContext() override = default;
-
-  void BcastBKCLId(std::vector<BKCLUniqueId>& bkcl_ids, int root);  // NOLINT
+  ~HeterParallelContext() override = default;
 
   void Init() override;
 
@@ -51,9 +65,14 @@ class BKCLParallelContext : public ParallelContext {
   void WaitComm(int ring_id) override;
 
   void SynchronizeCompute() override;
+
+ private:
+  ParallelStrategy inter_strategy_;
+  ParallelStrategy node_strategy_;
+  platform::Place node_place_;
+  std::shared_ptr<imperative::ParallelContext> node_parallel_ctx_{nullptr};
+  std::shared_ptr<imperative::ParallelContext> inter_parallel_ctx_{nullptr};
 };
 
 }  //  namespace imperative
 }  //  namespace paddle
-
-#endif
