@@ -24,136 +24,149 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 namespace {
-  constexpr size_t get_offset (size_t x, size_t y, size_t width)
-  {
-      return y * width + x;
-  }
+constexpr size_t get_offset(size_t x, size_t y, size_t width) {
+  return y * width + x;
+}
 
-  template<class T>
-  struct offsets_and_ratios
-  {
-    offsets_and_ratios() = default;
-    offsets_and_ratios(std::size_t xy, std::size_t xY, std::size_t Xy, std::size_t XY, T xy_ratio, T xY_ratio, T Xy_ratio, T XY_ratio):
-      xy(xy), xY(xY), Xy(Xy), XY(XY), xy_ratio(xy_ratio), xY_ratio(xY_ratio), Xy_ratio(Xy_ratio), XY_ratio(XY_ratio) {};
+template <class T>
+struct offsets_and_ratios {
+  offsets_and_ratios() = default;
+  offsets_and_ratios(std::size_t xy, std::size_t xY, std::size_t Xy,
+                     std::size_t XY, T xy_ratio, T xY_ratio, T Xy_ratio,
+                     T XY_ratio)
+      : xy(xy),
+        xY(xY),
+        Xy(Xy),
+        XY(XY),
+        xy_ratio(xy_ratio),
+        xY_ratio(xY_ratio),
+        Xy_ratio(Xy_ratio),
+        XY_ratio(XY_ratio){};
 
-    std::size_t xy = 0;
-    std::size_t xY = 0;
-    std::size_t Xy = 0;
-    std::size_t XY = 0;
-    T xy_ratio = 0.0f;
-    T xY_ratio = 0.0f;
-    T Xy_ratio = 0.0f;
-    T XY_ratio = 0.0f;
-  };
+  std::size_t xy = 0;
+  std::size_t xY = 0;
+  std::size_t Xy = 0;
+  std::size_t XY = 0;
+  T xy_ratio = 0.0f;
+  T xY_ratio = 0.0f;
+  T Xy_ratio = 0.0f;
+  T XY_ratio = 0.0f;
+};
 
-  template<typename T>
-  std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
-      std::size_t width  // width
-    , std::size_t height // , height
-    , const T scaled_w   // , roi_width 
-    , const T scaled_h   // , roi_height 
-    , const T scaled_x   // , roi_xmin 
-    , const T scaled_y   // , roi_ymin 
-    , std::size_t mpx    // , pooled_width
-    , std::size_t mix    // , roi_bin_grid_w
-    , std::size_t mpy    // , pooled_height
-    , std::size_t miy    // , roi_bin_grid_h
-    )
-  {
-    const auto ind_num = mpx * mix * mpy * miy;
+template <typename T>
+std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
+    std::size_t width  // width
+    ,
+    std::size_t height  // , height
+    ,
+    const T scaled_w  // , roi_width
+    ,
+    const T scaled_h  // , roi_height
+    ,
+    const T scaled_x  // , roi_xmin
+    ,
+    const T scaled_y  // , roi_ymin
+    ,
+    std::size_t mpx  // , pooled_width
+    ,
+    std::size_t mix  // , roi_bin_grid_w
+    ,
+    std::size_t mpy  // , pooled_height
+    ,
+    std::size_t miy  // , roi_bin_grid_h
+    ) {
+  const auto ind_num = mpx * mix * mpy * miy;
 
-    std::vector<offsets_and_ratios<T>> interpolation_cords;
-    interpolation_cords.reserve(ind_num);
+  std::vector<offsets_and_ratios<T>> interpolation_cords;
+  interpolation_cords.reserve(ind_num);
 
-    const auto bin_w = scaled_w / mpx;
-    const auto bin_h = scaled_h / mpy;
+  const auto bin_w = scaled_w / mpx;
+  const auto bin_h = scaled_h / mpy;
 
-    for (std::size_t py = 0; py < mpy; py++)
-    {
-      for (std::size_t px = 0; px < mpx; px++)
-      {
-        for (std::size_t iy = 0; iy < miy; iy++)
-        {
+  for (std::size_t py = 0; py < mpy; py++) {
+    for (std::size_t px = 0; px < mpx; px++) {
+      for (std::size_t iy = 0; iy < miy; iy++) {
+        // calculate x of sample points
+        auto y = scaled_y +
+                 bin_h * (py + static_cast<T>(iy + .5f) / static_cast<T>(miy));
+        for (std::size_t ix = 0; ix < mix; ix++) {
           // calculate x of sample points
-          auto y = scaled_y + bin_h * (py + static_cast<T>(iy + .5f) / static_cast<T>(miy));
-          for (std::size_t ix = 0; ix < mix; ix++)
-          {
-            // calculate x of sample points
-            auto x = scaled_x + bin_w * (px + static_cast<T>(ix + .5f) / static_cast<T>(mix));
+          auto x =
+              scaled_x +
+              bin_w * (px + static_cast<T>(ix + .5f) / static_cast<T>(mix));
 
-            // deal with elements out of map
-            if (y < -1.0 || y > height || x < -1.0 || x > width) {
-              interpolation_cords.emplace_back();
-              continue;
-            }
-            y = y <= 0 ? 0 : y;
-            x = x <= 0 ? 0 : x;
-
-            std::size_t x_low_index = static_cast<std::size_t>(x);
-            std::size_t x_high_index = x_low_index + 1;
-            T x_ratio = x_high_index - x;
-
-            std::size_t y_low_index = static_cast<std::size_t>(y);
-            std::size_t y_high_index = y_low_index + 1;
-            T y_ratio = y_high_index - y;
-
-            auto xy = get_offset(x_low_index, y_low_index, width);
-            auto xY = get_offset(x_low_index, y_high_index, width);
-            auto Xy = get_offset(x_high_index, y_low_index, width);
-            auto XY = get_offset(x_high_index, y_high_index, width);
-
-            auto xy_ratio = x_ratio * y_ratio;
-            auto xY_ratio = x_ratio * (1 - y_ratio);
-            auto Xy_ratio = (1 - x_ratio) * y_ratio;
-            auto XY_ratio = (1 - x_ratio) * (1 - y_ratio);
-
-            interpolation_cords.emplace_back(xy, xY, Xy, XY, xy_ratio, xY_ratio, Xy_ratio, XY_ratio);
+          // deal with elements out of map
+          if (y < -1.0 || y > height || x < -1.0 || x > width) {
+            interpolation_cords.emplace_back();
+            continue;
           }
+          y = y <= 0 ? 0 : y;
+          x = x <= 0 ? 0 : x;
+
+          std::size_t x_low_index = static_cast<std::size_t>(x);
+          std::size_t x_high_index = x_low_index + 1;
+          T x_ratio = x_high_index - x;
+
+          std::size_t y_low_index = static_cast<std::size_t>(y);
+          std::size_t y_high_index = y_low_index + 1;
+          T y_ratio = y_high_index - y;
+
+          auto xy = get_offset(x_low_index, y_low_index, width);
+          auto xY = get_offset(x_low_index, y_high_index, width);
+          auto Xy = get_offset(x_high_index, y_low_index, width);
+          auto XY = get_offset(x_high_index, y_high_index, width);
+
+          auto xy_ratio = x_ratio * y_ratio;
+          auto xY_ratio = x_ratio * (1 - y_ratio);
+          auto Xy_ratio = (1 - x_ratio) * y_ratio;
+          auto XY_ratio = (1 - x_ratio) * (1 - y_ratio);
+
+          interpolation_cords.emplace_back(xy, xY, Xy, XY, xy_ratio, xY_ratio,
+                                           Xy_ratio, XY_ratio);
         }
       }
     }
-    return interpolation_cords;
   }
+  return interpolation_cords;
+}
 
-  template<typename T>
-  void interpolate(std::vector<T>& interpolated_values, const std::vector<offsets_and_ratios<T>>& interpolation_cords, const T* data)
-  {
-    for (auto& ic: interpolation_cords)
-    {
-      auto xlyl_offset = ic.xy;
-      auto xhyl_offset = ic.Xy;
-      auto xlyh_offset = ic.xY;
-      auto xhyh_offset = ic.XY;
+template <typename T>
+void interpolate(std::vector<T>& interpolated_values,
+                 const std::vector<offsets_and_ratios<T>>& interpolation_cords,
+                 const T* data) {
+  for (auto& ic : interpolation_cords) {
+    auto xlyl_offset = ic.xy;
+    auto xhyl_offset = ic.Xy;
+    auto xlyh_offset = ic.xY;
+    auto xhyh_offset = ic.XY;
 
-      auto xlyl_ratio = ic.xy_ratio;
-      auto xhyl_ratio = ic.Xy_ratio;
-      auto xlyh_ratio = ic.xY_ratio;
-      auto xhyh_ratio = ic.XY_ratio;
+    auto xlyl_ratio = ic.xy_ratio;
+    auto xhyl_ratio = ic.Xy_ratio;
+    auto xlyh_ratio = ic.xY_ratio;
+    auto xhyh_ratio = ic.XY_ratio;
 
-      interpolated_values.emplace_back(
-          xlyl_ratio * data[xlyl_offset]
-        + xhyl_ratio * data[xhyl_offset]
-        + xlyh_ratio * data[xlyh_offset]
-        + xhyh_ratio * data[xhyh_offset]);
-    }
+    interpolated_values.emplace_back(
+        xlyl_ratio * data[xlyl_offset] + xhyl_ratio * data[xhyl_offset] +
+        xlyh_ratio * data[xlyh_offset] + xhyh_ratio * data[xhyh_offset]);
   }
+}
 
-  template<typename T>
-  void avg_pool(const std::vector<T>& interpolated_values, T* output_data, int roi_bin_grid_w, int roi_bin_grid_h, int pooled_width, int pooled_height)
-  {
-    const auto data_amount = pooled_width * pooled_height;
-    const auto grid_points = roi_bin_grid_w * roi_bin_grid_h;
-    const T count = 1.0 / grid_points;
-    auto val_begin = interpolated_values.cbegin();
-    for(auto i = 0; i < data_amount; ++i)
-    {
-      T sum = 0.0;
-      auto val_end = val_begin + grid_points;
-      sum = std::accumulate(val_begin, val_end, sum);
-      val_begin = val_end;
-      output_data[i] = sum * count;
-    }
+template <typename T>
+void avg_pool(const std::vector<T>& interpolated_values, T* output_data,
+              int roi_bin_grid_w, int roi_bin_grid_h, int pooled_width,
+              int pooled_height) {
+  const auto data_amount = pooled_width * pooled_height;
+  const auto grid_points = roi_bin_grid_w * roi_bin_grid_h;
+  const T count = 1.0 / grid_points;
+  auto val_begin = interpolated_values.cbegin();
+  for (auto i = 0; i < data_amount; ++i) {
+    T sum = 0.0;
+    auto val_end = val_begin + grid_points;
+    sum = std::accumulate(val_begin, val_end, sum);
+    val_begin = val_end;
+    output_data[i] = sum * count;
   }
+}
 }
 
 template <class T>
@@ -305,23 +318,15 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
                                : ceil(roi_width / pooled_width);
 
       auto interpolation_cords = get_indexes_and_ratios(
-          width
-        , height
-        , roi_width
-        , roi_height
-        , roi_xmin
-        , roi_ymin
-        , pooled_width
-        , roi_bin_grid_w
-        , pooled_height
-        , roi_bin_grid_h);
+          width, height, roi_width, roi_height, roi_xmin, roi_ymin,
+          pooled_width, roi_bin_grid_w, pooled_height, roi_bin_grid_h);
 
       std::vector<T> interpolated_values;
       interpolated_values.reserve(interpolation_cords.size());
-      for(auto channel = 0; channel < channels; ++channel)
-      {
+      for (auto channel = 0; channel < channels; ++channel) {
         interpolate(interpolated_values, interpolation_cords, batch_data);
-        avg_pool(interpolated_values, output_data, roi_bin_grid_w, roi_bin_grid_h, pooled_width, pooled_height);
+        avg_pool(interpolated_values, output_data, roi_bin_grid_w,
+                 roi_bin_grid_h, pooled_width, pooled_height);
         batch_data += in_stride[1];
         output_data += out_stride[1];
         interpolated_values.clear();
