@@ -172,6 +172,34 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   EXPECT_EQ(test_set.find(cache_key6), test_set.end());
 }
 
+TEST(CinnCacheKeyTest, TestSameGraph) {
+  ProgramDesc program1;
+  auto *global_block1 = program1.MutableBlock(0);
+  auto *x1 = global_block1->Var("X");
+  x1->SetType(proto::VarType::LOD_TENSOR);
+  ir::Graph graph1(program1);
+
+  ProgramDesc program2;
+  auto *global_block2 = program2.MutableBlock(0);
+  auto *x2 = global_block2->Var("X");
+  x2->SetType(proto::VarType::LOD_TENSOR);
+  ir::Graph graph2(program2);
+
+  LoDTensor tensor;
+  tensor.Resize({1, 2, 3});
+  const LoDTensor *tensor_pointer = &tensor;
+  std::map<std::string, const LoDTensor *> feed_tensors = {
+      {"X", tensor_pointer}};
+
+  CinnCacheKeyByAddress cache_key_by_address1(graph1, feed_tensors, "x86");
+  CinnCacheKeyByAddress cache_key_by_address2(graph2, feed_tensors, "x86");
+  EXPECT_NE(cache_key_by_address1, cache_key_by_address2);
+
+  CinnCacheKeyByStructure cache_key_by_struct1(graph1, feed_tensors, "x86");
+  CinnCacheKeyByStructure cache_key_by_struct2(graph2, feed_tensors, "x86");
+  EXPECT_EQ(cache_key_by_struct1, cache_key_by_struct2);
+}
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
