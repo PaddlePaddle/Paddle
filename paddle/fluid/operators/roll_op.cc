@@ -20,6 +20,8 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/complex.h"
 
+namespace plat = paddle::platform;
+
 namespace paddle {
 namespace operators {
 
