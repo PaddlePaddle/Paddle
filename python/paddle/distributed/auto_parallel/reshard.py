@@ -484,15 +484,24 @@ def find_op_desc_seq(dist_tensor, dist_op):
 def _insert_send_op(block, idx, tensor, dst, rank_id):
     """Insert send op into block at the given index."""
     op_type = 'send_v2'
-    ranks = [rank_id, dst]
-    group = new_process_group(ranks)
+    # ranks = [rank_id, dst]
+    # group = new_process_group(ranks)
+    # block._insert_op(
+    #     idx,
+    #     type=op_type,
+    #     inputs={'X': [tensor]},
+    #     attrs={
+    #         'ring_id': group.id,
+    #         'peer': group.local_rank(dst),
+    #         'use_calc_stream': True,
+    #     })
     block._insert_op(
         idx,
         type=op_type,
         inputs={'X': [tensor]},
         attrs={
-            'ring_id': group.id,
-            'peer': group.local_rank(dst),
+            'ring_id': 0,
+            'peer': dst,
             'use_calc_stream': True,
         })
 
@@ -500,21 +509,33 @@ def _insert_send_op(block, idx, tensor, dst, rank_id):
 def _insert_recv_op(block, idx, tensor, src, rank_id):
     """Insert recv op into block at the given index."""
     op_type = 'recv_v2'
-    ranks = [src, rank_id]
-    group = new_process_group(ranks)
+    # ranks = [src, rank_id]
+    # group = new_process_group(ranks)
+    # block._insert_op(
+    #     idx,
+    #     type=op_type,
+    #     inputs={'X': [tensor]},
+    #     outputs={'Out': [tensor]},
+    #     attrs={
+    #         'ring_id': group.id,
+    #         'peer': group.local_rank(src),
+    #         'out_shape': tensor.shape,
+    #         'dtype': tensor.dtype,
+    #         'use_calc_stream': True,
+    #     })
+
     block._insert_op(
         idx,
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
         attrs={
-            'ring_id': group.id,
-            'peer': group.local_rank(src),
+            'ring_id':0,
+            'peer':src,
             'out_shape': tensor.shape,
             'dtype': tensor.dtype,
             'use_calc_stream': True,
         })
-
 
 def _insert_concat_op(block, idx, tensors, axis):
     """Insert concat op into block at the given block."""
