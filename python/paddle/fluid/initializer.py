@@ -52,11 +52,7 @@ class Initializer(object):
 
     def _check_block(self, block):
         if block is None:
-            if in_dygraph_mode():
-                block = default_main_program().global_block()
-            else:
-                raise ValueError(
-                    "The parameter 'block' is needed in static graph mode.")
+            block = default_main_program().global_block()
 
         return block
 
