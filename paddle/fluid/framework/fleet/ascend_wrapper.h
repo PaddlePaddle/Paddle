@@ -24,7 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 
