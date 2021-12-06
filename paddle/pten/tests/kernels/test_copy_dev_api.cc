@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 
+namespace pten {
+namespace tests {
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -61,3 +64,6 @@ TEST(DEV_API, copy) {
     ASSERT_EQ(dense_src->data<float>()[i], dense_dst->data<float>()[i]);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

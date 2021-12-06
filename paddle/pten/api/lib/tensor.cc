@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/manipulation.h"
 #include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -66,6 +65,9 @@ inline bool IsDenseTensor(
 }
 
 }  // namespace detail
+
+// declare cast api
+Tensor cast(const Tensor &x, DataType out_dtype);
 
 /////// Tensor Methods ////////
 
@@ -219,6 +221,7 @@ template PD_DLL_DECL const int32_t *Tensor::data<int32_t>() const;
 template PD_DLL_DECL const uint8_t *Tensor::data<uint8_t>() const;
 template PD_DLL_DECL const int8_t *Tensor::data<int8_t>() const;
 template PD_DLL_DECL const int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL const uint16_t *Tensor::data<uint16_t>() const;
 template PD_DLL_DECL const bool *Tensor::data<bool>() const;
 template PD_DLL_DECL const paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>() const;
@@ -226,6 +229,8 @@ template PD_DLL_DECL const paddle::platform::complex<double>
     *Tensor::data<paddle::platform::complex<double>>() const;
 template PD_DLL_DECL const paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
+template PD_DLL_DECL const paddle::platform::bfloat16 *
+Tensor::data<paddle::platform::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -283,7 +288,7 @@ template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
   LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
                   "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argumentinstead. "
+                  "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
   return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);

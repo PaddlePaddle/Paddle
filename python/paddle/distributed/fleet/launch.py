@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -107,9 +108,9 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     base_group.add_argument(
         "--backend",
         type=str,
-        default="auto",
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto. Default value is auto which perfers nccl or bkcl."
-    )
+        default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        "Default value is auto which perfers nccl or bkcl.")
     base_group.add_argument(
         "--nproc_per_node",
         type=int,
@@ -144,6 +145,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu."
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
+
+    if fluid.core.is_compiled_with_npu():
+        base_group.add_argument(
+            "--npus",
+            type=str,
+            default=None,
+            help="It's for xpu training. For example: "
+            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
+        )
+        base_group.add_argument("--selected_npus", dest="npus")
 
     base_group.add_argument(
         "training_script",
@@ -283,7 +294,7 @@ def cpuonly_check(args):
     return True
 
 
-def launch_collective(args):
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
@@ -300,30 +311,37 @@ def launch_collective(args):
     # lazy launch for auto-parallel
     if args.enable_auto_mapping == True:
         cluster, pod = get_mapped_cluster_from_args(args, device_mode)
-    else:
+    elif cloud_utils.use_paddlecloud() and trainers_num != 1:
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, device_mode, devices_per_proc, start_port)
+        logger.debug("get cluster from cloud:{}".format(cluster))
+    elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
-        if device_mode == DeviceMode.ASCEND_NPU:
-            cluster, pod = ascend_utils.get_cloud_cluster(
-                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-                device_mode=device_mode,
-                start_port=start_port)
-        elif cloud_utils.use_paddlecloud() and trainers_num != 1:
-            cluster, pod = cloud_utils.get_cloud_cluster(
-                args.ips, device_mode, devices_per_proc, start_port)
-            logger.debug("get cluster from cloud:{}".format(cluster))
-        else:
-            # trainers_num = 1 or not use paddlecloud ips="a,b"
-            cluster, pod = get_cluster_from_args(args, device_mode,
-                                                 devices_per_proc)
-            logger.debug("get cluster from args:{}".format(cluster))
+        cluster, pod = ascend_utils.get_cloud_cluster(
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            start_port=start_port)
+    else:
+        # trainers_num = 1 or not use paddlecloud ips="a,b"
+        cluster, pod = get_cluster_from_args(args, device_mode,
+                                             devices_per_proc)
+        logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
 
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -352,8 +370,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):
@@ -446,15 +464,15 @@ def which_distributed_mode(args):
         ) and not fluid.core.is_compiled_with_xpu():
             if args.servers:
                 logger.warning(
-                    "Not found distinct arguments and not compiled with cuda or xpu. \
-But found args.servers not empty, default use ps mode")
+                    "Not found distinct arguments and not compiled with cuda or xpu or npu. "
+                    "But found args.servers not empty, default use ps mode")
                 return DistributeMode.PS
             else:
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
-            )
+                "Not found distinct arguments and compiled with cuda or xpu or npu. "
+                "Default use collective mode")
             return DistributeMode.COLLECTIVE
 
 
@@ -641,7 +659,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    assert args.backend in ['gloo', 'nccl', 'bkcl', 'unknown']
+    #assert args.backend in ['gloo', 'nccl', 'bkcl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

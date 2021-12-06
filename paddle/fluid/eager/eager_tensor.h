@@ -14,13 +14,13 @@
 
 #pragma once
 // framework deps
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 // pten deps
 #include "paddle/pten/all.h"
 #include "paddle/pten/api/all.h"
+#include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
@@ -247,6 +247,14 @@ class EagerTensor final {
   }
 
   void ResetVar(const paddle::framework::Variable& src) { var_ = src; }
+
+  const std::shared_ptr<paddle::experimental::Tensor>& Tensor() const {
+    return tensor_;
+  }
+
+  void set_tensor(const std::shared_ptr<paddle::experimental::Tensor>& tensor) {
+    tensor_ = tensor;
+  }
 
  private:
   template <typename LEGACY_TYPE, typename TYPE>
