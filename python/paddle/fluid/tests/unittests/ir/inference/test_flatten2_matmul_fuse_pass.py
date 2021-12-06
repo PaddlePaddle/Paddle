@@ -173,7 +173,9 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=300,
+            quant=False,
+            max_examples=300,
+            max_duration=1000,
             passes=["flatten2_matmul_fuse_pass"])
 
 
