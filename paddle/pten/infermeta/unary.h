@@ -52,6 +52,6 @@ DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
 
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
-                                DataType dtype,
-                                bool keep_dim);
+                                bool keep_dim,
+                                DataType dtype = DataType::UNDEFINED);
 }  // namespace pten

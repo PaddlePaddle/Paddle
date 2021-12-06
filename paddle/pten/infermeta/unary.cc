@@ -229,8 +229,8 @@ DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
 
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
-                                DataType dtype,
-                                bool keep_dim) {
+                                bool keep_dim,
+                                DataType dtype) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
