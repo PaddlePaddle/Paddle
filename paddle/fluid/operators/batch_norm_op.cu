@@ -197,18 +197,18 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 // miopenTensorDescriptor_t bn_param_desc_;
 // miopenBatchNormMode_t mode_;
 
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 #endif
 
@@ -251,23 +251,22 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
 #ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
-// PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+// PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
 //     data_desc_, CudnnDataType<T>::type,
 //     x_dims.size() > 3 ? x_dims.size() : 4, const_cast<int *>(dims.data()),
 //     const_cast<int *>(strides.data())));
 // Note: PERSISTENT not implemented for inference
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDeriveBNTensorDescriptor(
 //         bn_param_desc_, data_desc_, test_mode ? miopenBNSpatial : mode_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
     // Note: PERSISTENT not implemented for inference
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDeriveBNTensorDescriptor(
-            bn_param_desc_, data_desc_,
-            test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_,
+        test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
 #endif
 
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -341,7 +340,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       }
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenBatchNormalizationForwardInference(
 //         handle, miopenBNSpatial,
 //         const_cast<void *>(
@@ -364,7 +363,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 //             est_var->template data<BatchNormParamType<T>>())),
 //         epsilon));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnBatchNormalizationForwardInference(
               handle,
               // Note: PERSISTENT not implemented for inference
@@ -426,7 +425,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                 "The argument ReserveSpace of batch_norm op is not found."));
 
         // --------------- cudnn batchnorm workspace ---------------
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::
                 cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
                     /*handle=*/handle,
@@ -440,7 +439,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                     /*sizeInBytes=*/&workspace_size));
 
         // -------------- cudnn batchnorm reserve space --------------
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::
                 cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
                     /*handle=*/handle,
@@ -454,7 +453,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
             ctx.GetPlace(), transformed_x.type(), reserve_space_size);
         workspace_ptr = workspace_tensor.mutable_data(
             ctx.GetPlace(), transformed_x.type(), workspace_size);
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
                 handle, mode_, CUDNN_BATCHNORM_OPS_BN, CudnnDataType<T>::kOne(),
                 CudnnDataType<T>::kZero(), data_desc_,
@@ -508,7 +507,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           }
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenBatchNormalizationForwardTraining(
 //         handle, mode_, const_cast<void *>(static_cast<const void *>(
 //                            CudnnDataType<T>::kOne())),
@@ -537,7 +536,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnBatchNormalizationForwardTraining(
                   handle, mode_, CudnnDataType<T>::kOne(),
                   CudnnDataType<T>::kZero(), data_desc_,
@@ -568,15 +567,15 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 #ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // clean when exit.
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
 #else
     // clean when exit.
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #endif
   }
@@ -981,18 +980,18 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 // miopenTensorDescriptor_t bn_param_desc_;
 // miopenBatchNormMode_t mode_;
 
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #else
       cudnnTensorDescriptor_t data_desc_;
       cudnnTensorDescriptor_t bn_param_desc_;
       cudnnBatchNormMode_t mode_;
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 #endif
       if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -1022,18 +1021,18 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
 #ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
-// PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+// PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
 //     data_desc_, CudnnDataType<T>::type,
 //     x_dims.size() > 3 ? x_dims.size() : 4, const_cast<int *>(dims.data()),
 //     const_cast<int *>(strides.data())));
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDeriveBNTensorDescriptor(bn_param_desc_,
 //                                                       data_desc_, mode_));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           data_desc_, CudnnDataType<T>::type,
           x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
                                                            data_desc_, mode_));
 #endif
@@ -1063,7 +1062,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         Tensor workspace_tensor;
         auto reserve_space_size = reserve_space->memory_size();
         // --------------- cudnn batchnorm workspace ---------------
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::
                 cudnnGetBatchNormalizationBackwardExWorkspaceSize(
                     /*handle=*/dev_ctx.cudnn_handle(),
@@ -1081,7 +1080,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         workspace_ptr = workspace_tensor.mutable_data(
             ctx.GetPlace(), transformed_x.type(), workspace_size);
 
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnBatchNormalizationBackwardEx(
                 /*handle=*/dev_ctx.cudnn_handle(),
                 /*mode=*/mode_,
@@ -1151,7 +1150,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           }
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenBatchNormalizationBackward(
 //         dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
 //         CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
@@ -1166,7 +1165,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
 #else
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnBatchNormalizationBackward(
                   dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
                   CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
@@ -1231,15 +1230,15 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 #ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // clean when exit.
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
-// PADDLE_ENFORCE_CUDA_SUCCESS(
+// PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
 #else
       // clean when exit.
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #endif
     } else {
