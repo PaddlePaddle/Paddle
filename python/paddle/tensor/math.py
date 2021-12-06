@@ -2666,11 +2666,14 @@ def lerp_(x, y, weight, name=None):
     Please refer to :ref:`api_tensor_lerp`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if isinstance(weight, (paddle.Tensor, Variable)):
+    check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+    if isinstance(weight, float):
+        weight = paddle.to_tensor([weight], dtype=x.dtype)
+    elif isinstance(weight, (paddle.Tensor, Variable)):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
-    return lerp(x, y, weight, name)
+    return _C_ops.lerp_(x, y, weight)
 
 def rad2deg(x, name=None):
     """

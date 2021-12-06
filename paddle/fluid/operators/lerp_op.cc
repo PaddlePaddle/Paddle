@@ -120,13 +120,19 @@ class LerpOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(LerpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(LerpGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OPERATOR(
     lerp, paddle::operators::LerpOp, paddle::operators::LerpOpMaker,
     paddle::operators::LerpOpGradMaker<paddle::framework::OpDesc>,
-    paddle::operators::LerpOpGradMaker<paddle::imperative::OpBase>);
+    paddle::operators::LerpOpGradMaker<paddle::imperative::OpBase>,
+    paddle::operators::LerpInplaceInferer);
 
 REGISTER_OPERATOR(lerp_grad, paddle::operators::LerpGradOp);
 

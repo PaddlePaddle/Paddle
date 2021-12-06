@@ -126,8 +126,8 @@ class TestLerpAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
-            out = x.lerp_(y, 0.75)
-            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
+            x.lerp_(y, 0.75)
+            self.assertEqual(np.allclose(self.res_ref, x.numpy()), True)
             paddle.enable_static()
 
         for place in self.place:
