@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/creation.h"
+#include "paddle/pten/api/include/api.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

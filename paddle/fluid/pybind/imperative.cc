@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/hccl_context.h"
+#include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -58,18 +59,6 @@ namespace pybind {
 PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;
-
-class Layer : public imperative::Layer {
- public:
-  using imperative::Layer::Layer;  // Inherit constructors
-
-  std::vector<std::shared_ptr<imperative::VarBase>> Forward(
-      const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
-      override {
-    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
-                      Forward, inputs);  // NOLINT
-  }
-};
 
 template <typename T>
 static T PyObjectCast(PyObject *obj) {
@@ -1756,7 +1745,7 @@ void BindImperative(py::module *m_ptr) {
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetCUDADeviceCount();
+             int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
              if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
@@ -1975,10 +1964,6 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "Tensor %s has not been initialized!", self->Name()));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
@@ -2050,18 +2035,6 @@ void BindImperative(py::module *m_ptr) {
                              })
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
-
-  // NOTE(zhiqiu): set the metaclass of Layer.
-  // See details: https://github.com/pybind/pybind11/pull/679
-  // https://github.com/pybind/pybind11/blob/028812ae7eee307dca5f8f69d467af7b92cc41c8/tests/test_methods_and_attributes.cpp#L284
-  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(
-      m, "Layer", py::metaclass((PyObject *)&PyType_Type));  // NOLINT
-  layer.def(py::init<>())
-      .def("forward",
-           [](imperative::Layer &self,
-              const std::vector<std::shared_ptr<imperative::VarBase>> &inputs) {
-             return self.Forward(inputs);
-           });
 
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
@@ -2358,6 +2331,15 @@ void BindImperative(py::module *m_ptr) {
       .def("init_with_ring_id",
            &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HeterParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HeterParallelContext>>(
+      m, "HeterParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &, const int &>())
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
 
   m.def("pylayer_apply",
