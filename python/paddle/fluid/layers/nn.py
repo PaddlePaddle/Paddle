@@ -9791,7 +9791,7 @@ def swish(x, beta=1.0, name=None):
 
 
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
-def prelu(x, mode, param_attr=None, name=None):
+def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
     prelu activation.
 
@@ -9818,6 +9818,9 @@ def prelu(x, mode, param_attr=None, name=None):
 
         name (str, optional): Name for the operation (optional, default is None). \
         For more information, please refer to :ref:`api_guide_Name`.
+        
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.
@@ -9839,17 +9842,32 @@ def prelu(x, mode, param_attr=None, name=None):
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
+
     alpha_shape = [1]
-    # NOTE(): The input of this API should be ``N,C,...`` format,
-    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
+
+        true_data_format = [
+            'NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC'
+        ]
+        if data_format not in true_data_format:
+            raise ValueError(
+                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
         assert len(
             x.shape
         ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
         #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
         # To be consistent with Prelu, it is simplified.
         #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
-        alpha_shape = [1, x.shape[1], 1, 1]
+        #NOTE(GuoxiaWang): support NHWC data format
+        if data_format == 'NHWC':
+            alpha_shape = [1, 1, 1, x.shape[1]]
+        else:
+            alpha_shape = [1, x.shape[1], 1, 1]
+
     elif mode == 'element':
         assert len(
             x.shape
@@ -9867,7 +9885,8 @@ def prelu(x, mode, param_attr=None, name=None):
         type="prelu",
         inputs={"X": x,
                 'Alpha': alpha},
-        attrs={"mode": mode},
+        attrs={"mode": mode,
+               "data_format": data_format},
         outputs={"Out": out})
     return out
 
@@ -11384,6 +11403,8 @@ def shape(input):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = fluid.layers.shape(inputs)
@@ -11396,6 +11417,11 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
+    if in_dygraph_mode():
+        out = _C_ops.shape(input)
+        out.stop_gradient = True
+        return out
+
     check_variable_and_dtype(input, 'input', [
         'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
         'complex128'
@@ -11403,7 +11429,10 @@ def shape(input):
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
-        type='shape', inputs={'Input': input}, outputs={'Out': out})
+        type='shape',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        stop_gradient=True)
 
     return out
 

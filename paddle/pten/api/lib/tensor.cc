@@ -66,6 +66,9 @@ inline bool IsDenseTensor(
 
 }  // namespace detail
 
+// declare cast api
+Tensor cast(const Tensor &x, DataType out_dtype);
+
 /////// Tensor Methods ////////
 
 /* Part 1: Construction and destruction methods */
@@ -218,6 +221,7 @@ template PD_DLL_DECL const int32_t *Tensor::data<int32_t>() const;
 template PD_DLL_DECL const uint8_t *Tensor::data<uint8_t>() const;
 template PD_DLL_DECL const int8_t *Tensor::data<int8_t>() const;
 template PD_DLL_DECL const int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL const uint16_t *Tensor::data<uint16_t>() const;
 template PD_DLL_DECL const bool *Tensor::data<bool>() const;
 template PD_DLL_DECL const paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>() const;
@@ -225,6 +229,8 @@ template PD_DLL_DECL const paddle::platform::complex<double>
     *Tensor::data<paddle::platform::complex<double>>() const;
 template PD_DLL_DECL const paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
+template PD_DLL_DECL const paddle::platform::bfloat16 *
+Tensor::data<paddle::platform::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -281,11 +287,11 @@ gpuStream_t Tensor::stream() const {
 template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
   LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use `to` "
-                  "method instead. "
+                  "2.3, and will be removed in version 2.4, please use "
+                  "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
-  return to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
+  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
 }
 
 template PD_DLL_DECL Tensor
@@ -311,15 +317,12 @@ template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
 template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
 
-Tensor Tensor::to(Backend backend, bool blocking) const {
-  return experimental::to(*this, backend, blocking);
+Tensor Tensor::copy_to(Backend backend, bool blocking) const {
+  return experimental::copy_to(*this, backend, blocking);
 }
 
-Tensor Tensor::cast(const DataType &target_type) const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The cast operation is not supported now, "
-      "and it will be implemented by calling the cast kernel later."));
-  return Tensor();
+Tensor Tensor::cast(DataType target_type) const {
+  return experimental::cast(*this, target_type);
 }
 
 /* Part 6: Status utils methods */

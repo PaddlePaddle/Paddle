@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -107,6 +107,9 @@ namespace plat = paddle::platform;
 
 #if !defined(PADDLE_WITH_HIP)
 REGISTER_CAST_CUDA_BASE(cast, ops::CastCUDAOpKernel<plat::bfloat16>)
+// See [ why register transfer_dtype_op alias with cast_op? ] in cast_op.cc
+REGISTER_CAST_CUDA_BASE(transfer_dtype, ops::CastCUDAOpKernel<plat::bfloat16>)
 #else
 REGISTER_CAST_CUDA_BASE(cast)
+REGISTER_CAST_CUDA_BASE(transfer_dtype)
 #endif

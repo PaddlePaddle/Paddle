@@ -410,7 +410,7 @@ def get_ports(num, offset):
         if ports is not None:
             ports = list(ports)
     else:
-        start_port = os.environ.get('FLAGS_START_PORT')
+        start_port = int(os.environ.get('FLAGS_START_PORT'))
         ports = range(start_port + offset, start_port + offset + num, 1)
     return ports
 
@@ -690,9 +690,51 @@ def get_xpus(xpus):
     return res_xpus
 
 
+def get_npus(npus):
+    if npus is None:
+        npus_num = fluid.core.get_npu_device_count()
+        res_npus = [str(x) for x in range(0, npus_num)]
+    else:
+        npu_visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
+        if npu_visible_devices is None or npu_visible_devices == "":
+            res_npus = [x.strip() for x in npus.split(',')]
+        else:
+            # change npus into relative values
+            # e.g. ASCEND_VISIBLE_DEVICES=4,5,6,7; args.npus=4,5,6,7;
+            # therefore npus=0,1,2,3
+            npu_visible_devices_list = npu_visible_devices.split(',')
+            for x in npus.split(','):
+                assert x in npu_visible_devices_list, "Can't find "\
+                    "your npus %s in ASCEND_VISIBLE_DEVICES[%s]."\
+                    % (x, npu_visible_devices)
+            res_npus = [
+                npu_visible_devices_list.index(x.strip())
+                for x in npus.split(',')
+            ]
+            logger.info("Change selected_npus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "ASCEND_VISIBLE_DEVICES:{}".format(
+                            npus, res_npus, npu_visible_devices_list))
+
+    return res_npus
+
+
 def get_device_mode(backend):
-    if fluid.core.is_compiled_with_npu() and \
+    if backend == 'heter':
+        if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+            print("launch train in heter mode with GPU device.")
+            return DeviceMode.GPU
+        if fluid.core.is_compiled_with_xpu() and \
+            fluid.core.get_xpu_device_count() > 0:
+            print("launch train in heter mode with XPU device.")
+            return DeviceMode.XPU
+        if fluid.core.is_compiled_with_npu() and \
             fluid.core.get_npu_device_count() > 0:
+            print("launch train in heter mode with NPU device.")
+            return DeviceMode.ASCEND_NPU
+
+    if backend == 'hccl' and fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
@@ -731,7 +773,17 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.ASCEND_NPU:
-        devices_per_proc = None
+        npus = get_npus(args.npus)
+        if args.nproc_per_node is not None:
+            assert (len(npus) % int(args.nproc_per_node)) ==0, \
+                "npus' number:{} mod args.nproc_per_node:{} must == 0".format(len(npus), args.nproc_per_node)
+
+            n = int(len(npus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                npus[i:i + n] for i in six.moves.range(0, len(npus), n)
+            ]
+        else:
+            devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
@@ -902,11 +954,8 @@ def get_mapped_cluster_from_args(args, device_mode):
         node_rank = node_ips.index(ip)
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            free_ports = [
-                x
-                for x in range(start_port, start_port + len(node_ranks_mapping[
-                    node_rank]))
-            ]
+            end_port = start_port + len(node_ranks_mapping[node_rank])
+            free_ports = [x for x in range(start_port, end_port)]
         else:
             free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
@@ -1088,8 +1137,6 @@ class ParameterServerLauncher(object):
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
                 for i in range(len(heter_worker_endpoints_list)):
-                    if self.heter_worker_endpoints != "":
-                        self.heter_worker_endpoints += ","
                     heter_worker_endpoints = heter_worker_endpoints_list[
                         i].split(",")
                     self.stage_heter_trainer_num.append(
@@ -1131,12 +1178,12 @@ class ParameterServerLauncher(object):
 
         # get http_port
         if args.http_port:
-            self.http_port = args.http_port
+            http_port = [args.http_port]
         else:
             http_port = get_ports(
                 1, self.server_num + self.worker_num + self.heter_worker_num)
-            http_ip = self.server_endpoints.split(",")[0].split(":")[0]
-            self.http_port = http_ip + ":" + str(http_port[0])
+        http_ip = self.server_endpoints.split(",")[0].split(":")[0]
+        self.http_port = http_ip + ":" + str(http_port[0])
 
         # check local or user define
         self.server_endpoints_ips = [
@@ -1183,9 +1230,8 @@ class ParameterServerLauncher(object):
             else:
                 self.current_node_ip = pod_ip
             assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (self.current_node_ip, self.node_ips)
+                  % (self.current_node_ip, self.node_ips)
         self.node_rank = self.node_ips.index(self.current_node_ip)
-
         logger.debug(
             "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
             format(self.node_ips, self.current_node_ip, self.node_rank))
@@ -1530,11 +1576,11 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
-            % backend)
+    if backend not in ['nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter']:
+        raise ValueError("paddle.distributed initialize error, "
+                         "backend argument can only be one of "
+                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
+                         "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
         raise ValueError(
@@ -1546,6 +1592,12 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend == 'hccl' and not fluid.core.is_compiled_with_npu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with npu but you assign 'hccl' as backend."
         )
 
 
@@ -1567,5 +1619,8 @@ def get_backend_by_compile_flag():
 
     if fluid.core.is_compiled_with_xpu():
         return 'bkcl'
+
+    if fluid.core.is_compiled_with_npu():
+        return 'hccl'
 
     return 'gloo'

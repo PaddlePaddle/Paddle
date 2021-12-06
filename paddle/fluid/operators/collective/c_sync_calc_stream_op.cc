@@ -55,11 +55,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
     auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
 
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(dev_ctx->stream()));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
-#endif
+    platform::GpuStreamSync(dev_ctx->stream());
 
 #elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
     auto place = ctx.GetPlace();
@@ -69,7 +65,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
     auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
+    platform::NPUStreamSync(dev_ctx->stream());
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

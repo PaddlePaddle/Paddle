@@ -35,6 +35,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 ELASTIC_EXIT_CODE = 101
+ELASTIC_AUTO_PARALLEL_EXIT_CODE = 102
 
 # wait for timeout, unit: seconds
 ELASTIC_TIMEOUT = 2 * 60
@@ -103,6 +104,9 @@ class LauncherInterface(object):
             if ret is None:
                 alive = True
             elif ret != 0:
+                if ret == ELASTIC_AUTO_PARALLEL_EXIT_CODE:
+                    logger.info("return form elastic auto parallel re-launch")
+                    return ret
                 logger.error("ABORT!!! ABORT!!! ABORT!!!")
                 logger.error(
                     "ERROR rank {} error with exit code {}, check log for detail.".
@@ -232,6 +236,7 @@ class ElasticManager(object):
                 six.ensure_str(i[0])
                 for i in self.etcd.get_prefix(self.node_prefix)
             ]
+            self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
             logger.info(
                 f"host_call_back curr_host={self.curr_host}, hosts:{self.hosts}")
             self.need_sync = True
@@ -251,6 +256,7 @@ class ElasticManager(object):
                         six.ensure_str(i[0])
                         for i in self.etcd.get_prefix(self.node_prefix)
                     ]
+                    hosts = list(set(hosts)) if hosts else hosts
                     logger.info(
                         f"[lease_heartbeat] curr_host={self.curr_host}, hosts={hosts}"
                     )
@@ -335,6 +341,7 @@ class ElasticManager(object):
         if not self.args.elastic_pre_hook:
             logger.info("skip pre_hook")
             return
+        logger.info("execute pre_hook...")
         current_env = copy.copy(os.environ.copy())
         out, err = subprocess.Popen(
             self.args.elastic_pre_hook,
@@ -391,6 +398,7 @@ class ElasticManager(object):
                 six.ensure_str(i[0])
                 for i in self.etcd.get_prefix(self.node_prefix)
             ]
+        self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
 
         if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
             if len(self.hosts) == self.np:
@@ -430,6 +438,9 @@ class ElasticManager(object):
 
     def _update_fault_tolrance(self):
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
+        logger.debug(
+            f"self.curr_host={self.curr_host}, self.dist_endpoints={self.dist_endpoints}"
+        )
         if self.curr_host in self.dist_endpoints:
             os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
             os.environ['PADDLE_TRAINERS'] = self.trainers
@@ -550,7 +561,6 @@ class ElasticManager(object):
                                                                    self.hosts))
             idx += 1
             time.sleep(2)
-
         return
 
     def run(self, launcher):
@@ -571,6 +581,11 @@ class ElasticManager(object):
 
             if ret is not None:  # self terminated
                 logger.info('job exit with code {}'.format(ret))
+                if ret == ELASTIC_AUTO_PARALLEL_EXIT_CODE:
+                    logger.info('job re-launch for auto parallel')
+                    self.launcher.stop()
+                    return ElasticStatus.HOLD
+
                 # process is completed if ret >= 0 or error else
                 completed = True if ret == 0 else False
                 self.exit(completed=completed)

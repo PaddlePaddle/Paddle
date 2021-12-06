@@ -25,6 +25,13 @@ endif()
 if (WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+endif()
+
+if (WITH_ASCEND_CL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} hccl_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
 if(NOT WIN32)
@@ -32,6 +39,7 @@ if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
   if (WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
+    set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
   endif()
 endif(NOT WIN32)
 
@@ -116,6 +124,10 @@ if(WITH_PYTHON)
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
   endif(WITH_XPU_BKCL)
+
+  if(WITH_ASCEND_CL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
+  endif(WITH_ASCEND_CL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
@@ -205,6 +217,12 @@ if(WITH_PYTHON)
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
 
   list(APPEND PYBIND_DEPS interpretercore standalone_executor)
+
+  cc_library(paddle_eager
+  SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
+  DEPS autograd_meta grad_node_info pten global_utils utils eager_api accumulation_node backward python)
+  list(APPEND PYBIND_DEPS paddle_eager)
+
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
