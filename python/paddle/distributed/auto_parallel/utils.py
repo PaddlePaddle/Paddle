@@ -22,7 +22,7 @@ import logging
 import paddle.fluid.core as core
 from paddle.framework.io import _to_LodTensor
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
-from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute
+from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
 
 def is_valid_list_index(list, index):

@@ -16,7 +16,7 @@ import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
-from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists, _keep_fp32_input, _keep_fp32_output, _valid_types, find_true_post_op, find_op_index, _is_in_black_varnames, _dtype_to_str, _rename_arg
+from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists, _keep_fp32_input, _keep_fp32_output, _valid_types, find_true_post_op, find_true_prev_op, find_op_index, _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
@@ -381,6 +381,7 @@ class AMPBackwardPass(PassBase):
     # in distributed scenario, all ranks should have the same modification.
     def _apply_single_impl(self, main_program, startup_program, context):
 
+        # backward
         self._dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
 
