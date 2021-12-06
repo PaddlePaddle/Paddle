@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -21,126 +21,90 @@ from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
 import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestConvAffineChannelFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-
-        if attrs[0]['data_format'] == "NHWC":
-            return False
-
         return True
 
     def sample_program_config(self, draw):
-        strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
-        dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
+        groups = draw(st.integers(min_value=1, max_value=3))
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         axis = draw(st.sampled_from([1]))
+        filter_channel = draw(st.integers(min_value=1, max_value=16)) * 4
+        filter_size = draw(st.integers(min_value=1, max_value=4))
+        in_channel = groups * filter_channel
+        out_channel_factor = draw(st.integers(min_value=1, max_value=16)) * 4
+        out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
+        dilations = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=2), min_size=2, max_size=2))
+        paddings = draw(
+            st.lists(
+                st.integers(
+                    min_value=0, max_value=2), min_size=2, max_size=2))
+        strides = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=2), min_size=2, max_size=2))
 
-        def generate_input(attrs):
-            if attrs[0]['data_format'] == "NCHW":
-                return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
-            else:
-                return np.random.random(
-                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
+        x_shape = [
+            batch_size, in_channel, 64, 64
+        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
+        w_shape = [out_channel, filter_channel, filter_size, filter_size]
+        scale_shape = [out_channel]
+        bias_shape = [out_channel]
 
-        def generate_weight1():
-            return np.random.random([16, 16, 3, 3]).astype(np.float32)
-
-        def generate_weight2():
-            return np.random.random([1]).astype(np.float32)
-
-        def generate_scale_bias():
-            return np.random.random([16]).astype(np.float32)
-
-        attrs = [{
-            "data_format": data_format,
-            "dilations": dilations,
-            "padding_algorithm": padding_algorithm,
-            "groups": groups,
-            "paddings": paddings,
-            "strides": strides
-        }, {
-            "axis": axis
-        }, {
-            'batch_size': batch_size
-        }]
-
-        ops_config = [
-            {
-                "op_type": "conv2d",
-                "op_inputs": {
-                    "Input": ["input_data"],
-                    "Filter": ["conv2d_weight"],
-                    # "Bias": ["conv2d_bias"],
-                },
-                "op_outputs": {
-                    "Output": ["conv_output"]
-                },
-                "op_attrs": {
-                    "data_format": attrs[0]['data_format'],
-                    "dilations": attrs[0]['dilations'],
-                    "padding_algorithm": attrs[0]['padding_algorithm'],
-                    "groups": attrs[0]['groups'],
-                    "paddings": attrs[0]['paddings'],
-                    "strides": attrs[0]['strides'],
-                    "is_test": True
-                }
+        conv2d_op = OpConfig(
+            "conv2d",
+            inputs={
+                "Input": ["input_data"],
+                "Filter": ["conv2d_weight"],
+                # "Bias": ["conv2d_bias"],
             },
-            {
-                "op_type": "affine_channel",
-                "op_inputs": {
-                    "X": ["conv_output"],
-                    "Scale": ["affine_channel_scale"],
-                    "Bias": ["affine_channel_bias"]
-                },
-                "op_outputs": {
-                    "Out": ["affine_channel_ouput"]
-                },
-                "op_attrs": {
-                    "data_layout": attrs[0]['data_format']
-                }
-            }
-        ]
-
-        ops = self.generate_op_config(ops_config)
+            outputs={"Output": ["conv_output"]},
+            data_format=data_format,
+            dilations=dilations,
+            padding_algorithm=padding_algorithm,
+            groups=groups,
+            paddings=paddings,
+            strides=strides,
+            is_test=True)
+        ac_op = OpConfig(
+            "affine_channel",
+            inputs={
+                "X": ["conv_output"],
+                "Scale": ["affine_channel_scale"],
+                "Bias": ["affine_channel_bias"]
+            },
+            outputs={"Out": ["affine_channel_ouput"]},
+            data_layout=data_format)
+        ops = [conv2d_op, ac_op]
 
         program_config = ProgramConfig(
             ops=ops,
-            inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
-            },
             weights={
-                "conv2d_weight":
-                TensorConfig(data_gen=partial(generate_weight1)),
-                "affine_channel_scale":
-                TensorConfig(data_gen=partial(generate_scale_bias)),
-                "affine_channel_bias":
-                TensorConfig(data_gen=partial(generate_scale_bias)),
+                "conv2d_weight": TensorConfig(shape=w_shape),
+                "affine_channel_scale": TensorConfig(shape=scale_shape),
+                "affine_channel_bias": TensorConfig(shape=bias_shape),
+                # "conv2d_bias": TensorConfig(shape=bias_shape)
             },
-            outputs=["affine_channel_ouput"])
-
+            inputs={"input_data": TensorConfig(shape=x_shape), },
+            outputs=ops[-1].outputs["Out"], )
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
-        yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
+        yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
-        # mkldnn Output has diff with bias!!
+        # mkldnn Output has diff with bias!!!
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
+        yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
         # If the problem has been fixed, the judgment 
@@ -153,7 +117,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
-            currently Conv2DFusion only supports data format of channel first (NCHW)!"
+            Operator(Conv2DFusion) only supports data format of channel first (NCHW) now."
         )
 
     def test(self):
