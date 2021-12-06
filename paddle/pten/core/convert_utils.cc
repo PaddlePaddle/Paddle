@@ -20,6 +20,26 @@ limitations under the License. */
 
 namespace pten {
 
+// the map between kernel name in fluid and pten
+const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
+    {"reshape2", "reshape"},
+    {"fill_any_like", "full_like"},
+    {"fill_constant", "full"},
+    {"matmul_v2", "matmul"},
+    {"flatten_contiguous_range", "flatten"},
+    {"reduce_mean", "mean"},
+    {"reduce_sum", "sum"},
+    {"elementwise_add", "add"},
+    {"elementwise_sub", "subtract"},
+    {"elementwise_mul", "muliply"},
+    {"elementwise_div", "divide"},
+    // fluid kernel "mean/reshape/matmul/flatten/sum" should be deprecated
+    {"mean", "deprecated"},
+    {"reshape", "deprecated"},
+    {"matmul", "deprecated"},
+    {"flatten", "deprecated"},
+    {"sum", "deprecated"}};
+
 // TODO(chenweihang): Add other place trans cases later
 Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
@@ -302,6 +322,14 @@ int TensorDtype2NumpyDtype(pten::DataType dtype) {
           static_cast<int>(dtype)));
       return 0;
   }
+}
+
+std::string TransToPtenKernelName(const std::string& fluid_op_name) {
+  if (kernel_alias_name_map.find(fluid_op_name) !=
+      kernel_alias_name_map.end()) {
+    return kernel_alias_name_map.at(fluid_op_name);
+  }
+  return fluid_op_name;
 }
 
 }  // namespace pten
