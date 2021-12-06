@@ -130,6 +130,10 @@ class MultiStreamModelTestCase(unittest.TestCase):
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])
 
+        res_sequential = self.run_new_executor_sequential()
+        for gt, out in zip(ground_truths, res_sequential):
+            self.assertEqual(gt[0], out[0])
+
     def run_raw_executor(self):
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
@@ -157,6 +161,12 @@ class MultiStreamModelTestCase(unittest.TestCase):
             outs.append(
                 np.array(inter_core.run({}, fetch_list)._move_to_list()[0]))
         return outs
+
+    def run_new_executor_sequential(self):
+        os.environ['FLAGS_new_executor_sequential_run'] = '1'
+        res = self.run_new_executor()
+        del os.environ['FLAGS_new_executor_sequential_run']
+        return res
 
 
 class SwitchExecutorInterfaceTestCase(MultiStreamModelTestCase):
