@@ -365,5 +365,17 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
         self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
 
 
+class TestDygraphIfElseRetInt(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int1
+
+    def test_ast_to_func(self):
+        static_func = paddle.jit.to_static(self.dyfunc)
+        out = static_func(self.x)
+        self.assertIsInstance(out[0], paddle.Tensor)
+        self.assertEqual(out[1], 1)
+
+
 if __name__ == '__main__':
     unittest.main()
