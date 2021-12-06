@@ -113,8 +113,10 @@ std::pair<int, int>& KernelContext::MutableOutputRangeAt(size_t idx) {
 // Only deal with DenseTensor now
 void KernelContext::ClearData() {
   for (auto& in : inputs_) {
-    CompatibleDenseTensorUtils::ClearStorage(
-        static_cast<DenseTensor*>(in.get()));
+    if (in) {
+      CompatibleDenseTensorUtils::ClearStorage(
+          static_cast<DenseTensor*>(in.get()));
+    }
   }
   for (auto& out : outputs_) {
     CompatibleDenseTensorUtils::ClearStorage(
