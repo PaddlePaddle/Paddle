@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(sync_nccl_allreduce);
@@ -182,7 +182,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
              << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
     all_gather_calls.emplace_back([=] {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
           in_tensor_buf, gather_buff, 2 * k, static_cast<ncclDataType_t>(dtype),
           comm, stream));
     });

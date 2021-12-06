@@ -184,14 +184,12 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
                       values_stride >= 32 && values_stride <= 512);
     syevjInfo_t syevj_params;
     if (use_syevj) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cusolverDnCreateSyevjInfo(&syevj_params));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cusolverDnSsyevj_bufferSize(
-              dev_ctx.cusolver_dn_handle(), jobz, uplo, n,
-              reinterpret_cast<const float *>(input_vector), lda,
-              reinterpret_cast<const float *>(out_value), &lwork,
-              syevj_params));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSsyevj_bufferSize(
+          dev_ctx.cusolver_dn_handle(), jobz, uplo, n,
+          reinterpret_cast<const float *>(input_vector), lda,
+          reinterpret_cast<const float *>(out_value), &lwork, syevj_params));
     } else {
       EvdBuffer(dev_ctx.cusolver_dn_handle(), jobz, uplo, n, input_vector, lda,
                 out_value, &lwork);
@@ -203,7 +201,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
       auto *value_data = out_value + i * values_stride;
       auto handle = dev_ctx.cusolver_dn_handle();
       if (use_syevj) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSsyevj(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSsyevj(
             handle, jobz, uplo, n, reinterpret_cast<float *>(input_data), lda,
             reinterpret_cast<float *>(value_data),
             reinterpret_cast<float *>(work_ptr), lwork, info_ptr,
@@ -220,7 +218,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     }
 
     if (use_syevj) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
     if (has_vectors) {
@@ -255,7 +253,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                       \
       cublasFillMode_t uplo, int n, const T *A, int lda, const ValueType *W,   \
       int *lwork) const {                                                      \
-    PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
+    PADDLE_ENFORCE_GPU_SUCCESS(                                                \
         platform::dynload::cusolverDn##C##evd_bufferSize(                      \
             handle, jobz, uplo, n, reinterpret_cast<const CastType *>(A), lda, \
             W, lwork));                                                        \
@@ -269,7 +267,7 @@ FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                  \
       cublasFillMode_t uplo, int n, T *A, int lda, ValueType *W, T *work, \
       int lwork, int *devInfo) const {                                    \
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDn##C##evd(    \
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDn##C##evd(     \
         handle, jobz, uplo, n, reinterpret_cast<CastType *>(A), lda, W,   \
         reinterpret_cast<CastType *>(work), lwork, devInfo));             \
   }
