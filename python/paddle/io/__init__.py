@@ -30,6 +30,7 @@ from ..fluid.dataloader import ChainDataset  # noqa: F401
 from ..fluid.dataloader import WeightedRandomSampler  # noqa: F401
 from ..fluid.dataloader import Subset  # noqa: F401
 from ..fluid.dataloader import random_split  # noqa: F401
+from ..fluid.dataloader import map  # noqa: F401
 
 __all__ = [ #noqa
            'Dataset',
@@ -47,5 +48,6 @@ __all__ = [ #noqa
            'RandomSampler',
            'WeightedRandomSampler',
            'random_split',
-           'Subset'
+           'Subset',
+           'map'
 ]

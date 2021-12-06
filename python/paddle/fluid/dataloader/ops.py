@@ -15,15 +15,33 @@
 from __future__ import print_function
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
 
-from paddle.fluid import core, framework
-from paddle.fluid.layers.utils import _hash_with_id
-from paddle.common_ops_import import *
+from ...fluid import core, framework, Program, program_guard, unique_name
+from ...fluid.layers.utils import _hash_with_id
+from ...common_ops_import import *
 
 
 __all__ = ["map"]
+
+
+def _to_list(l):
+    if isinstance(l, (list, tuple)):
+        return l
+    return [l]
+
+
+class MapGuard(object):
+    def __init__(self, main_program):
+        if not isinstance(main_program, Program):
+            raise TypeError("MapGuard should init with a Program")
+        self._main_program = main_program
+
+    def __enter__(self):
+        self._main_program._create_block()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._main_program._rollback()
+        return exc_type is None
 
 
 def map(map_func, inputs):
@@ -31,39 +49,45 @@ def map(map_func, inputs):
             "paddle.io.map can only be used in static mode"
     helper = LayerHelper("map", **locals())
 
-    # inputs are Variables hold LoDTensorBlockingQueue
-    # TODO: cannot get tensor shape from LoDTensorBlockingQueue
-    program_inputs = [static.data('input_{}'.format(i), [None]) for i in range(len(inputs))]
+    # build map block
+    main_program = helper.main_program
+    with MapGuard(main_program):
+        map_block = main_program.current_block()
 
-    # build map program
-    main_program = fluid.Program()
-    startup_program = fluid.Program()
-    with static.guard(main_program, startup_program):
+        inputs = _to_list(inputs)
+        program_inputs = [
+            map_program.create_var(
+                name=unique_name.generate("map_sub"),
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False) for i in range(len(inputs))]
         program_outputs = map_func(*program_inputs)
+        program_outputs = _to_list(program_outputs)
     
-    input_var_names = [v.name for v in program_inputs]
-    output_var_names = [v.name for v in program_outputs]
+        input_var_names = [v.name for v in program_inputs]
+        output_var_names = [v.name for v in program_outputs]
 
-    global_block = self._main_program.desc.block(0)
-    program_id = _hash_with_id(main_program, map_func)
+        program_id = _hash_with_id(map_program)
+        start_op_index = 0
+        end_op_index = map_block.desc.op_size()
 
     outputs = \
         [helper.create_variable(
             name=unique_name.generate("map"),
-            type=core.VarDesc.VarType.LOD_TENSOR_BLOCKING_QUEUE,
+            type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=True) for _ in range(len(program_outputs))]
     attrs = {
-        "global_block": global_block,
+        "map_block": map_block,
         "program_id": program_id,
-        "start_op_index": 0,
-        "end_op_index": global_block.op_size(),
+        "start_op_index": start_op_index,
+        "end_op_index": end_op_index,
         "input_var_names": input_var_names,
         "output_var_names": output_var_names
     }
+    print("atttrs:", attrs)
 
     helper.append_op(
         type="map",
-        inputs={"X": inputs},
+        inputs={"In": inputs},
         outputs={"Out": outputs},
         attrs=attrs)
 

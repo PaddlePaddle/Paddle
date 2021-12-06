@@ -29,6 +29,7 @@ static void CheckInputQueueStatus(const std::vector<Variable*>& vars) {
           "Input Variables of MapOp should hold "
           "LoDTensorBlockingQueueHolder type"));
     auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+    LOG(ERROR) << "CheckAndInitOutputQueue get queue: " << queue;
     PADDLE_ENFORCE_NE(queue, nullptr,
         platform::errors::InvalidArgument(
           "Input LoDTensorBlockingQueue is not initialized"));
@@ -38,14 +39,16 @@ static void CheckInputQueueStatus(const std::vector<Variable*>& vars) {
 static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capacity) {
   for (auto var : vars) {
     if (var->IsInitialized()) {
+      LOG(ERROR) << "CheckAndInitOutputQueue is LoDTensorBlockingQueueHolder: " << var->IsType<LoDTensorBlockingQueueHolder>();
       PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
           platform::errors::InvalidArgument(
             "Output Variables of MapOp should hold "
             "LoDTensorBlockingQueueHolder type"));
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-      PADDLE_ENFORCE_NE(queue, nullptr,
-          platform::errors::InvalidArgument(
-            "Input LoDTensorBlockingQueue is not initialized"));
+      if (queue == nullptr) {
+        auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
+        holder->InitOnce(2);
+      }
     } else {
       // VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
       LOG(ERROR) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
@@ -68,25 +71,31 @@ template <typename DeviceContext, typename T>
 class MapOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // Step1: get output vars and attrs
-    auto input_vars = ctx.MultiInputVar("X");
-    auto output_vars = ctx.MultiOutputVar("Out");
-
-    CheckInputQueueStatus(input_vars);
-    CheckAndInitOutputQueue(output_vars, /*capacity=*/2);
-
-    auto input_var_names = ctx.Attr<std::vector<std::string>>("input_var_names");
-    auto output_var_names = ctx.Attr<std::vector<std::string>>("output__var_names");
-    auto* global_block = ctx.Attr<BlockDesc*>("global_block");
-    auto start_op_index = ctx.Attr<int64_t>("start_op_index");
-    auto end_op_index = ctx.Attr<int64_t>("end_op_index");
-    auto program_id = ctx.Attr<int64_t>("program_id");
-
-    auto input_queues = GetQueueVecFromVariableVec(input_vars);
-    auto output_queues = GetQueueVecFromVariableVec(output_vars);
-    data::MapRunnerManager::Instance()->StartMapRunner(
-        program_id, global_block, ctx.GetPlace(), start_op_index, end_op_index,
-        input_var_names, output_var_names, input_queues, output_queues);
+    LOG(ERROR) << "MapOpKernel enter";
+    // // Step1: get output vars and attrs
+    // auto input_vars = ctx.MultiInputVar("In");
+    // auto output_vars = ctx.MultiOutputVar("Out");
+    //
+    // CheckInputQueueStatus(input_vars);
+    // CheckAndInitOutputQueue(output_vars, /*capacity=*/2);
+    //
+    // auto input_var_names = ctx.Attr<std::vector<std::string>>("input_var_names");
+    // auto output_var_names = ctx.Attr<std::vector<std::string>>("output_var_names");
+    // auto* map_block = ctx.Attr<BlockDesc*>("map_block");
+    // auto start_op_index = ctx.Attr<int64_t>("start_op_index");
+    // auto end_op_index = ctx.Attr<int64_t>("end_op_index");
+    // auto program_id = ctx.Attr<int64_t>("program_id");
+    // LOG(ERROR) << "MapOpKernel block id: " << map_block->ID();
+    // for (auto var_name: map_block->LocalVarNames()) {
+    //   LOG(ERROR) << "MapOpKernel map_block vars: " << var_name;
+    // }
+    //
+    // auto input_queues = GetQueueVecFromVariableVec(input_vars);
+    // auto output_queues = GetQueueVecFromVariableVec(output_vars);
+    // data::MapRunnerManager::Instance()->StartMapRunner(
+    //     program_id, map_block, ctx.GetPlace(), start_op_index, end_op_index,
+    //     input_var_names, output_var_names, input_queues, output_queues);
+    // LOG(ERROR) << "MapOpKernel finish";
   }
 };
 

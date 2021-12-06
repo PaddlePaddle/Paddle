@@ -85,8 +85,10 @@ void Pipeline::StartPrefetchThread(std::shared_ptr<ParallelExecutor> executor,
         // CheckOutputVarStatus(*out_var, output_var_names_[i]);
         // copy_tensor(out_var->Get<LoDTensor>(), &t_arr[i]);
         auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+        LOG(ERROR) << "Executor out var: " << output_var_names_[i] << ", out_queue: " << out_queue;
         bool success = true;
         auto outputs = out_queue->Pop(&success);
+        LOG(ERROR) << "Executor get outputs from queue, success: " << success << ", outputs: " << outputs.size(); ;
         PADDLE_ENFORCE_EQ(success, true, 
             platform::errors::PreconditionNotMet("Read from input queue failed"));
         copy_tensor(outputs.at(0), &t_arr[i]);

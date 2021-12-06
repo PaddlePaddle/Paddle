@@ -18,28 +18,83 @@ namespace operators {
 
 using framework::Tensor;
 
-class MapOp : public framework::OperatorWithKernel {
+class MapOp : public framework::OperatorBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  // using framework::OperatorWithKernel::OperatorWithKernel;
+  MapOp(const std::string& type,
+        const framework::VariableNameMap& inputs,
+        const framework::VariableNameMap& outputs,
+        const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutputs("X"), "Input", "X", "MapOp");
+  void InferShape(framework::InferShapeContext* ctx) const {
+    OP_INOUT_CHECK(ctx->HasInputs("In"), "Input", "In", "MapOp");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext& ctx) const {
     return framework::OpKernelType(framework::proto::VarType::FP32,
                                    ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return expected_kernel_type;
+  // framework::OpKernelType GetKernelTypeForVar(
+  //     const std::string& var_name, const framework::Tensor& tensor,
+  //     const framework::OpKernelType& expected_kernel_type) const override {
+  //   return expected_kernel_type;
+  // }
+
+ private:
+  void RunImpl(const framework::Scope& scope,
+      const platform::Place& dev_place) const override {
+    LOG(ERROR) << "MapOpKernel RunImpl enter";
+    // Step1: get output vars and attrs
+    auto input_var = scope.FindVar(Input("In"));
+    auto output_var = scope.FindVar(Output("Out"));
+    std::vector<Variable*> input_vars;
+    input_vars.reserve(1);
+    input_vars.emplace_back(input_var);
+    std::vector<Variable*> output_vars;
+    output_vars.reserve(1);
+    output_vars.emplace_back(output_var);
+
+    CheckInputQueueStatus(input_vars);
+    CheckAndInitOutputQueue(output_vars, /*capacity=*/2);
+
+    auto input_var_names = Attr<std::vector<std::string>>("input_var_names");
+    auto output_var_names = Attr<std::vector<std::string>>("output_var_names");
+    auto* map_block = Attr<BlockDesc*>("map_block");
+    auto start_op_index = Attr<int64_t>("start_op_index");
+    auto end_op_index = Attr<int64_t>("end_op_index");
+    auto program_id = Attr<int64_t>("program_id");
+    LOG(ERROR) << "MapOpKernel block id: " << map_block->ID();
+    for (auto var_name: map_block->LocalVarNames()) {
+      LOG(ERROR) << "MapOpKernel map_block vars: " << var_name;
+    }
+
+    auto input_queues = GetQueueVecFromVariableVec(input_vars);
+    auto output_queues = GetQueueVecFromVariableVec(output_vars);
+    data::MapRunnerManager::Instance()->StartMapRunner(
+        program_id, map_block, dev_place,start_op_index, end_op_index,
+        input_var_names, output_var_names, input_queues, output_queues, &scope);
+    LOG(ERROR) << "MapOpKernel RunImpl finish";
   }
 };
+
+class MapInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInputs("In"), "Input", "In", "MapOp");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
+  }
+};
+
+class MapInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {}
+};
+
 
 class MapOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -52,7 +107,7 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensorBlockingQueueHolder)"
               "The output tensors of Map operator")
         .AsDuplicable();
-    AddAttr<BlockDesc*>("global_block",
+    AddAttr<BlockDesc*>("map_block",
                         "(BlockDesc *)"
                         "The global block of executed map program "
                         "desc.");
@@ -82,5 +137,6 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(map, ops::MapOp, ops::MapOpMaker);
+REGISTER_OPERATOR(map, ops::MapOp, ops::MapOpMaker,
+                  ops::MapInferShape, ops::MapInferVarType);
 REGISTER_OP_CPU_KERNEL(map, ops::MapOpKernel<paddle::platform::CPUDeviceContext, float>);

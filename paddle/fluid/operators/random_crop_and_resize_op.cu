@@ -298,6 +298,7 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
       holder->InitOnce(2);
       out_queue = holder->GetQueue();
     }
+    LOG(ERROR) << "crop resize out_var: " << out_var << "out_queue: " << out_queue;
 
     bool success = false;
     auto x = in_queue->Pop(&success);

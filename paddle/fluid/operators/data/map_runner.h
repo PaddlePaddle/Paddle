@@ -30,18 +30,20 @@ using ParallelExecutor = framework::ParallelExecutor;
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
+using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
 namespace data {
 
 class MapRunner {
  public:
-  MapRunner(const std::shared_ptr<BlockDesc> global_block,
+  MapRunner(const std::shared_ptr<BlockDesc> map_block,
            const platform::Place &place, int64_t start_op_index,
            int64_t end_op_index, int64_t program_id,
            const std::vector<std::string> &input_var_names,
            const std::vector<std::string> &output_var_names,
            const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
-           const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues);
+           const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues,
+           const Scope* scope);
 
   // ~MapRunner() {
   //   VLOG(1) << "~MapRunner";
@@ -62,9 +64,12 @@ class MapRunner {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  bool ShareInputsIntoScope();
-  void StartMapThread(std::shared_ptr<ParallelExecutor> executor,
-                           const std::vector<std::string> &skip_vars);
+  // bool ShareInputsIntoScope();
+  bool ShareInputsIntoScope(Scope* scope);
+
+  void StartMapThread(const Scope* scope);
+  // void StartMapThread(std::shared_ptr<ParallelExecutor> executor,
+  //                          const std::vector<std::string> &skip_vars);
 
   void CheckInputVarStatus(const Variable &var, const std::string &var_name);
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
@@ -72,8 +77,7 @@ class MapRunner {
   ThreadPool thread_pool_;
   std::atomic<bool> running_;
 
-  Scope scope_;
-  std::shared_ptr<BlockDesc> global_block_;
+  std::shared_ptr<BlockDesc> map_block_;
   platform::Place place_;
   int64_t start_op_index_;
   int64_t end_op_index_;
@@ -83,6 +87,8 @@ class MapRunner {
   std::vector<std::string> output_var_names_;
   std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues_;
   std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues_;
+
+  // Scope scope_;
 };
 
 class MapRunnerManager {
@@ -108,18 +114,19 @@ class MapRunnerManager {
   }
 
   void StartMapRunner(
-      int64_t program_id, BlockDesc *global_block, const platform::Place &place,
+      int64_t program_id, BlockDesc *map_block, const platform::Place &place,
       int64_t start_op_index, int64_t end_op_index,
       const std::vector<std::string> &input_var_names,
       const std::vector<std::string> &output_var_names,
       const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &input_queues,
-      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &output_queues) {
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &output_queues,
+      const Scope* scope) {
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter == prog_id_to_runner_.end()) {
       prog_id_to_runner_[program_id] = std::unique_ptr<MapRunner>(new MapRunner(
-          std::shared_ptr<BlockDesc>(global_block), place, start_op_index,
+          std::shared_ptr<BlockDesc>(map_block), place, start_op_index,
           end_op_index, program_id, input_var_names, output_var_names,
-          input_queues, output_queues));
+          input_queues, output_queues, scope));
       }
   }
 
