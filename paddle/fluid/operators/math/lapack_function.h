@@ -32,6 +32,10 @@ void lapackEig(char jobvl, char jobvr, int n, T1* a, int lda, T1* w, T1* vl,
                int ldvl, T1* vr, int ldvr, T1* work, int lwork, T2* rwork,
                int* info);
 
+template <typename T>
+void lapackCholeskySolve(char uplo, int n, int nrhs, T* a, int lda, T* b,
+                         int ldb, int* info);
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
