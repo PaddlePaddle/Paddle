@@ -191,26 +191,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestPostTrainingKLForWhile(TestPostTrainingQuantization):
-    def test_post_training_kl(self):
-        model_name = "mnist_while"
-        data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
-        data_md5 = "321b2fd9b9ffa92d4ad06e9eec17e7e8"
-        algo = "KL"
-        quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = True
-        diff_threshold = 0.01
-        batch_size = 10
-        infer_iterations = 50
-        quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, is_optimize_model,
-                      diff_threshold, batch_size, infer_iterations,
-                      quant_iterations)
-
-
 class TestPostTraininghistForWhile(TestPostTrainingQuantization):
     def test_post_training_hist(self):
         model_name = "mnist_while"
