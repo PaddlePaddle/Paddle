@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/pybind/op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -58,7 +59,6 @@ std::set<std::string> gen_list = {
     "load",
     "elementwise_max",
     "adadelta",
-    "check_finite_and_unscale",
     "sparse_momentum",
     "tan",
     "adam",
@@ -459,7 +459,6 @@ std::set<std::string> gen_list = {
     "elementwise_mul",
     "decayed_adagrad",
     "bipartite_match",
-    "run_program",
     "fake_quantize_moving_average_abs_max",
     "mine_hard_examples",
     "target_assign",
@@ -471,7 +470,6 @@ std::set<std::string> gen_list = {
     "cumsum",
     "sum",
     "proximal_adagrad",
-    "update_loss_scaling",
     "shard_index",
     "selu",
     "mean",
@@ -530,104 +528,6 @@ std::set<std::string> gen_list = {
     "dequantize_abs_max",
     "svd",
     "flip"};
-
-// NOTE(zhiqiu): Commonly, the inputs in auto-generated OP function are
-// determined by the OP`s proto automatically, i.e., all the inputs registered
-// in OpMaker.
-// However, some OPs have dispensable inputs, which means the input can
-// be none for some conditions. It is discovered that most dispensable inputs
-// is not used in imperative mode, so we drop those inputs when generating OP
-// functions. While, for very few OPs, the dispensable inputs are used, we
-// need to manually specify them in this map.
-std::map<std::string, std::set<std::string>> op_ins_map = {
-    {"layer_norm", {"X", "Scale", "Bias"}},
-    {"fused_attention",
-     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "SrcMask", "OutLinearW",
-      "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
-    {"instance_norm", {"X", "Scale", "Bias"}},
-    {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
-    {"label_smooth", {"X", "PriorDist"}},
-    {"assign", {"X"}},
-    {"reshape2", {"X", "Shape"}},
-    {"expand", {"X", "ExpandTimes"}},
-    {"slice", {"Input", "StartsTensor", "EndsTensor"}},
-    {"fake_quantize_dequantize_moving_average_abs_max",
-     {"X", "InScale", "InAccum", "InState"}},
-    {"nll_loss", {"X", "Label", "Weight"}},
-    {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
-    {"gather", {"X", "Index", "Axis"}},
-    {"roi_pool", {"X", "ROIs", "RoisNum"}},
-    {"roi_align", {"X", "ROIs", "RoisNum"}},
-    {"psroi_pool", {"X", "ROIs", "RoisNum"}},
-    {"collect_fpn_proposals",
-     {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
-    {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
-    {"warpctc", {"Logits", "Label", "LogitsLength", "LabelLength"}},
-    {"hierarchical_sigmoid",
-     {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
-    {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
-    {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
-    {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
-    {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
-    {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
-    {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
-    {"run_program", {"X", "Params"}},
-    {"faster_tokenizer", {"Text", "Vocab", "TextPair"}},
-    {"matrix_rank", {"X", "TolTensor"}},
-    {"adam",
-     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
-      "Beta2Pow", "MasterParam"}},
-    {"adamw",
-     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
-      "Beta2Pow", "MasterParam"}},
-};
-
-// NOTE(zhiqiu): Like op_ins_map.
-// Commonly, the outputs in auto-generated OP function are determined by the
-// OP`s proto automatically, i.e., all the outputs registered in OpMaker.
-// However, some OPs have dispensable outputs, which means the output can
-// be none for some conditions. It is discovered that most dispensable outputs
-// is not used in imperative mode, so we drop those outputs when generating OP
-// functions. While, for very few OPs, the dispensable outputs are used, we
-// need to manually specify them in this map.
-std::map<std::string, std::set<std::string>> op_outs_map = {
-    {"fake_quantize_dequantize_moving_average_abs_max",
-     {"Out", "OutScale", "OutAccum", "OutState"}},
-    {"batch_norm",
-     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
-      "ReserveSpace"}},
-    {"fused_attention",
-     {"LnMean", "LnVariance", "LnOut", "QKVOut", "QKVBiasOut", "TransposeOut2",
-      "QKOut", "QKTVOut", "SoftmaxOut", "AttnDropoutMaskOut", "AttnDropoutOut",
-      "SrcMaskOut", "FMHAOut", "OutLinearOut", "DropoutMaskOut", "Ln2Mean",
-      "Ln2Variance", "BiasDropoutResidualOut", "Y"}},
-    {"sync_batch_norm",
-     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
-      "ReserveSpace"}},
-    {"unique", {"Out", "Index", "Indices", "Counts"}},
-    {"unique_consecutive", {"Out", "Index", "Counts"}},
-    {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
-    {"matrix_nms", {"Out", "Index", "RoisNum"}},
-    {"distribute_fpn_proposals",
-     {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
-    {"moving_average_abs_max_scale",
-     {"Out", "OutScale", "OutAccum", "OutState"}},
-    {"multiclass_nms3", {"Out", "NmsRoisNum"}},
-    {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
-    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
-    {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
-    {"lamb",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
-    {"run_program", {"DOut"}},
-    {"adam",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
-      "MasterParamOut"}},
-    {"adamw",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
-      "MasterParamOut"}},
-};
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
 // generated in C++ automatically.
@@ -894,6 +794,7 @@ std::string GenerateOpFunctionsBody(
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
+      // call_api_str += out_name + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -938,11 +839,7 @@ std::string GenerateOpFunctionsBody(
         HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
-  if (outs_num == 0) {
-    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
-  } else {
-    return_str = "return ToPyObject(out);";
-  }
+  return_str = "return ToPyObject(out);";
   std::string function_args = "";
   if (input_args == "") {
     function_args = FUNCTION_ARGS_NO_INPUT;
