@@ -90,6 +90,24 @@ class MHASingleton {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
+class DummyMHAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE(false, platform::errors::Unimplemented(
+                              "There is no CPU kernel for mha op."));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class DummyMHAGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE(false, platform::errors::Unimplemented(
+                              "There is no CPU kernel for mha_grad op."));
+  }
+};
+
+template <typename DeviceContext, typename T>
 class MHAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

@@ -225,12 +225,8 @@ REGISTER_OPERATOR(mha_grad, ops::MHAGradOp);
 namespace plat = paddle::platform;
 
 REGISTER_OP_CPU_KERNEL(
-    mha, ops::MHAKernel<paddle::platform::CPUDeviceContext, plat::float16>,
-    ops::MHAKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MHAKernel<paddle::platform::CPUDeviceContext, double>);
+    mha, ops::DummyMHAKernel<paddle::platform::CPUDeviceContext, float>);
 
 REGISTER_OP_CPU_KERNEL(
     mha_grad,
-    ops::MHAGradKernel<paddle::platform::CPUDeviceContext, plat::float16>,
-    ops::MHAGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MHAGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::DummyMHAGradKernel<paddle::platform::CPUDeviceContext, float>);

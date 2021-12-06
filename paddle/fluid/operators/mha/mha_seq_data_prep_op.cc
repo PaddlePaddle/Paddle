@@ -71,6 +71,6 @@ REGISTER_OPERATOR(mha_seq_data_prep, ops::MHASeqDataPrepOp,
 
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(
-    mha_seq_data_prep,
-    ops::MHASeqDataPrepKernel<paddle::platform::CPUDeviceContext, int32_t>);
+REGISTER_OP_CPU_KERNEL(mha_seq_data_prep,
+                       ops::DummyMHASeqDataPrepKernel<
+                           paddle::platform::CPUDeviceContext, int32_t>);

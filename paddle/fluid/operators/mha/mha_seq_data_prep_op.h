@@ -24,10 +24,18 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
+class DummyMHASeqDataPrepKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE(false, platform::errors::Unimplemented(
+                              "There is no CPU kernel for mha_seq_prep op."));
+  }
+};
+
+template <typename DeviceContext, typename T>
 class MHASeqDataPrepKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // const std::string key = context.Attr<std::string>("cache_key");
     platform::Place host_pinned_place = platform::CUDAPinnedPlace();
 
     const Tensor* qkvo_seqlen = context.Input<Tensor>("QKVO_seqlen");
