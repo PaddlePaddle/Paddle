@@ -73,6 +73,9 @@ class AutoParallelizer:
             self._enable_auto_mapping = False
         else:
             self._enable_auto_mapping = True
+        self._need_rank_mapping = os.getenv("PADDLE_NEED_RANK_MAPPING")
+        self._need_rank_mapping = True if self._need_rank_mapping and \
+            self._need_rank_mapping.lower() == 'true' else False
 
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
@@ -135,7 +138,7 @@ class AutoParallelizer:
         self._parameter_list = parameter_list
         self._no_grad_set = no_grad_set
 
-        if self._enable_auto_mapping and self._rank_mapping_path is None:
+        if self._enable_auto_mapping and self._need_rank_mapping:
             # Do the mapping pass before parallelization
             assert self._cluster is not None, \
                 "The cluster must not be none when using auto mapping."
@@ -178,18 +181,27 @@ class AutoParallelizer:
             rank_mapping = list(rank_mapping_dict.values())
 
             # Relaunch the training by using the rank mapping file
-            cwd = pathlib.Path().resolve()
-            rank_mapping_path = os.path.join(cwd,
-                                             "auto_parallel_rank_mapping.json")
-            with open(rank_mapping_path, "w") as rank_mapping_file:
+            with open(self._rank_mapping_path, "w") as rank_mapping_file:
                 json.dump(rank_mapping, rank_mapping_file)
+
+            enable_elastic = os.getenv("PADDLE_ENABLE_ELASTIC")
+            enable_elastic = True if enable_elastic and enable_elastic.lower(
+            ) == 'true' else False
+            if enable_elastic:
+                print("Auto mapping finished, now do elastic re-launch")
+                sys.exit(paddle.distributed.fleet.elastic.manager.
+                         ELASTIC_AUTO_PARALLEL_EXIT_CODE)
 
             original_cmd_args = os.getenv("PADDLE_ORIGINAL_CMD_ARGS")
             rank_mapping_args = " ".join(
-                ["--rank_mapping_path", rank_mapping_path])
-            new_cmd_args = "-u -m paddle.distributed.fleet.launch" + " " + rank_mapping_args + " " + original_cmd_args
-            new_cmd = [sys.executable] + shlex.split(new_cmd_args)
-            print(new_cmd)
+                ["--rank_mapping_path", self._rank_mapping_path])
+            if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
+                coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            else:
+                coverage_args = []
+            new_cmd_args = "-m paddle.distributed.fleet.launch" + " " + rank_mapping_args + " " + original_cmd_args
+            new_cmd = [sys.executable, "-u"] + coverage_args + shlex.split(
+                new_cmd_args)
             new_process = subprocess.Popen(new_cmd)
             new_process.wait()
             assert new_process.returncode == 0, \

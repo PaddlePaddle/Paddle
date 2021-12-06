@@ -31,7 +31,7 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
@@ -78,7 +78,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(core.Layer):
+class Layer(object):
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -881,41 +881,48 @@ class Layer(core.Layer):
     def _build_once(self, *args, **kwargs):
         pass
 
+    def _dygraph_call_func(self, *inputs, **kwargs):
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
+        if not self._built:
+            with program_desc_tracing_guard(False):
+                self._build_once(*inputs, **kwargs)
+
+                # TODO(liuyuhui) Only xpu broadcast parameters here.
+                # The other device is to call _sync_params_buffers in DataParallel
+                # to realize the parameter synchronization among multiply cards.
+                if parallel_helper._is_data_parallel_mode(
+                ) and paddle.is_compiled_with_xpu():
+                    parallel_helper._broadcast_parameters(
+                        self._parameters.values())
+
+            self._built = True
+
+        outputs = self.forward(*inputs, **kwargs)
+
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
+        return outputs
+
     def __call__(self, *inputs, **kwargs):
         # NOTE(Aurelius84): Why we still need param_guard here?
         # In case of ControlFlow, true_fn and false_fn will contain
         # parameters that may not trigger logic of `Operator` to create
         # them. we add this to make sure all parameters is available.
-        with param_guard(self._parameters), param_guard(self._buffers):
-            for forward_pre_hook in self._forward_pre_hooks.values():
-                hook_result = forward_pre_hook(self, inputs)
-                if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result, )
-                    inputs = hook_result
 
-            if not self._built:
-                with program_desc_tracing_guard(False):
-                    self._build_once(*inputs, **kwargs)
-
-                    # TODO(liuyuhui) Only xpu broadcast parameters here.
-                    # The other device is to call _sync_params_buffers in DataParallel
-                    # to realize the parameter synchronization among multiply cards.
-                    if parallel_helper._is_data_parallel_mode(
-                    ) and paddle.is_compiled_with_xpu():
-                        parallel_helper._broadcast_parameters(
-                            self._parameters.values())
-
-                self._built = True
-
-            outputs = self.forward(*inputs, **kwargs)
-
-            for forward_post_hook in self._forward_post_hooks.values():
-                hook_result = forward_post_hook(self, inputs, outputs)
-                if hook_result is not None:
-                    outputs = hook_result
-
-            return outputs
+        if in_declarative_mode() and not framework.in_dygraph_mode():
+            with param_guard(self._parameters), param_guard(self._buffers):
+                return self._dygraph_call_func(*inputs, **kwargs)
+        else:
+            return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -968,7 +975,7 @@ class Layer(core.Layer):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert (isinstance(sublayer, core.Layer) or sublayer == None)
+        assert (isinstance(sublayer, Layer) or sublayer == None)
 
         self._sub_layers[name] = sublayer
         return sublayer
@@ -1135,7 +1142,7 @@ class Layer(core.Layer):
             params[name] = None
         else:
             layers = self.__dict__.get('_sub_layers', None)
-            if isinstance(value, core.Layer):
+            if isinstance(value, Layer):
                 if layers is None:
                     raise ValueError(
                         "super(YourLayer, self).__init__() should be called first"

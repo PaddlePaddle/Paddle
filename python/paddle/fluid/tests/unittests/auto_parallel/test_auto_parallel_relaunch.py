@@ -90,7 +90,6 @@ class TestAutoParallelReLaunch(unittest.TestCase):
                                          "auto_parallel_relaunch_model.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
-            run_with_coverage(True)
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         else:
             coverage_args = []
