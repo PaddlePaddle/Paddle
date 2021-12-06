@@ -38,7 +38,8 @@ DenseTensor Mean(const ContextT& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<int64_t>& axis,
                  bool keep_dim) {
-  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
+  auto out_meta =
+      ReduceInferMeta(x.meta(), axis, DataType::UNDEFINED, keep_dim);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -56,7 +57,7 @@ DenseTensor Sum(const ContextT& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DataType dtype,
                 bool keep_dim) {
-  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
+  auto out_meta = ReduceInferMeta(x.meta(), axis, dtype, keep_dim);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());

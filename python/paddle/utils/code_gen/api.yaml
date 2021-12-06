@@ -83,6 +83,7 @@
   output : Tensor
   infer_meta : 
     func : ReduceInferMeta
+    param: [x, axis, DataType::UNDEFINED, keep_dim]
   kernel : 
     func : reduce_mean
     param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
@@ -134,9 +135,11 @@
   output : Tensor
   infer_meta : 
     func : ReduceInferMeta
+    param: [x, axis, dtype, keep_dim]
   kernel : 
     func : reduce_sum
     param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
+    data_type : x
 
 - api : zeros_like
   args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
