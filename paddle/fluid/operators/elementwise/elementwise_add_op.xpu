@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#ifdef PADDLE_WITH_XPU
 
 #if defined(__CUDA_ARCH__)
   #undef __CUDA_ARCH__
@@ -28,60 +29,33 @@ limitations under the License. */
   #undef __NVCC__
 #endif
 
+#if defined(EIGEN_HAS_BUILTIN_INT128)
+  #undef EIGEN_HAS_BUILTIN_INT128
+#endif
 
-#include <string>
-#include <vector>
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/function_traits.h"
-#include "paddle/fluid/framework/op_registry.h" //TODO
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
+#include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
-#include <xpu/runtime.h>
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include <memory>
+#include <string>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 
 
 namespace paddle {
 namespace operators {
 
-//__global__ void elementwise() {
-  //TODO
-//}
-
-void ComputeTest(){
-
+void ElementwiseAddXPU2Compute(const framework::ExecutionContext& ctx){
+  std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
 }
 
-template <typename T>
-class ElementwiseAddXPU2Kernel : public framework::OpKernel<T> {
-
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
-    ComputeTest();
-  }
-};
-
-template <typename T>
-class ElementwiseAddGradXPU2Kernel : public ElemwiseGradKernel<T> {
-
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    std::cout<<"lxd_debug: XPU2 backward element_add !"<<std::endl;
-  }
-};
+void ElementwiseAddGradXPU2Compute(const framework::ExecutionContext& ctx){
+  std::cout<<"lxd_debug: XPU2 backward element_add !"<<std::endl;
+}
 
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-
-
-REGISTER_OP_XPU_KERNEL(elementwise_add, ops::ElementwiseAddXPU2Kernel<float>);
-                       
-REGISTER_OP_XPU_KERNEL(
-    elementwise_add_grad, ops::ElementwiseAddGradXPU2Kernel<float>);
-
+#endif

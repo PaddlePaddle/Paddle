@@ -202,6 +202,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
+  } else {
+    VLOG(3) << "This is XPU : " << op.Type();
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL

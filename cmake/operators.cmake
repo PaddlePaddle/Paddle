@@ -134,6 +134,8 @@ function(op_library TARGET)
                 list(APPEND xpu_cc_srcs ${src})
             elseif(WITH_XPU2 AND ${src} MATCHES ".*\\.xpu$")
                 list(APPEND xpu2_cc_srcs ${src})
+            elseif(WITH_XPU2 AND ${src} MATCHES ".*_op_kps.cc$")
+                list(APPEND xpu2_cc_srcs ${src})
             elseif(WITH_ASCEND_CL AND ${src} MATCHES ".*_op_npu.cc$")
                 list(APPEND npu_cc_srcs ${src})
             elseif(${src} MATCHES ".*\\.cc$")
@@ -148,8 +150,6 @@ function(op_library TARGET)
     list(LENGTH xpu2_cc_srcs xpu2_cc_srcs_len)
     if(WITH_XPU AND WITH_XPU2)
         if(${xpu2_cc_srcs_len})
-            # message(STATUS "lxd_debug: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>delete duplicate op in xpu")
-            # message(STATUS " xpu ${xpu_cc_srcs} xpu2 ${xpu2_cc_srcs}")
         endif()
     endif()
 
@@ -161,8 +161,6 @@ function(op_library TARGET)
             if(WITH_XPU)
                 #TODO
                 if(${xpu_cc_srcs} MATCHES "elementwise_add_op_xpu.cc")
-                    # delete it from the xpu_cc_srcs
-                    #list(REMOVE_ITEM ${xpu_cc_srcs} ${op_name}_xpu.cc)
                     list(REMOVE_ITEM xpu_cc_srcs "elementwise_add_op_xpu.cc")
                 endif()
             endif()
@@ -171,13 +169,10 @@ function(op_library TARGET)
 
     if(WITH_XPU AND WITH_XPU2)
         if(${xpu2_cc_srcs_len})
-            # message(STATUS "lxd_debug: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<delete duplicate op in xpu")
-            # message(STATUS " xpu ${xpu_cc_srcs} xpu2 ${xpu2_cc_srcs}")
         endif()
     endif()
     list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
     list(LENGTH xpu2_cc_srcs xpu2_cc_srcs_len)
-    # message(STATUS "lxd_debug: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xpu ${xpu_cc_srcs} xpu2 ${xpu2_cc_srcs}")
 
     list(LENGTH cc_srcs cc_srcs_len)
     if (${cc_srcs_len} EQUAL 0)
@@ -250,7 +245,7 @@ function(op_library TARGET)
         # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
             # Combine the cc source files.
-            compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${xpu2_cc_srcs} ${npu_cc_srcs})
+            compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs})
             if(TARGET ${UNITY_TARGET})
                 # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
                 target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
@@ -261,7 +256,7 @@ function(op_library TARGET)
             # Add alias library to handle dependencies.
             add_library(${TARGET} ALIAS ${UNITY_TARGET})
         else()
-            cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${xpu2_cc_srcs} ${npu_cc_srcs} DEPS ${op_library_DEPS}
+            cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
         endif()
     endif()
@@ -356,17 +351,16 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 
-    if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0 AND ${xpu2_cc_srcs_len} EQUAL 0) 
-        message(STATUS "lxd_debug: ${TARGET} op in XPU1")
+    if (WITH_XPU AND ${pybind_flag} EQUAL 0 AND ${xpu_cc_srcs_len} GREATER 0 AND ${xpu2_cc_srcs_len} EQUAL 0)
+        #message(STATUS "lxd_debug: ${TARGET} op in XPU1")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
+
+    #message(STATUS "lxd_debug: cmake source dir is: ${CMAKE_SOURCE_DIR}")
 
     if (WITH_XPU2 AND ${xpu2_cc_srcs_len} GREATER 0)
-        message(STATUS "lxd_debug: ${TARGET} op in XPU2")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
-
-    
 
     if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
         file(READ ${ORIGINAL_TARGET}_npu.cc TARGET_NPU_CONTENT)

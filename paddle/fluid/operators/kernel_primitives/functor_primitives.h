@@ -15,27 +15,31 @@
 #pragma once
 
 #include "paddle/fluid/platform/eigen_ext.h"
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
 
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
 namespace details {
 
-static __device__ __forceinline__ platform::float16 Exp(platform::float16 x) {
-  return ::Eigen::numext::exp(x);
-}
+// static __device__ platform::float16 Exp(platform::float16 x) {
+//  // return 1;//::Eigen::numext::exp(x);
+//  //return static_cast<platform::float16>(1);//::Eigen::numext::log(x);
+//}
 
-static __device__ __forceinline__ float Exp(float x) { return expf(x); }
+// static __device__  float Exp(float x) { return expf(x); }
 
-static __device__ __forceinline__ double Exp(double x) { return exp(x); }
+// static __device__  double Exp(double x) { return exp(x); }
 
-static __device__ __forceinline__ platform::float16 Log(platform::float16 x) {
-  return ::Eigen::numext::log(x);
-}
+// static __device__  platform::float16 Log(platform::float16 x) {
+//  return static_cast<platform::float16>(1);//::Eigen::numext::log(x);
+//}
 
-static __device__ __forceinline__ float Log(float x) { return logf(x); }
+// static __device__  float Log(float x) { return logf(x); }
 
-static __device__ __forceinline__ double Log(double x) { return log(x); }
+// static __device__  double Log(double x) { return log(x); }
 
 }  // namespace details
 
@@ -44,16 +48,16 @@ static __device__ __forceinline__ double Log(double x) { return log(x); }
 /**
  * @brief Default unary exp functor
  */
-template <typename Tx, typename Ty = Tx>
-struct ExpFunctor {
-  HOSTDEVICE inline ExpFunctor() {}
-
-  HOSTDEVICE explicit inline ExpFunctor(int n) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(details::Exp(x));
-  }
-};
+// template <typename Tx, typename Ty = Tx>
+// struct ExpFunctor {
+//  HOSTDEVICE inline ExpFunctor() {}
+//
+//  HOSTDEVICE explicit inline ExpFunctor(int n) {}
+//
+//  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+//    return static_cast<Ty>(details::Exp(x));
+//  }
+//};
 
 /**
  * @brief Default unary identity functor
@@ -107,9 +111,10 @@ struct SquareFunctor {
  */
 template <typename T>
 struct MinFunctor {
-  inline T initial() { return static_cast<T>(std::numeric_limits<T>::max()); }
+  inline T initial() { /*return static_cast<T>(std::numeric_limits<T>::max());*/
+  }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ T operator()(const T& a, const T& b) const {
     return (b < a) ? b : a;
   }
 };
@@ -120,10 +125,10 @@ struct MinFunctor {
 template <typename T>
 struct MaxFunctor {
   inline T initial() {
-    return static_cast<T>(std::numeric_limits<T>::lowest());
+    // return static_cast<T>(std::numeric_limits<T>::lowest());
   }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
+  __device__ T operator()(const T& a, const T& b) const {
     return (b > a) ? b : a;
   }
 };
@@ -135,9 +140,7 @@ template <typename T>
 struct AddFunctor {
   inline T initial() { return static_cast<T>(0.0f); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return b + a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b + a; }
 };
 
 /**
@@ -147,9 +150,7 @@ template <typename T>
 struct MulFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return b * a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b * a; }
 };
 
 /**
@@ -159,9 +160,7 @@ template <typename T>
 struct LogicalOrFunctor {
   inline T initial() { return static_cast<T>(false); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return b || a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b || a; }
 };
 
 /**
@@ -171,9 +170,7 @@ template <typename T>
 struct LogicalAndFunctor {
   inline T initial() { return static_cast<T>(true); }
 
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return b && a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b && a; }
 };
 
 /**
