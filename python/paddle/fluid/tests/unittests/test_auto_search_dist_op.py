@@ -14,6 +14,7 @@
 from __future__ import print_function
 import unittest
 import copy
+import pdb
 
 import numpy as np
 
@@ -24,11 +25,12 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.fluid.core as core
 from paddle.fluid import layers
+from paddle.distributed.auto_parallel.operators.common import DistributedOperatorImplContainer
+from paddle.distributed.auto_parallel.operators.common import DistributedOperatorImpl
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
-
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
@@ -68,7 +70,8 @@ def mlp_forward(train_program, start_program):
         sqrt_hidden_size = 32
         double_hidden_size = 64
 
-        input = static.data(name="input", shape=[hidden_size], dtype='int32')
+        input = static.data(name="input", shape=[8, 8, 16], dtype='int32')
+        input = paddle.reshape(input, [hidden_size])
         input = paddle.reshape(input, [sqrt_hidden_size, sqrt_hidden_size])
         embedding = paddle.nn.Embedding(2, batch_size, sparse=True)
         input = embedding(input)
@@ -95,6 +98,30 @@ def mlp_forward(train_program, start_program):
 
 
 class Testcompatible(unittest.TestCase):
+    def test_raise_compatible(self):
+        valid_op_dist_attr_list = []
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        loss, program, start_program = mlp_forward(program, startup_program)
+        ops = program.global_block().ops
+        for idx, op in enumerate(ops):
+            if op.type == 'transpose2':
+                dist_op_impl_container = DistributedOperatorImplContainer()
+                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, -1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                impls = DistributedOperatorImpl()
+                try:
+                    impls.is_auto_compatible(dist_op)
+                except NotImplementedError:
+                    e = False
+                self.assertTrue(e == False)
+
     def test_reshape_remove_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
@@ -110,6 +137,31 @@ class Testcompatible(unittest.TestCase):
                                                     [-1, -1, -1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
                                                      [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, -1, -1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                impls = dist_op_impl_container.get_impls()
+                for idx, impl in enumerate(impls):
+                    if idx == 1:
+                        self.assertTrue(impl.is_auto_compatible(dist_op))
+                    else:
+                        self.assertFalse(impl.is_auto_compatible(dist_op))
+
+    def test_reshape_remove_two_compatible(self):
+        valid_op_dist_attr_list = []
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        loss, program, start_program = mlp_forward(program, startup_program)
+        ops = program.global_block().ops
+        for idx, op in enumerate(ops):
+            if op.type == 'reshape2':
+                dist_op_impl_container = get_distributed_operator_impl_container(
+                    op.type)
+                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, -1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
@@ -208,168 +260,148 @@ class Testcompatible(unittest.TestCase):
                 for idx, impl in enumerate(impls):
                     self.assertTrue(impl.is_auto_compatible(dist_op))
 
-    def test_matmul_v2_2_compatible(self):
+    def test_matmulv2_matmul_2_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
-        ops = program.global_block().ops
-        for idx, op in enumerate(ops):
-            if op.type == 'matmul_v2':
-                dist_op_impl_container = get_distributed_operator_impl_container(
-                    op.type)
-                op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
-                                                    [-1, -1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [-1, -1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, -1])
-                dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    if idx == 2:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    if idx == 1:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
-                    if idx == 0:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
 
-    def test_matmul_v2_1_compatible(self):
-        valid_op_dist_attr_list = []
-        program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        loss, program, start_program = mlp_forward(program, startup_program)
+        with static.program_guard(program,
+                                  start_program), utils.unique_name.guard():
+            matmulx3 = static.data(
+                name="matmulx3", shape=[6, 2, 6], dtype='float32')
+            matmuly3 = static.data(
+                name="matmuly3", shape=[6, 6], dtype='float32')
+            output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            matmulx4 = static.data(
+                name="matmulx4", shape=[6, 6, 2, 6], dtype='float32')
+            matmuly4 = static.data(
+                name="matmuly4", shape=[6, 6, 6, 6], dtype='float32')
+            output2 = paddle.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
+        vars = program.global_block().vars
         for idx, op in enumerate(ops):
-            if op.type == 'matmul_v2':
+            if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
-                                                    [-1, 1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [1, -1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, -1])
-                dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
+                op_dist_attr = OperatorDistributedAttribute()
+                X = op.input_arg_names[0]
+                Y = op.input_arg_names[1]
+                out = op.output_arg_names[0]
+                if len(vars[X].shape) == 2 and len(vars[Y].shape) == 2:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
+                if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
+                if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, -1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
                 for idx, impl in enumerate(impls):
-                    if idx == 1:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    if idx == 0:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
                     if idx == 2:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
+                        self.assertTrue(impl.is_auto_compatible(dist_op))
 
-    def test_matmul_v2_0_compatible(self):
+    def test_matmulv2_matmul_1_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
-        ops = program.global_block().ops
-        for idx, op in enumerate(ops):
-            if op.type == 'matmul_v2':
-                dist_op_impl_container = get_distributed_operator_impl_container(
-                    op.type)
-                op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
-                                                    [-1, -1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [-1, 1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, 1])
-                dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    if idx == 0:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    if idx == 1:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
-                    if idx == 2:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
 
-    def test_matmul_2_compatible(self):
-        valid_op_dist_attr_list = []
-        startup_program = paddle.static.Program()
-        program = paddle.static.Program()
-        loss, program, start_program = mlp_forward(program, startup_program)
-        program = paddle.static.Program()
+        with static.program_guard(program,
+                                  start_program), utils.unique_name.guard():
+            matmulx3 = static.data(
+                name="matmulx3", shape=[6, 2, 6], dtype='float32')
+            matmuly3 = static.data(
+                name="matmuly3", shape=[6, 6], dtype='float32')
+            output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            matmulx4 = static.data(
+                name="matmulx4", shape=[6, 6, 6, 6], dtype='float32')
+            matmuly4 = static.data(
+                name="matmuly4", shape=[6, 6, 6, 6], dtype='float32')
+            output2 = paddle.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
+        vars = program.global_block().vars
         for idx, op in enumerate(ops):
-            if op.type == 'matmul':
+            if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
-                                                    [-1, -1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [-1, -1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, -1])
-                dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
+                op_dist_attr = OperatorDistributedAttribute()
+                X = op.input_arg_names[0]
+                Y = op.input_arg_names[1]
+                out = op.output_arg_names[0]
+                if len(vars[X].shape) == 2 and len(vars[Y].shape) == 2:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, 1])
+                    op_dist_attr.set_input_dims_mapping(Y, [1, -1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
+                if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, 1])
+                    op_dist_attr.set_input_dims_mapping(Y, [1, -1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
+                if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, 1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 1, -1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
                 for idx, impl in enumerate(impls):
-                    if idx == 2:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
                     if idx == 1:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
-                    if idx == 0:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
+                        self.assertTrue(impl.is_auto_compatible(dist_op))
 
-    def test_matmul_1_compatible(self):
+    def test_matmulv2_matmul_0_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
+        with static.program_guard(program,
+                                  start_program), utils.unique_name.guard():
+            matmulx3 = static.data(
+                name="matmulx3", shape=[6, 2, 6], dtype='float32')
+            matmuly3 = static.data(
+                name="matmuly3", shape=[6, 6], dtype='float32')
+            output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            matmulx4 = static.data(
+                name="matmulx4", shape=[6, 6, 2, 6], dtype='float32')
+            matmuly4 = static.data(
+                name="matmuly4", shape=[6, 6, 6, 6], dtype='float32')
+            output2 = paddle.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
+        vars = program.global_block().vars
         for idx, op in enumerate(ops):
-            if op.type == 'matmul':
+            if op.type == 'matmul_v2' or op.type == 'matmul':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
-                op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
-                                                    [-1, 1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [1, -1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, -1])
-                dist_op = DistributedOperator(op, op_dist_attr)
                 impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    if idx == 1:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    if idx == 0:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
-                    if idx == 2:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
-
-    def test_matmul_0_compatible(self):
-        valid_op_dist_attr_list = []
-        program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        loss, program, start_program = mlp_forward(program, startup_program)
-        ops = program.global_block().ops
-        for idx, op in enumerate(ops):
-            if op.type == 'matmul':
-                dist_op_impl_container = get_distributed_operator_impl_container(
-                    op.type)
                 op_dist_attr = OperatorDistributedAttribute()
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
-                                                    [-1, -1])
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [-1, 1])
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, 1])
-                dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
+                X = op.input_arg_names[0]
+                Y = op.input_arg_names[1]
+                out = op.output_arg_names[0]
+                if len(vars[X].shape) == 2 and len(vars[Y].shape) == 2:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, 1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, 1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
+                if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, 1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, 1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
+                if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, 1])
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, 1])
+                    dist_op = DistributedOperator(op, op_dist_attr)
                 for idx, impl in enumerate(impls):
                     if idx == 0:
                         self.assertTrue(impl.is_auto_compatible(dist_op))
-                    if idx == 1:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
-                    if idx == 2:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
 
 
 if __name__ == "__main__":

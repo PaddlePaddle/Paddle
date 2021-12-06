@@ -308,9 +308,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
         assert len(x_dims_mapping) >= len(
             y_dims_mapping), "now just support x dims > y dims"
-        if len(y_dims_mapping) != 2:
-            return False
-
         if len(x_dims_mapping) == len(y_dims_mapping) and len(
                 x_dims_mapping) == 4:
             if x_dims_mapping[:2] != y_dims_mapping[:2]:
@@ -602,10 +599,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             return False
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-
-        if len(y_dims_mapping) != 2:
-            return False
-
         # for gpt2, x dims > y dims, this is a temporary solution
         assert len(x_dims_mapping) >= len(
             y_dims_mapping), "now just support x dims > y dims"
@@ -1015,9 +1008,6 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
         if op_desc.attr('trans_x') or op_desc.attr('trans_y'):
             return False
-
-        if len(y_dims_mapping) != 2:
-            return False
         assert len(x_dims_mapping) >= len(
             y_dims_mapping), "now just support x dims > y dims"
         if len(x_dims_mapping) == len(y_dims_mapping) and len(
@@ -1305,9 +1295,6 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             return False
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        if len(y_dims_mapping) != 2:
-            return False
-
         assert len(x_dims_mapping) >= len(
             y_dims_mapping), "now just support x dims > y dims"
         if len(x_dims_mapping) == len(y_dims_mapping) and len(
