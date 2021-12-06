@@ -24,7 +24,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/cum_op.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 using Tensor = paddle::framework::Tensor;
 using LoDTensor = paddle::framework::LoDTensor;

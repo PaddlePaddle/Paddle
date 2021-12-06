@@ -68,7 +68,6 @@ class ShardingOptimizerStage2(Optimizer):
                  broadcast_fp16=False,
                  offload=False,
                  device="gpu",
-                 accumulation_steps=None,
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
@@ -86,7 +85,6 @@ class ShardingOptimizerStage2(Optimizer):
         self._optim = optim
         self._local_params = params
         self._default_device = device
-        self._accumulation_steps = accumulation_steps
 
         assert group is not None, "Distributed communication group is must be gived"
         self.group = group
@@ -135,10 +133,6 @@ class ShardingOptimizerStage2(Optimizer):
     @property
     def local_params(self):
         return self._local_params
-
-    @property
-    def accumulation_steps(self):
-        return self._accumulation_steps
 
     @property
     def param2rank(self):

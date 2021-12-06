@@ -169,8 +169,10 @@ endif()
 
 if (WITH_CINN)
   op_library(cinn_launch_op SRCS cinn_launch_op.cc cinn_launch_op.cu.cc DEPS transform_desc cinn_compiler cinn ${OP_HEADER_DEPS})
-  cc_test(cinn_launch_op_test SRCS cinn_launch_op_test.cc DEPS cinn_compiler cinn_launch_op elementwise_add_op)
-  set_tests_properties(cinn_launch_op_test PROPERTIES ENVIRONMENT OMP_NUM_THREADS=1)
+  if (WITH_TESTING)
+    cc_test(cinn_launch_op_test SRCS cinn_launch_op_test.cc DEPS cinn_compiler cinn_launch_op elementwise_add_op)
+    set_tests_properties(cinn_launch_op_test PROPERTIES ENVIRONMENT OMP_NUM_THREADS=1)
+  endif()
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
@@ -203,6 +205,7 @@ elseif(WITH_ROCM)
 else()
     cc_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc DEPS tensor device_context eigen3)
 endif()
+cc_test(share_buffer_op_cpp_test SRCS share_buffer_op_test.cc DEPS lod_tensor device_context share_buffer_op) 
 
 cc_library(tensor_formatter SRCS tensor_formatter.cc DEPS ${OP_HEADER_DEPS})
 if (WITH_PYTHON)
