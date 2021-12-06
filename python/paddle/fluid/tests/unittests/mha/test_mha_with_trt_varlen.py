@@ -50,8 +50,7 @@ class CUDNNBERT(paddle.nn.Layer):
         self.layer_norm = paddle.nn.LayerNorm(hidden)
 
         self.seq_info_infer = CUDNNSeqInfoInfer()
-        self.cudnn_mha = CUDNNMultiHeadAttention(
-            hidden, heads, seq_data_infer=self.seq_info_infer)
+        self.cudnn_mha = CUDNNMultiHeadAttention(hidden, heads)
 
     # Paddle-Inference's TRT converter use unordered_map to map inputs, but 
     # take Input Tensor by index, so name of InputSpec should follow lexicographic order

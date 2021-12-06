@@ -63,8 +63,7 @@ class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
     def __init__(self, hidden, heads):
         super(CUDNNMHAWithSeqInfer, self).__init__()
         self.seq_info_infer = CUDNNSeqInfoInfer()
-        self.cudnn_mha = CUDNNMultiHeadAttention(
-            hidden, heads, seq_data_infer=self.seq_info_infer)
+        self.cudnn_mha = CUDNNMultiHeadAttention(hidden, heads)
 
     @paddle.jit.to_static(input_spec=[
         InputSpec(

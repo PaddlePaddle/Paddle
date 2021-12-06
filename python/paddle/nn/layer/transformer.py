@@ -108,35 +108,22 @@ def _convert_attention_mask(attn_mask, dtype):
 
 
 class CUDNNSeqInfo:
-    def __init__(self, max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
-                 kv_seqlen, attn_mask):
+    def __init__(self, max_seq_len, qo_seqlen, kv_seqlen, low_win_idx,
+                 high_win_idx, attn_mask):
         self.max_seq_len = max_seq_len
-        self.low_hi_win_idx = paddle.concat([low_win_idx, hi_win_idx], axis=0)
         self.qo_kv_seqlen = paddle.concat([qo_seqlen, kv_seqlen], axis=0)
+        self.qo_kv_seqlen_host = None
+        self.low_hi_win_idx_host = paddle.concat(
+            [low_win_idx, high_win_idx], axis=0)
         self.attn_mask = attn_mask
-        # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
-        # converting dygraph to static. Since to_static would build ParallelExecutor which 
-        # would run ops async if there is no dependence. Moreover, static.save_inference_model 
-        # would prune graphs. If the nodes is not related the data flow from inputs to outputs, 
-        # it would be removed.
-        self.fake_input = None
 
 
 class CUDNNSeqInfoInfer(Layer):
-
-    id = 0
-
-    def __init__(self, enable_cache=True):
+    def __init__(self):
         super(CUDNNSeqInfoInfer, self).__init__()
-        self.enable_cache = enable_cache
-        self.id = "{}_{}".format(CUDNNSeqInfoInfer.__name__,
-                                 CUDNNSeqInfoInfer.id)
-        CUDNNSeqInfoInfer.id += 1
 
     def forward(self, attention_mask):
         max_seq_len = attention_mask.shape[-1]
-        low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
-        hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
         if (len(attention_mask.shape) == 4):
             qo_seqlen = paddle.sum(attention_mask[:, 0, 0, :] == 1,
                                    axis=1,
@@ -145,15 +132,15 @@ class CUDNNSeqInfoInfer(Layer):
             qo_seqlen = paddle.sum(attention_mask == 1, axis=1, dtype='int32')
         kv_seqlen = qo_seqlen
 
-        seq_info = CUDNNSeqInfo(max_seq_len, low_win_idx, hi_win_idx, qo_seqlen,
-                                kv_seqlen, attention_mask)
-        if self.enable_cache:
-            # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
-            # converting dygraph to static. Since to_static would build ParallelExecutor which 
-            # would run ops async if there is no dependence. Moreover, static.save_inference_model 
-            # would prune graphs. If the nodes is not related the data flow from inputs to outputs, 
-            # it would be removed.
-            seq_info.fake_input = F.mha_seq_data_prep(seq_info, self.id)
+        low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
+        hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
+
+        seq_info = CUDNNSeqInfo(max_seq_len, qo_seqlen, kv_seqlen, low_win_idx,
+                                hi_win_idx, attention_mask)
+
+        seq_info.qo_kv_seqlen_host, seq_info.low_hi_win_idx_host = \
+            F.mha_seq_data_prep(seq_info.qo_kv_seqlen,  seq_info.low_hi_win_idx_host)
+
         return seq_info
 
 
@@ -173,7 +160,6 @@ class CUDNNMultiHeadAttention(Layer):
                  dropout=0.,
                  weight_attr=None,
                  name=None,
-                 seq_data_infer=None,
                  add_to_asp=True):
         super(CUDNNMultiHeadAttention, self).__init__()
 
@@ -192,10 +178,6 @@ class CUDNNMultiHeadAttention(Layer):
 
         self.name = name
 
-        self.seq_data_cache_key = None
-        if seq_data_infer is not None:
-            self.seq_data_cache_key = seq_data_infer.id
-
         if add_to_asp:
             from paddle.fluid.contrib.sparsity import add_supported_layer
             add_supported_layer(
@@ -205,7 +187,7 @@ class CUDNNMultiHeadAttention(Layer):
 
     def forward(self, query, key, value, seq_data_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
-                                 seq_data_info, self.seq_data_cache_key)
+                                 seq_data_info)
 
     def state_dict(self,
                    destination=None,

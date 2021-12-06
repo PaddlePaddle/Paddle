@@ -80,8 +80,7 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
             v_input.stop_gradient = False
 
             seq_info_infer = CUDNNSeqInfoInfer()
-            self.cudnn_mha = CUDNNMultiHeadAttention(
-                self.vec_size, self.nheads, seq_data_infer=seq_info_infer)
+            self.cudnn_mha = CUDNNMultiHeadAttention(self.vec_size, self.nheads)
             seq_info = seq_info_infer(attn_mask_input)
             cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input,
                                               seq_info)

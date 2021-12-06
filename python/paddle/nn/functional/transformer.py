@@ -22,24 +22,26 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 import numpy as np
 
-def mha_seq_data_prep(seq_data_info, seq_data_cache_key):
+
+def mha_seq_data_prep(QKVO_seqlen, lo_hi_windows):
     helper = LayerHelper('mha_seq_data_prep', **locals())
 
-    inputs = {
-        'QKVO_seqlen': seq_data_info.qo_kv_seqlen,
-        'lo_hi_windows': seq_data_info.low_hi_win_idx
+    inputs = {'QKVO_seqlen': QKVO_seqlen, 'lo_hi_windows': lo_hi_windows}
+
+    QKVO_seqlen_host = helper.create_variable_for_type_inference(
+        'int32', stop_gradient=True)
+    lo_hi_windows_host = helper.create_variable_for_type_inference(
+        'int32', stop_gradient=True)
+
+    outputs = {
+        'QKVO_seqlen_host': QKVO_seqlen_host,
+        'lo_hi_windows_host': lo_hi_windows_host
     }
+    helper.append_op(type='mha_seq_data_prep', inputs=inputs, outputs=outputs)
+    return QKVO_seqlen_host, lo_hi_windows_host
 
-    attrs = {
-        'cache_key': seq_data_cache_key
-    }
 
-    output = helper.create_variable_for_type_inference(np.bool, stop_gradient=True)
-    helper.append_op(
-        type='mha_seq_data_prep', inputs=inputs, outputs={'fake_output': output}, attrs=attrs)
-    return output
-
-def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_key=None):
+def multi_head_attn(q, k, v, weight, meta_data, seq_data_info):
 
     # if in_dygraph_mode():
     #     pre_bias = _varbase_creator(dtype=x.dtype)
@@ -65,15 +67,11 @@ def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_ke
         'V': v,
         'W': weight,
         'QO_KV_Seqlen': seq_data_info.qo_kv_seqlen,
+        'low_high_windows_host': seq_data_info.low_hi_win_idx_host,
     }
 
-    if seq_data_info.fake_input is not None:
-        # This is for connecting computing graphs from MHA_SEQ_DATA_Prep to MHA  Op when 
-        # converting dygraph to static. Since to_static would build ParallelExecutor which 
-        # would run ops async if there is no dependence. Moreover, static.save_inference_model 
-        # would prune graphs. If the nodes is not related the data flow from inputs to outputs, 
-        # it would be removed.
-        inputs['fake_input'] = seq_data_info.fake_input
+    if seq_data_info.qo_kv_seqlen_host is not None:
+        inputs['QO_KV_Seqlen_host'] = seq_data_info.qo_kv_seqlen_host
 
     attrs = {
         'cache_key': weight.name,
@@ -89,9 +87,6 @@ def multi_head_attn(q, k, v, weight, meta_data, seq_data_info, seq_data_cache_ke
         'attn_max_kv_seq_len': seq_data_info.max_seq_len,
         'attn_beam_size': 1
     }
-
-    if seq_data_cache_key is not None:
-        attrs.update({'seq_data_key':seq_data_cache_key})
 
     output = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
