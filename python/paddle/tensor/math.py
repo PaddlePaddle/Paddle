@@ -2612,7 +2612,7 @@ def atan2(x, y, name=None):
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
-    
+
 def logit(x, eps=0.0, name=None):
     r"""
     This function generates a new tensor with the logit of the elements of input.

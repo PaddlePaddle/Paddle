@@ -25,8 +25,8 @@ namespace operators {
 class LogitOp : public framework::OperatorWithKernel {
  public:
   LogitOp(const std::string &type, const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
+          const framework::VariableNameMap &outputs,
+          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
@@ -89,7 +89,7 @@ class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Logit operator");
     AddOutput("Out", "Output of Logit operator");
     AddAttr<float>("eps",
-                  "(float, default 1e-6f) the epsilon for input clamp bound")
+                   "(float, default 1e-6f) the epsilon for input clamp bound")
         .SetDefault(1e-6f);
     AddComment(R"DOC(
 Logit Operator. 

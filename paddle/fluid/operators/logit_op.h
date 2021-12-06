@@ -30,10 +30,10 @@ template <typename T>
 struct LogitFunctor {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out, float eps) const {
-      // logit(x) = ln(x/(1-x))
-      auto tmp_x = (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
-      out.device(d) = (tmp_x/(static_cast<T>(1)-tmp_x)).log();
-    
+    // logit(x) = ln(x/(1-x))
+    auto tmp_x =
+        (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
+    out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
   }
 };
 
@@ -41,9 +41,11 @@ template <typename T>
 struct LogitGradFunctor {
   template <typename Device, typename X, typename dOut, typename dX, typename P>
   void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
-    //logit(x)' = 1/(x*(1-x))
-    dx.device(d) = (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
-        .select(p.constant(static_cast<T>(0)), dout * (static_cast<T>(1)/((static_cast<T>(1) - x) * x)));
+    // logit(x)' = 1/(x*(1-x))
+    dx.device(d) =
+        (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
+            .select(p.constant(static_cast<T>(0)),
+                    dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
   }
 };
 

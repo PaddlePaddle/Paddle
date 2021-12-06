@@ -20,9 +20,10 @@ REGISTER_OP_CUDA_KERNEL(
     logit, ops::LogitKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LogitKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LogitKernel<paddle::platform::CUDADeviceContext,
-                    paddle::platform::float16>);
+                     paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
-    logit_grad, ops::LogitGradKernel<paddle::platform::CUDADeviceContext, float>,
+    logit_grad,
+    ops::LogitGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LogitGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LogitGradKernel<paddle::platform::CUDADeviceContext,
-                        paddle::platform::float16>);
+                         paddle::platform::float16>);
