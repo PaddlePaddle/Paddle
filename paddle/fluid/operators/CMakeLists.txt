@@ -33,6 +33,7 @@ if (WITH_PSCORE)
 endif()
 
 add_subdirectory(amp)
+add_subdirectory(mha)
 
 add_subdirectory(reader)
 
