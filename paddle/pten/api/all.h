@@ -36,11 +36,12 @@ limitations under the License. */
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
-#endif
 
 // original custom op headers
 #include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/api/ext/op_meta_info.h"
+#endif
+
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/exception.h"
-#include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/ext/place.h"
