@@ -237,11 +237,6 @@ class EagerTensor final {
               "from VarBase, only LoDTensor and "
               "Tensor are supported for now"));
         }
-      } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
-            "not initialized!",
-            name()));
       }
     }
   }
