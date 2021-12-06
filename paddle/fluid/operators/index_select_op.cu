@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/index_select_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -110,22 +110,14 @@ class IndexSelectCUDAKernel : public framework::OpKernel<T> {
           (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
                                                 numel, stride, size, delta);
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     } else {
       const int* index_data = index->data<int>();
       index_select_cuda_kernel<T, int><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                              PADDLE_CUDA_NUM_THREADS,
                                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           in_data, out_data, index_data, numel, stride, size, delta);
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
   }
 };
@@ -181,11 +173,7 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
                                                 index_data, index_nums,
                                                 out_nums, stride, size, delta);
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     } else {
       const int* index_data = index->data<int>();
       index_select_grad_cuda_kernel<T, int><<<
@@ -193,11 +181,7 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
                                                 index_data, index_nums,
                                                 out_nums, stride, size, delta);
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
   }
 };

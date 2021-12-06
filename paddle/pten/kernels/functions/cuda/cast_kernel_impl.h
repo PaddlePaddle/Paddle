@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 namespace pten {
 namespace detail {
 using CUDAContext = paddle::platform::CUDADeviceContext;
