@@ -33,7 +33,7 @@ class SkipLayerNormFusePassTest(PassTest):
             out = fluid.layers.layer_norm(input=elementwise_out)
 
         self.fetch_list = [out]
-        self.pass_names = "skip_layernorm_fuse_pass"
+        self.pass_names = "ir_skip_layernorm_fuse_pass"
         self.fused_op_type = "skip_layernorm"
         self.num_fused_ops = 1
         self.graph_attrs = {
