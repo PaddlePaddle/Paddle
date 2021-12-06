@@ -31,7 +31,7 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
              \            /
              elementwise_add     
                     |
-                layer_norm (Scale Bias)
+          layer_norm (Scale Bias)
     """
 
     def sample_predictor_configs(self, program_config):
