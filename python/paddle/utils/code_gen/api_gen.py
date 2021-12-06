@@ -111,7 +111,7 @@ class API:
 
     def gene_api_declaration(self):
         return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
+PADDLE_API {self.output} {self.api}({self.args['args_declare']});
 """
 
     def gene_kernel_select(self, input_names, attrs, kernel):
@@ -312,7 +312,7 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
     def gene_api_code(self):
         if self.is_base_api:
             return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 {self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs'], self.infer_meta, self.kernel['param'])}
 
@@ -323,7 +323,7 @@ PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
 
         else:
             return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
   return {self.invoke};
 }}
 """
