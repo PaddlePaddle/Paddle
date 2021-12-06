@@ -29,7 +29,6 @@ static void CheckInputQueueStatus(const std::vector<Variable*>& vars) {
           "Input Variables of MapOp should hold "
           "LoDTensorBlockingQueueHolder type"));
     auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-    LOG(ERROR) << "CheckAndInitOutputQueue get queue: " << queue;
     PADDLE_ENFORCE_NE(queue, nullptr,
         platform::errors::InvalidArgument(
           "Input LoDTensorBlockingQueue is not initialized"));
@@ -39,7 +38,6 @@ static void CheckInputQueueStatus(const std::vector<Variable*>& vars) {
 static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capacity) {
   for (auto var : vars) {
     if (var->IsInitialized()) {
-      LOG(ERROR) << "CheckAndInitOutputQueue is LoDTensorBlockingQueueHolder: " << var->IsType<LoDTensorBlockingQueueHolder>();
       PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
           platform::errors::InvalidArgument(
             "Output Variables of MapOp should hold "
@@ -71,7 +69,7 @@ template <typename DeviceContext, typename T>
 class MapOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "MapOpKernel enter";
+    // LOG(ERROR) << "MapOpKernel enter";
     // // Step1: get output vars and attrs
     // auto input_vars = ctx.MultiInputVar("In");
     // auto output_vars = ctx.MultiOutputVar("Out");

@@ -56,7 +56,7 @@ def map(map_func, inputs):
 
         inputs = _to_list(inputs)
         program_inputs = [
-            map_program.create_var(
+            map_block.create_var(
                 name=unique_name.generate("map_sub"),
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False) for i in range(len(inputs))]
@@ -66,7 +66,7 @@ def map(map_func, inputs):
         input_var_names = [v.name for v in program_inputs]
         output_var_names = [v.name for v in program_outputs]
 
-        program_id = _hash_with_id(map_program)
+        program_id = _hash_with_id(main_program)
         start_op_index = 0
         end_op_index = map_block.desc.op_size()
 

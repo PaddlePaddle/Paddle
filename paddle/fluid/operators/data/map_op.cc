@@ -68,10 +68,10 @@ class MapOp : public framework::OperatorBase {
     auto start_op_index = Attr<int64_t>("start_op_index");
     auto end_op_index = Attr<int64_t>("end_op_index");
     auto program_id = Attr<int64_t>("program_id");
-    LOG(ERROR) << "MapOpKernel block id: " << map_block->ID();
-    for (auto var_name: map_block->LocalVarNames()) {
-      LOG(ERROR) << "MapOpKernel map_block vars: " << var_name;
-    }
+    // LOG(ERROR) << "MapOpKernel block id: " << map_block->ID();
+    // for (auto var_name: map_block->LocalVarNames()) {
+    //   LOG(ERROR) << "MapOpKernel map_block vars: " << var_name;
+    // }
 
     auto input_queues = GetQueueVecFromVariableVec(input_vars);
     auto output_queues = GetQueueVecFromVariableVec(output_vars);

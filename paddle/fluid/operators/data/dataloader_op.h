@@ -38,9 +38,8 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
         program_id, global_block, ctx.GetPlace(), start_op_index, end_op_index,
         output_var_names, prefetch_depth);
 
-    LOG(ERROR) << "Get Pipeline finsih";
     pipeline->ReadNext(output_vars);
-    LOG(ERROR) << "ReadNext finish";
+    LOG(ERROR) << "DataLoaderOpKernel finish";
   }
 };
 
