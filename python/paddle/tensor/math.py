@@ -2621,7 +2621,10 @@ def logit(x, eps=0.0, name=None):
         .. math::
 
             logit(x) = ln(\frac{x}{1-x})yy 
-            
+
+    where
+        .. math::
+
             x_i=\left\{
             \begin{aligned}
             x_i & &if &eps == Default \\
