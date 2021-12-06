@@ -807,11 +807,9 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
-                           ->AsInput()
                            ->assert_is_persistable_var();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
-                          ->assert_is_op_input("batch_norm", "X")
                           ->assert_is_only_output_of_op("elementwise_add");
   } else {
     // Conv output as BN input
