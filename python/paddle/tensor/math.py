@@ -634,6 +634,7 @@ def minimum(x, y, name=None):
 def fmax(x, y, name=None):
     """
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
     The equation is:
 
     .. math::
@@ -694,6 +695,7 @@ def fmax(x, y, name=None):
 def fmin(x, y, name=None):
     """
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
     The equation is:
 
     .. math::

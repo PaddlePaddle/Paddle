@@ -53,6 +53,25 @@ class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
   }
 };
 
+class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "FMax"; }
+  std::string GetEquation() const override { return "Out = fmax(X, Y)"; }
+
+  void AddInputX() override {
+    AddInput("X", "The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y", "The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise maxima.";
+  }
+};
+
 template <typename T>
 class ElementwiseMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -122,7 +141,7 @@ REGISTER_OP_VERSION(elementwise_max)
             1.0f));
 
 REGISTER_OPERATOR(elementwise_fmax, ops::ElementwiseOp,
-                  ops::ElementwiseMaxOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseFMaxOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseFMaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseFMaxGradOpMaker<paddle::imperative::OpBase>);
 
@@ -131,21 +150,14 @@ REGISTER_OPERATOR(elementwise_fmax_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_fmax,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, paddle::platform::float16>,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_fmax_grad,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, paddle::platform::float16>,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_VERSION(elementwise_fmax)
-    .AddCheckpoint(
-        R"ROC(Register elementwise_fmax for adding the attribute of Scale_y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Scale_y",
-            "In order to support the function of scaling the input Y when "
-            "using the operator of elementwise_fmax.",
-            1.0f));

@@ -56,12 +56,14 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     elementwise_fmin,
     ops::ElementwiseFMinKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseFMinKernel<paddle::platform::CUDADeviceContext, paddle::platform::float16>,
     ops::ElementwiseFMinKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseFMinKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseFMinKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_fmin_grad,
     ops::ElementwiseFMinGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseFMinGradKernel<paddle::platform::CUDADeviceContext, paddle::platform::float16>,
     ops::ElementwiseFMinGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseFMinGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseFMinGradKernel<paddle::platform::CUDADeviceContext, int64_t>);

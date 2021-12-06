@@ -18,10 +18,13 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+from op_test import OpTest
 
 
 class ApiFMaxTest(unittest.TestCase):
+    """ApiFMaxTest"""
     def setUp(self):
+        """setUp"""
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
@@ -40,6 +43,7 @@ class ApiFMaxTest(unittest.TestCase):
         self.np_expected4 = np.fmax(self.input_b, self.input_c)
 
     def test_static_api(self):
+        """test_static_api"""
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -86,6 +90,7 @@ class ApiFMaxTest(unittest.TestCase):
         self.assertTrue(np.allclose(res, self.np_expected4))
 
     def test_dynamic_api(self):
+        """test_dynamic_api"""
         paddle.disable_static()
         x = paddle.to_tensor(self.input_x)
         y = paddle.to_tensor(self.input_y)
@@ -111,3 +116,70 @@ class ApiFMaxTest(unittest.TestCase):
         res = paddle.fmax(b, c)
         res = res.numpy()
         self.assertTrue(np.allclose(res, self.np_expected4))
+
+
+class TestElementwiseFmaxOp(OpTest):
+    """TestElementwiseFmaxOp"""
+    def setUp(self):
+        """setUp"""
+        self.op_type = "elementwise_fmax"
+        # If x and y have the same value, the max() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        """test_check_output"""
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        """test_check_grad_normal"""
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        """test_check_grad_ingore_x"""
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        """test_check_grad_ingore_y"""
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+
+
+class TestElementwiseFmax2Op(OpTest):
+    """TestElementwiseFmax2Op"""
+    def setUp(self):
+        """setUp"""
+        self.op_type = "elementwise_fmax"
+        # If x and y have the same value, the max() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        y[2, 10:] = np.nan 
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        """test_check_output"""
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        """test_check_grad_normal"""
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        """test_check_grad_ingore_x"""
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        """test_check_grad_ingore_y"""
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))

@@ -46,8 +46,8 @@ class ElementwiseFMinKernel : public framework::OpKernel<T> {
 
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<MinFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          MinFunctor<T>(), z);
+    ElementwiseComputeEx<FMinFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          FMinFunctor<T>(), z);
   }
 };
 
