@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -49,17 +48,6 @@ template <typename T>
 struct MulFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
 };
-
-template <typename T>
-struct MulFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& x,
-      const paddle::platform::complex<T>& y) const {
-    paddle::platform::complex<T> y_conj(y.real, -y.imag);
-    return x * y_conj;
-  }
-};
-
 template <typename T>
 struct InverseMulFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b * a; }
