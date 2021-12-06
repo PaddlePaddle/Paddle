@@ -213,7 +213,7 @@ PassBase._BEFORE_WHITE_LISTS_DICT = {
 # The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
 # applied after any of pass [v1, v2, ..., vn] is applied
 PassBase._AFTER_WHITE_LISTS_DICT = {
-    # Add more black lists here 
+    # Add more white lists here 
 }
 
 PassBase._COMMON_RULES = [
