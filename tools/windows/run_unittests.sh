@@ -103,7 +103,6 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_emb_eltwise_layernorm$|\
 ^test_trt_convert_pool2d$|\
 ^test_trt_conv3d_op$|\
-^test_trt_matmul_quant_dequant$|\
 ^test_trt_subgraph_pass$|\
 ^test_trt_convert_dropout$|\
 ^test_trt_convert_hard_sigmoid$|\
@@ -116,6 +115,14 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_elementwise$|\
 ^test_trt_convert_matmul$|\
 ^test_trt_convert_scale$"
+
+# /*==================Fixed Disabled Windows GPU inference_api_test unittests==============================*/
+disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
+^test_trt_dynamic_shape_ernie$|\
+^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
+^lite_resnet50_test$|\
+^test_trt_dynamic_shape_transformer_prune$|\
+^paddle_infer_api_copy_tensor_tester$"
 
 # /*============================================================================*/
 
@@ -176,6 +183,7 @@ long_time_test="^test_gru_op$|\
 ^test_transformer$|\
 ^test_imperative_auto_mixed_precision$|\
 ^test_imperative_optimizer_v2$|\
+^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
@@ -333,7 +341,7 @@ if nvcc --version | grep 11.2; then
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
-    (ctest -R "$inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
+    (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
     wait;
     collect_failed_tests
     set -e
