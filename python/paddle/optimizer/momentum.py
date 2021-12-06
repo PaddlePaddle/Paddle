@@ -83,6 +83,7 @@ class Momentum(Optimizer):
 
             import paddle
             import numpy as np
+
             inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
@@ -98,8 +99,9 @@ class Momentum(Optimizer):
             #Note that the learning_rate of linear_2 is 0.01.
             linear_1 = paddle.nn.Linear(10, 10)
             linear_2 = paddle.nn.Linear(10, 10)
+
             inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
+            out = linear_1(inp) 
             out = linear_2(out)
             loss = paddle.mean(out)
             momentum = paddle.optimizer.Momentum(
