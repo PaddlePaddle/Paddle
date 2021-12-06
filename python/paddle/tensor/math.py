@@ -2614,14 +2614,22 @@ def atan2(x, y, name=None):
         return out
 
 def logit(x, eps=0.0, name=None):
-    r"""
+    """
     This function generates a new tensor with the logit of the elements of input.
-
 
     Equation:
         .. math::
 
-            logit=ln\left ( {\frac {x} {1-x}} \right )   (x = eps when (x < eps || x > 1 - eps)) 
+            logit(x) = ln(\frac{x}{1-x})yy 
+            
+            x_i=\left\{
+            \begin{aligned}
+            x_i & &if &eps == Default \\
+            eps & &  if&x_i < eps\\
+            x_i & & if&eps <= x_i<=1-eps \\
+            1-eps &  & if&x_i > 1-eps
+            \end{aligned}
+            \right.
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64. If x[i] < eps or x[i] > 1 - eps, x[i] = eps.
