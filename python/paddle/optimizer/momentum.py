@@ -549,7 +549,7 @@ class Momentum(Optimizer):
                             # lr
                             lr = self._create_param_lr(param_and_grad)
                             self.lr_dict['FP16_LODTensor'].append(lr)
-
+            '''
             multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
             for key in multi_tensor_list:
                 if len(self.param_dict[key]) > 0:
@@ -566,6 +566,7 @@ class Momentum(Optimizer):
                         'regularization_coeff',
                         self.regularization_coeff_dict[key], 'multi_precision',
                         self._multi_precision)
+            '''
             return None
 
     def _update_param_group(self, parameters):
