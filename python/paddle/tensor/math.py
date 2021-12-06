@@ -2725,17 +2725,17 @@ def deg2rad(x, name=None):
             type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
         return out
 
-def gcd(x1, x2, name=None):
+def gcd(x, y, name=None):
     """
-    Computes the element-wise greatest common divisor (GCD) of input |x1| and |x2|.
-    Both x1 and x2 must have integer types.
+    Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
+    Both x and y must have integer types.
     
     Note:
-        gcd(0,0)=0, gcd(0, x2)=|x2|
+        gcd(0,0)=0, gcd(0, y)=|y|
 
     Args:
-        x1, x2 (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x1.shape != x2.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+        x, y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2772,47 +2772,47 @@ def gcd(x1, x2, name=None):
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [4])
     """
-    shape = paddle.broadcast_shape(x1.shape, x2.shape)
-    x1 = paddle.broadcast_to(x1, shape)
-    x2 = paddle.broadcast_to(x2, shape)
-    x1 = paddle.abs(x1)
-    x2 = paddle.abs(x2)
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    x = paddle.broadcast_to(x, shape)
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs(x)
+    y = paddle.abs(y)
 
-    def _gcd_cond_fn(x1, x2):
-        return paddle.any(x2 != 0)
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
 
-    def _gcd_body_fn(x1, x2):
-        # paddle.mod will raise an error when any element of x2 is 0. To avoid
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
         # that, we change those zeros to ones. Their values don't matter because
         # they won't be used.
-        x2_not_equal_0 = (x2 != 0)
-        x2_safe = paddle.where(x2_not_equal_0, x2, paddle.ones(x2.shape, x2.dtype))
-        x1, x2 = (paddle.where(x2_not_equal_0, x2, x1),
-                  paddle.where(x2_not_equal_0, paddle.mod(x1, x2_safe),paddle.zeros(x2.shape, x2.dtype)))
-        return (paddle.where(x1 < x2, x2, x1), paddle.where(x1 < x2, x1, x2))
+        y_not_equal_0 = (y != 0)
+        y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
+        x, y = (paddle.where(y_not_equal_0, y, x),
+                  paddle.where(y_not_equal_0, paddle.mod(x, y_safe),paddle.zeros(y.shape, y.dtype)))
+        return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
 
     if in_dygraph_mode():
-        while _gcd_cond_fn(x1, x2):
-            x1, x2 = _gcd_body_fn(x1, x2)
+        while _gcd_cond_fn(x, y):
+            x, y = _gcd_body_fn(x, y)
 
-        return x1
+        return x
     else:
-        check_variable_and_dtype(x1, 'x1', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
-        check_variable_and_dtype(x2, 'x2', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
-        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x1, x2])
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
         return out
 
-def lcm(x1, x2, name=None):
+def lcm(x, y, name=None):
     """
-    Computes the element-wise least common multiple (LCM) of input |x1| and |x2|.
-    Both x1 and x2 must have integer types.
+    Computes the element-wise least common multiple (LCM) of input |x| and |y|.
+    Both x and y must have integer types.
     
     Note:
-        lcm(0,0)=0, lcm(0, x2)=0
+        lcm(0,0)=0, lcm(0, y)=0
 
     Args:
-        x1, x2 (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x1.shape != x2.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+        x, y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2849,13 +2849,13 @@ def lcm(x1, x2, name=None):
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [60])
     """
-    d = paddle.gcd(x1, x2)
-    # paddle.mod will raise an error when any element of x2 is 0. To avoid
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
     # that, we change those zeros to ones. Their values don't matter because
     # they won't be used.
     d_equal_0 = paddle.equal(d, 0)
     d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
-    out = paddle.where(d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x1 * x2) // d_safe)
+    out = paddle.where(d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe)
     return out
 
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):

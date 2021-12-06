@@ -27,67 +27,67 @@ paddle.enable_static()
 
 class TestGcdAPI(unittest.TestCase):
     def setUp(self):
-        self.x1_np = 12
-        self.x2_np = 20
-        self.x1_shape = [1]
-        self.x2_shape = [1]
+        self.x_np = 12
+        self.y_np = 20
+        self.x_shape = [1]
+        self.y_shape = [1]
 
     def test_static_graph(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x1 = fluid.data(name='input1', dtype='int32', shape=self.x1_shape)
-            x2 = fluid.data(name='input2', dtype='int32', shape=self.x2_shape)
-            out = paddle.gcd(x1, x2)
+            x = fluid.data(name='input1', dtype='int32', shape=self.x_shape)
+            y = fluid.data(name='input2', dtype='int32', shape=self.y_shape)
+            out = paddle.gcd(x, y)
 
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
             res = exe.run(fluid.default_main_program(),
-                          feed={'input1': self.x1_np,
-                                'input2': self.x2_np},
+                          feed={'input1': self.x_np,
+                                'input2': self.y_np},
                           fetch_list=[out])
-            self.assertTrue((np.array(res[0]) == np.gcd(self.x1_np, self.x2_np)
+            self.assertTrue((np.array(res[0]) == np.gcd(self.x_np, self.y_np)
                              ).all())
 
     def test_dygraph(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor(self.x1_np)
-        x2 = paddle.to_tensor(self.x2_np)
-        result = paddle.gcd(x1, x2)
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        result = paddle.gcd(x, y)
         self.assertEqual(
-            np.allclose(np.gcd(self.x1_np, self.x2_np), result.numpy()), True)
+            np.allclose(np.gcd(self.x_np, self.y_np), result.numpy()), True)
 
         paddle.enable_static()
 
 
 class TestGcdAPI2(TestGcdAPI):
     def setUp(self):
-        self.x1_np = np.arange(6).astype(np.int32)
-        self.x2_np = np.array([20]).astype(np.int32)
-        self.x1_shape = [6]
-        self.x2_shape = [1]
+        self.x_np = np.arange(6).astype(np.int32)
+        self.y_np = np.array([20]).astype(np.int32)
+        self.x_shape = [6]
+        self.y_shape = [1]
 
 
 class TestGcdAPI3(TestGcdAPI):
     def setUp(self):
-        self.x1_np = 0
-        self.x2_np = 20
-        self.x1_shape = [1]
-        self.x2_shape = [1]
+        self.x_np = 0
+        self.y_np = 20
+        self.x_shape = [1]
+        self.y_shape = [1]
 
 
 class TestGcdAPI4(TestGcdAPI):
     def setUp(self):
-        self.x1_np = 0
-        self.x2_np = 0
-        self.x1_shape = [1]
-        self.x2_shape = [1]
+        self.x_np = 0
+        self.y_np = 0
+        self.x_shape = [1]
+        self.y_shape = [1]
 
 
 class TestGcdAPI5(TestGcdAPI):
     def setUp(self):
-        self.x1_np = 12
-        self.x2_np = -20
-        self.x1_shape = [1]
-        self.x2_shape = [1]
+        self.x_np = 12
+        self.y_np = -20
+        self.x_shape = [1]
+        self.y_shape = [1]
