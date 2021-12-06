@@ -59,6 +59,80 @@ void GetMLUDeviceHandle(int device_ordinal, mluDeviceHandle* device);
 //! Get the compute capability of the ith MLU (format: major * 10 + minor)
 int GetMLUComputeCapability(int id);
 
+//! Get the memory usage of current MLU device.
+void MLUMemoryUsage(size_t *available, size_t *total);
+
+//! Get the available memory to allocate, which is the size of available mlu
+//! minus reserving.
+size_t MLUAvailableMemToAlloc();
+
+//! Get the maximum allocation size of current MLU device.
+size_t MLUMaxAllocSize();
+
+//! Get the initial allocation size of current MLU device.
+size_t MLUInitAllocSize();
+
+//! Get the re-allocation size of current MLU device.
+size_t MLUReallocSize();
+
+//! Get the minimum chunk size for MLU buddy allocator.
+size_t MLUMinChunkSize();
+
+//! Get the maximum chunk size for MLU buddy allocator.
+size_t MLUMaxChunkSize();
+
+//! Copy memory from address device to host asynchronously.
+void MLUMemcpyD2HAsync(void* dst, const void* src, size_t num, mluStream stream);
+
+//! Copy memory from address device to host synchronously.
+void MLUMemcpyD2HSync(void* dst, const void* src, size_t num);
+
+//! Copy memory from address host to device asynchronously.
+void MLUMemcpyH2DAsync(void* dst, const void* src, size_t num, mluStream stream);
+
+//! Copy memory from address host to device synchronously.
+void MLUMemcpyH2DSync(void* dst, const void* src, size_t num);
+
+//! Copy memory from address device to device asynchronously in a single device.
+void MLUMemcpyD2DAsync(void* dst, const void* src, size_t num, mluStream stream);
+
+//! Copy memory from address device to device synchronously in a single device.
+void MLUMemcpyD2DSync(void* dst, const void* src, size_t num);
+
+//! Copy memory from one device to another device asynchronously.
+void MLUMemcpyPeerAsync(void* dst, int dst_place,
+                        const void* src, int src_place,
+                        size_t num, mluStream stream);
+
+//! Copy memory from one device to another device synchronously.
+void MLUMemcpyPeerSync(void* dst, int dst_place,
+                       const void* src, int src_place,
+                       size_t num);
+
+//! Set memory dst with value count size asynchronously
+void MLUMemsetAsync(void *dst, int value, size_t count, mluStream stream);
+
+//! Blocks until stream has completed all operations.
+void MLUStreamSync(mluStream stream);
+
+//! MLUMalloc with recorded info
+cnrtStatus RecordedMLUMalloc(void **ptr, size_t size, int dev_id);
+
+//! MLUFree with recorded info
+void RecordedMLUFree(void *p, size_t size, int dev_id);
+
+//! Get available and total mlu memory with considering limitation
+bool RecordedMLUMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
+                            size_t *actual_total, int dev_id);
+
+//! Get recorded mluMalloc size. If record is disabled, return 0.
+uint64_t RecordedMLUMallocSize(int dev_id);
+
+bool IsMLUMallocRecorded(int dev_id);
+
+//! Empty idle cached memory held by the allocator.
+void EmptyCache(void);
+
 class MLUDeviceGuard {
  public:
   explicit inline MLUDeviceGuard(int dev_id) {
