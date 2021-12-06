@@ -32,9 +32,6 @@ namespace framework {
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
-static std::unordered_map<std::string, paddle::framework::AttributeMap>
-    operators_with_attrs = {};
-
 static std::unordered_set<std::string> operators_to_skip = {
     "chunk_eval",  // Stupid tensor name
     "minus",          "pull_sparse",     "pull_box_extended_sparse",
