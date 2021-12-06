@@ -46,6 +46,8 @@ void ComputeInterceptor::PrepareDeps() {
                           "Source ComputeInterceptor must run at least one "
                           "times, but now max_run_times=%ld",
                           node_->max_run_times()));
+    in_readys_.emplace(-1,
+                       std::make_pair(std::numeric_limits<int64_t>::max(), 0));
   }
 
   // If there is no downstream or every downstream is in different rank,
@@ -55,13 +57,16 @@ void ComputeInterceptor::PrepareDeps() {
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
-  // source node has no upstream, data_is_ready is send by carrier or others
-  if (is_source_ && up_id == -1) return;
-
   auto it = in_readys_.find(up_id);
   PADDLE_ENFORCE_NE(it, in_readys_.end(),
                     platform::errors::NotFound(
                         "Cannot find upstream=%lld in in_readys.", up_id));
+
+  // source node has no upstream, data_is_ready is send by carrier or others
+  if (is_source_ && up_id == -1) {
+    it->second.second = GetTaskNode()->max_run_times();
+    return;
+  }
 
   auto max_ready_size = it->second.first;
   auto ready_size = it->second.second;
@@ -93,7 +98,11 @@ bool ComputeInterceptor::IsInputReady() {
   for (auto& ins : in_readys_) {
     auto ready_size = ins.second.second;
     // not ready, return false
-    if (ready_size == 0) return false;
+    if (ready_size == 0) {
+      VLOG(3) << "Interceptor " << GetInterceptorId()
+              << "'s upstreams aren't all ready.";
+      return false;
+    }
   }
   return true;
 }
@@ -103,14 +112,23 @@ bool ComputeInterceptor::CanWriteOutput() {
     auto max_buffer_size = outs.second.first;
     auto used_size = outs.second.second;
     // full, return false
-    if (used_size == max_buffer_size) return false;
+    if (used_size == max_buffer_size) {
+      VLOG(3) << "Interceptor " << GetInterceptorId()
+              << "'s out buffer is full.";
+      return false;
+    }
   }
   return true;
 }
 
 // only source node need reset
 bool ComputeInterceptor::ShouldReset() {
-  return is_source_ && (step_ == node_->max_run_times());
+  if (is_source_ && step_ == node_->max_run_times()) {
+    VLOG(3) << "Interceptor " << GetInterceptorId()
+            << " should reset for step: " << step_ << ".";
+    return true;
+  }
+  return false;
 }
 
 void ComputeInterceptor::SendDataReadyToDownStream() {
@@ -130,7 +148,8 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
     InterceptorMessage ready_msg;
     ready_msg.set_message_type(DATA_IS_READY);
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
-            << " Send data_is_ready msg to " << down_id;
+            << " Send data_is_ready msg to " << down_id
+            << " for step: " << step_;
     Send(down_id, ready_msg);
   }
 }
@@ -147,23 +166,43 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
             ready_size));
     ins.second.second = ready_size;
 
+    VLOG(3) << "ComputeInterceptor " << interceptor_id_
+            << " Reply data_is_useless msg to " << up_id
+            << " for step: " << step_;
+    if (up_id == -1) return;
+
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATE_IS_USELESS);
-    VLOG(3) << "ComputeInterceptor " << interceptor_id_
-            << " Reply data_is_useless msg to " << up_id;
     Send(up_id, reply_msg);
   }
 }
 
 void ComputeInterceptor::RunOps() {
   VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
-          << step_ << " time.";
+          << step_ + 1 << " time.";
   for (auto op : node_->ops()) {
     op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
   }
 }
 
 void ComputeInterceptor::Run() {
+  // If there is no limit, source interceptor can be executed
+  // an unlimited number of times.
+  // Now source node can only run max_run_times.
+  if (ShouldReset()) {
+    for (auto& out_buff : out_buffs_) {
+      // buffer is using
+      if (out_buff.second.second != 0) {
+        VLOG(3) << "Interceptor " << GetInterceptorId()
+                << " out buffer for downstream: " << out_buff.first
+                << "'s counter is: " << out_buff.second.second
+                << ". Cannot be reset.";
+        return;
+      }
+    }
+    step_ = 0;  // reset
+  }
+
   while (IsInputReady() && CanWriteOutput() && !ShouldReset()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
@@ -180,18 +219,6 @@ void ComputeInterceptor::Run() {
               << " is stopping carrier.";
       StopCarrier();
     }
-  }
-
-  // If there is no limit, source interceptor can be executed
-  // an unlimited number of times.
-  // Now source node can only run max_run_times.
-  if (ShouldReset()) {
-    for (auto& out_buff : out_buffs_) {
-      // buffer is using
-      if (out_buff.second.second != 0) return;
-    }
-    step_ = 0;  // reset
-    return;
   }
 }
 
