@@ -152,6 +152,7 @@ class Linear(Layer):
                  bias_attr=None,
                  name=None):
         super(Linear, self).__init__()
+        core.nvprof_nvtx_push("paddle.nn.Linear __init__")
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -168,6 +169,7 @@ class Linear(Layer):
         self.name = name
 
     def forward(self, input):
+        core.nvprof_nvtx_push("paddle.nn.Linear forward")
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name)
         return out

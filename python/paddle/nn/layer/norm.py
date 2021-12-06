@@ -507,6 +507,7 @@ class LayerNorm(Layer):
                  bias_attr=None,
                  name=None):
         super(LayerNorm, self).__init__()
+        core.nvprof_nvtx_push("paddle.nn.LayerNorm __init__")
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = [normalized_shape]
 
@@ -531,6 +532,7 @@ class LayerNorm(Layer):
                 attr=self._bias_attr, shape=param_shape, is_bias=True)
 
     def forward(self, input):
+        core.nvprof_nvtx_push("paddle.nn.LayerNorm forward")
         return layer_norm(
             input,
             normalized_shape=self._normalized_shape,

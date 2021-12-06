@@ -288,8 +288,6 @@ class AmpScaler(object):
                     ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
                            )
             ]
-        core.nvprof_nvtx_pop()
-        core.nvprof_nvtx_push("check_finite_third: _C_ops")
         if len(param_grads_fp16):
             _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
                                             param_grads_fp16,
@@ -304,7 +302,6 @@ class AmpScaler(object):
             self._found_inf = self._temp_found_inf_fp16
         else:
             self._found_inf = self._temp_found_inf_fp32
-        core.nvprof_nvtx_pop()
 
         optimizer_state["state"] = OptimizerState.UNSCALED
 
