@@ -29,6 +29,7 @@
 namespace paddle {
 namespace framework {
 
+/* --- Static maps to handle corner cases --- */
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
@@ -45,6 +46,122 @@ static std::string LegalizeVariableName(const std::string& var_name) {
   return ret;
 }
 
+/* --- Helper Objects --- */
+class ForwardGenerationInfo {
+ public:
+  const std::string& GetOpType() const { return op_type_; }
+  void SetOpType(const std::string& op_type) { op_type_ = op_type; }
+
+  const std::unordered_map<std::string, size_t>& GetFwdInputsNamePosMap()
+      const {
+    return fwd_inputs_name_pos_map_;
+  }
+  std::unordered_map<std::string, size_t>* GetMutableFwdInputsNamePosMap() {
+    return &fwd_inputs_name_pos_map_;
+  }
+
+  const std::unordered_map<std::string, size_t>& GetFwdOutputsNamePosMap()
+      const {
+    return fwd_outputs_name_pos_map_;
+  }
+  std::unordered_map<std::string, size_t>* GetMutableFwdOutputsNamePosMap() {
+    return &fwd_outputs_name_pos_map_;
+  }
+
+  const std::vector<proto::OpProto::Var>& GetInVars() const { return in_vars_; }
+  std::vector<proto::OpProto::Var>* GetMutableInVars() { return &in_vars_; }
+
+  const std::vector<proto::OpProto::Var>& GetOutVars() const {
+    return out_vars_;
+  }
+  std::vector<proto::OpProto::Var>* GetMutableOutVars() { return &out_vars_; }
+
+ private:
+  std::string op_type_;
+  std::unordered_map<std::string, size_t> fwd_inputs_name_pos_map_;
+  std::unordered_map<std::string, size_t> fwd_outputs_name_pos_map_;
+  std::vector<proto::OpProto::Var> in_vars_;
+  std::vector<proto::OpProto::Var> out_vars_;
+};
+
+class GradNodeGenerationInfo {
+  class OpBaseGenerationInfo {
+   public:
+    const std::string& GetOpBaseType() const { return op_base_type_; }
+    void SetOpBaseType(const std::string& op_type) { op_base_type_ = op_type; }
+
+    const std::map<std::string, std::string>& GetGradOutsSlotnameMap() const {
+      return grad_outs_slotname_map_;
+    }
+    std::map<std::string, std::string>* GetMutableGradOutsSlotnameMap() {
+      return &grad_outs_slotname_map_;
+    }
+
+    const std::map<std::string, std::string>& GetInsFwdSlotnameMap() const {
+      return grad_ins_fwd_slotname_map_;
+    }
+    std::map<std::string, std::string>* GetMutableInsFwdSlotnameMap() {
+      return &grad_ins_fwd_slotname_map_;
+    }
+
+    const std::map<std::string, std::string>& GetInsGradSlotnameMap() const {
+      return grad_ins_grad_slotname_map_;
+    }
+    std::map<std::string, std::string>* GetMutableInsGradSlotnameMap() {
+      return &grad_ins_grad_slotname_map_;
+    }
+
+    const std::map<
+        std::string,
+        std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>&
+    GetGradIns() const {
+      return grad_ins_;
+    }
+    std::map<std::string,
+             std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>*
+    GetMutableGradIns() {
+      return &grad_ins_;
+    }
+
+    const std::map<
+        std::string,
+        std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>&
+    GetGradOuts() const {
+      return grad_outs_;
+    }
+    std::map<std::string,
+             std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>*
+    GetMutableGradOuts() {
+      return &grad_outs_;
+    }
+
+   private:
+    std::string op_base_type_;
+    std::map<std::string, std::string> grad_outs_slotname_map_;
+    std::map<std::string, std::string> grad_ins_fwd_slotname_map_;
+    std::map<std::string, std::string> grad_ins_grad_slotname_map_;
+    std::map<std::string,
+             std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>
+        grad_ins_;
+    std::map<std::string,
+             std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>
+        grad_outs_;
+  };
+
+ public:
+  const std::vector<OpBaseGenerationInfo>& GetOpBaseInfos() const {
+    return op_base_infos_;
+  }
+  std::vector<OpBaseGenerationInfo>* GetMutableOpBaseInfos() {
+    return &op_base_infos_;
+  }
+
+ private:
+  std::vector<OpBaseGenerationInfo> op_base_infos_;
+};
+
+/* --- Helper Functions --- */
+>>>>>>> Refactored Eager AutoCodeGen with more organized helper objects
 static std::string AttrTypeToString(const proto::AttrType& type) {
   std::string ret;
   switch (type) {
@@ -356,14 +473,15 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
 /* --------------------------------------- */
 /* --------- Preprocess Ins/Outs --------- */
 /* --------------------------------------- */
-static void PurifyForwardOpProto(
-    const proto::OpProto& op_proto,
-    std::unordered_map<std::string, size_t>* fwd_inputs_name_pos_map,
-    std::unordered_map<std::string, size_t>* fwd_outputs_name_pos_map,
-    std::vector<proto::OpProto::Var>* in_vars,
-    std::vector<proto::OpProto::Var>* out_vars) {
+static void PurifyForwardOpProto(const proto::OpProto& op_proto,
+                                 ForwardGenerationInfo* fwd_info) {
   // Op Name
   const std::string op_name = op_proto.type();
+
+  auto* in_vars = fwd_info->GetMutableInVars();
+  auto* out_vars = fwd_info->GetMutableOutVars();
+  auto* fwd_inputs_name_pos_map = fwd_info->GetMutableFwdInputsNamePosMap();
+  auto* fwd_outputs_name_pos_map = fwd_info->GetMutableFwdOutputsNamePosMap();
 
   // Handle dispensable inputs
   for (const proto::OpProto::Var& input : op_proto.inputs()) {
@@ -520,15 +638,16 @@ static void PurifyGradOpProto(
 /* --------- Collect Info --------- */
 /* -------------------------------- */
 static void CollectForwardInformationFromOpInfo(
-    const paddle::framework::OpInfo& op_info,
-    std::vector<proto::OpProto::Var>* in_vars,
-    std::vector<proto::OpProto::Var>* out_vars) {
+    const paddle::framework::OpInfo& op_info, ForwardGenerationInfo* fwd_info) {
   const proto::OpProto& op_proto = *op_info.proto_;
+
+  fwd_info->SetOpType(op_proto.type());
+
   for (const proto::OpProto::Var& input : op_proto.inputs()) {
-    in_vars->push_back(input);
+    fwd_info->GetMutableInVars()->push_back(input);
   }
   for (const proto::OpProto::Var& output : op_proto.outputs()) {
-    out_vars->push_back(output);
+    fwd_info->GetMutableOutVars()->push_back(output);
   }
 }
 
@@ -694,6 +813,7 @@ static bool CollectGradInformationFromOpInfo(
            vw_iter++) {
         std::shared_ptr<paddle::imperative::VariableWrapper> vw = *vw_iter;
         (*grad_ins)[it.first].push_back(vw);
+        VLOG(6) << "GradIns Name: " << it.first;
       }
     }
 
@@ -703,6 +823,7 @@ static bool CollectGradInformationFromOpInfo(
            vw_iter++) {
         std::shared_ptr<paddle::imperative::VariableWrapper> vw = *vw_iter;
         (*grad_outs)[it.first].push_back(vw);
+        VLOG(6) << "GradOuts Name: " << it.first;
       }
     }
   }
@@ -892,9 +1013,7 @@ static std::string GenerateGradNodeCreationContent(
 /* --------- CodeGen: Forward ----- */
 /* -------------------------------- */
 static std::pair<std::string, std::string> GenerateForwardFunctionContents(
-    bool generate_forward_only,
-    const std::unordered_map<std::string, size_t>& fwd_inputs_name_pos_map,
-    const std::unordered_map<std::string, size_t>& fwd_outputs_name_pos_map,
+    bool generate_forward_only, const ForwardGenerationInfo& fwd_info,
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map,
     const std::map<std::string, std::string>& grad_ins_grad_slotname_map,
     const std::map<std::string, std::string>& grad_outs_slotname_map,
@@ -905,9 +1024,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const std::map<
         std::string,
         std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>&
-        grad_outs,
-    const std::string& op_type, const std::vector<proto::OpProto::Var>& in_vars,
-    const std::vector<proto::OpProto::Var>& out_vars) {
+        grad_outs) {
+  const std::string& op_type = fwd_info.GetOpType();
+  const std::unordered_map<std::string, size_t>& fwd_inputs_name_pos_map =
+      fwd_info.GetFwdInputsNamePosMap();
+  const std::unordered_map<std::string, size_t>& fwd_outputs_name_pos_map =
+      fwd_info.GetFwdOutputsNamePosMap();
+  const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
+  const std::vector<proto::OpProto::Var>& out_vars = fwd_info.GetOutVars();
+
   /*
     // Forward Function Example:
   std::tuple<vector<Tensor>, Tensor, vector<Tensor>>
@@ -1162,9 +1287,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 /* --------- CodeGen: GradNode::operator() ------ */
 /* ---------------------------------------------- */
 static std::string GenerateGradNodeCCContents(
+    const ForwardGenerationInfo& fwd_info,
     const std::vector<std::string>& grad_op_types,
-    const std::unordered_map<std::string, size_t>& fwd_inputs_name_pos_map,
-    const std::unordered_map<std::string, size_t>& fwd_outputs_name_pos_map,
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map,
     const std::map<std::string, std::string>& grad_ins_grad_slotname_map,
     const std::map<std::string, std::string>& grad_outs_slotname_map,
@@ -1175,9 +1299,14 @@ static std::string GenerateGradNodeCCContents(
     const std::map<
         std::string,
         std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>&
-        grad_outs,
-    const std::string& op_type, const std::vector<proto::OpProto::Var>& in_vars,
-    const std::vector<proto::OpProto::Var>& out_vars) {
+        grad_outs) {
+  const std::string& op_type = fwd_info.GetOpType();
+  const std::unordered_map<std::string, size_t>& fwd_inputs_name_pos_map =
+      fwd_info.GetFwdInputsNamePosMap();
+  const std::unordered_map<std::string, size_t>& fwd_outputs_name_pos_map =
+      fwd_info.GetFwdOutputsNamePosMap();
+  const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
+
   VLOG(6) << "Generating Grad Node CC";
 
   /* [Outline]
@@ -1463,9 +1592,12 @@ static std::string GenerateGradNodeCCContents(
 /* --------- CodeGen: GradNode Header ------ */
 /* ----------------------------------------- */
 static std::string GenerateGradNodeHeaderContents(
-    const std::map<std::string, std::string>& grad_ins_fwd_slotname_map,
-    const std::string& op_type, const std::vector<proto::OpProto::Var>& in_vars,
-    const std::vector<proto::OpProto::Var>& out_vars) {
+    const ForwardGenerationInfo& fwd_info,
+    const std::map<std::string, std::string>& grad_ins_fwd_slotname_map) {
+  const std::string& op_type = fwd_info.GetOpType();
+  const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
+  const std::vector<proto::OpProto::Var>& out_vars = fwd_info.GetOutVars();
+
   VLOG(6) << "Generating Grad Node Header";
 
   const char* GRAD_NODE_TEMPLATE =
@@ -1682,9 +1814,10 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     /* ----------------------------- */
     /* ---- Collect Information ---- */
     /* ----------------------------- */
+
+    ForwardGenerationInfo fwd_info;
+
     std::vector<std::string> grad_op_types;
-    std::vector<proto::OpProto::Var> in_vars;
-    std::vector<proto::OpProto::Var> out_vars;
     std::map<std::string, std::string> grad_outs_slotname_map;
     std::map<std::string, std::string> grad_ins_fwd_slotname_map;
     std::map<std::string, std::string> grad_ins_grad_slotname_map;
@@ -1697,7 +1830,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
 
     VLOG(6) << "-------- CollectInformationFromOpInfo -------";
 
-    CollectForwardInformationFromOpInfo(op_info, &in_vars, &out_vars);
+    CollectForwardInformationFromOpInfo(op_info, &fwd_info);
 
     bool generate_forward_only = false;
     bool is_available = CollectGradInformationFromOpInfo(
@@ -1711,10 +1844,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     }
 
     VLOG(6) << "-------- PurifyOpProto -------";
-    std::unordered_map<std::string, size_t> fwd_inputs_name_pos_map;
-    std::unordered_map<std::string, size_t> fwd_outputs_name_pos_map;
-    PurifyForwardOpProto(*op_proto, &fwd_inputs_name_pos_map,
-                         &fwd_outputs_name_pos_map, &in_vars, &out_vars);
+    PurifyForwardOpProto(*op_proto, &fwd_info);
 
     if (!generate_forward_only) {
       PurifyGradOpProto(*op_proto, &grad_outs_slotname_map,
@@ -1729,10 +1859,9 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     VLOG(6) << "-------- GenerateForwardFunctionContents -------";
     std::pair<std::string, std::string> body_and_declaration =
         GenerateForwardFunctionContents(
-            generate_forward_only, fwd_inputs_name_pos_map,
-            fwd_outputs_name_pos_map, grad_ins_fwd_slotname_map,
+            generate_forward_only, fwd_info, grad_ins_fwd_slotname_map,
             grad_ins_grad_slotname_map, grad_outs_slotname_map, grad_ins,
-            grad_outs, op_type, in_vars, out_vars);
+            grad_outs);
 
     fwd_function_str += body_and_declaration.first + "\n";
 
@@ -1745,21 +1874,20 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     /* ---- nodes.h ---- */
     VLOG(6) << "-------- GenerateGradNodeHeaderContents -------";
     grad_node_h_str +=
-        GenerateGradNodeHeaderContents(grad_ins_fwd_slotname_map, op_type,
-                                       in_vars, out_vars) +
-        "\n";
+        GenerateGradNodeHeaderContents(fwd_info, grad_ins_fwd_slotname_map);
+    grad_node_h_str += "\n";
 
     /* ---- nodes.cc ---- */
     VLOG(6) << "-------- GenerateGradNodeCCContents -------";
     grad_node_cc_str += GenerateGradNodeCCContents(
-                            grad_op_types, fwd_inputs_name_pos_map,
-                            fwd_outputs_name_pos_map, grad_ins_fwd_slotname_map,
-                            grad_ins_grad_slotname_map, grad_outs_slotname_map,
-                            grad_ins, grad_outs, op_type, in_vars, out_vars) +
-                        "\n";
+        fwd_info, grad_op_types, grad_ins_fwd_slotname_map,
+        grad_ins_grad_slotname_map, grad_outs_slotname_map, grad_ins,
+        grad_outs);
+    grad_node_cc_str += "\n";
 
     VLOG(6) << op_type << ": Finished Generating Op: " << op_type;
   }
+
   /* ---- dygraph_forward_function.cc ---- */
   VLOG(6) << "-------- GenerateDygraphForwardCCFile -------";
   GenerateForwardDygraphFile(output_dir, fwd_function_str);
