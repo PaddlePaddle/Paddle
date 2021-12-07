@@ -205,8 +205,10 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "squeeze2_matmul_fuse_pass",               //
                   "reshape2_matmul_fuse_pass",               //
                   "flatten2_matmul_fuse_pass",               //
+                  "matmul_v2_scale_fuse_pass",               //
                   "map_matmul_v2_to_mul_pass",               //
                   "map_matmul_v2_to_matmul_pass",            //
+                  "matmul_scale_fuse_pass",                  //
                   "map_matmul_to_mul_pass",                  //
                   "fc_fuse_pass",                            //
                   "repeated_fc_relu_fuse_pass",              //
