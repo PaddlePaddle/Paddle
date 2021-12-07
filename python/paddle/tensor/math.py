@@ -2622,15 +2622,18 @@ def logit(x, eps=0.0, name=None):
 
             logit(x) = ln(\frac{x}{1-x})
 
+        where
+
         .. math::
 
-            x_i=\left\{
-            \begin{aligned}
-            x_i & &if &eps == Default \\
-            eps & &  if&x_i < eps\\
-            x_i & & if&eps <= x_i<=1-eps \\
-            1-eps &  & if&x_i > 1-eps
-            \end{aligned}
+            x_i=
+            \left\{
+                \begin{aligned}
+                x_i & &if &eps == Default \\
+                eps & &  if&x_i < eps\\
+                x_i & & if&eps <= x_i<=1-eps \\
+                1-eps &  & if&x_i > 1-eps
+                \end{aligned}
             \right.
 
     Args:
