@@ -82,7 +82,7 @@ def _dtype_to_str(dtype):
 
 def _keep_fp32_input(op, in_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'layer_norm']:
+    if op_type in ['batch_norm']:
         # Scale, Bias, Mean, Variance should be float32.
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
@@ -98,7 +98,7 @@ def _keep_fp32_input(op, in_name):
 
 def _keep_fp32_output(op, out_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+    if op_type in ['batch_norm', 'fused_bn_add_activation']:
         return out_name != 'Y'
     if op_type == 'resnet_unit':
         return out_name not in {'Y', 'ConvX', 'ConvZ'}

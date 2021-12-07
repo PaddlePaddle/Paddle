@@ -217,6 +217,14 @@ class Optimizer(object):
         else:
             self._param_groups = self._parameter_list
 
+        self._auxiliary_vars = {}
+
+    def _set_auxiliary_var(self, key, val):
+        self._auxiliary_vars[key] = val
+
+    def _get_auxiliary_var(self, key):
+        return self._auxiliary_vars.get(key, None)
+
     @framework.dygraph_only
     def state_dict(self):
         '''

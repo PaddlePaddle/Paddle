@@ -170,7 +170,6 @@ else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'GPU', core.VarDesc.VarType.FP16)
 
-unsupported_fp16_list = {'lookup_table',
-                         'lookup_table_v2'} | _sys_unsupported_fp16_list
+unsupported_fp16_list = _sys_unsupported_fp16_list
 
 CustomOpLists = AutoMixedPrecisionLists

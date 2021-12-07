@@ -537,8 +537,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
                     global_norm_var_fp16 = layers.sums(sum_square_list_fp16)
-                    global_norm_var.append(
-                        global_norm_var_fp16.astype(sum_dtype))
+                    if sum_square_list_fp32 or sum_square_list:
+                        global_norm_var.append(
+                            global_norm_var_fp16.astype(sum_dtype))
+                    else:
+                        global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_fp32) > 0:
                     global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
                     if sum_dtype == 'float32':
@@ -573,8 +576,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     # inplace
                     scale_input = (scale_var.astype('float16')
-                                   if g.dtype == core.VarDesc.VarType.FP16 else
-                                   scale_var)
+                                   if g.dtype == core.VarDesc.VarType.FP16 and
+                                   scale_var.dtype != core.VarDesc.VarType.FP16
+                                   else scale_var)
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter

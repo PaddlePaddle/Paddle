@@ -19,5 +19,7 @@
 
 REGISTER_OP_CUDA_KERNEL(
     reduce_mean, ops::ReduceCudaKernel<bool, paddle::operators::CustomMean>,
+    ops::ReduceCudaKernel<paddle::platform::float16,
+                          paddle::operators::CustomMean>,
     ops::ReduceCudaKernel<float, paddle::operators::CustomMean>,
     ops::ReduceCudaKernel<double, paddle::operators::CustomMean>);
