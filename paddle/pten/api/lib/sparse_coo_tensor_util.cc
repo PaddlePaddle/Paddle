@@ -33,7 +33,7 @@ PT_DECLARE_MODULE(SparseCooTensorUtilCPU);
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim) {
+PADDLE_API Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();

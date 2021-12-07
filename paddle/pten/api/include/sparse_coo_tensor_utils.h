@@ -19,10 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-// TODO(chenweihang): add scale API
-// TODO(chenweihang): move mean API into stat.h/cc
-
-PD_DLL_DECL Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim);
+PADDLE_API Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim);
 
 }  // namespace experimental
 }  // namespace paddle
