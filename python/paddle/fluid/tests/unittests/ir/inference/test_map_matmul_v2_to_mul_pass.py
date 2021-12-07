@@ -70,11 +70,11 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=10), min_size=2, max_size=6))
+                    min_value=1, max_value=8), min_size=2, max_size=5))
         y_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=10), min_size=2, max_size=2))
+                    min_value=1, max_value=8), min_size=2, max_size=2))
         y_shape[0] = x_shape[-1]
         alpha = 1.0
         transpose_X = False
@@ -103,7 +103,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=300,
+            quant=False, max_examples=100,
             passes=["map_matmul_v2_to_mul_pass"])
 
 
