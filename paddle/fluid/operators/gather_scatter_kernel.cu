@@ -168,8 +168,8 @@ struct gpu_gather_scatter_functor {
           self_idx = is_scatter_like ? replace_index : index_idx;
           src_idx = is_scatter_like ? index_idx : replace_index;
 
-          kernel_func(reinterpret_cast<tensor_t*>(self_data + self_idx),
-                      reinterpret_cast<tensor_t*>(src_data + src_idx));
+          kernel_func((tensor_t*)(self_data + self_idx),
+                      (tensor_t*)(src_data + src_idx));
           index_idx++;
           printf("GPU 66666 index_idx %d\n  ", index_idx);
         }
