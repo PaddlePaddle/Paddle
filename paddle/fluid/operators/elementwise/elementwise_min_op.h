@@ -47,7 +47,7 @@ class ElementwiseFMinKernel : public framework::OpKernel<T> {
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<FMinFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          FMinFunctor<T>(), z);
+                                                           FMinFunctor<T>(), z);
   }
 };
 
@@ -87,14 +87,14 @@ class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
 template <typename T>
 struct FMinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x <= y) || isnan(y));
+    return dout * static_cast<T>((x <= y) || ::isnan(y));
   }
 };
 
 template <typename T>
 struct FMinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T> (!((x <= y) || isnan(y)));
+    return dout * static_cast<T>(!((x <= y) || ::isnan(y)));
   }
 };
 
@@ -113,7 +113,8 @@ class ElementwiseFMinGradKernel : public ElemwiseGradKernel<T> {
     auto* out = dout;  // Fake out, not used
     int axis = ctx.Attr<int>("axis");
     ElemwiseGradCompute<DeviceContext, T, FMinGradDx<T>, FMinGradDy<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, FMinGradDx<T>(), FMinGradDy<T>());
+        ctx, *x, *y, *out, *dout, axis, dx, dy, FMinGradDx<T>(),
+        FMinGradDy<T>());
   }
 };
 }  // namespace operators

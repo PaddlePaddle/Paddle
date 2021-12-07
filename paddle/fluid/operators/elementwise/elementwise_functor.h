@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
-#include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
 namespace operators {
@@ -118,19 +117,20 @@ struct MinFunctor {
 template <typename T>
 struct FMaxFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-     return std::fmax(a, b);
- }
+    return std::fmax(a, b);
+  }
 };
 
 template <>
 struct FMaxFunctor<paddle::platform::float16> {
-  inline HOSTDEVICE paddle::platform::float16 operator()(const paddle::platform::float16& a, 
-                               const paddle::platform::float16& b) const {
-     float float_a = static_cast<float>(a);
-     float float_b = static_cast<float>(b);
-     auto result = std::fmax(float_a, float_b);
-     return static_cast<paddle::platform::float16>(result);
- }
+  inline HOSTDEVICE paddle::platform::float16 operator()(
+      const paddle::platform::float16& a,
+      const paddle::platform::float16& b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<paddle::platform::float16>(result);
+  }
 };
 
 // Fmin
@@ -143,13 +143,14 @@ struct FMinFunctor {
 
 template <>
 struct FMinFunctor<paddle::platform::float16> {
-  inline HOSTDEVICE paddle::platform::float16 operator()(const paddle::platform::float16& a, 
-                               const paddle::platform::float16& b) const {
-     float float_a = static_cast<float>(a);
-     float float_b = static_cast<float>(b);
-     auto result = std::fmin(float_a, float_b);
-     return static_cast<paddle::platform::float16>(result);
- }
+  inline HOSTDEVICE paddle::platform::float16 operator()(
+      const paddle::platform::float16& a,
+      const paddle::platform::float16& b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<paddle::platform::float16>(result);
+  }
 };
 
 }  // namespace operators
