@@ -58,7 +58,7 @@ __all__ = [
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
     'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
-    'correlation', 'fused_bn_add_act'
+    'correlation', 'fused_bn_add_act', 'fused_seqpool_cvm'
 ]
 
 
@@ -535,6 +535,64 @@ def fused_embedding_seq_pool(input,
             'padding_idx': padding_idx
         })
     return out
+
+
+def fused_seqpool_cvm(input,
+                      pool_type,
+                      cvm,
+                      pad_value=0.0,
+                      use_cvm=True,
+                      cvm_offset=2):
+    """
+    **Embedding Sequence pool**
+
+    This layer is the fusion of sequence_pool and continuous_value_model.
+
+    **Notes: The Op only receives List of LoDTensor as input, only support SUM pooling now.
+
+    Args:
+        input(Variable|list of Variable): Input is List of LoDTensor.
+        pool_type(str): pooling type, only support SUM pooling now.
+        cvm(Variable): cvm Variable.
+        pad_value(float): padding value of sequence pool.
+        use_cvm(bool): use cvm or not.
+    Returns:
+        Variable|list of Variable: The tensor variable storing sequence pool and cvm
+        of input.
+    """
+    helper = LayerHelper('fused_seqpool_cvm', **locals())
+
+    if pool_type.upper() != 'SUM':
+        raise ValueError(
+            "fused_seqpool_cvm only support SUM pooling now, and your type is: "
+            + pool_type)
+
+    check_type(input, 'input', list, 'fused_seqpool_cvm')
+    if isinstance(input, list):
+        for _input in input:
+            check_variable_and_dtype(_input, 'input', ['float32'],
+                                     'fused_seqpool_cvm')
+
+    dtype = helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+
+    helper.append_op(
+        type="fused_seqpool_cvm",
+        inputs={"X": inputs,
+                "CVM": cvm},
+        outputs={"Out": outs},
+        attrs={
+            "pooltype": pool_type.upper(),
+            "pad_value": pad_value,
+            "use_cvm": use_cvm,
+            "cvm_offset": cvm_offset,
+        })
+
+    return outs
 
 
 def multiclass_nms2(bboxes,
