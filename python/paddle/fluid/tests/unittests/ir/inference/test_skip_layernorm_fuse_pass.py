@@ -70,9 +70,6 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-        def generate_elewise_input():
-            return np.random.random([2, 16, 128]).astype(np.float32)
-
         elewise_op = OpConfig(
             "elementwise_add",
             inputs={"X": ["elementwise_add_x"],
@@ -103,7 +100,6 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
                 "bias": TensorConfig(shape=[128]),
                 "scale": TensorConfig(shape=[128])
             },
-            #outputs=["y", "mean", "variance"])
             outputs=[ops[-1].outputs["Y"][0]])
         return program_config
 
