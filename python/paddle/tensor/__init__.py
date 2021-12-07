@@ -410,7 +410,7 @@ tensor_method_func  = [ #noqa
            'triangular_solve',
            'asinh',
            'atanh',
-           'acosh'
+           'acosh',
            'diff',
            'angle',
 ]
