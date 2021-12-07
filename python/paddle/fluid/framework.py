@@ -45,6 +45,8 @@ __all__ = [
     'Program',
     'default_startup_program',
     'default_main_program',
+    'eager_guard',
+    'in_eager_mode',
     'program_guard',
     'name_scope',
     'cuda_places',
@@ -52,6 +54,7 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
@@ -75,6 +78,21 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _global_flags_ = core.globals()
+_eager_mode_ = False
+
+
+@signature_safe_contextmanager
+def eager_guard():
+    global _eager_mode_
+    _eager_mode_ = True
+    try:
+        yield
+    finally:
+        _eager_mode_ = False
+
+
+def in_eager_mode():
+    return _eager_mode_
 
 
 def require_version(min_version, max_version=None):
@@ -340,7 +358,10 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
-    _set_dygraph_tracer_expected_place(place)
+    if in_eager_mode():
+        return core.eager._set_expected_place(place)
+    else:
+        _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
@@ -455,6 +476,21 @@ def disable_signal_handler():
             paddle.disable_signal_handler()
     """
     core.disable_signal_handler()
+
+
+def is_compiled_with_cinn():
+    """
+    Whether this whl package can be used to run the model on CINN.
+
+    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_cinn = paddle.device.is_compiled_with_cinn()
+    """
+    return core.is_compiled_with_cinn()
 
 
 def is_compiled_with_cuda():
@@ -4476,6 +4512,9 @@ class Program(object):
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+
+        # assigned if this program has been parsed by a heter pipeline parameter server optimizer
+        self._heter_pipeline_opt = None
 
         # appending gradients times
         self._appending_grad_times = 0

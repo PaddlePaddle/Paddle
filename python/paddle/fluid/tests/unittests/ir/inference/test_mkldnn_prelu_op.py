@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import MkldnnAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -44,32 +44,30 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
                     return np.zeros((1)).astype(np.float32)
-                return np.random.random(kwargs['in_shape'][1]).astype(
-                    np.float32)
+                if kwargs['data_format'] == 'NCHW':
+                    return np.random.random(kwargs['in_shape'][1]).astype(
+                        np.float32)
+                else:
+                    return np.random.random(kwargs['in_shape'][-1]).astype(
+                        np.float32)
             else:
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
                     return np.zeros((1)).astype(np.float32)
                 return np.random.random(kwargs['in_shape']).astype(np.float32)
 
-        ops_config = [{
-            "op_type": "prelu",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Alpha": ["alpha_weight"]
-            },
-            "op_outputs": {
-                "Out": ["output_data"]
-            },
-            "op_attrs": {
-                "mode": kwargs['mode']
-            }
-        }]
-
-        ops = self.generate_op_config(ops_config)
+        prelu_op = OpConfig(
+            type="prelu",
+            inputs={"X": ["input_data"],
+                    "Alpha": ["alpha_weight"]},
+            outputs={"Out": ["output_data"]},
+            attrs={
+                "mode": kwargs['mode'],
+                "data_format": kwargs['data_format']
+            })
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=[prelu_op],
             weights={
                 "alpha_weight":
                 TensorConfig(data_gen=partial(generate_alpha, *args, **kwargs))
@@ -91,6 +89,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
 
     @given(
         mode=st.sampled_from(['all', 'channel', 'element']),
+        data_format=st.sampled_from(['NCHW', 'NHWC']),
         in_shape=st.lists(
             st.integers(
                 min_value=1, max_value=32), min_size=1, max_size=4))

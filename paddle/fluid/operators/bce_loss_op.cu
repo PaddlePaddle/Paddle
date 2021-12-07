@@ -14,8 +14,8 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/operators/bce_loss_op.h"
 #include "paddle/fluid/operators/math.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {

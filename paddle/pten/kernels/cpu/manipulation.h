@@ -31,4 +31,44 @@ void Flatten(const CPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out);
 
+template <typename T>
+void Cast(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out);
+
+void ReshapeFromDT(const CPUContext& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& shape,
+                   DenseTensor* out);
+
+void ReshapeFromVectorVal(const CPUContext& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int64_t>& shape,
+                          DenseTensor* out);
+
+void ReshapeFromVectorDT(const CPUContext& dev_ctx,
+                         const DenseTensor& x,
+                         const std::vector<DenseTensor>& shape,
+                         DenseTensor* out);
+
+void ReshapeFromDTWithXShape(const CPUContext& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& shape,
+                             DenseTensor* xshape,
+                             DenseTensor* out);
+
+void ReshapeFromVectorValWithXShape(const CPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const std::vector<int64_t>& shape,
+                                    DenseTensor* xshape,
+                                    DenseTensor* out);
+
+void ReshapeFromVectorDTWithXShape(const CPUContext& dev_ctx,
+                                   const DenseTensor& x,
+                                   const std::vector<DenseTensor>& shape,
+                                   DenseTensor* xshape,
+                                   DenseTensor* out);
+
 }  // namespace pten
