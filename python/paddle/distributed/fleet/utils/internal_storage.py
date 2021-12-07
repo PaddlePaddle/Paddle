@@ -72,7 +72,6 @@ class InternalStorage:
 
         if dtype is not None:
             self.buffer = self.buffer.cast(dtype=dtype)
-            self._dtype = dtype
 
 
 class ParamStorage(InternalStorage):

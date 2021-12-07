@@ -302,8 +302,8 @@ class ShardingOptimizerStage2(Optimizer):
 
             for param in self._local_params:
                 if param.name in self._master_params.keys():
-                    param.set_value(self._master_params[param.name].cuda(dev_id)
-                                    .cast(dtype=param.dtype))
+                    param.set_value(self._master_params[param.name].cast(
+                        dtype=param.dtype).cuda(dev_id))
                     self._master_params[param.name].clear_gradient(False)
         else:
             self._optim.step()

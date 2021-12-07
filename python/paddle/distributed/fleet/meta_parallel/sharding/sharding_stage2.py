@@ -179,17 +179,25 @@ class ShardingStage2(nn.Layer):
         """
         Before the gradient accumulation, scale the gradient.
         """
-        # Scale grad storages
-        for dtype in self._grad_storages.keys():
-            if self._rank in self._grad_storages[dtype].keys():
-                self._grad_storages[dtype][self._rank].buffer.scale_(
-                    scale=self._world_size_scaling)
+        if self._offload:
+            for param in self._trainable_params:
+                if param.name in self._sharding_optimizers[
+                        0]._master_params.keys():
+                    self._sharding_optimizers[0]._master_params[
+                        param.name].grad.scale_(scale=self._world_size_scaling)
+                    param._reset_grad_inplace_version()
+        else:
+            # Scale grad storages
+            for dtype in self._grad_storages.keys():
+                if self._rank in self._grad_storages[dtype].keys():
+                    self._grad_storages[dtype][self._rank].buffer.scale_(
+                        scale=self._world_size_scaling)
 
-        # Scale params
-        for param in self._trainable_params:
-            if param.name in self._param_grads and param.grad is not None:
-                param.grad.scale_(scale=self._world_size_scaling)
-                param._reset_grad_inplace_version()
+            # Scale params
+            for param in self._trainable_params:
+                if param.name in self._param_grads and param.grad is not None:
+                    param.grad.scale_(scale=self._world_size_scaling)
+                    param._reset_grad_inplace_version()
 
     def _init_internal_storage(self, needs_fresh):
         """
