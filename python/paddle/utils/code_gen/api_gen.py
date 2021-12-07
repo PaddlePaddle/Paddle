@@ -309,14 +309,57 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
   Tensor out;
   out.set_impl(dense_out);"""
 
+    def get_kernel_args(self, input_names, attrs, kernel_param):
+        attr_names = attrs['names']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_tensor_code = ""
+        kernel_args = "*dev_ctx, "
+        for param in kernel_param:
+            if param in input_names:
+                # set input for kernel_context
+                input_tensor_code = input_tensor_code + f"""
+  auto {self.prefix_tensor_name}{param} = std::dynamic_pointer_cast<pten::DenseTensor>({param}.impl());"""
+
+                kernel_args = kernel_args + self.prefix_tensor_name + param + ", "
+
+            elif param in attr_names:
+                # set attr for kernel_context
+                if 'ScalarArray' in attrs['attr_info'][param][0]:
+                    param = 'pten::ScalarArray(' + param + ')'
+                elif 'Scalar' in attrs['attr_info'][param][0]:
+                    param = 'pten::Scalar(' + param + ')'
+                kernel_args = kernel_args + param + ", "
+            elif isinstance(param, bool):
+                kernel_args = kernel_args + str(param).lower() + ", "
+            else:
+                kernel_args = kernel_args + param + ", "
+        return input_tensor_code, kernel_args[:-2]
+
     def gene_api_code(self):
         if self.is_base_api:
+            input_tensors, kernel_args = get_kernel_args(
+                self.args['inputs']['names'], self.args['attrs'],
+                self.kernel['param'])
             return f"""
 PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-{self.gene_kernel_context(self.args['inputs']['names'], self.args['attrs'], self.infer_meta, self.kernel['param'])}
 
-  kernel(&kernel_context);
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+{input_tensors}
+{self.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          pten::TransToFluidPlace(kernel_backend));
+  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  kernel_context.EmplaceBackOutput(dense_out);
+
+  Tensor out;
+  out.set_impl(dense_out);
+  auto* kernel_fn = kernel.get_kernel_fn<pten::{self.api}>();
+  (*kernel_fn)({kernel_args});
   return out;
 }}
 """
@@ -344,6 +387,7 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
+#include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"

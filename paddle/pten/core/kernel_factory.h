@@ -231,10 +231,10 @@ class Kernel {
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
 
-  template <typename Fn, typename... Args>
-  void operator()(Args&... args) const {
+  template <typename Fn>
+  Fn get_kernel_fn() const {
     auto* func = reinterpret_cast<Fn>(variadic_args_kernel_fn_);
-    return (*func)(args...);
+    return func;
   }
 
   void set_variadic_args_kernel_fn(void* fn) { variadic_args_kernel_fn_ = fn; }

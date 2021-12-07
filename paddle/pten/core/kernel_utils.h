@@ -177,16 +177,17 @@ struct KernelImpl;
 template <typename Return,
           typename DevCtx,
           typename... Args,
-          Return (*kernel_fn)(const DevCtx&, Args...)>
-struct KernelImpl<Return (*)(const DevCtx&, Args...), kernel_fn> {
+          Return (*kernel_fn)(DevCtx, Args...)>
+struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   static void Compute(KernelContext* ctx) {
-    KernelCallHelper<const DevCtx&,
+    KernelCallHelper<DevCtx,
                      Args...,
                      TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
   }
 
-  static void VariadicArgsCompute(const DeviceContext& dev_ctx, Args&... args) {
-    return kernel_fn(dynamic_cast<const DevCtx&>(dev_ctx), args...);
+  static void VariadicArgsCompute(const DeviceContext& dev_ctx, Args... args) {
+    return kernel_fn(dynamic_cast<DevCtx>(dev_ctx),
+                     std::forward<Args>(args)...);
   }
 
  private:
@@ -238,9 +239,7 @@ struct KernelImpl<Return (*)(const DevCtx&, Args...), kernel_fn> {
   template <typename T>
   struct KernelCallHelper<TypeTag<T>> {
     template <int dev_ctx_idx, int in_idx, int attr_idx, int out_idx>
-    static void Compute(KernelContext* ctx,
-                        const DevCtx& dev_ctx,
-                        Args&... args) {
+    static void Compute(KernelContext* ctx, DevCtx dev_ctx, Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       static_assert(out_idx > 0, "Kernel should have output argument.");
