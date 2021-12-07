@@ -407,6 +407,10 @@ tensor_method_func  = [ #noqa
            'multi_dot',
            'solve',
            'triangular_solve',
+           'rad2deg',
+           'deg2rad',
+           'gcd',
+           'lcm',
            'diff',
            'angle',
 ]
