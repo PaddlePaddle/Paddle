@@ -18,6 +18,7 @@ from .backward_mode import backward  # noqa: F401
 from .py_layer import PyLayer, PyLayerContext  # noqa: F401
 from ..framework import set_grad_enabled  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
-from .functional import vjp, jvp, jacobian, hessian, vhp  # noqa: F401
+from .functional import jacobian, hessian, batch_jacobian, batch_hessian  # noqa: F401
+from .functional import vjp, jvp, vhp  # noqa: F401
 
 __all__ = ['backward', 'PyLayer', 'PyLayerContext']

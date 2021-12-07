@@ -291,6 +291,7 @@ packages=['paddle',
           'paddle.distributed.fleet.utils',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
+          'paddle.distributed.fleet.meta_parallel.sharding',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
@@ -306,6 +307,7 @@ packages=['paddle',
           'paddle.fluid.dygraph',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.dygraph.amp',
+          'paddle.fluid.eager',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.distributed',
@@ -468,7 +470,9 @@ if '${WITH_LITE}' == 'ON':
 
 if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
+    shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']
+    package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)

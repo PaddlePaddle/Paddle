@@ -33,6 +33,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   if (scope) {
     auto name_list = scope->LocalVarNames();
     for (auto name : name_list) {
+      VLOG(4) << "Sync Variable from variable scope: " << name;
       auto v = scope->Var(name);
       if (!global_scope_.HasVar(name)) {
         global_scope_.AddVar(name, *v);
@@ -87,8 +88,9 @@ void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-
     if (!var_scope->HasVar(var->Name())) {
+      VLOG(4) << "Create variable from startup_prog: "
+              << var->Proto()->SerializeAsString();
       var_scope->AddVar(var->Name(), var);
     }
   }
