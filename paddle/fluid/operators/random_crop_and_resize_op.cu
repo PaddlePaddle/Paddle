@@ -288,17 +288,15 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
 
     auto* in_var = ctx.InputVar("X");
     auto in_queue = in_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-    LOG(ERROR) << "crop resize in_var: " << in_var << "in_queue: " << in_queue;
 
     auto* out_var = ctx.OutputVar("Out");
     auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     if (out_queue == nullptr) {
-      LOG(ERROR) << "crop resize init output queue";
+      LOG(ERROR) << "RandomCropAndResize out_queue init";
       auto* holder = out_var->template GetMutable<LoDTensorBlockingQueueHolder>();
       holder->InitOnce(2);
       out_queue = holder->GetQueue();
     }
-    LOG(ERROR) << "crop resize out_var: " << out_var << "out_queue: " << out_queue;
 
     bool success = false;
     auto x = in_queue->Pop(&success);

@@ -45,11 +45,10 @@ static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capa
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
       if (queue == nullptr) {
         auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
-        holder->InitOnce(2);
+        holder->InitOnce(capacity);
       }
     } else {
-      // VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
-      LOG(ERROR) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
+      VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
       auto* holder = var->GetMutable<LoDTensorBlockingQueueHolder>();
       holder->InitOnce(capacity);
     }
@@ -68,33 +67,7 @@ static std::vector<std::shared_ptr<LoDTensorBlockingQueue>> GetQueueVecFromVaria
 template <typename DeviceContext, typename T>
 class MapOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    // LOG(ERROR) << "MapOpKernel enter";
-    // // Step1: get output vars and attrs
-    // auto input_vars = ctx.MultiInputVar("In");
-    // auto output_vars = ctx.MultiOutputVar("Out");
-    //
-    // CheckInputQueueStatus(input_vars);
-    // CheckAndInitOutputQueue(output_vars, /*capacity=*/2);
-    //
-    // auto input_var_names = ctx.Attr<std::vector<std::string>>("input_var_names");
-    // auto output_var_names = ctx.Attr<std::vector<std::string>>("output_var_names");
-    // auto* map_block = ctx.Attr<BlockDesc*>("map_block");
-    // auto start_op_index = ctx.Attr<int64_t>("start_op_index");
-    // auto end_op_index = ctx.Attr<int64_t>("end_op_index");
-    // auto program_id = ctx.Attr<int64_t>("program_id");
-    // LOG(ERROR) << "MapOpKernel block id: " << map_block->ID();
-    // for (auto var_name: map_block->LocalVarNames()) {
-    //   LOG(ERROR) << "MapOpKernel map_block vars: " << var_name;
-    // }
-    //
-    // auto input_queues = GetQueueVecFromVariableVec(input_vars);
-    // auto output_queues = GetQueueVecFromVariableVec(output_vars);
-    // data::MapRunnerManager::Instance()->StartMapRunner(
-    //     program_id, map_block, ctx.GetPlace(), start_op_index, end_op_index,
-    //     input_var_names, output_var_names, input_queues, output_queues);
-    // LOG(ERROR) << "MapOpKernel finish";
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators

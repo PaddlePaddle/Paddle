@@ -52,6 +52,7 @@ def map(map_func, inputs):
     # build map block
     main_program = helper.main_program
     with MapGuard(main_program):
+        program_id = _hash_with_id(main_program, map_func)
         map_block = main_program.current_block()
 
         inputs = _to_list(inputs)
@@ -66,10 +67,6 @@ def map(map_func, inputs):
         input_var_names = [v.name for v in program_inputs]
         output_var_names = [v.name for v in program_outputs]
 
-        program_id = _hash_with_id(main_program)
-        start_op_index = 0
-        end_op_index = map_block.desc.op_size()
-
     outputs = \
         [helper.create_variable(
             name=unique_name.generate("map"),
@@ -78,12 +75,9 @@ def map(map_func, inputs):
     attrs = {
         "map_block": map_block,
         "program_id": program_id,
-        "start_op_index": start_op_index,
-        "end_op_index": end_op_index,
         "input_var_names": input_var_names,
         "output_var_names": output_var_names
     }
-    print("atttrs:", attrs)
 
     helper.append_op(
         type="map",

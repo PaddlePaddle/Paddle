@@ -65,19 +65,14 @@ class MapOp : public framework::OperatorBase {
     auto input_var_names = Attr<std::vector<std::string>>("input_var_names");
     auto output_var_names = Attr<std::vector<std::string>>("output_var_names");
     auto* map_block = Attr<BlockDesc*>("map_block");
-    auto start_op_index = Attr<int64_t>("start_op_index");
-    auto end_op_index = Attr<int64_t>("end_op_index");
     auto program_id = Attr<int64_t>("program_id");
-    // LOG(ERROR) << "MapOpKernel block id: " << map_block->ID();
-    // for (auto var_name: map_block->LocalVarNames()) {
-    //   LOG(ERROR) << "MapOpKernel map_block vars: " << var_name;
-    // }
 
     auto input_queues = GetQueueVecFromVariableVec(input_vars);
     auto output_queues = GetQueueVecFromVariableVec(output_vars);
     data::MapRunnerManager::Instance()->StartMapRunner(
-        program_id, map_block, dev_place,start_op_index, end_op_index,
-        input_var_names, output_var_names, input_queues, output_queues, &scope);
+                    map_block, program_id, &scope, dev_place,
+                    input_var_names, output_var_names,
+                    input_queues, output_queues);
     LOG(ERROR) << "MapOpKernel RunImpl finish";
   }
 };
@@ -111,12 +106,12 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed map program "
                         "desc.");
-    AddAttr<int64_t>("start_op_index",
-                     "(int64_t)"
-                     "The index of the op to start execution");
-    AddAttr<int64_t>("end_op_index",
-                     "(int64_t)"
-                     "The index of the op to stop execution");
+    // AddAttr<int64_t>("start_op_index",
+    //                  "(int64_t)"
+    //                  "The index of the op to start execution");
+    // AddAttr<int64_t>("end_op_index",
+    //                  "(int64_t)"
+    //                  "The index of the op to stop execution");
     AddAttr<int64_t>("program_id",
                      "(int64_t)"
                      "The unique hash id used as cache key for "

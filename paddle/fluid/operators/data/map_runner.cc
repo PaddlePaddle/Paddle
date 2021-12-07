@@ -18,33 +18,29 @@ namespace data {
 
 MapRunner::MapRunner(
     const std::shared_ptr<BlockDesc> map_block,
-    const platform::Place &place, int64_t start_op_index,
-    int64_t end_op_index, int64_t program_id,
+    const int64_t program_id,
+    const Scope* scope,
+    const platform::Place &place,
     const std::vector<std::string> &input_var_names,
     const std::vector<std::string> &output_var_names,
     const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
-    const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues,
-    const Scope* scope)
+    const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues)
     : thread_pool_(1),
       running_(true),
       map_block_(map_block),
-      place_(place),
-      start_op_index_(start_op_index),
-      end_op_index_(end_op_index),
       program_id_(program_id),
+      place_(place),
       input_var_names_(input_var_names),
       output_var_names_(output_var_names),
       input_queues_(input_queues),
       output_queues_(output_queues) {
-      // scope_(scope) {
-
   VLOG(1) << "MapRunner init";
 
-  PADDLE_ENFORCE_GT(end_op_index_, start_op_index_,
-                    platform::errors::InvalidArgument(
-                        "end_op_index should be greater than start_op_index, "
-                        "but recieve %d <= %d.",
-                        end_op_index_, start_op_index_));
+  // PADDLE_ENFORCE_GT(end_op_index_, start_op_index_,
+  //                   platform::errors::InvalidArgument(
+  //                       "end_op_index should be greater than start_op_index, "
+  //                       "but recieve %d <= %d.",
+  //                       end_op_index_, start_op_index_));
   PADDLE_ENFORCE_EQ(input_var_names_.size(), input_queues_.size(),
                     platform::errors::InvalidArgument(
                         "input_var_names length should be equal to input_queues length, "
@@ -58,62 +54,8 @@ MapRunner::MapRunner(
                         output_var_names_.size(),
                         output_var_names_.size()));
 
-  // // Step1: prepare executor
-  // auto *program = map_block_->Program();
-  // auto cache_info = framework::GetExecutorInfoFromCache(
-  //     *program, place_, start_op_index_, end_op_index_,
-  //     /*is_grad=*/false, program_id, &scope_);
-  // auto &parallel_executor = cache_info.first;
-  //
-  // // Step2: parset persistable variables
-  // auto &skip_eager_delete_vars =
-  //     framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
-  //         program_id, /*is_grad=*/false);
-  // if (cache_info.second /*is_new_created*/) {
-  //   skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
-  //                                 output_var_names.begin(),
-  //                                 output_var_names.end());
-  //   framework::details::ParseSafeEagerDeletionSkipVars(
-  //       *program, end_op_index, output_var_names, &skip_eager_delete_vars);
-  // }
-  //
-  // // Step3: start prefetch thread
-  // StartMapThread(parallel_executor, skip_eager_delete_vars);
   StartMapThread(scope);
 }
-
-// bool MapRunner::ShareInputsIntoScope() {
-//   for (size_t i = 0; i < input_queues_.size(); i++) {
-//     // If input queue closed, namely EOE(end of epoch) from
-//     // dataset reader to here, read failed
-//     auto queue = input_queues_[i];
-//     if (queue->IsClosed()) return false;
-//     // LOG(ERROR) << "ShareInputsIntoScope " << i << ", queue: " << queue;
-//
-//     // read LoDTensorArray
-//     bool success = true;
-//     auto lod_tensor_arr = queue->Pop(&success);
-//     // LOG(ERROR) << "ShareInputsIntoScope Pop success: " << success << ", tensor: " << lod_tensor_arr.size();
-//     if (!success) return false;
-//
-//     // read LoDTensor
-//     auto tensor = lod_tensor_arr[0];
-//     if(!tensor.IsInitialized()) return false; 
-//     // LOG(ERROR) << "ShareInputsIntoScope read LoDTensor success";
-//
-//     // get input variable from scope and check status
-//     auto name = input_var_names_[i];
-//     auto* var = scope_.Var(name);
-//     // LOG(ERROR) << "ShareInputsIntoScope input var: " << var << ", IsInitialized: " << var->IsInitialized() << ", is LoDTensor: " << var->IsType<LoDTensor>();
-//     // if (!var->IsType<LoDTensor>() || !var->IsInitialized()) return false;
-//
-//     // share input tensor to variable
-//     auto* dst_tensor = var->GetMutable<LoDTensor>();
-//     dst_tensor->ShareDataWith(tensor);
-//     dst_tensor->set_lod(tensor.lod());
-//   }
-//   return true;
-// }
 
 bool MapRunner::ShareInputsIntoScope(Scope* scope) {
   for (size_t i = 0; i < input_queues_.size(); i++) {
@@ -147,43 +89,6 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
   }
   return true;
 }
-
-// void MapRunner::StartMapThread(std::shared_ptr<ParallelExecutor> executor,
-//                                    const std::vector<std::string> &skip_vars) {
-//   thread_pool_.enqueue([this, executor, skip_vars]() -> void {
-//     while (running_.load()) {
-//       LOG(ERROR) << "StartMapThread enter";
-//       // Step1: get input LoDTensor and share into Scope
-//       bool success = ShareInputsIntoScope();
-//       if (!success) {
-//         Shutdown();
-//         break;
-//       }
-//       LOG(ERROR) << "ShareInputsIntoScope success";
-//
-//       LOG(ERROR) << "MapRunner RunWithoutFetch start";
-//       // Step2: run ops by executor without fetch
-//       executor->RunWithoutFetch(skip_vars);
-//       LOG(ERROR) << "MapRunner RunWithoutFetch success";
-//
-//       // Step3: fetch output variable to LoDTensor vector
-//       //        and push to output queue
-//       for (size_t i = 0; i < output_var_names_.size(); i++) {
-//         framework::LoDTensorArray t_arr(1);
-//         auto *out_var = scope_.FindVar(output_var_names_[i]);
-//         LOG(ERROR) << "scope FindVar " << output_var_names_[i] << ", var: " << out_var;
-//         PADDLE_ENFORCE_NOT_NULL(
-//             out_var, platform::errors::NotFound(
-//                          "The output variable %s is not found in DataLoader "
-//                          "program's internal scope",
-//                          output_var_names_[i]));
-//         CheckOutputVarStatus(*out_var, output_var_names_[i]);
-//         copy_tensor(out_var->Get<LoDTensor>(), &t_arr[0]);
-//         output_queues_[i]->Push(t_arr);
-//       }
-//     }
-//   });
-// }
 
 void MapRunner::StartMapThread(const Scope* scope) {
   thread_pool_.enqueue([this, scope]() -> void {
