@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cpu/creation.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/functions/eigen/fill.h"
+#include "paddle/pten/kernels/hybird/eigen/fill.h"
 
 namespace pten {
 

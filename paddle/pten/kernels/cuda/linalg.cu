@@ -15,8 +15,8 @@
 #include "paddle/pten/kernels/cuda/linalg.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/functions/eigen/dot.h"
-#include "paddle/pten/kernels/functions/math/matmul_func.h"
+#include "paddle/pten/kernels/hybird/eigen/dot.h"
+#include "paddle/pten/kernels/hybird/math/matmul_func.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"

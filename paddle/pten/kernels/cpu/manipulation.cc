@@ -16,8 +16,8 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
-#include "paddle/pten/kernels/functions/general/manipulation.h"
-#include "paddle/pten/kernels/functions/math/cast_func.h"
+#include "paddle/pten/kernels/hybird/general/manipulation.h"
+#include "paddle/pten/kernels/hybird/math/cast_func.h"
 
 namespace pten {
 
