@@ -133,6 +133,19 @@ class TestLerpAPI(unittest.TestCase):
         for place in self.place:
             run(place)
 
+    def test_inplace_api_exception(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            y = paddle.to_tensor(self.y)
+            w = paddle.to_tensor([0.75, 0.75], dtype=self.dtype)
+            with self.assertRaises(ValueError):
+                x.lerp_(y, w)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
     def test_x_broadcast_y(self):
         paddle.disable_static()
         x = np.arange(1., 21.).astype(self.dtype).reshape([2, 2, 5])
