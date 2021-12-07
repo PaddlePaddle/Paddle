@@ -1,4 +1,4 @@
-#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 
 #include <glog/logging.h>
 

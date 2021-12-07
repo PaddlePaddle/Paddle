@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/mlu/mlu_info.h"
-#include "paddle/fluid/platform/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

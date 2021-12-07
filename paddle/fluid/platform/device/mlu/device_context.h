@@ -13,8 +13,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MLU
 #include <mutex>
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/mlu/enforce.h"
-#include "paddle/fluid/platform/mlu/mlu_stream.h"
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_stream.h"
 
 namespace Eigen {
 struct DefaultDevice;

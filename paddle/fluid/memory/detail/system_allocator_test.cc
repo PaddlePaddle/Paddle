@@ -20,7 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/enforce.h"
 #endif
 
 DECLARE_bool(use_pinned_memory);

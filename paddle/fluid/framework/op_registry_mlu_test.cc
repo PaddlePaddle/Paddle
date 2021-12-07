@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context.h"
 
 namespace pd = paddle::framework;
 

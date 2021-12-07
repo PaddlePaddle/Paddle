@@ -2,8 +2,8 @@
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/mlu/enforce.h"
-#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/string/split.h"

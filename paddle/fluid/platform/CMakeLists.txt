@@ -68,7 +68,6 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
-add_subdirectory(mlu)
 
 cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
 cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)

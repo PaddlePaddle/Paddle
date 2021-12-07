@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/device_context.h"
-#include "paddle/fluid/platform/mlu/device_context_allocator.h"
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"

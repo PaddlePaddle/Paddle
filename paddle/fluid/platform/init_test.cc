@@ -15,7 +15,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
 TEST(InitDevices, CPU) {

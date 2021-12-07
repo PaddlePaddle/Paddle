@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
 namespace paddle {

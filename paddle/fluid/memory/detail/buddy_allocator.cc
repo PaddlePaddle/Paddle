@@ -25,7 +25,7 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 namespace paddle {

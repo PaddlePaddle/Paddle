@@ -36,7 +36,7 @@
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 PADDLE_DEFINE_EXPORTED_bool(

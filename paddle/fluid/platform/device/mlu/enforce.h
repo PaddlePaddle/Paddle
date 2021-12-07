@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif  // PADDLE_WITH_MLU
 
 #ifdef PADDLE_WITH_MLU

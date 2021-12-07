@@ -19,8 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/mlu/enforce.h"
-#include "paddle/fluid/platform/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
