@@ -63,24 +63,19 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
     // dataset reader to here, read failed
     auto queue = input_queues_[i];
     if (queue->IsClosed()) return false;
-    // LOG(ERROR) << "ShareInputsIntoScope " << i << ", queue: " << queue;
 
     // read LoDTensorArray
     bool success = true;
     auto lod_tensor_arr = queue->Pop(&success);
-    // LOG(ERROR) << "ShareInputsIntoScope Pop success: " << success << ", tensor: " << lod_tensor_arr.size();
     if (!success) return false;
 
     // read LoDTensor
     auto tensor = lod_tensor_arr[0];
     if(!tensor.IsInitialized()) return false; 
-    // LOG(ERROR) << "ShareInputsIntoScope read LoDTensor success";
 
     // get input variable from scope and check status
     auto name = input_var_names_[i];
     auto* var = scope->Var(name);
-    // LOG(ERROR) << "ShareInputsIntoScope input var: " << var << ", IsInitialized: " << var->IsInitialized() << ", is LoDTensor: " << var->IsType<LoDTensor>();
-    // if (!var->IsType<LoDTensor>() || !var->IsInitialized()) return false;
 
     // share input tensor to variable
     auto* dst_tensor = var->GetMutable<LoDTensor>();

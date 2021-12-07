@@ -39,12 +39,6 @@ class MapOp : public framework::OperatorBase {
                                    ctx.GetPlace());
   }
 
-  // framework::OpKernelType GetKernelTypeForVar(
-  //     const std::string& var_name, const framework::Tensor& tensor,
-  //     const framework::OpKernelType& expected_kernel_type) const override {
-  //   return expected_kernel_type;
-  // }
-
  private:
   void RunImpl(const framework::Scope& scope,
       const platform::Place& dev_place) const override {
@@ -106,12 +100,6 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed map program "
                         "desc.");
-    // AddAttr<int64_t>("start_op_index",
-    //                  "(int64_t)"
-    //                  "The index of the op to start execution");
-    // AddAttr<int64_t>("end_op_index",
-    //                  "(int64_t)"
-    //                  "The index of the op to stop execution");
     AddAttr<int64_t>("program_id",
                      "(int64_t)"
                      "The unique hash id used as cache key for "
