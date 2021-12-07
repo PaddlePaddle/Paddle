@@ -17,56 +17,84 @@ from __future__ import print_function
 import paddle
 import numpy as np
 import unittest
+from paddle.static import Program, program_guard
 
 np.random.seed(42)
+
+
+def calc_hinge_embedding_loss(input, label, delta=1.0, reduction='mean'):
+    result = np.where(label == -1., np.maximum(0., delta - input), 0.) + \
+             np.where(label == 1., input, 0.)
+    if reduction == 'none':
+        return result
+    elif reduction == 'sum':
+        return np.sum(result)
+    elif reduction == 'mean':
+        return np.mean(result)
 
 
 class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.delta = 1.0
         self.shape = (10, 10, 5)
-        self.input_np = np.random.random(size=self.shape).astype(np.float32)
+        self.input_np = np.random.random(size=self.shape).astype(np.float64)
         # get label elem in {1., -1.}
         self.label_np = 2 * np.random.randint(0, 2, size=self.shape) - 1.
         # get wrong label elem not in {1., -1.}
         self.wrong_label = paddle.randint(-3, 3, shape=self.shape)
 
-    def run_dynamic_check(self):
+    def run_dynamic_check(self, place=paddle.CPUPlace()):
+        paddle.disable_static(place=place)
         input = paddle.to_tensor(self.input_np)
-        label = paddle.to_tensor(self.label_np, dtype=paddle.float32)
+        label = paddle.to_tensor(self.label_np, dtype=paddle.float64)
+
         dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
-        expected = np.mean(
-            np.where(label.numpy() == -1.,
-                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
+        expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='sum')
-        expected = np.sum(
-            np.where(label.numpy() == -1.,
-                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
+        expected = calc_hinge_embedding_loss(
+            self.input_np, self.label_np, reduction='sum')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(
             input, label, reduction='none')
-        expected = np.where(label.numpy() == -1.,
-                            np.maximum(0., self.delta - input.numpy()),
-                            input.numpy())
+        expected = calc_hinge_embedding_loss(
+            self.input_np, self.label_np, reduction='none')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
+    def run_static_check(self, place=paddle.CPUPlace):
+        paddle.enable_static()
+        for reduction in ['none', 'mean', 'sum']:
+            expected = calc_hinge_embedding_loss(
+                self.input_np, self.label_np, reduction=reduction)
+            with program_guard(Program(), Program()):
+                input = paddle.static.data(
+                    name="input", shape=self.shape, dtype=paddle.float64)
+                label = paddle.static.data(
+                    name="label", shape=self.shape, dtype=paddle.float64)
+                st_result = paddle.nn.functional.hinge_embedding_loss(
+                    input, label, reduction=reduction)
+                exe = paddle.static.Executor(place)
+                result_numpy, = exe.run(
+                    feed={"input": self.input_np,
+                          "label": self.label_np},
+                    fetch_list=[st_result])
+                self.assertTrue(np.allclose(result_numpy, expected))
+
     def test_cpu(self):
-        paddle.disable_static(place=paddle.CPUPlace())
-        self.run_dynamic_check()
+        self.run_dynamic_check(place=paddle.CPUPlace())
+        self.run_static_check(place=paddle.CPUPlace())
 
     def test_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
-
-        paddle.disable_static(place=paddle.CUDAPlace(0))
-        self.run_dynamic_check()
+        self.run_dynamic_check(place=paddle.CUDAPlace(0))
+        self.run_static_check(place=paddle.CUDAPlace(0))
 
     # test case the raise message
     def test_reduce_errors(self):
@@ -81,51 +109,67 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.delta = 1.0
         self.shape = (10, 10, 5)
-        self.input_np = np.random.random(size=self.shape).astype(np.float32)
+        self.input_np = np.random.random(size=self.shape).astype(np.float64)
         # get label elem in {1., -1.}
         self.label_np = 2 * np.random.randint(0, 2, size=self.shape) - 1.
         # get wrong label elem not in {1., -1.}
         self.wrong_label = paddle.randint(-3, 3, shape=self.shape)
 
-    def run_dynamic_check(self):
+    def run_dynamic_check(self, place=paddle.CPUPlace()):
+        paddle.disable_static(place=place)
         input = paddle.to_tensor(self.input_np)
-        label = paddle.to_tensor(self.label_np, dtype=paddle.float32)
+        label = paddle.to_tensor(self.label_np, dtype=paddle.float64)
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.mean(
-            np.where(label.numpy() == -1.,
-                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
+        expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='sum')
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.sum(
-            np.where(label.numpy() == -1.,
-                     np.maximum(0., self.delta - input.numpy()), input.numpy()))
+        expected = calc_hinge_embedding_loss(
+            self.input_np, self.label_np, reduction='sum')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='none')
         dy_result = hinge_embedding_loss(input, label)
-        expected = np.where(label.numpy() == -1.,
-                            np.maximum(0., self.delta - input.numpy()),
-                            input.numpy())
+        expected = calc_hinge_embedding_loss(
+            self.input_np, self.label_np, reduction='none')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
+    def run_static_check(self, place=paddle.CPUPlace):
+        paddle.enable_static()
+        for reduction in ['none', 'mean', 'sum']:
+            expected = calc_hinge_embedding_loss(
+                self.input_np, self.label_np, reduction=reduction)
+            with program_guard(Program(), Program()):
+                input = paddle.static.data(
+                    name="input", shape=self.shape, dtype=paddle.float64)
+                label = paddle.static.data(
+                    name="label", shape=self.shape, dtype=paddle.float64)
+                hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
+                    reduction=reduction)
+                st_result = hinge_embedding_loss(input, label)
+                exe = paddle.static.Executor(place)
+                result_numpy, = exe.run(
+                    feed={"input": self.input_np,
+                          "label": self.label_np},
+                    fetch_list=[st_result])
+                self.assertTrue(np.allclose(result_numpy, expected))
+
     def test_cpu(self):
-        paddle.disable_static(place=paddle.CPUPlace())
-        self.run_dynamic_check()
+        self.run_dynamic_check(place=paddle.CPUPlace())
+        self.run_static_check(place=paddle.CPUPlace())
 
     def test_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
-
-        paddle.disable_static(place=paddle.CUDAPlace(0))
-        self.run_dynamic_check()
+        self.run_dynamic_check(place=paddle.CUDAPlace(0))
+        self.run_static_check(place=paddle.CUDAPlace(0))
 
     # test case the raise message
     def test_reduce_errors(self):

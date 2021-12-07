@@ -2138,8 +2138,9 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                                  'hinge_embedding_loss')
 
-    loss = paddle.where(label == 1., input, paddle.to_tensor(0.)) + \
-           paddle.where(label == -1., delta - input, paddle.to_tensor(0.))
+    zero_ = paddle.zeros([1], dtype=input.dtype)
+    loss = paddle.where(label == 1., input, zero_) + \
+           paddle.where(label == -1., paddle.nn.functional.relu(delta - input), zero_)
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
