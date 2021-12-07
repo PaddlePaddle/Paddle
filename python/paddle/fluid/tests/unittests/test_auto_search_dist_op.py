@@ -265,11 +265,13 @@ class Testcompatible(unittest.TestCase):
             matmuly3 = static.data(
                 name="matmuly3", shape=[6, 6], dtype='float32')
             output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
             matmulx4 = static.data(
                 name="matmulx4", shape=[6, 6, 2, 6], dtype='float32')
             matmuly4 = static.data(
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32')
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
+            output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
         vars = program.global_block().vars
         for idx, op in enumerate(ops):
@@ -285,20 +287,38 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
+                    self.assertTrue(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
                 if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
+                    self.assertTrue(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))                   
+                    op_dist_attr.set_output_dims_mapping(out, [1, -1, -1])                   
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, 1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+
                 if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
-                for idx, impl in enumerate(impls):
-                    if idx == 2:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
+                    self.assertTrue(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [0, -1, -1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 0, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))    
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, 0, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, 1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, 0, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+
+
+
+
 
     def test_matmulv2_matmul_1_compatible(self):
         valid_op_dist_attr_list = []
@@ -313,11 +333,13 @@ class Testcompatible(unittest.TestCase):
             matmuly3 = static.data(
                 name="matmuly3", shape=[6, 6], dtype='float32')
             output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
             matmulx4 = static.data(
                 name="matmulx4", shape=[6, 6, 6, 6], dtype='float32')
             matmuly4 = static.data(
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32')
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
+            output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
         vars = program.global_block().vars
         for idx, op in enumerate(ops):
@@ -338,15 +360,40 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, 1])
                     op_dist_attr.set_input_dims_mapping(Y, [1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
+
+                    self.assertTrue(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [1, -1, 1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                  #  op_dist_attr.set_output_dims_mapping(out, [-1, 1, -1])
+                  #  self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, 0, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+
                 if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, 1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
-                for idx, impl in enumerate(impls):
-                    if idx == 1:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
+                    self.assertTrue(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [0, -1, -1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+
+
+
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 0, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, 0, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, 1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, 0, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+
+
+
+
+
 
     def test_matmulv2_matmul_0_compatible(self):
         valid_op_dist_attr_list = []
@@ -360,11 +407,13 @@ class Testcompatible(unittest.TestCase):
             matmuly3 = static.data(
                 name="matmuly3", shape=[6, 6], dtype='float32')
             output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
             matmulx4 = static.data(
                 name="matmulx4", shape=[6, 6, 2, 6], dtype='float32')
             matmuly4 = static.data(
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32')
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
+            output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
         vars = program.global_block().vars
         for idx, op in enumerate(ops):
@@ -380,21 +429,35 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, 1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, 1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
+
+                    op_dist_attr.set_input_dims_mapping(X, [-1, 1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+
+
                 if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, 1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, 1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
+                    self.assertTrue(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [1, -1, 1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, 0, -1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
                 if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, 1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, 1])
-                    dist_op = DistributedOperator(op, op_dist_attr)
-                for idx, impl in enumerate(impls):
-                    if idx == 0:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-
+                    self.assertTrue(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [0, -1, -1, -1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, -1, 1, -1])
+                    self.assertFalse(impls[0].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
 
 if __name__ == "__main__":
     unittest.main()
