@@ -58,8 +58,8 @@ class MemoryOptimizePass : public AnalysisPass {
  private:
   void CollectLifeCycle(
       framework::ir::Graph *graph,
-      std::unordered_map<std::string, lifecycle_t> *lifecycles, int sort_kind,
-      int max_lifecycle) const;
+      std::unordered_map<std::string, lifecycle_t> *lifecycles,
+      int sort_kind) const;
 
   void CollectVarMemorySize(framework::ir::Graph *graph,
                             space_table_t *space_table) const;

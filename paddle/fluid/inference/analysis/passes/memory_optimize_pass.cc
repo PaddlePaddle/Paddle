@@ -53,8 +53,8 @@ typedef struct {
 // used.
 void MemoryOptimizePass::CollectLifeCycle(
     Graph* graph, std::unordered_map<std::string, lifecycle_t>* lifecycles,
-    int sort_kind, int max_lifecycle) const {
-  max_lifecycle = 0;
+    int sort_kind) const {
+  int max_lifecycle = 0;
   for (auto* op_node : framework::ir::TopologyVarientSort(
            *graph, static_cast<framework::ir::SortKind>(sort_kind))) {
     if (!op_node->IsOp()) continue;
@@ -304,11 +304,10 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // 3. Perform reuse plan: Replace all var's name in the model according to the
   // mapping table.
   if (!argument->enable_memory_optim()) return;
-  // Because of pass is a singleton, graph and max_lifecycle can not be member
+  // Because of pass is a singleton, graph can not be member
   // variables，otherwise，errors will be caused under multithreading
   // conditions.
   auto graph = argument->main_graph_ptr();
-  int max_lifecycle = -1;
 
   int sort_kind = 0;
   std::unordered_map<std::string, lifecycle_t> lifecycles;
@@ -316,7 +315,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   std::unordered_map<std::string, std::string> node2cluster;
   std::unordered_map<std::string, int> cluster_size;
 
-  CollectLifeCycle(graph, &lifecycles, sort_kind, max_lifecycle);
+  CollectLifeCycle(graph, &lifecycles, sort_kind);
   CollectVarMemorySize(graph, &space_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
   UpdateOpDescsByReuse(graph, node2cluster, sort_kind);
