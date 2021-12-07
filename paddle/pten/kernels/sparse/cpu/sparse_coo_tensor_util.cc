@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/sparse/cpu/sparse_coo_tensor_util.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/kernels/functions/sparse/cpu/sparse_util.h"
 
 namespace pten {
 
@@ -25,21 +26,19 @@ void ToSparseCoo(const CPUContext& dev_ctx,
                  SparseCooTensor* dst) {
   const T* src_data = src.data<T>();
   const auto& src_dims = src.dims();
-  // TODO(zhangkaihuo) use an API/kernel/function to implement this function
-  int64_t non_zero_num = std::accumulate(
-      src_data, src_data + src.numel(), 0, [&](int non_zero_num, const T& a) {
-        if (a) {
-          return non_zero_num + 1;
-        } else {
-          return non_zero_num;
-        }
-      });
 
-  auto dense_dim = src.dims().size() - sparse_dim;
+  int64_t non_zero_num = get_non_zero_num<T>(src, sparse_dim);
+
+  auto dense_dim = src_dims.size() - sparse_dim;
   auto indices_dims = paddle::framework::make_ddim({sparse_dim, non_zero_num});
   DDim values_dims;
   if (dense_dim) {
-    values_dims = paddle::framework::make_ddim({non_zero_num, dense_dim});
+    std::vector<int64_t> dense_dims(dense_dim + 1);
+    dense_dims[0] = non_zero_num;
+    memcpy(&dense_dims[1],
+           src_dims.Get() + sparse_dim,
+           dense_dim * sizeof(src_dims[0]));
+    values_dims = paddle::framework::make_ddim(dense_dims);
   } else {
     values_dims = paddle::framework::make_ddim({non_zero_num});
   }
@@ -56,17 +55,20 @@ void ToSparseCoo(const CPUContext& dev_ctx,
   int64_t* indices_data = indices_ptr->mutable_data<int64_t>();
   T* values_data = values_ptr->mutable_data<T>();
 
-  // 2-D
+  auto dims_2d = flatten_to_2d(src_dims, sparse_dim);
+  const int rows = dims_2d[0];
+  const int cols = dims_2d[1];
+
   int index = 0;
-  for (int i = 0; i < src_dims[0]; i++) {
-    for (int j = 0; j < src_dims[1]; j++) {
-      T value = src_data[i * src_dims[1] + j];
-      if (value) {
-        indices_data[index] = i;
-        indices_data[non_zero_num + index] = j;
-        values_data[index] = value;
-        ++index;
+  for (int i = 0; i < rows; i++) {
+    if (!is_zero(src_data + i * cols, cols)) {
+      int64_t sparse_index = i;
+      for (int64_t j = sparse_dim - 1; j >= 0; j--) {
+        indices_data[j * non_zero_num + index] = sparse_index % src_dims[j];
+        sparse_index /= src_dims[j];
       }
+      memcpy(values_data + index * cols, src_data + i * cols, cols * sizeof(T));
+      ++index;
     }
   }
 
