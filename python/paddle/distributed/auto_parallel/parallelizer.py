@@ -179,33 +179,35 @@ class AutoParallelizer:
         return optimize_ops
 
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
-        completed_main_program = None
+        serial_main_program = self._main_program.clone()
+        serial_startup_program = self._startup_program.clone()
+        serial_loss = serial_main_program.global_block().var(self._loss.name)
 
         # generating serial 
         if dist_context is None:
             # Annotation completion
             self._dist_context = DistributedContext()
             _logger.info("Start annotation dist attr.")
-            completed_main_program = complete_annotation(self._main_program,
+            completed_main_program = complete_annotation(serial_main_program,
                                                          self._dist_context)
         else:
-            completed_main_program = self._main_program
+            completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)
 
         # serial forward pass
         self._apply_serial_forward_pass(completed_main_program,
-                                        self._startup_program)
+                                        serial_startup_program)
 
         # serial backward pass
         params_grads = self._generate_backward(
-            completed_main_program, self._startup_program, self._loss,
+            completed_main_program, serial_startup_program, serial_loss,
             self._parameter_list, self._no_grad_set, self._callbacks)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
-            completed_main_program, self._startup_program, params_grads)
+            completed_main_program, serial_startup_program, params_grads)
 
         # TODO refactor the placement of optimizer
         # generate optimize program
