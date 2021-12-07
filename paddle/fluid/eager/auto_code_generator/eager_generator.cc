@@ -39,6 +39,12 @@ static std::unordered_set<std::string> operators_to_skip = {
 static std::unordered_set<std::string> operators_to_codegen = {};
 static std::unordered_set<std::string> skipped_operators = {};
 
+static std::string LegalizeVariableName(const std::string& var_name) {
+  std::string ret = var_name;
+  std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
+  return ret;
+}
+
 static std::string AttrTypeToString(const proto::AttrType& type) {
   std::string ret;
   switch (type) {
@@ -1053,24 +1059,25 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const std::string& output_name = output.name();
     std::string out_tensor_str;
     size_t return_position = fwd_outputs_name_pos_map.at(output_name);
+    std::string output_varname = LegalizeVariableName(output_name);
 
     if (output.duplicable()) {
       const char* FWD_OUT_TENSORS_TEMPLATE =
           "  std::vector<egr::EagerTensor> %s = "
           "egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
-                                               output_name, output_name);
+                                               output_varname, output_name);
       return_types[return_position] = "std::vector<egr::EagerTensor>";
     } else {
       const char* FWD_OUT_TENSOR_TEMPLATE =
           "  egr::EagerTensor %s = "
           "egr::EagerUtils::GetOutput(outs[\"%s\"][0]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
-                                               output_name, output_name);
+                                               output_varname, output_name);
       return_types[return_position] = "egr::EagerTensor";
     }
 
-    return_contents[return_position] = output_name;
+    return_contents[return_position] = output_varname;
     generated_function_body += out_tensor_str;
   }
   generated_function_body += "\n";

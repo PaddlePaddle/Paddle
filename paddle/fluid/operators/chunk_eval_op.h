@@ -158,7 +158,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     auto* label = context.Input<LoDTensor>("Label");
     auto* precision = context.Output<Tensor>("Precision");
     auto* recall = context.Output<Tensor>("Recall");
-    auto* f1 = context.Output<Tensor>("F1_Score");
+    auto* f1 = context.Output<Tensor>("F1-Score");
     auto* num_infer_chunks = context.Output<Tensor>("NumInferChunks");
     auto* num_label_chunks = context.Output<Tensor>("NumLabelChunks");
     auto* num_correct_chunks = context.Output<Tensor>("NumCorrectChunks");
