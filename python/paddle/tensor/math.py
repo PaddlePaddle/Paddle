@@ -2620,9 +2620,8 @@ def logit(x, eps=0.0, name=None):
     Equation:
         .. math::
 
-            logit(x) = ln(\frac{x}{1-x})yy 
+            logit(x) = ln(\frac{x}{1-x})
 
-    where
         .. math::
 
             x_i=\left\{
