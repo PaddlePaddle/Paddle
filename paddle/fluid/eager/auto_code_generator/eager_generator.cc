@@ -907,25 +907,32 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   kernel_function(vector<Tensor>& X, Tensor& Y, const paddle::AttributeMap&
   attr_map, size_t
   Out0Num, size_t Out1Num) {
+
         // Forward Function Body
         // According to fwd_inputs_name_pos_map
         std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>
   ins =
                 { {"X" , SyncToVars(X)}, { "Y" , SyncToVars(Y)} };
+
         std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>
   outs =
   {
           {"Out0" , ConstructDuplicableOutput(Out0Num)}, {"Out1"
   ,ConstructDuplicableOutput(Out1Num)} };
+
         // According to op_proto->attrs()
+
         egr::legacy::RunOp("op_type", ins, outs, attr_map,
   Controller.Instance().GetExpectedPlace(), {});
+
         // According to fwd_outputs_names
         std::vector<egr::EagerTensor> Out0 = GGetOutputetOutputs(outs["Out0"]);
         egr::EagerTensor Out1 = GetOutputs(outs["Out1"][0]);
         std::vector<egr::EagerTensor> Out2 = GetOutputs(outs["Out2"]);
+
         // Grad Node Generation Codes
         ...
+
         return std::make_tuple(Out0, Out1, Out2);
     }
   */
@@ -1166,9 +1173,12 @@ static std::string GenerateGradNodeCCContents(
   VLOG(6) << "Generating Grad Node CC";
 
   /* [Outline]
+
   vector<vector<Tensor>> GradNodeXXX::operator()(vector<vector<Tensor>>& grads)
   {
+
     const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();
+
     // Comes from "grad_ins"
     std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins =
             {
@@ -1178,6 +1188,7 @@ static std::string GenerateGradNodeCCContents(
             "Out1@Grad":
   TensorsToVarBases(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out1@Grad"]]"])
              };
+
     // Comes from "grad_outs"
     std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs =
             {
@@ -1186,17 +1197,20 @@ static std::string GenerateGradNodeCCContents(
             "Y@Grad" :
   ConstructDuplicableOutput(this->OutputMeta()["fwd_inputs_name_pos_map[grad_outs_slotname_map["Y@Grad"]]"].Size())
              };
+
     // Visit each OpBase
     for(auto iter = "grad_node->begin()"; iter < "grad_node->end()"; iter++) {
         // Simply pass entire attribute map to kernels
         egr::legacy::RunOp("iter->Type()", ins, outs, this->attr_map_,
             egr::Controller::Instance().ExpectedPlace(), false, {});
     }
+
     vector<vector<egr::EagerTensor>> outputs(outs.size());
     for(auto& kv : outs) {
         outputs["fwd_inputs_name_pos_map[grad_outs_slotname_map[kv.first]]"] =
   GetOutputs(outs["kv.first"]);
     }
+
     return outputs;
   }
   */
