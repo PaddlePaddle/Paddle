@@ -78,10 +78,12 @@ const std::vector<std::string> kTRTSubgraphPasses({
   "conv_affine_channel_fuse_pass",  //
       "adaptive_pool2d_convert_global_pass",
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
-      "shuffle_channel_detect_pass",               //
-      "quant_conv2d_dequant_fuse_pass",            //
-      "delete_quant_dequant_op_pass",              //
-      "delete_quant_dequant_filter_op_pass",       //
+      // TODO(baoachun): this pass does not use attributes
+      // when reshape+transpoe fused to shuffle_channel
+      // "shuffle_channel_detect_pass",               //
+      "quant_conv2d_dequant_fuse_pass",       //
+      "delete_quant_dequant_op_pass",         //
+      "delete_quant_dequant_filter_op_pass",  //
       // "fc_fuse_pass",                                 //
       "simplify_with_basic_ops_pass",           //
       "embedding_eltwise_layernorm_fuse_pass",  //
