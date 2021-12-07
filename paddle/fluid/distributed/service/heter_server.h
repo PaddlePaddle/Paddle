@@ -336,7 +336,7 @@ class HeterServer {
 
   bool IsExit() { return service_.IsExit(); }
 
-  HeterServer() {}
+  HeterServer() : service_(), ready_(0) {}
 
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func);

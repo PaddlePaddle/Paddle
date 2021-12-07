@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+namespace pten {
+namespace tests {
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -67,3 +70,6 @@ TEST(DEV_API, flatten) {
   }
   ASSERT_EQ(value_equal, true);
 }
+
+}  // namespace tests
+}  // namespace pten
