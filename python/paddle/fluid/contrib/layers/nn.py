@@ -542,13 +542,7 @@ def fused_seqpool_cvm(input,
                       cvm,
                       pad_value=0.0,
                       use_cvm=True,
-                      need_filter=False,
-                      show_coeff=0.2,
-                      clk_coeff=1.0,
-                      threshold=0.96,
-                      cvm_offset=2,
-                      quant_ratio=0,
-                      clk_filter=False):
+                      cvm_offset=2):
     """
     **Embedding Sequence pool**
 
@@ -586,10 +580,6 @@ def fused_seqpool_cvm(input,
         for i in range(len(inputs))
     ]
 
-    if quant_ratio == 0 and need_filter:
-        ## quant not allow quant ratio zero set default 128
-        quant_ratio = 128
-
     helper.append_op(
         type="fused_seqpool_cvm",
         inputs={"X": inputs,
@@ -600,12 +590,6 @@ def fused_seqpool_cvm(input,
             "pad_value": pad_value,
             "use_cvm": use_cvm,
             "cvm_offset": cvm_offset,
-            "need_filter": need_filter,
-            "show_coeff": show_coeff,
-            "clk_coeff": clk_coeff,
-            "threshold": threshold,
-            "quant_ratio": quant_ratio,
-            "clk_filter": clk_filter
         })
 
     return outs

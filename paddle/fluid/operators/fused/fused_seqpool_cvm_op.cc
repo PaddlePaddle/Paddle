@@ -40,16 +40,6 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     std::vector<framework::DDim> outs_dims;
     outs_dims.resize(num_inputs);
     bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
-    bool clk_filter = ctx->Attrs().Get<bool>("clk_filter");
-
-    // need filter quant_ratio more than zero
-    if (ctx->Attrs().Get<bool>("need_filter")) {
-      const int quant_ratio = ctx->Attrs().Get<int>("quant_ratio");
-      PADDLE_ENFORCE_GT(
-          quant_ratio, 0,
-          platform::errors::InvalidArgument(
-              "Input need filter quant_ratio should be greater than 0"));
-    }
 
     PADDLE_ENFORCE_GT(num_inputs, 0UL,
                       platform::errors::InvalidArgument(
@@ -78,11 +68,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       // input lod is not accessible here
       std::vector<int64_t> out_dim;
       if (use_cvm) {
-        if (clk_filter) {
-          out_dim = {-1, dims[rank - 1] - 1};
-        } else {
-          out_dim = {-1, dims[rank - 1]};
-        }
+        out_dim = {-1, dims[rank - 1]};
       } else {
         out_dim = {-1, dims[rank - 1] - cvm_offset};
       }
@@ -122,13 +108,7 @@ class FusedSeqpoolCVMOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 0.0) The value to pad for empty sequence.")
         .SetDefault(0.0);
     AddAttr<bool>("use_cvm", "bool, use cvm or not").SetDefault(true);
-    AddAttr<bool>("need_filter", "(bool, default false)").SetDefault(false);
-    AddAttr<float>("show_coeff", "(float, default 0.2)").SetDefault(0.2);
-    AddAttr<float>("clk_coeff", "(float, default 1)").SetDefault(1);
-    AddAttr<float>("threshold", "(float, default 0.96)").SetDefault(0.96);
     AddAttr<int>("cvm_offset", "(int, default 2)").SetDefault(2);
-    AddAttr<int>("quant_ratio", "(int, default 128)").SetDefault(0);
-    AddAttr<bool>("clk_filter", "(bool, default false)").SetDefault(false);
 
     AddComment(R"DOC(
 Fuse multiple pairs of Sequence Pool and CVM Operator.
@@ -147,7 +127,6 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
     auto cvm_dims = ctx->GetInputDim("CVM");
     const int cvm_offset = ctx->Attrs().Get<int>("cvm_offset");
     bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
-    bool clk_filter = ctx->Attrs().Get<bool>("clk_filter");
 
     PADDLE_ENFORCE_EQ(
         cvm_dims.size(), 2,
@@ -162,9 +141,6 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
               og_dims[i].size(), og_dims[i]));
       if (use_cvm) {
         auto o_dim = og_dims[i][og_dims[i].size() - 1];
-        if (clk_filter) {  // filter clk need + 1
-          o_dim = o_dim + 1;
-        }
         PADDLE_ENFORCE_EQ(
             o_dim, x_dims[i][og_dims[i].size() - 1],
             platform::errors::InvalidArgument(
