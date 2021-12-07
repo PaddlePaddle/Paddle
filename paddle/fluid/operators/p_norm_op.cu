@@ -23,8 +23,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/p_norm_op.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/platform/float16.h"
@@ -60,6 +58,15 @@ __device__ __forceinline__ float inline_pow(float base, float exponent) {
 __device__ __forceinline__ double inline_pow(double base, double exponent) {
   return pow(base, exponent);
 }
+
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor() {}
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+  template <typename T>
+  HOSTDEVICE inline T operator()(const T& x) const {
+    return static_cast<T>(x);
+  }
+};
 
 struct NonzeroFunctor {
   HOSTDEVICE explicit inline NonzeroFunctor() {}
@@ -132,6 +139,15 @@ struct NonzeroAndSum {
   }
 };
 
+template <typename Tx, typename Ty = Tx>
+struct IdentityAndSum {
+  using Transformer = IdentityFunctor;
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b + a;
+  }
+};
+
 template <typename DeviceContext, typename T>
 class PnormCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -175,8 +191,8 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
           cuda_ctx, ins, &outs, func);
       framework::Tensor tmp_y;
       tmp_y.mutable_data<T>(ndim, ctx.GetPlace());
-      TensorReduceFunctorImpl<T, T, CustomSum>(tmp_x, &tmp_y, reduce_axis,
-                                               stream);
+      TensorReduceFunctorImpl<T, T, IdentityAndSum>(tmp_x, &tmp_y, reduce_axis,
+                                                    stream);
       const framework::Tensor* tmp_norm = &tmp_y;
       ins = {tmp_norm};
       outs = {out_norm};
