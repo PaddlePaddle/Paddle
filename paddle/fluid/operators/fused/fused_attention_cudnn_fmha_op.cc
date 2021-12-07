@@ -49,8 +49,8 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("KVSeqLenHost"), "Input", "KVSeqLenHost",
                    "FusedAttentionCuDNNFMHAOp");
 
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
-                   "FusedAttentionCuDNNFMHAOp");
+    // OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
+    //                "FusedAttentionCuDNNFMHAOp");
 
     auto x_dims = ctx->GetInputDim("X");
     // PADDLE_ENFORCE_EQ(x_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
@@ -83,14 +83,16 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The number of attn_high_windows should be equal"
                           " to sequence_length."));
-
+    OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
+                   "FusedAttentionCuDNNFMHAOp");
+    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
+                   "FusedAttentionCuDNNFMHAOp");
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
-                     "FusedAttentionCuDNNFMHAOp");
-      OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
-                     "FusedAttentionCuDNNFMHAOp");
       OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
                      "FusedAttentionCuDNNFMHAOp");
+    } else {
+      OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
+                     "BiasDropoutResidualOut", "FusedAttentionCuDNNFMHAOp");
     }
 
     OP_INOUT_CHECK(ctx->HasOutput("ReserveSpace"), "Output", "ReserveSpace",
@@ -98,31 +100,23 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
 
     OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
                    "FusedAttentionCuDNNFMHAOp");
-
-    OP_INOUT_CHECK(ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
-                   "FusedAttentionCuDNNFMHAOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
-                   "FusedAttentionCuDNNFMHAOp");
-    OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
-                   "BiasDropoutResidualOut", "FusedAttentionCuDNNFMHAOp");
     OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"), "Output", "DropoutMaskOut",
                    "FusedAttentionCuDNNFMHAOp");
 
     auto x_dim = ctx->GetInputDim("X");
+    ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
+    ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
+
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
-      ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
       ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
+    } else {
+      ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     }
 
     ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
-
-    ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
     if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
-    ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
 
     std::vector<int64_t> output_dims;
     for (int i = 0; i < x_dims.size(); ++i) {
@@ -183,18 +177,18 @@ class FusedAttentionCuDNNFMHAOpMaker
         .AsDispensable();
 
     // todo: add .AsDispensable().
-    AddInput("OutLinearBias", "The out_linear bias tensor.");
+    // AddInput("OutLinearBias", "The out_linear bias tensor.").AsDispensable();
 
-    AddInput("Ln2Scale",
-             "(optional) Scale is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
-        .AsDispensable();
-    AddInput("Ln2Bias",
-             "(optional) Bias is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
-        .AsDispensable();
+    // AddInput("Ln2Scale",
+    //          "(optional) Scale is a 1-dimensional tensor of size "
+    //          "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
+    //          "It is applied to the output.")
+    //     .AsDispensable();
+    // AddInput("Ln2Bias",
+    //          "(optional) Bias is a 1-dimensional tensor of size "
+    //          "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
+    //          "It is applied to the output.")
+    //     .AsDispensable();
 
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
@@ -208,9 +202,9 @@ class FusedAttentionCuDNNFMHAOpMaker
 
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
         .AsIntermediate();
-    AddOutput("Ln2Mean", "Mean of the current mini batch.").AsIntermediate();
-    AddOutput("Ln2Variance", "Variance of the current mini batch.")
-        .AsIntermediate();
+    // AddOutput("Ln2Mean", "Mean of the current mini batch.").AsIntermediate();
+    // AddOutput("Ln2Variance", "Variance of the current mini batch.")
+    //     .AsIntermediate();
     AddOutput("BiasDropoutResidualOut",
               "Result of residual + dropout(src + bias).")
         .AsIntermediate();
@@ -221,6 +215,11 @@ class FusedAttentionCuDNNFMHAOpMaker
                   "else, uses post_layer_norm architecuture. "
                   "[default false].")
         .SetDefault(false);
+
+    AddAttr<bool>("has_bias",
+                  "if true, add bias after linear op [default True]")
+        .SetDefault(true);
+
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
@@ -231,15 +230,15 @@ class FusedAttentionCuDNNFMHAOpMaker
                                 "0.0 and 0.001, But received [%s].",
                                 epsilon));
         });
-    // mha
-    // AddAttr<std::vector<int>>("attn_low_windows", "(Tensor),
-    // attn_low_windows"); AddAttr<std::vector<int>>("attn_high_windows",
-    //                           "(Tensor), attn_high_windows");
-    // AddAttr<std::vector<int>>("attn_qo_seqlen", "(Tensor), attn_qo_seqlen");
-    // AddAttr<std::vector<int>>("attn_kv_seqlen", "(Tensor), attn_kv_seqlen");
+    AddAttr<float>("attn_dropout_rate", "Probability of setting units to zero.")
+        .SetDefault(.5f)
+        .AddCustomChecker([](const float &drop_p) {
+          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
+                            platform::errors::InvalidArgument(
+                                "'dropout_rate' must be between 0.0 and 1.0."));
+        });
 
-    AddAttr<float>("attn_dropout_rate", "");
-    AddAttr<int>("attn_heads", "");
+    AddAttr<int>("attn_heads", "The number of attention heads").SetDefault(16);
     //  AddAttr<float>("attn_sm_scaler", "");
     // AddAttr<int>("attn_vec_size", "");
     // AddAttr<int>("attn_q_proj_size", "");
@@ -295,17 +294,6 @@ class FusedAttentionCuDNNFMHAOpMaker
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<float>("ln2epsilon",
-                   "Constant for numerical stability [default 1e-5].")
-        .SetDefault(1e-5)
-        .AddCustomChecker([](const float &ln2epsilon) {
-          PADDLE_ENFORCE_EQ(ln2epsilon >= 0.0f && ln2epsilon <= 0.001f, true,
-                            platform::errors::InvalidArgument(
-                                "'epsilon' of the second LayerNorm in Fused "
-                                "attention op should be between"
-                                "0.0 and 0.001, But received [%s].",
-                                ln2epsilon));
-        });
 
     AddComment(R"DOC(MHA OP Test)DOC");
 #endif
@@ -340,8 +328,8 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("KVSeqLenHost"), "Input", "KVSeqLenHost",
                    "FusedAttentionCuDNNFMHAGrad");
 
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
-                   "FusedAttentionCuDNNFMHAGrad");
+    // OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
+    //                "FusedAttentionCuDNNFMHAGrad");
 
     // mha
     // std::string var_names[4] = {"Q", "K", "V", "W"};
@@ -362,14 +350,19 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
 
+    OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
+                   "FusedAttentionCuDNNFMHAGrad");
+    OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
+                   "FusedAttentionCuDNNFMHAGrad");
+
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
-                     "FusedAttentionCuDNNFMHAGrad");
-      OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
-                     "FusedAttentionCuDNNFMHAGrad");
       OP_INOUT_CHECK(ctx->HasInput("LnOut"), "Input", "LnOut",
                      "FusedAttentionCuDNNFMHAGrad");
+    } else {
+      OP_INOUT_CHECK(ctx->HasInput("BiasDropoutResidualOut"), "Input",
+                     "BiasDropoutResidualOut", "FusedAttentionCuDNNFMHAGrad");
     }
+
     if (ctx->HasOutput(framework::GradVarName("LnScale"))) {
       ctx->SetOutputDim(framework::GradVarName("LnScale"),
                         ctx->GetInputDim("LnScale"));
@@ -378,28 +371,16 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("LnBias"),
                         ctx->GetInputDim("LnBias"));
     }
-
-    OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
-                   "FusedAttentionCuDNNFMHAGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"), "Input", "Ln2Variance",
-                   "FusedAttentionCuDNNFMHAGrad");
-    if (ctx->HasOutput(framework::GradVarName("Ln2Scale"))) {
-      ctx->SetOutputDim(framework::GradVarName("Ln2Scale"),
-                        ctx->GetInputDim("Ln2Scale"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("Ln2Bias"))) {
-      ctx->SetOutputDim(framework::GradVarName("Ln2Bias"),
-                        ctx->GetInputDim("Ln2Bias"));
-    }
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim(framework::GradVarName("LnOut"),
                         ctx->GetInputDim("LnOut"));
+    } else {
+      ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
+                        ctx->GetInputDim("BiasDropoutResidualOut"));
     }
 
-    ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
-                      ctx->GetInputDim("OutLinearBias"));
-    ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
-                      ctx->GetInputDim("BiasDropoutResidualOut"));
+    // ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
+    //                   ctx->GetInputDim("OutLinearBias"));
     ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
                       ctx->GetInputDim("OutLinearOut"));
 #endif
@@ -452,53 +433,41 @@ class FusedAttentionCuDNNFMHAGradOpMaker
     bool is_pre_layer_norm =
         BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
 
-    if (is_pre_layer_norm) {
-      if (this->HasInput("LnScale")) {
-        op->SetInput("LnScale", this->Input("LnScale"));
-        op->SetOutput(framework::GradVarName("LnScale"),
-                      this->InputGrad("LnScale"));
-      }
-      if (this->HasInput("LnBias")) {
-        op->SetInput("LnBias", this->Input("LnBias"));
-        op->SetOutput(framework::GradVarName("LnBias"),
-                      this->InputGrad("LnBias"));
-      }
+    if (this->HasInput("LnScale")) {
+      op->SetInput("LnScale", this->Input("LnScale"));
+      op->SetOutput(framework::GradVarName("LnScale"),
+                    this->InputGrad("LnScale"));
     }
-    op->SetInput("OutLinearBias", this->Input("OutLinearBias"));
+    if (this->HasInput("LnBias")) {
+      op->SetInput("LnBias", this->Input("LnBias"));
+      op->SetOutput(framework::GradVarName("LnBias"),
+                    this->InputGrad("LnBias"));
+    }
+
+    // op->SetInput("OutLinearBias", this->Input("OutLinearBias"));
 
     if (this->HasOutput("ReserveSpace")) {
       op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
     }
 
-    if (this->HasInput("Ln2Scale")) {
-      op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
-      op->SetOutput(framework::GradVarName("Ln2Scale"),
-                    this->InputGrad("Ln2Scale"));
+    if (this->HasOutput("LnMean")) {
+      op->SetInput("LnMean", this->Output("LnMean"));
     }
-    if (this->HasInput("Ln2Bias")) {
-      op->SetInput("Ln2Bias", this->Input("Ln2Bias"));
-      op->SetOutput(framework::GradVarName("Ln2Bias"),
-                    this->InputGrad("Ln2Bias"));
+    if (this->HasOutput("LnVariance")) {
+      op->SetInput("LnVariance", this->Output("LnVariance"));
     }
+
     if (is_pre_layer_norm) {
       if (this->HasOutput("LnOut")) {
         op->SetInput("LnOut", this->Output("LnOut"));
       }
-      if (this->HasOutput("LnMean")) {
-        op->SetInput("LnMean", this->Output("LnMean"));
-      }
-      if (this->HasOutput("LnVariance")) {
-        op->SetInput("LnVariance", this->Output("LnVariance"));
-      }
+    } else {
+      op->SetInput("BiasDropoutResidualOut",
+                   this->Output("BiasDropoutResidualOut"));
     }
 
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
-
-    op->SetInput("Ln2Mean", this->Output("Ln2Mean"));
-    op->SetInput("Ln2Variance", this->Output("Ln2Variance"));
     op->SetInput("DropoutMaskOut", this->Output("DropoutMaskOut"));
-    op->SetInput("BiasDropoutResidualOut",
-                 this->Output("BiasDropoutResidualOut"));
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     // op->SetOutput(framework::GradVarName("K"), this->InputGrad("K"));
@@ -510,14 +479,16 @@ class FusedAttentionCuDNNFMHAGradOpMaker
         op->SetOutput(framework::GradVarName("LnOut"),
                       this->OutputGrad("LnOut"));
       }
+    } else {
+      op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
+                    this->OutputGrad("BiasDropoutResidualOut"));
     }
 
-    op->SetOutput(framework::GradVarName("OutLinearBias"),
-                  this->InputGrad("OutLinearBias"));
+    // op->SetOutput(framework::GradVarName("OutLinearBias"),
+    //               this->InputGrad("OutLinearBias"));
     op->SetOutput(framework::GradVarName("OutLinearOut"),
                   this->OutputGrad("OutLinearOut"));
-    op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
-                  this->OutputGrad("BiasDropoutResidualOut"));
+
 #endif
   }
 };

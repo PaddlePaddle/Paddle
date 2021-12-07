@@ -92,9 +92,9 @@ using Tensor = framework::Tensor;
 //   void Compute(const framework::ExecutionContext& context) const override {
 
 template <typename T>
-void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
-                 const Tensor* k, const Tensor* v, const Tensor* w,
-                 const Tensor* qo_slen, const Tensor* kv_slen,
+void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
+                 const Tensor* q, const Tensor* k, const Tensor* v,
+                 const Tensor* w, const Tensor* qo_slen, const Tensor* kv_slen,
                  float attn_dropout_rate, int attn_heads, double attn_sm_scaler,
                  int attn_vec_size, int attn_q_proj_size, int attn_k_proj_size,
                  int attn_v_proj_size, int attn_o_proj_size,
@@ -143,13 +143,27 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
     // platform::RecordEvent record_event("cudnn_set_attn_descriptor",
     //                                    platform::EventRole::kInnerOp);
     // Setup Attention Desc
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
-        MHASingleton::Instance().Data(key).attn_desc,
-        CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
-        comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
-        attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
-        attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
-        attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size, attn_beam_size));
+    // CUDNN_ATTN_QUERYMAP_ALL_TO_ONE
+    // CUDNN_ATTN_ENABLE_PROJ_BIASES
+    if (has_bias) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
+          MHASingleton::Instance().Data(key).attn_desc,
+          CUDNN_ATTN_ENABLE_PROJ_BIASES, attn_heads, attn_sm_scaler, dtype,
+          comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
+          attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
+          attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
+          attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size,
+          attn_beam_size));
+    } else {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
+          MHASingleton::Instance().Data(key).attn_desc,
+          CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
+          comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
+          attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
+          attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
+          attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size,
+          attn_beam_size));
+    }
   }
 
   {

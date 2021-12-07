@@ -191,7 +191,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
         continue;
       }
 
-      if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
+      if ((op_type == "fused_attention" || op_type == "fused_feedforward" ||
+           op_type == "fused_attention_cudnn_fmha")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
             pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
             pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
@@ -231,7 +232,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
-      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
+      if ((op_type == "fused_attention" || op_type == "fused_feedforwad" ||
+           op_type == "fused_attention_cudnn_fmha") &&
           dst_type == framework::proto::VarType::FP32) {
         if (pair.first != "LnScale" && pair.first != "LnBias" &&
             pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&
@@ -266,6 +268,16 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
         pair.first != "X") {
       continue;
     }
+
+    if ((op_type == "fused_attention" || op_type == "fused_feedforward" ||
+         op_type == "fused_attention_cudnn_fmha")) {
+      if (pair.first == "LnScale" || pair.first == "LnBias" ||
+          pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
+          pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
+        continue;
+      }
+    }
+
     VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
             << GetDtypeStr(*pair.second.cbegin()) << " to "
             << framework::DataTypeToString(dst_type);

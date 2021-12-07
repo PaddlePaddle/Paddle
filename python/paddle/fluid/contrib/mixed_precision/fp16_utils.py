@@ -89,7 +89,7 @@ def _keep_fp32_input(op, in_name):
         return in_name not in {'X', 'Z'}
     if op_type == 'resnet_unit':
         return in_name not in {'X', 'FilterX', 'Z', 'FilterZ'}
-    if op_type in ['fused_attention', 'fused_feedforward']:
+    if op_type in ['fused_attention', 'fused_feedforward', 'fused_attention_cudnn_fmha']:
         return in_name in {
             'LnScale', 'LnBias', 'Ln2Scale', 'Ln2Bias', "Ln1Scale", "Ln1Bias"
         }
@@ -102,7 +102,7 @@ def _keep_fp32_output(op, out_name):
         return out_name != 'Y'
     if op_type == 'resnet_unit':
         return out_name not in {'Y', 'ConvX', 'ConvZ'}
-    if op_type in ['fused_attention', 'fused_feedforward']:
+    if op_type in ['fused_attention', 'fused_feedforward', 'fused_attention_cudnn_fmha']:
         return out_name in {
             'LnMean', 'LnVariance', 'Ln2Mean', 'Ln2Variance', 'Ln1Mean',
             'Ln1Variance'

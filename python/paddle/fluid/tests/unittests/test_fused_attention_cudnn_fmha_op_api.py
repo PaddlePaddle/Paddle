@@ -72,8 +72,8 @@ def layer_norm(x, has_scale, has_bias, weight, bias, epsilon=1e-05):
     x_scaled_bias = x_scaled_bias.reshape((batch_size, src_len, d_model))
     return x_scaled_bias
 
-def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_bias,
-                      ln_2_scale, ln_2_bias, weight, out_linear_bias):
+def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_bias, 
+                      weight, has_bias):
     batch_size = query.shape[0]
     seq_len = query.shape[1]
     embed_dim = query.shape[2]
@@ -85,10 +85,17 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
     # print(head_dim)
     
     #[1, embed_dim, embed_dim]
-    q_weight = weight[0:1, ::]
-    k_weight = weight[1:2, ::]
-    v_weight = weight[2:3, ::]
-    out_linear_weight = weight[3:4, ::]
+    weight_stride = embed_dim * embed_dim
+    bias_start = 4*weight_stride
+    bias_stride = embed_dim
+    q_weight = weight[0:weight_stride]
+    k_weight = weight[weight_stride:2*weight_stride]
+    v_weight = weight[2*weight_stride:3*weight_stride]
+    out_linear_weight = weight[3*weight_stride:4*weight_stride]
+    q_bias = weight[bias_start: bias_start+bias_stride]
+    k_bias = weight[bias_start + bias_stride:bias_start + 2*bias_stride]
+    v_bias = weight[(bias_start + 2*bias_stride):(bias_start + 3*bias_stride)]
+    out_linear_bias = weight[(bias_start + 3*bias_stride):(bias_start + 4*bias_stride)]
     # print(weight.shape)
     # print(q_weight.shape)
     # print(k_weight.shape)
@@ -100,6 +107,11 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
     v_weight = v_weight.reshape(embed_dim, num_head*head_dim)
     out_linear_weight = out_linear_weight.reshape(embed_dim, embed_dim)
 
+    q_bias = q_bias.reshape(embed_dim)
+    k_bias = k_bias.reshape(embed_dim)
+    v_bias = v_bias.reshape(embed_dim)
+    out_linear_bias = out_linear_bias.reshape(embed_dim)
+
     if (pre_layer_norm):
         ln_out = layer_norm(query, True, True, ln_scale, ln_bias)
 
@@ -110,17 +122,33 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
         q = fc(ln_out, q_weight)
         k = fc(ln_out, k_weight)
         v = fc(ln_out, v_weight)
+        if has_bias:
+            q_bias_out = q + q_bias
+            k_bias_out = k + k_bias
+            v_bias_out = v + v_bias
+        else:
+            q_bias_out = q
+            k_bias_out = k
+            v_bias_out = v
         ln_out = ln_out.reshape(batch_size, seq_len, embed_dim)
     else:
         query = query.reshape(batch_size * seq_len, embed_dim)
         q = fc(query, q_weight)
         k = fc(query, k_weight)
         v = fc(query, v_weight)
+        if has_bias:
+            q_bias_out = q + q_bias
+            k_bias_out = k + k_bias
+            v_bias_out = v + v_bias
+        else:
+            q_bias_out = q
+            k_bias_out = k
+            v_bias_out = v
         query = query.reshape(batch_size, seq_len, embed_dim)
 
-    q = q.reshape(batch_size, seq_len, num_head, head_dim)
-    k = k.reshape(batch_size, seq_len, num_head, head_dim)
-    v = v.reshape(batch_size, seq_len, num_head, head_dim)
+    q = q_bias_out.reshape(batch_size, seq_len, num_head, head_dim)
+    k = k_bias_out.reshape(batch_size, seq_len, num_head, head_dim)
+    v = v_bias_out.reshape(batch_size, seq_len, num_head, head_dim)
 
     # [batch_size, num_head, seq_len, head_dim]
     q = q.transpose((0, 2, 1, 3))
@@ -150,38 +178,61 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
     out_linear_out = fc(out_linear_input, out_linear_weight)
 
     # bias add, dropout, residual add, layer_norm.
-    out_linear_bias_out = out_linear_out + out_linear_bias
+    if has_bias:
+        out_linear_bias_out = out_linear_out + out_linear_bias
+    else:
+        out_linear_bias_out = out_linear_out
+
     out_linear_bias_dropout_out = out_linear_bias_out
     out_linear_bias_dropout_residual_out = query + out_linear_bias_dropout_out
-    out_linear_bias_dropout_residual_ln_out = layer_norm(
-        out_linear_bias_dropout_residual_out, True, True, ln_2_scale, ln_2_bias)
+    if pre_layer_norm:
+        out_linear_bias_dropout_residual_ln_out = out_linear_bias_dropout_residual_out
+    else: 
+        out_linear_bias_dropout_residual_ln_out = layer_norm(
+            out_linear_bias_dropout_residual_out, True, True, ln_scale, ln_bias)
     #return ln_out, out_linear_out, out_linear_bias_dropout_residual_ln_out
     return out_linear_bias_dropout_residual_ln_out
 
 
-class TestFusedAttentionAPI(unittest.TestCase):
+class TestFusedCudnnAttentionAPI(unittest.TestCase):
     def setUp(self):
+        self.setXType()
+        self.setInputSize()
+        self.setDropoutRate()
+        self.setPreLn()
+        self.setBiasAttr()
         self.config()
+        paddle.set_default_dtype(self.x_type)
         self.generate_input_data()
 
-    def config(self):
-        self.x_type = np.float32
-        self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
-        self.training = True
-        self.need_weight = False
+    def setBiasAttr(self):
+        self.bias_attr = None
 
+    def setPreLn(self):
+        self.pre_layer_norm = False
+
+    def setXType(self):
+        self.x_type = np.float32
+        self.atol = 1e-2
+    
+    def setInputSize(self):
         self.batch_size = 3
         self.query_length = 2
         self.head_dim = 2
         self.num_heads = 2
-        self.embed_dim = self.head_dim * self.num_heads
 
+    def setDropoutRate(self):
         self.dropout_prob = 0.0
         self.attn_dropout_prob = 0.0
-        self.weight_attr = None
-        self.bias_attr = None
 
+    def config(self):
+        self.attn_mask_type = np.float64
+        self.training = True
+        self.need_weight = False
+
+        self.embed_dim = self.head_dim * self.num_heads
+
+        self.weight_attr = None
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
         self.key_length, self.value_length = self.query_length, self.query_length
 
@@ -205,11 +256,17 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.attn_high_window = np.full((self.query_length, ), self.query_length, dtype=np.int32)
         
 
-    def run_imperative(self):
+    def run_imperative(self, atol=1e-3):
         fused_attn = FusedCudnnMultiHeadAttention(
             self.embed_dim, self.num_heads, self.dropout_prob,
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
             self.need_weight, self.weight_attr, self.bias_attr)
+
+        if self.bias_attr is not False:
+            has_bias = True
+        else:
+            has_bias = False
+
         out = fused_attn(
             paddle.to_tensor(self.query),
             paddle.to_tensor(self.query),
@@ -224,18 +281,15 @@ class TestFusedAttentionAPI(unittest.TestCase):
             # paddle.to_tensor(self.seq_len))
         ref_out = compute_reference(self.pre_layer_norm, self.num_heads, self.query,
                                     self.attn_mask,
-                                    fused_attn.pre_ln_scale.numpy(),
-                                    fused_attn.pre_ln_bias.numpy(),
                                     fused_attn.ln_scale.numpy(),
                                     fused_attn.ln_bias.numpy(),
-                                    fused_attn.weight.numpy(),
-                                    fused_attn.linear_bias.numpy())
+                                    fused_attn.weight.numpy(), has_bias)
         # np.testing.assert_allclose(ref_ln, ln_out, rtol=1e-5, atol=1e-5)
         # np.testing.assert_allclose(ref_out_linear, linear_out, rtol=1e-5, atol=1e-3)
-        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-3)
+        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=atol)
 
 
-    def run_static(self):
+    def run_static(self, atol=1e-3):
         fused_attn = FusedCudnnMultiHeadAttention(
             self.embed_dim, self.num_heads, self.dropout_prob,
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
@@ -295,7 +349,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
         # here, we use paralle executor, so the cpu tensor in feed list won't be transfered to device.
         # if use executor, the cpu tensor will be transfered to device.
-        final_out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
+        final_out, weight, ln_scale, ln_bias = exe.run(
             compiled_prog,
             feed=[{"X": self.query,
                   "SeqLen": self.seq_len,
@@ -303,32 +357,54 @@ class TestFusedAttentionAPI(unittest.TestCase):
                   "AttnHighWin": attn_high_window_cpu_tensor,
                   "SeqLenHost": seq_len_cpu_tensor}],
             fetch_list=[
-                final_out, fused_attn.weight, fused_attn.linear_bias,
-                fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
+                final_out, fused_attn.weight, 
                 fused_attn.ln_scale, fused_attn.ln_bias
             ])
 
-        return final_out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
+        return final_out, weight, ln_scale, ln_bias
 
 
-    def test_static_api(self):
+    def driver_static_api(self, atol=1e-3):
+        if self.bias_attr is not False:
+            has_bias = True
+        else:
+            has_bias = False
+
         paddle.enable_static()
         with paddle.static.program_guard(Program()):
-            out, weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = self.run_static()
+            out, weight, ln_scale, ln_bias = self.run_static()
             #out = self.run_static()
         ref_out = compute_reference(self.pre_layer_norm, self.num_heads, self.query,
-                                    self.attn_mask, ln_scale, ln_bias,
-                                    ln_2_scale, ln_2_bias, weight, linear_bias)
+                                    self.attn_mask, ln_scale, ln_bias, weight, has_bias)
 
         # np.testing.assert_allclose(ref_ln, ln_out, rtol=1e-5, atol=1e-5)
         # np.testing.assert_allclose(ref_linear_out, linear_out, rtol=1e-5, atol=1e-3)
-        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=1e-3)
+        np.testing.assert_allclose(ref_out, out, rtol=1e-5, atol=atol)
 
 
-    def test_dynamic_api(self):
+    def driver_dynamic_api(self, atol=1e-3):
         paddle.disable_static(place=paddle.CUDAPlace(0))
-        self.run_imperative()
+        self.run_imperative(atol)
 
+    def test_driver(self):
+        self.driver_dynamic_api(self.atol)
+        self.driver_static_api(self.atol)
+
+
+# class TestFusedCudnnAttentionAPIFp16(TestFusedCudnnAttentionAPI):
+#     def setXType(self):
+#         self.x_type = np.float16
+#         self.atol = 1e-1
+
+class TestFusedCudnnAttentionAPIPreLn(TestFusedCudnnAttentionAPI):
+    def setPreLn(self):
+        self.pre_layer_norm = True
+
+
+class TestFusedCudnnAttentionAPIBiasIsNone(TestFusedCudnnAttentionAPI):
+    def setBiasAttr(self):
+        self.bias_attr = False
+    
 
 if __name__ == "__main__":
     unittest.main()

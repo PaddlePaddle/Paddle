@@ -260,6 +260,7 @@ class FusedCudnnMultiHeadAttention(Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        print("self._dtype = ", self._dtype)
         
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
@@ -273,22 +274,17 @@ class FusedCudnnMultiHeadAttention(Layer):
     
         # wq, wk, wv, wo
         self.weight = self.create_parameter(
-                shape=[4, embed_dim, embed_dim],
+                shape=[4*embed_dim*embed_dim+4*embed_dim],
                 attr=self._weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
-        self.linear_bias = self.create_parameter(
-            shape=[embed_dim],
-            attr=self._bias_attr,
-            dtype=self._dtype,
-            is_bias=True)
+        # todo: 
+        # self.linear_bias = self.create_parameter(
+        #     shape=[embed_dim],
+        #     attr=self._bias_attr,
+        #     dtype=self._dtype,
+        #     is_bias=True)
         ## layer_norm parameters.
-        self.pre_ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.pre_ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
         self.ln_scale = self.create_parameter(
             attr=self._weight_attr,
             shape=[embed_dim],
@@ -299,6 +295,10 @@ class FusedCudnnMultiHeadAttention(Layer):
         ## dropout parameters
         self.dropout = dropout
         self.attn_dropout = attn_dropout
+
+        self.has_bias = True
+        if self._bias_attr is False:
+            self.has_bias = False
 
         self.name = name
 
@@ -356,16 +356,13 @@ class FusedCudnnMultiHeadAttention(Layer):
             weight=self.weight,
             seq_len=seq_len,
             num_heads=self.num_heads,
+            has_bias=self.has_bias,
             pre_layer_norm=self.normalize_before,
-            ln_scale=self.pre_ln_scale,
-            ln_bias=self.pre_ln_bias,
-            ln_2_scale=self.ln_scale,
-            ln_2_bias=self.ln_bias,
+            ln_scale=self.ln_scale,
+            ln_bias=self.ln_bias,
             epsilon=1e-05,
-            linear_bias=self.linear_bias,
             dropout=self.dropout,
             attn_dropout=self.attn_dropout,
-            ln2_epsilon=1e-05,
             attn_low_windows=attn_low_window,
             attn_high_windows=attn_high_window,
             attn_qo_seqlen=seq_len_host,
