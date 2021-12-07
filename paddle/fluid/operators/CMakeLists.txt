@@ -52,6 +52,10 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
+if (WITH_MLU)
+    add_subdirectory(mlu)
+endif()
+
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)
