@@ -467,7 +467,6 @@ register_unity_group(cu
     nll_loss_op.cu
     norm_op.cu
     one_hot_op.cu
-    p_norm_op.cu
     pad2d_op.cu
     pad3d_op.cu
     pad_constant_like_op.cu
