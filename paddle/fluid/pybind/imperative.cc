@@ -1538,7 +1538,7 @@ void BindImperative(py::module *m_ptr) {
              self.MutableGradVarBase()->SetType(type);
            })
       .def("_reset_grad_inplace_version",
-           [](imperative::VarBase &self) {
+           [](imperative::VarBase &self, bool set_to_zero) {
              /*
              *** This interfaceis a complete hack ***
              reset_grad_inplace_version removes all inplace related records to
@@ -1550,15 +1550,20 @@ void BindImperative(py::module *m_ptr) {
              Make sure you fully understand what you're doing before make use of
              this interface, and prepare for the worst.
              */
+             py::gil_scoped_release release;
+
              if (self.HasGradVar()) {
                auto grad_var = self.GradVarBase();
                auto var_wrapper = grad_var->SharedVar();
-               if (var_wrapper) var_wrapper->ResetInplaceVersion();
+               if (var_wrapper) {
+                 var_wrapper->ResetInplaceVersion(set_to_zero);
+               }
              }
            })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
+
              if (grad_var && grad_var->Var().IsInitialized()) {
                auto *tensor =
                    grad_var->MutableVar()->IsType<framework::LoDTensor>()
@@ -1567,6 +1572,7 @@ void BindImperative(py::module *m_ptr) {
                        : grad_var->MutableVar()
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
+
                if (tensor->IsInitialized()) {
                  return grad_var;
                }
