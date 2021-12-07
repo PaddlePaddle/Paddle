@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -65,7 +66,7 @@ SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
       .IsOptional()
       .End()
       .AddAttr("pooltype")
-      .IsStringIn({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"})
+      .IsStringEQ("SUM")
       .End()
       .AddAttr("pad_value")
       .End();
@@ -198,3 +199,9 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(seqpool_cvm_concat_fuse_pass,
               paddle::framework::ir::SeqPoolCVMConcatFusePass);
+REGISTER_PASS_CAPABILITY(seqpool_cvm_concat_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("sequence_pool", 0)
+            .EQ("cvm", 0)
+            .EQ("concat", 0));
