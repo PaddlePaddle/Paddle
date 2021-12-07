@@ -25,7 +25,7 @@ SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
 ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 
-SET(BRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/brpc)
+SET(BRPC_PREFIX_DIR  ${THIRD_PARTY_PATH}/brpc)
 SET(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
 SET(BRPC_INCLUDE_DIR "${BRPC_INSTALL_DIR}/include" CACHE PATH "brpc include directory." FORCE)
 SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.a" CACHE FILEPATH "brpc library." FORCE)
@@ -42,7 +42,7 @@ ExternalProject_Add(
         # TODO(gongwb): change to de newst repo when they changed
         GIT_REPOSITORY  "https://github.com/wangjiawei04/brpc"
         GIT_TAG         "e203afb794caf027da0f1e0776443e7d20c0c28e"
-        PREFIX          ${BRPC_SOURCES_DIR}
+        PREFIX          ${BRPC_PREFIX_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

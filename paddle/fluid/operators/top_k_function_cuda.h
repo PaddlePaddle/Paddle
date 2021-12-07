@@ -24,7 +24,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
 #ifdef __HIPCC__

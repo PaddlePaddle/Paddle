@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/box_decoder_and_assign_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

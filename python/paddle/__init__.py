@@ -117,6 +117,7 @@ from .tensor.logic import bitwise_or  # noqa: F401
 from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
+from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
@@ -149,6 +150,7 @@ from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
 from .tensor.manipulation import unstack  # noqa: F401
 from .tensor.manipulation import flip  # noqa: F401
+from .tensor.manipulation import rot90  # noqa: F401
 from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
@@ -222,6 +224,10 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import rad2deg  # noqa: F401
+from .tensor.math import deg2rad  # noqa: F401
+from .tensor.math import diff  # noqa: F401
+from .tensor.math import angle  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -322,6 +328,7 @@ __all__ = [  # noqa
            'complex128',
            'addmm',
            'allclose',
+           'isclose',
            't',
            'add',
            'subtract',
@@ -402,6 +409,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
+           'rot90',
            'bincount',
            'histogram',
            'multiplex',
@@ -455,6 +463,8 @@ __all__ = [  # noqa
            'ceil',
            'atan',
            'atan2',
+           'rad2deg',
+           'deg2rad',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -529,5 +539,7 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags'
+           'get_flags',
+           'diff',
+           'angle',
 ]

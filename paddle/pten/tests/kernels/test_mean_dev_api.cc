@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+namespace pten {
+namespace tests {
+
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
@@ -42,9 +45,14 @@ TEST(DEV_API, mean) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  std::vector<int64_t> dims = {0, 1};
   // 2. test API
   auto out = pten::Mean<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      dims,
+      false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
@@ -56,3 +64,6 @@ TEST(DEV_API, mean) {
   auto actual_result = out.data<float>()[0];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
+
+}  // namespace tests
+}  // namespace pten

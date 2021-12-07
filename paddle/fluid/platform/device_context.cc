@@ -274,7 +274,7 @@ NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
   // NOTE(zhiqiu): Usually, no need to create context explicitly,
   // ACL creates a default context which contains 1 default stream
   // and 1 sync strean after aclrtSetDevice.
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  platform::GetCurrentNPUContext(&context_);
   stream_.reset(new stream::NPUStream(place));
 }
 
@@ -370,10 +370,10 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
 #endif
     }
@@ -439,14 +439,14 @@ CUDAContext::~CUDAContext() {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
-  compute_capability_ = GetCUDAComputeCapability(place_.device);
-  multi_process_ = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  compute_capability_ = GetGPUComputeCapability(place_.device);
+  multi_process_ = GetGPUMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetGPUMaxThreadsPerMultiProcessor(place_.device);
   max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
-  max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
+  max_threads_per_block_ = GetGPUMaxThreadsPerBlock(place_.device);
 
-  driver_version_ = GetCUDADriverVersion(place_.device);
-  runtime_version_ = GetCUDARuntimeVersion(place_.device);
+  driver_version_ = GetGPUDriverVersion(place_.device);
+  runtime_version_ = GetGPURuntimeVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
                           << ", GPU Compute Capability: "
@@ -459,7 +459,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
                           << (runtime_version_ % 100) / 10;
 #ifdef PADDLE_WITH_HIP
   size_t version_major, version_minor, version_patch;
-  PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
       &version_major, &version_minor, &version_patch));
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", MIOpen Version: " << version_major << "."
@@ -499,7 +499,7 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nccl_comm_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }
 #endif
 }
@@ -589,7 +589,7 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 MKLDNNDeviceContextThreadLocals::Body::Body()
-    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
+    : cur_engine(dnnl::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
@@ -647,11 +647,11 @@ void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
   }
 }
 
-const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
+const dnnl::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
   return cur_engine;
 }
 
-mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 

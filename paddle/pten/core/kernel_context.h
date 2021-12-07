@@ -58,6 +58,10 @@ class KernelContext {
     input_range_.emplace_back(std::pair<int, int>(index, index + 1));
   }
 
+  void EmplaceBackInputWithoutSetRange(std::shared_ptr<TensorBase> input) {
+    inputs_.emplace_back(std::move(input));
+  }
+
   void EmplaceBackInputs(
       paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
     int index = inputs_.size();
@@ -74,6 +78,10 @@ class KernelContext {
     outputs_.emplace_back(std::move(output));
     // Record the start and end index of the input
     output_range_.emplace_back(std::pair<int, int>(index, index + 1));
+  }
+
+  void EmplaceBackOutputWithoutSetRange(std::shared_ptr<TensorBase> output) {
+    outputs_.emplace_back(std::move(output));
   }
 
   void EmplaceBackOutputs(
@@ -96,14 +104,18 @@ class KernelContext {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
   }
 
+  std::shared_ptr<TensorBase>& MutableInputPtrAt(size_t idx) {
+    return inputs_.at(idx);
+  }
+
   template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+  std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
       v.emplace_back(std::move(*t.get()));
+      inputs_.at(i) = nullptr;
     }
-
     return v;
   }
 
@@ -115,12 +127,32 @@ class KernelContext {
     return output_range_.at(idx);
   }
 
-  std::pair<int, int>& MutableInputRangeAt(size_t idx) {
-    return input_range_[idx];
+  void AssignInputRange(std::pair<int, int>&& range, size_t idx) {
+    if (idx < input_range_.size()) {
+      input_range_[idx] = range;
+    } else if (idx == input_range_.size()) {
+      input_range_.emplace_back(range);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Invalid idx when trying to set InputRange, "
+          "index is `%d`, it is greater than the size(%d) of InputRange.",
+          idx,
+          input_range_.size()));
+    }
   }
 
-  std::pair<int, int>& MutableOutputRangeAt(size_t idx) {
-    return output_range_[idx];
+  void AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
+    if (idx < output_range_.size()) {
+      output_range_[idx] = range;
+    } else if (idx == output_range_.size()) {
+      output_range_.emplace_back(range);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Invalid idx when trying to set InputRange, "
+          "index is `%d`, it is greater than the size(%d) of InputRange.",
+          idx,
+          output_range_.size()));
+    }
   }
 
   template <typename TensorType>
@@ -157,8 +189,10 @@ class KernelContext {
   // Only deal with DenseTensor now
   void ClearData() {
     for (auto& in : inputs_) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(in.get()));
+      if (in) {
+        CompatibleDenseTensorUtils::ClearStorage(
+            static_cast<DenseTensor*>(in.get()));
+      }
     }
     for (auto& out : outputs_) {
       CompatibleDenseTensorUtils::ClearStorage(
@@ -170,9 +204,6 @@ class KernelContext {
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
-
- private:
-  bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class

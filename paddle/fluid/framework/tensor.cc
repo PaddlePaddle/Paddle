@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -60,14 +62,7 @@ void* Tensor::mutable_data(const platform::Place& place,
           "The Tensor's shape is [",
           dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(
-        requested_size, size,
-        platform::errors::InvalidArgument(
-            "The requested memory size is less than the memory size of Tensor. "
-            "But received requested memory size is %d, "
-            "memory size of Tensor is %d.",
-            requested_size, size));
+  if (requested_size && (requested_size > size)) {
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
@@ -88,6 +83,35 @@ void* Tensor::mutable_data(const platform::Place& place,
                                              "The tensor is not initialized."));
   return mutable_data(place, type_, requested_size);
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void* Tensor::mutable_data(const platform::CUDAPlace& place,
+                           proto::VarType::Type type,
+                           const gpuStream_t& stream) {
+  if (!FLAGS_use_stream_safe_cuda_allocator) {
+    return mutable_data(place, type);
+  }
+
+  type_ = type;
+  PADDLE_ENFORCE_GE(
+      numel(), 0,
+      platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(), "] now"));
+  size_t size = numel() * SizeOfType(type);
+
+  /* some versions of boost::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + offset_) {
+    holder_.reset();
+    holder_ = memory::AllocShared(place, size, stream);
+    offset_ = 0;
+  }
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 offset_);
+}
+#endif
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();
@@ -204,10 +228,12 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
 }
 
 void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                                 const proto::VarType::Type type) {
-  ResetHolder(holder);
+                                 const proto::VarType::Type& type) {
   type_ = type;
+  ResetHolder(holder);
 }
+
+void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 }  // namespace framework
 }  // namespace paddle
