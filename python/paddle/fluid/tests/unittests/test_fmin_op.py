@@ -167,6 +167,7 @@ class TestElementwiseFmin2Op(OpTest):
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
         y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+
         y[2, 10:] = np.nan
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.fmin(self.inputs['X'], self.inputs['Y'])}

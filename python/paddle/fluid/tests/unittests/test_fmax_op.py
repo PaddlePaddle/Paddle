@@ -23,6 +23,7 @@ from op_test import OpTest
 
 class ApiFMaxTest(unittest.TestCase):
     """ApiFMaxTest"""
+
     def setUp(self):
         """setUp"""
         if core.is_compiled_with_cuda():
@@ -120,6 +121,7 @@ class ApiFMaxTest(unittest.TestCase):
 
 class TestElementwiseFmaxOp(OpTest):
     """TestElementwiseFmaxOp"""
+
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
@@ -153,6 +155,7 @@ class TestElementwiseFmaxOp(OpTest):
 
 class TestElementwiseFmax2Op(OpTest):
     """TestElementwiseFmax2Op"""
+
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
@@ -162,7 +165,8 @@ class TestElementwiseFmax2Op(OpTest):
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
         y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        y[2, 10:] = np.nan 
+
+        y[2, 10:] = np.nan
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
 
