@@ -297,5 +297,6 @@ __all__ = [     #noqa
            'ReLU6',
            'LayerDict',
            'ZeroPad2D',
-           'HingeEmbeddingLoss'
+           'MaxUnPool2D',
+           'HingeEmbeddingLoss',
 ]
