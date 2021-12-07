@@ -34,7 +34,6 @@ inline void* memset(paddle::platform::bfloat16* ptr, int value, size_t num) {
 }
 
 namespace std {
-
 template <>
 struct is_pod<paddle::platform::bfloat16> {
   static const bool value = true;
