@@ -171,7 +171,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, dist_context):
                 _rename_arg(op, in_var.name, out_var.name)
                 consume_op_attr.set_input_dist_attr(
                     out_var.name,
-                    dist_context.get_tensor_dist_attr_for_program(in_var))
+                    consume_op_attr.get_input_dist_attr(in_var.name))
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
