@@ -1,4 +1,8 @@
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,15 +44,31 @@ template <typename T>
 using Vector = framework::CPUVector<T>;
 #endif
 
+<<<<<<< Updated upstream
+=======
+using CUDADeviceContext = paddle::platform::CUDADeviceContext;
+
+>>>>>>> Stashed changes
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< Updated upstream
+=======
+    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto cpu_place = platform::CPUPlace();
+    auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
+
+>>>>>>> Stashed changes
     // X1 is global FC output
     // Dim [batch size, embedding size]
     auto* x1 = context.Input<LoDTensor>("Ins");
     bool is_x1_lod = context.Attr<bool>("is_lod");
     int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
