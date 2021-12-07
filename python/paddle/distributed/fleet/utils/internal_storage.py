@@ -60,9 +60,17 @@ class InternalStorage:
 
         dev_id = 0 if paddle.get_device() == "cpu" else int(paddle.get_device()
                                                             .split(":")[1])
-        self.buffer = self.buffer.cuda(
-            dev_id) if device == "gpu" else self.buffer.cpu()
-        self._device = device
+
+        if self._device != device:
+            tmp_buffer = self.buffer.cuda(
+                dev_id) if device == "gpu" else self.buffer.cpu()
+            for param in self._params:
+                param.clear_gradient(False)
+                param._gradient_set_empty(False)
+            self.buffer.value().get_tensor()._clear()
+            self.buffer = tmp_buffer
+
+            self._device = device
 
         if dtype is not None:
             self.buffer = self.buffer.cast(dtype=dtype)
@@ -259,6 +267,7 @@ class GradStorage(InternalStorage):
         """
         Given the parameter gradients which have been registered previously, rebuild the whole InternalStorage.
         """
+
         if self._release:
             self.buffer = paddle.zeros([self._max_size], dtype=self._dtype)
 

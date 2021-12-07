@@ -303,6 +303,7 @@ class ShardingStage2(nn.Layer):
                             self._sharding_optimizers[0]._master_params[
                                 param.name]._copy_gradient_from(param.grad.cpu(
                                 ).cast(dtype=Type.fp32.value))
+                            param.clear_gradient(False)
 
                     # Synchronize the reduce parameter gradient
                     self._tasks_flow.append(
@@ -360,7 +361,6 @@ class ShardingStage2(nn.Layer):
                                         param.name]._copy_gradient_from(
                                             param.grad.cast(
                                                 dtype=Type.fp32.value))
-                                grad_storage.to(device=self._default_device)
 
                         # Reduce the bucket
                         grad_storage.sent = True
