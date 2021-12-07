@@ -31,7 +31,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Precision"), "Output", "Precision",
                    "chunk_eval");
     OP_INOUT_CHECK(ctx->HasOutput("Recall"), "Output", "Recall", "chunk_eval");
-    OP_INOUT_CHECK(ctx->HasOutput("F1-Score"), "Output", "F1-Score",
+    OP_INOUT_CHECK(ctx->HasOutput("F1_Score"), "Output", "F1_Score",
                    "chunk_eval");
     OP_INOUT_CHECK(ctx->HasOutput("NumInferChunks"), "Output", "NumInferChunks",
                    "chunk_eval");
@@ -70,7 +70,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Precision", {1});
     ctx->SetOutputDim("Recall", {1});
-    ctx->SetOutputDim("F1-Score", {1});
+    ctx->SetOutputDim("F1_Score", {1});
     ctx->SetOutputDim("NumInferChunks", {1});
     ctx->SetOutputDim("NumLabelChunks", {1});
     ctx->SetOutputDim("NumCorrectChunks", {1});
@@ -102,8 +102,8 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Recall",
               "(float). The evaluated recall (true positive rate or "
               "sensitivity) of chunks on the given mini-batch.");
-    AddOutput("F1-Score",
-              "(float). The evaluated F1-Score on the given mini-batch.");
+    AddOutput("F1_Score",
+              "(float). The evaluated F1_Score on the given mini-batch.");
     AddOutput("NumInferChunks",
               "(int64_t). The number of chunks in Inference on the given "
               "mini-batch.");
