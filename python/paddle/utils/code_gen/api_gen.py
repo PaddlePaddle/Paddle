@@ -111,7 +111,7 @@ class API:
 
     def gene_api_declaration(self):
         return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
+PADDLE_API {self.output} {self.api}({self.args['args_declare']});
 """
 
     def gene_kernel_select(self, input_names, attrs, kernel):
@@ -343,7 +343,7 @@ PD_DLL_DECL {self.output} {self.api}({self.args['args_declare']});
                 self.args['inputs']['names'], self.args['attrs'],
                 self.kernel['param'])
             return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -366,7 +366,7 @@ PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
 
         else:
             return f"""
-PD_DLL_DECL {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
   return {self.invoke};
 }}
 """
