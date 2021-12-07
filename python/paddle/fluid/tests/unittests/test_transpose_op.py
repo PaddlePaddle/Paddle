@@ -348,74 +348,76 @@ class TestTAPI(unittest.TestCase):
             self.assertRaises(ValueError, test_x_dimension_check)
 
 
-class TestMoveDim(unittest.TestCase):
-    def test_movedim(self):
-        x_np = np.random.randn(2, 3, 4, 5)
-        expected = np.moveaxis(x_np, [0, 2], [1, 3])
+class TestMoveAxis(unittest.TestCase):
+    def test_moveaxis1(self):
+        x_np = np.random.randn(2, 3, 4, 5, 7)
+        expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])
         paddle.enable_static()
         with paddle.static.program_guard(fluid.Program()):
-            x = paddle.static.data("x", shape=[2, 3, 4, 5], dytpe='float64')
-            out = paddle.movedim(x, [0, 2], [1, 3])
+            x = paddle.static.data("x", shape=[2, 3, 4, 5, 7], dtype='float64')
+            out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
 
-            exe = paddle.static.Executor(place)
-            out_np = exe.run(feed={"x": x_np}, fetch_list=[out])
+            exe = paddle.static.Executor()
+            out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected))
+        self.assertEqual(np.array_equal(out_np, expected), True)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
-        out = x.movedim([0, 2], [1, 3])
-        self.assertEqual(out.shape, [3, 2, 5, 4])
-        self.assertEqual(np.array_equal(out.numpy(), expected))
+        out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
+        self.assertEqual(out.shape, [4, 2, 5, 7, 3])
+        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        paddle.enable_static()
 
-    def test_moveaxis(self):
-        x_np = np.random.randn(2, 3)
-        expected = np.moveaxis(x_np, 0, 1)
+    def test_moveaxis2(self):
+        x_np = np.random.randn(2, 3, 5)
+        expected = np.moveaxis(x_np, -2, -1)
         paddle.enable_static()
         with paddle.static.program_guard(fluid.Program()):
-            x = paddle.static.data("x", shape=[2, 3], dytpe='float64')
-            out = paddle.moveaxis(0, 1)
+            x = paddle.static.data("x", shape=[2, 3, 5], dtype='float64')
+            out = x.moveaxis(-2, -1)
 
-            exe = paddle.static.Executor(place)
-            out_np = exe.run(feed={"x": x_np}, fetch_list=[out])
+            exe = paddle.static.Executor()
+            out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected))
+        self.assertEqual(np.array_equal(out_np, expected), True)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
-        out = x.moveaxis(0, 1)
-        self.assertEqual(out.shape, [3, 2])
-        self.assertEqual(np.array_equal(out.numpy(), expected))
+        out = x.moveaxis(-2, -1)
+        self.assertEqual(out.shape, [2, 5, 3])
+        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        paddle.enable_static()
 
     def test_error(self):
-        paddle.randn([2, 3, 4, 5])
+        x = paddle.randn([2, 3, 4, 5])
         # src must have the same number with dst
         with self.assertRaises(AssertionError):
-            paddle.movedim([1, 0], [2])
+            paddle.moveaxis(x, [1, 0], [2])
 
         # each elment of src must be unique
-        with self.assertRaises(AssertionError):
-            paddle.movedim([1, 1], [0, 2])
+        with self.assertRaises(ValueError):
+            paddle.moveaxis(x, [1, 1], [0, 2])
 
         # each elment of dst must be unique
-        with self.assertRaises(AssertionError):
-            paddle.movedim([0, 1], [2, 2])
+        with self.assertRaises(ValueError):
+            paddle.moveaxis(x, [0, 1], [2, 2])
 
         # each elment of src must be integer
         with self.assertRaises(AssertionError):
-            paddle.movedim(0.5, 1)
+            paddle.moveaxis(x, [0.5], [1])
 
         # each elment of dst must be integer
         with self.assertRaises(AssertionError):
-            paddle.movedim(0, 1.5)
+            paddle.moveaxis(x, [0], [1.5])
 
         # each elment of src must be in the range of [-4, 3)
-        with self.assertRaises(ValueError):
-            paddle.movedim([-10, 1], [2, 3])
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [-10, 1], [2, 3])
 
         # each elment of dst must be in the range of [-4, 3)
-        with self.assertRaises(ValueError):
-            paddle.movedim([2, 1], [10, 3])
+        with self.assertRaises(AssertionError):
+            paddle.moveaxis(x, [2, 1], [10, 3])
 
 
 if __name__ == '__main__':

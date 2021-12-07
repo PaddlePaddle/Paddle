@@ -100,8 +100,6 @@ from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
-from .tensor.linalg import moveaxis  # noqa: F401
-from .tensor.linalg import movedim  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
@@ -158,6 +156,7 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
+from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
