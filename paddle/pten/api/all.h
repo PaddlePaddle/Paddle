@@ -25,11 +25,7 @@ limitations under the License. */
 #endif
 
 // new pten apis
-#include "paddle/pten/api/include/creation.h"
-#include "paddle/pten/api/include/linalg.h"
-#include "paddle/pten/api/include/manipulation.h"
-#include "paddle/pten/api/include/math.h"
-#include "paddle/pten/api/include/sparse_coo_tensor_utils.h"
+#include "paddle/pten/api/include/api.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/include/utils.h"
 

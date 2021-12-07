@@ -42,6 +42,9 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["transpose2"]["X"] = ScaleAlgo::KL;
   rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
 
+  rules_["slice"]["Input"] = ScaleAlgo::KL;
+  rules_["slice"]["Out"] = ScaleAlgo::NONE;
+
   rules_["fc"]["Input"] = ScaleAlgo::KL;
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
   rules_["fc"]["Bias"] = ScaleAlgo::NONE;
