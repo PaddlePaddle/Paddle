@@ -32,6 +32,7 @@ from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
 from ..fluid.framework import in_eager_mode
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = []
 
@@ -1279,6 +1280,18 @@ def complex(real, imag, name=None):
             # [[0.+0.j 0.+1.j 0.+2.j]
             #  [1.+0.j 1.+1.j 1.+2.j]]
     """
+    if in_dygraph_mode():
+        return paddle._C_ops.complex(real, imag)
+
     check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
     check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
-    return real + 1j * imag
+
+    op_type = "complex"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": real, "Y": imag}
+    out = helper.create_variable_for_type_inference(
+        dtype=_real_to_complex_dtype(real.dtype))
+    outputs = {"Out": out}
+    attrs = {}
+    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
