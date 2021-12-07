@@ -25,7 +25,7 @@ from ..process_group import new_process_group
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.process_group import get_world_process_groups
 
-global_process_mesh = get_world_process_groups()
+global_processes = get_world_process_groups().ranks
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
@@ -114,10 +114,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         main_block._sync_with_cpp()
 
         # sync result
-        # group_ranks = global_process_mesh.processes
-        # FIXME
-        group_ranks = [0, 1]
-        group = new_process_group(group_ranks)
+        group = new_process_group(global_processes)
 
         inf_var = main_block.var(kwargs['FoundInfinite'][0])
         inf_var_int32 = main_block.create_var(
@@ -159,7 +156,6 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
 
         for op in [cast_op1, allreduce_op, cast_op2]:
             new_op_dist_attr = OperatorDistributedAttribute()
-            new_op_dist_attr.process_mesh = global_process_mesh
             for varname in op.input_arg_names:
                 var_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     main_block.var(varname))
@@ -171,6 +167,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                     main_block.var(varname))
                 new_op_dist_attr.set_output_dims_mapping(
                     varname, var_dist_attr.dims_mapping)
+            new_op_dist_attr.process_mesh = var_dist_attr.process_mesh
             ctx.set_op_dist_attr_for_program(op, new_op_dist_attr)
 
 
