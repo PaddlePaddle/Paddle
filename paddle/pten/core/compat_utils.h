@@ -42,14 +42,23 @@ class CompatibleDenseTensorUtils {
   // only can deal with SharedStorage now
   static void ClearStorage(DenseTensor* tensor) {
     // use static_cast to improve performance, replace by dynamic_cast later
-    static_cast<paddle::experimental::SharedStorage*>(tensor->storage_.get())
-        ->Reset();
+    if (tensor->storage_ != nullptr) {
+      static_cast<paddle::experimental::SharedStorage*>(tensor->storage_.get())
+          ->Reset();
+    }
   }
 
   static DenseTensor Slice(DenseTensor* tensor,
                            int64_t begin_idx,
                            int64_t end_idx) {
-    tensor->check_memory_size();
+    size_t bytes = tensor->numel() * SizeOf(tensor->dtype());
+    PADDLE_ENFORCE_GE(tensor->capacity(),
+                      bytes,
+                      paddle::platform::errors::InvalidArgument(
+                          "The memory size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          tensor->capacity(),
+                          bytes));
     PADDLE_ENFORCE_GE(begin_idx,
                       0,
                       paddle::platform::errors::OutOfRange(
@@ -74,7 +83,7 @@ class CompatibleDenseTensorUtils {
       ret.meta_.dims[0] = end_idx - begin_idx;
       ret.meta_.offset = tensor->meta_.offset +
                          begin_idx * (tensor->numel() / tensor->dims()[0]) *
-                             paddle::experimental::SizeOf(tensor->data_type());
+                             paddle::experimental::SizeOf(tensor->dtype());
     }
     return ret;
   }

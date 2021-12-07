@@ -72,7 +72,7 @@ class SGDOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
+    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       const auto *param_var = ctx.InputVar("Param");
       const auto *grad_var = ctx.InputVar("Grad");

@@ -306,7 +306,7 @@ AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     std::vector<int> reference_distr_P(&hist[0], &hist[i]);
     auto outliers_count =
         std::accumulate(&hist[i], &hist[precision_hist_num_bins], 0);
-    if (reference_distr_P[i - 1] == 0) {
+    if (i <= 0 || reference_distr_P[i - 1] == 0) {
       continue;
     }
     reference_distr_P[i - 1] += outliers_count;

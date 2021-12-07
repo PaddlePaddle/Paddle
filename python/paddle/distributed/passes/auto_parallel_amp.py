@@ -476,7 +476,8 @@ class AMPBackwardPass(PassBase):
             loss_op._set_attr(OP_ROLE_KEY,
                               core.op_proto_and_checker_maker.OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_op, ref_mesh, [-1], self._dist_context)
+                elementwise_mul_op, global_process_mesh, [-1],
+                self._dist_context)
 
             # backward
             first_backward_op = main_block.ops[loss_op_idx + 2]
@@ -514,7 +515,8 @@ class AMPBackwardPass(PassBase):
             elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_grad_op, ref_mesh, [-1], self._dist_context)
+                elementwise_mul_grad_op, global_process_mesh, [-1],
+                self._dist_context)
 
         else:
             self._scaled_loss = loss

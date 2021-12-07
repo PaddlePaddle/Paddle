@@ -144,13 +144,13 @@ void GPUSampleWithProb<T>::operator()(
   VLOG(1) << "num_tries: " << num_tries;
 
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(samples_data + num_true, s_data,
-                                        sizeof(int64_t) * num_samples,
-                                        hipMemcpyHostToDevice));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(samples_data + num_true, s_data,
+                                       sizeof(int64_t) * num_samples,
+                                       hipMemcpyHostToDevice));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(samples_data + num_true, s_data,
-                                         sizeof(int64_t) * num_samples,
-                                         cudaMemcpyHostToDevice));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(samples_data + num_true, s_data,
+                                        sizeof(int64_t) * num_samples,
+                                        cudaMemcpyHostToDevice));
 #endif
 
   int threads = 512;

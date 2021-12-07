@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 
 namespace paddle {
 namespace memory {
