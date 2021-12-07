@@ -52,13 +52,12 @@ message(STATUS "Build with HOST_SYSROOT=" ${HOST_SYSROOT})
 message(STATUS "Build with HOST_CXX=" ${HOST_CXX})
 message(STATUS "Build with HOST_AR=" ${HOST_AR})
 
-#macro(compile_kernel kernel_path kernel_name device_o_extra_flags host_o_extra_flags xpu_1_or_2 cc_depends)
 macro(compile_kernel COMPILE_ARGS)
   set(options "")
   set(oneValueArgs "")
-  set(multiValueArgs KERNEL XNAME DEVICE HOST XPU DEPENDS)
+  set(multiValueArgs KERNEL DIRPATH XNAME DEVICE HOST XPU DEPENDS)
   cmake_parse_arguments(xpu_add_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  set(kernel_path ${xpu_add_library_KERNEL})
+  set(kernel_path ${xpu_add_library_DIRPATH})
   set(kernel_name ${xpu_add_library_XNAME})
   set(device_o_extra_flags ${xpu_add_library_DEVICE})
   set(host_o_extra_flags ${xpu_add_library_HOST})
@@ -105,7 +104,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
-       -I.  -o kernel_build/${kernel_name}.bin.o.sec ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/elementwise/${kernel_name}.xpu
+       -I.  -o kernel_build/${kernel_name}.bin.o.sec ${kernel_path}/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
       ${XTDK_DIR}/bin/xpu2-elfconv kernel_build/${kernel_name}.bin.o.sec  kernel_build/${kernel_name}.bin.o ${XPU_CLANG} --sysroot=${CXX_DIR}
@@ -128,7 +127,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
-        -I.  -o kernel_build/${kernel_name}.host.o ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/elementwise/${kernel_name}.xpu
+        -I.  -o kernel_build/${kernel_name}.host.o ${kernel_path}/${kernel_name}.xpu
         --xpu-host-only -c -v 
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_BINARY_DIR}
@@ -153,7 +152,6 @@ macro(xpu_add_library TARGET_NAME)
     set(xpu_srcs ${xpu_add_library_STATIC})
     set(xpu_target ${TARGET_NAME})
     set(cc_srcs_depends ${xpu_add_library_DEPENDS})
-    #message(STATUS "lxd_debug: ${xpu_add_library_DEPENDS}---------------------------------")
     
     file(GLOB_RECURSE xpu_srcs_lists ${xpu_srcs})
     list(LENGTH xpu_srcs_lists xpu_srcs_lists_num)
@@ -181,16 +179,11 @@ macro(xpu_add_library TARGET_NAME)
             message(STATUS "Process ${xpu_kernel}")
             get_filename_component(kernel_name ${xpu_kernel} NAME_WE)
             get_filename_component(kernel_dir ${xpu_kernel} DIRECTORY)
+            #message(STATUS "lxd_debug PATH ${kernel_dir}")
             #TODO(liuxiandong set default rules)
             set(kernel_rules ${kernel_dir}/${kernel_name}.rules)
-            set(kernel_name ${kernel_name})
-            # if(EXISTS ${kernel_rules})
-            #     # compile_kernel_with_rules(${xpu_kernel} ${kernel_name} ${kernel_rules}
-            #     #     ${XPU1_DEVICE_O_EXTRA_FLAGS} ${XPU1_HOST_O_EXTRA_FLAGS} "xpu2" ${cc_srcs_depends})
-            # else()
-            message(STATUS "lxd_debug: ${cc_srcs_depends}>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            compile_kernel(KERNEL ${xpu_kernel} XNAME ${kernel_name} DEVICE ${XPU1_DEVICE_O_EXTRA_FLAGS} HOST ${XPU1_HOST_O_EXTRA_FLAGS} XPU "xpu2" DEPENDS ${cc_srcs_depends})
-            # endif()
+            set(kernel_name ${kernel_name}) #DIRPATH ${kernel_dir}
+            compile_kernel( KERNEL ${xpu_kernel} DIRPATH ${kernel_dir} XNAME ${kernel_name} DEVICE ${XPU1_DEVICE_O_EXTRA_FLAGS} HOST ${XPU1_HOST_O_EXTRA_FLAGS} XPU "xpu2" DEPENDS ${cc_srcs_depends})
         endforeach()
 
         add_custom_target(${xpu_target}_src ALL
@@ -218,58 +211,40 @@ macro(xpu_add_library TARGET_NAME)
         #     VERBATIM
         #     ) 
         
-        # if(${cc_srcs_depends_num})
-        #   add_dependencies(${xpu_target}_kernel ${cc_srcs_depends})
-        # endif()
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
         add_dependencies(${xpu_target} ${xpu_target}_src)
         #target_link_libraries(${xpu_target} ${xpu_target}_src)
         #target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a)
+
+        # TEST
+        # add_library(${xpu_target}_obj OBJECT ${cc_kernel_lists})
+        #add_dependencies(${xpu_target} ${xpu_target}_src)
+
+        # add_custom_target(${xpu_target} ALL
+        #   WORKING_DIRECTORY
+        #     ${CMAKE_CURRENT_BINARY_DIR}
+        #   DEPENDS
+        #     ${xpu_kernel_depends}
+        #     ${xpu_target}_obj
+        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a
+        #   COMMENT
+        #     ${xpu_target}
+        #   VERBATIM
+        #   )
+        # add_custom_command(
+        #   OUTPUT
+        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a
+        #   COMMAND
+        #     ${HOST_AR} rcs ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a ${xpu_kernel_depends} ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${xpu_target}.dir/*.o
+        #   WORKING_DIRECTORY
+        #     ${CMAKE_CURRENT_BINARY_DIR}
+        #   DEPENDS
+        #     ${xpuapi_wrapper_a_depends}
+        #   COMMENT
+        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a
+        #   VERBATIM
+        #   )
     else()
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
     endif()
 endmacro()
-
-# XPU2 PATH
-# if(NOT DEFINED ENV{XPU2_PATH})
-#     set(XPU2_PATH "/workspace/paddle/xpu-demo/XTDK" CACHE PATH "Path to which XPU2 has been installed")
-#     set(XPU_CLANG_PATH ${XPU2_PATH}/bin/clang CACHE PATH "Path to which XPU2 CLANG has been installed")
-# else()
-#     set(XPU2_PATH $ENV{XPU2_PATH} CACHE PATH "Path to which ROCm has been installed")
-#     set(XPU_CLANG_PATH ${XPU2_PATH}/bin/clang CACHE PATH "Path to which XPU2 CLANG has been installed")
-# endif()
-# set(CMAKE_MODULE_PATH "${XPU2_CLANG_PATH}/cmake" ${CMAKE_MODULE_PATH})
-
-# # define XPU_CXX_FLAGS
-# list(APPEND XPU_CFLAGS -fPIC)
-# list(APPEND XPU_CFLAGS --sysroot = /opt/compiler/gcc-8.2)
-# list(APPEND XPU_CFLAGS -std=c++11)
-# list(APPEND XPU_CFLAGS -O2)
-# list(APPEND XPU_CFLAGS -g)
-# list(APPEND XPU_CFLAGS -mcpu=xpu2)
-# list(APPEND XPU_CFLAGS --target=x86_64-linux-gnu)
-# list(APPEND XPU_CFLAGS -v)
-# list(APPEND XPU_CFLAGS --dyld-prefix=/opt/compiler/gcc-8.2)
-# list(APPEND XPU_CFLAGS -fno-builtin)
-# list(APPEND XPU_CFLAGS -Wno-dev)
-
-# set(XPU_XPUCC_FLAGS ${XPU_CFLAGS})
-
-# set HIP link libs
-# set(xpuapi_library_name xpuapi)
-# message(STATUS "XPU API library name: ${xpuapi_library_name}")
-# # link in the generic.cmake
-# find_library(XPU2_CLANG_API_LIB ${xpuapi_library_name} HINTS ${XPU2_PATH}/shlib)
-# message(STATUS "XPU2_CLANG_API_LIB: ${XPU2_CLANG_API_LIB}")
-
-# set(xpurt_library_name xpurt)
-# message(STATUS "XPU RT library name: ${xpurt_library_name}")
-# # link in the generic.cmake
-# find_library(XPU2_CLANG_RT_LIB ${xpurt_library_name} HINTS ${XPU2_PATH}/runtime/shlib)
-# message(STATUS "XPU2_CLANG_RT_LIB: ${XPU2_CLANG_RT_LIB}")
-
-# # Ensure that xpu/api.h can be included without dependency errors.
-# file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc CONTENT "")
-# add_library(xpu_headers_dummy STATIC ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc)
-# add_dependencies(xpu_headers_dummy extern_xpu)
-# link_libraries(xpu_headers_dummy)
