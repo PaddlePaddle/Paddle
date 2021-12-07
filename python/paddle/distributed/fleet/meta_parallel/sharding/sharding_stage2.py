@@ -113,6 +113,13 @@ class ShardingStage2(nn.Layer):
         self._grad_storage_list = []
 
         # offload
+        self._offload_optims = list(
+            filter(lambda optim: optim.offload, self._sharding_optimizers))
+        if len(self._offload_optims) > 0:
+            assert len(
+                self._sharding_optimizers
+            ) == 1, "Only support offload strategy for single optimizer"
+
         self._offload = self._sharding_optimizers[0].offload
         self._offload_device = "cpu"
 
@@ -160,7 +167,8 @@ class ShardingStage2(nn.Layer):
         # Release grad storages
         for dtype in self._grad_storages.keys():
             if self._rank in self._grad_storages[dtype].keys():
-                self._grad_storages[dtype][self._rank].buffer.zero_()
+                if not self._offload:
+                    self._grad_storages[dtype][self._rank].buffer.zero_()
 
         # Release params
         for param in self._trainable_params:
@@ -361,6 +369,8 @@ class ShardingStage2(nn.Layer):
                                         param.name]._copy_gradient_from(
                                             param.grad.cast(
                                                 dtype=Type.fp32.value))
+                                grad_storage.buffer.value().get_tensor()._clear(
+                                )
 
                         # Reduce the bucket
                         grad_storage.sent = True
@@ -419,8 +429,8 @@ class ShardingStage2(nn.Layer):
                 group=self._group,
                 use_calc_stream=True)
 
-            # Multi stream operation will be supported later
-            dist.wait(tensor=t, group=self._group, use_calc_stream=True)
+        # Multi stream operation will be supported later
+        dist.wait(tensor=t, group=self._group, use_calc_stream=True)
 
     def _setup_use_grad_storage(self):
         """
@@ -500,7 +510,7 @@ class ShardingStage2(nn.Layer):
         # Rebuild fp16/fp32 grad storages
         for dtype in self._grad_storages.keys():
             for dst_rank, grad_storage in self._grad_storages[dtype].items():
-                if dst_rank != self._rank:
+                if self._offload or dst_rank != self._rank:
                     grad_storage.manumal_relase()
                     grad_storage.rebuild()
 

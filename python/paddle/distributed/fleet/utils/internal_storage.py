@@ -70,8 +70,6 @@ class InternalStorage:
             self.buffer.value().get_tensor()._clear()
             self.buffer = tmp_buffer
 
-            self._device = device
-
         if dtype is not None:
             self.buffer = self.buffer.cast(dtype=dtype)
             self._dtype = dtype

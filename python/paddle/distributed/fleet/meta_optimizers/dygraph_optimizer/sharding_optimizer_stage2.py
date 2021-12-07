@@ -52,7 +52,7 @@ class ShardingOptimizerStage2(Optimizer):
     .. warning: ShardingOptimizer encapsulates the optimization strategy and integrates it into the optimizer.
 
     .. ZeRO: 1.https://arxiv.org/pdf/1910.02054.pdf 2.https://arxiv.org/pdf/1910.02054.pdf.
-    
+
     """
 
     # TODO (Baibaifan) 
@@ -334,8 +334,8 @@ class ShardingOptimizerStage2(Optimizer):
                     group=self.group,
                     use_calc_stream=True)
 
-                # Multi stream operation will be supported later
-                dist.wait(
-                    tensor=internal_storage.buffer,
-                    group=self.group,
-                    use_calc_stream=True)
+            # Multi stream operation will be supported later
+            dist.wait(
+                tensor=internal_storage.buffer,
+                group=self.group,
+                use_calc_stream=True)
