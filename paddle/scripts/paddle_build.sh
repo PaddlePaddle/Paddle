@@ -324,7 +324,7 @@ function check_style() {
     clang-format --version
 
     commit_files=on
-    for file_name in `git diff --numstat $BRANCH |awk '{print $NF}'`;do
+    for file_name in `git diff --numstat ${BRANCH} |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
