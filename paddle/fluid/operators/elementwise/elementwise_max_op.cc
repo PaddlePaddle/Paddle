@@ -150,14 +150,17 @@ REGISTER_OPERATOR(elementwise_fmax_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_fmax,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, paddle::platform::float16>,
+    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext,
+                               paddle::platform::float16>,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_fmax_grad,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, paddle::platform::float16>,
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext,
+                                   paddle::platform::float16>,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext,
+                                   int64_t>);

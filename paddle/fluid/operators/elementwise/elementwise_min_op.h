@@ -87,14 +87,14 @@ class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
 template <typename T>
 struct FMinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x <= y) || ::isnan(y));
+    return dout * static_cast<T>((x <= y) || (std::isnan(y)));
   }
 };
 
 template <typename T>
 struct FMinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>(!((x <= y) || ::isnan(y)));
+    return dout * static_cast<T>(!((x <= y) || (std::isnan(y))));
   }
 };
 
