@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
-class TestSkipLayernormFusePass(PassAutoScanTest):
+class TestMultiheadMatmulFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # trt dynamic_shape
         config = self.create_trt_inference_config()
@@ -44,29 +44,7 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
                 "mul_x": [8, 128, 768],
                 "eltadd_qk_b_var": [8, 12, 128, 128]
             })
-        yield config, ['multihead_matmul'], (1e-1, 1e-1)
-        '''
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=16,
-            workspace_size=102400,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Half,
-            use_static=False,
-            use_calib_mode=False)
-        config.set_trt_dynamic_shape_info({
-            "mul_x": [1, 1, 128],
-            "mul_y_0": [1, 1, 128]
-        }, {
-            "elementwise_add_x": [16, 128, 128],
-            "elementwise_add_y": [16, 128, 128]
-        }, {
-            "elementwise_add_x": [8, 64, 128],
-            "elementwise_add_y": [8, 64, 128]
-        })
-        config.enable_tensorrt_oss()
-        yield config, ['skip_layernorm'], (1e-5, 1e-5)
-        '''
+        yield config, ['multihead_matmul'], (1e-2, 1e-5)
 
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
@@ -224,7 +202,6 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
             outputs={"Out": ["reshape_3_out"],
                      "XShape": ["reshape_3_Xout"]},
             shape=(0, 0, 768))
-        #ops = [mul_0, mul_1, mul_2, ele_0, ele_1, ele_2, reshape_0, reshape_1, reshape_2, transpose_0, transpose_1, transpose_2, scale_op, matmul_0,  ele_3, softmax_op, transpose_3, matmul_1, reshape_3]
         ops = [
             mul_0, mul_1, mul_2, ele_0, ele_1, ele_2, reshape_0, reshape_1,
             reshape_2, transpose_0, transpose_1, transpose_2, scale_op,
@@ -245,7 +222,6 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
                 "ele_1_w": TensorConfig(shape=[768]),
                 "ele_2_w": TensorConfig(shape=[768])
             },
-            #outputs=["y", "mean", "variance"])
             outputs=[ops[-1].outputs["Out"][0]])
         return program_config
 
