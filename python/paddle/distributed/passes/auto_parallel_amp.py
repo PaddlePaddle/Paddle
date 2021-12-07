@@ -16,17 +16,18 @@ import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
-from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists, _keep_fp32_input, _keep_fp32_output, _valid_types, find_true_post_op, find_op_index, _is_in_black_varnames, _dtype_to_str, _rename_arg
+from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists, _keep_fp32_input, _keep_fp32_output, _valid_types, find_true_post_op, find_true_prev_op, find_op_index, _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr
+from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
+from paddle.distributed.auto_parallel.process_group import get_world_process_groups
 
 from collections import OrderedDict
 import numpy as np
 
 BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
 # FIXME
-global_process_mesh = [0, 1]
+global_process_mesh = get_world_process_groups().ranks
 
 
 def _mark_black_white_ops(main_prog, amp_lists):
@@ -160,14 +161,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, dist_context):
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype,
                         })
-                    cast_op_dist_attr = OperatorDistributedAttribute()
-                    cast_op_dist_attr.process_mesh = ref_mesh
-                    cast_op_dist_attr.set_input_dims_mapping(in_var.name,
-                                                             ref_mapping)
-                    cast_op_dist_attr.set_output_dims_mapping(out_var.name,
-                                                              ref_mapping)
-                    dist_context.set_op_dist_attr_for_program(cast_op,
-                                                              cast_op_dist_attr)
+                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                        cast_op, ref_mesh, ref_mapping, dist_context)
 
                     num_cast_ops += 1
                 else:
@@ -242,18 +237,12 @@ def _update_backward_cast_ops(params_grads, dist_context):
                 main_block.var(op.output_arg_names[0]))
             assert param_dist_attr is not None
             assert output_dist_attr is not None
-            ref_process_mesh = param_dist_attr.process_mesh
-            ref_mapping = param_dist_attr.dims_mapping
-            new_op_dist_attr = OperatorDistributedAttribute()
-            new_op_dist_attr.process_mesh = ref_process_mesh
-            new_op_dist_attr.set_input_dims_mapping(new_op.input_arg_names[0],
-                                                    ref_mapping)
-            new_op_dist_attr.set_output_dims_mapping(new_op.output_arg_names[0],
-                                                     ref_mapping)
-            dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                new_op, param_dist_attr.process_mesh,
+                param_dist_attr.dims_mapping, dist_context)
 
-            output_dist_attr.process_mesh = ref_process_mesh
-            output_dist_attr.dims_mapping = ref_mapping
+            output_dist_attr.process_mesh = param_dist_attr.process_mesh
+            output_dist_attr.dims_mapping = param_dist_attr.dims_mapping
 
             op_idx = find_op_index(main_block.desc, op.desc)
             if op_idx == -1:
@@ -274,6 +263,13 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'check_finite_and_unscale')
 
+    ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(grads[0])
+    ref_mesh = ref_dist_attr.process_mesh
+    for g in grads:
+        g_dist_attr = dist_context.get_tensor_dist_attr_for_program(g)
+        assert g_dist_attr is not None
+        assert ref_mesh == g_dist_attr.process_mesh
+
     found_inf = main_block.create_var(
         name=unique_name.generate_with_ignorable_key(".".join(
             ['find_infinite_scale', 'tmp'])),
@@ -282,7 +278,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         type=core.VarDesc.VarType.LOD_TENSOR,
         persistable=False,
         stop_gradient=False)
-    set_var_dist_attr(dist_context, found_inf, [-1], global_process_mesh)
+    set_var_dist_attr(dist_context, found_inf, [-1], ref_mesh)
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
@@ -294,7 +290,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         attrs=attrs)
 
     new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = global_process_mesh
+    new_op_dist_attr.process_mesh = ref_mesh
     new_op_dist_attr.impl_idx = 0
     for g in grads:
         g_dist_attr = dist_context.get_tensor_dist_attr_for_program(g)
@@ -393,6 +389,7 @@ class AMPBackwardPass(PassBase):
     # in distributed scenario, all ranks should have the same modification.
     def _apply_single_impl(self, main_program, startup_program, context):
 
+        # backward
         self._dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
 
@@ -464,6 +461,10 @@ class AMPBackwardPass(PassBase):
             set_var_dist_attr(self._dist_context, self._scaled_loss, [-1],
                               global_process_mesh)
 
+            ref_dist_attr = self._dist_context.get_op_dist_attr_for_program(
+                loss_op)
+            ref_mesh = ref_dist_attr.process_mesh
+
             OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
             elementwise_mul_op = main_block._insert_op(
                 loss_op_idx + 1,
@@ -474,16 +475,8 @@ class AMPBackwardPass(PassBase):
                 attrs={'op_role': loss_op.all_attrs()[OP_ROLE_KEY], })
             loss_op._set_attr(OP_ROLE_KEY,
                               core.op_proto_and_checker_maker.OpRole.Forward)
-
-            elementwise_mul_op_dist_attr = OperatorDistributedAttribute()
-            elementwise_mul_op_dist_attr.process_mesh = global_process_mesh
-            elementwise_mul_op_dist_attr.set_input_dims_mapping(loss.name, [-1])
-            elementwise_mul_op_dist_attr.set_input_dims_mapping(
-                self._loss_scaling.name, [-1])
-            elementwise_mul_op_dist_attr.set_output_dims_mapping(
-                self._scaled_loss.name, [-1])
-            self._dist_context.set_op_dist_attr_for_program(
-                elementwise_mul_op, elementwise_mul_op_dist_attr)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                elementwise_mul_op, ref_mesh, [-1], self._dist_context)
 
             # backward
             first_backward_op = main_block.ops[loss_op_idx + 2]
@@ -514,32 +507,14 @@ class AMPBackwardPass(PassBase):
             elementwise_mul_grad_op_desc._set_attr(
                 OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward)
             elementwise_mul_grad_op_desc._set_attr('axis', -1)
-            elementwise_mul_grad_op_desc._set_bool_attr('use_mkldnn', False)
             elementwise_mul_grad_op = paddle.fluid.framework.Operator(
                 main_block, elementwise_mul_grad_op_desc)
             main_block.ops.insert(loss_op_idx + 3, elementwise_mul_grad_op)
             main_block._sync_with_cpp()
             elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
-            elementwise_mul_grad_op_dist_attr = OperatorDistributedAttribute()
-            elementwise_mul_grad_op_dist_attr.process_mesh = global_process_mesh
-            elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
-                loss.name,
-                self._dist_context.get_tensor_dist_attr_for_program(loss))
-            elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
-                self._loss_scaling.name,
-                self._dist_context.get_tensor_dist_attr_for_program(
-                    self._loss_scaling))
-            elementwise_mul_grad_op_dist_attr.set_input_dist_attr(
-                self._scaled_loss_grad.name,
-                self._dist_context.get_tensor_dist_attr_for_program(
-                    self._scaled_loss_grad))
-            elementwise_mul_grad_op_dist_attr.set_output_dist_attr(
-                pre_grad_name,
-                self._dist_context.get_tensor_dist_attr_for_program(
-                    main_block.var(pre_grad_name)))
-            self._dist_context.set_op_dist_attr_for_program(
-                elementwise_mul_grad_op, elementwise_mul_grad_op_dist_attr)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                elementwise_mul_grad_op, ref_mesh, [-1], self._dist_context)
 
         else:
             self._scaled_loss = loss
@@ -579,7 +554,8 @@ class AMPBackwardPass(PassBase):
             'decr_every_n_nan_or_inf': self.get_attr("decr_every_n_nan_or_inf"),
             'incr_ratio': self.get_attr("incr_ratio"),
             'decr_ratio': self.get_attr("decr_ratio"),
-            'stop_update': self.get_attr("stop_update")
+            'stop_update': self.get_attr("stop_update"),
+            'op_role': BACKWARD
         }
 
         new_op = main_block.append_op(
@@ -588,8 +564,16 @@ class AMPBackwardPass(PassBase):
             outputs=outputs,
             attrs=attrs)
 
+        ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+            grads[0])
+        ref_mesh = ref_dist_attr.process_mesh
+        for g in grads:
+            g_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(g)
+            assert g_dist_attr is not None
+            assert ref_mesh == g_dist_attr.process_mesh
+
         new_op_dist_attr = OperatorDistributedAttribute()
-        new_op_dist_attr.process_mesh = global_process_mesh
+        new_op_dist_attr.process_mesh = ref_mesh
         for g in grads:
             g_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(g)
             assert g_dist_attr is not None
