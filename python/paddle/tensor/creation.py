@@ -31,6 +31,7 @@ from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varb
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
+from ..fluid.framework import in_eager_mode
 
 __all__ = []
 
@@ -114,6 +115,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             _current_expected_place(), core.CUDAPlace) and place._get_device_id(
             ) != _current_expected_place()._get_device_id():
         place = _current_expected_place()
+
+    if in_eager_mode():
+        if dtype is None:
+            dtype = paddle.get_default_dtype()
+        return core.eager.to_tensor(data,
+                                    convert_dtype(dtype), place, stop_gradient)
 
     if not isinstance(data, np.ndarray):
 
