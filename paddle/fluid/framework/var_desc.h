@@ -110,6 +110,12 @@ class VarDesc {
 
   void SetType(proto::VarType::Type type);
 
+  void SetContent(const std::vector<int32_t> &val);
+
+  std::vector<int32_t> GetContent() const;
+
+  bool HasContent() const;
+
   bool Persistable() const { return desc_.persistable(); }
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }

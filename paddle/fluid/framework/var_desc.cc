@@ -126,6 +126,16 @@ std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
   return res;
 }
 
+void VarDesc::SetContent(const std::vector<int32_t> &val) {
+  VectorToRepeated(val, mutable_tensor_desc()->mutable_content());
+}
+
+std::vector<int32_t> VarDesc::GetContent() const {
+  return RepeatedToVector(tensor_desc().content());
+}
+
+bool VarDesc::HasContent() const { return tensor_desc().content_size() > 0; }
+
 void VarDesc::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type().type()) {
     case proto::VarType::LOD_TENSOR:

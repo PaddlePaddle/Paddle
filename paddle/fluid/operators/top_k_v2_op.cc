@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/top_k_v2_op.h"
 #include <memory>
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -38,10 +39,9 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += dim_size;
 
-    int k;
-    auto k_is_tensor = ctx->HasInput("K");
-    if (k_is_tensor) {
-      k = -1;
+    int k = -1;
+    if (HasCompiledContent(ctx, "K")) {
+      k = GetScalarDataFromVarDesc(ctx, "K");
     } else {
       k = static_cast<int>(ctx->Attrs().Get<int>("k"));
       PADDLE_ENFORCE_EQ(k >= 1, true,

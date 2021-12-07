@@ -11428,6 +11428,7 @@ def shape(input):
     ], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
+    out.desc.set_content(input.shape)
     helper.append_op(
         type='shape',
         inputs={'Input': input},

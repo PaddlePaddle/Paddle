@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/operators/utils.h"
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -82,8 +83,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
-
-    if (ctx->HasInputs("ShapeTensor")) {
+    // TODO(Aurelius84): Do we only need deal complie time case?
+    if (HasCompiledContent(ctx, "ShapeTensor")) {
       // top prority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
       PADDLE_ENFORCE_GT(
@@ -93,7 +94,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
               "which contains Tensor, the shape's size can't be zero. "
               "But received shape's size is %d.",
               ShapeTensor.size()));
-      auto infer_shape = ctx->Attrs().Get<std::vector<int>>("shape");
+      auto infer_shape =
+          GetScalarsFromVarDescs(ctx, "ShapeTensor", /*default_val=*/-1);
       const int64_t copy_dim_val = 0;
       auto in_dims = ctx->GetInputDim("X");
       for (size_t i = 0; i < infer_shape.size(); ++i) {
@@ -115,12 +117,13 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
     const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
     if (ctx->HasInput("Shape") && shape.empty()) {
-      auto shape_dims = ctx->GetInputDim("Shape");
-      int num_ele = 1;
-      for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+      std::vector<int32_t> vec_dims;
+      if (HasCompiledContent(ctx, "Shape")) {
+        vec_dims = GetVecDataFromVarDesc(ctx, "Shape");
+      } else {
+        vec_dims =
+            std::vector<int>(framework::product(ctx->GetInputDim("Shape")), -1);
       }
-      auto vec_dims = std::vector<int>(num_ele, -1);
       auto out_dims = framework::make_ddim(vec_dims);
       ctx->SetOutputDim("Out", out_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
