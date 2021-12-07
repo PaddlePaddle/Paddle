@@ -65,6 +65,7 @@ import os
 import time
 import six
 import copy
+import pathlib
 import argparse
 from argparse import ArgumentParser, REMAINDER
 import paddle
@@ -107,9 +108,9 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     base_group.add_argument(
         "--backend",
         type=str,
-        default="auto",
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto. Default value is auto which perfers nccl or bkcl."
-    )
+        default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        "Default value is auto which perfers nccl or bkcl.")
     base_group.add_argument(
         "--nproc_per_node",
         type=int,
@@ -145,6 +146,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
+    if fluid.core.is_compiled_with_npu():
+        base_group.add_argument(
+            "--npus",
+            type=str,
+            default=None,
+            help="It's for xpu training. For example: "
+            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
+        )
+        base_group.add_argument("--selected_npus", dest="npus")
+
     base_group.add_argument(
         "training_script",
         type=str,
@@ -164,25 +175,17 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
     collective_group.add_argument(
-        "--rank_mapping_file",
-        type=argparse.FileType('r'),
-        default=sys.stdin,
-        help="This rank mapping information in json format is used specifically "
-        "for lazy launch for auto parallel. Some of the ranks in each node "
-        "may not be used, and the indices of rank should be kept the same "
-        "as the indices of sub-task splited by auto parallel. "
-        " { "
-        "   \"ip_ranks\": [ "
-        "     { "
-        "       \"ip\": \"127.0.0.1\", "
-        "       \"ranks\": [0,1] "
-        "     }, "
-        "     { "
-        "       \"ip\": \"127.0.0.2\", "
-        "       \"ranks\": [2,3,4] "
-        "     } "
-        "   ] "
-        " } ")
+        "--cluster_topo_path",
+        type=str,
+        default=None,
+        help="A json format file will be stored in this path which is used"
+        "to represent the cluster topology information for auto parallel.")
+    collective_group.add_argument(
+        "--rank_mapping_path",
+        type=str,
+        default=None,
+        help="A json format file will be stored in this path which is used"
+        "to map processes to machines for auto parallel.")
     collective_group.add_argument(
         "--enable_auto_mapping",
         type=bool,
@@ -283,13 +286,19 @@ def cpuonly_check(args):
     return True
 
 
-def launch_collective(args):
+def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
     if args.backend == 'gloo': cpuonly_check(args)
-    (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
+    if args.enable_auto_mapping:
+        (device_mode, devices_per_proc) = (DeviceMode.GPU, [])
+    else:
+        (device_mode,
+         devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
         trainers_num, device_mode, devices_per_proc))
+
+    cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
 
     cluster = None
     pod = None
@@ -297,33 +306,71 @@ def launch_collective(args):
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-    # lazy launch for auto-parallel
+    # auto mapping between processes and devices for auto-parallel
     if args.enable_auto_mapping == True:
-        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
-    else:
-        # for ascend
-        if device_mode == DeviceMode.ASCEND_NPU:
-            cluster, pod = ascend_utils.get_cloud_cluster(
-                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-                device_mode=device_mode,
-                start_port=start_port)
-        elif cloud_utils.use_paddlecloud() and trainers_num != 1:
-            cluster, pod = cloud_utils.get_cloud_cluster(
-                args.ips, device_mode, devices_per_proc, start_port)
-            logger.debug("get cluster from cloud:{}".format(cluster))
-        else:
-            # trainers_num = 1 or not use paddlecloud ips="a,b"
-            cluster, pod = get_cluster_from_args(args, device_mode,
-                                                 devices_per_proc)
-            logger.debug("get cluster from args:{}".format(cluster))
+        assert args.cluster_topo_path is not None, \
+            "The cluster topology must be provied when enabling auto mapping."
+        rank_mapping_path = args.rank_mapping_path or os.getenv(
+            "PADDLE_RANK_MAPPING_PATH")
+        if not rank_mapping_path:
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(
+                enable_elastic(args, device_mode))
+            cwd = pathlib.Path().resolve()
+            rank_mapping_path = os.path.join(cwd,
+                                             "auto_parallel_rank_mapping.json")
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
 
+            original_args = sys.argv[1:]
+            os.environ["PADDLE_ORIGINAL_CMD_ARGS"] = " ".join(original_args)
+            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
+            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
+                args.enable_auto_mapping)
+            cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
+                args, device_mode)
+        else:
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(False)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(
+                enable_elastic(args, device_mode))
+
+            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
+            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
+            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
+                args.enable_auto_mapping)
+            cluster, pod = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
+                args, device_mode)
+    elif cloud_utils.use_paddlecloud() and trainers_num != 1:
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, device_mode, devices_per_proc, start_port)
+        logger.debug("get cluster from cloud:{}".format(cluster))
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        # for ascend
+        cluster, pod = ascend_utils.get_cloud_cluster(
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            start_port=start_port)
+    else:
+        # trainers_num = 1 or not use paddlecloud ips="a,b"
+        cluster, pod = get_cluster_from_args(args, device_mode,
+                                             devices_per_proc)
+        logger.debug("get cluster from args:{}".format(cluster))
+    return cluster, pod
+
+
+def get_global_envs(args, tmp_dir):
     global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    return global_envs
+
+
+def launch_collective(args):
+    tmp_dir = tempfile.mkdtemp()
+    cluster, pod = get_cluster_info(args)
+    global_envs = get_global_envs(args, tmp_dir)
 
     procs = start_local_trainers(
         cluster,
@@ -352,8 +399,8 @@ def launch_collective(args):
             terminate_local_procs(procs)
             exit(1)
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 def launch_ps(args, distribute_mode):
@@ -446,15 +493,15 @@ def which_distributed_mode(args):
         ) and not fluid.core.is_compiled_with_xpu():
             if args.servers:
                 logger.warning(
-                    "Not found distinct arguments and not compiled with cuda or xpu. \
-But found args.servers not empty, default use ps mode")
+                    "Not found distinct arguments and not compiled with cuda or xpu or npu. "
+                    "But found args.servers not empty, default use ps mode")
                 return DistributeMode.PS
             else:
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
-            )
+                "Not found distinct arguments and compiled with cuda or xpu or npu. "
+                "Default use collective mode")
             return DistributeMode.COLLECTIVE
 
 
@@ -641,7 +688,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    assert args.backend in ['gloo', 'nccl', 'bkcl', 'unknown']
+    #assert args.backend in ['gloo', 'nccl', 'bkcl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

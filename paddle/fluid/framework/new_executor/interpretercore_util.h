@@ -51,7 +51,6 @@ namespace framework {
 namespace interpreter {
 
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
-static constexpr char kFetchVarName[] = "fetch";
 
 class AsyncWorkQueue {
  public:
@@ -78,9 +77,7 @@ class AsyncWorkQueue {
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
-  void AddTask(const OpFuncType& op_func_type, std::function<void()> fn) {
-    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
-  }
+  void AddTask(const OpFuncType& op_func_type, std::function<void()> fn);
 
   void Cancel() { queue_group_->Cancel(); }
 
@@ -93,9 +90,6 @@ class AsyncWorkQueue {
   AtomicVectorSizeT atomic_deps_;
   AtomicVectorSizeT atomic_var_ref_;
 };
-
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place);
 
 void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope,

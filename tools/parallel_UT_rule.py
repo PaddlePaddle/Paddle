@@ -136,7 +136,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_conv_concat_relu_mkldnn_fuse_pass',
     'test_bf16_utils',
     'test_sum_bf16_mkldnn_op',
-    'test_unsqueeze2_eltwise_fuse_pass',
+    'test_unsqueeze2_eltwise_fuse_pass_cc',
     'dense_table_test',
     'test_collective_optimizer',
     'test_origin_info',
@@ -515,7 +515,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_a_sync_optimizer_sync',
     'test_dist_fleet_decay',
     'test_auto_checkpoint2',
-    'test_dist_fleet_heter_ctr',
     'test_dist_fleet_simnet',
     'test_dist_sparse_load_ps1',
     'test_dist_mnist_fleet_save',
@@ -1716,7 +1715,7 @@ CPU_PARALLEL_JOB = [
     'test_recv_save_op',
     'heter_listen_and_server_test',
     'test_analyzer_capi_ner',
-    'test_unsqueeze2_eltwise_fuse_pass',
+    'test_unsqueeze2_eltwise_fuse_pass_cc',
     'test_dgc_optimizer',
     'test_fleet_cc',
     'test_repeated_fc_relu_fuse_pass_cc',
@@ -1776,7 +1775,7 @@ TETRAD_PARALLEL_JOB = [
     'test_fc_gru_fuse_pass_cc',
     'test_conv_bn_fuse_pass_cc',
     'test_adaptive_pool2d_convert_global_pass',
-    'test_unsqueeze2_eltwise_fuse_pass',
+    'test_unsqueeze2_eltwise_fuse_pass_cc',
     'test_layer_norm_fuse_pass_cc',
     'test_fc_act_mkldnn_fuse_pass',
     'test_fleet_cc',
@@ -2205,7 +2204,12 @@ def main():
     lowest_high_parallel_job = '^job$'
     non_parallel_job = '^job$'
 
-    test_cases = sys.argv[1]
+    # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
+    BUILD_DIR = os.getcwd()
+    file_path = os.path.join(BUILD_DIR, 'all_ut_list')
+    with open(file_path, 'r') as f:
+        test_cases = f.read()
+
     test_cases = test_cases.split("\n")
 
     if platform.system() == 'Windows':
@@ -2260,7 +2264,7 @@ def main():
         print("{};{};{};{}".format(high_parallel_job, fourth_high_parallel_job,
                                    fifth_high_parallel_job, non_parallel_job))
     else:
-        print("{};{};{};{};{};{};{}".format(
+        print("{};{};{};{};{};{};{};{}".format(
             high_parallel_job, secondary_high_parallel_job,
             third_high_parallel_job, fourth_high_parallel_job,
             fifth_high_parallel_job, sixth_high_parallel_job,

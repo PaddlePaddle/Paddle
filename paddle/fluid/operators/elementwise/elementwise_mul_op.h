@@ -15,11 +15,16 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
+// only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
 namespace paddle {
 namespace operators {
 
@@ -106,23 +111,31 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       out_sele->mutable_value()->Resize(x_sele.value().dims());
       out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
       z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+      z->mutable_data<T>(ctx.GetPlace());
+      auto dims_equal = x.dims() == y->dims();
+      if (dims_equal) {
+        SameDimsElemwiseMul<DeviceContext, T> same_dims_mul;
+        same_dims_mul(ctx, &x, y, z);
+      } else {
+        default_elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
+      }
     } else if (x_var->IsType<framework::LoDTensor>()) {
-      x = x_var->Get<framework::LoDTensor>();
-      z = ctx.Output<framework::LoDTensor>("Out");
+      auto* x_lod = ctx.Input<framework::LoDTensor>("X");
+      auto* z_lod = ctx.Output<framework::LoDTensor>("Out");
+      z_lod->mutable_data<T>(ctx.GetPlace());
+
+      auto& dev_ctx = ctx.device_context<DeviceContext>();
+      int axis = ctx.Attr<int>("axis");
+      auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
+      auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+      auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
+      pten::ElementwiseMul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                              pt_z.get());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "
           "LoDTensor or SelectedRows.",
           framework::ToTypeName(x_var->Type())));
-    }
-
-    z->mutable_data<T>(ctx.GetPlace());
-    auto dims_equal = x.dims() == y->dims();
-    if (dims_equal) {
-      SameDimsElemwiseMul<DeviceContext, T> same_dims_mul;
-      same_dims_mul(ctx, &x, y, z);
-    } else {
-      default_elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
     }
   }
 };
