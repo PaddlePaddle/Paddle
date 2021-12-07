@@ -45,8 +45,7 @@ DenseTensor Mean(const ContextT& dev_ctx,
   pten::DenseTensor dense_out(allocator, out_meta);
   bool reduce_all = false;
   DataType out_dtype = pten::DataType::UNDEFINED;
-  Mean<T>(
-      dev_ctx, x, axis, keep_dim, reduce_all, x.dtype(), out_dtype, &dense_out);
+  Mean<T>(dev_ctx, x, axis, keep_dim, reduce_all, out_dtype, &dense_out);
   return dense_out;
 }
 
@@ -71,7 +70,7 @@ DenseTensor Sum(const ContextT& dev_ctx,
     dtype = pten::DataType::INT64;
   }
 
-  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, x.dtype(), dtype, &dense_out);
+  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, dtype, &dense_out);
   return dense_out;
 }
 
