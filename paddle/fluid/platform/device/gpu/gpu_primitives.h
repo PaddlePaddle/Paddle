@@ -101,7 +101,7 @@ inline static __device__ uint32_t add_to_high_half(uint32_t val, float x) {
   return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
-#if CUDA_VERSION >= 10000
+#if CUDA_VERSION >= 10000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 static __device__ __forceinline__ float16 CUDAFP16ToPDFP16(__half x) {
   return *reinterpret_cast<float16 *>(&x);
 }
