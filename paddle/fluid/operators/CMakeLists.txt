@@ -88,6 +88,8 @@ op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS execu
 op_library(save_combine_op DEPS string_array)
 op_library(load_combine_op DEPS string_array)
 
+cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu)
+target_link_libraries(take_along_axis_op gather_scatter_kernel)
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
@@ -131,7 +133,6 @@ endif()
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
 op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
-
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
 if (WITH_DGC)
