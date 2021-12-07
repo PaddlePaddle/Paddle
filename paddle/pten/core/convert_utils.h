@@ -45,4 +45,8 @@ paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout);
 paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod);
 pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod);
 
+size_t DataTypeSize(DataType dtype);
+DataType String2DataType(const std::string& str);
+std::string DataType2String(DataType dtype);
+
 }  // namespace pten

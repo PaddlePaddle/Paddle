@@ -58,6 +58,11 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
 
+void MovesSharedStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
+
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::LoDTensor* dst);
+
 /**
  * In order to improve the compatibility state performance, some tricky tool
  * functions are added.
