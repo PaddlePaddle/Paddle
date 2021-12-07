@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -87,7 +87,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::ConvElementwiseadd pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
-
+  int found_conv_eltwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
@@ -135,9 +135,12 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});
+    found_conv_eltwise_count++;
   };
 
   gpd(graph, handler);
+  // check if detect conv2d_fusion subgraph!
+  AddStatis(found_conv_eltwise_count);
 }
 
 }  // namespace ir

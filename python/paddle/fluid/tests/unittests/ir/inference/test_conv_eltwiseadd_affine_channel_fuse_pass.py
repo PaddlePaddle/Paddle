@@ -21,12 +21,20 @@ from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
 import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
+from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestConvAffineChannelFusePass(PassAutoScanTest):
+class TestConvEltwiseAddAffineChannelFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if attrs[0]['data_format'] == "NHWC" and attrs[1]['axis'] != 3:
+            return False
+
         return True
 
     def sample_program_config(self, draw):
@@ -88,10 +96,16 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             strides=strides,
             has_bias=has_bias,
             is_test=True)
+        eltwise_op = OpConfig(
+            "elementwise_add",
+            inputs={"X": ["conv_output"],
+                    "Y": ["conv2d_bias"]},
+            outputs={"Out": ["elementwise_output"]},
+            axis=axis)
         ac_op = OpConfig(
             "affine_channel",
             inputs={
-                "X": ["conv_output"],
+                "X": ["elementwise_output"],
                 "Scale": ["affine_channel_scale"],
                 "Bias": ["affine_channel_bias"]
             },
@@ -99,8 +113,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             data_layout=data_format)
         if has_bias == True:
             conv2d_op.inputs["Bias"] = ["conv2d_bias"]
-        ops = [conv2d_op, ac_op]
-
+        ops = [conv2d_op, eltwise_op, ac_op]
         program_config = ProgramConfig(
             ops=ops,
             inputs={
@@ -109,15 +122,13 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             weights={
                 "conv2d_weight":
                 TensorConfig(data_gen=partial(generate_weight)),
+                "conv2d_bias": TensorConfig(data_gen=partial(generate_bias)),
                 "affine_channel_scale":
                 TensorConfig(data_gen=partial(generate_scale_bias)),
                 "affine_channel_bias":
                 TensorConfig(data_gen=partial(generate_scale_bias)),
             },
             outputs=["affine_channel_ouput"])
-        if has_bias == True:
-            program_config.weights["conv2d_bias"] = TensorConfig(
-                data_gen=partial(generate_bias))
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -125,6 +136,17 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
         config = self.create_inference_config(use_mkldnn=True)
+        yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
+
+        # TRT
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 20,
+            max_batch_size=4,
+            min_subgraph_size=1,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
         yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
@@ -143,7 +165,8 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
-            because currently its fused op (Conv2DFusion) only supports data format of channel first (NCHW)."
+            it will trigger Broadcast dimension mismatch bug \
+            when data_format attribute is NHWC and axis of eltwise op is 1 for this pass."
         )
 
         self.add_ignore_check_case(
@@ -153,7 +176,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["conv_affine_channel_fuse_pass"], )
+            passes=["conv_eltwiseadd_affine_channel_fuse_pass"], )
 
 
 if __name__ == "__main__":
