@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cmath>
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -87,14 +88,14 @@ class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
 template <typename T>
 struct FMinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x <= y) || (std::isnan(y)));
+    return dout * static_cast<T>((x <= y) || isnan(y));
   }
 };
 
 template <typename T>
 struct FMinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>(!((x <= y) || (std::isnan(y))));
+    return dout * static_cast<T>(!((x <= y) || isnan(y)));
   }
 };
 
