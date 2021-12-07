@@ -30,6 +30,7 @@ from paddle import nn
 import paddle.distributed as dist
 
 from ...utils.internal_storage import GradStorage
+from ...meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 from .sharding_utils import Taskflow, Type
 
 
@@ -70,6 +71,11 @@ class ShardingStage2(nn.Layer):
         self._layer = layer
         self._sharding_optimizers = [sharding_optimizer] if not isinstance(
             sharding_optimizer, list) else sharding_optimizer
+        assert all(
+            list(
+                map(lambda opt: isinstance(opt, ShardingOptimizerStage2),
+                    self._sharding_optimizers))
+        ), "Please use ShardingOptimizerStage2 optimizer"
         self._sync_buffers = sync_buffers
         self._auto_refresh_trainable = auto_refresh_trainable
 
@@ -88,8 +94,7 @@ class ShardingStage2(nn.Layer):
 
         # Global statistical parameters
         self._all_params = list(
-            chain(
-                * [optim.local_params for optim in self._sharding_optimizers]))
+            chain(*[optim.local_params for optim in self._sharding_optimizers]))
         self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
@@ -172,7 +177,7 @@ class ShardingStage2(nn.Layer):
         for param in self._trainable_params:
             if param.name in self._param_grads and param.grad is not None:
                 param.grad.scale_(scale=self._world_size_scaling)
-                param._reset_grad_inplace_version()
+                param._reset_grad_inplace_version(True)
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -278,7 +283,7 @@ class ShardingStage2(nn.Layer):
                     self._grad_reduced[index] = False
                     if not self._accumulate_grads:
                         param.grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version()
+                    param._reset_grad_inplace_version(True)
 
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
@@ -436,7 +441,7 @@ class ShardingStage2(nn.Layer):
                            ._fill))
 
         self._grad_storage_list = list(
-            chain(* [
+            chain(*[
                 self._grad_storages[dtype].values()
                 for dtype in self._grad_storages.keys()
             ]))
