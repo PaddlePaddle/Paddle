@@ -284,6 +284,7 @@ from .tensor.stat import median  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
+from .fluid.framework import is_compiled_with_cinn  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .fluid.framework import disable_signal_handler  # noqa: F401
@@ -312,6 +313,16 @@ import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
 
 from .tensor.random import check_shape  # noqa: F401
+
+# CINN has to set a flag to include a lib
+if is_compiled_with_cinn():
+    import os
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    runtime_include_dir = os.path.join(package_dir, "libs")
+    cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
+    if os.path.exists(cuh_file):
+        os.environ['runtime_include_dir'] = runtime_include_dir
+
 disable_static()
 
 __all__ = [  # noqa
