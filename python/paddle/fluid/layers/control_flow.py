@@ -114,7 +114,7 @@ def select_input_with_buildin_type(inputs, mask):
             inputs = [
                 to_static_variable(false_var), to_static_variable(true_var)
             ]
-    # When false_var is int, true_var is Variable(no value placehold) will cause Error
+    # Deal with this situation: false_var is int and true_var is Variable
     elif (isinstance(false_var, (bool, float, six.integer_types)) and
           isinstance(true_var, Variable)) or (isinstance(true_var, (
               bool, float, six.integer_types)) and isinstance(false_var,

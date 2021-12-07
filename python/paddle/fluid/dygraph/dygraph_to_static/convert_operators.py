@@ -254,7 +254,7 @@ def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
     # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
     #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
     # true_args = [
-    # to_static_variable(var) if id(var) in return_var_ids else var
+    #     to_static_variable(var) if id(var) in return_var_ids else var
     #     for var in true_args
     # ]
     # false_args = [

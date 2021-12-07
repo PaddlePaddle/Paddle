@@ -353,3 +353,16 @@ def dyfunc_ifelse_ret_int1(x):
         y = x[index] + 2
         index = index + 1
         return y, index
+
+
+def dyfunc_ifelse_ret_int2(x):
+    index = 0
+    pred = paddle.to_tensor([1])
+    if pred:
+        y = x[index] + 1
+        index = index + 1
+        return y, index
+    else:
+        y = x[index] + 2
+        index = index + 1
+        return y
