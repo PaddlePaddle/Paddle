@@ -186,7 +186,6 @@ register_unity_group(cc
     norm_op.cc
     one_hot_op.cc
     one_hot_v2_op.cc
-    p_norm_op.cc
     pad2d_op.cc
     pad3d_op.cc
     pad_constant_like_op.cc
