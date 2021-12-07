@@ -1,0 +1,1 @@
+cc_test(activation_op_mlu_test SRCS activation_op_mlu_test.cc DEPS op_registry activation_op device_context)
