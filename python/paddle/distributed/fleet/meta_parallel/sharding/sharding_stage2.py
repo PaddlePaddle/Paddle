@@ -112,6 +112,10 @@ class ShardingStage2(nn.Layer):
         self._has_grad_storage = []
         self._grad_storage_list = []
 
+        # offload
+        self._offload = self._sharding_optimizers[0].offload
+        self._offload_device = "cpu"
+
         # Set backward pass hooks
         self._bw_hooks = []
 
@@ -195,7 +199,13 @@ class ShardingStage2(nn.Layer):
         """
         Synchronously or asynchronously convert the data type of the layer, the device is not supported now.
         """
+        assert isinstance(device, str), "Device must be type str"
         assert device == self._default_device, "New devices are not supported, because of the optimizer state is not sync"
+
+        self._layer.to(device=device, dtype=dtype, blocking=blocking)
+
+        # Re-build the buckets, hooks, etc..
+        self._fresh_trainable()
 
     def _fresh_trainable(self):
         """ Whether to update training parameters. """
@@ -289,6 +299,10 @@ class ShardingStage2(nn.Layer):
                     def cleanup():
                         if dst_rank != self._rank:
                             param.clear_gradient(False)
+                        elif self._offload:
+                            self._sharding_optimizers[0]._master_params[
+                                param.name]._copy_gradient_from(param.grad.cpu(
+                                ).cast(dtype=Type.fp32.value))
 
                     # Synchronize the reduce parameter gradient
                     self._tasks_flow.append(
@@ -339,6 +353,14 @@ class ShardingStage2(nn.Layer):
 
                                 grad_storage.buffer.value().get_tensor()._clear(
                                 )
+                            elif self._offload:
+                                grad_storage.to(device=self._offload_device)
+                                for param in grad_storage._params:
+                                    self._sharding_optimizers[0]._master_params[
+                                        param.name]._copy_gradient_from(
+                                            param.grad.cast(
+                                                dtype=Type.fp32.value))
+                                grad_storage.to(device=self._default_device)
 
                         # Reduce the bucket
                         grad_storage.sent = True
@@ -397,8 +419,8 @@ class ShardingStage2(nn.Layer):
                 group=self._group,
                 use_calc_stream=True)
 
-        # Multi stream operation will be supported later
-        dist.wait(tensor=t, group=self._group, use_calc_stream=True)
+            # Multi stream operation will be supported later
+            dist.wait(tensor=t, group=self._group, use_calc_stream=True)
 
     def _setup_use_grad_storage(self):
         """

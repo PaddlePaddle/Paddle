@@ -120,6 +120,9 @@ def train_mlp(model,
         use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
 
+    if sharding_stage == 2:
+        model.to(device="gpu")
+
     for eop in range(epoch):
         model.train()
 
@@ -152,9 +155,6 @@ def train_mlp(model,
 
             if all_test and batch_id == 2:
                 return model.parameters()
-
-    if sharding_stage == 2:
-        model.to(device="gpu")
 
     return model.parameters()
 
