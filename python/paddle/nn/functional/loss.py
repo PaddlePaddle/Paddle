@@ -2138,9 +2138,8 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                                  'hinge_embedding_loss')
 
-    zero = fluid.dygraph.base.to_variable([0.], dtype=paddle.float32)
-    loss = paddle.where(label == 1, input, zero) + \
-           paddle.where(label == -1, delta - input, zero)
+    loss = paddle.where(label == 1., input, paddle.to_tensor(0.)) + \
+           paddle.where(label == -1., delta - input, paddle.to_tensor(0.))
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
