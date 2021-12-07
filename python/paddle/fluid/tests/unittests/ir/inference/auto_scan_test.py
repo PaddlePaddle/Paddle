@@ -374,8 +374,8 @@ class PassAutoScanTest(AutoScanTest):
         logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
         logging.info("Number of Ignore Tests: {}".format(self.num_ignore_tests))
         successful_ran_programs = int(self.num_ran_programs -
-                                      self.num_ignore_tests /
-                                      self.num_predictor_kinds)
+                                      self.num_ignore_tests / max(
+                                          self.num_predictor_kinds, 1))
         logging.info(
             "Number of successfully ran programs approximately equal to {}".
             format(successful_ran_programs))
