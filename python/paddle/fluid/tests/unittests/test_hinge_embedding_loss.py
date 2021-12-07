@@ -40,8 +40,6 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.input_np = np.random.random(size=self.shape).astype(np.float64)
         # get label elem in {1., -1.}
         self.label_np = 2 * np.random.randint(0, 2, size=self.shape) - 1.
-        # get wrong label elem not in {1., -1.}
-        self.wrong_label = paddle.randint(-3, 3, shape=self.shape)
 
     def run_dynamic_check(self, place=paddle.CPUPlace()):
         paddle.disable_static(place=place)
@@ -112,8 +110,6 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         self.input_np = np.random.random(size=self.shape).astype(np.float64)
         # get label elem in {1., -1.}
         self.label_np = 2 * np.random.randint(0, 2, size=self.shape) - 1.
-        # get wrong label elem not in {1., -1.}
-        self.wrong_label = paddle.randint(-3, 3, shape=self.shape)
 
     def run_dynamic_check(self, place=paddle.CPUPlace()):
         paddle.disable_static(place=place)
