@@ -1952,10 +1952,10 @@ class Executor(object):
         assert program, "Program for fleet executor should not be None"
         assert fleet_opt, "Configurations for fleet executor should not be None"
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
-        trainer_endpoints = trainer_endpoints_str.split(',')
+        trainer_endpoints = trainer_endpoints_str.split(',') if trainer_endpoints_str else []
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
         fleet_exe_desc.cur_rank = os.getenv("PADDLE_TRAINER_ID", 0)
-        nrank = len(trainer_endpoints) if trainer_endpoints else 1
+        nrank = len(trainer_endpoints) if trainer_endpoints_str else 1
         if trainer_endpoints:
             for rank, endpoint in enumerate(trainer_endpoints):
                 rank_info = fleet_executor_desc_pb2.RankInfo()
