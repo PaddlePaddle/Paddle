@@ -68,11 +68,12 @@ void DataTranferHelper::RunAndConstructShareNode(
   VariableNameMap in_name_map = {{"X", {src_var_name}}};
   VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
   AttributeMap attr_map;
+  VariableNameMap attr_vars;
 
   std::string op_type("share_data");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
-  auto op = std::shared_ptr<OperatorBase>(
-      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+  auto op = std::shared_ptr<OperatorBase>(op_info.Creator()(
+      op_type, in_name_map, out_name_map, attr_map, attr_vars));
 
   VLOG(3) << string::Sprintf("Insert %s with %s -> %s.", op_type, src_var_name,
                              dst_var_name);
@@ -155,7 +156,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   std::string op_type("transfer_layout");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
-      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map, {}));
 
   VLOG(3) << string::Sprintf("Insert %s(%s) with %s -> %s(%s).", op_type,
                              var_name, in_layout, *new_var_name, out_layout);
@@ -194,7 +195,7 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   std::string op_type("transfer_dtype");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
-      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map, {}));
 
   VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
                              var_name, DataTypeToString(in_dtype),
@@ -232,7 +233,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   std::string op_type = get_memcpy_type(src_place, dst_place);
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
-      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
+      op_info.Creator()(op_type, in_name_map, out_name_map, attr_map, {}));
 
   VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
                              var_name, src_place, *new_var_name, dst_place);

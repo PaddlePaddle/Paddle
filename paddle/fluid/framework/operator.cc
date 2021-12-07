@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
@@ -184,20 +185,21 @@ static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
 RuntimeContext::RuntimeContext(const VariableNameMap& innames,
                                const VariableNameMap& outnames,
                                const Scope& scope) {
-  for (auto& var_name_item : innames) {
-    std::vector<Variable*>& input_vars = inputs[var_name_item.first];
-    input_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      input_vars.push_back(scope.FindVar(var_name));
-    }
-  }
-  for (auto& var_name_item : outnames) {
-    std::vector<Variable*>& output_vars = outputs[var_name_item.first];
-    output_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      output_vars.push_back(scope.FindVar(var_name));
-    }
-  }
+  ConstructValueMap(innames, scope, &inputs);
+  ConstructValueMap(outnames, scope, &outputs);
+}
+
+RuntimeContext::RuntimeContext(const VariableNameMap& innames,
+                               const VariableNameMap& outnames,
+                               const VariableNameMap& attrnames,
+                               const Scope& scope) {
+  ConstructValueMap(innames, scope, &inputs);
+  ConstructValueMap(outnames, scope, &outputs);
+  ConstructValueMap(attrnames, scope, &attrs);
+  // NOTE(dev): Attribute with type(Variable) should be considered as `Input`.
+  // Consider to offer a unify interface such as `AllInputVars` to replace
+  // merging `attrs` into `inputs` .
+  ConstructValueMap(attrnames, scope, &inputs);
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
@@ -324,6 +326,16 @@ const std::vector<std::string>& OperatorBase::Outputs(
   return it->second;
 }
 
+const std::vector<std::string>& OperatorBase::AttrVars(
+    const std::string& name) const {
+  auto it = attr_vars_.find(name);
+  PADDLE_ENFORCE_NE(
+      it, attr_vars_.end(),
+      platform::errors::NotFound(
+          "Operator %s does not have an attr_var called %s.", type_, name));
+  return it->second;
+}
+
 std::string OperatorBase::DebugStringEx(const ScopeBase* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
@@ -414,6 +426,8 @@ OperatorBase::OperatorBase(const std::string& type,
       inputs_(inputs),
       outputs_(outputs),
       attrs_(attrs),
+      // NOTE(dev): Initialized in OpFiller in op_register.h
+      attr_vars_({}),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
   // In dygraph mode, all the OperatorBase will be constructed by function:
@@ -519,6 +533,11 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   }
 }
 
+bool ExecutionContext::HasAttrVar(const std::string& name) const {
+  auto* var = AttrVar(name);
+  return var != nullptr;
+}
+
 bool ExecutionContext::HasInput(const std::string& name) const {
   auto* var = InputVar(name);
   return var != nullptr;
@@ -527,6 +546,21 @@ bool ExecutionContext::HasInput(const std::string& name) const {
 bool ExecutionContext::HasOutput(const std::string& name) const {
   auto* var = OutputVar(name);
   return var != nullptr;
+}
+
+const Variable* ExecutionContext::AttrVar(const std::string& name) const {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
+  auto it = ctx_.attrs.find(name);
+  VLOG(1) << "ctx_.attr.size() : " << ctx_.attrs.size();
+  if (it == ctx_.attrs.end()) return nullptr;
+
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "Operator %s's AttrVars %s should contain only one variable.",
+          op_.Type(), name));
+  return it->second.empty() ? nullptr : it->second[0];
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
@@ -689,7 +723,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
+  bool HasAttrVar(const std::string& name) const override {
+    const auto& attr_vars = ctx_.attrs;
+    auto it = attr_vars.find(name);
+    if (it == attr_vars.end() || it->second.empty()) {
+      return false;
+    }
+    for (auto& attr_var : it->second) {
+      if (attr_var == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
+
+  std::vector<std::string> AttrVars(const std::string& name) const override {
+    return op_.AttrVars(name);
+  }
 
   std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
@@ -884,6 +936,15 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
+  std::vector<InferShapeVarPtr> GetAttrVarPtrs(
+      const std::string& name) const override {
+    const std::vector<Variable*>& vars = MultiAttrVars(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(vars.size());
+    res.insert(res.begin(), vars.begin(), vars.end());
+    return res;
+  }
+
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override {
@@ -1042,6 +1103,15 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return it->second;
   }
 
+  const std::vector<Variable*>& MultiAttrVars(const std::string& name) const {
+    auto it = ctx_.attrs.find(name);
+    PADDLE_ENFORCE_NE(it, ctx_.inputs.end(),
+                      platform::errors::NotFound(
+                          "Operator (%s) does not have the attr_var (%s).",
+                          op_.Type(), name));
+    return it->second;
+  }
+
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
 };
@@ -1104,14 +1174,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
-    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RuntimeContext ctx(Inputs(), Outputs(), AttrVars(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        runtime_ctx_.reset(
+            new RuntimeContext(Inputs(), Outputs(), AttrVars(), scope));
         pre_scope_ = cur_scope;
       }
     }
@@ -1891,6 +1962,18 @@ void OperatorWithKernel::BuildPtenKernelContext(
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
     if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      if (ctx.attrs.find(attr_names[i]) != ctx.attrs.end()) {
+        auto& vars = ctx.attrs.at(attr_names[i]);
+        VLOG(1) << "parse attr_name: " << attr_names[i];
+        std::vector<int> vals =
+            operators::GetDataFromVariable<int>(vars, attr_names[i]);
+        for (auto v : vals) {
+          VLOG(1) << v << ",";
+        }
+        pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(vals)));
+        continue;
+      }
+
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==

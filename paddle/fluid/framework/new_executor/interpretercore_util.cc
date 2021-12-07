@@ -185,8 +185,8 @@ void create_all_ops(const framework::BlockDesc& block,
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&op_attr_map);
     }
-    auto op_base =
-        info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+    auto op_base = info.Creator()(op->Type(), inputs_names, outputs_names,
+                                  op_attr_map, op->AttrVars());
     ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
 }

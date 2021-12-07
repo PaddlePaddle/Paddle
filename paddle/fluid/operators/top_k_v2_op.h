@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -163,6 +164,7 @@ class TopkV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // Get the top k elements of each row of input tensor
+    VLOG(1) << "start topk";
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
     auto* indices = context.Output<Tensor>("Indices");
@@ -171,14 +173,15 @@ class TopkV2Kernel : public framework::OpKernel<T> {
     const auto& sorted = static_cast<bool>(context.Attr<bool>("sorted"));
     const auto& largest = static_cast<bool>(context.Attr<bool>("largest"));
 
-    // axis < 0, cacluate the real axis
+    // axis < 0, calculate the real axis
     int axis = static_cast<int>(context.Attr<int>("axis"));
     if (axis < 0) axis += in_dims.size();
 
-    // if K tensor is not null, will the use K tesnor as k
-    auto* k_t = context.Input<Tensor>("K");
-    if (k_t) {
-      k = k_t->data<int>()[0];
+    // if K tensor is not null, will the use K tensor as k
+    if (context.HasAttrVar("k")) {
+      VLOG(1) << "kernel func k: " << k;
+      k = GetScalar<int>(context, "k");
+      VLOG(1) << "kernel func k: " << k;
       framework::DDim output_dims = output->dims();
       // accroding to axis to set K value in the dim
       output_dims[axis] = k;

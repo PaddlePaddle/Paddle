@@ -45,6 +45,11 @@ using Attribute = boost::variant<
     std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
     std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
+// The order should be as same as TensorDesc in framework.proto
+using TensorDescValue =
+    boost::variant<boost::blank, std::vector<int>, std::vector<int64_t>,
+                   std::vector<float>, std::vector<std::string>, int64_t>;
+
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -60,7 +65,8 @@ using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
 
 using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
-    const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
+    const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/,
+    const VariableNameMap& /*attr_vars*/)>;
 
 using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const OpDesc&, const std::unordered_set<std::string>& /*no_grad_set*/,

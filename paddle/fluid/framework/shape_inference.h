@@ -82,6 +82,12 @@ class InferShapeContext {
   virtual std::string GetInputNameByIdx(size_t idx) const = 0;
   virtual std::string GetOutputNameByIdx(size_t idx) const = 0;
   virtual AttrReader Attrs() const = 0;
+  // TODO(Aurelius84): make it as pure virtual function.
+  virtual bool HasAttrVar(const std::string &name) const { return false; }
+  virtual std::vector<std::string> AttrVars(const std::string &name) const {
+    return {};
+  }
+
   virtual std::vector<std::string> Inputs(const std::string &name) const = 0;
   virtual std::vector<std::string> Outputs(const std::string &name) const = 0;
 
@@ -101,6 +107,11 @@ class InferShapeContext {
                            size_t j = 0) const = 0;
 
   virtual bool IsRuntime() const = 0;
+
+  virtual std::vector<InferShapeVarPtr> GetAttrVarPtrs(
+      const std::string &name) const {
+    return std::vector<InferShapeVarPtr>();
+  }
 
   virtual std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string &name) const = 0;

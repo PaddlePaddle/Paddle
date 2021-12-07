@@ -2404,7 +2404,8 @@ class Operator(object):
                  type=None,
                  inputs=None,
                  outputs=None,
-                 attrs=None):
+                 attrs=None,
+                 attr_vars=None):
         if in_dygraph_mode():
             if type is None:
                 raise ValueError(
@@ -2420,6 +2421,9 @@ class Operator(object):
             if op_attrs is None:
                 op_attrs = dict()
             del attrs
+
+            op_attr_vars = attr_vars if attr_vars else {}
+            del attr_vars
 
             op_maker = core.op_proto_and_checker_maker
 
@@ -2554,6 +2558,16 @@ class Operator(object):
                                 arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
+            # support Attribute(Variable)
+            if op_attr_vars:
+                if not isinstance(op_attr_vars, dict):
+                    raise TypeError("'op_attr_vars' should be a dict.")
+                for attr in proto.attrs:
+                    attr_name = attr.name
+                    if attr_name in op_attr_vars:
+                        attr_val = op_attr_vars[attr_name]
+                        self._update_desc_attr(attr_name, attr_val, is_var=True)
+
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
                     raise TypeError("'attrs' should be a dict.")
@@ -2668,8 +2682,17 @@ class Operator(object):
                     attrs_str += ", "
                 continue
 
-            a = "{name} = {value}".format(
-                name=name, type=attr_type, value=self.desc.attr(name))
+            # TODO(Aurelius84): Support list[name]
+            if self.desc.has_attr_var(name):
+                var_name = self.desc.attr_var(name)
+                a = "{name} = {var_name}(default={value})".format(
+                    name=name,
+                    type=attr_type,
+                    var_name=var_name,
+                    value=self.desc.attr(name))
+            else:
+                a = "{name} = {value}".format(
+                    name=name, type=attr_type, value=self.desc.attr(name))
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
@@ -2816,7 +2839,7 @@ class Operator(object):
     def _remove_attr(self, name):
         self.desc.remove_attr(name)
 
-    def _update_desc_attr(self, name, val):
+    def _update_desc_attr(self, name, val, is_var=False):
         """
         Update the value of desc's attribute by attribute's name.
 
@@ -2827,6 +2850,13 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
+        if is_var:
+            assert isinstance(val, list)
+            assert all(isinstance(
+                v,
+                str, ) for v in val)
+            self.desc._set_attr_var(name, val)
+            return
         if isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and all(
@@ -2854,6 +2884,10 @@ class Operator(object):
             can be any valid attribute type.
         """
         return self.desc.attr(name)
+
+    def attr_var(self, name):
+        var_name = self.desc.attr_var(name)
+        return [self.block._var_recursive(name) for name in var_name]
 
     def _block_attr_id(self, name):
         """
@@ -3413,7 +3447,8 @@ class Block(object):
                     type=kwargs.get("type", None),
                     inputs=inputs,
                     outputs=outputs,
-                    attrs=kwargs.get("attrs", None))
+                    attrs=kwargs.get("attrs", None),
+                    attr_vars=kwargs.get("attr_vars", None))
 
             self.ops.append(op)
 

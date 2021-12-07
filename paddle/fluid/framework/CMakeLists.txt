@@ -35,6 +35,7 @@ proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
 
 proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
+cc_library(tensor_desc SRCS tensor_desc.cc DEPS enforce framework_proto boost glog)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
 FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
@@ -212,7 +213,7 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc DEPS attribute shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc DEPS attribute shape_inference op_info operator glog version tensor_desc)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 

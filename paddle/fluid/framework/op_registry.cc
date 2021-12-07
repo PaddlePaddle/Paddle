@@ -21,12 +21,14 @@ namespace framework {
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
-    const VariableNameMap& outputs, AttributeMap attrs, bool attr_check) {
+    const VariableNameMap& outputs, AttributeMap attrs, bool attr_check,
+    const VariableNameMap& attr_vars) {
   auto& info = OpInfoMap::Instance().Get(type);
   if (attr_check && info.Checker() != nullptr) {
     info.Checker()->Check(&attrs);
   }
-  auto op = info.Creator()(type, inputs, outputs, attrs);
+  VLOG(1) << type << " attr_vars.size() : " << attr_vars.size();
+  auto op = info.Creator()(type, inputs, outputs, attrs, attr_vars);
   return std::unique_ptr<OperatorBase>(op);
 }
 
@@ -52,16 +54,24 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;
+  VariableNameMap attr_vars;
   for (auto& attr : op_desc.attrs()) {
     attrs[attr.name()] = GetAttrValue(attr);
+    // Extract var_names from OpDesc_Attr
+    if (attr.var_names_size() > 0) {
+      std::vector<std::string>& names = attr_vars[attr.name()];
+      for (int i = 0; i < attr.var_names_size(); ++i) {
+        names.emplace_back(attr.var_names(i));
+      }
+    }
   }
 
-  return CreateOp(op_desc.type(), inputs, outputs, attrs);
+  return CreateOp(op_desc.type(), inputs, outputs, attrs, true, attr_vars);
 }
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
-                  op_desc.GetAttrMap());
+                  op_desc.GetAttrMap(), true, op_desc.AttrVars());
 }
 
 }  // namespace framework

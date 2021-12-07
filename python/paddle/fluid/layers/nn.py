@@ -6311,19 +6311,21 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         return attrs_shape
 
     inputs = {"X": x}
-    attrs = {}
+    attrs, attr_vars = {}, {}
     if isinstance(shape, Variable):
-        shape.stop_gradient = True
-        inputs["Shape"] = shape
+        # shape.stop_gradient = True
+        # inputs["Shape"] = shape
+        attr_vars["shape"] = [shape.name]
     elif isinstance(shape, (list, tuple)):
         assert len(shape) > 0, ("The size of 'shape' in reshape can't be zero, "
                                 "but received %s." % len(shape))
         attrs["shape"] = get_attr_shape(shape)
         if utils._contain_var(shape):
-            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
+            shape_tensors = utils._convert_to_tensor_list(shape)
+            attr_vars["shape"] = [var.name for var in shape_tensors]
         elif isinstance(actual_shape, Variable):
-            actual_shape.stop_gradient = True
-            inputs["Shape"] = actual_shape
+            # actual_shape.stop_gradient = True
+            attr_vars["shape"] = [actual_shape.name]
 
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
@@ -6332,6 +6334,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         type="reshape2",
         inputs=inputs,
         attrs=attrs,
+        attr_vars=attr_vars,
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -11491,6 +11494,7 @@ def shape(input):
     ], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
+    out.desc.set_desc_value(input.shape)
     helper.append_op(
         type='shape',
         inputs={'Input': input},

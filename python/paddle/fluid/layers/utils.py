@@ -353,6 +353,9 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
         else:
             assert isinstance(ele, six.integer_types)
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
+            # TODO(Aurelius84): consider to move it into fill_constant
+            if hasattr(temp_out, 'desc'):
+                temp_out.desc.set_desc_value([ele])
             new_list_tensor.append(temp_out)
     return new_list_tensor
 

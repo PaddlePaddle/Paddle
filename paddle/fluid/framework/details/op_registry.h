@@ -162,8 +162,19 @@ struct OpInfoFiller<T, kOperator> {
                           "OpCreator of %s has been registered", op_type));
     info->creator_ = [](const std::string& type, const VariableNameMap& inputs,
                         const VariableNameMap& outputs,
-                        const AttributeMap& attrs) {
-      return new T(type, inputs, outputs, attrs);
+                        const AttributeMap& attrs,
+                        const VariableNameMap& attr_vars) {
+      auto op = new T(type, inputs, outputs, attrs);
+      /*
+       * We initialize OperatorBase member `attr_vars` here instead of in
+       * constructor
+       * to avoid modifying all relevent code from
+       * OperatorBase/OperatorWithKernel
+       * defintion in framework. Its influence is very wide.
+       */
+      op->SetAttrVars(attr_vars);
+
+      return op;
     };
 
     if (std::is_base_of<OperatorWithKernel, T>::value) {
@@ -172,8 +183,9 @@ struct OpInfoFiller<T, kOperator> {
           platform::errors::AlreadyExists(
               "Duplicate InferShapeFN of %s has been registered", op_type));
 
-      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
-          std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
+      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(
+          info->creator_(std::string{}, VariableNameMap{}, VariableNameMap{},
+                         AttributeMap{}, VariableNameMap{}));
       PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
                                       "%s should have kernels", op_type));
       info->infer_shape_ = [op](InferShapeContext* ctx) {

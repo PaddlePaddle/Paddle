@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/top_k_v2_op.h"
+#include <cstdio>
 #include <memory>
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -38,33 +40,25 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += dim_size;
 
-    int k;
-    auto k_is_tensor = ctx->HasInput("K");
-    if (k_is_tensor) {
-      k = -1;
-    } else {
-      k = static_cast<int>(ctx->Attrs().Get<int>("k"));
-      PADDLE_ENFORCE_EQ(k >= 1, true,
-                        paddle::platform::errors::InvalidArgument(
-                            "the attribute of k in the topk must >= 1 or be a "
-                            "Tensor, but received %d .",
-                            k));
-    }
-
+    int k = -1;
     PADDLE_ENFORCE_GE(input_dims.size(), 1,
                       paddle::platform::errors::InvalidArgument(
                           "input of topk must have >= 1d shape"));
-
     if (ctx->IsRuntime()) {
+      // skip runtime infershape if k==-1
+      if (k == -1) return;
       PADDLE_ENFORCE_GE(
           input_dims[axis], k,
           paddle::platform::errors::InvalidArgument(
               "input of topk op must have >= %d columns in axis of %d", k,
               axis));
+    } else {
+      k = GetScalar<int>(ctx, "k");
+      printf("k in compile time: %d\n", k);
     }
 
     framework::DDim dims = input_dims;
-
+    VLOG(1) << "k " << k;
     dims[axis] = k;
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);

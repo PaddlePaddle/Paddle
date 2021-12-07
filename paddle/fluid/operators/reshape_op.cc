@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/operators/utils.h"
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -84,69 +85,29 @@ class ReshapeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
 
-    if (ctx->HasInputs("ShapeTensor")) {
-      // top prority shape
-      auto ShapeTensor = ctx->Inputs("ShapeTensor");
-      PADDLE_ENFORCE_GT(
-          ShapeTensor.size(), 0,
-          platform::errors::InvalidArgument(
-              "When `shape` in ReshapeOp is a list or tuple "
-              "which contains Tensor, the shape's size can't be zero. "
-              "But received shape's size is %d.",
-              ShapeTensor.size()));
-      auto infer_shape = ctx->Attrs().Get<std::vector<int>>("shape");
-      const int64_t copy_dim_val = 0;
-      auto in_dims = ctx->GetInputDim("X");
-      for (size_t i = 0; i < infer_shape.size(); ++i) {
-        if (infer_shape[i] == copy_dim_val) {
-          PADDLE_ENFORCE_LT(
-              static_cast<int>(i), in_dims.size(),
-              platform::errors::InvalidArgument(
-                  "The index of 0 in `shape` must be less than "
-                  "the input tensor X's dimensions. But received shape[%d] "
-                  "= 0, X's dimensions = %d, X's shape = [%s].",
-                  i, in_dims.size(), in_dims));
-          infer_shape[i] = in_dims[i];
-        }
-      }
-      auto infer_out_dims = framework::make_ddim(infer_shape);
-      ctx->SetOutputDim("Out", infer_out_dims);
-      return;
-    }
+    // check in Runtime
+    if (ctx->IsRuntime()) return;
 
-    const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    if (ctx->HasInput("Shape") && shape.empty()) {
-      auto shape_dims = ctx->GetInputDim("Shape");
-      int num_ele = 1;
-      for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
-      }
-      auto vec_dims = std::vector<int>(num_ele, -1);
-      auto out_dims = framework::make_ddim(vec_dims);
-      ctx->SetOutputDim("Out", out_dims);
-      ctx->ShareLoD("X", /*->*/ "Out");
-      return;
-    }
-
-    if (ctx->HasInput("Shape") && !shape.empty() && ctx->IsRuntime()) {
-      // If true, set the shape of Output(Out) according to Input(Shape) in
-      // ReshapeKernel with ExecutionContext. Also check LoD in ReshapeKernel.
-      ctx->ShareLoD("X", /*->*/ "Out");
-      return;
-    }
-
+    std::vector<int> shape = GetScalars<int>(ctx, "shape");
     PADDLE_ENFORCE_EQ(!shape.empty(), true,
                       platform::errors::InvalidArgument(
                           "The parameter 'shape' in ReshapeOp must be set. "
                           "But received 'shape' is empty."));
-    auto x_dims = ctx->GetInputDim("X");
-    auto out_dims = ValidateShape(shape, x_dims);
+
+    auto out_dims = framework::make_ddim(shape);
+    VLOG(1) << "reshape.out ddim: " << out_dims;
     ctx->SetOutputDim("Out", out_dims);
-    if (x_dims[0] == out_dims[0]) {
-      // Only pass LoD when the first dimension of output and Input(X)
-      // are the same.
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
+    ctx->ShareLoD("X", /*->*/ "Out");
+    return;
+
+    // auto x_dims = ctx->GetInputDim("X");
+    // auto out_dims = ValidateShape(shape, x_dims);
+    // ctx->SetOutputDim("Out", out_dims);
+    // if (x_dims[0] == out_dims[0]) {
+    //   // Only pass LoD when the first dimension of output and Input(X)
+    //   // are the same.
+    //   ctx->ShareLoD("X", /*->*/ "Out");
+    // }
   }
 
   static framework::DDim ValidateShape(const std::vector<int> shape,
@@ -405,37 +366,50 @@ class ReshapeKernel {
                              ? ctx.Input<framework::LoDTensor>("Shape")
                              : nullptr;
     pten::ScalarArray pt_scalar_shape;
-    if (list_new_shape_tensor.size() > 0) {
-      // have shape tensor
-      std::vector<pten::DenseTensor> pt_vec_shape;
-      for (auto &tensor : list_new_shape_tensor) {
-        if (platform::is_gpu_place(tensor->place()) ||
-            platform::is_xpu_place(tensor->place())) {
-          framework::Tensor temp;
-          TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-          pt_vec_shape.push_back(
-              std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
-        } else {
-          pt_vec_shape.push_back(
-              std::move(*(paddle::experimental::MakePtenDenseTensor(*tensor))));
-        }
+
+    if (ctx.HasAttrVar("shape")) {
+      VLOG(1) << "has attr Var";
+      auto shape = GetScalars<int>(ctx, "shape");
+      VLOG(1) << "shape.size: " << shape.size();
+      for (auto &ele : shape) {
+        VLOG(1) << ele << " ,";
       }
-      pt_scalar_shape = pten::ScalarArray(pt_vec_shape);
-    } else if (shape_tensor) {
-      std::unique_ptr<pten::DenseTensor> pt_shape;
-      if (platform::is_gpu_place(shape_tensor->place()) ||
-          platform::is_xpu_place(shape_tensor->place())) {
-        framework::Tensor temp;
-        TensorCopySync(*shape_tensor, platform::CPUPlace(), &temp);
-        pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
-      } else {
-        pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);
-      }
-      pt_scalar_shape = pten::ScalarArray(*pt_shape.get());
+      pt_scalar_shape = pten::ScalarArray(shape);
     } else {
-      auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
-      pt_scalar_shape = pten::ScalarArray(shape_attr);
+      VLOG(1) << "NO attr Var";
+      if (list_new_shape_tensor.size() > 0) {
+        // have shape tensor
+        std::vector<pten::DenseTensor> pt_vec_shape;
+        for (auto &tensor : list_new_shape_tensor) {
+          if (platform::is_gpu_place(tensor->place()) ||
+              platform::is_xpu_place(tensor->place())) {
+            framework::Tensor temp;
+            TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+            pt_vec_shape.push_back(
+                std::move(*(paddle::experimental::MakePtenDenseTensor(temp))));
+          } else {
+            pt_vec_shape.push_back(std::move(
+                *(paddle::experimental::MakePtenDenseTensor(*tensor))));
+          }
+        }
+        pt_scalar_shape = pten::ScalarArray(pt_vec_shape);
+      } else if (shape_tensor) {
+        std::unique_ptr<pten::DenseTensor> pt_shape;
+        if (platform::is_gpu_place(shape_tensor->place()) ||
+            platform::is_xpu_place(shape_tensor->place())) {
+          framework::Tensor temp;
+          TensorCopySync(*shape_tensor, platform::CPUPlace(), &temp);
+          pt_shape = paddle::experimental::MakePtenDenseTensor(temp);
+        } else {
+          pt_shape = paddle::experimental::MakePtenDenseTensor(*shape_tensor);
+        }
+        pt_scalar_shape = pten::ScalarArray(*pt_shape.get());
+      } else {
+        auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
+        pt_scalar_shape = pten::ScalarArray(shape_attr);
+      }
     }
+
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
       pten::Reshape(dev_ctx, *pt_x.get(), pt_scalar_shape, pt_out);

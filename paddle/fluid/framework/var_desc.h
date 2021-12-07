@@ -118,6 +118,12 @@ class VarDesc {
 
   void SetType(proto::VarType::Type type);
 
+  void SetDescValue(const TensorDescValue &val);
+
+  TensorDescValue GetDescValue() const;
+
+  bool HasDescValue() const;
+
   bool Persistable() const { return desc_.persistable(); }
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }

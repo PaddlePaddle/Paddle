@@ -545,8 +545,8 @@ void RegisterOperatorWithMetaInfo(
 
   // Op
   info.creator_ = [](const std::string& op_name, const VariableNameMap& inputs,
-                     const VariableNameMap& outputs,
-                     const AttributeMap& attrs) {
+                     const VariableNameMap& outputs, const AttributeMap& attrs,
+                     const VariableNameMap& attr_vars) {
     return new CustomOperator(op_name, inputs, outputs, attrs);
   };
 
@@ -804,7 +804,8 @@ void RegisterOperatorWithMetaInfo(
     // Grad Op
     grad_info.creator_ = [](
         const std::string& type, const VariableNameMap& inputs,
-        const VariableNameMap& outputs, const AttributeMap& attrs) {
+        const VariableNameMap& outputs, const AttributeMap& attrs,
+        const VariableNameMap& attr_vars) {
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 

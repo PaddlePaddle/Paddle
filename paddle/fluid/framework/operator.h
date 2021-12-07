@@ -129,12 +129,42 @@ class RuntimeContext {
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames, const Scope& scope);
 
+  RuntimeContext(const VariableNameMap& innames,
+                 const VariableNameMap& outnames,
+                 const VariableNameMap& attrnames, const Scope& scope);
+
   RuntimeContext(const VariableValueMap& invars,
                  const VariableValueMap& outvars)
       : inputs(invars), outputs(outvars) {}
 
+  RuntimeContext(const VariableValueMap& invars,
+                 const VariableValueMap& outvars,
+                 const VariableValueMap& attrvars)
+      : inputs(invars), outputs(outvars), attrs(attrvars) {
+    // consider Attribute(Variable) as `Input`
+    for (auto& var_item : attrs) {
+      VLOG(1) << "copy " << var_item.first << " into inputs";
+      inputs[var_item.first] = var_item.second;
+    }
+  }
+
   VariableValueMap inputs;
   VariableValueMap outputs;
+  // NOTE(dev): only contains attribute with type(Variable)
+  // Whether we need just consider them as inputs by merging into `inputs` ?
+  VariableValueMap attrs;
+
+ private:
+  void ConstructValueMap(const VariableNameMap& names, const Scope& scope,
+                         VariableValueMap* values) {
+    for (auto& var_name_item : names) {
+      std::vector<Variable*>& vars = (*values)[var_name_item.first];
+      vars.reserve(var_name_item.second.size());
+      for (auto& var_name : var_name_item.second) {
+        vars.push_back(scope.FindVar(var_name));
+      }
+    }
+  }
 };
 
 /**
@@ -185,6 +215,27 @@ class OperatorBase {
   }
   const AttributeMap& Attrs() const { return attrs_; }
 
+  // TODO(Aurelius84): Consider to use AllInputs containing attr_vars and inputs
+  // instead of inserting attr_vars into inputs.
+  void SetAttrVars(const VariableNameMap& attr_vars) {
+    // clear old value in inputs
+    for (auto& item : attr_vars_) {
+      VLOG(1) << Type() << " : clear " << item.first << " from inputs_";
+      inputs_.erase(item.first);
+    }
+
+    attr_vars_ = attr_vars;
+    // Sync these vars into inputs_;
+    for (auto& item : attr_vars_) {
+      VLOG(1) << Type() << " : sync " << item.first << " into inputs_";
+      inputs_[item.first] = item.second;
+    }
+  }
+
+  const VariableNameMap& AttrVars() const {
+    VLOG(1) << Type() << " has AttrVars.size(): " << attr_vars_.size();
+    return attr_vars_;
+  }
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
@@ -212,6 +263,9 @@ class OperatorBase {
   //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
+  //! Get an attr_var which has multiple variables.
+  const std::vector<std::string>& AttrVars(const std::string& name) const;
+
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
 
   virtual void RuntimeInferShape(const Scope& scope,
@@ -235,6 +289,8 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // Support Attribute(Variable)
+  VariableNameMap attr_vars_;
 
   // OpInfo
   const OpInfo* info_;
@@ -289,6 +345,8 @@ class ExecutionContext {
     return op_.Attrs().at(name);
   }
 
+  virtual bool HasAttrVar(const std::string& name) const;
+
   virtual bool HasInput(const std::string& name) const;
 
   virtual bool HasOutput(const std::string& name) const;
@@ -300,6 +358,12 @@ class ExecutionContext {
   virtual size_t OutputSize(const std::string& name) const {
     return op_.Outputs(name).size();
   }
+
+  virtual size_t AttrVarSize(const std::string& name) const {
+    return op_.AttrVars(name).size();
+  }
+
+  virtual const Variable* AttrVar(const std::string& name) const;
 
   virtual const Variable* InputVar(const std::string& name) const;
 
@@ -319,6 +383,15 @@ class ExecutionContext {
   virtual std::vector<Variable*> MultiOutputVar(const std::string& name) const {
     auto it = ctx_.outputs.find(name);
     if (it == ctx_.outputs.end()) {
+      return {};
+    }
+    return it->second;
+  }
+
+  virtual const std::vector<Variable*> MultiAttrVar(
+      const std::string& name) const {
+    auto it = ctx_.attrs.find(name);
+    if (it == ctx_.attrs.end()) {
       return {};
     }
     return it->second;

@@ -39,11 +39,19 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutputs(const std::string &name) const override;
 
+  bool HasAttrVar(const std::string &name) const {
+    return op_.HasAttrVar(name);
+  }
+
   AttrReader Attrs() const override;
 
   std::vector<std::string> Inputs(const std::string &name) const override;
 
   std::vector<std::string> Outputs(const std::string &name) const override;
+
+  std::vector<std::string> AttrVars(const std::string &name) const {
+    return op_.AttrVar(name);
+  }
 
   std::string GetInputNameByIdx(size_t idx) const override {
     auto &op_proto =
@@ -199,6 +207,18 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  std::vector<InferShapeVarPtr> GetAttrVarPtrs(
+      const std::string &name) const override {
+    const std::vector<std::string> arg_names = AttrVars(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(arg_names.size());
+    std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
+                   [this](const std::string &name) {
+                     return block_.FindVarRecursive(name);
+                   });
+    return res;
+  }
+
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
@@ -332,11 +352,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 };
 
 OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
-               const VariableNameMap &outputs, const AttributeMap &attrs) {
+               const VariableNameMap &outputs, const AttributeMap &attrs,
+               const VariableNameMap &attr_vars) {
+  VLOG(1) << "construct from this";
   desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
   attrs_ = attrs;
+  attr_vars_ = attr_vars;
   need_update_ = true;
   block_ = nullptr;
 }
@@ -354,6 +377,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   attrs_ = op_desc.attrs_;
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
+  attr_vars_ = op_desc.attr_vars_;
   need_update_ = true;
 }
 
@@ -389,6 +413,13 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     if (attr.type() != proto::AttrType::BLOCK &&
         attr.type() != proto::AttrType::BLOCKS) {
       attrs_[attr_name] = GetAttrValue(attr);
+    }
+    // restore attr_vars_
+    if (attr.var_names_size() > 0) {
+      std::vector<std::string> &names = attr_vars_[attr_name];
+      for (int i = 0; i < attr.var_names_size(); ++i) {
+        names.emplace_back(attr.var_names(i));
+      }
     }
   }
   this->block_ = block;
@@ -587,6 +618,39 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
+bool OpDesc::HasAttrVar(const std::string &name) const {
+  auto it = attr_vars_.find(name);
+  return it != attr_vars_.end() && !it->second.empty();
+}
+
+const std::vector<std::string> &OpDesc::AttrVar(const std::string &name) const {
+  auto it = attr_vars_.find(name);
+  PADDLE_ENFORCE_NE(
+      it, attr_vars_.end(),
+      platform::errors::NotFound("AttrVars %s is not found.", name));
+  PADDLE_ENFORCE_EQ(
+      it->second.empty(), false,
+      platform::errors::PreconditionNotMet(
+          "AttrVars %s shall contain at least one var, but got empty.", name));
+  return it->second;
+}
+
+void OpDesc::SetAttrVar(const std::string &name,
+                        const std::vector<std::string> &args) {
+  attr_vars_[name] = args;
+  need_update_ = true;
+
+  // NOTE(Aurelius84): While setting need_update_=True, it will synchronize info
+  // into proto::OpDesc_Attr. Should we remove following codes?
+  for (int i = 0; i < desc_.attrs_size(); ++i) {
+    auto *attr = desc_.mutable_attrs(i);
+    if (name == attr->name()) {
+      VectorToRepeated(args, attr->mutable_var_names());
+      break;
+    }
+  }
+}
+
 const proto::OpProto::Attr &OpDesc::GetProtoAttr(
     const std::string &name) const {
   const proto::OpProto &proto = OpInfoMap::Instance().Get(Type()).Proto();
@@ -753,6 +817,12 @@ void OpDesc::Flush() {
           static_cast<proto::AttrType>(attr.second.which() - 1));
       SetAttrDescVisitor visitor(attr_desc);
       boost::apply_visitor(visitor, attr.second);
+
+      // synchronize attr_vars into Proto::OpDesc_Attr info.
+      auto iter = attr_vars_.find(attr.first);
+      if (iter != attr_vars_.end()) {
+        VectorToRepeated(iter->second, attr_desc->mutable_var_names());
+      }
     }
 
     need_update_ = false;

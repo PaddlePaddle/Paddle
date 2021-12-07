@@ -65,6 +65,9 @@ message OpDesc {
     repeated int32 blocks_idx = 14;
     repeated int64 longs = 15;
     repeated double float64s = 16;
+
+    // Used to associate the var_desc names as attribute.
+    repeated string var_names = 20;
   };
 
   message Var {
@@ -160,6 +163,13 @@ message VarType {
     // Should only be PODType. Is enforced in C++
     required Type data_type = 1;
     repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+
+    // Store tensor content with small dims in compiled time to help infer
+    // shape. Only support rank=1 or scalar.
+    repeated int32 int32_val = 3;
+    repeated int64 int64_val = 4;
+    repeated float float_val = 5;
+    repeated string string_val = 6;
   }
   optional TensorDesc selected_rows = 2;
 

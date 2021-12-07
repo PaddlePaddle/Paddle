@@ -13,6 +13,7 @@
 # limitations under the License.
 
 STATIC_MODE_TESTING_LIST = [
+    'test_tensor_desc',
     'test_affine_channel_op',
     'test_transfer_dtype_op',
     'test_transfer_layout_op',

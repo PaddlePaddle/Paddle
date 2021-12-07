@@ -34,8 +34,10 @@ class OpDesc {
  public:
   OpDesc() {}
 
+  // Not all OpDesc constains Attribute(Variable), make att_vars as optional.
   OpDesc(const std::string &type, const VariableNameMap &inputs,
-         const VariableNameMap &outputs, const AttributeMap &attrs);
+         const VariableNameMap &outputs, const AttributeMap &attrs,
+         const VariableNameMap &attr_vars = {});
 
   OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
@@ -70,6 +72,8 @@ class OpDesc {
 
   void RemoveInput(const std::string &name);
 
+  const std::vector<std::string> &AttrVar(const std::string &name) const;
+
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
   }
@@ -88,6 +92,11 @@ class OpDesc {
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
   Attribute GetAttr(const std::string &name) const;
+
+  bool HasAttrVar(const std::string &name) const;
+
+  void SetAttrVar(const std::string &name,
+                  const std::vector<std::string> &args);
 
   template <typename T>
   T GetAttrIfExists(const std::string &name) const {
@@ -124,6 +133,11 @@ class OpDesc {
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
+
+  const VariableNameMap &AttrVars() const {
+    VLOG(1) << Type() << " attr_vars_ : " << attr_vars_.size();
+    return attr_vars_;
+  }
 
   VariableNameMap *MutableInputs() {
     this->need_update_ = true;
@@ -185,6 +199,7 @@ class OpDesc {
   // output arg name => output variable names
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  VariableNameMap attr_vars_;  // support Attribute(Variable)
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

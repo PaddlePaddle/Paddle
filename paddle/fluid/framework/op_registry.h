@@ -126,11 +126,11 @@ class OpRegistry {
    *            attr_check is set to false, otherwise it will be failed
    *            when check function called.
    */
-  static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
-                                                const VariableNameMap& inputs,
-                                                const VariableNameMap& outputs,
-                                                AttributeMap attrs,
-                                                bool attr_check = true);
+  static std::unique_ptr<OperatorBase> CreateOp(
+      const std::string& type, const VariableNameMap& inputs,
+      const VariableNameMap& outputs, AttributeMap attrs,
+      bool attr_check = true,
+      const VariableNameMap& attr_vars = VariableNameMap());
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 

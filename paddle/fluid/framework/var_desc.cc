@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/tensor_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -129,6 +130,25 @@ std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
     res.push_back(tensor_desc.data_type());
   }
   return res;
+}
+
+void VarDesc::SetDescValue(const TensorDescValue &val) {
+  SetTensorDescValue(mutable_tensor_desc(), val);
+}
+
+TensorDescValue VarDesc::GetDescValue() const {
+  PADDLE_ENFORCE_EQ(HasDescValue(), true,
+                    platform::errors::PreconditionNotMet(
+                        "%s has no desc value for compile time, please ensure "
+                        "you have set it.",
+                        Name()));
+  return GetTensorDescValue(tensor_desc());
+}
+
+bool VarDesc::HasDescValue() const {
+  auto &desc = tensor_desc();
+  return desc.int32_val_size() > 0 || desc.int64_val_size() > 0 ||
+         desc.float_val_size() > 0 || desc.string_val_size() > 0;
 }
 
 void VarDesc::SetLoDLevel(int32_t lod_level) {

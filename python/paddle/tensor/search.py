@@ -798,9 +798,9 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
     helper = LayerHelper("top_k_v2", **locals())
     inputs = {"X": [x]}
-    attrs = {}
+    attrs, attr_vars = {}, {}
     if isinstance(k, Variable):
-        inputs['K'] = [k]
+        attr_vars['k'] = [k.name]
     else:
         attrs = {'k': k}
     attrs['largest'] = largest
@@ -816,7 +816,8 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
         inputs=inputs,
         outputs={"Out": [values],
                  "Indices": [indices]},
-        attrs=attrs)
+        attrs=attrs,
+        attr_vars=attr_vars)
     indices.stop_gradient = True
     return values, indices
 
