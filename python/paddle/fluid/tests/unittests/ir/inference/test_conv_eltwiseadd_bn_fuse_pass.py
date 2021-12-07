@@ -180,10 +180,10 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
         bn_variance_shape = [f_shape[0]]
 
         # 16. Generate legal attr:epsilon of batch_norm
-        epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
+        epsilon = draw(st.floats(min_value=0.00001, max_value=0.001))
 
         def generate_batch_variance():
-            return (0.1 + (1 - 0.1) * np.random.random(bn_variance_shape)
+            return (0.1 + (1.0 - 0.1) * np.random.random(bn_variance_shape)
                     ).astype(np.float32)
 
         conv2d_op = OpConfig(
