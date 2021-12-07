@@ -75,7 +75,7 @@ inline bool HasCompiledContent(const framework::InferShapeContext* ctx,
     if (!var_descs.empty()) {
       flag = std::any_of(
           var_descs.begin(), var_descs.end(),
-          [](const framework::InferShapeVarPtr& var_ptr) {
+          [](framework::InferShapeVarPtr& var_ptr) {
             return BOOST_GET(framework::VarDesc*, var_ptr)->HasContent();
           });
     }
