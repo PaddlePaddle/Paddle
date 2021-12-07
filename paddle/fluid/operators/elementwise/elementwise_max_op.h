@@ -92,10 +92,40 @@ struct FMaxGradDx {
   }
 };
 
+template <>
+struct FMaxGradDx<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>((x >= y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x, int64_t y, int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>((x >= y));
+  }
+};
+
 template <typename T>
 struct FMaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return dout * static_cast<T>(!((x >= y) || isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x, int64_t y, int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>(!((x >= y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>(!((x >= y)));
   }
 };
 
