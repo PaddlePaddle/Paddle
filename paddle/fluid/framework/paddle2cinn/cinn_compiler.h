@@ -31,6 +31,13 @@
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+
+namespace operators {
+namespace details {
+class CinnLaunchContext;
+}
+}
+
 namespace framework {
 namespace paddle2cinn {
 
@@ -39,6 +46,7 @@ struct CinnCompiledObject {
   std::unique_ptr<::cinn::hlir::framework::Program> runtime_program;
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
   std::unordered_map<std::string, std::string> paddle2cinn_varmap;
+  std::unique_ptr<operators::details::CinnLaunchContext> launch_context;
 };
 
 // Entrance to use CINN.

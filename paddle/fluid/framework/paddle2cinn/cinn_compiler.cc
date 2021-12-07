@@ -41,6 +41,7 @@
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/operators/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -217,6 +218,8 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   *compiled_obj = {std::move(graph_compiler),
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
+  compiled_obj->launch_context =
+      std::make_unique<operators::details::CinnLaunchContext>(*compiled_obj);
   return compiled_obj;
 }
 
