@@ -197,3 +197,21 @@ class StatRegistry {
   USE_INT_STAT(STAT_npu5_mem_size); \
   USE_INT_STAT(STAT_npu6_mem_size); \
   USE_INT_STAT(STAT_npu7_mem_size)
+
+#define USE_MLU_MEM_STAT             \
+  USE_INT_STAT(STAT_mlu0_mem_size);  \
+  USE_INT_STAT(STAT_mlu1_mem_size);  \
+  USE_INT_STAT(STAT_mlu2_mem_size);  \
+  USE_INT_STAT(STAT_mlu3_mem_size);  \
+  USE_INT_STAT(STAT_mlu4_mem_size);  \
+  USE_INT_STAT(STAT_mlu5_mem_size);  \
+  USE_INT_STAT(STAT_mlu6_mem_size);  \
+  USE_INT_STAT(STAT_mlu7_mem_size);  \
+  USE_INT_STAT(STAT_mlu8_mem_size);  \
+  USE_INT_STAT(STAT_mlu9_mem_size);  \
+  USE_INT_STAT(STAT_mlu10_mem_size); \
+  USE_INT_STAT(STAT_mlu11_mem_size); \
+  USE_INT_STAT(STAT_mlu12_mem_size); \
+  USE_INT_STAT(STAT_mlu13_mem_size); \
+  USE_INT_STAT(STAT_mlu14_mem_size); \
+  USE_INT_STAT(STAT_mlu15_mem_size)

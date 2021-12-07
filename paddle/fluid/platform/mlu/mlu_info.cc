@@ -25,6 +25,7 @@ PADDLE_DEFINE_EXPORTED_string(
     "between MLU devices, use MLU_VISIBLE_DEVICES can only use"
     "share-memory only.");
 
+USE_MLU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
@@ -156,7 +157,7 @@ size_t MLUAvailableMemToAlloc() {
   if (available_to_alloc < min_chunk_size) {
     available_to_alloc = 0;
   }
-  VLOG(10) << "MLU usage " << (available >> 20) << "M/" << (total >> 20)
+  VLOG(10) << "MLU usage " << ((total - available) >> 20) << "M/" << (total >> 20)
            << "M, " << (available_to_alloc >> 20) << "M available to allocate";
   return available_to_alloc;
 }
@@ -170,7 +171,7 @@ static size_t MLUAllocSize(bool realloc) {
   PADDLE_ENFORCE_GT(
       available_to_alloc, 0,
       platform::errors::ResourceExhausted("Not enough available MLU memory."));
-  // If FLAGS_initial_mlu_memory_in_mb is 0, then initial memory will be
+  // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;

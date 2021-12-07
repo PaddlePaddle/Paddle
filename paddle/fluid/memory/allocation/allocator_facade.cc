@@ -54,6 +54,10 @@
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/mlu/mlu_info.h"
+#endif
+
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
@@ -169,6 +173,11 @@ class AllocatorFacadePrivate {
         }
         InitNaiveBestFitNPUPinnedAllocator();
 #endif
+#ifdef PADDLE_WITH_MLU
+        for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
+        }
+#endif
         break;
       }
 
@@ -198,6 +207,11 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_MLU
+        for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
+        }
+#endif
         break;
       }
 
@@ -220,6 +234,11 @@ class AllocatorFacadePrivate {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+#ifdef PADDLE_WITH_MLU
+        for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
+        }
 #endif
         break;
       }
@@ -582,6 +601,12 @@ class AllocatorFacadePrivate {
   }
 #endif
 
+#ifdef PADDLE_WITH_MLU
+  void InitNaiveBestFitMLUAllocator(platform::MLUPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+#endif
+
 #ifdef PADDLE_WITH_ASCEND_CL
   void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
@@ -612,6 +637,13 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_MLU
+    int device_count = platform::GetMLUDeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::XPUPlace p(i);
+      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+    }
+#endif
   }
 
   void InitZeroSizeAllocators() {
@@ -635,6 +667,12 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetNPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::NPUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_MLU
+    int device_count = platform::GetMLUDeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::MLUPlace(dev_id));
     }
 #endif
 
