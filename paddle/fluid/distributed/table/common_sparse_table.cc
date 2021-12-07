@@ -481,11 +481,11 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
-  for (int x = 0; x < num; ++x) {
-    std::cout << x;
-    if (x != num - 1) std::cout << " ";
-  }
-  std::cout << std::endl;
+  //for (int x = 0; x < num; ++x) {
+  //  std::cout << x;
+  //  if (x != num - 1) std::cout << " ";
+  //}
+  //std::cout << std::endl;
 
   for (int x = 0; x < num; ++x) {
     auto y = keys[x] % task_pool_size_;

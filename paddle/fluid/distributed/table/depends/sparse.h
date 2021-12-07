@@ -103,6 +103,22 @@ class SSGD : public SparseOptimizer {
   void update(const uint64_t* keys, const float* update_values, size_t num,
               const std::vector<uint64_t>& offsets,
               ValueBlock* block) override {
+
+
+    std::cout << "========DEBUG in ssgd update======" << std::endl; 
+    std::cout << "update_numel: " << update_numel << std::endl;  
+    for (auto x : offsets) {
+        auto id = keys[x];
+        std::cout << id << ":";
+        const float* data_update = update_values + x * update_numel;
+        for (int i = 0; i < update_numel; i++) {
+         std::cout << data_update[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "========DEBUG in ssgd update======" << std::endl; 
+
+
     auto blas = GetBlas<float>();
     for (auto x : offsets) {
       auto id = keys[x];
