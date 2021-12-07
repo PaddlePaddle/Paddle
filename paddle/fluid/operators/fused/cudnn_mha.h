@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include <cudnn.h>
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+// #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -41,28 +42,28 @@ class MHAMetaData {
   }
 
   MHAMetaData() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateAttnDescriptor(&attn_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&q_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&k_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
   }
 
   ~MHAMetaData() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyAttnDescriptor(attn_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroySeqDataDescriptor(q_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroySeqDataDescriptor(k_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroySeqDataDescriptor(v_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroySeqDataDescriptor(o_desc));
   }
 };
@@ -121,15 +122,15 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
   // Setup Attention Dropout
   if (attn_dropout_rate > 0.0) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateDropoutDescriptor(&attn_dropout_desc));
 
     size_t dropout_buf_size;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnDropoutGetStatesSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDropoutGetStatesSize(
         cudnn_handle, &dropout_buf_size));
 
     auto dropout_buf = memory::Alloc(dev_ctx, dropout_buf_size);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
         attn_dropout_desc, cudnn_handle, attn_dropout_rate,
         static_cast<void*>(dropout_buf->ptr()), dropout_buf_size, 0));
   }
@@ -146,7 +147,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
     // CUDNN_ATTN_QUERYMAP_ALL_TO_ONE
     // CUDNN_ATTN_ENABLE_PROJ_BIASES
     if (has_bias) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
           MHASingleton::Instance().Data(key).attn_desc,
           CUDNN_ATTN_ENABLE_PROJ_BIASES, attn_heads, attn_sm_scaler, dtype,
           comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
@@ -155,7 +156,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
           attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size,
           attn_beam_size));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
           MHASingleton::Instance().Data(key).attn_desc,
           CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
           comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
@@ -169,7 +170,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   {
     // platform::RecordEvent record_event("cudnn_get_multi_head_attn_buffers",
     //                                    platform::EventRole::kInnerOp);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
         &MHASingleton::Instance().Data(key).weights_size,
         &MHASingleton::Instance().Data(key).workspace_size,
@@ -205,7 +206,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   if (!platform::is_cpu_place(attn_low_windows->place())) {
     attn_low_windows_host.mutable_data(cpu_place, attn_low_windows->type(),
                                        seq_len * sizeof(int));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(attn_low_windows_host.data<int>(),
                    reinterpret_cast<const void*>(attn_low_windows->data<int>()),
                    seq_len * sizeof(int), cudaMemcpyDeviceToHost));
@@ -215,7 +216,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
     attn_high_windows_host.mutable_data(cpu_place, attn_high_windows->type(),
                                         seq_len * sizeof(int));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
         attn_high_windows_host.data<int>(),
         reinterpret_cast<const void*>(attn_high_windows->data<int>()),
         seq_len * sizeof(int), cudaMemcpyDeviceToHost));
@@ -225,7 +226,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
     attn_qo_seqlen_host.mutable_data(cpu_place, attn_qo_seqlen->type(),
                                      batch_size * sizeof(int));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(attn_qo_seqlen_host.data<int>(),
                    reinterpret_cast<const void*>(attn_qo_seqlen->data<int>()),
                    batch_size * sizeof(int), cudaMemcpyDeviceToHost));
@@ -235,7 +236,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
     attn_kv_seqlen_host.mutable_data(cpu_place, attn_kv_seqlen->type(),
                                      batch_size * sizeof(int));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(attn_kv_seqlen_host.data<int>(),
                    reinterpret_cast<const void*>(attn_kv_seqlen->data<int>()),
                    batch_size * sizeof(int), cudaMemcpyDeviceToHost));
@@ -256,26 +257,26 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   //   attn_high_windows[i] = q->dims()[1];
   // }
   // TODO(rewang): use memory::Copy
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
       attn_qo_seqlen.data(),
       reinterpret_cast<const void*>(attn_qo_seqlen_input->data<int>()),
       q->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
       attn_kv_seqlen.data(),
       reinterpret_cast<const void*>(attn_kv_seqlen_input->data<int>()),
       q->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
       attn_low_windows.data(),
       reinterpret_cast<const void*>(attn_low_windows_input->data<int>()),
       q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
       attn_high_windows.data(),
       reinterpret_cast<const void*>(attn_high_windows_input->data<int>()),
       q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
 #endif
 
-  //   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  //   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
   //       kv_slen_host.data(), reinterpret_cast<const
   //       void*>(kv_slen->data<int>()), kv_slen->dims()[0] * sizeof(int),
   //       cudaMemcpyDeviceToHost));
@@ -304,7 +305,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   {
     // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_q",
     //                                    platform::EventRole::kInnerOp);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).q_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         attn_qo_seqlen_data, nullptr));
@@ -322,7 +323,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   {
     // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_k",
     //                                    platform::EventRole::kInnerOp);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).k_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         attn_kv_seqlen_data, nullptr));
@@ -340,7 +341,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   {
     // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_v",
     //                                    platform::EventRole::kInnerOp);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).v_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         attn_kv_seqlen_data, nullptr));
@@ -358,7 +359,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   {
     // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_o",
     //                                    platform::EventRole::kInnerOp);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).o_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
         attn_qo_seqlen_data, nullptr));
@@ -380,7 +381,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
   T* o_data = o->data<T>();
   const T* residuals = nullptr;
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
       cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
       attn_low_windows_data, attn_high_windows_data, qo_slen->data<int>(),
       kv_slen->data<int>(), MHASingleton::Instance().Data(key).q_desc, q_data,
@@ -394,7 +395,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, bool has_bias,
       reserve_space_size, reserve_space_ptr));
   // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 
-  // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
+  // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
   //     cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
   //     attn_low_windows.data(), attn_high_windows.data(),
   //     qo_slen->data<int>(), qo_slen->data<int>(),
@@ -469,7 +470,7 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
     attn_low_windows_host.mutable_data(cpu_place, attn_low_windows->type(),
                                        seq_len * sizeof(int));
     attn_low_windows_data = attn_low_windows_host.data<int>();
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(attn_low_windows_host.data<int>(),
                    reinterpret_cast<const void*>(attn_low_windows->data<int>()),
                    seq_len * sizeof(int), cudaMemcpyDeviceToHost));
@@ -478,7 +479,7 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
     attn_high_windows_host.mutable_data(cpu_place, attn_high_windows->type(),
                                         seq_len * sizeof(int));
     attn_high_windows_data = attn_high_windows_host.data<int>();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
         attn_high_windows_host.data<int>(),
         reinterpret_cast<const void*>(attn_high_windows->data<int>()),
         seq_len * sizeof(int), cudaMemcpyDeviceToHost));
@@ -504,17 +505,17 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   //   attn_low_windows[i] = 0;
   //   attn_high_windows[i] = q->dims()[1];
   // }
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
       attn_low_windows_data(),
       reinterpret_cast<const void*>(attn_low_windows_input->data<int>()),
       q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
       attn_high_windows.data(),
       reinterpret_cast<const void*>(attn_high_windows_input->data<int>()),
       q->dims()[1] * sizeof(int), cudaMemcpyDeviceToHost));
 #endif
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnBackwardData(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnMultiHeadAttnBackwardData(
       cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
       attn_low_windows_data, attn_high_windows_data, qo_slen->data<int>(),
       kv_slen->data<int>(), MHASingleton::Instance().Data(key).o_desc,
@@ -528,7 +529,7 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   // MHASingleton::Instance().Data(key).reserve_size,
   // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 
-  // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnBackwardData(
+  // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnMultiHeadAttnBackwardData(
   //     cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
   //     attn_low_windows.data(), attn_high_windows.data(),
   //     qo_slen->data<int>(), qo_slen->data<int>(),
@@ -544,7 +545,7 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   // // MHASingleton::Instance().Data(key).reserve_size,
   // // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cudnnMultiHeadAttnBackwardWeights(
           cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
           CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,
@@ -559,7 +560,7 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   // MHASingleton::Instance().Data(key).reserve_size,
   // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 
-  // PADDLE_ENFORCE_CUDA_SUCCESS(
+  // PADDLE_ENFORCE_GPU_SUCCESS(
   //     platform::dynload::cudnnMultiHeadAttnBackwardWeights(
   //         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
   //         CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,

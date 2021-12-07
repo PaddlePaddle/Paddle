@@ -113,7 +113,7 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
     out_linear_bias = out_linear_bias.reshape(embed_dim)
 
     if (pre_layer_norm):
-        ln_out = layer_norm(query, True, True, ln_scale, ln_bias)
+        ln_out = layer_norm(query, True, has_bias, ln_scale, ln_bias)
 
     if (pre_layer_norm):
         ln_out = ln_out.reshape(batch_size * seq_len, embed_dim)
@@ -189,7 +189,7 @@ def compute_reference(pre_layer_norm, num_head, query, attn_mask, ln_scale, ln_b
         out_linear_bias_dropout_residual_ln_out = out_linear_bias_dropout_residual_out
     else: 
         out_linear_bias_dropout_residual_ln_out = layer_norm(
-            out_linear_bias_dropout_residual_out, True, True, ln_scale, ln_bias)
+            out_linear_bias_dropout_residual_out, True, has_bias, ln_scale, ln_bias)
     #return ln_out, out_linear_out, out_linear_bias_dropout_residual_ln_out
     return out_linear_bias_dropout_residual_ln_out
 
@@ -264,8 +264,10 @@ class TestFusedCudnnAttentionAPI(unittest.TestCase):
 
         if self.bias_attr is not False:
             has_bias = True
+            fused_attn_ln_bias = fused_attn.ln_bias.numpy()
         else:
             has_bias = False
+            fused_attn_ln_bias = None
 
         out = fused_attn(
             paddle.to_tensor(self.query),
@@ -282,7 +284,7 @@ class TestFusedCudnnAttentionAPI(unittest.TestCase):
         ref_out = compute_reference(self.pre_layer_norm, self.num_heads, self.query,
                                     self.attn_mask,
                                     fused_attn.ln_scale.numpy(),
-                                    fused_attn.ln_bias.numpy(),
+                                    fused_attn_ln_bias,
                                     fused_attn.weight.numpy(), has_bias)
         # np.testing.assert_allclose(ref_ln, ln_out, rtol=1e-5, atol=1e-5)
         # np.testing.assert_allclose(ref_out_linear, linear_out, rtol=1e-5, atol=1e-3)
@@ -349,18 +351,31 @@ class TestFusedCudnnAttentionAPI(unittest.TestCase):
 
         # here, we use paralle executor, so the cpu tensor in feed list won't be transfered to device.
         # if use executor, the cpu tensor will be transfered to device.
-        final_out, weight, ln_scale, ln_bias = exe.run(
-            compiled_prog,
-            feed=[{"X": self.query,
-                  "SeqLen": self.seq_len,
-                  "AttnLowWin": attn_low_window_cpu_tensor,
-                  "AttnHighWin": attn_high_window_cpu_tensor,
-                  "SeqLenHost": seq_len_cpu_tensor}],
-            fetch_list=[
-                final_out, fused_attn.weight, 
-                fused_attn.ln_scale, fused_attn.ln_bias
-            ])
-
+        if self.bias_attr is not False:
+            final_out, weight, ln_scale, ln_bias = exe.run(
+                compiled_prog,
+                feed=[{"X": self.query,
+                    "SeqLen": self.seq_len,
+                    "AttnLowWin": attn_low_window_cpu_tensor,
+                    "AttnHighWin": attn_high_window_cpu_tensor,
+                    "SeqLenHost": seq_len_cpu_tensor}],
+                fetch_list=[
+                    final_out, fused_attn.weight, 
+                    fused_attn.ln_scale, fused_attn.ln_bias
+                ])
+        else: 
+            ln_bias = None
+            final_out, weight, ln_scale = exe.run(
+                compiled_prog,
+                feed=[{"X": self.query,
+                    "SeqLen": self.seq_len,
+                    "AttnLowWin": attn_low_window_cpu_tensor,
+                    "AttnHighWin": attn_high_window_cpu_tensor,
+                    "SeqLenHost": seq_len_cpu_tensor}],
+                fetch_list=[
+                    final_out, fused_attn.weight, 
+                    fused_attn.ln_scale
+                ])
         return final_out, weight, ln_scale, ln_bias
 
 
