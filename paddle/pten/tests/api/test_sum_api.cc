@@ -50,7 +50,7 @@ TEST(API, sum) {
   std::vector<int64_t> axis = {0, 1};
 
   // 2. test API
-  auto out = paddle::experimental::sum(x, axis, false);
+  auto out = paddle::experimental::sum(x, axis, DataType::UNDEFINED, false);
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
   ASSERT_EQ(out.dims()[0], 1);
