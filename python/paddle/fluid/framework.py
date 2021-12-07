@@ -55,6 +55,7 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
@@ -499,6 +500,21 @@ def disable_signal_handler():
             paddle.disable_signal_handler()
     """
     core.disable_signal_handler()
+
+
+def is_compiled_with_cinn():
+    """
+    Whether this whl package can be used to run the model on CINN.
+
+    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_cinn = paddle.device.is_compiled_with_cinn()
+    """
+    return core.is_compiled_with_cinn()
 
 
 def is_compiled_with_cuda():

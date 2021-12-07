@@ -21,6 +21,8 @@ typedef struct {
   PyObject_HEAD egr::EagerTensor eagertensor;
 } EagerTensorObject;
 
+int TensorDtype2NumpyDtype(pten::DataType dtype);
+
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);

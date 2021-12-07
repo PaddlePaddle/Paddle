@@ -17,10 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -37,6 +39,38 @@ extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+
+int TensorDtype2NumpyDtype(pten::DataType dtype) {
+  switch (dtype) {
+    case pten::DataType::BOOL:
+      return pybind11::detail::npy_api::NPY_BOOL_;
+    case pten::DataType::INT8:
+      return pybind11::detail::npy_api::NPY_INT8_;
+    case pten::DataType::UINT8:
+      return pybind11::detail::npy_api::NPY_UINT8_;
+    case pten::DataType::INT16:
+      return pybind11::detail::npy_api::NPY_INT16_;
+    case pten::DataType::INT32:
+      return pybind11::detail::npy_api::NPY_INT32_;
+    case pten::DataType::INT64:
+      return pybind11::detail::npy_api::NPY_INT64_;
+    case pten::DataType::FLOAT16:
+      return pybind11::detail::NPY_FLOAT16_;
+    case pten::DataType::FLOAT32:
+      return pybind11::detail::npy_api::NPY_FLOAT_;
+    case pten::DataType::FLOAT64:
+      return pybind11::detail::npy_api::NPY_DOUBLE_;
+    case pten::DataType::COMPLEX64:
+      return pybind11::detail::NPY_COMPLEX64;
+    case pten::DataType::COMPLEX128:
+      return pybind11::detail::NPY_COMPLEX128;
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unknow pten::DataType, the int value = %d.",
+          static_cast<int>(dtype)));
+      return 0;
+  }
+}
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj))) {
