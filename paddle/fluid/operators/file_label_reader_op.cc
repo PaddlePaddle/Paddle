@@ -27,6 +27,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensorArray = framework::LoDTensorArray;
+using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
 enum BufferStatus {
@@ -91,7 +92,8 @@ void Buffer<T>::Close() {
 
 class FileDataReader {
  public:
-  explicit FileDataReader(const framework::ExecutionContext& ctx) {
+  explicit FileDataReader(const framework::ExecutionContext& ctx,
+                          LoDTensorBlockingQueue* queue) {
     std::vector<std::string> files =
         ctx.Attr<std::vector<std::string>>("files");
     std::vector<int> labels = ctx.Attr<std::vector<int>>("labels");
@@ -106,7 +108,7 @@ class FileDataReader {
     is_closed_ = false;
     for (int i = 0, n = files.size(); i < n; i++)
       image_label_pairs_.emplace_back(std::move(files[i]), labels[i]);
-    StartLoadThread();
+    StartLoadThread(queue);
   }
 
   int GetStartIndex() {
@@ -135,14 +137,13 @@ class FileDataReader {
     return out;
   }
 
-  void StartLoadThread() {
+  void StartLoadThread(LoDTensorBlockingQueue* queue) {
     if (load_thrd_.joinable()) {
       return;
     }
 
-    load_thrd_ = std::thread([this] {
-      while (!is_closed_.load() && LoadBatch()) {
-      }
+    load_thrd_ = std::thread([this, queue] {
+      while (!is_closed_.load()) LoadBatch(queue);
     });
   }
 
@@ -159,16 +160,17 @@ class FileDataReader {
     return ret;
   }
 
-  LoDTensorArray Next() {
-    LoDTensorArray batch_data;
-    batch_buffer_.Pull(&batch_data);
-    return batch_data;
-  }
-
-  bool LoadBatch() {
+  // LoDTensorArray Next() {
+  //   LoDTensorArray batch_data;
+  //   batch_buffer_.Pull(&batch_data);
+  //   return batch_data;
+  // }
+  //
+  void LoadBatch(LoDTensorBlockingQueue* queue) {
     // std::cout << "start LoadBatch 0.01" << std::endl;
     LoDTensorArray batch_data = std::move(Read());
-    return batch_buffer_.Push(batch_data) == BufferStatus::kBufferStatusSuccess;
+    queue->Push(batch_data);
+    // return batch_buffer_.Push(batch_data) == BufferStatus::kBufferStatusSuccess;
   }
 
  private:
@@ -187,30 +189,15 @@ class FileDataReader {
 
 class FileDataReaderWrapper {
  public:
-  void SetUp(const framework::ExecutionContext& ctx) {
-    reader.reset(new FileDataReader(ctx));
+  void SetUp(const framework::ExecutionContext& ctx,
+             LoDTensorBlockingQueue* queue) {
+    reader.reset(new FileDataReader(ctx, queue));
   }
 
   std::shared_ptr<FileDataReader> reader = nullptr;
 };
 
 FileDataReaderWrapper reader_wrapper;
-
-static void CheckAndInitQueue(framework::Variable* var, int capacity) {
-  if (var->IsInitialized()) {
-    PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
-        platform::errors::InvalidArgument(
-          "Variable should hold LoDTensorBlockingQueueHolder type"));
-    auto holder = var->Get<LoDTensorBlockingQueueHolder>();
-    if (holder.GetQueue() == nullptr) {
-      holder.InitOnce(capacity);
-    }
-  } else {
-    LOG(ERROR) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
-    auto* holder = var->GetMutable<LoDTensorBlockingQueueHolder>();
-    holder->InitOnce(capacity);
-  }
-}
 
 template <typename T>
 class CPUFileLabelKernel : public framework::OpKernel<T> {
@@ -248,27 +235,27 @@ class FileLabelReaderOp : public framework::OperatorBase {
     auto& dev_ctx = *pool.Get(dev_place);
     framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
     framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx);
-    if (reader_wrapper.reader == nullptr) {
-      // create reader
-      reader_wrapper.SetUp(ctx);
-    }
-    LoDTensorArray samples = reader_wrapper.reader->Next();
+
     auto* out = scope.FindVar(Output("Out"));
-    // auto* holder = out->template GetMutable<LoDTensorBlockingQueueHolder>();
     auto out_queue = out->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     if (out_queue == nullptr) {
-      LOG(ERROR) << "init output queue";
+      LOG(ERROR) << "FileLabelReaderOp init output queue";
       auto* holder = out->template GetMutable<LoDTensorBlockingQueueHolder>();
       holder->InitOnce(2);
       out_queue = holder->GetQueue();
     }
 
-    framework::LoDTensorArray out_array;
-    out_array.resize(samples.size());
-    for (size_t i = 0; i < samples.size(); ++i) {
-      copy_tensor(samples[i], &out_array[i]);
+    if (reader_wrapper.reader == nullptr) {
+      // create reader
+      reader_wrapper.SetUp(ctx, out_queue.get());
     }
-    out_queue->Push(out_array);
+    // LoDTensorArray samples = reader_wrapper.reader->Next();
+    // framework::LoDTensorArray out_array;
+    // out_array.resize(samples.size());
+    // for (size_t i = 0; i < samples.size(); ++i) {
+    //   copy_tensor(samples[i], &out_array[i]);
+    // }
+    // out_queue->Push(out_array);
     LOG(ERROR) << "FileLabelReaderOp RunImpl finish";
   }
 

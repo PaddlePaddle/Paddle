@@ -48,8 +48,6 @@ class RandomCropAndResizeOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // return framework::OpKernelType(
-    //     OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
     return framework::OpKernelType(
         framework::proto::VarType::UINT8, ctx.GetPlace());
   }

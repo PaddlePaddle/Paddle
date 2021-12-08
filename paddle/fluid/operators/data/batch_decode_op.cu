@@ -39,38 +39,38 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     
     // multi-phrase decode thread pool
     if (!decode_pool) {
-      LOG(ERROR) << "decode_pool init";
+      LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
       decode_pool = new NvjpegDecoderThreadPool(num_threads, mode);
     }
 
-    // const framework::LoDTensorArray* inputs =
-    //     ctx.Input<framework::LoDTensorArray>("X");
+    const framework::LoDTensorArray* inputs =
+        ctx.Input<framework::LoDTensorArray>("X");
+
+    auto* out = ctx.OutputVar("Out");
+    auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
+    out_array.resize(inputs->size());
+
+    // auto* in_var = ctx.InputVar("X");
+    // auto in_queue = in_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     //
-    // auto* out = ctx.OutputVar("Out");
-    // auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    // out_array.resize(inputs->size());
+    // auto* out_var = ctx.OutputVar("Out");
+    // auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+    // if (out_queue == nullptr) {
+    //   LOG(ERROR) << "decode init output queue";
+    //   auto* holder = out_var->template GetMutable<LoDTensorBlockingQueueHolder>();
+    //   holder->InitOnce(2);
+    //   out_queue = holder->GetQueue();
+    // }
+    //
+    // bool success = true;
+    // auto inputs = in_queue->Pop(&success);
+    // PADDLE_ENFORCE_EQ(success, true, 
+    //     platform::errors::PreconditionNotMet("Read from input queue failed"));
+    // framework::LoDTensorArray out_array;
+    // out_array.resize(inputs.size());
 
-    auto* in_var = ctx.InputVar("X");
-    auto in_queue = in_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-
-    auto* out_var = ctx.OutputVar("Out");
-    auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-    if (out_queue == nullptr) {
-      LOG(ERROR) << "decode init output queue";
-      auto* holder = out_var->template GetMutable<LoDTensorBlockingQueueHolder>();
-      holder->InitOnce(2);
-      out_queue = holder->GetQueue();
-    }
-
-    bool success = true;
-    auto inputs = in_queue->Pop(&success);
-    PADDLE_ENFORCE_EQ(success, true, 
-        platform::errors::PreconditionNotMet("Read from input queue failed"));
-    framework::LoDTensorArray out_array;
-    out_array.resize(inputs.size());
-
-    for (size_t i = 0; i < inputs.size(); i++) {
-      const framework::LoDTensor x = inputs.at(i);
+    for (size_t i = 0; i < inputs->size(); i++) {
+      const framework::LoDTensor x = inputs->at(i);
       auto* x_data = x.data<T>();
       size_t x_numel = static_cast<size_t>(x.numel());
 
@@ -84,7 +84,7 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     }
 
     decode_pool->RunAll(true);
-    out_queue->Push(out_array);
+    // out_queue->Push(out_array);
 
     // // multi-phrase decode single thread
     // if (!nvjpeg_decoder) {

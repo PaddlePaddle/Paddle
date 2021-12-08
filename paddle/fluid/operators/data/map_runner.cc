@@ -36,11 +36,6 @@ MapRunner::MapRunner(
       output_queues_(output_queues) {
   VLOG(1) << "MapRunner init";
 
-  // PADDLE_ENFORCE_GT(end_op_index_, start_op_index_,
-  //                   platform::errors::InvalidArgument(
-  //                       "end_op_index should be greater than start_op_index, "
-  //                       "but recieve %d <= %d.",
-  //                       end_op_index_, start_op_index_));
   PADDLE_ENFORCE_EQ(input_var_names_.size(), input_queues_.size(),
                     platform::errors::InvalidArgument(
                         "input_var_names length should be equal to input_queues length, "
@@ -64,23 +59,50 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
     auto queue = input_queues_[i];
     if (queue->IsClosed()) return false;
 
-    // read LoDTensorArray
+    // read LoDTensorArray from queue
     bool success = true;
-    auto lod_tensor_arr = queue->Pop(&success);
+    auto tensor_arr = queue->Pop(&success);
     if (!success) return false;
 
-    // read LoDTensor
-    auto tensor = lod_tensor_arr[0];
-    if(!tensor.IsInitialized()) return false; 
+    if (tensor_arr.size() == 1) {
+      // input array length = 1, treat input type as LoDTensor
+      // FIXME(dkp): this may incur error if batch size = 1
+      auto tensor = tensor_arr[0];
+      if (!tensor.IsInitialized()) return false; 
 
-    // get input variable from scope and check status
-    auto name = input_var_names_[i];
-    auto* var = scope->Var(name);
+      // get dst variable from scope and check status
+      auto name = input_var_names_[i];
+      auto* var = scope->Var(name);
 
-    // share input tensor to variable
-    auto* dst_tensor = var->GetMutable<LoDTensor>();
-    dst_tensor->ShareDataWith(tensor);
-    dst_tensor->set_lod(tensor.lod());
+      // share input tensor to dst variable
+      auto* dst_tensor = var->GetMutable<LoDTensor>();
+      dst_tensor->ShareDataWith(tensor);
+      dst_tensor->set_lod(tensor.lod());
+    } else {
+      // input array length > 1 treat input type as LoDTensorArray
+      for (auto tensor: tensor_arr) {
+        if (!tensor.IsInitialized()) return false; 
+      }
+
+      // get dst variable from scope and check status
+      auto name = input_var_names_[i];
+      auto* var = scope->Var(name);
+
+      // share input tensor to dst variable
+      auto& dst_tensor_arr = *(var->GetMutable<LoDTensorArray>());
+      dst_tensor_arr.clear();
+      dst_tensor_arr.reserve(tensor_arr.size());
+      for (size_t i = 0; i < tensor_arr.size(); i++) {
+        dst_tensor_arr.emplace_back(tensor_arr[i]);
+        // auto tensor = tensor_arr[i];
+        // auto dst_tensor = dst_tensor_arr[i];
+        // // dst_tensor.Resize(tensor.dims());
+        // // dst_tensor.mutable_data(tensor.place(), tensor.type());
+        // // dst_tensor.ShareDataWith(tensor);
+        // copy_tensor(tensor, &dst_tensor);
+        // // dst_tensor.set_lod(tensor.lod());
+      }
+    }
   }
   return true;
 }
@@ -90,29 +112,39 @@ void MapRunner::StartMapThread(const Scope* scope) {
     auto& scope_ = scope->NewScope();
     framework::Executor executor(place_);
     while (running_.load()) {
-      // Step1: get input LoDTensor and share into Scope
+      // Step 1: get input LoDTensor and share into Scope
       bool success = ShareInputsIntoScope(&scope_);
       if (!success) {
         Shutdown();
         break;
       }
 
-      // Step2: run ops by executor without fetch
+      // Step 2: run ops by executor without fetch
       executor.Run(*map_block_->Program(), &scope_, map_block_->ID(), false, true, std::vector<std::string>(), false, true);
 
-      // Step3: fetch output variable to LoDTensor vector
+      // Step 3: fetch output variable to LoDTensor vector
       //        and push to output queue
       for (size_t i = 0; i < output_var_names_.size(); i++) {
-        framework::LoDTensorArray t_arr(1);
         auto *out_var = scope_.FindVar(output_var_names_[i]);
         PADDLE_ENFORCE_NOT_NULL(
             out_var, platform::errors::NotFound(
-                         "The output variable %s is not found in DataLoader "
+                         "The output variable %s is not found in Map "
                          "program's internal scope",
                          output_var_names_[i]));
         CheckOutputVarStatus(*out_var, output_var_names_[i]);
-        copy_tensor(out_var->Get<LoDTensor>(), &t_arr[0]);
-        output_queues_[i]->Push(t_arr);
+
+        if (out_var->IsType<LoDTensor>()) {
+          framework::LoDTensorArray t_arr(1);
+          copy_tensor(out_var->Get<LoDTensor>(), &t_arr[0]);
+          output_queues_[i]->Push(t_arr);
+        } else {
+          auto out_arr = out_var->Get<LoDTensorArray>();
+          framework::LoDTensorArray t_arr(out_arr.size());
+          for (size_t i = 0; i < out_arr.size(); i++) {
+            copy_tensor(out_arr[i], &t_arr[i]);
+          }
+          output_queues_[i]->Push(t_arr);
+        }
       }
     }
   });
@@ -120,19 +152,26 @@ void MapRunner::StartMapThread(const Scope* scope) {
 
 void MapRunner::CheckOutputVarStatus(const Variable &var,
                                     const std::string &var_name) {
-  // only LoDTensor variable type support currently
-  PADDLE_ENFORCE_EQ(
-      var.IsType<LoDTensor>(), true,
-      platform::errors::InvalidArgument(
-          "The output variable %s get from DataLoader program's "
-          "internal scope holds wrong type. Expect type is "
-          "LoDTensor, but receive type is %s.",
-          var_name, platform::demangle(framework::ToTypeName(var.Type()))));
-  PADDLE_ENFORCE_EQ(var.Get<LoDTensor>().IsInitialized(), true,
-                    platform::errors::InvalidArgument(
-                        "The tensor in output variable %s get from DataLoader "
-                        "program's internal scope is not initialized.",
-                        var_name));
+  // only LoDTensor & LoDTensorArray variable type support currently
+  if (var.IsType<LoDTensor>()) {
+    PADDLE_ENFORCE_EQ(var.Get<LoDTensor>().IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "The tensor in output variable %s get from Map"
+                          "program's internal scope is not initialized.",
+                          var_name));
+  } else if (var.IsType<LoDTensorArray>()) {
+    auto tensor_array = var.Get<LoDTensorArray>();
+    for (auto tensor: tensor_array) {
+      PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
+                        platform::errors::InvalidArgument(
+                          "The tensor in LoDTensorArray of output "
+                          "variable %s get from Map program's internal "
+                          "scope is not initialized.", var_name));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+                    "MapOp can only support LoDTensor or LoDTensorArray"));
+  }
 }
 
 void MapRunner::Shutdown() {
@@ -144,6 +183,7 @@ void MapRunner::Shutdown() {
 
   // set running_ as false to exit map thread, then release thread pool
   running_.store(false);
+
   // FIXME: ThreadPool doesn't have shutdown method
   delete &thread_pool_;
 }

@@ -29,6 +29,7 @@ using ParallelExecutor = framework::ParallelExecutor;
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
+using LoDTensorArray = framework::LoDTensorArray;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 

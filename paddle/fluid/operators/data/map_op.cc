@@ -44,6 +44,7 @@ class MapOp : public framework::OperatorBase {
       const platform::Place& dev_place) const override {
     LOG(ERROR) << "MapOpKernel RunImpl enter";
     // Step1: get output vars and attrs
+    // FIXME(dkp): multi input support
     auto input_var = scope.FindVar(Input("In"));
     auto output_var = scope.FindVar(Output("Out"));
     std::vector<Variable*> input_vars;
