@@ -61,7 +61,7 @@ void FillConstant(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(fill_any_like,
+PT_REGISTER_KERNEL(full_like,
                    CPU,
                    ANY,
                    pten::FillAnyLike,
@@ -72,7 +72,7 @@ PT_REGISTER_KERNEL(fill_any_like,
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL(fill_constant,
+PT_REGISTER_KERNEL(full,
                    CPU,
                    ANY,
                    pten::FillConstant,

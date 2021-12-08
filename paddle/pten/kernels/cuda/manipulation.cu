@@ -132,7 +132,7 @@ void Cast(const CUDAContext& dev_ctx,
 using float16 = paddle::platform::float16;
 // TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
 // architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL(flatten_contiguous_range,
+PT_REGISTER_KERNEL(flatten,
                    CUDA,
                    ANY,
                    pten::Flatten,
@@ -144,17 +144,16 @@ PT_REGISTER_KERNEL(flatten_contiguous_range,
                    int,
                    int64_t) {}
 
-PT_REGISTER_OVERLOAD_KERNEL(flatten_contiguous_range,
-                            mid,
-                            CUDA,
-                            ANY,
-                            pten::FlattenWithXShape,
-                            float,
-                            double,
-                            uint8_t,
-                            int8_t,
-                            int,
-                            int64_t) {}
+PT_REGISTER_KERNEL(flatten_mid,
+                   CUDA,
+                   ANY,
+                   pten::FlattenWithXShape,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
   PT_REGISTER_KERNEL(cast,                              \
@@ -182,31 +181,41 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape2, CUDA, ANY, pten::ReshapeFromVectorVal) {}
+PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape,
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorVal) {}
 
-PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(
-    reshape2, mid, CUDA, ANY, pten::ReshapeFromVectorValWithXShape) {}
+PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_mid,
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorValWithXShape) {}
 
-PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(
-    reshape2, host, CUDA, ANY, pten::ReshapeFromDT) {
+PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_host, CUDA, ANY, pten::ReshapeFromDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 
-PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(
-    reshape2, hostmid, CUDA, ANY, pten::ReshapeFromDTWithXShape) {
+PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_host_mid,
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromDTWithXShape) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 
-PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(
-    reshape2, mulhost, CUDA, ANY, pten::ReshapeFromVectorDT) {
+PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_mulhost,
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 
-PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(
-    reshape2, mulhostmid, CUDA, ANY, pten::ReshapeFromVectorDTWithXShape) {
+PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_mulhost_mid,
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorDTWithXShape) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
