@@ -303,5 +303,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_lamb_op_xpu', 'test_model_cast_to_bf16', 'test_sgd_op_bf16',
     'test_marker_op', 'test_c_embedding_op', 'test_class_center_sample_op',
     'test_fill_diagonal_tensor_op', 'test_fill_any_op',
-    'test_margin_cross_entropy_op', "test_mha_op", "test_mha_seq_data_prep_op"
+    'test_margin_cross_entropy_op', "test_mha_op", "test_mha_data_prepare_op"
 ]

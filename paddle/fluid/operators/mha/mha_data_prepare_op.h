@@ -24,7 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class DummyMHASeqDataPrepKernel : public framework::OpKernel<T> {
+class DummyMHADataPrepKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(false, platform::errors::Unimplemented(
@@ -33,14 +33,14 @@ class DummyMHASeqDataPrepKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class MHASeqDataPrepKernel : public framework::OpKernel<T> {
+class MHADataPrepKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     platform::Place host_pinned_place = platform::CUDAPinnedPlace();
 
-    const Tensor* qkvo_seqlen = context.Input<Tensor>("QKVO_seqlen");
+    const Tensor* qkvo_seqlen = context.Input<Tensor>("qo_kv_seqlen");
     const int* qo_kv_slen_data = qkvo_seqlen->data<int>();
-    Tensor* qkvo_seqlen_host = context.Output<Tensor>("QKVO_seqlen_host");
+    Tensor* qkvo_seqlen_host = context.Output<Tensor>("qo_kv_seqlen_host");
     qkvo_seqlen_host->mutable_data<T>(host_pinned_place);
     int* qkvo_seqlen_host_data = qkvo_seqlen_host->data<int>();
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
@@ -48,10 +48,10 @@ class MHASeqDataPrepKernel : public framework::OpKernel<T> {
         reinterpret_cast<const void*>(qo_kv_slen_data),
         qkvo_seqlen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
 
-    const Tensor* low_high_windows = context.Input<Tensor>("lo_hi_windows");
+    const Tensor* low_high_windows = context.Input<Tensor>("low_high_windows");
     const int* low_high_windows_data = low_high_windows->data<int>();
     Tensor* low_high_windows_host =
-        context.Output<Tensor>("lo_hi_windows_host");
+        context.Output<Tensor>("low_high_windows_host");
     low_high_windows_host->mutable_data<T>(host_pinned_place);
     int* low_high_windows_host_data = low_high_windows_host->data<int>();
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(

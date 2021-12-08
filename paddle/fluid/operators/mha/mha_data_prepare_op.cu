@@ -13,12 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mha/mha_seq_data_prep_op.h"
+#include "paddle/fluid/operators/mha/mha_data_prepare_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    mha_seq_data_prep,
-    ops::MHASeqDataPrepKernel<paddle::platform::CUDADeviceContext, int32_t>);
+    mha_data_prepare,
+    ops::MHADataPrepKernel<paddle::platform::CUDADeviceContext, int32_t>);

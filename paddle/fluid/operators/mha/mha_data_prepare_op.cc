@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mha/mha_seq_data_prep_op.h"
+#include "paddle/fluid/operators/mha/mha_data_prepare_op.h"
 
 namespace paddle {
 namespace operators {
@@ -21,44 +21,44 @@ namespace operators {
 using framework::OpKernelType;
 using framework::Tensor;
 
-class MHASeqDataPrepOp : public framework::OperatorWithKernel {
+class MHADataPrepOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("QKVO_seqlen"), "Input", "QKVO_seqlen",
-                   "MHASeqDataPrep");
-    OP_INOUT_CHECK(ctx->HasInput("lo_hi_windows"), "Input", "lo_hi_windows",
-                   "MHASeqDataPrep");
+    OP_INOUT_CHECK(ctx->HasInput("qo_kv_seqlen"), "Input", "qo_kv_seqlen",
+                   "MHADataPrepOp");
+    OP_INOUT_CHECK(ctx->HasInput("low_high_windows"), "Input",
+                   "low_high_windows", "MHADataPrepOp");
 
-    auto qkvo_input_dims = ctx->GetInputDim("QKVO_seqlen");
+    auto qkvo_input_dims = ctx->GetInputDim("qo_kv_seqlen");
     std::vector<int64_t> qkvo_output_dims;
     for (int i = 0; i < qkvo_input_dims.size(); ++i) {
       qkvo_output_dims.push_back(qkvo_input_dims[i]);
     }
-    ctx->SetOutputDim("QKVO_seqlen_host",
+    ctx->SetOutputDim("qo_kv_seqlen_host",
                       framework::make_ddim(qkvo_output_dims));
 
-    auto lo_hi_input_dims = ctx->GetInputDim("lo_hi_windows");
+    auto lo_hi_input_dims = ctx->GetInputDim("low_high_windows");
     std::vector<int64_t> lo_hi_output_dims;
     for (int i = 0; i < lo_hi_input_dims.size(); ++i) {
       lo_hi_output_dims.push_back(lo_hi_input_dims[i]);
     }
-    ctx->SetOutputDim("lo_hi_windows_host",
+    ctx->SetOutputDim("low_high_windows_host",
                       framework::make_ddim(lo_hi_output_dims));
   }
 };
 
-class MHASeqDataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
+class MHADataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("QKVO_seqlen", "(Tensor), QKVO_seqlen");
-    AddInput("lo_hi_windows", "(Tensor), lo_hi_windows");
+    AddInput("qo_kv_seqlen", "");
+    AddInput("low_high_windows", "");
 
-    AddOutput("QKVO_seqlen_host", "(Tensor), QKVO_seqlen_host");
-    AddOutput("lo_hi_windows_host", "(Tensor), lo_hi_windows_host");
+    AddOutput("qo_kv_seqlen_host", "");
+    AddOutput("low_high_windows_host", "");
 
-    AddComment(R"DOC(MHA Sequence data preparation OP Test)DOC");
+    AddComment(R"DOC(MHA Sequence data preparation OP)DOC");
   }
 };
 
@@ -66,11 +66,11 @@ class MHASeqDataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mha_seq_data_prep, ops::MHASeqDataPrepOp,
-                  ops::MHASeqDataPrepOpMaker);
+REGISTER_OPERATOR(mha_data_prepare, ops::MHADataPrepOp,
+                  ops::MHADataPrepOpMaker);
 
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(mha_seq_data_prep,
-                       ops::DummyMHASeqDataPrepKernel<
-                           paddle::platform::CPUDeviceContext, int32_t>);
+REGISTER_OP_CPU_KERNEL(
+    mha_data_prepare,
+    ops::DummyMHADataPrepKernel<paddle::platform::CPUDeviceContext, int32_t>);

@@ -5,8 +5,8 @@
 # If there are some redefined error in compiling with the source file which
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(cc
-    mha_seq_data_prep_op.cc
+    mha_data_prepare_op.cc
     mha_op.cc)
 register_unity_group(cu
-    mha_seq_data_prep_op.cu
+    mha_data_prepare_op.cu
     mha_op.cu)

@@ -117,7 +117,7 @@ from ...fluid.layers import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
 from .transformer import multi_head_attn  # noqa: F401
-from .transformer import mha_seq_data_prep  # noqa: F401
+from .transformer import mha_data_prepare  # noqa: F401
 
 __all__ = [     #noqa
            'celu',
@@ -218,5 +218,5 @@ __all__ = [     #noqa
            'class_center_sample',
            'sparse_attention',
            'multi_head_attn',
-           'mha_seq_data_prep'
+           'mha_data_prepare'
 ]

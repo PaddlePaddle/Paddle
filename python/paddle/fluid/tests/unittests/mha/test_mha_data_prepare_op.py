@@ -23,27 +23,27 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 
 
-class TestMHASeqDataPrepOp(OpTest):
+class TestMHADataPrepareOp(OpTest):
     def setUp(self):
-        self.op_type = "mha_seq_data_prep"
+        self.op_type = "mha_data_prepare"
         self.init_dtype_type()
 
         batch_size = 128
-        qo_slen = np.full((batch_size, ), 128, dtype=np.int32)
-        kv_slen = np.full((batch_size, ), 128, dtype=np.int32)
+        qo_seqlen = np.full((batch_size, ), 128, dtype=np.int32)
+        kv_seqlen = np.full((batch_size, ), 128, dtype=np.int32)
 
-        seq_len = 128
-        lo_windows = np.full((seq_len, ), 0, dtype=np.int32)
-        high_windows = np.full((seq_len, ), seq_len, dtype=np.int32)
+        max_seqlen = 128
+        lo_windows = np.full((max_seqlen, ), 0, dtype=np.int32)
+        high_windows = np.full((max_seqlen, ), max_seqlen, dtype=np.int32)
 
         self.inputs = {
-            'QKVO_seqlen': np.concatenate((qo_slen, kv_slen)),
-            'lo_hi_windows': np.concatenate((lo_windows, high_windows))
+            'qo_kv_seqlen': np.concatenate((qo_seqlen, kv_seqlen)),
+            'low_high_windows': np.concatenate((lo_windows, high_windows))
         }
 
         self.outputs = {
-            'QKVO_seqlen_host': np.concatenate((qo_slen, kv_slen)),
-            'lo_hi_windows_host': np.concatenate((lo_windows, high_windows))
+            'qo_kv_seqlen_host': np.concatenate((qo_seqlen, kv_seqlen)),
+            'low_high_windows_host': np.concatenate((lo_windows, high_windows))
         }
 
     def init_dtype_type(self):

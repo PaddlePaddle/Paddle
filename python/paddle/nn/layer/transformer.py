@@ -108,13 +108,14 @@ def _convert_attention_mask(attn_mask, dtype):
 
 
 class CUDNNSeqInfo:
-    def __init__(self, max_seq_len, qo_seqlen, kv_seqlen, low_win_idx,
-                 high_win_idx, attn_mask):
-        self.max_seq_len = max_seq_len
+    def __init__(self, max_seqlen, qo_seqlen, kv_seqlen, low_windows,
+                 high_windows, attn_mask):
+        self.max_seqlen = max_seqlen
         self.qo_kv_seqlen = paddle.concat([qo_seqlen, kv_seqlen], axis=0)
+        self.low_high_windows = paddle.concat(
+            [low_windows, high_windows], axis=0)
         self.qo_kv_seqlen_host = None
-        self.low_hi_win_idx_host = paddle.concat(
-            [low_win_idx, high_win_idx], axis=0)
+        self.low_high_windows_host = None
         self.attn_mask = attn_mask
 
 
@@ -123,7 +124,7 @@ class CUDNNSeqInfoInfer(Layer):
         super(CUDNNSeqInfoInfer, self).__init__()
 
     def forward(self, attention_mask):
-        max_seq_len = attention_mask.shape[-1]
+        max_seqlen = attention_mask.shape[-1]
         if (len(attention_mask.shape) == 4):
             qo_seqlen = paddle.sum(attention_mask[:, 0, 0, :] == 1,
                                    axis=1,
@@ -132,14 +133,14 @@ class CUDNNSeqInfoInfer(Layer):
             qo_seqlen = paddle.sum(attention_mask == 1, axis=1, dtype='int32')
         kv_seqlen = qo_seqlen
 
-        low_win_idx = paddle.zeros((max_seq_len, ), dtype='int32')
-        hi_win_idx = paddle.full((max_seq_len, ), max_seq_len, dtype='int32')
+        low_windows = paddle.zeros((max_seqlen, ), dtype='int32')
+        high_windows = paddle.full((max_seqlen, ), max_seqlen, dtype='int32')
 
-        seq_info = CUDNNSeqInfo(max_seq_len, qo_seqlen, kv_seqlen, low_win_idx,
-                                hi_win_idx, attention_mask)
+        seq_info = CUDNNSeqInfo(max_seqlen, qo_seqlen, kv_seqlen, low_windows,
+                                high_windows, attention_mask)
 
-        seq_info.qo_kv_seqlen_host, seq_info.low_hi_win_idx_host = \
-            F.mha_seq_data_prep(seq_info.qo_kv_seqlen,  seq_info.low_hi_win_idx_host)
+        seq_info.qo_kv_seqlen_host, seq_info.low_high_windows_host = \
+            F.mha_data_prepare(seq_info.qo_kv_seqlen,  seq_info.low_high_windows)
 
         return seq_info
 
