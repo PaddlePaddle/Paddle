@@ -503,7 +503,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
             should be float16, float32, float64, int32, int64, bool.
         k (int): Direction and number of times to rotate, default value: 1.
-        axes (list|tuple, optional): Axis to rotate, default value: [0, 1].
+        axes (list|tuple, optional): Axes to rotate, default value: [0, 1].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
