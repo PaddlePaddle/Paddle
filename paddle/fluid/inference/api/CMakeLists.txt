@@ -32,10 +32,10 @@ cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 if(WITH_CRYPTO)
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator)
+              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator custom_kernel)
 else()
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator)
+              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator custom_kernel)
 endif()
 
 if(WIN32)
