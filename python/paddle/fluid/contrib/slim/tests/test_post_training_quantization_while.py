@@ -189,7 +189,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestPostTraininghistForMnist(TestPostTrainingQuantization):
+class TestPostTraininghistForWhile(TestPostTrainingQuantization):
     def test_post_training_hist(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -209,7 +209,7 @@ class TestPostTraininghistForMnist(TestPostTrainingQuantization):
                       quant_iterations)
 
 
-class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
+class TestPostTrainingmseForWhile(TestPostTrainingQuantization):
     def test_post_training_mse(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -229,7 +229,7 @@ class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
                       quant_iterations)
 
 
-class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
+class TestPostTrainingavgForWhile(TestPostTrainingQuantization):
     def test_post_training_avg(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
