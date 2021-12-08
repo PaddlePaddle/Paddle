@@ -775,8 +775,8 @@ void TensorCopy(const DenseTensor& src, DenseTensor* dst) {
   const paddle::platform::CUDADeviceContext* dev_ctx;
   if (paddle::platform::is_gpu_place(dst->place()) ||
       paddle::platform::is_npu_place(dst->place())) {
-    dev_ctx =
-        static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(dst_place));
+    dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
+        pool.Get(dst->place()));
 
   } else {
     dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
