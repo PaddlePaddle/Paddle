@@ -132,7 +132,7 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     float bias = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
-    if (std::abs(bias - 0.0) > 1e-5) return;
+    if (std::abs(bias) > 1e-5) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_scale_fuse_pass in op compat failed.";
       return;
@@ -149,8 +149,8 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       auto* scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto* sacle_tensor = scale_var->GetMutable<LoDTensor>();
-      scale = *(sacle_tensor->data<float>());
+      auto* scale_tensor = scale_var->GetMutable<LoDTensor>();
+      scale = *(scale_tensor->data<float>());
     }
 
     OpDesc desc;
@@ -205,7 +205,7 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     float bias = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
-    if (std::abs(bias - 0.0) > 1e-5) return;
+    if (std::abs(bias) > 1e-5) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_v2_scale_fuse_pass in op compat failed.";
       return;
@@ -220,8 +220,8 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       auto* scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto* sacle_tensor = scale_var->GetMutable<LoDTensor>();
-      scale = *(sacle_tensor->data<float>());
+      auto* scale_tensor = scale_var->GetMutable<LoDTensor>();
+      scale = *(scale_tensor->data<float>());
     }
 
     auto* matmul_y =
