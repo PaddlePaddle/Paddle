@@ -162,20 +162,6 @@ class Pool2dOpConverter : public OpConverter {
         }
         layer = pool_layer;
       } else if (!adaptive && !global_pooling && ceil_mode) {
-        nvinfer1::DimsHW pre_pad(0, 0);
-        nvinfer1::DimsHW post_pad(0, 0);
-        // If ceil mode is true, we will pad the appropriate size to the input.
-        DealCeilMode(input_shape, ksize, strides, paddings, &pre_pad, &post_pad,
-                     input_dims);
-        auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
-            post_pad);
-        PADDLE_ENFORCE_NOT_NULL(
-            pad_layer, platform::errors::Fatal(
-                           "Pad layer in poolOp converter could not be "
-                           "created. The pointer to pad layer is `NULL`."));
-        input1 = pad_layer->getOutput(0);
-
         auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
                                                 nv_pool_type, nv_ksize);
         pool_layer->setStride(nv_strides);
@@ -183,6 +169,8 @@ class Pool2dOpConverter : public OpConverter {
         pool_layer->setAverageCountExcludesPadding(exclusive);
         if (padding_algorithm == "SAME") {
           pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+        } else {
+          pool_layer->setPaddingMode(nvinfer1::PaddingMode::kEXPLICIT_ROUND_UP);
         }
         layer = pool_layer;
       } else if (global_pooling) {
