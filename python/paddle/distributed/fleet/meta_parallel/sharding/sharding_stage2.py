@@ -185,7 +185,7 @@ class ShardingStage2(nn.Layer):
                         0]._master_params.keys():
                     self._sharding_optimizers[0]._master_params[
                         param.name].grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version()
+                    param._reset_grad_inplace_version(True)
         else:
             # Scale grad storages
             for dtype in self._grad_storages.keys():
@@ -197,7 +197,7 @@ class ShardingStage2(nn.Layer):
             for param in self._trainable_params:
                 if param.name in self._param_grads and param.grad is not None:
                     param.grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version()
+                    param._reset_grad_inplace_version(True)
 
     def _init_internal_storage(self, needs_fresh):
         """
