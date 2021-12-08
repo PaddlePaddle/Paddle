@@ -1985,14 +1985,14 @@ class Executor(object):
         cached_ctx = self._get_ctx_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
         cached_program = self._get_program_cache(cache_key)
+        real_program = program
+        if "section_program" in program._pipeline_opt:
+            real_program = program._pipeline_opt["section_program"]
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
         if cached_program is None:
             real_feed = [] if feed is None else feed
-            real_program = program
-            if "section_program" in program._pipeline_opt:
-                real_program = program._pipeline_opt["section_program"]
             cached_program = self._add_feed_fetch_ops(
                 program=real_program,
                 feed=real_feed,
@@ -2007,6 +2007,18 @@ class Executor(object):
             self._add_ctx_cache(cache_key, cached_ctx)
         if feed:
             self._feed_data(cached_program, feed, feed_var_name, cached_scope)
+
+        from paddle.optimizer.lr import LRScheduler
+        if hasattr(real_program, 'lr_sheduler'):
+            lr_sheduler = real_program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = real_program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(cached_scope,
+                                              lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
         cached_ctx.run()
         if fetch_list:
             arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
