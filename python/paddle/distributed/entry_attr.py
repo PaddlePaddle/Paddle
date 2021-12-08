@@ -137,3 +137,45 @@ class CountFilterEntry(EntryAttr):
 
     def _to_attr(self):
         return ":".join([self._name, str(self._count_filter)])
+
+
+class ShowClickEntry(EntryAttr):
+    """
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            sparse_feature_dim = 1024
+            embedding_size = 64
+
+            shows = paddle.static.data(name='show', shape=[1], dtype='int64')
+            clicks = paddle.static.data(name='click', shape=[1], dtype='int64')
+            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+
+            entry = paddle.distributed.ShowClickEntry("show", "click")
+
+            emb = paddle.static.nn.sparse_embedding(
+                input=input,
+                size=[sparse_feature_dim, embedding_size],
+                is_test=False,
+                entry=entry,
+                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+                                           initializer=paddle.nn.initializer.Uniform()))
+
+
+    """
+
+    def __init__(self, show_name, click_name):
+        super(ShowClickEntry, self).__init__()
+
+        if not isinstance(show_name, str) or not isinstance(click_name, str):
+            raise ValueError("show_name click_name must be a str")
+
+        self._name = "show_click_entry"
+        self._show_name = show_name
+        self._click_name = click_name
+
+    def _to_attr(self):
+        return ":".join([self._name, self._show_name, self._click_name])

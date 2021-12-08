@@ -22,6 +22,8 @@
 
 namespace egr {
 
+class TensorWrapper;
+
 /**
  * EagerUtils is utils used to do some static conversion or autograd
  * members access, this class is desinged to be a full static functional
@@ -87,6 +89,33 @@ class EagerUtils {
    * constructor (it's abstract class there)
    *
    * **/
+  static AutogradMeta* autograd_meta(egr::EagerTensor* target);
+
+  static std::vector<AutogradMeta*> multi_autograd_meta(
+      std::vector<egr::EagerTensor>* targets);
+
+  static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
+
+  static std::shared_ptr<GradNodeBase> grad_node(
+      const egr::EagerTensor& target);
+
+  // Set history is used to set backward info during forward process, it will
+  // set forward var's autograd meta's grad node as current backward node.
+  static void SetHistory(std::vector<AutogradMeta*>* autograd_metas,
+                         const std::shared_ptr<GradNodeBase>& grad_node);
+  static void SetHistory(AutogradMeta* autograd_meta,
+                         const std::shared_ptr<GradNodeBase>& grad_node);
+
+  // This is used for Set vector of tensors' rank
+  static void SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                 size_t slot_id);
+  static void SetOutRankWithSlot(AutogradMeta* target, size_t slot_id);
+
+  // This method will return an AutogradMeta pointer unsafely.
+  static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
+  static std::vector<AutogradMeta*> unsafe_autograd_meta(
+      const std::vector<egr::EagerTensor>& targets);
+
   template <typename T, typename... Args>
   static bool ComputeRequireGrad(T trace_backward, Args&&... args) {
     if (!trace_backward) return false;
@@ -103,9 +132,13 @@ class EagerUtils {
     iter.SetStopGradient(stop_gradient);
     iter.apply(std::forward<Args>(args)...);
   }
-  static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
-  // This method will return an AutogradMeta pointer unsafely.
-  static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
+
+  // TensorWrapper Utils
+  static egr::EagerTensor RecoverTensorWrapper(
+      egr::TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
+  static std::vector<egr::EagerTensor> RecoverTensorWrapper(
+      std::vector<egr::TensorWrapper>* tw,
+      const std::shared_ptr<GradNodeBase>& grad_node);
 
   // Intermidate needed remove this once we don't need legacy
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(

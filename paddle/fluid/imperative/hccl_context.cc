@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -155,6 +155,29 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
         "XPU unsupported variable type %s for imperative allreduce, only "
         "LoDTensor are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
+  }
+}
+
+void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
+  if (src->IsType<framework::LoDTensor>()) {
+    framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+    const auto &place = src_tensor->place();
+    platform::HCCLComm *comm =
+        platform::HCCLCommContext::Instance().Get(ring_id, place);
+    aclrtStream stream = comm->stream();
+
+    void *src_ptr =
+        reinterpret_cast<void *>(const_cast<void *>(src_tensor->data<void>()));
+    auto hccl_dtype = platform::ToHCCLDataType(src_tensor->type());
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        src_ptr, src_tensor->numel(), hccl_dtype, 0, comm->comm(),
+        reinterpret_cast<void *>(stream)));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported variable type %s for imperative allreduce, only "
+        "LoDTensor is supported.",
+        platform::demangle(framework::ToTypeName(src->Type()))));
   }
 }
 

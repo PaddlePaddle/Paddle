@@ -97,7 +97,7 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
     int64_t size = tensor->numel();
 
     int device_id =
@@ -106,7 +106,7 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
+      int64_t gen_offset = size * seed_offset.second;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(data),
