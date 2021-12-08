@@ -110,8 +110,8 @@ def select_input_with_buildin_type(inputs, mask):
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
         return select_input(inputs, mask)
 
-    elif (isinstance(false_var, (support_ret_buildin_type)) and isinstance(
-            false_var, type(true_var))):
+    elif (isinstance(false_var, (support_ret_buildin_type)) and
+          isinstance(false_var, type(true_var))):
         if false_var == true_var:
             return false_var
         else:
