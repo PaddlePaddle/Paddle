@@ -121,9 +121,6 @@ class SliceOpConverter : public OpConverter {
 
       for (int i = 0; i < input_nbdims; i++) {
         stride_dims.d[i] = 1;
-      }
-
-      for (int i = 0; i < input_nbdims; i++) {
         auto iter = axes_starts_ends.find(i + 1);
         if (iter != axes_starts_ends.end()) {
           start_dims.d[i] = iter->second.first;
