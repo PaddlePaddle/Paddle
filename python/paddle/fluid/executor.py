@@ -1985,14 +1985,14 @@ class Executor(object):
         cached_ctx = self._get_ctx_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
         cached_program = self._get_program_cache(cache_key)
-        real_program = program
-        if "section_program" in program._pipeline_opt:
-            real_program = program._pipeline_opt["section_program"]
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
         if cached_program is None:
             real_feed = [] if feed is None else feed
+            real_program = program
+            if "section_program" in program._pipeline_opt:
+                real_program = program._pipeline_opt["section_program"]
             cached_program = self._add_feed_fetch_ops(
                 program=real_program,
                 feed=real_feed,
