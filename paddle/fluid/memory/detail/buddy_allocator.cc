@@ -206,6 +206,13 @@ uint64_t BuddyAllocator::Release() {
   return bytes;
 }
 
+void* BuddyAllocator::BasePtr(void* ptr) {
+  MemoryBlock* block = static_cast<MemoryBlock*>(ptr)->Metadata();
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  return block->BasePtr(&cache_);
+}
+
 size_t BuddyAllocator::Used() { return total_used_; }
 size_t BuddyAllocator::GetMinChunkSize() { return min_chunk_size_; }
 size_t BuddyAllocator::GetMaxChunkSize() { return max_chunk_size_; }
@@ -219,7 +226,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   if (p == nullptr) return nullptr;
 
   static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::HUGE_CHUNK, index,
-                                     size, nullptr, nullptr);
+                                     size, p, nullptr, nullptr);
 
   return static_cast<MemoryBlock*>(p)->Data();
 }
@@ -269,7 +276,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
            << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::FREE_CHUNK, index,
-                                     allocate_bytes, nullptr, nullptr);
+                                     allocate_bytes, p, nullptr, nullptr);
 
   total_free_ += allocate_bytes;
 

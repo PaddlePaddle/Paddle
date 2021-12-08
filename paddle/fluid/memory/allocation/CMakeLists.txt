@@ -125,3 +125,20 @@ if(NOT WIN32)
   cc_library(mmap_allocator SRCS mmap_allocator.cc DEPS allocator)
   cc_test(mmap_allocator_test SRCS mmap_allocator_test.cc DEPS mmap_allocator allocator)
 endif(NOT WIN32)
+
+if((WITH_GPU OR WITH_ROCM) AND WITH_TESTING)
+  nv_test(naive_best_fit_base_ptr_test SRCS base_ptr_test.cu DEPS malloc gpu_info)
+  set_tests_properties(naive_best_fit_base_ptr_test PROPERTIES 
+                       ENVIRONMENT "FLAGS_allocator_strategy=naive_best_fit;
+                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+                                    
+  nv_test(auto_growth_base_ptr_test SRCS base_ptr_test.cu DEPS malloc gpu_info)
+  set_tests_properties(auto_growth_base_ptr_test PROPERTIES 
+                       ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;
+                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+
+  nv_test(thread_local_base_ptr_test SRCS base_ptr_test.cu DEPS malloc gpu_info)
+  set_tests_properties(thread_local_base_ptr_test PROPERTIES 
+                       ENVIRONMENT "FLAGS_allocator_strategy=thread_local;
+                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+endif()

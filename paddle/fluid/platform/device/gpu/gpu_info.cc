@@ -197,6 +197,11 @@ class RecordedGpuMallocHelper {
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+
+#ifdef PADDLE_WITH_TESTING
+      gpu_ptrs.insert(*ptr);
+#endif
+
       return gpuSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -233,7 +238,22 @@ class RecordedGpuMallocHelper {
                                     // cudaErrorCudartUnloading /
                                     // hipErrorDeinitialized
     }
+#ifdef PADDLE_WITH_TESTING
+    gpu_ptrs.erase(ptr);
+#endif
   }
+
+#ifdef PADDLE_WITH_TESTING
+  void *GetBasePtr(void *ptr) {
+    auto it = gpu_ptrs.upper_bound(ptr);
+
+    if (it == gpu_ptrs.begin()) {
+      return nullptr;
+    }
+
+    return *(--it);
+  }
+#endif
 
   bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
                   size_t *actual_total) {
@@ -301,6 +321,10 @@ class RecordedGpuMallocHelper {
 
   static std::once_flag once_flag_;
   static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
+
+#ifdef PADDLE_WITH_TESTING
+  std::set<void *> gpu_ptrs;
+#endif
 };  // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
@@ -351,6 +375,12 @@ void EmptyCache(void) {
     memory::Release(CUDAPlace(device));
   }
 }
+
+#ifdef PADDLE_WITH_TESTING
+void *GetGpuBasePtr(void *ptr, int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->GetBasePtr(ptr);
+}
+#endif
 
 }  // namespace platform
 }  // namespace paddle

@@ -21,10 +21,10 @@ namespace memory {
 namespace detail {
 
 void MemoryBlock::Init(MetadataCache* cache, Type t, size_t index, size_t size,
-                       void* left_buddy, void* right_buddy) {
+                       void* base_ptr, void* left_buddy, void* right_buddy) {
   cache->Save(
       this, MemoryBlock::Desc(t, index, size - sizeof(MemoryBlock::Desc), size,
-                              static_cast<MemoryBlock*>(left_buddy),
+                              base_ptr, static_cast<MemoryBlock*>(left_buddy),
                               static_cast<MemoryBlock*>(right_buddy)));
 }
 
@@ -58,11 +58,13 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   // Add the new block as a buddy
   // Write the metadata for the new block
   auto new_block_right_buddy = desc->right_buddy;
+  void* new_block_base_ptr = desc->base_ptr;
 
   cache->Save(static_cast<MemoryBlock*>(right_partition),
               MemoryBlock::Desc(FREE_CHUNK, desc->index,
                                 remaining_size - sizeof(MemoryBlock::Desc),
-                                remaining_size, this, new_block_right_buddy));
+                                remaining_size, new_block_base_ptr, this,
+                                new_block_right_buddy));
 
   desc->right_buddy = static_cast<MemoryBlock*>(right_partition);
   desc->size = size - sizeof(MemoryBlock::Desc);
@@ -96,7 +98,6 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   // link buddy's buddy -> this
   if (desc->right_buddy != nullptr) {
     auto buddy_metadata = cache->LoadDesc(desc->right_buddy);
-
     buddy_metadata->left_buddy = this;
     buddy_metadata->UpdateGuards();
   }
@@ -106,8 +107,8 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
 
   desc->UpdateGuards();
 
-  cache->Save(right_buddy,
-              MemoryBlock::Desc(INVALID_CHUNK, 0, 0, 0, nullptr, nullptr));
+  cache->Save(right_buddy, MemoryBlock::Desc(INVALID_CHUNK, 0, 0, 0, nullptr,
+                                             nullptr, nullptr));
 }
 
 void MemoryBlock::MarkAsFree(MetadataCache* cache) {
@@ -121,6 +122,10 @@ void MemoryBlock::MarkAsFree(MetadataCache* cache) {
                         "The chunk to mark as free is invalid"));
   desc->type = FREE_CHUNK;
   desc->UpdateGuards();
+}
+
+void* MemoryBlock::BasePtr(MetadataCache* cache) {
+  return cache->LoadDesc(this)->base_ptr;
 }
 
 void* MemoryBlock::Data() const {

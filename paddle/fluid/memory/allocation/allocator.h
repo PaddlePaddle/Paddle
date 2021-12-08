@@ -84,7 +84,10 @@ class Allocator;
 class Allocation {
  public:
   inline Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), size_(size), place_(place) {}
+      : ptr_(ptr), base_ptr_(ptr), size_(size), place_(place) {}
+  inline Allocation(void* ptr, void* base_ptr, size_t size,
+                    platform::Place place)
+      : ptr_(ptr), base_ptr_(base_ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -98,6 +101,8 @@ class Allocation {
   // method like `defragmentation` to change `ptr_`.
   inline void* ptr() const { return ptr_; }
 
+  inline void* base_ptr() const { return base_ptr_; }
+
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.
   //
@@ -110,6 +115,20 @@ class Allocation {
   inline size_t size() const { return size_; }
 
   inline const platform::Place& place() const { return place_; }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // NOTE(Ruibiao): This function is to make it easy to get stream from a CUDA
+  // AllocationPtr. Without this function, other module must get stream from a
+  // CUDA allocation like "dynamic_cast<StreamSafeCUDAAllocation*>(allocation)
+  // ->stream" and the concept of 'StreamSafeCUDAAllocation' has to be exposed.
+  // This function should not be called. It is not pure virtual just because
+  // other existing derived allocator class did not override it.
+  virtual const gpuStream_t& stream() const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "A general 'DeviceStream' has not implemented yet, you can only call "
+        "stream() from a StreamSafeCUDAAllocation object"));
+  }
+#endif
 
   virtual ~Allocation() {}
 
@@ -126,6 +145,7 @@ class Allocation {
 
  private:
   void* ptr_;
+  void* base_ptr_;  // the point that directly requested from system
   size_t size_;
   platform::Place place_;
 
