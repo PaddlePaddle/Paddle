@@ -181,41 +181,38 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape,
-                                CUDA,
-                                ANY,
-                                pten::ReshapeFromVectorVal) {}
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape, CUDA, ANY, pten::ReshapeFromVectorVal) {}
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_mid,
-                                CUDA,
-                                ANY,
-                                pten::ReshapeFromVectorValWithXShape) {}
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mid,
+                             CUDA,
+                             ANY,
+                             pten::ReshapeFromVectorValWithXShape) {}
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_host, CUDA, ANY, pten::ReshapeFromDT) {
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host, CUDA, ANY, pten::ReshapeFromDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_host_mid,
-                                CUDA,
-                                ANY,
-                                pten::ReshapeFromDTWithXShape) {
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host_mid,
+                             CUDA,
+                             ANY,
+                             pten::ReshapeFromDTWithXShape) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_mulhost,
-                                CUDA,
-                                ANY,
-                                pten::ReshapeFromVectorDT) {
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost,
+                             CUDA,
+                             ANY,
+                             pten::ReshapeFromVectorDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE(reshape_mulhost_mid,
-                                CUDA,
-                                ANY,
-                                pten::ReshapeFromVectorDTWithXShape) {
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost_mid,
+                             CUDA,
+                             ANY,
+                             pten::ReshapeFromVectorDTWithXShape) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }

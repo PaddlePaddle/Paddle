@@ -20,18 +20,18 @@ limitations under the License. */
 // the kernel declare statement is automatically generated according to the
 // file name of the kernel, and this header file will be removed
 
-PT_DECLARE_KERNEL(fill_any_like, CPU);
+PT_DECLARE_KERNEL(full_like, CPU);
 PT_DECLARE_KERNEL(dot, CPU);
-PT_DECLARE_KERNEL(flatten_contiguous_range, CPU);
+PT_DECLARE_KERNEL(flatten, CPU);
 PT_DECLARE_KERNEL(sign, CPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(fill_any_like, CUDA);
+PT_DECLARE_KERNEL(full_like, CUDA);
 PT_DECLARE_KERNEL(dot, CUDA);
-PT_DECLARE_KERNEL(flatten_contiguous_range, CUDA);
+PT_DECLARE_KERNEL(flatten, CUDA);
 PT_DECLARE_KERNEL(sign, CUDA);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(flatten_contiguous_range, XPU);
+PT_DECLARE_KERNEL(flatten, XPU);
 #endif

@@ -179,7 +179,6 @@ PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mid,
                              CPU,
                              ANY,
                              pten::ReshapeFromVectorValWithXShape) {}
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host, CPU, ANY, pten::ReshapeFromDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);

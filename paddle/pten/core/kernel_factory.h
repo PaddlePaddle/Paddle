@@ -65,9 +65,6 @@ class KernelName final {
     ParseNameAndOverloadNameFromString(kernel_name_str);
   }
 
-  KernelName(const char* name, const char* overload_name)
-      : name_(name), overload_name_(overload_name) {}
-
   const std::string& name() const { return name_; }
   const std::string& overload_name() const { return overload_name_; }
 
