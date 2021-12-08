@@ -74,18 +74,41 @@ struct SubGradDY {
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+
+  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* x, const framework::Tensor* y,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  int axis = ctx.Attr<int>("axis");
-  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+  default_elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy);
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
@@ -108,15 +131,13 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
     // skip out
     auto* out = dout;
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
-      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-          ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
-          SubGradDY<T>());
+      default_elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
+                                                     dy);
     }
   }
 };

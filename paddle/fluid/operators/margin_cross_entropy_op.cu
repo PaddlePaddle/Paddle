@@ -30,7 +30,7 @@ namespace cub = hipcub;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -69,7 +69,7 @@ void GetClassInterval(const gpuStream_t& stream, const platform::Place& place,
           platform::DeviceContextPool::Instance().Get(place))
           ->stream();
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       num_classes_per_device_ptr, num_classes_per_device_ptr,
       num_classes_per_device.numel(),
       platform::ToNCCLDataType(num_classes_per_device.type()), ncclSum,
@@ -314,7 +314,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           logits_max_buff, logits_max_buff, logits_max.numel(),
           platform::ToNCCLDataType(logits_max.type()), ncclMax, comm->comm(),
           stream));
@@ -335,7 +335,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
           platform::ToNCCLDataType(sum_exp_logits.type()), ncclSum,
           comm->comm(), stream));
@@ -368,7 +368,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           loss_ptr, loss_ptr, loss->numel(),
           platform::ToNCCLDataType(loss->type()), ncclSum, comm->comm(),
           stream));
