@@ -32,7 +32,30 @@ CinnLaunchContext::CinnLaunchContext(
       [](const auto& name_view) { return std::string(name_view.data()); });
 }
 
-bool CinnLaunchContext::IsVariableUsed(const std::string& paddle_name) {
+void CinnLaunchContext::UpdateCapturedEnv(const framework::Scope& scope,
+                                          const platform::Place& place) {
+  if (std::addressof(scope) == cached_scope_ &&
+      std::addressof(place) == cached_place_) {
+    VLOG(4) << "Captured scope:" << cached_scope_ << ", place:" << cached_place_
+            << " are not changed";
+    return;
+  }
+  cached_scope_ = std::addressof(scope);
+  cached_place_ = std::addressof(place);
+  cached_temp_scope_ = scope.NewTmpScope();
+  VLOG(4) << "Captured env is update, scope:" << cached_scope_ << "->"
+          << std::addressof(scope) << ", place:" << cached_place_ << "->"
+          << std::addressof(place);
+}
+
+bool CinnLaunchContext::IsArgumentsInitialized() const {
+  if (hold_buffers_.empty() || name2argument_.empty()) {
+    return false;
+  }
+  return true;
+}
+
+bool CinnLaunchContext::IsVariableUsed(const std::string& paddle_name) const {
   return paddle2cinn_varmap_.count(paddle_name) > 0 &&
          cinn_variable_names_.count(paddle2cinn_varmap_.at(paddle_name)) > 0;
 }
@@ -67,85 +90,79 @@ void CinnLaunchContext::CheckTensorEquivalent(const std::string& paddle_name,
   // TODO(CtfGo): check the underlying data type after CINN ready
 }
 
-void CinnLaunchContext::AssignExternalVariable(const std::string& paddle_name,
-                                               const platform::Place& place,
-                                               LoDTensor* paddle_tensor) {
+void CinnLaunchContext::AssignExternalVariable(const std::string& paddle_name) {
   PADDLE_ENFORCE_EQ(IsVariableUsed(paddle_name), true,
                     platform::errors::InvalidArgument(
                         "Paddle variable(%s) not used by cinn", paddle_name));
 
   const auto& cinn_name = paddle2cinn_varmap_.at(paddle_name);
+  const auto& paddle_tensor =
+      cached_scope_->GetVar(paddle_name)->Get<LoDTensor>();
   CinnTensor cinn_tensor = GetCinnTensor(cinn_name);
-  if (!paddle_tensor->IsInitialized()) {
-    paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
-  }
-  CheckTensorEquivalent(paddle_name, *paddle_tensor, cinn_tensor);
-  return SetArgument(cinn_name, place, /* free_mem_callback = */ false,
-                     paddle_tensor);
-}
-
-void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name,
-                                               const platform::Place& place,
-                                               LoDTensor* paddle_tensor) {
-  PADDLE_ENFORCE_GT(cinn_variable_names_.count(cinn_name), 0,
-                    platform::errors::InvalidArgument(
-                        "Variable(%s) not found in cinn socpe.", cinn_name));
-  CinnTensor cinn_tensor = GetCinnTensor(cinn_name);
-  if (!paddle_tensor->IsInitialized()) {
-    paddle_tensor->Resize(framework::make_ddim(cinn_tensor->shape().data()));
-  }
-  CheckTensorEquivalent(cinn_name, *paddle_tensor, cinn_tensor);
-  return SetArgument(cinn_name, place, /* free_mem_callback = */ true,
-                     paddle_tensor);
-}
-
-std::unique_ptr<cinn_buffer_t> CinnLaunchContext::ShareTensorWithCinnBuffer(
-    const platform::Place& place, bool free_mem_callback, LoDTensor* tensor) {
-  // convert paddle dimensions array to cinn format
-  std::vector<cinn_dimension_t> cinn_dims(tensor->dims().size());
-  for (auto i = 0; i < tensor->dims().size(); ++i) {
-    cinn_dims[i] = static_cast<cinn_dimension_t>(tensor->dims().at(i));
+  if (paddle_tensor.IsInitialized()) {
+    CheckTensorEquivalent(paddle_name, paddle_tensor, cinn_tensor);
   }
 
   auto cinn_buffer = std::make_unique<cinn_buffer_t>();
-  // assign size and memory
-  cinn_buffer->resize(cinn_dims.data(), cinn_dims.size());
+  // assign dimensions and alloc/free callback of cinn_buffer_t
+  cinn_buffer->resize(cinn_tensor.shape().data().data(),
+                      cinn_tensor.shape().data().size());
 
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
-      [place, tensor](void* ctx, cinn_buffer_t* buffer) {
-        buffer->memory =
-            reinterpret_cast<uint8_t*>(tensor->mutable_data<float>(place));
+      [this, paddle_name](void* ctx, cinn_buffer_t* buffer) {
+        auto* tensor =
+            cached_scope_->GetVar(paddle_tensor)->GetMutable<LoDTensor>();
+        tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
+        buffer->memory = reinterpret_cast<uint8_t*>(
+            tensor->mutable_data<float>(*cached_place_));
         return 0;
       });
-
-  if (free_mem_callback) {
-    cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
-        [tensor](void* ctx, cinn_buffer_t* buffer) {
-          tensor->clear();
-          return 0;
-        });
-    return cinn_buffer;
-  }
 
   cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
       [](void* ctx, cinn_buffer_t* buffer) {
         // Do nothing
         return 0;
       });
-  return cinn_buffer;
+
+  return SetArgument(cinn_name, std::move(cinn_buffer));
+}
+
+void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name) {
+  PADDLE_ENFORCE_GT(cinn_variable_names_.count(cinn_name), 0,
+                    platform::errors::InvalidArgument(
+                        "Variable(%s) not found in cinn socpe.", cinn_name));
+  CinnTensor cinn_tensor = GetCinnTensor(cinn_name);
+  auto cinn_buffer = std::make_unique<cinn_buffer_t>();
+
+  // assign dimensions and alloc/free callback of cinn_buffer_t
+  cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
+      [this, cinn_name](void* ctx, cinn_buffer_t* buffer) {
+        auto* tensor =
+            cached_temp_scope_->GetVar(cinn_name)->GetMutable<LoDTensor>();
+        tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
+        buffer->memory = reinterpret_cast<uint8_t*>(
+            tensor->mutable_data<float>(*cached_place_));
+        return 0;
+      });
+
+  cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
+      [this, cinn_name](void* ctx, cinn_buffer_t* buffer) {
+        auto* tensor =
+            cached_temp_scope_->GetVar(cinn_name)->GetMutable<LoDTensor>();
+        tensor->clear();
+        return 0;
+      });
+  return SetArgument(cinn_name, std::move(cinn_buffer));
 }
 
 void CinnLaunchContext::SetArgument(const std::string& cinn_name,
-                                    const platform::Place& place,
-                                    bool free_mem_callback,
-                                    LoDTensor* paddle_tensor) {
-  auto buffer =
-      ShareTensorWithCinnBuffer(place, free_mem_callback, paddle_tensor);
+                                    std::unique_ptr<cinn_buffer_t>&& buffer) {
+  VLOG(4) << "SetArgument-" << name2argument_.size() << ": name(" << cinn_name
+          << "), dims(" << framework::DDim(buffer->dims, buffer->dimensions)
+          << ").";
+
   name2argument_.emplace(cinn_name, buffer.get());
   hold_buffers_.emplace_back(std::move(buffer));
-  VLOG(4) << "SetArgument-" << name2argument_.size() << ": "
-          << "name(" << cinn_name << "), dims(" << paddle_tensor->dims()
-          << ").";
 }
 
 const std::map<std::string, cinn_pod_value_t>&
