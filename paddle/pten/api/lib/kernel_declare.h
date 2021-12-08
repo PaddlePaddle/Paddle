@@ -24,17 +24,14 @@ PT_DECLARE_KERNEL(fill_any_like, CPU);
 PT_DECLARE_KERNEL(dot, CPU);
 PT_DECLARE_KERNEL(flatten_contiguous_range, CPU);
 PT_DECLARE_KERNEL(sign, CPU);
-PT_DECLARE_KERNEL(copy, CPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_DECLARE_KERNEL(fill_any_like, CUDA);
 PT_DECLARE_KERNEL(dot, CUDA);
 PT_DECLARE_KERNEL(flatten_contiguous_range, CUDA);
 PT_DECLARE_KERNEL(sign, CUDA);
-PT_DECLARE_KERNEL(copy, CUDA);
 #endif
 
 #ifdef PADDLE_WITH_XPU
 PT_DECLARE_KERNEL(flatten_contiguous_range, XPU);
-PT_DECLARE_KERNEL(copy, XPU);
 #endif

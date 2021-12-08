@@ -801,6 +801,7 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,         \
       args_def_fn,                                                         \
       PT_KERNEL(kernel_fn));                                               \
+  int TouchKernelSymbolFor_##name##_##backend() { return 0; }              \
   void __PT_SINGLE_KERNEL_args_def_FN_##name(::pten::Kernel*)
 
 /** PT_REGISTER_KERNEL_ALL_DTYPE
@@ -814,7 +815,12 @@ struct KernelRegistrar {
 
 /** PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE
  */
-#define PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(                                 \
+#define PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(       \
+    name, overload_name, backend, layout, kernel_fn) \
+  _PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(            \
+      name, overload_name, backend, layout, kernel_fn)
+// Expend the PT_EMPTY by a intermediate call
+#define _PT_REGISTER_OVERLOAD_KERNEL_ALL_DTYPE(                                \
     name, overload_name, backend, layout, kernel_fn)                           \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
       pt_register_overload_kernel_all_dtype_ns_check_##name##_##overload_name, \
@@ -831,6 +837,7 @@ struct KernelRegistrar {
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,         \
           &__PT_KERNEL_ALL_DTYPE_args_def_FN_##name##_##overload_name,         \
           PT_KERNEL(kernel_fn));                                               \
+  int TouchKernelSymbolFor_##name##overload_name##_##backend() { return 0; }   \
   void __PT_KERNEL_ALL_DTYPE_args_def_FN_##name##_##overload_name(             \
       ::pten::Kernel* kernel)
 

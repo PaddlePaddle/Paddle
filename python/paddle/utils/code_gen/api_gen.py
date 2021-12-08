@@ -331,7 +331,6 @@ PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 
 def header_include():
     return """
-#include "paddle/pten/api/include/declare.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
@@ -346,6 +345,7 @@ def source_include(header_file_path):
 #include "glog/logging.h"
 
 #include "paddle/pten/api/lib/api_registry.h"
+#include "paddle/pten/api/lib/kernel_declare.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
