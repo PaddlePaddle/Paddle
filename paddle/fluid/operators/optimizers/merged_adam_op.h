@@ -42,6 +42,8 @@ class MergedAdamOpKernel : public framework::OpKernel<T> {
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
     size_t param_num = param.size();
     for (size_t idx = 0; idx < param_num; idx++) {
@@ -53,6 +55,12 @@ class MergedAdamOpKernel : public framework::OpKernel<T> {
           grad[idx]->data<T>(), param[idx]->data<T>(),
           param_out[idx]->mutable_data<T>(ctx.GetPlace()));
       functor(param[idx]->numel());
+      if (!use_global_beta_pow) {
+        beta1_pow_out[idx]->mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow[idx]->data<T>()[0];
+        beta2_pow_out[idx]->mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow[idx]->data<T>()[0];
+      }
     }
   }
 };

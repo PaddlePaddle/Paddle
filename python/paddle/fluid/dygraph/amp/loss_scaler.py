@@ -255,8 +255,6 @@ class AmpScaler(object):
         elif optimizer_state["state"] is OptimizerState.STEPPED:
             raise RuntimeError("unscale_() is being called after step().")
 
-        core.nvprof_nvtx_push("check_finite_first: update grads")
-
         if getattr(optimizer, '_param_groups', None) and isinstance(
                 optimizer._param_groups[0], dict):
             param_grads = []

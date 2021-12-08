@@ -89,6 +89,14 @@ __global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
 }
 
 template <typename T>
+__global__ void UpdateBetaPow(T beta1, T beta2, const T* beta1_pow_,
+                              const T* beta2_pow_, T* beta1_pow_out,
+                              T* beta2_pow_out) {
+  *beta1_pow_out = beta1 * beta1_pow_[0];
+  *beta2_pow_out = beta2 * beta2_pow_[0];
+}
+
+template <typename T>
 class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -111,6 +119,8 @@ class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
     MPDType beta1 = static_cast<MPDType>(ctx.Attr<float>("beta1"));
     MPDType beta2 = static_cast<MPDType>(ctx.Attr<float>("beta2"));
     MPDType epsilon = static_cast<MPDType>(ctx.Attr<float>("epsilon"));
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     auto master_param = ctx.MultiInput<framework::Tensor>("MasterParam");
@@ -145,6 +155,13 @@ class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
             param[idx]->data<T>(),
             param_out[idx]->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, param[idx]->numel());
+        if (!use_global_beta_pow) {
+          // Cpu update
+          beta1_pow_out[idx]->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow[idx]->data<MPDType>()[0];
+          beta2_pow_out[idx]->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow[idx]->data<MPDType>()[0];
+        }
       } else {
         AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1, beta2, epsilon, beta1_pow[idx]->data<MPDType>(),
@@ -156,6 +173,14 @@ class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
             param[idx]->data<T>(),
             param_out[idx]->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, param[idx]->numel());
+        if (!use_global_beta_pow) {
+          // Update with gpu
+          UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+              beta1, beta2, beta1_pow[idx]->data<MPDType>(),
+              beta2_pow[idx]->data<MPDType>(),
+              beta1_pow_out[idx]->mutable_data<MPDType>(ctx.GetPlace()),
+              beta2_pow_out[idx]->mutable_data<MPDType>(ctx.GetPlace()));
+        }
       }
     }
   }
