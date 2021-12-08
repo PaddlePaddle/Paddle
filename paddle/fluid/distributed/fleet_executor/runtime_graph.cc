@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -100,32 +101,41 @@ std::vector<OpRole> RuntimeGraph::functionality_order = {
 RuntimeGraph::RuntimeGraph(const ProgramDesc& program,
                            const FleetExecutorDesc& exe_desc)
     : exe_desc_(exe_desc) {
-  if (exe_desc.strategy() == "1F1B") {
+  if (exe_desc.pp_degree() == 1) {
+    OriginProgramCompile(program);
+  } else {
     SplitProgramBasedFunctionality(program);
     AssignTaskToIntercepter();
     FakeDependence();
     FakeRuntimeInfo();
-  } else if (exe_desc.strategy() == "Origin") {
-    int64_t cur_rank = exe_desc_.cur_rank();
-    int64_t max_run_times = exe_desc_.num_micro_batches();
-    int64_t max_slot_nums = exe_desc_.num_slots();
-    auto task_node = std::make_unique<TaskNode>(program, cur_rank,
-                                                max_run_times, max_slot_nums);
-    task_node->SetType("Compute");
-    task_nodes_.emplace_back(std::move(task_node));
-    int64_t task_id = task_nodes_[0]->task_id();
-    intercepter_id_to_rank_.insert({task_id, cur_rank});
-    intercepter_id_to_node_.insert({task_id, task_nodes_[0].get()});
-  } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Strategy %s is None of 1F1B or Origin.", exe_desc.strategy()));
   }
+}
+
+void RuntimeGraph::OriginProgramCompile(const ProgramDesc& program) {
+  int64_t cur_rank = exe_desc_.cur_rank();
+  int64_t max_run_times = exe_desc_.num_micro_batches();
+  int64_t max_slot_nums = exe_desc_.num_slots();
+
+  auto task_node = std::make_unique<TaskNode>(program, cur_rank, max_run_times,
+                                              max_slot_nums);
+  // TODO(wangxi): add skip vars
+  auto unused_vars =
+      framework::GetUnusedVars(program.Block(0), task_node->unique_ops(), {});
+  task_node->SetType("Compute");
+  task_node->SetUnusedVars(unused_vars);
+
+  task_nodes_.emplace_back(std::move(task_node));
+  int64_t task_id = task_nodes_[0]->task_id();
+  intercepter_id_to_rank_.insert({task_id, cur_rank});
+  intercepter_id_to_node_.insert({task_id, task_nodes_[0].get()});
 }
 
 void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
   for (const auto& op_desc : program.Block(0).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
+  // TODO(wangxi): how to gc pipeline backward send
+  auto unused_vars = framework::GetUnusedVars(program.Block(0), ops_, {});
 
   std::unordered_map<int32_t, std::vector<OperatorBase*>> role_to_ops;
   for (const auto& op : ops_) {
@@ -150,12 +160,14 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     }
     role_to_ops.at(new_op_role_id).emplace_back(op.get());
   }
+
   int64_t cur_rank = exe_desc_.cur_rank();
   DistCoordSys coord_sys(exe_desc_.dp_degree(), exe_desc_.pp_degree(),
                          exe_desc_.mp_degree());
   const auto& coord = coord_sys.RankToCoord(cur_rank);
   int pipeline_stage = coord.pp_idx;
   int64_t num_pipeline_stages = exe_desc_.pp_degree();
+
   // TODO(fleet_executor dev): start up steps should be a config `num_slots`
   int64_t start_up_steps = num_pipeline_stages - pipeline_stage;
   int64_t num_micro_batches = exe_desc_.num_micro_batches();
@@ -184,6 +196,7 @@ void RuntimeGraph::SplitProgramBasedFunctionality(const ProgramDesc& program) {
     } else {
       task_node->SetType("Compute");
     }
+    task_node->SetUnusedVars(unused_vars);
     task_nodes_.emplace_back(std::move(task_node));
     ++task_id;
   }
@@ -199,35 +212,68 @@ void RuntimeGraph::FakeDependence() {
   downstream_coord.pp_idx += 1;
   int64_t pp_upstream = coord_sys.CoordToRank(upstream_coord);
   int64_t pp_downstream = coord_sys.CoordToRank(downstream_coord);
+  bool is_first_stage = (pp_upstream == -1);
+  bool is_last_stage = (pp_downstream == -1);
+
   int32_t num_of_functionality = functionality_order.size();
-  // lr -> forward -> backward -> optimize
-  //         |          |
-  // lr -> forward -> backward -> optimize
+  // lr(1:m) -> forward -> backward -> (m:1)optimize
+  //               ↑          ↓
+  // lr(1:m) -> forward -> backward -> (m:1)optimize
+  //               ↑          ↓
+  // lr(1:m) -> forward -> backward -> (m:1)optimize
   for (std::size_t i = 0; i < task_nodes_.size(); ++i) {
-    if (i != 0) {
-      task_nodes_[i]->AddUpstreamTask(cur_rank * num_of_functionality + i - 1);
+    auto& node = task_nodes_[i];
+    bool is_forward = IsForward(node->role());
+    bool is_backward = IsBackward(node->role());
+
+    int64_t cur_id = cur_rank * num_of_functionality + i;
+    int64_t prev_id = cur_id - 1;
+    int64_t next_id = cur_id + 1;
+
+    int64_t upstream_id = pp_upstream * num_of_functionality + i;
+    int64_t downstream_id = pp_downstream * num_of_functionality + i;
+
+    // 1F1B, last stage pp_buff_size should be 1, while first stage
+    // pp_buff_size should be pp_degree
+    int64_t pp_buff_size = exe_desc_.pp_degree() - coord.pp_idx;
+
+    std::vector<std::pair<int64_t, int64_t>> ups;
+    std::vector<std::pair<int64_t, int64_t>> downs;
+
+    if (i != 0) {  // not lr
+      int64_t buff_size = is_backward ? pp_buff_size : 2;
+      ups.emplace_back(prev_id, buff_size);
     }
-    if (i != task_nodes_.size() - 1) {
-      task_nodes_[i]->AddDownstreamTask(cur_rank * num_of_functionality + i +
-                                        1);
+    if (i != task_nodes_.size() - 1) {  // not optimize
+      int64_t buff_size = is_forward ? pp_buff_size : 2;
+      downs.emplace_back(next_id, buff_size);
     }
-    if (IsForward(task_nodes_[i]->role())) {
-      if (pp_upstream != -1) {
-        task_nodes_[i]->AddUpstreamTask(pp_upstream * num_of_functionality + i);
+
+    if (is_forward) {
+      if (!is_first_stage) {
+        ups.emplace_back(upstream_id, 2);
       }
-      if (pp_downstream != -1) {
-        task_nodes_[i]->AddDownstreamTask(pp_downstream * num_of_functionality +
-                                          i);
+      if (!is_last_stage) {
+        downs.emplace_back(downstream_id, 2);
       }
-    } else if (IsBackward(task_nodes_[i]->role())) {
-      if (pp_downstream != -1) {
-        task_nodes_[i]->AddUpstreamTask(pp_downstream * num_of_functionality +
-                                        i);
+    } else if (is_backward) {
+      if (!is_last_stage) {
+        ups.emplace_back(downstream_id, 2);
       }
-      if (pp_upstream != -1) {
-        task_nodes_[i]->AddDownstreamTask(pp_upstream * num_of_functionality +
-                                          i);
+      if (!is_first_stage) {
+        downs.emplace_back(upstream_id, 2);
       }
+    }
+
+    for (auto up : ups) {
+      VLOG(3) << "Task(" << cur_id << ") AddUpstream Task(" << up.first
+              << ") with buff_size=" << up.second;
+      node->AddUpstreamTask(up.first, up.second);
+    }
+    for (auto down : downs) {
+      VLOG(3) << "Task(" << cur_id << ") AddDownstream Task(" << down.first
+              << ") with buff_size=" << down.second;
+      node->AddDownstreamTask(down.first, down.second);
     }
   }
 }
