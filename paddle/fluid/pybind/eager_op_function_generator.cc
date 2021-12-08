@@ -771,7 +771,7 @@ std::string GenerateOpFunctionsBody(
   }
 
   return_str = "return ToPyObject(out);";
-  
+
   std::string function_args = "";
   if (input_args == "") {
     function_args = FUNCTION_ARGS_NO_INPUT;
