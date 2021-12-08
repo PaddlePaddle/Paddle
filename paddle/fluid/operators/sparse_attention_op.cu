@@ -74,8 +74,6 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
 
     T srcdata[(BlockSize * BlockNnzMax + WarpSize - 1) / WarpSize] = {0};
     T attndata[(BlockSize * BlockNnzMax + WarpSize - 1) / WarpSize] = {0};
-    // printf("the element before (row,col) (%d,%d) is
-    // %f:\n",threadIdx.y,threadIdx.x,srcdata[0]);
 
     // read tensor data, attn mask
     const int iter = (cur_block_nnz + WarpSize - 1) / WarpSize;
@@ -92,7 +90,9 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
       if (cur_block_col < cur_block_nnz) {
         // read kp mask
         T cur_kp_mask;
-        if (kp_mask != nullptr && kp_mask[colindex[cur_block_col]] == 0) {
+        if ((kp_mask != nullptr) &&
+            std::abs(kp_mask[colindex[cur_block_col]]) <
+                std::numeric_limits<T>::epsilon()) {
           cur_kp_mask = -std::numeric_limits<T>::infinity();
         } else {
           cur_kp_mask = 0;
@@ -279,10 +279,6 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
   int grid = (num_rows * block_size + 3) / 4;
   T scaling = static_cast<T>(1.0) / sqrt(static_cast<T>(num_cols));
 
-  // const int block_nnz_max = 256;
-  // BlockSparseSoftmaxBackward<T, block_size, block_nnz_max><<<grid, blocks>>>(
-  //     dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-  //     num_rows);
   if (num_cols <= 4) {
     BlockSparseSoftmaxBackward<T, block_size, 4><<<grid, blocks>>>(
         dx_data, dout_data, out_data, scaling, offset_data, columns_data,
@@ -534,7 +530,8 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
       } else if (key_padding_mask != nullptr && attn_mask == nullptr) {
         SparseSoftmaxForward<DeviceContext, T>(
             dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
-            &result_softmax_lists[i], 1, M, N, key_padding_mask, nullptr);
+            &result_softmax_lists[i], 1, M, N,
+            key_padding_mask + (i / num_heads) * M, nullptr);
       } else if (key_padding_mask == nullptr && attn_mask != nullptr) {
         SparseSoftmaxForward<DeviceContext, T>(
             dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],

@@ -191,7 +191,6 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
     return offset, columns
 
 
-'''
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
@@ -217,19 +216,24 @@ class TestSparseAttentionOp(OpTest):
         self.offset = offset.astype('int32')
         self.columns = columns.astype('int32')
         # init mask tensor
-        key_padding_mask_shape = (self.shape[0],self.shape[2])
-        attn_mask_shape = (self.shape[2],self.shape[2])
-        key_padding_mask = np.random.randint(0, 2, size = key_padding_mask_shape)
-        attn_mask = np.random.randint(0, 2, size = attn_mask_shape)
-        key_padding_mask=init_mask(key_padding_mask)
-        attn_mask=init_mask(attn_mask)
-        
+        key_padding_mask_shape = (self.shape[0], self.shape[2])
+        attn_mask_shape = (self.shape[2], self.shape[2])
+        key_padding_mask = np.random.randint(0, 2, size=key_padding_mask_shape)
+        attn_mask = np.random.randint(0, 2, size=attn_mask_shape)
+        key_padding_mask = init_mask(key_padding_mask)
+        attn_mask = init_mask(attn_mask)
+
         self.key_padding_mask = key_padding_mask.astype(self.dtype)
         self.attn_mask = attn_mask.astype(self.dtype)
         if self.use_mask == True:
             result, result_sdd, result_softmax = ref_batch_sparse_attention(
-                self.q, self.k, self.v, self.offset, self.columns,
-                kp_mask=self.key_padding_mask, attn_mask=self.attn_mask)
+                self.q,
+                self.k,
+                self.v,
+                self.offset,
+                self.columns,
+                kp_mask=self.key_padding_mask,
+                attn_mask=self.attn_mask)
         else:
             result, result_sdd, result_softmax = ref_batch_sparse_attention(
                 self.q, self.k, self.v, self.offset, self.columns)
@@ -266,6 +270,7 @@ class TestSparseAttentionOp(OpTest):
         self.check_grad_with_place(self.place, ['K'], 'Out')
         self.check_grad_with_place(self.place, ['V'], 'Out')
 
+
 class TestSparseAttentionOpFp32Test(TestSparseAttentionOp):
     def config(self):
         self.shape = (1, 1, 8, 16)
@@ -280,7 +285,6 @@ class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
         self.blocksize = 8
         self.dtype = "float64"
         self.use_mask = False
-'''
 
 
 @unittest.skipIf(
@@ -400,9 +404,13 @@ class TestSparseAttentionAPI(unittest.TestCase):
         key_padding_mask_shape = (self.shape[0], self.shape[2])
         attn_mask_shape = (self.shape[2], self.shape[2])
         key_padding_mask = np.random.randint(0, 2, size=key_padding_mask_shape)
+        #key_padding_mask = np.array([[1,1,1,1,1,1,1,0]])
         attn_mask = np.random.randint(0, 2, size=attn_mask_shape)
+        #attn_mask = np.random.randint(1, 2, size=attn_mask_shape)
         key_padding_mask = init_mask(key_padding_mask)
         attn_mask = init_mask(attn_mask)
+        key_padding_mask = key_padding_mask.astype(self.dtype)
+        attn_mask = attn_mask.astype(self.dtype)
 
         paddle_query = paddle.to_tensor(query, place=self.place)
         paddle_key = paddle.to_tensor(key, place=self.place)
@@ -413,14 +421,6 @@ class TestSparseAttentionAPI(unittest.TestCase):
         paddle_attn_mask = paddle.to_tensor(attn_mask, place=self.place)
 
         if self.use_mask == True:
-            paddle_result = F.sparse_attention(paddle_query, paddle_key,
-                                               paddle_value, paddle_offset,
-                                               paddle_colunmns)
-
-            numpy_result, __, __ = ref_batch_sparse_attention(query, key, value,
-                                                              offset, columns)
-            numpy_result = numpy_result.astype(self.dtype)
-        else:
             paddle_result = F.sparse_attention(
                 paddle_query,
                 paddle_key,
@@ -438,6 +438,14 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 columns,
                 kp_mask=key_padding_mask,
                 attn_mask=attn_mask)
+            numpy_result = numpy_result.astype(self.dtype)
+        else:
+            paddle_result = F.sparse_attention(paddle_query, paddle_key,
+                                               paddle_value, paddle_offset,
+                                               paddle_colunmns)
+
+            numpy_result, __, __ = ref_batch_sparse_attention(query, key, value,
+                                                              offset, columns)
             numpy_result = numpy_result.astype(self.dtype)
 
         self.assertTrue(

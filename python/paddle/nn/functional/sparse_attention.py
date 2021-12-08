@@ -67,6 +67,14 @@ def sparse_attention(query,
                         It's a 3-D tensor with a shape of  
                         :math:`[batch\_size, num\_heads, sparse\_nnz]`. 
                         The dtype should be ``int32``.
+        key_padding_mask(Tensor, optional):The key padding mask tensor in the Attention module. 
+                        2-D tensor with shape: [batch_size, seq_len]. 
+                        The dtype can be float32 and float64.
+                        A value of 0 means that the position is masked.
+        attn_mask(Tensor, optional):The attention mask tensor in the Attention module. 
+                        2-D tensor with shape: [seq_len, seq_len]. 
+                        The dtype can be float32 and float64.
+                        A value of 0 means that the position is masked.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -121,16 +129,9 @@ def sparse_attention(query,
             #       [1.99830270, 2.99830270]]]]
     """
     if in_dygraph_mode():
-        if key_padding_mask is None and attn_mask is None:
-            result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
-                query, key, value, sparse_csr_offset, sparse_csr_columns)
-        else:
-            result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
-                query, key, value, sparse_csr_offset, sparse_csr_columns,
-                key_padding_mask, attn_mask)
-        # result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
-        #         query, key, value, sparse_csr_offset, sparse_csr_columns,
-        #         key_padding_mask, attn_mask)
+        result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
+            query, key, value, sparse_csr_offset, sparse_csr_columns,
+            key_padding_mask, attn_mask)
         return result_attention
 
     helper = LayerHelper('sparse_attention', **locals())
