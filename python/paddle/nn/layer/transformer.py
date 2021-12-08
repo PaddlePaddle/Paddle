@@ -196,9 +196,10 @@ class cuDNNMultiHeadAttention(Layer):
 
         if add_to_asp:
             from paddle.fluid.contrib.sparsity import add_supported_layer
-            add_supported_layer(
-                self.weight.name,
-                cuDNNMultiHeadAttention._pruning_func_maker(self._embed_dim))
+            add_supported_layer(self.weight.name,
+                                cuDNNMultiHeadAttention._pruning_func_maker(
+                                    self._embed_dim,
+                                    self.meta_data.enable_bias))
 
     def forward(self, query, key, value, seq_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
@@ -215,7 +216,8 @@ class cuDNNMultiHeadAttention(Layer):
         k_proj_weight, k_proj_bias, \
         v_proj_weight, v_proj_bias, \
         out_proj_weight, out_proj_bias = \
-            cuDNNMultiHeadAttention._split_weight_into_legacy_format(self.weight, self._embed_dim)
+            cuDNNMultiHeadAttention._split_weight_into_legacy_format(
+                self.weight, self._embed_dim, self.meta_data.enable_bias)
         destination['q_proj.weight'] = q_proj_weight
         destination['q_proj.bias'] = q_proj_bias
         destination['k_proj.weight'] = k_proj_weight
@@ -272,7 +274,8 @@ class cuDNNMultiHeadAttention(Layer):
                 k_proj_weight, k_proj_bias, \
                 v_proj_weight, v_proj_bias, \
                 out_proj_weight, out_proj_bias = \
-                    cuDNNMultiHeadAttention._split_weight_into_legacy_format(np.array(l.weight), l._embed_dim)
+                    cuDNNMultiHeadAttention._split_weight_into_legacy_format(
+                        np.array(l.weight), l._embed_dim, l.meta_data.enable_bias)
                 l.legacy_mha.q_proj.weight.set_value(q_proj_weight)
                 l.legacy_mha.k_proj.weight.set_value(k_proj_weight)
                 l.legacy_mha.v_proj.weight.set_value(v_proj_weight)
@@ -303,20 +306,26 @@ class cuDNNMultiHeadAttention(Layer):
         return layer
 
     @staticmethod
-    def _split_weight_into_legacy_format(weight, embed_dim):
+    def _split_weight_into_legacy_format(weight, embed_dim, with_bias):
         param_shape = (embed_dim, embed_dim)
         stride = embed_dim * embed_dim
         q_proj_weight = weight[:stride].reshape(param_shape)
         k_proj_weight = weight[stride:2 * stride].reshape(param_shape)
         v_proj_weight = weight[2 * stride:3 * stride].reshape(param_shape)
         out_proj_weight = weight[3 * stride:4 * stride].reshape(param_shape)
-
-        bias_start = 4 * stride
-        q_proj_bias = weight[bias_start:bias_start + embed_dim]
-        k_proj_bias = weight[bias_start + embed_dim:bias_start + 2 * embed_dim]
-        v_proj_bias = weight[bias_start + 2 * embed_dim:bias_start + 3 *
-                             embed_dim]
-        out_proj_bias = weight[bias_start + 3 * embed_dim:]
+        if with_bias:
+            bias_start = 4 * stride
+            q_proj_bias = weight[bias_start:bias_start + embed_dim]
+            k_proj_bias = weight[bias_start + embed_dim:bias_start + 2 *
+                                 embed_dim]
+            v_proj_bias = weight[bias_start + 2 * embed_dim:bias_start + 3 *
+                                 embed_dim]
+            out_proj_bias = weight[bias_start + 3 * embed_dim:]
+        else:
+            q_proj_bias = np.zeros((embed_dim, ))
+            k_proj_bias = np.zeros((embed_dim, ))
+            v_proj_bias = np.zeros((embed_dim, ))
+            out_proj_bias = np.zeros((embed_dim, ))
 
         return q_proj_weight, q_proj_bias, \
                k_proj_weight, k_proj_bias, \
@@ -336,12 +345,13 @@ class cuDNNMultiHeadAttention(Layer):
         return weight
 
     @staticmethod
-    def _pruning_func_maker(embed_dim):
+    def _pruning_func_maker(embed_dim, enable_bias):
         def weight_pruning(weight_nparray, m, n, func_name, param_name):
             from paddle.fluid.contrib import sparsity
 
             q_proj_weight, _, k_proj_weight, _, v_proj_weight, _, out_proj_weight, _ = \
-                cuDNNMultiHeadAttention._split_weight_into_legacy_format(weight_nparray, embed_dim)
+                cuDNNMultiHeadAttention._split_weight_into_legacy_format(
+                    weight_nparray, embed_dim, enable_bias)
 
             q_proj_weight_sparse_mask = sparsity.create_mask(
                 q_proj_weight.T, func_name=func_name, n=n, m=m).T.flatten()
