@@ -24,6 +24,7 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace operators {

@@ -57,24 +57,11 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 void SetCinnRuntimeFlags();
 
 template <typename DeviceContext>
-void ReleaseResource(const std::vector<void*>& resources, void* stream) {
-  auto* temp_scope = static_cast<framework::Scope*>(resources[0]);
-  auto* buffers =
-      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(resources[1]);
-  delete temp_scope;
-  delete buffers;
-}
-
-template <typename DeviceContext>
 void* GetStream(const framework::ExecutionContext& ctx) {
   return nullptr;
 }
 
 #ifdef PADDLE_WITH_CUDA
-template <>
-void ReleaseResource<platform::CUDADeviceContext>(
-    const std::vector<void*>& resources, void* stream);
-
 template <>
 void* GetStream<platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx);
@@ -118,8 +105,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     auto launch_context = cinn_compiled_object.launch_context;
     // Step 3. Prepare arguments needed for the compiled executable program.
-    launch_context->> UpdateCapturedEnv(scope, place);
-    if (launch_context->IsArgumentsInitialized()) {
+    launch_context->UpdateCapturedEnv(scope, place);
+    if (!launch_context->IsArgumentsInitialized()) {
       VLOG(4) << "CinnLaunchOp prepare arguments";
 
       // 3.1 Prepare input variables: tensors of input variables have

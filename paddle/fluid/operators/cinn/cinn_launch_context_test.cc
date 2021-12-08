@@ -68,6 +68,7 @@ TEST(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   // CheckTensorEquivalent: tensor dimension not equivalent
   tensor1->mutable_data<float>(framework::make_ddim({3, 5}), place);
   ASSERT_THROW(launch_context->AssignExternalVariable("var1"),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(CinnLaunchContextTest, TestAssignVariablePreCondition) {

@@ -105,19 +105,19 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& paddle_name) {
 
   auto cinn_buffer = std::make_unique<cinn_buffer_t>();
   // assign dimensions and alloc/free callback of cinn_buffer_t
-  cinn_buffer->resize(cinn_tensor.shape().data().data(),
-                      cinn_tensor.shape().data().size());
-
+  cinn_buffer->resize(cinn_tensor->shape().data().data(),
+                      cinn_tensor->shape().data().size());
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, paddle_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
-            cached_scope_->GetVar(paddle_tensor)->GetMutable<LoDTensor>();
+            cached_scope_->GetVar(paddle_name)->GetMutable<LoDTensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(
             tensor->mutable_data<float>(*cached_place_));
         return 0;
       });
 
+  // external variables will be recycled by global gc, so do nothing here
   cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
       [](void* ctx, cinn_buffer_t* buffer) {
         // Do nothing
@@ -133,8 +133,10 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name) {
                         "Variable(%s) not found in cinn socpe.", cinn_name));
   CinnTensor cinn_tensor = GetCinnTensor(cinn_name);
   auto cinn_buffer = std::make_unique<cinn_buffer_t>();
-
   // assign dimensions and alloc/free callback of cinn_buffer_t
+  cinn_buffer->resize(cinn_tensor->shape().data().data(),
+                      cinn_tensor->shape().data().size());
+
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, cinn_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
@@ -145,6 +147,8 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name) {
         return 0;
       });
 
+  // internal variables should release its buffer immediately
+  // if no instruction use it
   cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
       [this, cinn_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
