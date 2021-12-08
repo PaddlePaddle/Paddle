@@ -124,6 +124,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'reshape2':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
+                impls = dist_op_impl_container.get_impls()
                 op_dist_attr = OperatorDistributedAttribute()
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
                                                     [-1, -1, -1])
@@ -131,13 +132,26 @@ class Testcompatible(unittest.TestCase):
                                                      [-1, -1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, -1, -1, -1])
-                dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    if idx == 1:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    else:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
+                self.assertTrue(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, -1, 1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, 1, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, 1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [1, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
 
     def test_reshape_remove_two_compatible(self):
         valid_op_dist_attr_list = []
@@ -149,6 +163,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'reshape2':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
+                impls = dist_op_impl_container.get_impls()
                 op_dist_attr = OperatorDistributedAttribute()
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
                                                     [-1, -1, -1])
@@ -157,12 +172,26 @@ class Testcompatible(unittest.TestCase):
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, -1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    if idx == 1:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    else:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
+                self.assertTrue(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, -1, 1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, 1, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1, 1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [1, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
 
     def test_reshape_add_compatible(self):
         valid_op_dist_attr_list = []
@@ -174,19 +203,28 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'reshape2':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
+                impls = dist_op_impl_container.get_impls()
                 op_dist_attr = OperatorDistributedAttribute()
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
                                                      [-1, -1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, -1])
-                dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    if idx == 0:
-                        self.assertTrue(impl.is_auto_compatible(dist_op))
-                    else:
-                        self.assertFalse(impl.is_auto_compatible(dist_op))
+                self.assertTrue(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, 1])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [1, -1])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [1, 1])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
 
     def test_transpose_compatible(self):
         valid_op_dist_attr_list = []
