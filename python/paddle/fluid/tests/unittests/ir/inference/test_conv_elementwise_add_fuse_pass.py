@@ -105,8 +105,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=ops,
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
+                "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             weights={
                 "conv2d_weight":
