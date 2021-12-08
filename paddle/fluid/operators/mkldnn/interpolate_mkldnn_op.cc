@@ -176,11 +176,15 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(nearest_interp, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>);
+                   ops::InterpolateMKLDNNKernel<float>,
+                   ops::InterpolateMKLDNNKernel<int8_t>,
+                   ops::InterpolateMKLDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
 
 REGISTER_OP_KERNEL(nearest_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>);
+                   ops::InterpolateMKLDNNKernel<float>,
+                   ops::InterpolateMKLDNNKernel<int8_t>,
+                   ops::InterpolateMKLDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
