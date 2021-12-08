@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/op_function_generator.h"
-
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 #ifndef _WIN32
 #include <unistd.h>
@@ -31,14 +30,10 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
+#include "paddle/fluid/pybind/op_function_generator.h"
 
-// NOTE(pangyoki): Inplace OP with duplicable input.
-// The set includes inplace ops that have duplicable input.
-// The first Varbase in input needs to be specified for the inplace strategy
-// and share Varbase with the output.
-std::set<std::string> inplace_op_duplicable_ins_set = {
-    "sum",
-};
+std::set<std::string> gen_list = {"elementwise_add", "reduce_sum", "matmul_v2",
+                                  "sigmoid"};
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
@@ -78,10 +73,10 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto %s = GetVarBaseFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetVarBaseListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
@@ -101,21 +96,6 @@ const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT = R"(
       HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
     })";
 
-const char* INPLACE_DUPLICABLE_INPUT = R"([0])";
-
-const char* INPLACE_LEAF_ERROR_MESSAGE = R"(Leaf Var (%s) that doesn't stop gradient can't use inplace strategy.)";
-
-const char* INPLACE_STRATEGY_TEMPLATE =
-R"(
-    PADDLE_ENFORCE_EQ(
-      %s->IsLeaf() && !%s->OverridedStopGradient(), false,
-      platform::errors::InvalidArgument("%s", %s->Name()));
-    %s->BumpInplaceVersion();
-    VLOG(3) << "Var(" << %s->Name() << ") uses Inplace Strategy.";
-)";
-
-const char* INPLACE_MAPPING_TEMPLATE = R"({"%s", "%s"})";
-
 const char* OP_FUNCTION_TEMPLATE =
 R"(
 static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -128,10 +108,6 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
     tstate = PyEval_SaveThread();
     %s
-    imperative::NameVarBaseMap outs = %s;
-    imperative::NameVarBaseMap ins = %s;
-    %s
-    imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     %s
@@ -163,10 +139,6 @@ static inline bool FindPassingOutsMap(const std::string& op_type,
   return op_passing_outs_map[op_type].count(out_name);
 }
 
-static inline bool FindDuplicableInputInplaceOpSet(const std::string& op_type) {
-  return inplace_op_duplicable_ins_set.count(op_type);
-}
-
 static inline bool FindViewOpMap(const std::string& op_type) {
   return view_op_map.count(op_type);
 }
@@ -181,14 +153,13 @@ std::string GenerateOpFunctionsBody(
     std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
-  std::string ins_initializer = "{";
+  std::string call_api_str = "auto out = " + op_type + "_dygraph_function(";
   std::string ins_initializer_with_null = "";
   std::string py_arg = "";
   int arg_idx = 0;
   int input_args_num = 0;
   std::string ins_cast_str = "";
   std::string view_strategy_str = "";
-  std::string inplace_strategy_str = "";
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -214,17 +185,9 @@ std::string GenerateOpFunctionsBody(
       ins_initializer_with_null +=
           paddle::string::Sprintf(in_template, in_name, in_name, in_name);
     } else {
-      const auto in_template = input.duplicable()
-                                   ? INPUT_LIST_INITIALIZER_TEMPLATE
-                                   : INPUT_INITIALIZER_TEMPLATE;
-      ins_initializer += paddle::string::Sprintf(in_template, in_name, in_name);
-      ins_initializer += ",";
+      call_api_str += in_name + ", ";
     }
   }
-  if (ins_initializer.back() == ',') {
-    ins_initializer.pop_back();
-  }
-  ins_initializer += "}";
 
   if (!input_args.empty() && input_args.back() == ',') {
     input_args.pop_back();
@@ -233,7 +196,6 @@ std::string GenerateOpFunctionsBody(
   // Generate outs initializer
   std::string outs_initializer = "{";
   std::string outs_initializer_with_null = "";
-  std::string inplace_mapping_str = "";
   std::string return_str = "";
 
   int outs_num = 0;
@@ -246,8 +208,6 @@ std::string GenerateOpFunctionsBody(
     }
     const auto out_type =
         output.duplicable() ? OUT_VAR_LIST_TYPE : OUT_VAR_TYPE;
-    const auto return_template =
-        output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
 
     if (FindPassingOutsMap(op_type, out_name)) {
       if (input_args != "") {
@@ -277,37 +237,6 @@ std::string GenerateOpFunctionsBody(
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
-    } else if (use_inplace_strategy && inplace_map.count(out_name)) {
-      PADDLE_ENFORCE_NE(
-          inplace_map[out_name], "",
-          paddle::platform::errors::InvalidArgument(
-              "Inplace op %s has no input corresponding to output %s.", op_type,
-              out_name));
-
-      // TODO(pangyoki): Inplace op don't have duplicable output in temporary,
-      // so don't support duplicable output now.
-      const auto out_template = INPUT_INITIALIZER_TEMPLATE;
-
-      auto inplace_input_name = inplace_map[out_name];
-      inplace_mapping_str += paddle::string::Sprintf(
-          INPLACE_MAPPING_TEMPLATE, inplace_input_name, out_name);
-      inplace_mapping_str += ",";
-
-      // If inplace op has duplicable input, the first Varbase in input will
-      // share Varbase with output.
-      if (FindDuplicableInputInplaceOpSet(op_type)) {
-        inplace_input_name += INPLACE_DUPLICABLE_INPUT;
-      }
-
-      // Leaf Var that doesn't stop gradient can't use inplace strategy.
-      // Increase inplace_version.
-      inplace_strategy_str += paddle::string::Sprintf(
-          INPLACE_STRATEGY_TEMPLATE, inplace_input_name, inplace_input_name,
-          INPLACE_LEAF_ERROR_MESSAGE, inplace_input_name, inplace_input_name,
-          inplace_input_name);
-      outs_initializer +=
-          paddle::string::Sprintf(out_template, out_name, inplace_input_name);
-      outs_initializer += ",";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -327,6 +256,7 @@ std::string GenerateOpFunctionsBody(
         ins_cast_str +=
             paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE, out_num_str, op_type,
                                     out_num_str, arg_idx++, dispensable);
+        call_api_str += out_num_str + ", ";
       } else {
         outs_initializer +=
             paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -334,19 +264,17 @@ std::string GenerateOpFunctionsBody(
       outs_initializer += ",";
     }
 
-    return_str += paddle::string::Sprintf(return_template, out_name);
-    return_str += ",";
+    // return_str += paddle::string::Sprintf(return_template, out_name);
+    // return_str += ",";
     outs_num += 1;
   }
+  call_api_str += "attrs);";
   if (outs_initializer.back() == ',') {
     outs_initializer.pop_back();
-    return_str.pop_back();
+    // return_str.pop_back();
   }
   outs_initializer += "}";
-  if (!inplace_mapping_str.empty() && inplace_mapping_str.back() == ',') {
-    inplace_mapping_str.pop_back();
-  }
-  if (!use_inplace_strategy && FindViewOpMap(op_type)) {
+  if (FindViewOpMap(op_type)) {
     std::string viwe_input_name = view_op_map[op_type].first;
     std::string viwe_output_name = view_op_map[op_type].second;
     view_strategy_str += paddle::string::Sprintf(
@@ -355,12 +283,8 @@ std::string GenerateOpFunctionsBody(
   }
   if (outs_num == 0) {
     return_str = "Py_INCREF(Py_None);\n    return Py_None;";
-  } else if (outs_num == 1) {
-    return_str = "return MakeReturnPyObject(" + return_str + ");";
   } else {
-    return_str = "return MakeReturnPyObject(" +
-                 paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str) +
-                 ");";
+    return_str = "return ToPyObject(out);";
   }
   std::string function_args = "";
   if (input_args == "") {
@@ -372,10 +296,7 @@ std::string GenerateOpFunctionsBody(
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
       OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
-      inplace_strategy_str, outs_initializer, ins_initializer,
-      ins_initializer_with_null + outs_initializer_with_null +
-          view_strategy_str,
-      op_type, inplace_mapping_str, return_str);
+      call_api_str, return_str);
 
   return op_function_str;
 }
@@ -401,25 +322,10 @@ GenerateOpFunctions() {
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
-
-    // NOTE(pangyoki): Inplace Strategy.
-    // In this case, output will reuse input varbase.
-    // Dygraph mode needs to be aligned with the in-place strategy in static
-    // mode, and the mapping relationships between output and input that have
-    // been defined in static mode should be used in dygraph mode.
-    // Find which ops need to use Inplace strategy in static mode, and get the
-    // mapping relationship between Inplace output and input.
-    auto& infer_inplace =
-        paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
-    std::map<std::string, std::string> inplace_map;
-    if (infer_inplace) {
-      auto in_to_outs = infer_inplace(true);
-      for (auto& inplace_pair : in_to_outs) {
-        inplace_map[inplace_pair.second] = inplace_pair.first;
-      }
+    if (!gen_list.count(op_type)) {
+      continue;
     }
-
-    std::string func_name = "imperative_" + op_type;
+    std::string func_name = "eager_api_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 
     // generate pybind item
@@ -428,23 +334,6 @@ GenerateOpFunctions() {
 
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
-
-    if (infer_inplace) {
-      // Reuse Varbase Inplace OP: op_type_.
-      // The inplace OP needs a new implementation method.
-      std::string inplace_op_type = op_type + "_";
-      std::string inplace_func_name = "imperative_" + inplace_op_type;
-      std::string inplace_op_function_str = GenerateOpFunctionsBody(
-          op_proto, inplace_func_name, true, inplace_map);
-
-      // generate pybind item
-      auto inplace_bind_function_str =
-          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
-                                  inplace_func_name, inplace_op_type);
-
-      op_function_list.emplace_back(std::move(inplace_op_function_str));
-      bind_function_list.emplace_back(std::move(inplace_bind_function_str));
-    }
   }
   return std::make_tuple(op_function_list, bind_function_list);
 }
@@ -460,9 +349,10 @@ int main(int argc, char* argv[]) {
   ascend_ptr->InitGEForUT();
 #endif
 
-  std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
-                                   "\"pybind11/detail/common.h\"",
-                                   "<Python.h>"};
+  std::vector<std::string> headers{
+      "\"pybind11/detail/common.h\"",
+      "\"paddle/fluid/pybind/op_function_common.h\"",
+      "\"paddle/fluid/pybind/exception.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
 
@@ -478,7 +368,6 @@ int main(int argc, char* argv[]) {
 
   out << "namespace paddle {\n"
       << "namespace pybind {\n\n";
-  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
@@ -487,11 +376,11 @@ int main(int argc, char* argv[]) {
       << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
-  out << "inline void BindOpFunctions(pybind11::module *module) {\n"
+  out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
-         "core.ops failed!\"));\n"
+         "core.eager.ops failed!\"));\n"
       << "  }\n\n"
       << "  InitOpsAttrTypeMap();"
       << "}\n\n"

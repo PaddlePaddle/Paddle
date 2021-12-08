@@ -33,13 +33,17 @@ static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
 static std::unordered_set<std::string> operators_to_skip = {
-    "chunk_eval",  // Stupid tensor name
-    "minus",          "pull_sparse",     "pull_box_extended_sparse",
-    "pull_sparse_v2", "pull_box_sparse", "fused_attention",
-    "diag_v2",        "c_split"};
+    "minus",
+};
 
 static std::unordered_set<std::string> operators_to_codegen = {};
 static std::unordered_set<std::string> skipped_operators = {};
+
+static std::string LegalizeVariableName(const std::string& var_name) {
+  std::string ret = var_name;
+  std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
+  return ret;
+}
 
 static std::string AttrTypeToString(const proto::AttrType& type) {
   std::string ret;
@@ -608,6 +612,9 @@ static bool CollectGradInformationFromOpInfo(
   }
 
   VLOG(6) << "Prepared Default Attributes Map, size = " << default_attrs.size();
+  for (const auto& iter : default_attrs) {
+    VLOG(6) << iter.first;
+  }
 
   /* ---------------------------- */
   /* --------- Backward --------- */
@@ -1052,24 +1059,25 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const std::string& output_name = output.name();
     std::string out_tensor_str;
     size_t return_position = fwd_outputs_name_pos_map.at(output_name);
+    std::string output_varname = LegalizeVariableName(output_name);
 
     if (output.duplicable()) {
       const char* FWD_OUT_TENSORS_TEMPLATE =
           "  std::vector<egr::EagerTensor> %s = "
           "egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
-                                               output_name, output_name);
+                                               output_varname, output_name);
       return_types[return_position] = "std::vector<egr::EagerTensor>";
     } else {
       const char* FWD_OUT_TENSOR_TEMPLATE =
           "  egr::EagerTensor %s = "
           "egr::EagerUtils::GetOutput(outs[\"%s\"][0]);\n";
       out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
-                                               output_name, output_name);
+                                               output_varname, output_name);
       return_types[return_position] = "egr::EagerTensor";
     }
 
-    return_contents[return_position] = output_name;
+    return_contents[return_position] = output_varname;
     generated_function_body += out_tensor_str;
   }
   generated_function_body += "\n";
@@ -1280,23 +1288,76 @@ static std::string GenerateGradNodeCCContents(
 
     if (grad_outs_slotname_map.count(grad_output_name)) {
       // Fwd Tensor
-      const std::string& fwd_input_name =
-          grad_outs_slotname_map.at(grad_output_name);
-      size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_input_name);
+      const std::string& fwd_name = grad_outs_slotname_map.at(grad_output_name);
 
-      if (duplicable_input_name_set.count(fwd_input_name)) {
-        const char* GRAD_OUTS_CONTENT_TEMPLATE =
-            "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput( "
-            "this->OutputMeta()[%d].Size() ) },";
+      /* Handle Special Case: "PullSparseOp", etc
+
+          Forward:
+
+             Ids  W
+              |   |
+           PullSparseOp
+                |
+               Out
+
+          Backward:
+
+             Ids  GradOut  W
+              |      |     |
+             PullSparseGradOp
+                     |
+                  GradOut
+
+          Its grad output "GradOut" corresponds to forward output "Out",
+          where there is a hiden inplace involved. So we find "GradOut"'s index
+         in
+          grads, and perform the inplace operation by constructing outs =
+         {{"Out", grads[i]}}
+
+          GradOut -> Out -> fwd_output_pos -> grads position -> grads[i]
+          outs = {{"Out", grads[i]}}
+
+          For returns, append "GradOut" to the very end of return list.
+      */
+      if (!fwd_inputs_name_pos_map.count(fwd_name)) {
+        PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
+                       paddle::platform::errors::Fatal(
+                           "fwd_name not found in fwd_inputs_name_pos_map nor "
+                           "fwd_outputs_name_pos_map"));
+
+        size_t grads_position = fwd_outputs_name_pos_map.at(fwd_name);
+        std::string grad_ptr_name = fwd_name + "_ptrs";
+        const char* GET_GRADS_PTR_TEMPLATE =
+            "  std::vector<std::shared_ptr<egr::EagerTensor>> %s;\n"
+            "  for(const auto& t : grads[%d]) {\n    "
+            "%s.emplace_back(std::move(std::make_shared<egr::EagerTensor>(t)));"
+            "\n  }\n";
+        std::string grads_ptr_str =
+            paddle::string::Sprintf(GET_GRADS_PTR_TEMPLATE, grad_ptr_name,
+                                    grads_position, grad_ptr_name);
+        generated_grad_function_body += grads_ptr_str;
+        generated_grad_function_body += "\n";
+
+        const char* GRAD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", %s },";
         outs_contents_str += paddle::string::Sprintf(
-            GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
+            GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grad_ptr_name);
+
       } else {
-        const char* GRAD_OUTS_CONTENT_TEMPLATE =
-            "{ \"%s\", "
-            "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
-            "GenerateUniqueName())}},";
-        outs_contents_str += paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE,
-                                                     grad_output_name);
+        size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
+        if (duplicable_input_name_set.count(fwd_name)) {
+          const char* GRAD_OUTS_CONTENT_TEMPLATE =
+              "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput( "
+              "this->OutputMeta()[%d].Size() ) },";
+          outs_contents_str += paddle::string::Sprintf(
+              GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
+        } else {
+          const char* GRAD_OUTS_CONTENT_TEMPLATE =
+              "{ \"%s\", "
+              "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
+              "GenerateUniqueName())}},";
+          outs_contents_str += paddle::string::Sprintf(
+              GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name);
+        }
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -1340,15 +1401,39 @@ static std::string GenerateGradNodeCCContents(
 
   // [Generation] Get Return
   std::string outputs_str = "";
+  size_t num_appended_outputs = 0;
   for (auto iter : grad_outs) {
     const std::string& grad_out_name = iter.first;
-    size_t fwd_input_position =
-        fwd_inputs_name_pos_map.at(grad_outs_slotname_map.at(grad_out_name));
+    const std::string& fwd_name = grad_outs_slotname_map.at(grad_out_name);
 
-    const char* BWD_OUTPUT_TEMPLATE =
-        "  outputs[%d] = egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
-    outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE,
-                                           fwd_input_position, grad_out_name);
+    if (fwd_inputs_name_pos_map.count(fwd_name)) {
+      size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
+      const char* BWD_OUTPUT_TEMPLATE =
+          "  outputs[%d] = egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
+      outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE,
+                                             fwd_input_position, grad_out_name);
+      num_appended_outputs++;
+    } else {
+      PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
+                     paddle::platform::errors::Fatal(
+                         "fwd_name not found in fwd_inputs_name_pos_map nor "
+                         "fwd_outputs_name_pos_map"));
+    }
+  }
+
+  /* Handle Special Case: "PullSparseOp", etc
+     For returns, append "GradOut" to the very end of return list. */
+  for (auto iter : grad_outs) {
+    const std::string& grad_out_name = iter.first;
+    const std::string& fwd_name = grad_outs_slotname_map.at(grad_out_name);
+
+    if (fwd_outputs_name_pos_map.count(fwd_name)) {
+      const char* BWD_OUTPUT_TEMPLATE =
+          "  outputs[%d] = egr::EagerUtils::GetOutputs(outs[\"%s\"]);\n";
+      outputs_str += paddle::string::Sprintf(
+          BWD_OUTPUT_TEMPLATE, num_appended_outputs, grad_out_name);
+      num_appended_outputs++;
+    }
   }
 
   const char* BWD_RETURN_TEMPLATE =
@@ -1722,6 +1807,10 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["transfer_dtype"] = {};
   operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
   operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
+
+  // Handle "c_split"
+  operators_with_attrs["c_split"] = {};
+  operators_with_attrs["c_split"]["nranks"] = 1;
 }
 
 static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
