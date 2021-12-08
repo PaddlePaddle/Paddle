@@ -309,7 +309,7 @@ class ShardingStage2(nn.Layer):
                     self._grad_reduced[index] = False
                     if not self._accumulate_grads:
                         param.grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version()
+                    param._reset_grad_inplace_version(True)
 
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
