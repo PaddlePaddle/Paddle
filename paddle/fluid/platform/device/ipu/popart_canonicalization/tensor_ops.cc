@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 namespace {
+
+using framework::Attribute;
+using framework::AttributeMap;
 
 Node *fill_constant_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
@@ -37,16 +40,16 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
   }
   Attribute value;
   switch (dtype_) {
-    case proto::VarType::FP32:
+    case framework::proto::VarType::FP32:
       value = std::vector<float>(size, value_);
       break;
-    case proto::VarType::FP64:
+    case framework::proto::VarType::FP64:
       value = std::vector<double>(size, value_);
       break;
-    case proto::VarType::INT32:
+    case framework::proto::VarType::INT32:
       value = std::vector<int>(size, value_);
       break;
-    case proto::VarType::INT64:
+    case framework::proto::VarType::INT64:
       value = std::vector<int64_t>(size, value_);
       break;
     default:
@@ -353,7 +356,7 @@ Node *expand_handler(Graph *graph, Node *node) {
     // cast to int64
     expand_times =
         CreateCast(graph, node, {GetInputVarNode("ExpandTimes", node)}, {},
-                   proto::VarType::INT64);
+                   framework::proto::VarType::INT64);
   } else {
     auto expand_times_i32 =
         BOOST_GET_CONST(std::vector<int>, op->GetAttr("expand_times"));

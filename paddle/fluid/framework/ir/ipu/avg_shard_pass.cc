@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/avg_shard_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
@@ -26,7 +26,8 @@ namespace ir {
 void AvgShardPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter AvgShardPass::ApplyImpl";
 
-  std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
+  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
+      platform::ipu::IpuBackend::GetInstance();
 
   if (ipu_backend->GetIpuStrategy()->need_avg_shard) {
     VLOG(10) << "start AvgShardPass";

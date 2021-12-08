@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/ipu/popart_canonicalization/post_canonicalization.h"
+#pragma once
+
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
 namespace paddle {
 namespace platform {

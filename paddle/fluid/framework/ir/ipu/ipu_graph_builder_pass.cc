@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +32,8 @@ void IpuGraphBuilderPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<std::string> fetch_list;
   fetch_list = Get<std::vector<std::string>>("fetch_list");
 
-  std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
+  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
+      platform::ipu::IpuBackend::GetInstance();
 
   ipu_backend->Compile(graph, feed_list, fetch_list);
 

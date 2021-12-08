@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/ipu/inference_process_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
-#include "paddle/fluid/framework/ipu/ipu_strategy.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
@@ -29,25 +29,25 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter InferenceProcessPass::ApplyImpl";
 
   // Get a new instance of ipu_backend
-  std::shared_ptr<ipu::IpuBackend> ipu_backend =
-      ipu::IpuBackend::GetNewInstance();
+  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
+      platform::ipu::IpuBackend::GetNewInstance();
 
   // Set scope
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
   ipu_backend->SetScope(scope);
 
   // Set ipu_strategy
-  static std::shared_ptr<ipu::IpuStrategy> ipu_strategy_instance_(
-      new ipu::IpuStrategy());
+  static std::shared_ptr<platform::ipu::IpuStrategy> ipu_strategy_instance_(
+      new platform::ipu::IpuStrategy());
   ipu_strategy_instance_->is_training = false;
   auto num_ipus = graph->Get<int>("num_ipus");
   ipu_strategy_instance_->num_ipus = num_ipus;
   if (num_ipus > 1) {
     ipu_strategy_instance_->popart_options_.virtualGraphMode =
-        ipu::VirtualGraphMode::Manual;
+        platform::ipu::VirtualGraphMode::Manual;
   } else {
     ipu_strategy_instance_->popart_options_.virtualGraphMode =
-        ipu::VirtualGraphMode::Off;
+        platform::ipu::VirtualGraphMode::Off;
   }
 
   auto enable_pipelining = graph->Get<bool>("enable_pipelining");

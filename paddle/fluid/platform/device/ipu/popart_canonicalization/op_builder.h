@@ -14,12 +14,14 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ipu/common.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/common.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+using paddle::framework::AttributeMap;
 
 template <typename T>
 AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,

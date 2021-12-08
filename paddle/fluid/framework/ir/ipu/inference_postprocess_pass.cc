@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/framework/ir/ipu/inference_postprocess_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
-#include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

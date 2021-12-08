@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -171,8 +171,9 @@ Node *scale_handler(Graph *graph, Node *node) {
   }
 
   // convert to float32
-  auto new_node_cast = CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
-                                  static_cast<int>(proto::VarType::FP32));
+  auto new_node_cast =
+      CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
+                 static_cast<int>(framework::proto::VarType::FP32));
   Node *result = nullptr;
   if (bias_after_scale_) {
     auto new_node_mul =
@@ -199,7 +200,7 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
   auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)}, {},
-                             proto::VarType::INT32);
+                             framework::proto::VarType::INT32);
   auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
   if (label_shape_.size() == 1) {
     return CreateBaseOp(graph, node, "popart_nllloss",

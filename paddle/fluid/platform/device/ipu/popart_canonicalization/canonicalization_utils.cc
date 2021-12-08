@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
 namespace paddle {
 namespace platform {
@@ -85,31 +85,31 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
 }
 
 const int VarType2OnnxDtype(const int type) {
-  auto dtype = static_cast<proto::VarType::Type>(type);
+  auto dtype = static_cast<framework::proto::VarType::Type>(type);
   switch (dtype) {
-    case proto::VarType::BOOL:
+    case framework::proto::VarType::BOOL:
       return static_cast<int>(ONNXDataType::BOOL);
-    case proto::VarType::INT16:
+    case framework::proto::VarType::INT16:
       return static_cast<int>(ONNXDataType::INT16);
-    case proto::VarType::INT32:
+    case framework::proto::VarType::INT32:
       return static_cast<int>(ONNXDataType::INT32);
-    case proto::VarType::INT64:
+    case framework::proto::VarType::INT64:
       return static_cast<int>(ONNXDataType::INT64);
-    case proto::VarType::FP16:
+    case framework::proto::VarType::FP16:
       return static_cast<int>(ONNXDataType::FLOAT16);
-    case proto::VarType::FP32:
+    case framework::proto::VarType::FP32:
       return static_cast<int>(ONNXDataType::FLOAT);
-    case proto::VarType::FP64:
+    case framework::proto::VarType::FP64:
       return static_cast<int>(ONNXDataType::DOUBLE);
-    case proto::VarType::UINT8:
+    case framework::proto::VarType::UINT8:
       return static_cast<int>(ONNXDataType::UINT8);
-    case proto::VarType::INT8:
+    case framework::proto::VarType::INT8:
       return static_cast<int>(ONNXDataType::INT8);
-    case proto::VarType::BF16:
+    case framework::proto::VarType::BF16:
       return static_cast<int>(ONNXDataType::BFLOAT16);
-    case proto::VarType::COMPLEX64:
+    case framework::proto::VarType::COMPLEX64:
       return static_cast<int>(ONNXDataType::COMPLEX64);
-    case proto::VarType::COMPLEX128:
+    case framework::proto::VarType::COMPLEX128:
       return static_cast<int>(ONNXDataType::COMPLEX128);
     default:
       PADDLE_THROW(
@@ -118,25 +118,25 @@ const int VarType2OnnxDtype(const int type) {
 }
 
 const std::string VarType2PopStr(const int type) {
-  auto dtype = static_cast<proto::VarType::Type>(type);
+  auto dtype = static_cast<framework::proto::VarType::Type>(type);
   switch (dtype) {
-    case proto::VarType::UINT8:
+    case framework::proto::VarType::UINT8:
       return "UINT8";
-    case proto::VarType::INT8:
+    case framework::proto::VarType::INT8:
       return "INT8";
-    case proto::VarType::INT16:
+    case framework::proto::VarType::INT16:
       return "INT16";
-    case proto::VarType::INT32:
+    case framework::proto::VarType::INT32:
       return "INT32";
-    case proto::VarType::INT64:
+    case framework::proto::VarType::INT64:
       return "INT64";
-    case proto::VarType::BOOL:
+    case framework::proto::VarType::BOOL:
       return "BOOL";
-    case proto::VarType::FP64:
+    case framework::proto::VarType::FP64:
       return "DOUBLE";
-    case proto::VarType::FP32:
+    case framework::proto::VarType::FP32:
       return "FLOAT";
-    case proto::VarType::FP16:
+    case framework::proto::VarType::FP16:
       return "FLOAT16";
     default:
       PADDLE_THROW(

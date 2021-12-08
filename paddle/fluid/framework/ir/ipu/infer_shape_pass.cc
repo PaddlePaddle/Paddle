@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/infer_shape_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -31,7 +31,8 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
+  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
+      platform::ipu::IpuBackend::GetInstance();
   auto batch_size = ipu_backend->GetIpuStrategy()->batch_size;
 
   auto feed_list = Get<std::vector<std::string>>("feed_list");

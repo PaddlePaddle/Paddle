@@ -14,21 +14,22 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-using ir::Graph;
-using ir::Node;
+using framework::ir::Graph;
+using framework::ir::Node;
+using framework::OpDesc;
 
 #define REGISTER_HANDLER(name, func) \
   static bool __UNUSED_##name =      \
-      paddle::framework::ipu::RegisterHandler(#name, func)
+      paddle::platform::ipu::RegisterHandler(#name, func)
 
 using SymbolHandler = std::function<Node *(Graph *, Node *)>;
 

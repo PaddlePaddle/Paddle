@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -22,7 +22,7 @@ namespace ipu {
 namespace {
 
 Node *conv2d_handler(Graph *graph, Node *node) {
-  auto *op = node->Op();
+  OpDesc *op = node->Op();
   auto dilations_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
   auto dilations = std::vector<int64_t>{dilations_.begin(), dilations_.end()};
   auto group_ = BOOST_GET_CONST(int, op->GetAttr("groups"));

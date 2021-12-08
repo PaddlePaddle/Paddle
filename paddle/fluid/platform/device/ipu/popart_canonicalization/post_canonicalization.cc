@@ -12,25 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/post_canonicalization.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
-namespace {
 
-Node *equal_handler(Graph *graph, Node *node) {
-  auto new_node = CreateBaseOp(
-      graph, node, "popart_equal",
-      {GetInputVarNode("X", node), GetInputVarNode("Y", node)}, node->outputs);
-  return new_node;
-}
+//
 
-REGISTER_HANDLER(equal, equal_handler);
-
-}  // namespace
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle

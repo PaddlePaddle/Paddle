@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -89,7 +89,7 @@ Node *topK_op_handler(Graph *graph, Node *node) {
     auto dtype = var->GetDataType();
     if (dtype == 3) {
       // poplar does not support int64_t
-      var->SetDataType(proto::VarType::INT32);
+      var->SetDataType(framework::proto::VarType::INT32);
     }
     std::string name = var->Name();
     VLOG(10) << "[topK_op_handler] output node(" << name

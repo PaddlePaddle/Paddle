@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_extract_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {
@@ -26,7 +26,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  auto ipu_backend = paddle::framework::ipu::IpuBackend::GetInstance();
+  auto ipu_backend = paddle::platform::ipu::IpuBackend::GetInstance();
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
