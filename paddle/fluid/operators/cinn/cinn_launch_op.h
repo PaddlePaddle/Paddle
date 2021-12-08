@@ -103,7 +103,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         compilation_key, inputs_name2tensor, target, stream);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
-    auto launch_context = cinn_compiled_object.launch_context;
+    const auto& launch_context = cinn_compiled_object.launch_context;
     // Step 3. Prepare arguments needed for the compiled executable program.
     launch_context->UpdateCapturedEnv(scope, place);
     if (!launch_context->IsArgumentsInitialized()) {

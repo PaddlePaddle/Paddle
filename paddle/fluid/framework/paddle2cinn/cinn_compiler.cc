@@ -214,12 +214,13 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   options.with_buffer_handle_instruction_inserted = true;
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
-  auto launch_context = std::make_unique<operators::details::CinnLaunchContext>(
-      symbol.var_model_to_program_map(), scope);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
-  *compiled_obj = {
-      std::move(graph_compiler), std::move(compiled_res.runtime_program), scope,
-      symbol.var_model_to_program_map(), std::move(launch_context)};
+  *compiled_obj = {std::move(graph_compiler),
+                   std::move(compiled_res.runtime_program), scope,
+                   symbol.var_model_to_program_map()};
+  compiled_obj->launch_context =
+      std::make_unique<operators::details::CinnLaunchContext>(
+          compiled_obj->paddle2cinn_varmap, compiled_obj->scope);
   return compiled_obj;
 }
 

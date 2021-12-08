@@ -140,7 +140,7 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& cinn_name) {
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, cinn_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
-            cached_temp_scope_->GetVar(cinn_name)->GetMutable<LoDTensor>();
+            cached_temp_scope_->Var(cinn_name)->GetMutable<LoDTensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(
             tensor->mutable_data<float>(*cached_place_));
