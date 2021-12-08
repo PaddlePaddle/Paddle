@@ -134,6 +134,24 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1])
                     self.assertTrue(impls[2].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(X, [1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(X, [-1, 1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, 1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [-1, 1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_output_dims_mapping(out, [1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
                 if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1])
@@ -141,6 +159,12 @@ class Testcompatible(unittest.TestCase):
                     self.assertTrue(impls[2].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_output_dims_mapping(out, [1, -1, -1])
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, 1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [1, -1])
+                    self.assertFalse(impls[2].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
                     self.assertFalse(impls[2].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_output_dims_mapping(out, [-1, 1, -1])
@@ -171,14 +195,11 @@ class Testcompatible(unittest.TestCase):
                     self.assertFalse(impls[2].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
 
-# col
-
     def test_matmulv2_matmul_1_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
-
         with static.program_guard(program,
                                   start_program), utils.unique_name.guard():
             matmulx3 = static.data(
@@ -209,22 +230,32 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(Y, [1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1])
                     dist_op = DistributedOperator(op, op_dist_attr)
+                    op_dist_attr.set_output_dims_mapping(out, [1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(Y, [-1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
                 if len(vars[X].shape) == 3 and len(vars[Y].shape) == 2:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, 1])
                     op_dist_attr.set_input_dims_mapping(Y, [1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1])
-
                     self.assertTrue(impls[1].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_output_dims_mapping(out, [1, -1, 1])
                     self.assertFalse(impls[1].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
-                    #  op_dist_attr.set_output_dims_mapping(out, [-1, 1, -1])
-                    #  self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
+                    op_dist_attr.set_input_dims_mapping(out, [-1, -1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_output_dims_mapping(out, [-1, 0, -1])
                     self.assertFalse(impls[1].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
-
+                    op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1])
+                    self.assertFalse(impls[1].is_auto_compatible(
+                        DistributedOperator(op, op_dist_attr)))
                 if len(vars[X].shape) == 4 and len(vars[Y].shape) == 4:
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, 1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 1, -1])
