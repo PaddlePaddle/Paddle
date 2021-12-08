@@ -33,7 +33,7 @@ from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation, complete_update_annotation
 from .partitioner import Partitioner
-from .process_group import get_all_process_groups
+from .process_group import get_all_process_groups, get_process_group
 from .process_group import get_world_process_groups
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
@@ -138,6 +138,7 @@ class AutoParallelizer:
                     no_grad_set,
                     callbacks,
                     distop_context=self._dist_context.dist_op_context)
+
             complete_backward_annotation(
                 main_program, dist_context=self._dist_context)
 
@@ -170,7 +171,8 @@ class AutoParallelizer:
 
         else:
             with program_guard(main_program, startup_program):
-                optimize_ops = self._optimizer.apply_gradients(params_grads)
+                optimize_ops = copy.deepcopy(self._optimizer).apply_gradients(
+                    params_grads)
 
         # update completion 
         complete_update_annotation(
@@ -362,6 +364,12 @@ class AutoParallelizer:
                         self._optimizer,
                         cluster=self._cluster)
                     _logger.info("End search dist attr.")
+
+            if dist_context is not None:
+                pg0 = get_process_group(0)
+                for process_mesh in dist_context._process_meshes:
+                    pg0.add_ranks(process_mesh.processes)
+
             dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, _ = self._get_dist_program(
                 rank, dist_context, relaunch_phase=True)
 
