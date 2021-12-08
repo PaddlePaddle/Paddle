@@ -1754,7 +1754,6 @@ TETRAD_PARALLEL_JOB = [
     'test_fc_gru_fuse_pass_cc',
     'test_conv_bn_fuse_pass_cc',
     'test_adaptive_pool2d_convert_global_pass',
-    'test_unsqueeze2_eltwise_fuse_pass_cc',
     'test_fc_act_mkldnn_fuse_pass',
     'test_fleet_cc',
     'tensor_test',
