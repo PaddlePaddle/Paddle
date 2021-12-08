@@ -34,7 +34,7 @@ PT_DECLARE_MODULE(UtilsCUDA);
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
+PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);

@@ -37,12 +37,13 @@ extern PyTypeObject* pEagerTensorType;
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_TRY
+  self->eagertensor.SyncToTensor();
   if (!self->eagertensor.initialized()) {
     Py_INCREF(Py_None);
     return Py_None;
   }
   auto tensor_dims = self->eagertensor.shape();
-  auto numpy_dtype = pten::TensorDtype2NumpyDtype(self->eagertensor.type());
+  auto numpy_dtype = TensorDtype2NumpyDtype(self->eagertensor.type());
   auto sizeof_dtype = pten::DataTypeSize(self->eagertensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
@@ -93,6 +94,9 @@ static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
   EAGER_TRY
+  if (self->eagertensor.Var().IsInitialized()) {
+    self->eagertensor.SyncToTensor();
+  }
   return ToPyObject(self->eagertensor.initialized());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
