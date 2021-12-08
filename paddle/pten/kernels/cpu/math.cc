@@ -50,28 +50,12 @@ void Mean(const CPUContext& dev_ctx,
 template <typename T>
 void Scale(const CPUContext& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  eigen::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
-
-// TODO(chenweihang): now the ScaleTensor's dtype are same as x, so we cannot
-// register its dtype def
-template <typename T>
-void ScaleHost(const CPUContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out) {
-  eigen::Scale<CPUContext, T>(dev_ctx,
-                              x,
-                              static_cast<float>(*scale.data<T>()),
-                              bias,
-                              bias_after_scale,
-                              out);
+  eigen::Scale<CPUContext, T>(
+      dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
 }
 
 template <typename T>
@@ -145,20 +129,7 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.host",
-                   CPU,
-                   ANY,
-                   pten::ScaleHost,
-                   float,
-                   double,
-                   paddle::platform::bfloat16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-}
+
 PT_REGISTER_KERNEL("elementwise_add",
                    CPU,
                    ANY,
