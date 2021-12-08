@@ -17,8 +17,12 @@ import sys
 import six
 from distutils.sysconfig import get_python_lib
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
+from paddle.path import get_python_paddle_path
 
 IS_MAC = sys.platform.startswith('darwin')
+
+build_path = os.path.abspath(os.path.join(get_python_paddle_path(), '..', '..'))
+paddle_path = os.path.abspath(os.path.join(build_path, '..'))
 
 site_packages_path = get_python_lib()
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
@@ -28,8 +32,9 @@ site_packages_path = get_python_lib()
 paddle_includes = [
     os.path.join(site_packages_path, 'paddle', 'include'),
     os.path.join(site_packages_path, 'paddle', 'include', 'third_party'),
-    os.path.join('..'), os.path.join('..', 'paddle', 'fluid', 'platform'),
-    os.path.join('..', 'build', 'third_party', 'eigen3', 'src', 'extern_eigen3')
+    os.path.join(paddle_path),
+    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'),
+    os.path.join(build_path, 'third_party', 'eigen3', 'src', 'extern_eigen3')
 ]
 
 # Test for extra compile args
