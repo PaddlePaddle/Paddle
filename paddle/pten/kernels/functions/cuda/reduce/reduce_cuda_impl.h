@@ -800,7 +800,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   if (config.reduce_num == 1) {
     auto out_dims = y->dims();
     if (x.dtype() == y->dtype()) {
-      pten::Copy(*dev_ctx, x, true, y);
+      pten::TensorCopy(*dev_ctx, x, y->place(), y);
       y->Resize(out_dims);
     } else {
       PD_VISIT_ALL_TYPES(y->dtype(), "CastKernelImpl", ([&] {

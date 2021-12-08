@@ -28,4 +28,9 @@ void Copy(const CPUContext& dev_ctx,
           bool blocking,
           DenseTensor* dst);
 
+void TensorCopy(const CPUContext& dev_ctx,
+                const DenseTensor& src,
+                const paddle::platform::Place& dst_place,
+                DenseTensor* dst);
+
 }  // namespace pten

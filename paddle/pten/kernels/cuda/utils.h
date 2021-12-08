@@ -31,6 +31,11 @@ void Copy(const CUDAContext& dev_ctx,
           bool blocking,
           DenseTensor* dst);
 
+void TensorCopy(const CUDAContext& dev_ctx,
+                const DenseTensor& src,
+                const paddle::platform::Place& dst_place,
+                DenseTensor* dst);
+
 }  // namespace pten
 
 #endif

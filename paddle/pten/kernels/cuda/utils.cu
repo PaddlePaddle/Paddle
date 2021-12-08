@@ -232,6 +232,27 @@ void Copy(const CUDAContext& dev_ctx,
     }
   }
 }
+
+void TensorCopy(const CUDAContext& dev_ctx,
+                const DenseTensor& src,
+                const paddle::platform::Place& dst_place,
+                DenseTensor* dst) {
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const paddle::platform::CUDADeviceContext* final_dev_ctx;
+  if (paddle::platform::is_gpu_place(dst_place) ||
+      paddle::platform::is_npu_place(dst_place)) {
+    final_dev_ctx =
+        static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(dst_place));
+
+  } else {
+    final_dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
+        pool.Get(src.place()));
+  }
+
+  Copy(*final_dev_ctx, src, false, dst);
+}
+
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
