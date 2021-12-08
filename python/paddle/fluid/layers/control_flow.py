@@ -104,22 +104,35 @@ def select_input(inputs, mask):
 
 def select_input_with_buildin_type(inputs, mask):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+    support_ret_buildin_type = (bool, float, six.integer_types)
     false_var, true_var = inputs
 
-    if isinstance(false_var, type(true_var)) and isinstance(false_var, (
-            bool, float, six.integer_types)):
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return select_input(inputs, mask)
+
+    elif (isinstance(false_var, (support_ret_buildin_type)) and isinstance(
+            false_var, type(true_var))):
         if false_var == true_var:
             return false_var
         else:
             inputs = [
                 to_static_variable(false_var), to_static_variable(true_var)
             ]
-    # Deal with this situation: false_var is int and true_var is Variable
-    elif (isinstance(false_var, (bool, float, six.integer_types)) and
-          isinstance(true_var, Variable)) or (isinstance(true_var, (
-              bool, float, six.integer_types)) and isinstance(false_var,
-                                                              Variable)):
+    # Deal with the situations like this: false_var is int and true_var is Variable
+    elif ((isinstance(false_var, support_ret_buildin_type) and
+           isinstance(true_var, Variable)) or
+          (isinstance(true_var, support_ret_buildin_type) and
+           isinstance(false_var, Variable))):
         inputs = [to_static_variable(false_var), to_static_variable(true_var)]
+        warnings.warn(
+            "Return results from different branches in cond are not same type: "
+            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "'{}'".format(type(false_var), type(true_var)))
+    else:
+        raise TypeError(
+            "Unsupported return type of true_fn and false_fn in cond: false_var "
+            "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".
+            format(type(false_var), type(true_var)))
 
     return select_input(inputs, mask)
 
@@ -2304,9 +2317,7 @@ class ConditionalBlock(object):
 
 
 def copy_var_to_parent_block(var, layer_helper):
-    if var is None:
-        return None
-    if isinstance(var, (bool, float, six.integer_types)):
+    if not isinstance(var, Variable):
         return var
     prog = layer_helper.main_program
     parent_idx = prog.current_block().parent_idx
