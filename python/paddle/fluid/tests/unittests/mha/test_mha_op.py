@@ -166,32 +166,31 @@ class TestMHAOpFP16(OpTest):
         attn_mask = np.ones((batch_size, nheads, seq_len, seq_len))
 
         self.inputs = {
-            'Q': Q,
-            'K': K,
-            'V': V,
-            'W': W,
-            'QO_KV_Seqlen': np.concatenate((qo_slen, kv_slen))
+            'query': Q,
+            'key': K,
+            'value': V,
+            'weight': W,
+            'qo_kv_seqlen': np.concatenate((qo_slen, kv_slen))
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            'attn_dropout_rate': 0.,
-            'attn_heads': nheads,
-            'attn_sm_scaler': 1.,
-            'attn_vec_size': vec_size,
-            'attn_q_proj_size': proj_size,
-            'attn_k_proj_size': proj_size,
-            'attn_v_proj_size': proj_size,
-            'attn_o_proj_size': vec_size,
-            'attn_max_qo_seq_len': seq_len,
-            'attn_max_kv_seq_len': seq_len,
-            'attn_beam_size': 1
+            'pre_dropout_rate': 0.,
+            'num_heads': nheads,
+            'softmax_scaler': 1.,
+            'embedding_size': vec_size,
+            'query_proj_size': proj_size,
+            'key_proj_size': proj_size,
+            'value_proj_size': proj_size,
+            'output_proj_size': vec_size,
+            'max_qo_seqlen': seq_len,
+            'max_kv_seqlen': seq_len
         }
 
         O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, BQ, BK, BV, BO, attn_mask,
                              seq_len, nheads, vec_size,
-                             self.attrs["attn_sm_scaler"])
-        self.outputs = {'O': O}
+                             self.attrs["softmax_scaler"])
+        self.outputs = {'output': O}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -209,8 +208,8 @@ class TestMHAOpFP16(OpTest):
                 self.place):
             return
         self.check_grad_with_place(
-            self.place, ['Q', 'K', 'V', 'W'],
-            'O',
+            self.place, ['query', 'key', 'value', 'weight'],
+            'output',
             max_relative_error=self.grad_rtol)
 
 
@@ -258,38 +257,37 @@ class TestMHAOpPadVarLenFP16(OpTest):
             attn_mask[sid, :, :, slen:] = 0.0
 
         self.inputs = {
-            'Q': Q,
-            'K': K,
-            'V': V,
-            'W': W,
-            'QO_KV_Seqlen': np.concatenate((qo_slen, kv_slen))
+            'query': Q,
+            'key': K,
+            'value': V,
+            'weight': W,
+            'qo_kv_seqlen': np.concatenate((qo_slen, kv_slen))
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            'attn_dropout_rate': 0.,
-            'attn_heads': nheads,
-            'attn_sm_scaler': 1.,
-            'attn_vec_size': vec_size,
-            'attn_q_proj_size': proj_size,
-            'attn_k_proj_size': proj_size,
-            'attn_v_proj_size': proj_size,
-            'attn_o_proj_size': vec_size,
-            'attn_max_qo_seq_len': max_seq_len,
-            'attn_max_kv_seq_len': max_seq_len,
-            'attn_beam_size': 1
+            'pre_dropout_rate': 0.,
+            'num_heads': nheads,
+            'softmax_scaler': 1.,
+            'embedding_size': vec_size,
+            'query_proj_size': proj_size,
+            'key_proj_size': proj_size,
+            'value_proj_size': proj_size,
+            'output_proj_size': vec_size,
+            'max_qo_seqlen': max_seq_len,
+            'max_kv_seqlen': max_seq_len
         }
 
         O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, BQ, BK, BV, BO, attn_mask,
                              max_seq_len, nheads, vec_size,
-                             self.attrs["attn_sm_scaler"])
+                             self.attrs["softmax_scaler"])
 
         # The output of padding part does not need to care.
         # Here we set output projection's bias to make reference be the same as cuDNN's output.
         for sid, slen in enumerate(kv_slen):
             O[sid, slen:, :] = BO
 
-        self.outputs = {'O': O}
+        self.outputs = {'output': O}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -307,8 +305,8 @@ class TestMHAOpPadVarLenFP16(OpTest):
                 self.place):
             return
         self.check_grad_with_place(
-            self.place, ['Q', 'K', 'V', 'W'],
-            'O',
+            self.place, ['query', 'key', 'value', 'weight'],
+            'output',
             max_relative_error=self.grad_rtol)
 
 
@@ -356,27 +354,26 @@ class TestMHAOpVarLenFP16(OpTest):
         kv_slens = np.sum(kv_slen, dtype=np.int32).reshape(1, )
 
         self.inputs = {
-            'Q': Q,
-            'K': K,
-            'V': V,
-            'W': W,
-            'QO_KV_Seqlen': np.concatenate((qo_slens, kv_slens)),
+            'query': Q,
+            'key': K,
+            'value': V,
+            'weight': W,
+            'qo_kv_seqlen': np.concatenate((qo_slens, kv_slens)),
             'low_high_windows_host': np.concatenate((lo_win, hi_win))
         }
 
         self.attrs = {
             'cache_key': str(id(type(self))),
-            'attn_dropout_rate': 0.,
-            'attn_heads': nheads,
-            'attn_sm_scaler': 1.,
-            'attn_vec_size': vec_size,
-            'attn_q_proj_size': proj_size,
-            'attn_k_proj_size': proj_size,
-            'attn_v_proj_size': proj_size,
-            'attn_o_proj_size': vec_size,
-            'attn_max_qo_seq_len': np.sum(qo_slen, dtype=np.int32),
-            'attn_max_kv_seq_len': np.sum(kv_slen, dtype=np.int32),
-            'attn_beam_size': 1
+            'pre_dropout_rate': 0.,
+            'num_heads': nheads,
+            'softmax_scaler': 1.,
+            'embedding_size': vec_size,
+            'query_proj_size': proj_size,
+            'key_proj_size': proj_size,
+            'value_proj_size': proj_size,
+            'output_proj_size': vec_size,
+            'max_qo_seqlen': np.sum(qo_slen, dtype=np.int32),
+            'max_kv_seqlen': np.sum(kv_slen, dtype=np.int32)
         }
 
         offset = np.insert(np.cumsum(qo_slen), 0, 0)
@@ -388,12 +385,12 @@ class TestMHAOpVarLenFP16(OpTest):
                                      WK, WV, WO, BQ, BK, BV, BO,
                                      np.ones(
                                          (1, nheads, slen, slen)), slen, nheads,
-                                     vec_size, self.attrs["attn_sm_scaler"])
+                                     vec_size, self.attrs["softmax_scaler"])
             if O is not None:
                 O = np.concatenate((O, sub_o), axis=1)
             else:
                 O = sub_o
-        self.outputs = {'O': O}
+        self.outputs = {'output': O}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -411,8 +408,8 @@ class TestMHAOpVarLenFP16(OpTest):
                 self.place):
             return
         self.check_grad_with_place(
-            self.place, ['Q', 'K', 'V', 'W'],
-            'O',
+            self.place, ['query', 'key', 'value', 'weight'],
+            'output',
             max_relative_error=self.grad_rtol)
 
 

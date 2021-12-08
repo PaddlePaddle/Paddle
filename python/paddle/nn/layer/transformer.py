@@ -186,9 +186,9 @@ class CUDNNMultiHeadAttention(Layer):
                 CUDNNMultiHeadAttention._cudnn_mha_pruning_func_maker(
                     self._embed_dim))
 
-    def forward(self, query, key, value, seq_data_info):
+    def forward(self, query, key, value, seq_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
-                                 seq_data_info)
+                                 seq_info)
 
     def state_dict(self,
                    destination=None,

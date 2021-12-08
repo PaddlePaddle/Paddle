@@ -26,65 +26,91 @@ class MHAOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "MHA");
-    OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "MHA");
-    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "MHA");
-    OP_INOUT_CHECK(ctx->HasInput("QO_KV_Seqlen"), "Input", "QO_KV_Seqlen",
+    OP_INOUT_CHECK(ctx->HasInput("query"), "Input", "query", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("key"), "Input", "key", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("value"), "Input", "value", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("qo_kv_seqlen"), "Input", "qo_kv_seqlen",
                    "MHA");
 
-    // CUDNN_SEQDATA_DIM_COUNT = 4, mins 1 = 3 due to omit beam_dim currently to
-    // have
+    // CUDNN_SEQDATA_DIM_COUNT = 4, mins 1 = 3
+    // due to omit beam_dim currently to have
     // a same inputs with Paddle's original MHA Layer.
-    int QKV_dims_size = CUDNN_SEQDATA_DIM_COUNT - 1;
-    auto q_dims = ctx->GetInputDim("Q");
-    PADDLE_ENFORCE_EQ(q_dims.size(), QKV_dims_size,
+    int qkv_dims_size = CUDNN_SEQDATA_DIM_COUNT - 1;
+    auto query_dims = ctx->GetInputDim("query");
+    PADDLE_ENFORCE_EQ(query_dims.size(), qkv_dims_size,
                       platform::errors::InvalidArgument(
-                          "The input tensor Q's dimensions of MHAOp "
-                          "should be equal to %d . But received Q's "
+                          "The input tensor query's dimensions of MHAOp "
+                          "should be equal to %d . But received query's "
                           "dimensions = %d.",
-                          QKV_dims_size, q_dims.size()));
+                          qkv_dims_size, query_dims.size()));
 
-    auto k_dims = ctx->GetInputDim("K");
-    PADDLE_ENFORCE_EQ(k_dims.size(), QKV_dims_size,
+    auto key_dims = ctx->GetInputDim("key");
+    PADDLE_ENFORCE_EQ(key_dims.size(), qkv_dims_size,
                       platform::errors::InvalidArgument(
-                          "The input tensor K's dimensions of MHAOp "
-                          "should be equal to %d . But received K's "
+                          "The input tensor key's dimensions of MHAOp "
+                          "should be equal to %d . But received key's "
                           "dimensions = %d.",
-                          QKV_dims_size, k_dims.size()));
+                          qkv_dims_size, key_dims.size()));
 
-    auto v_dims = ctx->GetInputDim("V");
-    PADDLE_ENFORCE_EQ(v_dims.size(), QKV_dims_size,
+    auto value_dims = ctx->GetInputDim("value");
+    PADDLE_ENFORCE_EQ(value_dims.size(), qkv_dims_size,
                       platform::errors::InvalidArgument(
-                          "The input tensor V's dimensions of MHAOp "
-                          "should be equal to %d . But received V's "
+                          "The input tensor value's dimensions of MHAOp "
+                          "should be equal to %d . But received value's "
                           "dimensions = %d.",
-                          QKV_dims_size, v_dims.size()));
+                          qkv_dims_size, value_dims.size()));
 
-    auto qo_kv_slen_dims = ctx->GetInputDim("QO_KV_Seqlen");
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(qo_kv_slen_dims[0], 2 * q_dims[0],
-                        platform::errors::InvalidArgument(
-                            "The number of sequence length should be equal"
-                            " to 2*(batch size)."));
+    bool enable_bias = ctx->Attrs().Get<bool>("enable_bias");
+    int embedding_size = ctx->Attrs().Get<int>("embedding_size");
+    size_t weight_size = 4 * embedding_size * embedding_size;
+    if (enable_bias) weight_size += 4 * embedding_size;
+    auto weight_dims = ctx->GetInputDim("weight");
+    size_t weight_tensor_size = 1;
+    for (int i = 0; i < weight_dims.size(); ++i) {
+      weight_tensor_size *= weight_dims[i];
     }
 
-    if (ctx->HasInput("low_high_windows")) {
-      auto low_windows = ctx->GetInputDim("low_high_windows");
+    PADDLE_ENFORCE_EQ(
+        weight_tensor_size, weight_size,
+        platform::errors::InvalidArgument(
+            "The input tensor weight's size of MHAOp "
+            "should be equal to 4*%d*%d (%d) + [4*%d when"
+            " enable_bias==true, (total=%d)]."
+            " But received weight's size = %d.",
+            embedding_size, embedding_size, 4 * embedding_size * embedding_size,
+            embedding_size, weight_size, weight_tensor_size));
+
+    int batch_size = query_dims[0];
+    auto qo_kv_seqlen_dims = ctx->GetInputDim("qo_kv_seqlen");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          qo_kv_seqlen_dims[0], 2 * batch_size,
+          platform::errors::InvalidArgument(
+              "The number of sequence length should be equal"
+              " to 2*(batch size). The first batch elements are qo seqlen"
+              " and the rest is kv seqlen"));
+    }
+
+    int seqlen = query_dims[1];
+    if (ctx->HasInput("low_high_windows_host")) {
+      auto low_high_windows = ctx->GetInputDim("low_high_windows_host");
       if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(low_windows[0], 2 * q_dims[1],
-                          platform::errors::InvalidArgument(
-                              "The number of low_high_windows should be equal"
-                              " to 2*(sequence length)."));
+        PADDLE_ENFORCE_EQ(
+            low_high_windows[0], 2 * seqlen,
+            platform::errors::InvalidArgument(
+                "The number of low_high_windows should be equal"
+                " to 2*(sequence length). The first seqlen elements"
+                " are low windows and the rest is high windows"));
       }
     }
 
     std::vector<int64_t> output_dims;
-    for (int i = 0; i < q_dims.size(); ++i) {
-      output_dims.push_back(q_dims[i]);
+    for (int i = 0; i < query_dims.size(); ++i) {
+      output_dims.push_back(query_dims[i]);
     }
 
-    ctx->SetOutputDim("O", framework::make_ddim(output_dims));
-    ctx->ShareLoD("Q", /*->*/ "O");
+    ctx->SetOutputDim("output", framework::make_ddim(output_dims));
+    ctx->ShareLoD("query", /*->*/ "output");
   }
 
  protected:
@@ -92,7 +118,7 @@ class MHAOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "query");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 
@@ -108,34 +134,32 @@ class MHAOp : public framework::OperatorWithKernel {
 class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Q", "(Tensor), Q");
-    AddInput("K", "(Tensor), K");
-    AddInput("V", "(Tensor), V");
-    AddInput("W", "(Tensor), V");
-    AddInput("QO_KV_Seqlen", "(Tensor), QO_KV_Seqlen");
-    AddInput("QO_KV_Seqlen_host", "(Tensor), QO_KV_Seqlen on host")
-        .AsDispensable();
-    AddInput("low_high_windows_host",
-             "(Tensor), low_windows and high_windows on host")
-        .AsDispensable();
+    AddInput("query", "");
+    AddInput("key", "");
+    AddInput("value", "");
+    AddInput("weight", "");
+    AddInput("qo_kv_seqlen", "");
+    AddInput("qo_kv_seqlen_host", "").AsDispensable();
+    AddInput("low_high_windows_host", "").AsDispensable();
 
-    AddOutput("O", "(Tensor), O");
-
+    AddOutput("output", "");
     AddAttr<std::string>("cache_key", "");
+    AddAttr<bool>("is_training", "").SetDefault(true);
+    AddAttr<bool>("enable_bias", "").SetDefault(true);
+    AddAttr<float>("pre_dropout_rate", "").SetDefault(0.0);
+    AddAttr<float>("post_dropout_rate", "").SetDefault(0.0);
+    AddAttr<int>("num_heads", "");
+    AddAttr<float>("softmax_scaler", "");
+    AddAttr<int>("embedding_size", "");
+    AddAttr<int>("query_proj_size", "");
+    AddAttr<int>("key_proj_size", "");
+    AddAttr<int>("value_proj_size", "");
+    AddAttr<int>("output_proj_size", "");
+    AddAttr<int>("max_qo_seqlen", "");
+    AddAttr<int>("max_kv_seqlen", "");
+    // AddAttr<int>("beam_size", "Not supported currently.");
 
-    AddAttr<float>("attn_dropout_rate", "");
-    AddAttr<int>("attn_heads", "");
-    AddAttr<float>("attn_sm_scaler", "");
-    AddAttr<int>("attn_vec_size", "");
-    AddAttr<int>("attn_q_proj_size", "");
-    AddAttr<int>("attn_k_proj_size", "");
-    AddAttr<int>("attn_v_proj_size", "");
-    AddAttr<int>("attn_o_proj_size", "");
-    AddAttr<int>("attn_max_qo_seq_len", "");
-    AddAttr<int>("attn_max_kv_seq_len", "");
-    AddAttr<int>("attn_beam_size", "Not supported currently.");
-
-    AddComment(R"DOC(MHA OP Test)DOC");
+    AddComment(R"DOC(MHA OP)DOC");
   }
 };
 
@@ -143,7 +167,8 @@ class MHAOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
   std::unordered_map<std::string, std::string> &GetInputOutputWithSameType()
       const override {
-    static std::unordered_map<std::string, std::string> m{{"Q", /*->*/ "O"}};
+    static std::unordered_map<std::string, std::string> m{
+        {"query", /*->*/ "output"}};
     return m;
   }
 };
@@ -153,11 +178,12 @@ class MHAGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("O")), "Input",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("output")), "Input",
                    "O@GRAD", "mha");
-    OP_INOUT_CHECK(ctx->HasInput("QO_KV_Seqlen"), "Input", "QO_Seqlen", "mha");
+    OP_INOUT_CHECK(ctx->HasInput("qo_kv_seqlen"), "Input", "qo_kv_seqlen",
+                   "mha");
 
-    std::string var_names[4] = {"Q", "K", "V", "W"};
+    std::string var_names[4] = {"query", "key", "value", "weight"};
     for (auto s : var_names) {
       OP_INOUT_CHECK(ctx->HasInput(s), "Input", s, "mha");
       auto dims = ctx->GetInputDim(s);
@@ -173,7 +199,7 @@ class MHAGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "query");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 
@@ -194,20 +220,23 @@ class MHAOpGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("mha_grad");
-    retv->SetInput("Q", this->Input("Q"));
-    retv->SetInput("K", this->Input("K"));
-    retv->SetInput("V", this->Input("V"));
-    retv->SetInput("W", this->Input("W"));
-    retv->SetInput("QO_KV_Seqlen", this->Input("QO_KV_Seqlen"));
-    if (this->HasInput("low_high_windows")) {
-      retv->SetInput("low_high_windows", this->Input("low_high_windows"));
+    retv->SetInput("query", this->Input("query"));
+    retv->SetInput("key", this->Input("key"));
+    retv->SetInput("value", this->Input("value"));
+    retv->SetInput("weight", this->Input("weight"));
+    retv->SetInput("qo_kv_seqlen", this->Input("qo_kv_seqlen"));
+    if (this->HasInput("low_high_windows_host")) {
+      retv->SetInput("low_high_windows_host",
+                     this->Input("low_high_windows_host"));
     }
 
-    retv->SetInput(framework::GradVarName("O"), this->OutputGrad("O"));
-    retv->SetOutput(framework::GradVarName("Q"), this->InputGrad("Q"));
-    retv->SetOutput(framework::GradVarName("K"), this->InputGrad("K"));
-    retv->SetOutput(framework::GradVarName("V"), this->InputGrad("V"));
-    retv->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    retv->SetInput(framework::GradVarName("output"),
+                   this->OutputGrad("output"));
+    retv->SetOutput(framework::GradVarName("query"), this->InputGrad("query"));
+    retv->SetOutput(framework::GradVarName("key"), this->InputGrad("key"));
+    retv->SetOutput(framework::GradVarName("value"), this->InputGrad("value"));
+    retv->SetOutput(framework::GradVarName("weight"),
+                    this->InputGrad("weight"));
     retv->SetAttrMap(this->Attrs());
   }
 };

@@ -111,34 +111,34 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         self.atol = 1e-6
         self.rtol = 1e-4
 
-    def test_fwd_output(self):
-        if self.dtype == np.float16 and not core.is_float16_supported(
-                self.place):
-            return
+    # def test_fwd_output(self):
+    #     if self.dtype == np.float16 and not core.is_float16_supported(
+    #             self.place):
+    #         return
 
-        enable_amp = False
-        if self.dtype == np.float16:
-            enable_amp = True
+    #     enable_amp = False
+    #     if self.dtype == np.float16:
+    #         enable_amp = True
 
-        with paddle.amp.auto_cast(enable=enable_amp, custom_white_list={'mha'}):
-            ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
-                                      self.v_3dim_tensor, self.attn_tensor)
-            cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
-                                          self.v_tensor, self.seq_data)
-        self.assertTrue(
-            compare(ref_output.numpy(),
-                    cudnn_output.numpy(), self.atol, self.rtol),
-            "[Test*CUDNNMHALayer] outputs are miss-matched.")
+    #     with paddle.amp.auto_cast(enable=enable_amp, custom_white_list={'mha'}):
+    #         ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
+    #                                   self.v_3dim_tensor, self.attn_tensor)
+    #         cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
+    #                                       self.v_tensor, self.seq_data)
+    #     self.assertTrue(
+    #         compare(ref_output.numpy(),
+    #                 cudnn_output.numpy(), self.atol, self.rtol),
+    #         "[Test*CUDNNMHALayer] outputs are miss-matched.")
 
-    def test_full_grads(self):
-        self.q_tensor.stop_gradient = False
-        self.k_tensor.stop_gradient = False
-        self.v_tensor.stop_gradient = False
-        self.q_3dim_tensor.stop_gradient = False
-        self.k_3dim_tensor.stop_gradient = False
-        self.v_3dim_tensor.stop_gradient = False
+    # def test_full_grads(self):
+    #     self.q_tensor.stop_gradient = False
+    #     self.k_tensor.stop_gradient = False
+    #     self.v_tensor.stop_gradient = False
+    #     self.q_3dim_tensor.stop_gradient = False
+    #     self.k_3dim_tensor.stop_gradient = False
+    #     self.v_3dim_tensor.stop_gradient = False
 
-        self._cehck_grads()
+    #     self._cehck_grads()
 
     def test_weight_grads_only(self):
         self.q_tensor.stop_gradient = True

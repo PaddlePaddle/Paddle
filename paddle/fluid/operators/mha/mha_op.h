@@ -26,47 +26,42 @@ namespace operators {
 class MHAMetaData {
  public:
   cudnnAttnDescriptor_t attn_desc = nullptr;
-  cudnnSeqDataDescriptor_t q_desc = nullptr;
-  cudnnSeqDataDescriptor_t k_desc = nullptr;
-  cudnnSeqDataDescriptor_t v_desc = nullptr;
-  cudnnSeqDataDescriptor_t o_desc = nullptr;
-  cudnnHandle_t cudnn_handle = nullptr;
+  cudnnSeqDataDescriptor_t query_desc = nullptr;
+  cudnnSeqDataDescriptor_t key_desc = nullptr;
+  cudnnSeqDataDescriptor_t value_desc = nullptr;
+  cudnnSeqDataDescriptor_t output_desc = nullptr;
 
   memory::allocation::AllocationPtr workspace = nullptr;
   memory::allocation::AllocationPtr reserve_space = nullptr;
 
-  size_t weights_size = 0;
+  size_t weight_size = 0;
   size_t workspace_size = 0;
   size_t reserve_size = 0;
-
-  void SetCudnnHandle(cudnnHandle_t cudnn_handle) {
-    cudnn_handle = cudnn_handle;
-  }
 
   MHAMetaData() {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateAttnDescriptor(&attn_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateSeqDataDescriptor(&q_desc));
+        platform::dynload::cudnnCreateSeqDataDescriptor(&query_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateSeqDataDescriptor(&k_desc));
+        platform::dynload::cudnnCreateSeqDataDescriptor(&key_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
+        platform::dynload::cudnnCreateSeqDataDescriptor(&value_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
+        platform::dynload::cudnnCreateSeqDataDescriptor(&output_desc));
   }
 
   ~MHAMetaData() {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyAttnDescriptor(attn_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroySeqDataDescriptor(q_desc));
+        platform::dynload::cudnnDestroySeqDataDescriptor(query_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroySeqDataDescriptor(k_desc));
+        platform::dynload::cudnnDestroySeqDataDescriptor(key_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroySeqDataDescriptor(v_desc));
+        platform::dynload::cudnnDestroySeqDataDescriptor(value_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroySeqDataDescriptor(o_desc));
+        platform::dynload::cudnnDestroySeqDataDescriptor(output_desc));
   }
 };
 
@@ -108,59 +103,67 @@ class DummyMHAGradKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class MHAKernel : public framework::OpKernel<T> {
+class cuDNNMHAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    const Tensor* q = context.Input<Tensor>("Q");
-    const Tensor* k = context.Input<Tensor>("K");
-    const Tensor* v = context.Input<Tensor>("V");
-    const Tensor* w = context.Input<Tensor>("W");
+    const Tensor* query = context.Input<Tensor>("query");
+    const Tensor* key = context.Input<Tensor>("key");
+    const Tensor* value = context.Input<Tensor>("value");
+    const Tensor* weight = context.Input<Tensor>("weight");
 
-    Tensor* o = context.Output<Tensor>("O");
+    Tensor* output = context.Output<Tensor>("output");
 
-    int batch_size = q->dims()[0];
-    int seq_len = q->dims()[1];
+    int batch_size = query->dims()[0];
+    int seqlen = query->dims()[1];
 
-    float attn_dropout_rate = context.Attr<float>("attn_dropout_rate");
-    int attn_heads = context.Attr<int>("attn_heads");
-    double attn_sm_scaler =
-        static_cast<double>(context.Attr<float>("attn_sm_scaler"));
-    int attn_vec_size = context.Attr<int>("attn_vec_size");
-    int attn_q_proj_size = context.Attr<int>("attn_q_proj_size");
-    int attn_k_proj_size = context.Attr<int>("attn_k_proj_size");
-    int attn_v_proj_size = context.Attr<int>("attn_v_proj_size");
-    int attn_o_proj_size = context.Attr<int>("attn_o_proj_size");
-    int attn_max_qo_seq_len = context.Attr<int>("attn_max_qo_seq_len");
-    int attn_max_kv_seq_len = context.Attr<int>("attn_max_kv_seq_len");
-    int attn_beam_size = context.Attr<int>("attn_beam_size");
+    bool is_training = context.Attr<bool>("is_training");
+    bool enable_bias = context.Attr<bool>("enable_bias");
+
+    float pre_dropout_rate = context.Attr<float>("pre_dropout_rate");
+    float post_dropout_rate = context.Attr<float>("post_dropout_rate");
+    int num_heads = context.Attr<int>("num_heads");
+    double softmax_scaler =
+        static_cast<double>(context.Attr<float>("softmax_scaler"));
+    int embedding_size = context.Attr<int>("embedding_size");
+    int query_proj_size = context.Attr<int>("query_proj_size");
+    int key_proj_size = context.Attr<int>("key_proj_size");
+    int value_proj_size = context.Attr<int>("value_proj_size");
+    int output_proj_size = context.Attr<int>("output_proj_size");
+    int max_qo_seqlen = context.Attr<int>("max_qo_seqlen");
+    int max_kv_seqlen = context.Attr<int>("max_kv_seqlen");
+    // int attn_beam_size = context.Attr<int>("attn_beam_size");
+    int beam_size = 1;  // not support beam_dim currently.
 
     // TODO(Ming Huang): Work around now is using user-defined key
-    const std::string key = context.Attr<std::string>("cache_key");
+    const std::string cache_key = context.Attr<std::string>("cache_key");
 
-    const Tensor* qo_kv_slen = context.Input<Tensor>("QO_KV_Seqlen");
-    const int* qo_kv_slen_data = qo_kv_slen->data<int>();
-    const Tensor* qo_kv_slen_host = context.Input<Tensor>("QO_KV_Seqlen_host");
-    int* qo_kv_slen_data_host;
-    memory::allocation::AllocationPtr qo_kv_slen_allc_ptr = nullptr;
-    if (qo_kv_slen_host &&
-        (platform::is_cpu_place(qo_kv_slen_host->place()) ||
-         platform::is_cuda_pinned_place(qo_kv_slen_host->place()))) {
-      qo_kv_slen_data_host = const_cast<int*>(qo_kv_slen_host->data<int>());
+    const Tensor* qo_kv_seqlen = context.Input<Tensor>("qo_kv_seqlen");
+    const int* qo_kv_seqlen_data = qo_kv_seqlen->data<int>();
+    const Tensor* qo_kv_seqlen_host =
+        context.Input<Tensor>("qo_kv_seqlen_host");
+    int* qo_kv_seqlen_data_host;
+    memory::allocation::AllocationPtr qo_kv_seqlen_allc_ptr = nullptr;
+    if (qo_kv_seqlen_host &&
+        (platform::is_cpu_place(qo_kv_seqlen_host->place()) ||
+         platform::is_cuda_pinned_place(qo_kv_seqlen_host->place()))) {
+      qo_kv_seqlen_data_host = const_cast<int*>(qo_kv_seqlen_host->data<int>());
     } else {
-      VLOG(0) << "[MHA Op]: QO_KV_Seqlen_host is not given."
-              << " Copy from QO_KV_Seqlen (CUDA place, Hurt performance).";
+      VLOG(0) << "[MHA Op]: qo_kv_seqlen_host is not given."
+              << " Copy from qo_kv_seqlen (CUDA place, Hurt performance).";
 
       platform::Place host_pinned_place = platform::CUDAPinnedPlace();
-      size_t qkvo_seqlen_size = qo_kv_slen->dims()[0] * sizeof(int);
-      qo_kv_slen_allc_ptr = memory::Alloc(host_pinned_place, qkvo_seqlen_size);
+      size_t qo_kv_seqlen_size = qo_kv_seqlen->dims()[0] * sizeof(int);
+      qo_kv_seqlen_allc_ptr =
+          memory::Alloc(host_pinned_place, qo_kv_seqlen_size);
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaMemcpy(qo_kv_slen_allc_ptr->ptr(),
-                     reinterpret_cast<const void*>(qo_kv_slen_data),
-                     qkvo_seqlen_size, cudaMemcpyDeviceToHost));
-      qo_kv_slen_data_host = reinterpret_cast<int*>(qo_kv_slen_allc_ptr->ptr());
+          cudaMemcpy(qo_kv_seqlen_allc_ptr->ptr(),
+                     reinterpret_cast<const void*>(qo_kv_seqlen_data),
+                     qo_kv_seqlen_size, cudaMemcpyDeviceToHost));
+      qo_kv_seqlen_data_host =
+          reinterpret_cast<int*>(qo_kv_seqlen_allc_ptr->ptr());
     }
 
     const Tensor* low_high_windows_host =
@@ -174,7 +177,7 @@ class MHAKernel : public framework::OpKernel<T> {
           const_cast<int*>(low_high_windows_host->data<int>());
     } else {
       platform::Place host_pinned_place = platform::CUDAPinnedPlace();
-      size_t low_high_windows_size = 2 * seq_len * sizeof(int);
+      size_t low_high_windows_size = 2 * seqlen * sizeof(int);
       low_high_windows_ptr =
           memory::Alloc(host_pinned_place, low_high_windows_size);
 
@@ -192,9 +195,9 @@ class MHAKernel : public framework::OpKernel<T> {
                 << ", CUDAPinned and CUDAPinnded place. Gernereate 0s for low "
                    "and IMA_MAX for high.";
         int* lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
-        for (int i = 0; i < seq_len; ++i) {
+        for (int i = 0; i < seqlen; ++i) {
           lo_hi_ptr[i] = 0;
-          lo_hi_ptr[i + seq_len] = INT_MAX;
+          lo_hi_ptr[i + seqlen] = INT_MAX;
         }
       }
 
@@ -207,14 +210,12 @@ class MHAKernel : public framework::OpKernel<T> {
         dtype == CUDNN_DATA_DOUBLE ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
-    MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
-    cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
-    cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
-    // Setup Attention Dropout
-    if (attn_dropout_rate > 0.0) {
+    // Setup Pre Attention Dropout
+    cudnnDropoutDescriptor_t pre_dropout_desc = nullptr;
+    if (pre_dropout_rate > 0.0) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateDropoutDescriptor(&attn_dropout_desc));
+          platform::dynload::cudnnCreateDropoutDescriptor(&pre_dropout_desc));
 
       size_t dropout_buf_size;
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnDropoutGetStatesSize(
@@ -222,35 +223,56 @@ class MHAKernel : public framework::OpKernel<T> {
 
       auto dropout_buf = memory::Alloc(dev_ctx, dropout_buf_size);
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
-          attn_dropout_desc, cudnn_handle, attn_dropout_rate,
+          pre_dropout_desc, cudnn_handle, pre_dropout_rate,
           static_cast<void*>(dropout_buf->ptr()), dropout_buf_size, 0));
     }
 
+    // Setup Post Attention Dropout
+    cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
+    // if (post_dropout_rate > 0.0) {
+    //   PADDLE_ENFORCE_CUDA_SUCCESS(
+    //       platform::dynload::cudnnCreateDropoutDescriptor(&post_dropout_desc));
+
+    //   size_t dropout_buf_size;
+    //   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnDropoutGetStatesSize(
+    //       cudnn_handle, &dropout_buf_size));
+
+    //   auto dropout_buf = memory::Alloc(dev_ctx, dropout_buf_size);
+    //   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
+    //       post_dropout_desc, cudnn_handle, post_dropout_rate,
+    //       static_cast<void*>(dropout_buf->ptr()), dropout_buf_size, 0));
+    // }
+
     // Setup Attention Desc
+    auto attn_mode = enable_bias ? CUDNN_ATTN_ENABLE_PROJ_BIASES
+                                 : CUDNN_ATTN_DISABLE_PROJ_BIASES;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
-        MHASingleton::Instance().Data(key).attn_desc,
-        CUDNN_ATTN_ENABLE_PROJ_BIASES, attn_heads, attn_sm_scaler, dtype,
-        comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
-        attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
-        attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
-        attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size, attn_beam_size));
+        MHASingleton::Instance().Data(cache_key).attn_desc, attn_mode,
+        num_heads, softmax_scaler, dtype, comp_prec, CUDNN_DEFAULT_MATH,
+        pre_dropout_desc, post_dropout_desc, embedding_size, embedding_size,
+        embedding_size, query_proj_size, key_proj_size, value_proj_size,
+        output_proj_size, max_qo_seqlen, max_kv_seqlen, batch_size, beam_size));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
-        cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-        &MHASingleton::Instance().Data(key).weights_size,
-        &MHASingleton::Instance().Data(key).workspace_size,
-        &MHASingleton::Instance().Data(key).reserve_size));
+        cudnn_handle, MHASingleton::Instance().Data(cache_key).attn_desc,
+        &MHASingleton::Instance().Data(cache_key).weight_size,
+        &MHASingleton::Instance().Data(cache_key).workspace_size,
+        &MHASingleton::Instance().Data(cache_key).reserve_size));
 
     // TODO(rewang): ensure workspace size will not be increased
-    if (MHASingleton::Instance().Data(key).workspace == nullptr) {
-      MHASingleton::Instance().Data(key).workspace = memory::Alloc(
-          dev_ctx, MHASingleton::Instance().Data(key).workspace_size);
+    if (MHASingleton::Instance().Data(cache_key).workspace == nullptr) {
+      MHASingleton::Instance().Data(cache_key).workspace = memory::Alloc(
+          dev_ctx, MHASingleton::Instance().Data(cache_key).workspace_size);
     }
 
     // TODO(rewang): ensure reserve_size size will not be increased
-    if (MHASingleton::Instance().Data(key).reserve_space == nullptr) {
-      MHASingleton::Instance().Data(key).reserve_space = memory::Alloc(
-          dev_ctx, MHASingleton::Instance().Data(key).reserve_size);
+    if (is_training &&
+        MHASingleton::Instance().Data(cache_key).reserve_space == nullptr) {
+      MHASingleton::Instance().Data(cache_key).reserve_space = memory::Alloc(
+          dev_ctx, MHASingleton::Instance().Data(cache_key).reserve_size);
+    } else {
+      MHASingleton::Instance().Data(cache_key).reserve_space == nullptr;
+      MHASingleton::Instance().Data(cache_key).reserve_size == 0;
     }
 
     cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];
@@ -260,92 +282,97 @@ class MHAKernel : public framework::OpKernel<T> {
     axes[3] = CUDNN_SEQDATA_VECT_DIM;
 
     int dimA[CUDNN_SEQDATA_DIM_COUNT];
-    dimA[CUDNN_SEQDATA_VECT_DIM] = q->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
-    dimA[CUDNN_SEQDATA_TIME_DIM] = q->dims()[1];
-    dimA[CUDNN_SEQDATA_BATCH_DIM] = q->dims()[0];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = query->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = beam_size;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = query->dims()[1];
+    dimA[CUDNN_SEQDATA_BATCH_DIM] = query->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-        MHASingleton::Instance().Data(key).q_desc, dtype,
-        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        qo_kv_slen_data_host, nullptr));
+        MHASingleton::Instance().Data(cache_key).query_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * beam_size,
+        qo_kv_seqlen_data_host, nullptr));
 
-    dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
-    dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[1];
-    dimA[CUDNN_SEQDATA_BATCH_DIM] = k->dims()[0];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = key->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = beam_size;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = key->dims()[1];
+    dimA[CUDNN_SEQDATA_BATCH_DIM] = key->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-        MHASingleton::Instance().Data(key).k_desc, dtype,
-        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        qo_kv_slen_data_host + batch_size, nullptr));
+        MHASingleton::Instance().Data(cache_key).key_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * beam_size,
+        qo_kv_seqlen_data_host + batch_size, nullptr));
 
-    dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
-    dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[1];
-    dimA[CUDNN_SEQDATA_BATCH_DIM] = v->dims()[0];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = value->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = beam_size;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = value->dims()[1];
+    dimA[CUDNN_SEQDATA_BATCH_DIM] = value->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-        MHASingleton::Instance().Data(key).v_desc, dtype,
-        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        qo_kv_slen_data_host + batch_size, nullptr));
+        MHASingleton::Instance().Data(cache_key).value_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * beam_size,
+        qo_kv_seqlen_data_host + batch_size, nullptr));
 
-    dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;  // not support beam_dim currently.
-    dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[1];
-    dimA[CUDNN_SEQDATA_BATCH_DIM] = o->dims()[0];
+    dimA[CUDNN_SEQDATA_VECT_DIM] = output->dims()[2];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = beam_size;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = output->dims()[1];
+    dimA[CUDNN_SEQDATA_BATCH_DIM] = output->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-        MHASingleton::Instance().Data(key).o_desc, dtype,
-        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        qo_kv_slen_data_host, nullptr));
+        MHASingleton::Instance().Data(cache_key).output_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * beam_size,
+        qo_kv_seqlen_data_host, nullptr));
 
-    o->mutable_data<T>(context.GetPlace());
-    const T* q_data = q->data<T>();
-    const T* k_data = k->data<T>();
-    const T* v_data = v->data<T>();
-    const T* w_data = w->data<T>();
+    output->mutable_data<T>(context.GetPlace());
+    const T* query_data = query->data<T>();
+    const T* key_data = key->data<T>();
+    const T* value_data = value->data<T>();
+    const T* weight_data = weight->data<T>();
 
-    T* o_data = o->data<T>();
+    T* output_data = output->data<T>();
     const T* residuals = nullptr;
 
+    void* rs_ptr = nullptr;
+    if (is_training) {
+      rs_ptr = MHASingleton::Instance().Data(cache_key).reserve_space->ptr();
+    }
+
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
-        cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
-        low_high_windows_data_host, low_high_windows_data_host + seq_len,
-        qo_kv_slen_data, qo_kv_slen_data + batch_size,
-        MHASingleton::Instance().Data(key).q_desc, q_data, residuals,
-        MHASingleton::Instance().Data(key).k_desc, k_data,
-        MHASingleton::Instance().Data(key).v_desc, v_data,
-        MHASingleton::Instance().Data(key).o_desc, o_data,
-        MHASingleton::Instance().Data(key).weights_size, w_data,
-        MHASingleton::Instance().Data(key).workspace_size,
-        MHASingleton::Instance().Data(key).workspace->ptr(),
-        MHASingleton::Instance().Data(key).reserve_size,
-        MHASingleton::Instance().Data(key).reserve_space->ptr()));
+        cudnn_handle, MHASingleton::Instance().Data(cache_key).attn_desc, -1,
+        low_high_windows_data_host, low_high_windows_data_host + seqlen,
+        qo_kv_seqlen_data, qo_kv_seqlen_data + batch_size,
+        MHASingleton::Instance().Data(cache_key).query_desc, query_data,
+        residuals, MHASingleton::Instance().Data(cache_key).key_desc, key_data,
+        MHASingleton::Instance().Data(cache_key).value_desc, value_data,
+        MHASingleton::Instance().Data(cache_key).output_desc, output_data,
+        MHASingleton::Instance().Data(cache_key).weight_size, weight_data,
+        MHASingleton::Instance().Data(cache_key).workspace_size,
+        MHASingleton::Instance().Data(cache_key).workspace->ptr(),
+        MHASingleton::Instance().Data(cache_key).reserve_size, rs_ptr));
   }
 };
 
 template <typename DeviceContext, typename T>
-class MHAGradKernel : public framework::OpKernel<T> {
+class cuDNNMHAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    const Tensor* dout = context.Input<Tensor>(framework::GradVarName("O"));
-    const Tensor* q = context.Input<Tensor>("Q");
-    const Tensor* k = context.Input<Tensor>("K");
-    const Tensor* v = context.Input<Tensor>("V");
-    const Tensor* w = context.Input<Tensor>("W");
-    const Tensor* qo_kv_slen = context.Input<Tensor>("QO_KV_Seqlen");
+    const Tensor* doutput =
+        context.Input<Tensor>(framework::GradVarName("output"));
+    const Tensor* query = context.Input<Tensor>("query");
+    const Tensor* key = context.Input<Tensor>("key");
+    const Tensor* value = context.Input<Tensor>("value");
+    const Tensor* weight = context.Input<Tensor>("weight");
+    const Tensor* qo_kv_seqlen = context.Input<Tensor>("qo_kv_seqlen");
 
-    Tensor* dq = context.Output<Tensor>(framework::GradVarName("Q"));
-    Tensor* dk = context.Output<Tensor>(framework::GradVarName("K"));
-    Tensor* dv = context.Output<Tensor>(framework::GradVarName("V"));
-    Tensor* dw = context.Output<Tensor>(framework::GradVarName("W"));
+    Tensor* dquery = context.Output<Tensor>(framework::GradVarName("query"));
+    Tensor* dkey = context.Output<Tensor>(framework::GradVarName("key"));
+    Tensor* dvalue = context.Output<Tensor>(framework::GradVarName("value"));
+    Tensor* dweight = context.Output<Tensor>(framework::GradVarName("weight"));
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
     // TODO(Ming Huang): Work around now is using user-defined key
-    const std::string key = context.Attr<std::string>("cache_key");
+    const std::string cache_key = context.Attr<std::string>("cache_key");
 
-    int seq_len = q->dims()[1];
+    int seqlen = query->dims()[1];
     const Tensor* low_high_windows_host =
         context.Input<Tensor>("low_high_windows_host");
     int* low_high_windows_data_host;
@@ -357,7 +384,7 @@ class MHAGradKernel : public framework::OpKernel<T> {
           const_cast<int*>(low_high_windows_host->data<int>());
     } else {
       platform::Place host_pinned_place = platform::CUDAPinnedPlace();
-      size_t low_high_windows_size = 2 * seq_len * sizeof(int);
+      size_t low_high_windows_size = 2 * seqlen * sizeof(int);
       low_high_windows_ptr =
           memory::Alloc(host_pinned_place, low_high_windows_size);
 
@@ -370,9 +397,9 @@ class MHAGradKernel : public framework::OpKernel<T> {
                        low_high_windows_size, cudaMemcpyDeviceToHost));
       } else {
         int* lo_hi_ptr = reinterpret_cast<int*>(low_high_windows_ptr->ptr());
-        for (int i = 0; i < seq_len; ++i) {
+        for (int i = 0; i < seqlen; ++i) {
           lo_hi_ptr[i] = 0;
-          lo_hi_ptr[i + seq_len] = INT_MAX;
+          lo_hi_ptr[i + seqlen] = INT_MAX;
         }
       }
 
@@ -380,78 +407,83 @@ class MHAGradKernel : public framework::OpKernel<T> {
           reinterpret_cast<int*>(low_high_windows_ptr->ptr());
     }
 
-    const T* dout_data = dout->data<T>();
-    const T* q_data = q->data<T>();
-    const T* k_data = k->data<T>();
-    const T* v_data = v->data<T>();
-    const T* w_data = w->data<T>();
+    const T* doutput_data = doutput->data<T>();
+    const T* query_data = query->data<T>();
+    const T* key_data = key->data<T>();
+    const T* value_data = value->data<T>();
+    const T* weight_data = weight->data<T>();
 
     // Note(Ming Huang): Due to cuDNN MHA need to call BwdData before
     // BwdWeight for correctly gradient computing, we need tempoary
     // memory buffers for DQ, DK and DV for calling BwdData when they.
     // are nullptrs.
-    T* dq_data;
-    if (dq) {
-      dq->mutable_data<T>(context.GetPlace());
-      dq_data = dq->data<T>();
+    T* dquery_data;
+    if (dquery) {
+      dquery->mutable_data<T>(context.GetPlace());
+      dquery_data = dquery->data<T>();
     } else {
-      auto dq_buf =
-          memory::Alloc(dev_ctx, framework::product(q->dims()) * sizeof(T));
-      dq_data = static_cast<T*>(dq_buf->ptr());
+      auto dquery_buf =
+          memory::Alloc(dev_ctx, framework::product(query->dims()) * sizeof(T));
+      dquery_data = static_cast<T*>(dquery_buf->ptr());
     }
 
-    T* dk_data;
-    if (dk) {
-      dk->mutable_data<T>(context.GetPlace());
-      dk_data = dk->data<T>();
+    T* dkey_data;
+    if (dkey) {
+      dkey->mutable_data<T>(context.GetPlace());
+      dkey_data = dkey->data<T>();
     } else {
-      auto dk_buf =
-          memory::Alloc(dev_ctx, framework::product(k->dims()) * sizeof(T));
-      dk_data = static_cast<T*>(dk_buf->ptr());
+      auto dkey_buf =
+          memory::Alloc(dev_ctx, framework::product(key->dims()) * sizeof(T));
+      dkey_data = static_cast<T*>(dkey_buf->ptr());
     }
 
-    T* dv_data;
-    if (dv) {
-      dv->mutable_data<T>(context.GetPlace());
-      dv_data = dv->data<T>();
+    T* dvalue_data;
+    if (dvalue) {
+      dvalue->mutable_data<T>(context.GetPlace());
+      dvalue_data = dvalue->data<T>();
     } else {
-      auto dv_buf =
-          memory::Alloc(dev_ctx, framework::product(v->dims()) * sizeof(T));
-      dv_data = static_cast<T*>(dv_buf->ptr());
+      auto dvalue_buf =
+          memory::Alloc(dev_ctx, framework::product(value->dims()) * sizeof(T));
+      dvalue_data = static_cast<T*>(dvalue_buf->ptr());
     }
 
-    const int* qo_kv_slen_data = qo_kv_slen->data<int>();
+    const int* qo_kv_seqlen_data = qo_kv_seqlen->data<int>();
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnMultiHeadAttnBackwardData(
-            cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-            low_high_windows_data_host, low_high_windows_data_host + seq_len,
-            qo_kv_slen_data, qo_kv_slen_data + q->dims()[0],
-            MHASingleton::Instance().Data(key).o_desc, dout_data,
-            MHASingleton::Instance().Data(key).q_desc, dq_data, q_data,
-            MHASingleton::Instance().Data(key).k_desc, dk_data, k_data,
-            MHASingleton::Instance().Data(key).v_desc, dv_data, v_data,
-            MHASingleton::Instance().Data(key).weights_size, w_data,
-            MHASingleton::Instance().Data(key).workspace_size,
-            MHASingleton::Instance().Data(key).workspace->ptr(),
-            MHASingleton::Instance().Data(key).reserve_size,
-            MHASingleton::Instance().Data(key).reserve_space->ptr()));
+            cudnn_handle, MHASingleton::Instance().Data(cache_key).attn_desc,
+            low_high_windows_data_host, low_high_windows_data_host + seqlen,
+            qo_kv_seqlen_data, qo_kv_seqlen_data + query->dims()[0],
+            MHASingleton::Instance().Data(cache_key).output_desc, doutput_data,
+            MHASingleton::Instance().Data(cache_key).query_desc, dquery_data,
+            query_data, MHASingleton::Instance().Data(cache_key).key_desc,
+            dkey_data, key_data,
+            MHASingleton::Instance().Data(cache_key).value_desc, dvalue_data,
+            value_data, MHASingleton::Instance().Data(cache_key).weight_size,
+            weight_data,
+            MHASingleton::Instance().Data(cache_key).workspace_size,
+            MHASingleton::Instance().Data(cache_key).workspace->ptr(),
+            MHASingleton::Instance().Data(cache_key).reserve_size,
+            MHASingleton::Instance().Data(cache_key).reserve_space->ptr()));
 
-    if (dw) {
-      dw->mutable_data<T>(context.GetPlace());
-      T* dw_data = dw->data<T>();
+    if (dweight) {
+      dweight->mutable_data<T>(context.GetPlace());
+      T* dweight_data = dweight->data<T>();
 
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnMultiHeadAttnBackwardWeights(
-              cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-              CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,
-              q_data, MHASingleton::Instance().Data(key).k_desc, k_data,
-              MHASingleton::Instance().Data(key).v_desc, v_data,
-              MHASingleton::Instance().Data(key).o_desc, dout_data,
-              MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
-              MHASingleton::Instance().Data(key).workspace_size,
-              MHASingleton::Instance().Data(key).workspace->ptr(),
-              MHASingleton::Instance().Data(key).reserve_size,
-              MHASingleton::Instance().Data(key).reserve_space->ptr()));
+              cudnn_handle, MHASingleton::Instance().Data(cache_key).attn_desc,
+              CUDNN_WGRAD_MODE_SET,
+              MHASingleton::Instance().Data(cache_key).query_desc, query_data,
+              MHASingleton::Instance().Data(cache_key).key_desc, key_data,
+              MHASingleton::Instance().Data(cache_key).value_desc, value_data,
+              MHASingleton::Instance().Data(cache_key).output_desc,
+              doutput_data,
+              MHASingleton::Instance().Data(cache_key).weight_size, weight_data,
+              dweight_data,
+              MHASingleton::Instance().Data(cache_key).workspace_size,
+              MHASingleton::Instance().Data(cache_key).workspace->ptr(),
+              MHASingleton::Instance().Data(cache_key).reserve_size,
+              MHASingleton::Instance().Data(cache_key).reserve_space->ptr()));
     }
   }
 };
