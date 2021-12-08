@@ -6582,7 +6582,10 @@ class RecomputeOptimizer(Optimizer):
                 print("Finished apply_optimize")
         """
 
-        return self._optimizer.apply_optimize(
+        func = self._optimizer.apply_optimize if hasattr(
+            self._optimizer,
+            'apply_optimize') else self._optimizer._apply_optimize
+        return func(
             loss, startup_program=startup_program, params_grads=params_grads)
 
     def minimize(self,
