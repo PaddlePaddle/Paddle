@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
