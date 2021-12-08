@@ -783,7 +783,7 @@ void TensorCopy(const DenseTensor& src, DenseTensor* dst) {
         pool.Get(src.place()));
   }
 
-  Copy(*dev_ctx, src, false, dst);
+  pten::Copy(*dev_ctx, src, false, dst);
 }
 
 template <typename Tx,
