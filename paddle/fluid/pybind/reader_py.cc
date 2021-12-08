@@ -337,7 +337,21 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
   py::class_<ReaderType>(m, reader_name, "")
       .def("read_next", &ReaderType::ReadNext,
            py::call_guard<py::gil_scoped_release>())
-      .def("read_next_list", &ReaderType::ReadNextList,
+      .def("read_next_list",
+           [](ReaderType &self) {
+             auto result_list = self.ReadNextList();
+             py::list res(result_list.size());
+             for (size_t i = 0; i < result_list.size(); ++i) {
+               py::list res_i(result_list[i].size());
+               for (size_t j = 0; j < result_list[i].size(); ++j) {
+                 res_i[j] = py::cast(std::move(result_list[i][j]));
+               }
+               res[i] = std::move(res_i);
+               result_list[i].clear();
+             }
+             result_list.clear();
+             return res;
+           },
            py::call_guard<py::gil_scoped_release>())
       .def("read_next_var_list",
            [](ReaderType &self) {
