@@ -449,7 +449,7 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
   const int N = SizeToAxis(axis, dims);
   const int D = SizeOutAxis(axis, dims);
 
-  constexpr int max_dim = 320;
+  constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
 
   if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
@@ -540,7 +540,7 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
   const int N = SizeToAxis(axis, dims);
   const int D = SizeOutAxis(axis, dims);
 
-  constexpr int max_dim = 320;
+  constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
 
   if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
