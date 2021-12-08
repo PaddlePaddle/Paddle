@@ -56,6 +56,14 @@ std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
   return metas;
 }
 
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    const egr::EagerTensor& target) {
+  auto* p_autograd_meta = target.get_autograd_meta();
+  if (!p_autograd_meta) return nullptr;
+
+  return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
     std::vector<egr::EagerTensor>* targets) {
   std::vector<AutogradMeta*> ret;
