@@ -55,13 +55,6 @@ void Copy(const CPUContext& dev_ctx,
   }
 }
 
-void TensorCopy(const CPUContext& dev_ctx,
-                const DenseTensor& src,
-                const paddle::platform::Place& dst_place,
-                DenseTensor* dst) {
-  Copy(dev_ctx, src, false, dst);
-}
-
 }  // namespace pten
 
 // TODO(chenweihang): replace by better impl
