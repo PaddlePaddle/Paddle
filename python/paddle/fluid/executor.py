@@ -404,7 +404,7 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
     # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key. 
     def _get_varname_from_block(block):
         block_str = []
-        for var_name in list(bloc.vars.keys()):
+        for var_name in list(block.vars.keys()):
             block_str.append(var_name)
         return "\n".join(block_str)
 
