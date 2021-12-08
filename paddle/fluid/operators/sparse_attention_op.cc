@@ -43,6 +43,16 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default: Tensor<int32>), The input tensor of columns in "
              "CSR sparse format, "
              "whose dimension : `[batch_size, num_heads, sparse_nnz_num]`.");
+    AddInput("KeyPaddingMask",
+             "(Tensor), The input tensor of key padding mask"
+             "whose dimension : `[batch_size, target_len]`.")
+        .AsDispensable()
+        .AsExtra();
+    AddInput("AttnMask",
+             "(Tensor), The input tensor of attention mask"
+             "whose dimension : `[target_len, target_len]`.")
+        .AsDispensable()
+        .AsExtra();
     AddOutput(
         "Out",
         "(Tensor), The output tensor of result in attention, "

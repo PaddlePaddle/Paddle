@@ -71,6 +71,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"adamw",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
+    {"sparse_attention",
+     {"Q", "K", "V", "Offset", "Columns", "KeyPaddingMask", "AttnMask"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
