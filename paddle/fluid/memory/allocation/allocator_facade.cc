@@ -30,13 +30,10 @@
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#include "paddle/fluid/platform/cuda_graph.h"
-#else
-#include <hip/hip_runtime.h>
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #endif
 
 #if CUDA_VERSION >= 10020
@@ -52,6 +49,10 @@
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#endif
+
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
 PADDLE_DEFINE_EXPORTED_int64(
@@ -139,14 +140,18 @@ class AllocatorFacadePrivate {
     switch (strategy_) {
       case AllocatorStrategy::kNaiveBestFit: {
         InitNaiveBestFitCPUAllocator();
+#ifdef PADDLE_WITH_IPU
+        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
+        }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (FLAGS_use_stream_safe_cuda_allocator) {
           LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
                           "naive_best_fit strategy";
           FLAGS_use_stream_safe_cuda_allocator = false;
         }
-        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
-             ++dev_id) {
+        for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
@@ -172,13 +177,13 @@ class AllocatorFacadePrivate {
         if (FLAGS_use_stream_safe_cuda_allocator) {
           // TODO(Ruibiao): Support multi-stream allocator for other strategies
           default_stream_ = nullptr;
-          for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+          for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount();
                ++dev_id) {
             InitStreamSafeCUDAAllocator(platform::CUDAPlace(dev_id),
                                         default_stream_);
           }
         } else {
-          for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+          for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount();
                ++dev_id) {
             InitAutoGrowthCUDAAllocator(platform::CUDAPlace(dev_id),
                                         allow_free_idle_chunk_);
@@ -191,6 +196,11 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_IPU
+        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
+        }
+#endif
         break;
       }
 
@@ -201,6 +211,11 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_IPU
+        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
+        }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (FLAGS_use_stream_safe_cuda_allocator) {
           LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
@@ -208,8 +223,7 @@ class AllocatorFacadePrivate {
           FLAGS_use_stream_safe_cuda_allocator = false;
         }
 
-        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
-             ++dev_id) {
+        for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
@@ -399,10 +413,10 @@ class AllocatorFacadePrivate {
     CUdevice device;
     int val;
     try {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
               device));
@@ -476,10 +490,10 @@ class AllocatorFacadePrivate {
     CUdevice device;
     int val;
     try {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()));
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cuDeviceGetAttribute(
               &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
               device));
@@ -575,6 +589,12 @@ class AllocatorFacadePrivate {
   }
 #endif
 
+#ifdef PADDLE_WITH_IPU
+  void InitNaiveBestFitIPUAllocator(platform::IPUPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+#endif
+
 #ifdef PADDLE_WITH_ASCEND_CL
   void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
@@ -596,10 +616,17 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_IPU
+    int device_count = platform::GetIPUDeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::IPUPlace p(i);
+      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+    }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     system_allocators_[platform::CUDAPinnedPlace()] =
         std::make_shared<CPUPinnedAllocator>();
-    int device_count = platform::GetCUDADeviceCount();
+    int device_count = platform::GetGPUDeviceCount();
     for (int i = 0; i < device_count; ++i) {
       platform::CUDAPlace p(i);
       system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
@@ -612,7 +639,7 @@ class AllocatorFacadePrivate {
     std::vector<platform::Place> places;
     places.emplace_back(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    int device_count = platform::GetCUDADeviceCount();
+    int device_count = platform::GetGPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::CUDAPlace(dev_id));
     }
@@ -628,6 +655,12 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetNPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::NPUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_IPU
+    int device_count = platform::GetIPUDeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::IPUPlace(dev_id));
     }
 #endif
 

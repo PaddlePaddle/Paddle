@@ -18,12 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/softmax_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -453,7 +449,7 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
   const int N = SizeToAxis(axis, dims);
   const int D = SizeOutAxis(axis, dims);
 
-  constexpr int max_dim = 320;
+  constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
 
   if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
@@ -503,12 +499,12 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data,
           MIOPEN_SOFTMAX_LOG, mode));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data,
           MIOPEN_SOFTMAX_ACCURATE, mode));
@@ -517,12 +513,12 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
           desc_, x.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           out_data));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data));
@@ -544,7 +540,7 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
   const int N = SizeToAxis(axis, dims);
   const int D = SizeOutAxis(axis, dims);
 
-  constexpr int max_dim = 320;
+  constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
 
   if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
@@ -591,12 +587,12 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(),
           desc_, dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data, MIOPEN_SOFTMAX_LOG, mode));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(),
           desc_, dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data, MIOPEN_SOFTMAX_ACCURATE, mode));
@@ -605,12 +601,12 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
           desc_, out.data<T>(), desc_, dout.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, dx_data));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(), desc_,
           dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));

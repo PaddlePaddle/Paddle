@@ -15,12 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 
 #include <unordered_map>
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

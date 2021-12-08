@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -37,7 +37,7 @@ namespace operators {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::ncclGetUniqueId(&(*nccl_ids)[i]));
   }
 }

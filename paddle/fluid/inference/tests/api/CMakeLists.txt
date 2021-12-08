@@ -94,6 +94,17 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
+function(inference_analysis_api_int8_test target install_dir filename)
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${install_dir}/model
+             --infer_data=${install_dir}/data.txt
+             --refer_result=${install_dir}/result.txt
+             --accuracy=0.8
+             --batch_size=5
+             --enable_int8=true)
+endfunction()
+
 function(inference_multiple_models_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
@@ -284,13 +295,14 @@ set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
 download_model_and_data_without_verify(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
 
-#Ernie
+# Ernie
 set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" aa59192dd41ed377f9f168e3a1309fa6 "Ernie_data.txt.tar.gz" 5396e63548edad7ca561e7e26a9476d1)
 download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz" 73beea65abda2edb61c1662cd3180c62)
 inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+inference_analysis_api_int8_test(test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc)
 
-#Ernie large
+# Ernie large
 set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" af7715245ed32cc77374625d4c80f7ef "Ernie_large_data.txt.tar.gz" edb2113eec93783cad56ed76d47ba57f)
 download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz" 1facda98eef1085dc9d435ebf3f23a73)
@@ -426,7 +438,7 @@ if(WITH_MKLDNN)
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   download_int8_data_without_verify(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
-#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
+#  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # vgg19 int8
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
@@ -730,6 +742,7 @@ set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_ernie_int8 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)

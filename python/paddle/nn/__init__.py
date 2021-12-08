@@ -295,5 +295,6 @@ __all__ = [     #noqa
            'ELU',
            'ReLU6',
            'LayerDict',
-           'ZeroPad2D'
+           'ZeroPad2D',
+           'MaxUnPool2D',
 ]

@@ -83,8 +83,14 @@ class ShardingOptimizerStage2(Optimizer):
         # Default information
         self._optim_defaults = kw
         self._optim = optim
+        assert hasattr(self._optim, "_master_weights"
+                       ), "Must use optimizer with _master_weights attribute"
         self._local_params = params
         self._default_device = device
+        self._pfp16 = len(
+            list(
+                filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
+                       self._local_params))) > 0
 
         assert group is not None, "Distributed communication group is must be gived"
         self.group = group
@@ -97,6 +103,12 @@ class ShardingOptimizerStage2(Optimizer):
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self.update_opt_status()
+
+    def _generate_master_params(self, trainable_params):
+        for param in trainable_params:
+            if param.dtype == Type.fp16.value:
+                self._optim._master_weights[param.name] = paddle.cast(
+                    param, Type.fp32.value)
 
     def update_opt_status(self):
         """Update optimizer status and parameter storage information, and special functions to be developed.
@@ -207,6 +219,8 @@ class ShardingOptimizerStage2(Optimizer):
                     # Merge all the trainable params in a single InternalStorage
                     trainable_params = list(
                         filter(lambda x: x.trainable, params))
+                    if self._pfp16 and dst_rank == self.rank:
+                        self._generate_master_params(trainable_params)
                     if trainable_params:
                         param_storage = ParamStorage(
                             size=self.rank_buffer_size[dtype][dst_rank],
