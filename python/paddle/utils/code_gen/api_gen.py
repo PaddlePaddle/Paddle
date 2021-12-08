@@ -263,67 +263,21 @@ PADDLE_API {self.output} {self.api}({self.args['args_declare']});
   auto out_meta = pten::{infer_meta['func']}({param_code});
 """
 
-    def gene_kernel_context(self, input_names, attrs, infer_meta, kernel_param):
-        attr_names = attrs['names']
-        if kernel_param is None:
-            kernel_param = input_names + attr_names
-
-        input_code_str = ""
-        attr_code_str = ""
-        for param in kernel_param:
-            if param in input_names:
-                # set input for kernel_context
-                input_code_str = input_code_str + f"""
-  auto {self.prefix_tensor_name}{param} = std::dynamic_pointer_cast<pten::DenseTensor>({param}.impl());
-  kernel_context.EmplaceBackInput({self.prefix_tensor_name}{param});"""
-
-            elif param in attr_names:
-                # set attr for kernel_context
-                if 'ScalarArray' in attrs['attr_info'][param][0]:
-                    param = 'pten::ScalarArray(' + param + ')'
-                elif 'Scalar' in attrs['attr_info'][param][0]:
-                    param = 'pten::Scalar(' + param + ')'
-                attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({param});"""
-
-            elif isinstance(param, bool):
-                attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({str(param).lower()});"""
-
-            else:
-                attr_code_str = attr_code_str + f"""
-  kernel_context.EmplaceBackAttr({param});"""
-
-        return f"""
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-  auto kernel_context = pten::KernelContext(dev_ctx);
-{input_code_str}
-{attr_code_str}
-{self.gene_infer_meta(input_names, attr_names, infer_meta)}
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_backend));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
-  kernel_context.EmplaceBackOutput(dense_out);
-
-  Tensor out;
-  out.set_impl(dense_out);"""
-
     def get_kernel_args(self, input_names, attrs, kernel_param):
+        input_tensor_code = ""
+        for input_name in input_names:
+            # set input code
+            input_tensor_code = input_tensor_code + f"""
+  auto {self.prefix_tensor_name}{input_name} = std::dynamic_pointer_cast<pten::DenseTensor>({input_name}.impl());"""
+
         attr_names = attrs['names']
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        input_tensor_code = ""
         kernel_args = "*dev_ctx, "
         for param in kernel_param:
             if param in input_names:
-                # set input for kernel_context
-                input_tensor_code = input_tensor_code + f"""
-  auto {self.prefix_tensor_name}{param} = std::dynamic_pointer_cast<pten::DenseTensor>({param}.impl());"""
-
-                kernel_args = kernel_args + self.prefix_tensor_name + param + ", "
-
+                kernel_args = kernel_args + "*" + self.prefix_tensor_name + param + ", "
             elif param in attr_names:
                 # set attr for kernel_context
                 if 'ScalarArray' in attrs['attr_info'][param][0]:
@@ -334,12 +288,12 @@ PADDLE_API {self.output} {self.api}({self.args['args_declare']});
             elif isinstance(param, bool):
                 kernel_args = kernel_args + str(param).lower() + ", "
             else:
-                kernel_args = kernel_args + param + ", "
+                kernel_args = kernel_args + str(param) + ", "
         return input_tensor_code, kernel_args[:-2]
 
     def gene_api_code(self):
         if self.is_base_api:
-            input_tensors, kernel_args = get_kernel_args(
+            input_tensors, kernel_args = self.get_kernel_args(
                 self.args['inputs']['names'], self.args['attrs'],
                 self.kernel['param'])
             return f"""
@@ -347,19 +301,19 @@ PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 {self.gene_kernel_select(self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-
 {input_tensors}
 {self.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           pten::TransToFluidPlace(kernel_backend));
   auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
-  kernel_context.EmplaceBackOutput(dense_out);
 
   Tensor out;
   out.set_impl(dense_out);
-  auto* kernel_fn = kernel.get_kernel_fn<pten::{self.api}>();
-  (*kernel_fn)({kernel_args});
+
+  auto* kernel_fn = kernel.get_kernel_fn<pten::{self.api}_kernel>();
+  (*kernel_fn)({kernel_args}, dense_out.get());
+
   return out;
 }}
 """
