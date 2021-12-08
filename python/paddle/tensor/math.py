@@ -1078,7 +1078,8 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \\log\\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32 or float64, which 
+            have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
             tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp

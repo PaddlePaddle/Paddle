@@ -32,19 +32,6 @@
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
 
-// NOTE(pangyoki): Tensor View Strategy.
-// In this case, a new output varbase will be created, and this varbase will
-// reuse the input varbase's allocation.
-// It's a map. The key of outer map is the view op name, the value is
-// a pair which implies the mapping relationship between the input and
-// output varbase.
-std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
-    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
-    {"unsqueeze2", {"X", "Out"}},
-    {"reshape2", {"X", "Out"}},
-    {"flatten_contiguous_range", {"X", "Out"}},
-};
-
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.
 // The first Varbase in input needs to be specified for the inplace strategy
