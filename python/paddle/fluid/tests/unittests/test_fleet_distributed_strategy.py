@@ -259,11 +259,18 @@ class TestStrategyConfig(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {
             "table_parameters.accessor.embed_sgd_param.adagrad.learning_rate":
-            0.05
+            0.05,
+            "table_parameters.accessor.table_accessor_save_param.num": 2,
+            "table_parameters.accessor.table_accessor_save_param.param":
+            [1, 2]
         }
         strategy.sparse_table_configs = configs
         self.assertEqual(strategy.sparse_table_configs.accessor.embed_sgd_param.
                          adagrad.learning_rate, 0.05)
+        self.assertEqual(
+            strategy.sparse_table_configs.accessor.table_accessor_save_param[
+                0].param, 1)
+
         strategy.adam_d2sum = True
         self.assertEqual(strategy.adam_d2sum, True)
         strategy.fs_client_param = {
