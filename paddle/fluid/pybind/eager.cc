@@ -15,6 +15,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -27,6 +28,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/core.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/pybind/eager_op_function_impl.h"
 
 namespace paddle {
 namespace pybind {
@@ -126,6 +128,7 @@ void BindEager(pybind11::module* module) {
   }
 
   BindFunctions(m.ptr());
+  BindEagerOpFunctions(&m);
 }
 
 }  // namespace pybind
