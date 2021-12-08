@@ -86,7 +86,7 @@
     param: [x, axis, keep_dim]
   kernel : 
     func : reduce_mean
-    param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
+    param : [x, axis, keep_dim, false]
 
 - api : multiply
   args : (const Tensor& x, const Tensor& y)
@@ -138,7 +138,7 @@
     param: [x, axis, keep_dim, dtype]
   kernel : 
     func : reduce_sum
-    param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
+    param : [x, axis, keep_dim, false, DataType::UNDEFINED]
     data_type : x
 
 - api : zeros_like
