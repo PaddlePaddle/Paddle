@@ -62,7 +62,7 @@ class MLPLayer(nn.Layer):
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
-        out = paddle.reshape(out, [4, 2, 512])
+        out = paddle.unsqueeze(out, axis=0)
         out = paddle.reshape(out, [4, 1024])
         return out
 
@@ -128,7 +128,7 @@ class TestMLPSearcher(unittest.TestCase):
         dist_context = DistributedContext()
         set_default_dist_attr(train_program, dist_context, global_process_mesh)
         ops = train_program.global_block().ops
-
+        vars = train_program.global_block().vars
         from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
         from paddle.distributed.auto_parallel.completion import is_elementwise_like_op
         from paddle.distributed.auto_parallel.dist_op import DistributedOperator
@@ -137,16 +137,42 @@ class TestMLPSearcher(unittest.TestCase):
             dist_op_impl_container = get_distributed_operator_impl_container(
                 op.type)
             if dist_op_impl_container is None:
-                dist_op = DistributedOperator(
-                    op, dist_context.get_op_dist_attr_for_program(op))
+                op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+                dist_op = DistributedOperator(op, op_dist_attr)
                 if is_elementwise_like_op(op.type):
                     changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                         dist_op)
                     self.assertFalse(changed)
+
+                    dist_op.dist_attr.set_output_dims_mapping(
+                        op.output_arg_names[0], [0] + [
+                            -1
+                            for i in range(
+                                1, len(vars[op.output_arg_names[0]].shape))
+                        ])
+                    try:
+                        changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
+                            dist_op)
+                    except:
+                        continue
+                    self.assertTrue(changed)
                 else:
                     changed = update_op_dims_mapping_by_default_dist_impl(
                         dist_op)
                     self.assertFalse(changed)
+
+                    dist_op.dist_attr.set_output_dims_mapping(
+                        op.output_arg_names[0], [0] + [
+                            -1
+                            for i in range(
+                                1, len(vars[op.output_arg_names[0]].shape))
+                        ])
+                    try:
+                        changed = update_op_dims_mapping_by_default_dist_impl(
+                            dist_op)
+                    except:
+                        continue
+                    self.assertTrue(changed)
 
 
 if __name__ == "__main__":
