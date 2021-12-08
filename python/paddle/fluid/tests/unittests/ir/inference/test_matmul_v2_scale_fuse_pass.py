@@ -35,35 +35,24 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
     """
 
     def sample_predictor_configs(self, program_config):
+        # for cpu
+        config = self.create_inference_config(use_gpu=False)
+        yield config, ["matmul_v2", ], (1e-5, 1e-5)
+
         # mkldnn
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ["matmul_v2", ], (1e-5, 1e-5)
-
-        # for gpu
-        # config = self.create_inference_config(use_gpu=True)
-        # yield config, ["matmul_v2", ], (1e-5, 1e-5)
-
-        # TRT
-        # config = self.create_trt_inference_config()
-        # config.enable_tensorrt_engine(
-        #     max_batch_size=10,
-        #     workspace_size=10240,
-        #     min_subgraph_size=0,
-        #     precision_mode=paddle_infer.PrecisionType.Float32,
-        #     use_static=False,
-        #     use_calib_mode=False)
-        # yield config, ["matmul_v2", ], (1e-5, 1e-5)
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=10), min_size=2, max_size=5))
+                    min_value=1, max_value=8), min_size=2, max_size=5))
         y_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=10), min_size=2, max_size=5))
+                    min_value=1, max_value=8), min_size=2, max_size=5))
         x_shape_rank = len(x_shape)
         y_shape_rank = len(y_shape)
         y_shape[-2] = x_shape[-1]
@@ -120,18 +109,13 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
             weights=weights,
             inputs=inputs,
             outputs=ops[-1].outputs["Out"], )
-        # print("x_shape", x_shape)
-        # print("y_shape:", y_shape)
-        # print(is_scale_tensor, scale_shape)
         return program_config
 
     def test(self):
         self.run_and_statis(
             quant=False,
             max_examples=300,
-            passes=["matmul_v2_scale_fuse_pass"],
-            # reproduce=reproduce_failure('6.27.1', b'AXicY2RgZAAiIAEDjAwAAFgABg==')
-        )
+            passes=["matmul_v2_scale_fuse_pass"], )
 
 
 if __name__ == "__main__":

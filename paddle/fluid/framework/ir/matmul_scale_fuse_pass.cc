@@ -147,6 +147,8 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
     if (has_scale_tensor && scale_op->Op()->Input("ScaleTensor").size() > 0) {
       std::string scale_var_name = scale_op->Op()->Input("ScaleTensor").front();
       auto* scale_var = scope->FindVar(scale_var_name);
+      // ScaleTensor must be weight
+      if (scale_var == nullptr) return;
       auto* sacle_tensor = scale_var->GetMutable<LoDTensor>();
       scale = *(sacle_tensor->data<float>());
     }
@@ -216,6 +218,8 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
     if (has_scale_tensor && scale_op->Op()->Input("ScaleTensor").size() > 0) {
       std::string scale_var_name = scale_op->Op()->Input("ScaleTensor").front();
       auto* scale_var = scope->FindVar(scale_var_name);
+      // ScaleTensor must be weight
+      if (scale_var == nullptr) return;
       auto* sacle_tensor = scale_var->GetMutable<LoDTensor>();
       scale = *(sacle_tensor->data<float>());
     }
