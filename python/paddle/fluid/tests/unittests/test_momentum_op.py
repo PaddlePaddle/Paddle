@@ -855,14 +855,14 @@ class TestMultiTensorMomentum(unittest.TestCase):
                 scaled = scaler.scale(loss)
                 scaled.backward()
                 scaler.step(optimizer)
-                optimizer.clear_grad()
+                optimizer.clear_grads()
             else:
                 output = model(input)
                 loss = paddle.mean(output)
                 # This can be any optimizer supported by dygraph.
                 loss.backward()
                 optimizer.step()
-                optimizer.clear_grad()
+                optimizer.clear_grads()
 
         return output, model.parameters()
 
