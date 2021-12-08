@@ -408,7 +408,9 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
             block_str.append(var_name)
         return "\n".join(block_str)
 
-    return _get_varname_from_block(program.blocks[0]) + str(id(
+    inner_program = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    return _get_varname_from_block(inner_program.blocks[0]) + str(id(
         program)) + _get_program_cache_key(feed, fetch_list)
 
 
