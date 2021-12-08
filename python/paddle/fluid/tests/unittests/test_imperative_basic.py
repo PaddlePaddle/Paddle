@@ -400,8 +400,6 @@ class TestImperative(unittest.TestCase):
 
     def test_layer(self):
         with fluid.dygraph.guard():
-            cl = core.Layer()
-            cl.forward([])
             l = fluid.Layer("l")
             self.assertRaises(NotImplementedError, l.forward, [])
 

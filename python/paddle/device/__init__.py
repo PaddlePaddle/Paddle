@@ -18,6 +18,7 @@ import os
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
@@ -28,6 +29,7 @@ __all__ = [  # noqa
     'get_device',
     'XPUPlace',
     'is_compiled_with_xpu',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_npu'
