@@ -2618,7 +2618,7 @@ def logit(x, eps=0.0, name=None):
     This function generates a new tensor with the logit of the elements of input.
 
     .. math::
-    
+ 
         logit(x) = ln(\frac{x}{1 - x})
 
     where
@@ -2646,6 +2646,7 @@ def logit(x, eps=0.0, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
