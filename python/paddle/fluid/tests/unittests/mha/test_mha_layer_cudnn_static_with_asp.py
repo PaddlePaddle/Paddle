@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqInfoInfer
+from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
 from paddle import fluid
 
 
@@ -40,7 +40,7 @@ def _generate_data(batch_size, max_seq_len, vec_size):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNNMHALayerWithASP(unittest.TestCase):
+class TestcuDNNMHALayerWithASP(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
         self.nheads = 4
@@ -79,8 +79,8 @@ class TestCUDNNMHALayerWithASP(unittest.TestCase):
             k_input.stop_gradient = False
             v_input.stop_gradient = False
 
-            seq_info_infer = CUDNNSeqInfoInfer()
-            self.cudnn_mha = CUDNNMultiHeadAttention(self.vec_size, self.nheads)
+            seq_info_infer = cuDNNSeqInfoInfer()
+            self.cudnn_mha = cuDNNMultiHeadAttention(self.vec_size, self.nheads)
             seq_info = seq_info_infer(attn_mask_input)
             cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input,
                                               seq_info)

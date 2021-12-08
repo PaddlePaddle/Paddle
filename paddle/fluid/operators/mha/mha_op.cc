@@ -110,7 +110,6 @@ class MHAOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("output", framework::make_ddim(output_dims));
-    ctx->ShareLoD("query", /*->*/ "output");
   }
 
  protected:

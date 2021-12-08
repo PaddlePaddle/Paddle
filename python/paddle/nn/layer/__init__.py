@@ -87,6 +87,6 @@ from .vision import PixelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .container import LayerDict  # noqa: F401
 
-from .transformer import CUDNNSeqInfoInfer  # noqa: F401
+from .transformer import cuDNNSeqInfoInfer  # noqa: F401
 
 __all__ = []

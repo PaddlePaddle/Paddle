@@ -107,7 +107,7 @@ def _convert_attention_mask(attn_mask, dtype):
     return attn_mask
 
 
-class CUDNNSeqInfo:
+class cuDNNSeqInfo:
     def __init__(self, max_seqlen, qo_seqlen, kv_seqlen, low_windows,
                  high_windows, attn_mask):
         self.max_seqlen = max_seqlen
@@ -119,9 +119,9 @@ class CUDNNSeqInfo:
         self.attn_mask = attn_mask
 
 
-class CUDNNSeqInfoInfer(Layer):
+class cuDNNSeqInfoInfer(Layer):
     def __init__(self):
-        super(CUDNNSeqInfoInfer, self).__init__()
+        super(cuDNNSeqInfoInfer, self).__init__()
 
     def forward(self, attention_mask):
         max_seqlen = attention_mask.shape[-1]
@@ -136,7 +136,7 @@ class CUDNNSeqInfoInfer(Layer):
         low_windows = paddle.zeros((max_seqlen, ), dtype='int32')
         high_windows = paddle.full((max_seqlen, ), max_seqlen, dtype='int32')
 
-        seq_info = CUDNNSeqInfo(max_seqlen, qo_seqlen, kv_seqlen, low_windows,
+        seq_info = cuDNNSeqInfo(max_seqlen, qo_seqlen, kv_seqlen, low_windows,
                                 high_windows, attention_mask)
 
         seq_info.qo_kv_seqlen_host, seq_info.low_high_windows_host = \
@@ -145,34 +145,49 @@ class CUDNNSeqInfoInfer(Layer):
         return seq_info
 
 
-class CUDNNMHAMetaData:
-    def __init__(self, nheads, hidden_size, dropout_rate=0.0, sm_scaler=1.0):
-        self.nheads = nheads
-        self.hidden_size = hidden_size
-        self.proj_size = hidden_size // nheads
-        self.dropout_rate = dropout_rate
-        self.sm_scaler = sm_scaler
+class cuDNNMHAMetaData:
+    def __init__(self,
+                 num_heads,
+                 embed_dim,
+                 pre_dropout_rate=0.0,
+                 post_dropout_rate=0.0,
+                 softmax_scaler=1.0,
+                 enable_bias=True):
+        self.num_heads = num_heads
+        self.embed_dim = embed_dim
+        self.proj_size = embed_dim // num_heads
+        self.pre_dropout_rate = pre_dropout_rate
+        self.post_dropout_rate = post_dropout_rate
+        self.softmax_scaler = softmax_scaler
+        self.enable_bias = enable_bias
 
 
-class CUDNNMultiHeadAttention(Layer):
+class cuDNNMultiHeadAttention(Layer):
     def __init__(self,
                  embed_dim,
                  num_heads,
                  dropout=0.,
                  weight_attr=None,
+                 enable_bias=True,
                  name=None,
                  add_to_asp=True):
-        super(CUDNNMultiHeadAttention, self).__init__()
+        super(cuDNNMultiHeadAttention, self).__init__()
 
         self._dtype = self._helper.get_default_dtype()
         self._embed_dim = embed_dim
         self._weight_attr = weight_attr
 
-        self.meta_data = CUDNNMHAMetaData(num_heads, embed_dim, dropout)
-        self.meta_data.sm_scaler = self.meta_data.proj_size**-0.5
+        self.meta_data = cuDNNMHAMetaData(
+            num_heads,
+            embed_dim,
+            pre_dropout_rate=dropout,
+            enable_bias=enable_bias)
+        self.meta_data.softmax_scaler = self.meta_data.proj_size**-0.5
 
+        weight_shape = (embed_dim * embed_dim * 4 + embed_dim * 4, ) if enable_bias \
+                        else (embed_dim * embed_dim * 4, )
         self.weight = self.create_parameter(
-            shape=(embed_dim * embed_dim * 4 + embed_dim * 4, ),
+            shape=weight_shape,
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
@@ -183,12 +198,11 @@ class CUDNNMultiHeadAttention(Layer):
             from paddle.fluid.contrib.sparsity import add_supported_layer
             add_supported_layer(
                 self.weight.name,
-                CUDNNMultiHeadAttention._cudnn_mha_pruning_func_maker(
-                    self._embed_dim))
+                cuDNNMultiHeadAttention._pruning_func_maker(self._embed_dim))
 
     def forward(self, query, key, value, seq_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
-                                 seq_info)
+                                 seq_info, self.training)
 
     def state_dict(self,
                    destination=None,
@@ -197,39 +211,43 @@ class CUDNNMultiHeadAttention(Layer):
 
         if destination is None:
             destination = collections.OrderedDict()
-        WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = \
-            CUDNNMultiHeadAttention._split_W_into_WQKVO(self.weight, self._embed_dim)
-        destination['q_proj.weight'] = WQ_P
-        destination['q_proj.bias'] = WQ_B
-        destination['k_proj.weight'] = WK_P
-        destination['k_proj.bias'] = WK_B
-        destination['v_proj.weight'] = WV_P
-        destination['v_proj.bias'] = WV_B
-        destination['out_proj.weight'] = WO_P
-        destination['out_proj.bias'] = WO_B
+        q_proj_weight, q_proj_bias, \
+        k_proj_weight, k_proj_bias, \
+        v_proj_weight, v_proj_bias, \
+        out_proj_weight, out_proj_bias = \
+            cuDNNMultiHeadAttention._split_weight_into_legacy_format(self.weight, self._embed_dim)
+        destination['q_proj.weight'] = q_proj_weight
+        destination['q_proj.bias'] = q_proj_bias
+        destination['k_proj.weight'] = k_proj_weight
+        destination['k_proj.bias'] = k_proj_bias
+        destination['v_proj.weight'] = v_proj_weight
+        destination['v_proj.bias'] = v_proj_bias
+        destination['out_proj.weight'] = out_proj_weight
+        destination['out_proj.bias'] = out_proj_bias
         return destination
 
     def set_state_dict(self, state_dict, use_structured_name=True):
-        WQ_P = state_dict['q_proj.weight']
-        WQ_B = state_dict['q_proj.bias']
-        WK_P = state_dict['k_proj.weight']
-        WK_B = state_dict['k_proj.bias']
-        WV_P = state_dict['v_proj.weight']
-        WV_B = state_dict['v_proj.bias']
-        WO_P = state_dict['out_proj.weight']
-        WO_B = state_dict['out_proj.bias']
-        W = CUDNNMultiHeadAttention._merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B,
-                                                      WV_P, WV_B, WO_P, WO_B)
-        self.weight.set_value(W)
+        q_proj_weight = state_dict['q_proj.weight']
+        q_proj_bias = state_dict['q_proj.bias']
+        k_proj_weight = state_dict['k_proj.weight']
+        k_proj_bias = state_dict['k_proj.bias']
+        v_proj_weight = state_dict['v_proj.weight']
+        v_proj_bias = state_dict['v_proj.bias']
+        out_proj_weight = state_dict['out_proj.weight']
+        out_proj_bias = state_dict['out_proj.bias']
+        weight = cuDNNMultiHeadAttention._merge_weight_from_legacy_format(
+            q_proj_weight, q_proj_bias, k_proj_weight, k_proj_bias,
+            v_proj_weight, v_proj_bias, out_proj_weight, out_proj_bias)
+        self.weight.set_value(weight)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
         return 'total weights={}, W[Q/k/V/O]={}x{}, dtype={}{}'.format(
-            self.weight.shape[0], self.meta_data.hidden_size,
-            self.meta_data.hidden_size, self._dtype, name_str)
+            self.weight.shape[0], self.meta_data.embed_dim,
+            self.meta_data.embed_dim, self._dtype, name_str)
 
     @staticmethod
-    def convert_inference_program_with_paddleMHA_replacement(layer, inputs):
+    def to_legacy(layer, inputs):
 
         in_dygraph_mode_before = paddle.fluid.framework.in_dygraph_mode()
         if not in_dygraph_mode_before:
@@ -245,23 +263,27 @@ class CUDNNMultiHeadAttention(Layer):
 
         import types
         for _, l in layer.named_sublayers():
-            if isinstance(l, CUDNNMultiHeadAttention):
-                l.paddle_mha = MultiHeadAttention(
-                    l._embed_dim, l.meta_data.nheads, l.meta_data.dropout_rate)
+            if isinstance(l, cuDNNMultiHeadAttention):
+                l.legacy_mha = MultiHeadAttention(l._embed_dim,
+                                                  l.meta_data.num_heads,
+                                                  l.meta_data.pre_dropout_rate)
 
-                WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = \
-                    CUDNNMultiHeadAttention._split_W_into_WQKVO(np.array(l.weight), l._embed_dim)
-                l.paddle_mha.q_proj.weight.set_value(WQ_P)
-                l.paddle_mha.k_proj.weight.set_value(WK_P)
-                l.paddle_mha.v_proj.weight.set_value(WV_P)
-                l.paddle_mha.out_proj.weight.set_value(WO_P)
-                l.paddle_mha.q_proj.bias.set_value(WQ_B)
-                l.paddle_mha.k_proj.bias.set_value(WK_B)
-                l.paddle_mha.v_proj.bias.set_value(WV_B)
-                l.paddle_mha.out_proj.bias.set_value(WO_B)
+                q_proj_weight, q_proj_bias, \
+                k_proj_weight, k_proj_bias, \
+                v_proj_weight, v_proj_bias, \
+                out_proj_weight, out_proj_bias = \
+                    cuDNNMultiHeadAttention._split_weight_into_legacy_format(np.array(l.weight), l._embed_dim)
+                l.legacy_mha.q_proj.weight.set_value(q_proj_weight)
+                l.legacy_mha.k_proj.weight.set_value(k_proj_weight)
+                l.legacy_mha.v_proj.weight.set_value(v_proj_weight)
+                l.legacy_mha.out_proj.weight.set_value(out_proj_weight)
+                l.legacy_mha.q_proj.bias.set_value(q_proj_bias)
+                l.legacy_mha.k_proj.bias.set_value(k_proj_bias)
+                l.legacy_mha.v_proj.bias.set_value(v_proj_bias)
+                l.legacy_mha.out_proj.bias.set_value(out_proj_bias)
 
                 def forward(self, q, k, v, seq_info):
-                    return self.paddle_mha(q, k, v, seq_info.attn_mask)
+                    return self.legacy_mha(q, k, v, seq_info.attn_mask)
 
                 l.forward = types.MethodType(forward, l)
 
@@ -281,54 +303,58 @@ class CUDNNMultiHeadAttention(Layer):
         return layer
 
     @staticmethod
-    def _split_W_into_WQKVO(weight, embed_dim):
+    def _split_weight_into_legacy_format(weight, embed_dim):
         param_shape = (embed_dim, embed_dim)
         stride = embed_dim * embed_dim
-        WQ_P = weight[:stride].reshape(param_shape)
-        WK_P = weight[stride:2 * stride].reshape(param_shape)
-        WV_P = weight[2 * stride:3 * stride].reshape(param_shape)
-        WO_P = weight[3 * stride:4 * stride].reshape(param_shape)
+        q_proj_weight = weight[:stride].reshape(param_shape)
+        k_proj_weight = weight[stride:2 * stride].reshape(param_shape)
+        v_proj_weight = weight[2 * stride:3 * stride].reshape(param_shape)
+        out_proj_weight = weight[3 * stride:4 * stride].reshape(param_shape)
 
         bias_start = 4 * stride
-        WQ_B = weight[bias_start:bias_start + embed_dim]
-        WK_B = weight[bias_start + embed_dim:bias_start + 2 * embed_dim]
-        WV_B = weight[bias_start + 2 * embed_dim:bias_start + 3 * embed_dim]
-        WO_B = weight[bias_start + 3 * embed_dim:]
+        q_proj_bias = weight[bias_start:bias_start + embed_dim]
+        k_proj_bias = weight[bias_start + embed_dim:bias_start + 2 * embed_dim]
+        v_proj_bias = weight[bias_start + 2 * embed_dim:bias_start + 3 *
+                             embed_dim]
+        out_proj_bias = weight[bias_start + 3 * embed_dim:]
 
-        return WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B
+        return q_proj_weight, q_proj_bias, \
+               k_proj_weight, k_proj_bias, \
+               v_proj_weight, v_proj_bias, \
+               out_proj_weight, out_proj_bias
 
     @staticmethod
-    def _merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
-        W = np.concatenate([
-            WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten(),
-            WQ_B.flatten(), WK_B.flatten(), WV_B.flatten(), WO_B.flatten()
+    def _merge_weight_from_legacy_format(
+            q_proj_weight, q_proj_bias, k_proj_weight, k_proj_bias,
+            v_proj_weight, v_proj_bias, out_proj_weight, out_proj_bias):
+        weight = np.concatenate([
+            q_proj_weight.flatten(), k_proj_weight.flatten(),
+            v_proj_weight.flatten(), out_proj_weight.flatten(),
+            q_proj_bias.flatten(), k_proj_bias.flatten(), v_proj_bias.flatten(),
+            out_proj_bias.flatten()
         ])
-        return W
+        return weight
 
     @staticmethod
-    def _cudnn_mha_pruning_func_maker(vec_size):
-        def cudnn_pruning(weight_nparray, m, n, func_name, param_name):
+    def _pruning_func_maker(embed_dim):
+        def weight_pruning(weight_nparray, m, n, func_name, param_name):
             from paddle.fluid.contrib import sparsity
 
-            stride = vec_size * vec_size
-            WQ = weight_nparray[0:stride].reshape((vec_size, vec_size))
-            WK = weight_nparray[stride:2 * stride].reshape((vec_size, vec_size))
-            WV = weight_nparray[2 * stride:3 * stride].reshape(
-                (vec_size, vec_size))
-            WO = weight_nparray[3 * stride:4 * stride].reshape(
-                (vec_size, vec_size))
+            q_proj_weight, _, k_proj_weight, _, v_proj_weight, _, out_proj_weight, _ = \
+                cuDNNMultiHeadAttention._split_weight_into_legacy_format(weight_nparray, embed_dim)
 
-            WQ_sparse_mask = sparsity.create_mask(
-                WQ.T, func_name=func_name, n=n, m=m).T.flatten()
-            WK_sparse_mask = sparsity.create_mask(
-                WK.T, func_name=func_name, n=n, m=m).T.flatten()
-            WV_sparse_mask = sparsity.create_mask(
-                WV.T, func_name=func_name, n=n, m=m).T.flatten()
-            WO_sparse_mask = sparsity.create_mask(
-                WO.T, func_name=func_name, n=n, m=m).T.flatten()
-            bias_sparse_mask = np.ones((4 * vec_size))
+            q_proj_weight_sparse_mask = sparsity.create_mask(
+                q_proj_weight.T, func_name=func_name, n=n, m=m).T.flatten()
+            k_proj_weight_sparse_mask = sparsity.create_mask(
+                k_proj_weight.T, func_name=func_name, n=n, m=m).T.flatten()
+            v_proj_weight_sparse_mask = sparsity.create_mask(
+                v_proj_weight.T, func_name=func_name, n=n, m=m).T.flatten()
+            out_proj_weight_sparse_mask = sparsity.create_mask(
+                out_proj_weight.T, func_name=func_name, n=n, m=m).T.flatten()
+            bias_sparse_mask = np.ones((4 * embed_dim))
             weight_sparse_mask = np.concatenate([
-                WQ_sparse_mask, WK_sparse_mask, WV_sparse_mask, WO_sparse_mask,
+                q_proj_weight_sparse_mask, k_proj_weight_sparse_mask,
+                v_proj_weight_sparse_mask, out_proj_weight_sparse_mask,
                 bias_sparse_mask
             ])
 
@@ -337,7 +363,7 @@ class CUDNNMultiHeadAttention(Layer):
 
             return weight_pruned_nparray, weight_sparse_mask
 
-        return cudnn_pruning
+        return weight_pruning
 
 
 class MultiHeadAttention(Layer):

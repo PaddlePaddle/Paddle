@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqInfoInfer
+from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
 
 
 def compare(ref, res, atol, rtol):
@@ -60,7 +60,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
+class TestFP32cuDNNMHALayerStatic(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
         self.nheads = 4
@@ -144,8 +144,8 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
             k_input.stop_gradient = False
             v_input.stop_gradient = False
 
-            seq_info_infer = CUDNNSeqInfoInfer()
-            self.cudnn_mha = CUDNNMultiHeadAttention(self.vec_size, self.nheads)
+            seq_info_infer = cuDNNSeqInfoInfer()
+            self.cudnn_mha = cuDNNMultiHeadAttention(self.vec_size, self.nheads)
             with paddle.static.amp.fp16_guard():
                 seq_info = seq_info_infer(attn_mask_input)
                 cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input,
@@ -196,7 +196,7 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
         self.assertTrue(
             compare(
                 np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
-            "[Test*CUDNNMHALayer-Static] outputs are miss-matched.")
+            "[Test*cuDNNMHALayer-Static] outputs are miss-matched.")
 
     def test_grads(self):
 
@@ -240,21 +240,21 @@ class TestFP32CUDNNMHALayerStatic(unittest.TestCase):
 
         self.assertTrue(
             compare(ref_weight_grad, cdunn_w_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayer-Static] weight_grads are miss-matched.")
+            "[Test*cuDNNMHALayer-Static] weight_grads are miss-matched.")
         self.assertTrue(
             compare(q_input_3dim_grad, q_input_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayer-Static] Q_grads are miss-matched.")
+            "[Test*cuDNNMHALayer-Static] Q_grads are miss-matched.")
         self.assertTrue(
             compare(k_input_3dim_grad, k_input_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayer-Static] K_grads are miss-matched.")
+            "[Test*cuDNNMHALayer-Static] K_grads are miss-matched.")
         self.assertTrue(
             compare(v_input_3dim_grad, v_input_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayer-Static] V_grads are miss-matched.")
+            "[Test*cuDNNMHALayer-Static] V_grads are miss-matched.")
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFP16CUDNNMHALayerStatic(TestFP32CUDNNMHALayerStatic):
+class TestFP16cuDNNMHALayerStatic(TestFP32cuDNNMHALayerStatic):
     def setUp(self):
         super().setUp()
         ori_fp16_var_list = paddle.static.amp.cast_model_to_fp16(

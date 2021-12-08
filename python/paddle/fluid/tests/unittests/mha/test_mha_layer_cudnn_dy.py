@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqInfoInfer
+from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
 
 
 def compare(ref, res, atol, rtol):
@@ -60,7 +60,7 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFP32CUDNNMHALayer(unittest.TestCase):
+class TestFP32cuDNNMHALayer(unittest.TestCase):
     def setUp(self):
         batch_size = 4
         nheads = 4
@@ -79,7 +79,7 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         self.ref_mha.v_proj.weight.set_value(self.WV)
         self.ref_mha.out_proj.weight.set_value(self.WO)
 
-        self.cudnn_mha = CUDNNMultiHeadAttention(vec_size, nheads)
+        self.cudnn_mha = cuDNNMultiHeadAttention(vec_size, nheads)
         self.cudnn_mha.weight.set_value(self.W)
 
         self.q_tensor = paddle.to_tensor(
@@ -98,7 +98,7 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
 
         attn_mask = paddle.to_tensor(
             np.ones((batch_size, seq_len)), place=self.place)
-        seq_infer = CUDNNSeqInfoInfer()
+        seq_infer = cuDNNSeqInfoInfer()
         self.seq_data = seq_infer(attn_mask)
 
         self.attn_tensor = paddle.to_tensor(
@@ -111,34 +111,34 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
         self.atol = 1e-6
         self.rtol = 1e-4
 
-    # def test_fwd_output(self):
-    #     if self.dtype == np.float16 and not core.is_float16_supported(
-    #             self.place):
-    #         return
+    def test_fwd_output(self):
+        if self.dtype == np.float16 and not core.is_float16_supported(
+                self.place):
+            return
 
-    #     enable_amp = False
-    #     if self.dtype == np.float16:
-    #         enable_amp = True
+        enable_amp = False
+        if self.dtype == np.float16:
+            enable_amp = True
 
-    #     with paddle.amp.auto_cast(enable=enable_amp, custom_white_list={'mha'}):
-    #         ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
-    #                                   self.v_3dim_tensor, self.attn_tensor)
-    #         cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
-    #                                       self.v_tensor, self.seq_data)
-    #     self.assertTrue(
-    #         compare(ref_output.numpy(),
-    #                 cudnn_output.numpy(), self.atol, self.rtol),
-    #         "[Test*CUDNNMHALayer] outputs are miss-matched.")
+        with paddle.amp.auto_cast(enable=enable_amp, custom_white_list={'mha'}):
+            ref_output = self.ref_mha(self.q_3dim_tensor, self.k_3dim_tensor,
+                                      self.v_3dim_tensor, self.attn_tensor)
+            cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
+                                          self.v_tensor, self.seq_data)
+        self.assertTrue(
+            compare(ref_output.numpy(),
+                    cudnn_output.numpy(), self.atol, self.rtol),
+            "[Test*cuDNNMHALayer] outputs are miss-matched.")
 
-    # def test_full_grads(self):
-    #     self.q_tensor.stop_gradient = False
-    #     self.k_tensor.stop_gradient = False
-    #     self.v_tensor.stop_gradient = False
-    #     self.q_3dim_tensor.stop_gradient = False
-    #     self.k_3dim_tensor.stop_gradient = False
-    #     self.v_3dim_tensor.stop_gradient = False
+    def test_full_grads(self):
+        self.q_tensor.stop_gradient = False
+        self.k_tensor.stop_gradient = False
+        self.v_tensor.stop_gradient = False
+        self.q_3dim_tensor.stop_gradient = False
+        self.k_3dim_tensor.stop_gradient = False
+        self.v_3dim_tensor.stop_gradient = False
 
-    #     self._cehck_grads()
+        self._cehck_grads()
 
     def test_weight_grads_only(self):
         self.q_tensor.stop_gradient = True
@@ -176,20 +176,20 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
 
         self.assertTrue(
             compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
-            "[Test*CUDNNMHALayer] weight_grads are miss-matched.")
+            "[Test*cuDNNMHALayer] weight_grads are miss-matched.")
         if check_data_grads:
             self.assertTrue(
                 compare(self.q_3dim_tensor.grad.numpy(),
                         self.q_tensor.grad.numpy(), self.atol, self.rtol),
-                "[Test*CUDNNMHALayer] Q_grads are miss-matched.")
+                "[Test*cuDNNMHALayer] Q_grads are miss-matched.")
             self.assertTrue(
                 compare(self.k_3dim_tensor.grad.numpy(),
                         self.k_tensor.grad.numpy(), self.atol, self.rtol),
-                "[Test*CUDNNMHALayer] K_grads are miss-matched.")
+                "[Test*cuDNNMHALayer] K_grads are miss-matched.")
             self.assertTrue(
                 compare(self.v_3dim_tensor.grad.numpy(),
                         self.v_tensor.grad.numpy(), self.atol, self.rtol),
-                "[Test*CUDNNMHALayer] V_grads are miss-matched.")
+                "[Test*cuDNNMHALayer] V_grads are miss-matched.")
 
     def _get_grads_from_ref(self):
         return np.concatenate(
@@ -206,7 +206,7 @@ class TestFP32CUDNNMHALayer(unittest.TestCase):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFP16CUDNNMHALayer(TestFP32CUDNNMHALayer):
+class TestFP16cuDNNMHALayer(TestFP32cuDNNMHALayer):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-3

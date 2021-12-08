@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqInfoInfer
+from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
 from paddle.static import InputSpec
 
 
@@ -59,11 +59,11 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     return (Q, K, V, W, WQ, WK, WV, WO)
 
 
-class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
+class cuDNNMHAWithSeqInfer(paddle.nn.Layer):
     def __init__(self, hidden, heads):
-        super(CUDNNMHAWithSeqInfer, self).__init__()
-        self.seq_info_infer = CUDNNSeqInfoInfer()
-        self.cudnn_mha = CUDNNMultiHeadAttention(hidden, heads)
+        super(cuDNNMHAWithSeqInfer, self).__init__()
+        self.seq_info_infer = cuDNNSeqInfoInfer()
+        self.cudnn_mha = cuDNNMultiHeadAttention(hidden, heads)
 
     @paddle.jit.to_static(input_spec=[
         InputSpec(
@@ -79,7 +79,7 @@ class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNNMHALayerJitSaving(unittest.TestCase):
+class TestcuDNNMHALayerJitSaving(unittest.TestCase):
     def setUp(self):
         batch_size = 4
         nheads = 4
@@ -98,7 +98,7 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
         self.ref_mha.v_proj.weight.set_value(self.WV)
         self.ref_mha.out_proj.weight.set_value(self.WO)
 
-        self.cudnn_mha = CUDNNMHAWithSeqInfer(vec_size, nheads)
+        self.cudnn_mha = cuDNNMHAWithSeqInfer(vec_size, nheads)
         self.cudnn_mha.cudnn_mha.weight.set_value(self.W)
 
         self.q_tensor = paddle.to_tensor(
@@ -149,7 +149,7 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
         self.assertTrue(
             compare(ref_output.numpy(),
                     cudnn_output.numpy(), self.atol, self.rtol),
-            "[TestCUDNNMHALayerJitSaving] outputs are miss-matched.")
+            "[TestcuDNNMHALayerJitSaving] outputs are miss-matched.")
 
         ref_loss = paddle.mean(ref_output)
         cudnn_loss = paddle.mean(cudnn_output)
@@ -163,19 +163,19 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
 
         self.assertTrue(
             compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
-            "[TestCUDNNMHALayerJitSaving] weight_grads are miss-matched.")
+            "[TestcuDNNMHALayerJitSaving] weight_grads are miss-matched.")
         self.assertTrue(
             compare(self.q_3dim_tensor.grad.numpy(),
                     self.q_tensor.grad.numpy(), self.atol, self.rtol),
-            "[TestCUDNNMHALayerJitSaving] Q_grads are miss-matched.")
+            "[TestcuDNNMHALayerJitSaving] Q_grads are miss-matched.")
         self.assertTrue(
             compare(self.k_3dim_tensor.grad.numpy(),
                     self.k_tensor.grad.numpy(), self.atol, self.rtol),
-            "[TestCUDNNMHALayerJitSaving] K_grads are miss-matched.")
+            "[TestcuDNNMHALayerJitSaving] K_grads are miss-matched.")
         self.assertTrue(
             compare(self.v_3dim_tensor.grad.numpy(),
                     self.v_tensor.grad.numpy(), self.atol, self.rtol),
-            "[TestCUDNNMHALayerJitSaving] V_grads are miss-matched.")
+            "[TestcuDNNMHALayerJitSaving] V_grads are miss-matched.")
 
     def _get_grads_from_ref(self):
         return np.concatenate(
@@ -192,7 +192,7 @@ class TestCUDNNMHALayerJitSaving(unittest.TestCase):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
+class TestcuDNNMHALayerSaveInferenceModel(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
         self.nheads = 4
@@ -276,8 +276,8 @@ class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
             self.k_input.stop_gradient = False
             self.v_input.stop_gradient = False
 
-            seq_info_infer = CUDNNSeqInfoInfer()
-            self.cudnn_mha = CUDNNMultiHeadAttention(self.vec_size, self.nheads)
+            seq_info_infer = cuDNNSeqInfoInfer()
+            self.cudnn_mha = cuDNNMultiHeadAttention(self.vec_size, self.nheads)
 
             seq_info = seq_info_infer(self.attn_mask_input)
             cudnn_mha_output = self.cudnn_mha(self.q_input, self.k_input,
@@ -332,7 +332,7 @@ class TestCUDNNMHALayerSaveInferenceModel(unittest.TestCase):
         self.assertTrue(
             compare(
                 np.array(ref_out), np.array(cudnn_out), self.atol, self.rtol),
-            "[TestCUDNNMHALayerSaveInferenceModel] outputs are miss-matched.")
+            "[TestcuDNNMHALayerSaveInferenceModel] outputs are miss-matched.")
 
 
 if __name__ == "__main__":

@@ -44,7 +44,13 @@ def mha_data_prepare(qo_kv_seqlen, low_high_windows):
     return qo_kv_seqlen_host, low_high_windows_host
 
 
-def multi_head_attn(query, key, value, weight, meta_data, seq_info):
+def multi_head_attn(query,
+                    key,
+                    value,
+                    weight,
+                    meta_data,
+                    seq_info,
+                    is_training=True):
 
     # if in_dygraph_mode():
     #     pre_bias = _varbase_creator(dtype=x.dtype)
@@ -82,16 +88,19 @@ def multi_head_attn(query, key, value, weight, meta_data, seq_info):
 
     attrs = {
         'cache_key': weight.name,
-        'pre_dropout_rate': meta_data.dropout_rate,
-        'num_heads': meta_data.nheads,
-        'softmax_scaler': meta_data.sm_scaler,
-        'embedding_size': meta_data.hidden_size,
+        'pre_dropout_rate': meta_data.pre_dropout_rate,
+        'post_dropout_rate': meta_data.post_dropout_rate,
+        'num_heads': meta_data.num_heads,
+        'softmax_scaler': meta_data.softmax_scaler,
+        'embedding_size': meta_data.embed_dim,
         'query_proj_size': meta_data.proj_size,
         'key_proj_size': meta_data.proj_size,
         'value_proj_size': meta_data.proj_size,
-        'output_proj_size': meta_data.hidden_size,
+        'output_proj_size': meta_data.embed_dim,
         'max_qo_seqlen': seq_info.max_seqlen,
-        'max_kv_seqlen': seq_info.max_seqlen
+        'max_kv_seqlen': seq_info.max_seqlen,
+        'is_training': is_training,
+        'enable_bias': meta_data.enable_bias
     }
 
     output = helper.create_variable_for_type_inference(dtype)

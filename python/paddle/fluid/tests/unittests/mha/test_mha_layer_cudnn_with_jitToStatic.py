@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqInfoInfer
+from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
 
 
 def compare(ref, res, atol, rtol):
@@ -58,11 +58,11 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     return (Q, K, V, W, WQ, WK, WV, WO)
 
 
-class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
+class cuDNNMHAWithSeqInfer(paddle.nn.Layer):
     def __init__(self, hidden, heads):
-        super(CUDNNMHAWithSeqInfer, self).__init__()
-        self.seq_info_infer = CUDNNSeqInfoInfer()
-        self.cudnn_mha = CUDNNMultiHeadAttention(hidden, heads)
+        super(cuDNNMHAWithSeqInfer, self).__init__()
+        self.seq_info_infer = cuDNNSeqInfoInfer()
+        self.cudnn_mha = cuDNNMultiHeadAttention(hidden, heads)
 
     @paddle.jit.to_static
     def forward(self, query, key, value, attn_mask):
@@ -72,7 +72,7 @@ class CUDNNMHAWithSeqInfer(paddle.nn.Layer):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNNMHALayerWithJitToStatic(unittest.TestCase):
+class TestcuDNNMHALayerWithJitToStatic(unittest.TestCase):
     def setUp(self):
         batch_size = 4
         nheads = 4
@@ -91,7 +91,7 @@ class TestCUDNNMHALayerWithJitToStatic(unittest.TestCase):
         self.ref_mha.v_proj.weight.set_value(self.WV)
         self.ref_mha.out_proj.weight.set_value(self.WO)
 
-        self.cudnn_mha = CUDNNMHAWithSeqInfer(vec_size, nheads)
+        self.cudnn_mha = cuDNNMHAWithSeqInfer(vec_size, nheads)
         self.cudnn_mha.cudnn_mha.weight.set_value(self.W)
 
         self.q_tensor = paddle.to_tensor(
@@ -128,7 +128,7 @@ class TestCUDNNMHALayerWithJitToStatic(unittest.TestCase):
         self.assertTrue(
             compare(ref_output.numpy(),
                     cudnn_output.numpy(), self.atol, self.rtol),
-            "[TestCUDNNMHALayerWithJitToStatic] outputs are miss-matched.")
+            "[TestcuDNNMHALayerWithJitToStatic] outputs are miss-matched.")
 
     def test_full_grads(self):
         self.q_tensor.stop_gradient = False
@@ -166,20 +166,20 @@ class TestCUDNNMHALayerWithJitToStatic(unittest.TestCase):
 
         self.assertTrue(
             compare(ref_weight_grad, cudnn_weight_grad, self.atol, self.rtol),
-            "[TestCUDNNMHALayerWithJitToStatic] weight_grads are miss-matched.")
+            "[TestcuDNNMHALayerWithJitToStatic] weight_grads are miss-matched.")
         if check_data_grads:
             self.assertTrue(
                 compare(self.q_3dim_tensor.grad.numpy(),
                         self.q_tensor.grad.numpy(), self.atol, self.rtol),
-                "[TestCUDNNMHALayerWithJitToStatic] Q_grads are miss-matched.")
+                "[TestcuDNNMHALayerWithJitToStatic] Q_grads are miss-matched.")
             self.assertTrue(
                 compare(self.k_3dim_tensor.grad.numpy(),
                         self.k_tensor.grad.numpy(), self.atol, self.rtol),
-                "[TestCUDNNMHALayerWithJitToStatic] K_grads are miss-matched.")
+                "[TestcuDNNMHALayerWithJitToStatic] K_grads are miss-matched.")
             self.assertTrue(
                 compare(self.v_3dim_tensor.grad.numpy(),
                         self.v_tensor.grad.numpy(), self.atol, self.rtol),
-                "[TestCUDNNMHALayerWithJitToStatic] V_grads are miss-matched.")
+                "[TestcuDNNMHALayerWithJitToStatic] V_grads are miss-matched.")
 
     def _get_grads_from_ref(self):
         return np.concatenate(

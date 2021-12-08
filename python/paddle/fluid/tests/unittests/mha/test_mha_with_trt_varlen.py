@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
-from paddle.nn.layer import CUDNNSeqInfoInfer
+from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
 from paddle.static import InputSpec
 import paddle.inference as paddle_infer
 
@@ -49,8 +49,8 @@ class CUDNNBERT(paddle.nn.Layer):
         self.token_type_embeddings = paddle.nn.Embedding(2, hidden)
         self.layer_norm = paddle.nn.LayerNorm(hidden)
 
-        self.seq_info_infer = CUDNNSeqInfoInfer()
-        self.cudnn_mha = CUDNNMultiHeadAttention(hidden, heads)
+        self.seq_info_infer = cuDNNSeqInfoInfer()
+        self.cudnn_mha = cuDNNMultiHeadAttention(hidden, heads)
 
     # Paddle-Inference's TRT converter use unordered_map to map inputs, but 
     # take Input Tensor by index, so name of InputSpec should follow lexicographic order
@@ -129,7 +129,7 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
 
         self.path_with_coverting = '/tmp/paddle_mha_convert_with_trt_varlen'
 
-        layer = CUDNNMultiHeadAttention.convert_inference_program_with_paddleMHA_replacement(
+        layer = cuDNNMultiHeadAttention.to_legacy(
             self.cudnn_bert,
             [sent_ids_tensor, src_ids_tensor, pos_ids_tensor, mask_tensor])
         paddle.jit.save(layer, self.path_with_coverting)
