@@ -86,38 +86,5 @@ std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
-template <typename Tuple, size_t N>
-struct TupleEagerTensorResult {
-  static void Run(const Tuple& out, PyObject* result) {
-    TupleEagerTensorResult<Tuple, N - 1>::Run(out, result);
-    PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
-  }
-};
-
-template <typename Tuple>
-struct TupleEagerTensorResult<Tuple, 1> {
-  static void Run(const Tuple& out, PyObject* result) {
-    PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
-  }
-};
-
-template <typename... Args>
-PyObject* ToPyObject(const std::tuple<Args...>& out) {
-  auto len = sizeof...(Args);
-  PyObject* result = PyTuple_New(len);
-
-  TupleEagerTensorResult<decltype(out), sizeof...(Args)>::Run(out, result);
-
-  return result;
-}
-
-egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
-                                        const std::string& arg_name,
-                                        PyObject* args, ssize_t arg_idx,
-                                        bool dispensable = false);
-std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
-
 }  // namespace pybind
 }  // namespace paddle
