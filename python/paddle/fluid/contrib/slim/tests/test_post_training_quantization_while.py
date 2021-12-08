@@ -54,10 +54,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                                          str(e)))
 
     def cache_unzipping(self, target_folder, zip_path):
-        if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(target_folder,
-                                                          zip_path)
-            os.system(cmd)
+        cmd = 'tar xf {0} -C {1}'.format(zip_path, target_folder)
+        os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
         download(data_url, self.download_path, data_md5)
@@ -66,7 +64,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         print('Data is downloaded at {0}'.format(zip_path))
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
-        self.cache_unzipping(data_cache_folder, zip_path)
+        self.cache_unzipping(self.cache_folder, zip_path)
         return data_cache_folder
 
     def run_program(self, model_path, batch_size, infer_iterations):
@@ -158,7 +156,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                  quant_iterations=5):
 
         origin_model_path = self.download_model(data_url, data_md5, model_name)
-        origin_model_path = os.path.join(origin_model_path, model_name)
+        #origin_model_path = os.path.join(origin_model_path, model_name)
 
         print("Start FP32 inference for {0} on {1} images ...".format(
             model_name, infer_iterations * batch_size))
@@ -191,11 +189,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestPostTraininghistForWhile(TestPostTrainingQuantization):
+class TestPostTraininghistForMnist(TestPostTrainingQuantization):
     def test_post_training_hist(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
-        data_md5 = "321b2fd9b9ffa92d4ad06e9eec17e7e8"
+        data_md5 = "2387390beeb37b51dec041c27b8a681f"
         algo = "hist"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
@@ -211,11 +209,11 @@ class TestPostTraininghistForWhile(TestPostTrainingQuantization):
                       quant_iterations)
 
 
-class TestPostTrainingmseForWhile(TestPostTrainingQuantization):
+class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
     def test_post_training_mse(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
-        data_md5 = "321b2fd9b9ffa92d4ad06e9eec17e7e8"
+        data_md5 = "2387390beeb37b51dec041c27b8a681f"
         algo = "mse"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
@@ -231,11 +229,11 @@ class TestPostTrainingmseForWhile(TestPostTrainingQuantization):
                       quant_iterations)
 
 
-class TestPostTrainingavgForWhile(TestPostTrainingQuantization):
+class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
     def test_post_training_avg(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
-        data_md5 = "321b2fd9b9ffa92d4ad06e9eec17e7e8"
+        data_md5 = "2387390beeb37b51dec041c27b8a681f"
         algo = "avg"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False

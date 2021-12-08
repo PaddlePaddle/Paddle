@@ -48,12 +48,7 @@ def _load_variable_data(scope, var_name):
     var_node = scope.find_var(var_name)
     assert var_node is not None, \
         "Cannot find " + var_name + " in scope."
-    out = np.array(var_node.get_tensor())
-    # TODO(yghstill): In some scenarios, get_tensor from var node 
-    # in sub blocks is empty, and it will fix in the future.
-    if not out.any():
-        out = np.zeros([1], dtype=np.float32)
-    return out
+    return np.array(var_node.get_tensor())
 
 
 def _set_variable_data(scope, place, var_name, np_value):
