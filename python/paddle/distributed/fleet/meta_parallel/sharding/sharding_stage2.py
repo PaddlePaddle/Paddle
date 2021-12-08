@@ -113,6 +113,7 @@ class ShardingStage2(nn.Layer):
         self._grad_storage_list = []
 
         # offload
+        # TODO(haohongxiang): Now it's not supported for multi-optimizers using Offload strategy
         self._offload_optims = list(
             filter(lambda optim: optim.offload, self._sharding_optimizers))
         if len(self._offload_optims) > 0:
@@ -309,7 +310,7 @@ class ShardingStage2(nn.Layer):
                     self._grad_reduced[index] = False
                     if not self._accumulate_grads:
                         param.grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version(True)
+                        param._reset_grad_inplace_version(True)
 
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():

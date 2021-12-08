@@ -33,6 +33,7 @@ from dygraph_sharding_stage2 import MLP, reader_decorator, optimizer_setting
 seed = 2021
 epoch = 2
 batch_size = 32
+linear_size = 8000
 
 np.random.seed(seed)
 paddle.seed(seed)
@@ -54,7 +55,7 @@ def train_mlp(model, offload=False):
     model = ShardingStage2(model, optimizer, group=group, accumulate_grads=True)
 
     train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True)
+        reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
 
     train_loader = paddle.io.DataLoader.from_generator(
         capacity=32,
@@ -80,18 +81,21 @@ def train_mlp(model, offload=False):
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             scaler.scale(avg_loss).backward()
 
-            if batch_id == 2:
-                model.grad_scale()
-                scaler.step(optimizer)
-                scaler.update()
-                model.clear_gradients()
+            model.grad_scale()
+            scaler.step(optimizer)
+            scaler.update()
+            model.clear_gradients()
+
+    for dtype in optimizer.param_storages:
+        for dst_rank, param_storage in optimizer.param_storages[dtype].items():
+            param_storage.to(device="gpu", dtype=dtype)
 
     return model.parameters()
 
 
 def test_sharding_stage2_offload():
-    mlp = MLP()
-    mlp_offload = MLP()
+    mlp = MLP(linear_size)
+    mlp_offload = MLP(linear_size)
     mlp_offload.set_state_dict(mlp.state_dict())
 
     mlp_params = train_mlp(mlp, offload=False)
