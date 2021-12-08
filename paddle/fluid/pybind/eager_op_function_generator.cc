@@ -723,6 +723,7 @@ std::string GenerateOpFunctionsBody(
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
+
       // call_api_str += out_name + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
@@ -768,7 +769,9 @@ std::string GenerateOpFunctionsBody(
         HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
+
   return_str = "return ToPyObject(out);";
+  
   std::string function_args = "";
   if (input_args == "") {
     function_args = FUNCTION_ARGS_NO_INPUT;
