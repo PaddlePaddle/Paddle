@@ -46,13 +46,11 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("KeyPaddingMask",
              "(Tensor), The input tensor of key padding mask"
              "whose dimension : `[batch_size, target_len]`.")
-        .AsDispensable()
-        .AsExtra();
+        .AsDispensable();
     AddInput("AttnMask",
              "(Tensor), The input tensor of attention mask"
              "whose dimension : `[target_len, target_len]`.")
-        .AsDispensable()
-        .AsExtra();
+        .AsDispensable();
     AddOutput(
         "Out",
         "(Tensor), The output tensor of result in attention, "
