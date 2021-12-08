@@ -101,10 +101,10 @@ KernelSignatureMap& KernelSignatureMap::Instance() {
       if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
         KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
-        auto success =
-            kernel_signature_map_->map_
-                .emplace(op_type, std::move(maker.GetKernelSignature()))
-                .second;
+        auto success = kernel_signature_map_->map_
+                           .emplace(pten::TransToPtenKernelName(op_type),
+                                    std::move(maker.GetKernelSignature()))
+                           .second;
         PADDLE_ENFORCE_EQ(
             success, true,
             platform::errors::PermissionDenied(

@@ -119,7 +119,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("reduce_mean", CUDA, ANY, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CUDA,
                    ANY,
@@ -132,7 +132,7 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("elementwise_add",
+PT_REGISTER_KERNEL("add",
                    CUDA,
                    ANY,
                    pten::ElementwiseAdd,
@@ -143,7 +143,7 @@ PT_REGISTER_KERNEL("elementwise_add",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_sub",
+PT_REGISTER_KERNEL("subtract",
                    CUDA,
                    ANY,
                    pten::ElementwiseSub,
@@ -154,7 +154,7 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_div",
+PT_REGISTER_KERNEL("divide",
                    CUDA,
                    ANY,
                    pten::ElementwiseDiv,
@@ -165,7 +165,7 @@ PT_REGISTER_KERNEL("elementwise_div",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_mul",
+PT_REGISTER_KERNEL("multiply",
                    CUDA,
                    ANY,
                    pten::ElementwiseMul,
@@ -177,7 +177,7 @@ PT_REGISTER_KERNEL("elementwise_mul",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("reduce_sum",
+PT_REGISTER_KERNEL("sum",
                    CUDA,
                    ANY,
                    pten::Sum,
