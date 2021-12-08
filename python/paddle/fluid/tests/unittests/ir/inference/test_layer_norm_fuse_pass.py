@@ -60,6 +60,23 @@ class TestFcFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=False)
         yield config, ["layer_norm"], (1e-5, 1e-5)
 
+    def add_ignore_pass_case(self):
+        # Here we put some skip rules to avoid known bugs
+        def teller1(program_config, predictor_config):
+            x_shape = list(program_config.inputs["x"].shape)
+            reduce_mean_dim = program_config.ops[0].attrs["dim"]
+            if reduce_mean_dim[-1] != len(x_shape) - 1:
+                return True
+            for i in range(1, len(reduce_mean_dim)):
+                if reduce_mean_dim[i] - reduce_mean_dim[i - 1] != 1:
+                    return True
+            return False
+
+        self.add_ignore_check_case(
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "Use bad case to test pass.", )
+
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X 
         x_shape = draw(
@@ -78,6 +95,14 @@ class TestFcFusePass(PassAutoScanTest):
         else:
             reduce_mean_dim = [i for i in range(x_shape_rank)]
             reduce_mean_dim = reduce_mean_dim[begin_norm_axis:]
+        error_test_ratio = draw(st.integers(min_value=1, max_value=10))
+        if error_test_ratio > 9:
+            keep_dim = True
+            reduce_mean_dim = [1, ]
+        elif error_test_ratio > 8:
+            keep_dim = True
+            begin_norm_axis = 1
+            reduce_mean_dim = [1, x_shape_rank - 1]
         # 3. Generate attrs of elementwise_sub
         sub_axis = 0
         if keep_dim and draw(st.booleans()):
