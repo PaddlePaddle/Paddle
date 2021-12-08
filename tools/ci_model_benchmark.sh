@@ -47,7 +47,7 @@ function compile_install_paddle {
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --depth=1 https://github.com/paddlepaddle/benchmark.git
+    git clone --depth=1 https://github.com/xiegegege/benchmark.git
     cd benchmark
     set +x
     wget -q --no-proxy https://xly-devops.bj.bcebos.com/benchmark/new_clone/benchmark/benchmark_allgit.tar.gz
