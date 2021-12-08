@@ -44,27 +44,6 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ["fusion_transpose_flatten_concat", ], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            input_num = (len(program_config.ops) - 1) // 2
-            x_shape = program_config.inputs["transpose2_x0"].shape
-            x_trans_axis = program_config.ops[0].attrs["axis"]
-            for i in range(1, input_num):
-                input_name = "transpose2_x" + str(i)
-                input_shape = program_config.inputs[input_name].shape
-                if x_shape != input_shape:
-                    return True
-                trans_axis = program_config.ops[i * 2].attrs["axis"]
-                if x_trans_axis != trans_axis:
-                    return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "All input shapes should be the same", )
-
     def is_program_valid(self, prog_config):
         concat_axis = prog_config.ops[-1].attrs["axis"]
         ops_num = len(prog_config.ops) - 1
@@ -72,14 +51,20 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
             return False
         input_num = ops_num // 2
         flatten_shape = 0
+        x_trans_axis = prog_config.ops[0].attrs["axis"]
+        x_flatten_axis = prog_config.ops[1].attrs["axis"]
         for i in range(input_num):
             input_name = "transpose2_x" + str(i)
             input_shape = prog_config.inputs[input_name].shape
             trans_axis = prog_config.ops[i * 2].attrs["axis"]
+            if x_trans_axis != trans_axis:
+                return False
             #  calculate shape after transpose
             input_shape = [input_shape[j] for j in trans_axis]
             #  calculate shape after flateen
             flatten_axis = prog_config.ops[i * 2 + 1].attrs["axis"]
+            if x_flatten_axis != flatten_axis:
+                return False
             flatten_shape1 = flatten_shape2 = 1
             for j in range(len(input_shape)):
                 if j < flatten_axis:
@@ -101,29 +86,27 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         times = draw(st.integers(min_value=1, max_value=6))
         concat_axis = draw(st.integers(min_value=0, max_value=1))
-        # same_shape = draw(st.integers(min_value=1, max_value=8))
         ops = []
         concat_input = []
         inputs = {}
+        x_shape_rank = draw(st.integers(min_value=2, max_value=5))
+        #  Generate axis of transpose
+        trans_axis = [j for j in range(x_shape_rank)]
+        for j in range(x_shape_rank - 1):
+            if draw(st.booleans()):
+                trans_axis[j], trans_axis[-1] = trans_axis[-1], trans_axis[j]
+        #  Generate axis of flatten
+        flatten_axis = draw(
+            st.integers(
+                min_value=0, max_value=x_shape_rank - 1))
         for i in range(times):
             #  Generate x_shape of transpose
             x_shape = draw(
                 st.lists(
                     st.integers(
                         min_value=1, max_value=10),
-                    min_size=2,
-                    max_size=5))
-            x_shape_rank = len(x_shape)
-            #  Generate axis of transpose
-            trans_axis = [j for j in range(x_shape_rank)]
-            for j in range(x_shape_rank - 1):
-                if draw(st.booleans()):
-                    trans_axis[j], trans_axis[-1] = trans_axis[-1], trans_axis[
-                        j]
-            #  Generate axis of flatten
-            flatten_axis = draw(
-                st.integers(
-                    min_value=0, max_value=x_shape_rank - 1))
+                    min_size=x_shape_rank,
+                    max_size=x_shape_rank))
 
             str_i = str(i)
             transpose_op = OpConfig(
@@ -168,7 +151,7 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=3000,
+            max_examples=300,
             passes=["transpose_flatten_concat_fuse_pass"])
 
 
