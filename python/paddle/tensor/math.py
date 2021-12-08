@@ -2616,7 +2616,7 @@ def atan2(x, y, name=None):
 
 def logit(x, eps=0.0, name=None):
     r"""
-    This function generates a new tensor with the logit of the elements of input.
+    This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
 
     .. math::
  
@@ -2635,7 +2635,7 @@ def logit(x, eps=0.0, name=None):
             \end{array}\right.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64. If x[i] < eps or x[i] > 1 - eps, x[i] = eps.
+        x (Tensor): The input Tensor with data type float32, float64.
         eps (float, optional):  the epsilon for input clamp bound. Default is 0.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
