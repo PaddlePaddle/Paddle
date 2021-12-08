@@ -2009,11 +2009,11 @@ class Executor(object):
             self._feed_data(cached_program, feed, feed_var_name, cached_scope)
 
         from paddle.optimizer.lr import LRScheduler
-        if hasattr(real_program, 'lr_sheduler'):
-            lr_sheduler = real_program.lr_sheduler
+        if hasattr(program, 'lr_sheduler'):
+            lr_sheduler = program.lr_sheduler
             assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
             lr_value = lr_sheduler()
-            lr_var = real_program.global_block().vars[lr_sheduler._var_name]
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(cached_scope,
                                               lr_sheduler._var_name)
