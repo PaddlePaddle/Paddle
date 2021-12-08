@@ -501,38 +501,46 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
     Args:
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
-            should be float32, float64, int32, int64, bool.
-        k (int): Number of times to rotate
-        axes (list|tuple): Axis to rotate
+            should be float16, float32, float64, int32, int64, bool.
+        k (int): Direction and number of times to rotate, default value: 1.
+        axes (list|tuple, optional): Axis to rotate, default value: [0, 1].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
 
-    Raises:
-        TypeError: If the data type of ``x`` is not Variable
-        TypeError: If the dtype of ``x`` is not float16, float32, float64, int32, int64, bool
-        TypeError: If the data type of ``dims`` is not list, tuple
-
     Examples:
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           data = paddle.arange(4)
           data = paddle.reshape(data, (2, 2))
-          print(data) ## [[0, 1],[2, 3]]
+          print(data) 
+          #[[0, 1],
+          # [2, 3]]
           y = paddle.rot90(data, 1, [0, 1])
-          print(y) #[[1, 3],[0, 2]]
+          print(y) 
+          #[[1, 3],
+          # [0, 2]]
           y= paddle.rot90(data, -1, [0, 1])
-          print(y) #[[2, 0],[3, 1]]
+          print(y) 
+          #[[2, 0],
+          # [3, 1]]
           data2 = paddle.arange(8)
           data2 = paddle.reshape(data2, (2,2,2))
-          print(data2) ###[[[0, 1],[2, 3]],[[4, 5],[6, 7]]]
+          print(data2) 
+          #[[[0, 1],
+          #  [2, 3]],
+          # [[4, 5],
+          #  [6, 7]]]
           y = paddle.rot90(data2, 1, [1, 2])
-          print(y)   ### [[[1, 3],[0, 2]],[[5, 7],[4, 6]]]
+          print(y)
+          #[[[1, 3],
+          #  [0, 2]],
+          # [[5, 7],
+          #  [4, 6]]]
     """
 
     helper = LayerHelper("rot90", **locals())
