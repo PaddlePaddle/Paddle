@@ -51,7 +51,7 @@ void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           const std::vector<int64_t>& shape,
                           DenseTensor* out) {
   auto out_meta = InferMetaFromVecValue(x.meta(), shape);
-  if (&x == out) {
+  if (x.data() == out->data() && x.numel() == out->numel()) {
     out->Resize(out_meta.dims);
     return;
   }
@@ -135,7 +135,7 @@ PT_REGISTER_MODULE(ManipulationCUDA);
 using float16 = paddle::platform::float16;
 // TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
 // architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL("flatten_contiguous_range",
+PT_REGISTER_KERNEL("flatten",
                    CUDA,
                    ANY,
                    pten::Flatten,
@@ -147,7 +147,7 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
+PT_REGISTER_KERNEL("flatten.mid",
                    CUDA,
                    ANY,
                    pten::FlattenWithXShape,
@@ -184,12 +184,44 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape",
                                 CUDA,
                                 ANY,
                                 pten::ReshapeFromVectorVal) {}
 
-PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2.mid",
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape.mid",
                                 CUDA,
                                 ANY,
                                 pten::ReshapeFromVectorValWithXShape) {}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape.host",
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromDT) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape.host.mid",
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromDTWithXShape) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape.mulhost",
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorDT) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}
+
+PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape.mulhost.mid",
+                                CUDA,
+                                ANY,
+                                pten::ReshapeFromVectorDTWithXShape) {
+  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
+}

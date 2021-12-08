@@ -66,7 +66,7 @@ class CuFFTHandle {
 
  public:
   CuFFTHandle() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftCreate(&handle_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftCreate(&handle_));
   }
 
   CuFFTHandle(const CuFFTHandle& other) = delete;
@@ -79,7 +79,7 @@ class CuFFTHandle {
   const ::cufftHandle& get() const { return handle_; }
 
   ~CuFFTHandle() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftDestroy(handle_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftDestroy(handle_));
   }
 };
 
@@ -136,12 +136,12 @@ class FFTConfig {
     }
 
     // disable auto allocation of workspace to use allocator from the framework
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftSetAutoAllocation(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftSetAutoAllocation(
         plan(), /* autoAllocate */ 0));
 
     size_t ws_size_t;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftXtMakePlanMany(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftXtMakePlanMany(
         plan(), signal_ndim, signal_sizes.data(),
         /* inembed */ nullptr, /* base_istride */ 1, /* idist */ 1, itype,
         /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, otype,
@@ -176,7 +176,7 @@ class HIPFFTHandle {
 
  public:
   HIPFFTHandle() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftCreate(&handle_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftCreate(&handle_));
   }
 
   HIPFFTHandle(const HIPFFTHandle& other) = delete;
@@ -189,7 +189,7 @@ class HIPFFTHandle {
   const ::hipfftHandle& get() const { return handle_; }
 
   ~HIPFFTHandle() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftDestroy(handle_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftDestroy(handle_));
   }
 };
 using plan_size_type = int;
@@ -248,12 +248,12 @@ class FFTConfig {
     }();
 
     // disable auto allocation of workspace to use allocator from the framework
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftSetAutoAllocation(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftSetAutoAllocation(
         plan(), /* autoAllocate */ 0));
 
     size_t ws_size_t;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftMakePlanMany(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftMakePlanMany(
         plan(), signal_ndim, signal_sizes.data(),
         /* inembed */ nullptr, /* base_istride */ 1, /* idist */ 1,
         /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, exec_type,
