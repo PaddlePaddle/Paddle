@@ -302,9 +302,13 @@ class ShardingOptimizerStage2(Optimizer):
 
             for param in self._local_params:
                 if param.name in self._master_params.keys():
-                    param.set_value(self._master_params[param.name].cast(
-                        dtype=param.dtype).cuda(dev_id))
+                    param_dtype = param.dtype
+                    param.value().get_tensor()._clear()
                     self._master_params[param.name].clear_gradient(False)
+                    new_param = self._master_params[param.name].cast(
+                        dtype=param_dtype).cuda(dev_id)
+                    param.value().get_tensor()._share_data_with(new_param.value(
+                    ).get_tensor())
         else:
             self._optim.step()
 
