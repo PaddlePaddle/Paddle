@@ -1229,24 +1229,53 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   for (const proto::OpProto::Var& output : out_vars) {
     const std::string& output_name = output.name();
     std::string outnum = "1";
-    if (output.duplicable()) {
-      outnum = output_name + "Num";
+    if (op_passing_outs_map[op_type].count(output_name)) {
+      const std::string output_var_name = output_name + "Var";
 
-      const char* FWD_NUM_ARG_TEMPLATE = ", size_t %s";
-      std::string arg_str =
-          paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, outnum);
-      dygraph_function_args_str += arg_str;
-      const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput(%s) },";
-      outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
-                                                   output_name, outnum);
+      // Pass Output from function argument,
+      // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
+      if (output.duplicable()) {
+        const char* FWD_NUM_ARG_TEMPLATE =
+            ", std::vector<std::shared_ptr<egr::EagerTensor>>& %s";
+        std::string arg_str =
+            paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
+        dygraph_function_args_str += arg_str;
+
+        const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", %s },";
+        outs_contents_str += paddle::string::Sprintf(
+            FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
+      } else {
+        const char* FWD_NUM_ARG_TEMPLATE =
+            ", std::shared_ptr<egr::EagerTensor>& %s";
+        std::string arg_str =
+            paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
+        dygraph_function_args_str += arg_str;
+
+        const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", {%s} },";
+        outs_contents_str += paddle::string::Sprintf(
+            FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
+      }
+
     } else {
-      const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", "
-          "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
-          "GenerateUniqueName())}},";
-      outs_contents_str +=
-          paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE, output_name);
+      if (output.duplicable()) {
+        outnum = output_name + "Num";
+
+        const char* FWD_NUM_ARG_TEMPLATE = ", size_t %s";
+        std::string arg_str =
+            paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, outnum);
+        dygraph_function_args_str += arg_str;
+        const char* FWD_OUTS_CONTENT_TEMPLATE =
+            "{ \"%s\", egr::EagerUtils::ConstructDuplicableOutput(%s) },";
+        outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
+                                                     output_name, outnum);
+      } else {
+        const char* FWD_OUTS_CONTENT_TEMPLATE =
+            "{ \"%s\", "
+            "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
+            "GenerateUniqueName())}},";
+        outs_contents_str +=
+            paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE, output_name);
+      }
     }
   }
   if (outs_contents_str.size() > 0)
