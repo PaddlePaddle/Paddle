@@ -35,7 +35,7 @@ def ref_view_as_real(x):
 
 class TestViewAsComplexOp(OpTest):
     def setUp(self):
-        self.op_type = "view_as_complex"
+        self.op_type = "as_complex"
         x = np.random.randn(10, 10, 2).astype("float64")
         out_ref = ref_view_as_complex(x)
         self.out_grad = np.ones(
@@ -57,7 +57,7 @@ class TestViewAsComplexOp(OpTest):
 
 class TestViewAsRealOp(OpTest):
     def setUp(self):
-        self.op_type = "view_as_real"
+        self.op_type = "as_real"
         real = np.random.randn(10, 10).astype("float64")
         imag = np.random.randn(10, 10).astype("float64")
         x = real + 1j * imag
@@ -85,14 +85,14 @@ class TestViewAsComplexAPI(unittest.TestCase):
     def test_dygraph(self):
         with dygraph.guard():
             x = paddle.to_tensor(self.x)
-            out_np = paddle.view_as_complex(x).numpy()
+            out_np = paddle.as_complex(x).numpy()
         self.assertTrue(np.allclose(self.out, out_np))
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):
             x = static.data("x", shape=[10, 10, 2], dtype="float64")
-            out = paddle.view_as_complex(x)
+            out = paddle.as_complex(x)
 
         exe = static.Executor()
         exe.run(sp)
@@ -108,14 +108,14 @@ class TestViewAsRealAPI(unittest.TestCase):
     def test_dygraph(self):
         with dygraph.guard():
             x = paddle.to_tensor(self.x)
-            out_np = paddle.view_as_real(x).numpy()
+            out_np = paddle.as_real(x).numpy()
         self.assertTrue(np.allclose(self.out, out_np))
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):
             x = static.data("x", shape=[10, 10], dtype="complex128")
-            out = paddle.view_as_real(x)
+            out = paddle.as_real(x)
 
         exe = static.Executor()
         exe.run(sp)

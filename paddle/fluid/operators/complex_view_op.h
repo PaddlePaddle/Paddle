@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class ViewAsComplexKernel : public framework::OpKernel<T> {
+class AsComplexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const auto* x = context.Input<framework::LoDTensor>("X");
@@ -42,7 +42,7 @@ class ViewAsComplexKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class ViewAsRealKernel : public framework::OpKernel<T> {
+class AsRealKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const auto* x = context.Input<framework::LoDTensor>("X");
@@ -55,9 +55,6 @@ class ViewAsRealKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());  // restore the dtype
   }
 };
-
-DECLARE_INPLACE_OP_INFERER(ViewAsComplexOpInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ViewAsRealOpInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle

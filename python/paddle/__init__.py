@@ -155,8 +155,8 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
-from .tensor.manipulation import view_as_complex  # noqa: F401
-from .tensor.manipulation import view_as_real  # noqa: F401
+from .tensor.manipulation import as_complex  # noqa: F401
+from .tensor.manipulation import as_real  # noqa: F401
 
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
@@ -541,8 +541,8 @@ __all__ = [  # noqa
            'einsum',
            'set_flags',
            'get_flags',
-           'view_as_complex',
-           'view_as_real',
+           'as_complex',
+           'as_real',
            'diff',
            'angle',
 ]

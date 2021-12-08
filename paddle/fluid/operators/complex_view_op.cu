@@ -20,11 +20,10 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    view_as_complex,
-    ops::ViewAsComplexKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ViewAsComplexKernel<paddle::platform::CUDADeviceContext, double>);
+    as_complex,
+    ops::AsComplexKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AsComplexKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    view_as_real,
-    ops::ViewAsRealKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ViewAsRealKernel<paddle::platform::CUDADeviceContext, double>);
+    as_real, ops::AsRealKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AsRealKernel<paddle::platform::CUDADeviceContext, double>);

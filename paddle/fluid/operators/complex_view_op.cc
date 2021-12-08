@@ -24,13 +24,13 @@
 namespace paddle {
 namespace operators {
 
-class ViewAsComplexOp : public framework::OperatorWithKernel {
+class AsComplexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "view_as_complex");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "view_as_complex");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "as_complex");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "as_complex");
 
     auto in_dims = ctx->GetInputDim("X");
     const int input_rank = in_dims.size();
@@ -57,15 +57,15 @@ class ViewAsComplexOp : public framework::OperatorWithKernel {
   }
 };
 
-class ViewAsComplexOpMaker : public framework::OpProtoAndCheckerMaker {
+class AsComplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of view_as_complex op.");
     AddOutput("Out", "(Tensor), The output tensor of view_as_complex op.");
     AddComment(R"DOC(
-View_as_complex Operator.
+As_complex Operator.
 
-This operator is used to return a complex tensor view represented
+This operator is used to return a complex tensor represented
 by an old-fashioned real tensor. The size of the last dimension of 
 the input tensor should be 2, which corresponds to 'real' and 
 'complex', respectively.
@@ -75,25 +75,25 @@ the input tensor should be 2, which corresponds to 'real' and
 };
 
 template <typename T>
-class ViewAsComplexGradMaker : public framework::SingleGradOpMaker<T> {
+class AsComplexGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("view_as_real");
+    retv->SetType("as_real");
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput("Out", this->InputGrad("X"));
   }
 };
 
-class ViewAsRealOp : public framework::OperatorWithKernel {
+class AsRealOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "view_as_real");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "view_as_real");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "as_real");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "as_real");
 
     auto out_dims_v = framework::vectorize(ctx->GetInputDim("X"));
     out_dims_v.push_back(2);
@@ -112,15 +112,15 @@ class ViewAsRealOp : public framework::OperatorWithKernel {
   }
 };
 
-class ViewAsRealOpMaker : public framework::OpProtoAndCheckerMaker {
+class AsRealOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of view_as_real op.");
-    AddOutput("Out", "(Tensor), The output tensor of view_as_real op.");
+    AddInput("X", "(Tensor), The input tensor of as_real op.");
+    AddOutput("Out", "(Tensor), The output tensor of as_real op.");
     AddComment(R"DOC(
-View_as_real Operator.
+AsReal Operator.
 
-This operator is used to return an old-fashioned real tensor view of a 
+This operator is used to return an old-fashioned real tensor from a 
 complex tensor. The size of the last dimension of the output tensor is 2,
 which corresponds to 'real' and 'complex', respectively.
 
@@ -129,12 +129,12 @@ which corresponds to 'real' and 'complex', respectively.
 };
 
 template <typename T>
-class ViewAsRealGradMaker : public framework::SingleGradOpMaker<T> {
+class AsRealGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("view_as_complex");
+    retv->SetType("as_complex");
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput("Out", this->InputGrad("X"));
@@ -146,23 +146,18 @@ class ViewAsRealGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(view_as_complex, ops::ViewAsComplexOp,
-                  ops::ViewAsComplexOpMaker,
-                  ops::ViewAsComplexGradMaker<paddle::framework::OpDesc>,
-                  ops::ViewAsComplexGradMaker<paddle::imperative::OpBase>,
-                  ops::ViewAsComplexOpInplaceInferer);
+REGISTER_OPERATOR(as_complex, ops::AsComplexOp, ops::AsComplexOpMaker,
+                  ops::AsComplexGradMaker<paddle::framework::OpDesc>,
+                  ops::AsComplexGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(view_as_real, ops::ViewAsRealOp, ops::ViewAsRealOpMaker,
-                  ops::ViewAsRealGradMaker<paddle::framework::OpDesc>,
-                  ops::ViewAsRealGradMaker<paddle::imperative::OpBase>,
-                  ops::ViewAsRealOpInplaceInferer);
+REGISTER_OPERATOR(as_real, ops::AsRealOp, ops::AsRealOpMaker,
+                  ops::AsRealGradMaker<paddle::framework::OpDesc>,
+                  ops::AsRealGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    view_as_complex,
-    ops::ViewAsComplexKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ViewAsComplexKernel<paddle::platform::CPUDeviceContext, double>);
+    as_complex, ops::AsComplexKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AsComplexKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
-    view_as_real,
-    ops::ViewAsRealKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ViewAsRealKernel<paddle::platform::CPUDeviceContext, double>);
+    as_real, ops::AsRealKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AsRealKernel<paddle::platform::CPUDeviceContext, double>);

@@ -2393,8 +2393,8 @@ def tensordot(x, y, axes=2, name=None):
     return out
 
 
-def view_as_complex(x, name=None):
-    """View a real tensor as a complex tensor. 
+def as_complex(x, name=None):
+    """Transform a real tensor to a complex tensor. 
     
     The data type of the input tensor is 'float32' or 'float64', and the data
     type of the returned tensor is 'complex64' or 'complex128', respectively.
@@ -2415,17 +2415,17 @@ def view_as_complex(x, name=None):
 
             import paddle
             x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
-            y = paddle.view_as_complex(x)
+            y = paddle.as_complex(x)
             print(y.numpy())
 
             # [[ 0. +1.j  2. +3.j  4. +5.j]
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
     if in_dygraph_mode():
-        return paddle._C_ops.view_as_complex(x)
+        return paddle._C_ops.as_complex(x)
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'view_as_complex')
-    op_type = "view_as_complex"
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
+    op_type = "as_complex"
     helper = LayerHelper(op_type, **locals())
     inputs = {"X": x}
     out = helper.create_variable_for_type_inference(
@@ -2436,8 +2436,8 @@ def view_as_complex(x, name=None):
     return out
 
 
-def view_as_real(x, name=None):
-    """View a complex tensor as a real tensor. 
+def as_real(x, name=None):
+    """Transform a complex tensor to a real tensor. 
     
     The data type of the input tensor is 'complex64' or 'complex128', and the data 
     type of the returned tensor is 'float32' or 'float64', respectively.
@@ -2458,8 +2458,8 @@ def view_as_real(x, name=None):
 
             import paddle
             x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
-            y = paddle.view_as_complex(x)
-            z = paddle.view_as_real(y)
+            y = paddle.as_complex(x)
+            z = paddle.as_real(y)
             print(z.numpy())
 
             # [[[ 0.  1.]
@@ -2471,11 +2471,10 @@ def view_as_real(x, name=None):
             #   [10. 11.]]]
     """
     if in_dygraph_mode():
-        return paddle._C_ops.view_as_real(x)
+        return paddle._C_ops.as_real(x)
 
-    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'],
-                             'view_as_real')
-    op_type = "view_as_real"
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
+    op_type = "as_real"
     helper = LayerHelper(op_type, **locals())
     inputs = {"X": x}
     out = helper.create_variable_for_type_inference(
