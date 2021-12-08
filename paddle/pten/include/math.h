@@ -64,12 +64,7 @@ DenseTensor Sum(const ContextT& dev_ctx,
   // so use default value(false) is OK.
   bool reduce_all = false;
 
-  if (x.dtype() == pten::DataType::BOOL || x.dtype() == pten::DataType::INT32 ||
-      x.dtype() == pten::DataType::INT64) {
-    dtype = pten::DataType::INT64;
-  }
-
-  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, dtype, &dense_out);
+  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, out_meta.dtype, &dense_out);
   return dense_out;
 }
 
