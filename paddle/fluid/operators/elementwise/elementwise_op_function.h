@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
 // only can include the headers in paddle/pten/include dirs
@@ -43,8 +43,8 @@ limitations under the License. */
 #include <thrust/iterator/iterator_adaptor.h>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 #ifdef __HIPCC__
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;

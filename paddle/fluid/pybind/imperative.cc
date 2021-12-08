@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/hccl_context.h"
+#include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -1537,7 +1538,7 @@ void BindImperative(py::module *m_ptr) {
              self.MutableGradVarBase()->SetType(type);
            })
       .def("_reset_grad_inplace_version",
-           [](imperative::VarBase &self) {
+           [](imperative::VarBase &self, bool set_to_zero) {
              /*
              *** This interfaceis a complete hack ***
              reset_grad_inplace_version removes all inplace related records to
@@ -1549,15 +1550,20 @@ void BindImperative(py::module *m_ptr) {
              Make sure you fully understand what you're doing before make use of
              this interface, and prepare for the worst.
              */
+             py::gil_scoped_release release;
+
              if (self.HasGradVar()) {
                auto grad_var = self.GradVarBase();
                auto var_wrapper = grad_var->SharedVar();
-               if (var_wrapper) var_wrapper->ResetInplaceVersion();
+               if (var_wrapper) {
+                 var_wrapper->ResetInplaceVersion(set_to_zero);
+               }
              }
            })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
+
              if (grad_var && grad_var->Var().IsInitialized()) {
                auto *tensor =
                    grad_var->MutableVar()->IsType<framework::LoDTensor>()
@@ -1566,6 +1572,7 @@ void BindImperative(py::module *m_ptr) {
                        : grad_var->MutableVar()
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
+
                if (tensor->IsInitialized()) {
                  return grad_var;
                }
@@ -1744,7 +1751,7 @@ void BindImperative(py::module *m_ptr) {
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetCUDADeviceCount();
+             int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
              if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
@@ -1963,10 +1970,6 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "Tensor %s has not been initialized!", self->Name()));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
@@ -2334,6 +2337,15 @@ void BindImperative(py::module *m_ptr) {
       .def("init_with_ring_id",
            &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HeterParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HeterParallelContext>>(
+      m, "HeterParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &, const int &>())
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
 
   m.def("pylayer_apply",
