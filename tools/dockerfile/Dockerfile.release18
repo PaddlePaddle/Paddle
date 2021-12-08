@@ -15,7 +15,6 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:$LD_LIBRARY_PA
 
 ENV HOME /root
 # Add bash enhancements
-COPY paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
