@@ -134,16 +134,10 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
     elementwise_add_op->Run(scope, place);
 
     LoDTensor test_out, expected_out;
-    if (platform::is_cpu_place(place)) {
-      test_out.ShareDataWith(scope.Var(test_out_name)->Get<LoDTensor>());
-      expected_out.ShareDataWith(
-          scope.Var(expected_out_name)->Get<LoDTensor>());
-    } else {
-      TensorCopySync(scope.Var(test_out_name)->Get<LoDTensor>(),
-                     platform::CPUPlace(), &test_out);
-      TensorCopySync(scope.Var(expected_out_name)->Get<LoDTensor>(),
-                     platform::CPUPlace(), &expected_out);
-    }
+    TensorCopySync(scope.Var(test_out_name)->Get<LoDTensor>(),
+                   platform::CPUPlace(), &test_out);
+    TensorCopySync(scope.Var(expected_out_name)->Get<LoDTensor>(),
+                   platform::CPUPlace(), &expected_out);
 
     ASSERT_TRUE(test_out.IsInitialized());
     ASSERT_TRUE(expected_out.IsInitialized());
