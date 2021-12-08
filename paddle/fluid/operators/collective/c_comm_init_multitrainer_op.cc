@@ -26,7 +26,7 @@ limitations under the License. */
 // #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {

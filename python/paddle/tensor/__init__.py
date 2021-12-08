@@ -106,6 +106,7 @@ from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
 from .manipulation import flip  # noqa: F401
+from .manipulation import rot90  # noqa: F401
 from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
@@ -374,6 +375,7 @@ tensor_method_func  = [ #noqa
            'unsqueeze_',
            'unstack',
            'flip',
+           'rot90',
            'unbind',
            'roll',
            'tile',
