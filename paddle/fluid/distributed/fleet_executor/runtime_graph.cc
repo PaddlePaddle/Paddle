@@ -100,12 +100,7 @@ std::vector<OpRole> RuntimeGraph::functionality_order = {
 RuntimeGraph::RuntimeGraph(const ProgramDesc& program,
                            const FleetExecutorDesc& exe_desc)
     : exe_desc_(exe_desc) {
-  if (exe_desc.strategy() == "1F1B") {
-    SplitProgramBasedFunctionality(program);
-    AssignTaskToIntercepter();
-    FakeDependence();
-    FakeRuntimeInfo();
-  } else if (exe_desc.strategy() == "Origin") {
+  if (exe_desc.pp_degree() == 1) {
     int64_t cur_rank = exe_desc_.cur_rank();
     int64_t max_run_times = exe_desc_.num_micro_batches();
     int64_t max_slot_nums = exe_desc_.num_slots();
@@ -117,8 +112,10 @@ RuntimeGraph::RuntimeGraph(const ProgramDesc& program,
     intercepter_id_to_rank_.insert({task_id, cur_rank});
     intercepter_id_to_node_.insert({task_id, task_nodes_[0].get()});
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Strategy %s is None of 1F1B or Origin.", exe_desc.strategy()));
+    SplitProgramBasedFunctionality(program);
+    AssignTaskToIntercepter();
+    FakeDependence();
+    FakeRuntimeInfo();
   }
 }
 
