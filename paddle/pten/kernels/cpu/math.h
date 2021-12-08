@@ -34,7 +34,6 @@ void Mean(const CPUContext& dev_ctx,
           const std::vector<int64_t>& dims,
           bool keep_dim,
           bool reduce_all,
-          DataType out_dtype,
           DenseTensor* out);
 
 template <typename T>

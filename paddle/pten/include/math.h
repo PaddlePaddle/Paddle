@@ -44,8 +44,7 @@ DenseTensor Mean(const ContextT& dev_ctx,
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
   bool reduce_all = false;
-  DataType out_dtype = pten::DataType::UNDEFINED;
-  Mean<T>(dev_ctx, x, axis, keep_dim, reduce_all, out_dtype, &dense_out);
+  Mean<T>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
   return dense_out;
 }
 
