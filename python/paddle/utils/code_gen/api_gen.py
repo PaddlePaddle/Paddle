@@ -331,6 +331,7 @@ PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 
 def header_include():
     return """
+#include "paddle/pten/api/include/declare.h"
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
@@ -350,22 +351,6 @@ def source_include(header_file_path):
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
-"""
-
-
-def module_declare():
-    return """
-PT_DECLARE_MODULE(CreationCPU);
-PT_DECLARE_MODULE(LinalgCPU);
-PT_DECLARE_MODULE(ManipulationCPU);
-PT_DECLARE_MODULE(MathCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(CreationCUDA);
-PT_DECLARE_MODULE(LinalgCUDA);
-PT_DECLARE_MODULE(ManipulationCUDA);
-PT_DECLARE_MODULE(MathCUDA);
-#endif
 """
 
 
@@ -405,7 +390,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     include_header_file = "paddle/pten/api/include/api.h"
     source_file.write(source_include(include_header_file))
-    source_file.write(module_declare())
     source_file.write(namespace[0])
 
     for api in apis:

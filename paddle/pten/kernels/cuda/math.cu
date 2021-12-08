@@ -111,16 +111,13 @@ void Sum(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(MathCUDA);
-
 using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("reduce_mean", CUDA, ANY, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL("scale",
+PT_REGISTER_KERNEL(sign, CUDA, ANY, pten::Sign, float, double, float16) {}
+PT_REGISTER_KERNEL(reduce_mean, CUDA, ANY, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(scale,
                    CUDA,
                    ANY,
                    pten::Scale,
@@ -132,7 +129,7 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("elementwise_add",
+PT_REGISTER_KERNEL(elementwise_add,
                    CUDA,
                    ANY,
                    pten::ElementwiseAdd,
@@ -143,7 +140,7 @@ PT_REGISTER_KERNEL("elementwise_add",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_sub",
+PT_REGISTER_KERNEL(elementwise_sub,
                    CUDA,
                    ANY,
                    pten::ElementwiseSub,
@@ -154,7 +151,7 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_div",
+PT_REGISTER_KERNEL(elementwise_div,
                    CUDA,
                    ANY,
                    pten::ElementwiseDiv,
@@ -165,7 +162,7 @@ PT_REGISTER_KERNEL("elementwise_div",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_mul",
+PT_REGISTER_KERNEL(elementwise_mul,
                    CUDA,
                    ANY,
                    pten::ElementwiseMul,
@@ -177,7 +174,7 @@ PT_REGISTER_KERNEL("elementwise_mul",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("reduce_sum",
+PT_REGISTER_KERNEL(reduce_sum,
                    CUDA,
                    ANY,
                    pten::Sum,
