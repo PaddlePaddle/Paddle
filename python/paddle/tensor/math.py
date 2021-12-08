@@ -2617,24 +2617,22 @@ def logit(x, eps=0.0, name=None):
     """
     This function generates a new tensor with the logit of the elements of input.
 
-    Equation:
-        .. math::
-           
-            \begin{aligned}
-            logit(x) = ln (\frac{x}{1-x})
-            \end{aligned}
+    .. math::
+    
+        logit(x) = ln(\frac{x}{1 - x})
 
-        where
+    where
 
-        .. math::
-            x_i=
+    .. math::
+
+        x_i=
             \left\{
                 \begin{array}{rcl}
-                    x_i & &if &eps == Default \\
-                    eps & &  if&x_i < eps\\
-                    x_i & & if&eps <= x_i<=1-eps \\
-                    1-eps &  & if&x_i > 1-eps
-                \end{array}
+                x_i & & \text{if } eps == Default \\
+                eps & &  \text{if } x_i < eps\\
+                x_i & & \text{if } eps <= x_i <= 1-eps \\
+                1-eps & & \text{if } x_i > 1-eps
+            \end{array}
             \right.
 
     Args:
