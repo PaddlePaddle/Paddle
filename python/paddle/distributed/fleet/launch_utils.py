@@ -511,6 +511,17 @@ def start_local_trainers(cluster,
             "PADDLE_WORLD_DEVICE_IDS": ",".join(res),
         }
 
+        # The following three environnement variables are used for auto mapping
+        if current_env.get("PADDLE_CLUSTER_TOPO_PATH", None) is not None:
+            proc_env["PADDLE_CLUSTER_TOPO_PATH"] = current_env[
+                "PADDLE_CLUSTER_TOPO_PATH"]
+        if current_env.get("PADDLE_RANK_MAPPING_PATH", None) is not None:
+            proc_env["PADDLE_RANK_MAPPING_PATH"] = current_env[
+                "PADDLE_RANK_MAPPING_PATH"]
+        if current_env.get("PADDLE_ENABLE_AUTO_MAPPING", None) is not None:
+            proc_env["PADDLE_ENABLE_AUTO_MAPPING"] = current_env[
+                "PADDLE_ENABLE_AUTO_MAPPING"]
+
         if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.GPU:
             proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
@@ -531,7 +542,8 @@ def start_local_trainers(cluster,
         current_env.update(proc_env)
 
         coverage_args = []
-        if run_with_coverage():
+        if run_with_coverage() or os.environ.get("WITH_COVERAGE",
+                                                 "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         cmd = [sys.executable, "-u"] + coverage_args + [training_script
                                                         ] + training_script_args
@@ -557,7 +569,11 @@ def start_local_trainers(cluster,
             with open("%s/endpoints.log" % log_dir, "w") as f:
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
-            fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
+            if current_env.get("PADDLE_ENABLE_AUTO_MAPPING") is not None \
+                and current_env.get("PADDLE_NEED_RANK_MAPPING").lower() == "true":
+                fn = open("%s/prelaunchlog.%d" % (log_dir, idx), "a")
+            else:
+                fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(
                 cmd, env=current_env, stdout=fn, stderr=fn, preexec_fn=pre_fn)
         else:
@@ -876,8 +892,8 @@ def get_custom_endpoints(origin_endpoints, offset=0):
 #        pretty_print_envs(environs)))
 
 
-def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
-                       node_mapping_ranks):
+def get_mapped_cluster_without_rank_mapping(
+        node_ips, node_ip, trainer_endpoints, device_mode, node_ranks):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     assert device_mode == DeviceMode.GPU, \
         "Only support get mapped cluster for gpu now."
@@ -890,17 +906,12 @@ def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         cur_node_endpoints = trainer_endpoints[node_rank]
 
         # choose rank from global mapped ranks and set it to the trainer.
-        ranks_per_node = node_mapping_ranks[node_rank]
+        ranks_per_node = node_ranks[node_rank]
+        assert len(ranks_per_node) == 1
         for i in range(len(ranks_per_node)):
             trainer = Trainer()
-            # change global rank(mapped) to local rank within each node.
-            # e.g. mapped ranks of node: 3,4,7 -> 0,1,2
-            local_rank = ranks_per_node.index(ranks_per_node[i])
-            trainer.accelerators.append(local_rank)
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
-            # global mapped ranks
             trainer.rank = ranks_per_node[i]
-
             pod.trainers.append(trainer)
         cluster.pods.append(pod)
 
@@ -908,22 +919,21 @@ def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
     return cluster, cluster.pods[pod_rank]
 
 
-def get_mapped_cluster_from_args(args, device_mode):
+def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
     assert device_mode == DeviceMode.GPU, \
         "Only support get mapped cluster for gpu now."
     gpus_num = fluid.core.get_cuda_device_count()
 
     # parse ip-ranks json file
-    json_data = None
-    with args.rank_mapping_file as json_file:
-        json_data = json.load(json_file)
+    cluster_topo = None
+    with open(args.cluster_topo_path, "r") as json_file:
+        cluster_topo = json.load(json_file)
 
     node_ips = []
-    node_ranks_mapping = []
-    ip_ranks_list = json_data['ip_ranks']
-    for ip_ranks in ip_ranks_list:
-        node_ips.append(ip_ranks['ip'])
-        node_ranks_mapping.append(ip_ranks['ranks'])
+    node_ranks = []
+    for idx, cur_cluster_topo in enumerate(cluster_topo["machines"]):
+        node_ips.append(cur_cluster_topo['addr'])
+        node_ranks.append([idx])
 
     if len(node_ips) == 1:
         node_ip = node_ips[0]
@@ -937,31 +947,160 @@ def get_mapped_cluster_from_args(args, device_mode):
         "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
-    assert len(node_ranks_mapping[node_rank]) <= gpus_num, \
-        "number of ranks mapped to one node should not exceed the avaiable ones."
-    assert len(node_ranks_mapping) == len(node_ips), \
+    assert len(node_ranks) == len(node_ips), \
         "ranks length should be equal to ips length."
 
     logger.debug("parsed from args: node_ips:{} node_ip:{} "
-                 "node_rank:{} node_ranks_mapping:{}".format(
-                     node_ips, node_ip, node_rank, node_ranks_mapping[
-                         node_rank]))
+                 "node_rank:{} node_ranks:{}".format(
+                     node_ips, node_ip, node_rank, node_ranks[node_rank]))
 
     # NOTE: there are different number of global mapped ranks on each node.
     free_ports = []
     trainer_endpoints = []
     for ip in node_ips:
         node_rank = node_ips.index(ip)
-        if os.environ.get('FLAGS_START_PORT') is not None:
+        if os.environ.get('PADDLE_PORT') is not None:
+            start_port = int(os.getenv("PADDLE_PORT", ""))
+            free_ports = [
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
+            ]
+        elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
-            end_port = start_port + len(node_ranks_mapping[node_rank])
-            free_ports = [x for x in range(start_port, end_port)]
+            free_ports = [
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
+            ]
         else:
-            free_ports = find_free_ports(len(node_ranks_mapping[node_rank]))
+            free_ports = find_free_ports(len(node_ranks[node_rank]))
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
 
-    return get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
-                              node_ranks_mapping)
+    return get_mapped_cluster_without_rank_mapping(
+        node_ips, node_ip, trainer_endpoints, device_mode, node_ranks)
+
+
+def get_mapped_cluster_with_rank_mapping(node_ips, node_ip, trainer_endpoints,
+                                         device_mode, node_ranks,
+                                         node_rank_mappings):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+
+    def get_relative_gpu_id(gpu_id):
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            return gpu_id
+        else:
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            relative_id = cuda_visible_devices_list.index(str(gpu_id))
+            logger.info(
+                "Change gpu id from {} to {} based on CUDA_VISIBLE_DEVICES {}".
+                format(gpu_id, relative_id, cuda_visible_devices_list))
+            return relative_id
+
+    cluster = Cluster(hdfs=None)
+    for node_rank, ip in enumerate(node_ips):
+        pod = Pod()
+        pod.rank = node_rank
+        pod.addr = ip
+        pod.device_mode = device_mode
+        cur_node_endpoints = trainer_endpoints[node_rank]
+
+        # choose rank from global mapped ranks and set it to the trainer.
+        ranks_per_node = node_ranks[node_rank]
+        cur_node_rank_mapping = node_rank_mappings[node_rank]
+        for i in range(len(ranks_per_node)):
+            trainer = Trainer()
+            local_device_ids = cur_node_rank_mapping["ranks"][str(
+                ranks_per_node[i])]
+            assert len(local_device_ids) == 1, \
+                "Only support one process to one device mapping"
+            trainer.accelerators.append(
+                get_relative_gpu_id(local_device_ids[0]))
+            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.rank = ranks_per_node[i]
+            pod.trainers.append(trainer)
+        cluster.pods.append(pod)
+
+    pod_rank = node_ips.index(node_ip)
+    return cluster, cluster.pods[pod_rank]
+
+
+def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+    gpus_num = fluid.core.get_cuda_device_count()
+
+    # parse ip-ranks json file
+    rank_mapping_path = args.rank_mapping_path or os.getenv(
+        "PADDLE_RANK_MAPPING_PATH")
+    rank_mapping = None
+    with open(rank_mapping_path, "r") as json_file:
+        rank_mapping = json.load(json_file)
+    # reset PADDLE_RANK_MAPPING_PATH env
+    os.environ["PADDLE_RANK_MAPPING_PATH"] = ""
+
+    node_ips = []
+    node_ranks = []
+    node_rank_mappings = []
+    for cur_rank_mapping in rank_mapping:
+        node_ips.append(cur_rank_mapping['addr'])
+        cur_node_rank_list = [
+            int(i) for i in list(cur_rank_mapping['ranks'].keys())
+        ]
+        cur_node_rank_list.sort()
+        node_ranks.append(cur_node_rank_list)
+        node_rank_mappings.append(cur_rank_mapping)
+
+    if len(node_ips) == 1:
+        node_ip = node_ips[0]
+    else:
+        if args.host:
+            node_ip = args.host
+        else:
+            _, node_ip = get_host_name_ip()
+
+    assert node_ip in node_ips, \
+        "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    node_rank = node_ips.index(node_ip)
+
+    assert len(node_ranks[node_rank]) <= gpus_num, \
+        "number of ranks mapped to one node should not exceed the avaiable ones."
+    assert len(node_ranks) == len(node_ips), \
+        "ranks length should be equal to ips length."
+
+    logger.debug("parsed from args: node_ips:{} node_ip:{} "
+                 "node_rank:{} node_ranks:{}".format(
+                     node_ips, node_ip, node_rank, node_ranks[node_rank]))
+
+    # NOTE: there are different number of global mapped ranks on each node.
+    free_ports = []
+    trainer_endpoints = []
+    for ip in node_ips:
+        node_rank = node_ips.index(ip)
+        if os.environ.get('PADDLE_PORT') is not None:
+            start_port = int(os.getenv("PADDLE_PORT", ""))
+            free_ports = [
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
+            ]
+        elif os.environ.get('FLAGS_START_PORT') is not None:
+            start_port = int(os.environ.get('FLAGS_START_PORT'))
+            free_ports = [
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
+            ]
+        else:
+            free_ports = find_free_ports(len(node_ranks[node_rank]))
+        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+
+    return get_mapped_cluster_with_rank_mapping(node_ips, node_ip,
+                                                trainer_endpoints, device_mode,
+                                                node_ranks, node_rank_mappings)
 
 
 class ParameterServerLauncher(object):
@@ -1229,14 +1368,18 @@ class ParameterServerLauncher(object):
                 _, self.current_node_ip = get_host_name_ip()
             else:
                 self.current_node_ip = pod_ip
-            assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                  % (self.current_node_ip, self.node_ips)
-        self.node_rank = self.node_ips.index(self.current_node_ip)
-        logger.debug(
-            "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
-            format(self.node_ips, self.current_node_ip, self.node_rank))
+            if not self.distribute_mode == DistributeMode.PS_HETER:
+                assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
+                      % (self.current_node_ip, self.node_ips)
+        if self.current_node_ip in self.node_ips:
+            self.node_rank = self.node_ips.index(self.current_node_ip)
+            logger.debug(
+                "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
+                format(self.node_ips, self.current_node_ip, self.node_rank))
 
     def start_ps(self):
+        if not self.current_node_ip in self.node_ips:
+            return
         cluster = Cluster(hdfs=None)
         server_rank = 0
         worker_rank = 0

@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/kernel_registry.h"
+
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
 
