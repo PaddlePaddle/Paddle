@@ -178,7 +178,7 @@ class MHAGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("output")), "Input",
-                   "O@GRAD", "mha");
+                   framework::GradVarName("output"), "mha");
     OP_INOUT_CHECK(ctx->HasInput("qo_kv_seqlen"), "Input", "qo_kv_seqlen",
                    "mha");
 

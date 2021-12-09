@@ -20,40 +20,31 @@ import numpy as np
 import paddle.fluid.core as core
 
 import paddle
-from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
-from paddle.nn.layer import cuDNNSeqInfoInfer
 from paddle import fluid
-
-
-def _generate_data(batch_size, max_seq_len, vec_size):
-    Q = (np.random.random(
-        (batch_size, max_seq_len, vec_size)) - .5).astype(np.single)
-    K = (np.random.random(
-        (batch_size, max_seq_len, vec_size)) - .5).astype(np.single)
-    V = (np.random.random(
-        (batch_size, max_seq_len, vec_size)) - .5).astype(np.single)
-    W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(np.single)
-    W = np.concatenate((W, np.zeros((4 * vec_size, ))), dtype=np.single)
-
-    return (Q, K, V, W)
+from paddle.nn import cuDNNMultiHeadAttention
+from paddle.nn.layer import cuDNNSeqInfoInfer
+from utils import generate_weight, generate_data
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestcuDNNMHALayerWithASP(unittest.TestCase):
+class TestcuDNNMultiHeadAttentionStaticWithASP(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
         self.nheads = 4
-        self.seq_len = 4
-        self.vec_size = 8
+        self.seqlen = 4
+        self.embed_dim = 8
 
         paddle.enable_static()
 
         self.place = core.CUDAPlace(0)
         self.exe = paddle.static.Executor(self.place)
+        self.dtype = np.single
 
-        self.Q, self.K, self.V, self.W = _generate_data(
-            self.batch_size, self.seq_len, self.vec_size)
+        self.query, self.key, self.value = generate_data(
+            self.batch_size, self.seqlen, self.embed_dim, self.dtype)
+        self.weight, _, _, _, _, _, _, _, _, = generate_weight(self.embed_dim,
+                                                               self.dtype)
 
         self.cudnn_main_prog = paddle.static.Program()
         self.cudnn_startup_prog = paddle.static.Program()
@@ -62,25 +53,26 @@ class TestcuDNNMHALayerWithASP(unittest.TestCase):
                                          self.cudnn_startup_prog):
             q_input = paddle.static.data(
                 name="q_input",
-                shape=[-1, self.seq_len, self.vec_size],
+                shape=[-1, self.seqlen, self.embed_dim],
                 dtype='float32')
             k_input = paddle.static.data(
                 name="k_input",
-                shape=[-1, self.seq_len, self.vec_size],
+                shape=[-1, self.seqlen, self.embed_dim],
                 dtype='float32')
             v_input = paddle.static.data(
                 name="v_input",
-                shape=[-1, self.seq_len, self.vec_size],
+                shape=[-1, self.seqlen, self.embed_dim],
                 dtype='float32')
             attn_mask_input = paddle.static.data(
-                name="attn_mask", shape=[-1, self.seq_len], dtype="int32")
+                name="attn_mask", shape=[-1, self.seqlen], dtype="int32")
 
             q_input.stop_gradient = False
             k_input.stop_gradient = False
             v_input.stop_gradient = False
 
             seq_info_infer = cuDNNSeqInfoInfer()
-            self.cudnn_mha = cuDNNMultiHeadAttention(self.vec_size, self.nheads)
+            self.cudnn_mha = cuDNNMultiHeadAttention(self.embed_dim,
+                                                     self.nheads)
             seq_info = seq_info_infer(attn_mask_input)
             cudnn_mha_output = self.cudnn_mha(q_input, k_input, v_input,
                                               seq_info)
@@ -92,9 +84,8 @@ class TestcuDNNMHALayerWithASP(unittest.TestCase):
 
         self.exe.run(self.cudnn_startup_prog)
 
-        self.cudnn_mha.weight.set_value(self.W)
-        self.attn_mask_for_cudnn = np.ones(
-            (self.batch_size, self.seq_len), dtype=np.int32)
+        self.cudnn_mha.weight.set_value(self.weight)
+        self.attn_mask = np.ones((self.batch_size, self.seqlen), dtype=np.int32)
 
     def test_cudnn_1D_mask(self):
         param_name = "{}.w_0".format(self.cudnn_mha.full_name())
@@ -131,7 +122,6 @@ class TestcuDNNMHALayerWithASP(unittest.TestCase):
                     w.T, func_name=fluid.contrib.sparsity.CheckMethod.CHECK_2D))
 
     def test_cudnn_2D_best_mask(self):
-        self.cudnn_mha.weight.set_value(self.W)
         param_name = "{}.w_0".format(self.cudnn_mha.full_name())
         pre_pruned_mat = np.array(fluid.global_scope().find_var(param_name)
                                   .get_tensor())
@@ -155,10 +145,10 @@ class TestcuDNNMHALayerWithASP(unittest.TestCase):
         for _ in range(3):
             self.exe.run(self.cudnn_main_prog,
                          feed={
-                             "q_input": self.Q,
-                             "k_input": self.K,
-                             "v_input": self.V,
-                             "attn_mask": self.attn_mask_for_cudnn
+                             "q_input": self.query,
+                             "k_input": self.key,
+                             "v_input": self.value,
+                             "attn_mask": self.attn_mask
                          })
 
         param_name = "{}.w_0".format(self.cudnn_mha.full_name())
@@ -167,11 +157,8 @@ class TestcuDNNMHALayerWithASP(unittest.TestCase):
         for w in self._get_cudnn_mha_weight(cudnn_weight):
             self.assertTrue(fluid.contrib.sparsity.check_sparsity(w.T))
 
-    def _get_cudnn_mha_weight(self, cudnn_weight):
-        param_shape = (self.vec_size, self.vec_size)
-        stride = self.vec_size * self.vec_size
-        WQ = cudnn_weight[:stride].reshape(param_shape)
-        WK = cudnn_weight[stride:2 * stride].reshape(param_shape)
-        WV = cudnn_weight[2 * stride:3 * stride].reshape(param_shape)
-        WO = cudnn_weight[3 * stride:4 * stride].reshape(param_shape)
-        return WQ, WK, WV, WO
+    def _get_cudnn_mha_weight(self, weight):
+        q_proj_weight, _, k_proj_weight, _, \
+        v_proj_weight, _, out_proj_weight, _ = \
+            cuDNNMultiHeadAttention._split_weight_into_legacy_format(weight, self.embed_dim, False)
+        return q_proj_weight, k_proj_weight, v_proj_weight, out_proj_weight
