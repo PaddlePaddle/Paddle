@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#define EXTENSION
 // All paddle apis in C++ frontend
 #include "paddle/pten/api/all.h"
+#undef EXTENSION

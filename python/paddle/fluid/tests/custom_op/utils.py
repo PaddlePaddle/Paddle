@@ -38,7 +38,7 @@ paddle_includes = [
     os.path.join(site_packages_path, 'paddle', 'include'),
     os.path.join(site_packages_path, 'paddle', 'include', 'third_party'),
     os.path.join(paddle_path),
-    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'), eigen_path
+    os.path.join(paddle_path, 'paddle', 'fluid', 'platform')
 ]
 
 # Test for extra compile args
