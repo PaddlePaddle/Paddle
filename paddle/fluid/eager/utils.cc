@@ -48,9 +48,9 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
 }
 
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
-    std::vector<egr::EagerTensor>* targets) {
+    const std::vector<egr::EagerTensor>& targets) {
   std::vector<AutogradMeta*> metas;
-  for (const egr::EagerTensor& t : *targets) {
+  for (const egr::EagerTensor& t : targets) {
     metas.push_back(unsafe_autograd_meta(t));
   }
   return metas;

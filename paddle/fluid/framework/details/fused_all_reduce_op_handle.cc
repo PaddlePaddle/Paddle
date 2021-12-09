@@ -55,9 +55,9 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #endif
   };
   destroy_event(start_event_);
@@ -87,10 +87,10 @@ void FusedAllReduceOpHandle::RunImpl() {
     auto create_event = [](gpuEvent_t *event) {
       if (*event) return;
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(event, hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(event, cudaEventDisableTiming));
 #endif
     };
@@ -109,12 +109,12 @@ void FusedAllReduceOpHandle::RunImpl() {
     auto &nccl_ctx = flat_nccl_ctxs->at(gpu_place.device);
     nccl_stream = nccl_ctx.stream();
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(start_event_, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(nccl_stream, start_event_, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(start_event_, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamWaitEvent(nccl_stream, start_event_, 0));
 #endif
   } else {
@@ -169,12 +169,12 @@ void FusedAllReduceOpHandle::RunImpl() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (FLAGS_allreduce_record_one_event) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(end_event_, nccl_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(compute_stream, end_event_, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(end_event_, nccl_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamWaitEvent(compute_stream, end_event_, 0));
 #endif
   }

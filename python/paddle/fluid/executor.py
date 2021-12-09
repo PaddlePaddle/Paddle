@@ -1272,9 +1272,7 @@ class Executor(object):
         if isinstance(program, Program) and program._pipeline_opt:
             if "fleet_opt" in program._pipeline_opt:
                 return self._run_using_fleet_executor(
-                    program,
-                    fetch_list=fetch_list,
-                    use_program_cache=use_program_cache)
+                    program=program, feed=feed, fetch_list=fetch_list)
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
@@ -1948,46 +1946,21 @@ class Executor(object):
 
         return ctx
 
-    def _run_using_fleet_executor(self,
-                                  program=None,
-                                  dataset=None,
-                                  scope=None,
-                                  thread=0,
-                                  is_infer=False,
-                                  debug=False,
-                                  fetch_list=None,
-                                  fetch_info=None,
-                                  print_period=100,
-                                  fetch_handler=None,
-                                  use_program_cache=False):
-        scope, real_fetch_list, trainer_instance = \
-            self._prepare_pipeline_ctx(program, dataset, scope, thread,
-                                       is_infer, debug, fetch_list, fetch_info,
-                                       print_period, fetch_handler,
-                                       use_program_cache)
+    def _prepare_fleet_executor(self, program=None, scope=None, fleet_opt=None):
         from ..distributed.fleet.proto import fleet_executor_desc_pb2
         from google.protobuf import text_format
-        cur_rank = os.getenv("PADDLE_TRAINER_ID")
-        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        assert program, "Program for fleet executor should not be None"
+        assert fleet_opt, "Configurations for fleet executor should not be None"
+        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+        trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        nrank = 1
-        if cur_rank and trainer_endpoints_str:
-            fleet_exe_desc.cur_rank = int(cur_rank)
-            trainer_endpoints = trainer_endpoints_str.split(',')
-            for rank, endpoint in enumerate(trainer_endpoints):
-                rank_info = fleet_executor_desc_pb2.RankInfo()
-                rank_info.rank = rank
-                rank_info.ip_port = endpoint
-                fleet_exe_desc.cluster_info.append(rank_info)
-            nrank = len(trainer_endpoints)
-        else:
-            fleet_exe_desc.cur_rank = 0
+        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        nrank = len(trainer_endpoints)
+        for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
-            rank_info.rank = 0
-            rank_info.ip_port = ''
+            rank_info.rank = rank
+            rank_info.ip_port = endpoint
             fleet_exe_desc.cluster_info.append(rank_info)
-            logging.warning("Fleet Executor will run on single device only.")
-        fleet_opt = program._pipeline_opt["fleet_opt"]
         if "dist_strategy" in fleet_opt:
             fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
             fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
@@ -1999,10 +1972,46 @@ class Executor(object):
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program._pipeline_opt["section_program"].desc, scope,
-                       place)
-        fleet_exe.run()
-        fleet_exe.release()
+        fleet_exe.init(program.desc, scope, place)
+        return fleet_exe
+
+    def _run_using_fleet_executor(self,
+                                  program=None,
+                                  feed=None,
+                                  feed_var_name="feed",
+                                  fetch_var_name="fetch",
+                                  fetch_list=None):
+        cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
+        cached_ctx = self._get_ctx_cache(cache_key)
+        cached_scope = self._get_scope_cache(cache_key)
+        cached_program = self._get_program_cache(cache_key)
+        if cached_scope is None:
+            cached_scope = global_scope()
+            self._add_scope_cache(cache_key, cached_scope)
+        if cached_program is None:
+            real_feed = [] if feed is None else feed
+            real_program = program
+            if "section_program" in program._pipeline_opt:
+                real_program = program._pipeline_opt["section_program"]
+            cached_program = self._add_feed_fetch_ops(
+                program=real_program,
+                feed=real_feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name)
+            self._add_program_cache(cache_key, cached_program)
+        if cached_ctx is None:
+            fleet_opt = program._pipeline_opt["fleet_opt"]
+            cached_ctx = self._prepare_fleet_executor(
+                program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
+            self._add_ctx_cache(cache_key, cached_ctx)
+        if feed:
+            self._feed_data(cached_program, feed, feed_var_name, cached_scope)
+        cached_ctx.run()
+        if fetch_list:
+            arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
+            tensors = arr._move_to_list()
+            return as_numpy(tensors)
         return None
 
     def _run_pipeline(self,

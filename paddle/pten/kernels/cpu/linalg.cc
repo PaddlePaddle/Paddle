@@ -21,7 +21,7 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/complex.h"
 
-#include "paddle/pten/kernels/functions/math/matmul_func.h"
+#include "paddle/pten/kernels/hybird/math/matmul_func.h"
 
 namespace pten {
 
