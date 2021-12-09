@@ -444,6 +444,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
+      break;
     } else {
       CHECK(batch_size == cur_batch_size);  // NOLINT
     }
