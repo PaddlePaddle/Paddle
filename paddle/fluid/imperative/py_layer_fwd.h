@@ -101,28 +101,6 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
               "`%s` type argument can not be cast into `Tensor`.",
               ptr->ptr()->ob_type->tp_name));
         }
-      } else if (py::isinstance<py::tuple>(*ptr) ||
-                 py::isinstance<py::list>(*ptr)) {
-        try {
-          auto tuple_arg = ptr->cast<py::tuple>();
-          for (auto iter = tuple_arg.begin(); iter != tuple_arg.end(); ++iter) {
-            try {
-              auto t = iter->cast<std::shared_ptr<VarBase>>();
-              input_vars.push_back(t);
-            } catch (py::cast_error& err) {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "The `PyLayer.forward` function contains invalid argument, "
-                  "the "
-                  "`%s` type argument can not be cast into `Tensor`.",
-                  ptr->ptr()->ob_type->tp_name));
-            }
-          }
-        } catch (py::cast_error& err) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The `PyLayer.forward` function contains invalid argument, the "
-              "`%s` type argument can not be cast into `Tensor`.",
-              ptr->ptr()->ob_type->tp_name));
-        }
       }
     }
   }
@@ -136,28 +114,6 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
           auto a = ptr->second.cast<std::shared_ptr<VarBase>>();
           input_vars.push_back(a);
         } catch (py::cast_error&) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The `PyLayer.forward` function contains invalid argument, the "
-              "`%s` type argument can not be cast into `Tensor`.",
-              ptr->second.ptr()->ob_type->tp_name));
-        }
-      } else if (py::isinstance<py::tuple>(*ptr->second) ||
-                 py::isinstance<py::list>(*ptr->second)) {
-        try {
-          auto tuple_arg = ptr->second.cast<py::tuple>();
-          for (auto iter = tuple_arg.begin(); iter != tuple_arg.end(); ++iter) {
-            try {
-              auto t = iter->cast<std::shared_ptr<VarBase>>();
-              input_vars.push_back(t);
-            } catch (py::cast_error& err) {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "The `PyLayer.forward` function contains invalid argument, "
-                  "the "
-                  "`%s` type argument can not be cast into `Tensor`.",
-                  ptr->second.ptr()->ob_type->tp_name));
-            }
-          }
-        } catch (py::cast_error& err) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "The `PyLayer.forward` function contains invalid argument, the "
               "`%s` type argument can not be cast into `Tensor`.",
@@ -226,6 +182,15 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
     if (if_inplace) {
+      // when pylayer forward is inplace strategy, check whether tensor is leaf
+      for (auto& t : input_vars) {
+        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(), false,
+                          platform::errors::InvalidArgument(
+                              "Leaf Var (%s) that doesn't stop gradient can't "
+                              "use inplace strategy.",
+                              t->Name()));
+      }
+
       inplace_map["X"] = "Out";
     }
 
