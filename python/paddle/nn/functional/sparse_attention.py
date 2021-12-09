@@ -93,7 +93,7 @@ def sparse_attention(query,
             # required: skiptest
             import paddle
             import numpy as np
-            
+
             query_data = np.array([[[[0, 1,], [2, 3],
                     [ 0, 1], [2, 3]]]]).astype("float32")
             key_data = np.array([[[[0, 1,], [2, 3],
@@ -104,6 +104,8 @@ def sparse_attention(query,
                             4, 6, 8]]]).astype("int32")
             sparse_csr_columns_data = np.array([[[0, 1,
                             0, 1, 2, 3, 2, 3]]]).astype("int32")
+            key_padding_mask_data = np.array([[1,1,1,0]]).astype("float32")
+            attention_mask_data = np.array([[1,0,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]).astype("float32")
             print(query_data.shape)
             # (1, 1, 4, 2)
             print(sparse_csr_offset_data.shape)
@@ -121,10 +123,21 @@ def sparse_attention(query,
                             place=paddle.CUDAPlace(0))
             columns = paddle.to_tensor(sparse_csr_columns_data, stop_gradient=False, 
                             place=paddle.CUDAPlace(0))
+            key_padding_mask = paddle.to_tensor(key_padding_mask_data, stop_gradient=False, 
+                            place=paddle.CUDAPlace(0))
+            attention_mask = paddle.to_tensor(attention_mask_data, stop_gradient=False, 
+                            place=paddle.CUDAPlace(0))
+            output_mask = paddle.nn.functional.sparse_attention(query, key, 
+                            value, offset, columns, 
+                            key_padding_mask=key_padding_mask, attn_mask=attention_mask)
+            print(output_mask)
+            # [[[[0.        , 1.        ],
+            #    [1.99830270, 2.99830270],
+            #    [0.        , 1.        ],
+            #    [0.        , 1.        ]]]]
             output = paddle.nn.functional.sparse_attention(query, key, 
                             value, offset, columns)
-            print(output)
-            
+            print(output) 
             # [[[[1.60885942, 2.60885954],
             #       [1.99830270, 2.99830270],
             #       [1.60885942, 2.60885954],
@@ -141,24 +154,15 @@ def sparse_attention(query,
     out = helper.create_variable_for_type_inference(dtype)
     result_sdd = helper.create_variable_for_type_inference(dtype)
     result_softmax = helper.create_variable_for_type_inference(dtype)
-    if key_padding_mask is None and attn_mask is None:
-        inputs = {
-            'Q': query,
-            'K': key,
-            'V': value,
-            'Offset': sparse_csr_offset,
-            'Columns': sparse_csr_columns
-        }
-    else:
-        inputs = {
-            'Q': query,
-            'K': key,
-            'V': value,
-            'Offset': sparse_csr_offset,
-            'Columns': sparse_csr_columns,
-            'KeyPaddingMask': key_padding_mask,
-            'AttnMask': attn_mask,
-        }
+    inputs = {
+        'Q': query,
+        'K': key,
+        'V': value,
+        'Offset': sparse_csr_offset,
+        'Columns': sparse_csr_columns,
+        'KeyPaddingMask': key_padding_mask,
+        'AttnMask': attn_mask,
+    }
     outputs = {
         'Out': out,
         'SparseDotSdd': result_sdd,
