@@ -49,13 +49,13 @@ class CinnLaunchContext {
   bool IsArgumentsInitialized() const;
 
   // Return whether a Paddle variable used on compiled kernels
-  bool IsVariableUsed(const std::string& paddle_name) const;
+  bool IsVariableUsed(const std::string& paddle_var_name) const;
 
   // Assign tensor buffer to input or output variables
-  void AssignExternalVariable(const std::string& paddle_name);
+  void AssignExternalVariable(const std::string& paddle_var_name);
 
   // Assign tensor buffer to internal variables
-  void AssignInternalVariable(const std::string& cinn_name);
+  void AssignInternalVariable(const std::string& cinn_var_name);
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
@@ -75,7 +75,7 @@ class CinnLaunchContext {
                              const CinnTensor& cinn_tensor);
 
   // Set an argument with (cinn name)->(cinn_buffer_t) pair
-  void SetArgument(const std::string& cinn_name,
+  void SetArgument(const std::string& cinn_var_name,
                    std::unique_ptr<cinn_buffer_t>&& buffer);
 
  private:
