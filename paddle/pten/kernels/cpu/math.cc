@@ -15,12 +15,12 @@
 #include "paddle/pten/kernels/cpu/math.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
-#include "paddle/pten/kernels/functions/cpu/elementwise.h"
-#include "paddle/pten/kernels/functions/eigen/reduce.h"
-#include "paddle/pten/kernels/functions/eigen/scale.h"
-#include "paddle/pten/kernels/functions/eigen/sign.h"
-#include "paddle/pten/kernels/functions/general/elementwise_functor.h"
-#include "paddle/pten/kernels/functions/general/reduce_impl.h"
+#include "paddle/pten/kernels/hybird/cpu/elementwise.h"
+#include "paddle/pten/kernels/hybird/eigen/reduce.h"
+#include "paddle/pten/kernels/hybird/eigen/scale.h"
+#include "paddle/pten/kernels/hybird/eigen/sign.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -116,7 +116,7 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 
 PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL("reduce_mean", CPU, ANY, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL("mean", CPU, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CPU,
                    ANY,
@@ -130,7 +130,7 @@ PT_REGISTER_KERNEL("scale",
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL("elementwise_add",
+PT_REGISTER_KERNEL("add",
                    CPU,
                    ANY,
                    pten::ElementwiseAdd,
@@ -140,7 +140,7 @@ PT_REGISTER_KERNEL("elementwise_add",
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_sub",
+PT_REGISTER_KERNEL("subtract",
                    CPU,
                    ANY,
                    pten::ElementwiseSub,
@@ -150,7 +150,7 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_div",
+PT_REGISTER_KERNEL("divide",
                    CPU,
                    ANY,
                    pten::ElementwiseDiv,
@@ -160,7 +160,7 @@ PT_REGISTER_KERNEL("elementwise_div",
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_mul",
+PT_REGISTER_KERNEL("multiply",
                    CPU,
                    ANY,
                    pten::ElementwiseMul,
@@ -172,7 +172,7 @@ PT_REGISTER_KERNEL("elementwise_mul",
                    complex64,
                    complex128) {}
 
-PT_REGISTER_KERNEL("reduce_sum",
+PT_REGISTER_KERNEL("sum",
                    CPU,
                    ANY,
                    pten::Sum,

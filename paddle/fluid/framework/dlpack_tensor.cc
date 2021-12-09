@@ -80,6 +80,11 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
     return device;
   }
 
+  inline ::DLDevice operator()(const platform::IPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::IPUPlace is not supported"));
+  }
+
   inline ::DLDevice operator()(const platform::XPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
