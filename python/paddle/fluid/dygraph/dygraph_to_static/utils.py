@@ -549,7 +549,7 @@ def func_to_source_code(function, dedent=True):
             format(type(function).__name__))
     source_code_list, _ = inspect.getsourcelines(function)
     source_code_list = [
-        line for line in source_code_list if not line.startswith('#')
+        line for line in source_code_list if not line.lstrip().startswith('#')
     ]
     source_code = ''.join(source_code_list)
     if dedent:
