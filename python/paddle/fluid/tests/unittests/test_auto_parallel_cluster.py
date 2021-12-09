@@ -209,6 +209,10 @@ class TestAutoParallelCluster(unittest.TestCase):
         cluster = Cluster()
         cluster.build_from_file("./auto_parallel_cluster.json")
         os.remove("./auto_parallel_cluster.json")
+
+        self.assertEqual(len(cluster.get_all_devices("GPU")), 4)
+        self.assertEqual(len(cluster.get_all_devices("CPU")), 2)
+        self.assertEqual(len(cluster.get_all_devices("NIC")), 2)
         self.assertEqual(len(cluster.machines), 2)
 
         # machine0

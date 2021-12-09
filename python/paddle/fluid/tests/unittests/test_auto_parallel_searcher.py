@@ -14,9 +14,9 @@
 
 from __future__ import print_function
 
-# import os
-# import copy
-# import json
+import os
+import copy
+import json
 import unittest
 
 import paddle
@@ -24,13 +24,13 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-# from paddle.distributed import fleet
+from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-# from paddle.distributed.auto_parallel.cluster import Cluster
-# from paddle.distributed.auto_parallel.utils import SerialProgramInfo
-# from paddle.distributed.auto_parallel.searcher import Checker, Enumerater
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.utils import SerialProgramInfo
+from paddle.distributed.auto_parallel.planner import PlanSpace, PlanFilter
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
-# from paddle.distributed.auto_parallel.utils import get_all_distributed_main_program
+from paddle.distributed.auto_parallel.utils import get_all_distributed_main_program
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import update_op_dims_mapping_by_default_dist_impl
@@ -118,6 +118,30 @@ def set_default_dist_attr(program, dist_context, process_mesh):
     dist_context.add_process_mesh(process_mesh)
 
 
+def check_process_meshes(processes):
+    result = PlanSpace.enum_process_mesh_topology(processes)
+    if result:
+        return True
+    return False
+
+
+def check_pipeline_enumerater(program, process_mesh_topology):
+    valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
+        program, process_mesh_topology, True)
+    if valid_dist_attr_dict and len(
+            pipeline_process_meshes) > 1 and not global_process_mesh:
+        return True
+    return False
+
+
+def check_nonpipeline_enumerater(program, process_mesh_topology):
+    valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
+        program, process_mesh_topology, False)
+    if valid_dist_attr_dict and not pipeline_process_meshes and global_process_mesh:
+        return True
+    return False
+
+
 class TestMLPSearcher(unittest.TestCase):
     def test_update(self):
         train_program = paddle.static.Program()
@@ -173,6 +197,80 @@ class TestMLPSearcher(unittest.TestCase):
                     except:
                         continue
                     self.assertTrue(changed)
+
+    def test_enumerater_and_checker(self):
+        processes = 4
+        self.assertTrue(check_process_meshes(processes))
+
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        _, train_program, startup_program = mlp_forward(train_program,
+                                                        startup_program)
+        process_mesh_topology = [4]
+        self.assertTrue(
+            check_pipeline_enumerater(train_program, process_mesh_topology))
+        self.assertTrue(
+            check_nonpipeline_enumerater(train_program, process_mesh_topology))
+
+    def test_get_dist_programs(self):
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        loss, train_program, startup_program = mlp_forward(train_program,
+                                                           startup_program)
+        process_mesh_topology = [4]
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None)
+        valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
+            train_program, process_mesh_topology, False)
+        from test_auto_parallel_cluster import cluster_json
+        cluster_json_file = ""
+        cluster_json_object = json.loads(cluster_json)
+        with open("./auto_parallel_cluster.json", "w") as cluster_json_file:
+            json.dump(cluster_json_object, cluster_json_file)
+        cluster = Cluster()
+        cluster.build_from_file("./auto_parallel_cluster.json")
+        os.remove("./auto_parallel_cluster.json")
+
+        ops = train_program.global_block().ops
+        vars = train_program.global_block().vars
+        new_dist_context = DistributedContext()
+
+        for op in ops:
+            op_dist_attr = OperatorDistributedAttribute()
+            op_dist_attr.process_mesh = global_process_mesh
+            for var_name in op.input_arg_names:
+                tensor_dist_attr = TensorDistributedAttribute()
+                tensor_dist_attr.process_mesh = global_process_mesh
+                tensor_dist_attr.dims_mapping = [
+                    -1 for i in vars[var_name].shape
+                ]
+                new_dist_context.set_tensor_dist_attr_for_program(
+                    vars[var_name], tensor_dist_attr)
+                op_dist_attr.set_input_dims_mapping(
+                    var_name, tensor_dist_attr.dims_mapping)
+
+            for var_name in op.output_arg_names:
+                tensor_dist_attr = TensorDistributedAttribute()
+                tensor_dist_attr.process_mesh = global_process_mesh
+                tensor_dist_attr.dims_mapping = [
+                    -1 for i in vars[var_name].shape
+                ]
+                new_dist_context.set_tensor_dist_attr_for_program(
+                    vars[var_name], tensor_dist_attr)
+                op_dist_attr.set_output_dims_mapping(
+                    var_name, tensor_dist_attr.dims_mapping)
+            new_dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
+
+        new_dist_context.add_process_mesh(global_process_mesh)
+        serial_program_info = SerialProgramInfo(train_program, startup_program,
+                                                loss, optimizer, cluster)
+        result = get_all_distributed_main_program(serial_program_info,
+                                                  new_dist_context)
+        self.assertEqual(len(result), 4)
 
 
 if __name__ == "__main__":
