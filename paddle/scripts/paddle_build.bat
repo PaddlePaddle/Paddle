@@ -80,14 +80,21 @@ set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
 rem ------initialize the python environment------
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+echo %task_name%|findstr openblas >nul && (
+    echo In CI-Windows-Openblas, will use python vitual environment to build paddle and run unittest.
+)
+%PYTHON_ROOT%\python.exe -m venv --clear %cache_dir%\python_venv
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+call %PYTHON_VENV_ROOT%\Scripts\activate.bat
+
+set PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe
+set PATH=%PYTHON_VENV_ROOT%\Scripts;%PYTHON_VENV_ROOT%;%PATH%
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel --user
-    pip install pyyaml --user
-    pip install -r %work_dir%\python\requirements.txt --user
+    pip install wheel 
+    pip install pyyaml 
+    pip install -r %work_dir%\python\requirements.txt 
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -355,7 +362,7 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------pre install clcache and init config----------
-rem pip install clcache --user
+rem pip install clcache 
 pip uninstall -y clcache
 :: set USE_CLCACHE to enable clcache
 rem set USE_CLCACHE=1
@@ -613,7 +620,7 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN% 
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
@@ -640,7 +647,7 @@ echo    ========================================
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt 
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
