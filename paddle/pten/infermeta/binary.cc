@@ -14,7 +14,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/kernels/functions/general/elementwise_base.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
 
 namespace pten {
 
