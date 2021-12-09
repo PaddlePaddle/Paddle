@@ -110,11 +110,11 @@ class VarDesc {
 
   void SetType(proto::VarType::Type type);
 
-  void SetContent(const std::vector<int32_t> &val);
+  void SetDescValue(const TensorDescValue &val);
 
-  std::vector<int32_t> GetContent() const;
+  TensorDescValue GetDescValue() const;
 
-  bool HasContent() const;
+  // bool HasDescValue() const;
 
   bool Persistable() const { return desc_.persistable(); }
 

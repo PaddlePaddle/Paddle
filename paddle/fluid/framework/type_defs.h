@@ -45,6 +45,11 @@ using Attribute = boost::variant<
     std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
     std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
+// The order should be as same as TensorDesc in framework.proto
+using TensorDescValue =
+    boost::variant<boost::blank, std::vector<int>, std::vector<int64_t>,
+                   std::vector<float>, int64_t>;  // std::vector<std::string>>;
+
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL

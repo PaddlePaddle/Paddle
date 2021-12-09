@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/tensor_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -126,15 +127,16 @@ std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
   return res;
 }
 
-void VarDesc::SetContent(const std::vector<int32_t> &val) {
-  VectorToRepeated(val, mutable_tensor_desc()->mutable_content());
+void VarDesc::SetDescValue(const TensorDescValue &val) {
+  SetTensorDescValue(mutable_tensor_desc(), val);
 }
 
-std::vector<int32_t> VarDesc::GetContent() const {
-  return RepeatedToVector(tensor_desc().content());
+TensorDescValue VarDesc::GetDescValue() const {
+  return GetTensorDescValue(tensor_desc());
 }
 
-bool VarDesc::HasContent() const { return tensor_desc().content_size() > 0; }
+// bool VarDesc::HasDescValue() const { return tensor_desc().content_size() > 0;
+// }
 
 void VarDesc::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type().type()) {

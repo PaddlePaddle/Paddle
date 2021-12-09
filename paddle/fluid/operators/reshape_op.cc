@@ -95,7 +95,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
               "But received shape's size is %d.",
               ShapeTensor.size()));
       auto infer_shape =
-          GetScalarsFromVarDescs(ctx, "ShapeTensor", /*default_val=*/-1);
+          GetScalarsFromVarDescs<int>(ctx, "ShapeTensor", /*default_val=*/-1);
       const int64_t copy_dim_val = 0;
       auto in_dims = ctx->GetInputDim("X");
       for (size_t i = 0; i < infer_shape.size(); ++i) {
@@ -119,7 +119,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("Shape") && shape.empty()) {
       std::vector<int32_t> vec_dims;
       if (HasCompiledContent(ctx, "Shape")) {
-        vec_dims = GetVecDataFromVarDesc(ctx, "Shape");
+        vec_dims = GetVecDataFromVarDesc<int>(ctx, "Shape");
       } else {
         vec_dims =
             std::vector<int>(framework::product(ctx->GetInputDim("Shape")), -1);

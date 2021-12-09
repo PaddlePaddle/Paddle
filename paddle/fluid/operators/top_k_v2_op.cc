@@ -41,7 +41,7 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     int k = -1;
     if (HasCompiledContent(ctx, "K")) {
-      k = GetScalarDataFromVarDesc(ctx, "K");
+      k = GetScalarDataFromVarDesc<int>(ctx, "K");
     } else {
       k = static_cast<int>(ctx->Attrs().Get<int>("k"));
       PADDLE_ENFORCE_EQ(k >= 1, true,

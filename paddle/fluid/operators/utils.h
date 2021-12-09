@@ -17,21 +17,23 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/tensor_desc.h"
 
 namespace paddle {
 namespace operators {
 
 // TODO(Aurelius84): Make it into template function
-
-inline std::vector<int32_t> GetDataFromVarDesc(
-    const framework::VarDesc* var_desc) {
+template <typename T>
+inline std::vector<T> GetDataFromVarDesc(const framework::VarDesc* var_desc) {
   PADDLE_ENFORCE_NOT_NULL(var_desc, platform::errors::Unavailable(
                                         "var_desc shall not be nullptr."));
-  return var_desc->GetContent();
+  return framework::ExtractTensorDescValue<std::vector<T>>(
+      var_desc->GetDescValue());
 }
 
-inline std::vector<int32_t> GetVecDataFromVarDesc(
-    framework::InferShapeContext* ctx, const std::string& name) {
+template <typename T>
+inline std::vector<T> GetVecDataFromVarDesc(framework::InferShapeContext* ctx,
+                                            const std::string& name) {
   auto var_descs = ctx->GetInputVarPtrs(name);
   PADDLE_ENFORCE_EQ(
       var_descs.size(), 1,
@@ -39,12 +41,13 @@ inline std::vector<int32_t> GetVecDataFromVarDesc(
           "Required Input(%s) has only one VarDesc, but received %d.", name,
           var_descs.size()));
   auto* var_desc = BOOST_GET(framework::VarDesc*, var_descs[0]);
-  return GetDataFromVarDesc(var_desc);
+  return GetDataFromVarDesc<T>(var_desc);
 }
 
-inline int32_t GetScalarDataFromVarDesc(framework::InferShapeContext* ctx,
-                                        const std::string& name) {
-  auto content = GetVecDataFromVarDesc(ctx, name);
+template <typename T>
+inline T GetScalarDataFromVarDesc(framework::InferShapeContext* ctx,
+                                  const std::string& name) {
+  auto content = GetVecDataFromVarDesc<T>(ctx, name);
   PADDLE_ENFORCE_EQ(
       content.size(), 1,
       platform::errors::PreconditionNotMet(
@@ -52,14 +55,15 @@ inline int32_t GetScalarDataFromVarDesc(framework::InferShapeContext* ctx,
   return content[0];
 }
 
-inline std::vector<int32_t> GetScalarsFromVarDescs(
-    framework::InferShapeContext* ctx, const std::string& name,
-    int32_t default_val) {
+template <typename T>
+inline std::vector<T> GetScalarsFromVarDescs(framework::InferShapeContext* ctx,
+                                             const std::string& name,
+                                             T default_val) {
   auto var_descs = ctx->GetInputVarPtrs(name);
-  std::vector<int32_t> scalar_vals(var_descs.size(), default_val);
+  std::vector<T> scalar_vals(var_descs.size(), default_val);
   for (size_t i = 0; i < var_descs.size(); ++i) {
     auto* var_desc = BOOST_GET(framework::VarDesc*, var_descs[i]);
-    auto scalar = GetDataFromVarDesc(var_desc);
+    auto scalar = GetDataFromVarDesc<T>(var_desc);
     if (!scalar.empty()) {
       scalar_vals[i] = scalar[0];
     }
@@ -73,11 +77,13 @@ inline bool HasCompiledContent(const framework::InferShapeContext* ctx,
   if (!ctx->IsRuntime() && ctx->HasInput(name)) {
     auto var_descs = ctx->GetInputVarPtrs(name);
     if (!var_descs.empty()) {
-      flag = std::any_of(
-          var_descs.begin(), var_descs.end(),
-          [](framework::InferShapeVarPtr& var_ptr) {
-            return BOOST_GET(framework::VarDesc*, var_ptr)->HasContent();
-          });
+      flag = std::any_of(var_descs.begin(), var_descs.end(),
+                         [](framework::InferShapeVarPtr& var_ptr) {
+                           // FIXME(Aurelius84): return
+                           // BOOST_GET(framework::VarDesc*,
+                           // var_ptr)->HasContent();
+                           return true;
+                         });
     }
   }
   return flag;

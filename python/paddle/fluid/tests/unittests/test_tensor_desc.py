@@ -23,7 +23,7 @@ class TestTopk(unittest.TestCase):
 
     def test_compile_infer(self):
         k = paddle.full([1], fill_value=self.k, dtype='int64')
-        k.desc.set_content([self.k])
+        k.desc.set_desc_value([self.k])
         out, _ = paddle.topk(self.x, k)
         self.assertEqual(out.shape[0], self.k)
 
