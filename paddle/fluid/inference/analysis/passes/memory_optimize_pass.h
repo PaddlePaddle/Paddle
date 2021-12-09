@@ -57,17 +57,15 @@ class MemoryOptimizePass : public AnalysisPass {
 
  private:
   void CollectLifeCycle(
+      framework::ir::Graph *graph,
       std::unordered_map<std::string, lifecycle_t> *lifecycles,
       int sort_kind) const;
 
-  void CollectVarMemorySize(space_table_t *space_table) const;
+  void CollectVarMemorySize(framework::ir::Graph *graph,
+                            space_table_t *space_table) const;
 
  public:
   std::string repr() const override;
-
- private:
-  mutable framework::ir::Graph *graph_{nullptr};
-  mutable int max_lifecycle_{-1};
 };
 
 }  // namespace analysis

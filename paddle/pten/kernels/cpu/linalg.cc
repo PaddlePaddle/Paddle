@@ -21,7 +21,7 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/complex.h"
 
-#include "paddle/pten/kernels/functions/math/matmul_func.h"
+#include "paddle/pten/kernels/hybird/math/matmul_func.h"
 
 namespace pten {
 
@@ -70,12 +70,10 @@ void Matmul(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(LinalgCPU);
-
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL("dot",
+PT_REGISTER_KERNEL(dot,
                    CPU,
                    ANY,
                    pten::Dot,
@@ -87,5 +85,4 @@ PT_REGISTER_KERNEL("dot",
                    complex128) {}
 
 PT_REGISTER_KERNEL(
-    "matmul_v2", CPU, ANY, pten::Matmul, float, double, complex64, complex128) {
-}
+    matmul_v2, CPU, ANY, pten::Matmul, float, double, complex64, complex128) {}

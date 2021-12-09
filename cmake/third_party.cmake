@@ -391,4 +391,14 @@ if (WIN32)
     list(APPEND third_party_deps extern_dirent)
 endif (WIN32)
 
+if (WITH_INFRT)
+    include(external/llvm)
+    list(APPEND third_party_deps external_llvm)
+endif()
+
+if (WITH_IPU)
+    include(external/poplar)
+    list(APPEND third_party_deps extern_poplar)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

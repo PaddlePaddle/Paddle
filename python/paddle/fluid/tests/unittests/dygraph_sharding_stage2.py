@@ -24,13 +24,13 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
 
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import DygraphShardingOptimizer
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
 
 seed = 2021
 epoch = 2
 batch_size = 32
+linear_size = 10000
 
 strategy = fleet.DistributedStrategy()
 strategy.hybrid_configs = {
@@ -46,12 +46,12 @@ paddle.seed(seed)
 
 
 class MLP(fluid.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
+    def __init__(self, linear_size=10000, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
-        self._linear1 = Linear(10000, 10000)
-        self._linear2 = Linear(10000, 10000)
-        self._linear3 = Linear(10000, 10)
+        self._linear1 = Linear(linear_size, linear_size)
+        self._linear2 = Linear(linear_size, linear_size)
+        self._linear3 = Linear(linear_size, 10)
 
     def forward(self, inputs):
         y = self._linear1(inputs)
@@ -60,17 +60,17 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator():
+def reader_decorator(linear_size=10000):
     def __reader__():
         for _ in range(100):
-            img = np.random.rand(10000).astype('float32')
+            img = np.random.rand(linear_size).astype('float32')
             label = np.ones(1).astype('int64')
             yield img, label
 
     return __reader__
 
 
-def optimizer_setting(model, use_pure_fp16, stage=1):
+def optimizer_setting(model, use_pure_fp16):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.AdamW(
         parameters=model.parameters(),
@@ -87,20 +87,16 @@ def train_mlp(model,
               use_pure_fp16=False,
               all_test=False,
               accumulate_grad=False):
-    if sharding_stage == 1:
+    if sharding_stage == "dp":
         hcg = fleet.get_hybrid_communicate_group()
         group = hcg.get_check_parallel_group()
     else:
         group = paddle.distributed.new_group([0, 1])
-    optimizer = optimizer_setting(
-        model=model, use_pure_fp16=use_pure_fp16, stage=sharding_stage)
+    optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if use_pure_fp16:
-        model, optimizer = paddle.amp.decorate(
-            models=model,
-            optimizers=optimizer,
-            level='O2',
-            save_dtype='float32')
+        model = paddle.amp.decorate(
+            models=model, level='O2', save_dtype='float32')
 
     if sharding_stage == 2:
         optimizer = ShardingOptimizerStage2(
@@ -124,6 +120,9 @@ def train_mlp(model,
         return_list=True,
         use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
+
+    if sharding_stage == 2:
+        model.to(device="gpu")
 
     for eop in range(epoch):
         model.train()
@@ -158,13 +157,10 @@ def train_mlp(model,
             if all_test and batch_id == 2:
                 return model.parameters()
 
-    if sharding_stage == 2:
-        model.to(device="gpu")
-
     return model.parameters()
 
 
-def test_stage1_stage2():
+def test_dp_stage2():
     mlp = MLP()
     state_dict = mlp.state_dict()
     mlp1 = MLP()
@@ -175,11 +171,13 @@ def test_stage1_stage2():
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
-    stage1_params = train_mlp(mlp, sharding_stage=1, use_pure_fp16=False)
-    stage2_params = train_mlp(mlp, sharding_stage=2, use_pure_fp16=False)
-    for i in range(len(stage1_params)):
-        np.testing.assert_allclose(
-            stage1_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6)
+    dp_params = train_mlp(mlp1, sharding_stage="dp", use_pure_fp16=False)
+    stage2_params = train_mlp(mlp2, sharding_stage=2, use_pure_fp16=False)
+    for i in range(len(dp_params)):
+        for j in range(len(stage2_params)):
+            if dp_params[i].name == stage2_params[j].name:
+                np.testing.assert_allclose(
+                    dp_params[i].numpy(), stage2_params[j].numpy(), rtol=1e-6)
 
     stage2_params = train_mlp(
         mlp3, sharding_stage=2, use_pure_fp16=True, all_test=True)
@@ -201,4 +199,4 @@ def test_stage1_stage2():
 
 
 if __name__ == '__main__':
-    test_stage1_stage2()
+    test_dp_stage2()
