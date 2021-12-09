@@ -50,12 +50,6 @@ using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 #define MAX_THREAD_STRIDE 32
 #define TILE_DIM 32
 
-// Maximum sequence-length support based on the number of threads (2048) allowed
-// in each block and
-// this MAX is 8K For higher sequence length we need to use higher Max, like for
-// 64K : 32
-#define MAX_THREAD_ITERATIONS 8  // Maximum 8K
-
 #define MAX_WARP_NUM 32
 
 #define MAX_REGISTERS 256
@@ -69,7 +63,7 @@ __global__ void filter_by_instag_cuda_kernel(const int N, int64_t* x2_data,
                                              int filter_tag_size,
                                              int* pass_data) {
   // N is instance num
-  // one threads for one ins
+  // one threads for one instance
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
