@@ -95,9 +95,12 @@ class CinnCompiler {
       void* stream = nullptr) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
-  std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
+  std::unordered_map<CinnCacheKeyByAddress, CinnCompiledObject*,
                      CinnCacheKey::Hash>
-      cache_;
+      cache_by_address_;
+  std::unordered_map<CinnCacheKeyByStructure,
+                     std::unique_ptr<CinnCompiledObject>, CinnCacheKey::Hash>
+      cache_by_struct_;
   std::atomic_int64_t real_compiled_num_{0};
   mutable RWLock rwlock_;
 
