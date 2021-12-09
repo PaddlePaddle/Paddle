@@ -155,6 +155,13 @@ class TensorAddFunctor : public boost::static_visitor<> {
         "is not supported in imperative mode",
         place));
   }
+  // there is NO support in IPUPlace
+  void operator()(const platform::IPUPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
 
  private:
   int64_t numel_;
