@@ -94,7 +94,7 @@ class TestLogitAPI(unittest.TestCase):
 
     def test_check_api(self):
         paddle.enable_static()
-        for eps in [1e-6, 1e-8]:
+        for eps in [1e-6, 0.0]:
             self.check_api(eps)
 
     def test_errors(self):
