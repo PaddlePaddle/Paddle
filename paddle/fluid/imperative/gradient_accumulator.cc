@@ -32,7 +32,7 @@
 #include "xpu/refactor/math.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 
 namespace paddle {
@@ -150,6 +150,13 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
   // there is NO blas in CUDAPinnedPlace
   void operator()(const platform::CUDAPinnedPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+  // there is NO support in IPUPlace
+  void operator()(const platform::IPUPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",

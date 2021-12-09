@@ -21,8 +21,7 @@ namespace paddle {
 namespace experimental {
 
 // TODO(chenweihang): Replace backend by place when place is ready
-// TODO(chenweihang): Add layout and dtype argument if needed
-PD_DLL_DECL Tensor to(const Tensor& x, Backend backend, bool blocking);
+PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
 
 }  // namespace experimental
 }  // namespace paddle

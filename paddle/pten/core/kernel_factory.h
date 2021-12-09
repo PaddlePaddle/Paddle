@@ -23,6 +23,7 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -269,7 +270,7 @@ class KernelFactory {
   }
 
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return compatible_op_types_.count(op_type) > 0;
+    return compatible_op_types_.count(TransToPtenKernelName(op_type)) > 0;
   }
 
   const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,

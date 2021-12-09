@@ -25,9 +25,8 @@ add_definitions(-w)
 # Build CINN from Git External Project
 ######################################
 include(ExternalProject)
-set(CINN_SOURCE_DIR ${THIRD_PARTY_PATH}/CINN)
-# TODO(zhhsplendid): Modify git tag after we have release tag
-set(CINN_GIT_TAG develop)
+set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
+set(CINN_GIT_TAG release/v0.1)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}
@@ -42,7 +41,7 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   GIT_REPOSITORY   "${GIT_URL}/PaddlePaddle/CINN.git"
   GIT_TAG          ${CINN_GIT_TAG}
-  PREFIX           ${CINN_SOURCE_DIR}
+  PREFIX           ${CINN_PREFIX_DIR}
   BUILD_COMMAND    ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND  ""
   CMAKE_ARGS       ${CINN_OPTIONAL_ARGS})

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -27,7 +27,7 @@ PT_DECLARE_MODULE(ManipulationCPU);
 PT_DECLARE_MODULE(ManipulationCUDA);
 #endif
 
-namespace pten {
+namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
@@ -86,4 +86,4 @@ TEST(Tensor, old_reshape) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace paddle

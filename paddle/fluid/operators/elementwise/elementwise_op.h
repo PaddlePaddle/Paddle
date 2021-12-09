@@ -144,14 +144,25 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     if (Type() == "elementwise_add") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("elementwise_add", {"X", "Y"},
-                                          {"axis"}, {"Out"});
+        return framework::KernelSignature("add", {"X", "Y"}, {"axis"}, {"Out"});
       }
     }
     if (Type() == "elementwise_sub") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("elementwise_sub", {"X", "Y"},
-                                          {"axis"}, {"Out"});
+        return framework::KernelSignature("subtract", {"X", "Y"}, {"axis"},
+                                          {"Out"});
+      }
+    }
+    if (Type() == "elementwise_div") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("divide", {"X", "Y"}, {"axis"},
+                                          {"Out"});
+      }
+    }
+    if (Type() == "elementwise_mul") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("multiply", {"X", "Y"}, {"axis"},
+                                          {"Out"});
       }
     }
     return framework::KernelSignature("None", {"X"}, {}, {"Out"});

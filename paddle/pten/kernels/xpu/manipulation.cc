@@ -14,7 +14,7 @@
 
 #include "paddle/pten/kernels/xpu/manipulation.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/functions/general/manipulation.h"
+#include "paddle/pten/kernels/hybird/general/manipulation.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {
@@ -55,7 +55,7 @@ void ReshapeFromVectorVal(const XPUContext& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int64_t>& shape,
                           DenseTensor* out) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
   if (&x == out) {
     out->Resize(out_meta.dims);
     return;

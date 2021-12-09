@@ -93,6 +93,8 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual std::future<int32_t> use_neighbors_sample_cache(uint32_t table_id,
                                                           size_t size_limit,
                                                           size_t ttl);
+  virtual std::future<int32_t> load_graph_split_config(uint32_t table_id,
+                                                       std::string path);
   virtual std::future<int32_t> remove_graph_node(
       uint32_t table_id, std::vector<uint64_t>& node_id_list);
   virtual int32_t initialize();
