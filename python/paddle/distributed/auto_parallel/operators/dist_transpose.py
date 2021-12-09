@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,6 +45,35 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         return True
 
     def is_output_compatible(self, dist_op):
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        perm = op_desc.attr('axis')
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        new_dims_mapping = [-1 for i in range(len(x_dims_mapping))]
+        for i in range(len(x_dims_mapping)):
+            new_dims_mapping[i] = x_dims_mapping[perm[i]]
+
+        if len(x_dims_mapping) != len(out_dims_mapping):
+            return False
+
+        if new_dims_mapping != out_dims_mapping:
+            return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
+            return False
+
         return True
 
     def update_dims_mapping(self, dist_op):
