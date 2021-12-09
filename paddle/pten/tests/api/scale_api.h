@@ -85,14 +85,14 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   return out;
 }
 
-template <typename DeviceContext>
-static void ScaleDeviceDispatch(const DeviceContext& dev_ctx,
-                                const pten::DenseTensor& x,
-                                const Scalar& scale,
-                                float bias,
-                                bool bias_after_scale,
-                                pten::DenseTensor* dense_out) {
-  switch (x.dtype()) {
+static void ScaleCPU(DataType kernel_dtype,
+                     const pten::CPUContext& dev_ctx,
+                     const pten::DenseTensor& x,
+                     const Scalar& scale,
+                     float bias,
+                     bool bias_after_scale,
+                     pten::DenseTensor* dense_out) {
+  switch (kernel_dtype) {
     case pten::DataType::FLOAT64: {
       pten::Scale<double>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
@@ -100,6 +100,71 @@ static void ScaleDeviceDispatch(const DeviceContext& dev_ctx,
     }
     case pten::DataType::FLOAT32: {
       pten::Scale<float>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::BFLOAT16: {
+      pten::Scale<paddle::platform::bfloat16>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::INT64: {
+      pten::Scale<int64_t>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::INT32: {
+      pten::Scale<int32_t>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::INT16: {
+      pten::Scale<int16_t>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::INT8: {
+      pten::Scale<int8_t>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::UINT8: {
+      pten::Scale<uint8_t>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    default: {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Detected unsupported data type."
+          "Only Float64, Float32, Float16, Int64, Int32, Int16, Int8, UInt8 "
+          "are "
+          "supported for now."));
+      break;
+    }
+  }
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+static void ScaleCUDA(DataType kernel_dtype,
+                      const pten::CUDAContext& dev_ctx,
+                      const pten::DenseTensor& x,
+                      const Scalar& scale,
+                      float bias,
+                      bool bias_after_scale,
+                      pten::DenseTensor* dense_out) {
+  switch (kernel_dtype) {
+    case pten::DataType::FLOAT64: {
+      pten::Scale<double>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::FLOAT32: {
+      pten::Scale<float>(
+          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+      break;
+    }
+    case pten::DataType::FLOAT16: {
+      pten::Scale<paddle::platform::float16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
@@ -137,6 +202,7 @@ static void ScaleDeviceDispatch(const DeviceContext& dev_ctx,
     }
   }
 }
+#endif
 
 Tensor scale_switch_case(const Tensor& x,
                          const Scalar& scale,
@@ -182,23 +248,23 @@ Tensor scale_switch_case(const Tensor& x,
 
   switch (kernel_backend) {
     case Backend::CPU:
-      ScaleDeviceDispatch<pten::CPUContext>(
-          reinterpret_cast<const pten::CPUContext&>(*dev_ctx),
-          *dense_x,
-          scale,
-          bias,
-          bias_after_scale,
-          dense_out.get());
+      ScaleCPU(kernel_data_type,
+               static_cast<const pten::CPUContext&>(*dev_ctx),
+               *dense_x,
+               scale,
+               bias,
+               bias_after_scale,
+               dense_out.get());
       break;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case Backend::CUDA:
-      ScaleDeviceDispatch<pten::CUDAContext>(
-          reinterpret_cast<const pten::CUDAContext&>(*dev_ctx),
-          *dense_x,
-          scale,
-          bias,
-          bias_after_scale,
-          dense_out.get());
+      ScaleCUDA(kernel_data_type,
+                static_cast<const pten::CUDAContext&>(*dev_ctx),
+                *dense_x,
+                scale,
+                bias,
+                bias_after_scale,
+                dense_out.get());
       break;
 #endif
     default:

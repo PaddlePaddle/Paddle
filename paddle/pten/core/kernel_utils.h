@@ -186,8 +186,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   }
 
   static void VariadicArgsCompute(const DeviceContext& dev_ctx, Args... args) {
-    return kernel_fn(dynamic_cast<DevCtx>(dev_ctx),
-                     std::forward<Args>(args)...);
+    return kernel_fn(static_cast<DevCtx>(dev_ctx), std::forward<Args>(args)...);
   }
 
  private:

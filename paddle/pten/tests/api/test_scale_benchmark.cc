@@ -26,27 +26,29 @@ namespace paddle {
 namespace tests {
 
 TEST(API, scale) {
-  auto x = experimental::full({3, 4}, 1.0, pten::DataType::FLOAT32);
-  const size_t cycles = 1000;
+  auto x = experimental::full(
+      {3, 4}, 1.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
+
+  const size_t cycles = 300;
   pten::tests::Timer timer;
   double t1{}, t2{}, t3{};
 
   for (size_t i = 0; i < cycles; ++i) {
     timer.tic();
     for (size_t i = 0; i < cycles; ++i) {
-      auto out1 = experimental::scale_kernel_context(x, 2.0, 1.0, true);
+      auto out = experimental::scale_kernel_context(x, 2.0, 1.0, true);
     }
     t1 += timer.toc();
 
     timer.tic();
     for (size_t i = 0; i < cycles; ++i) {
-      auto out1 = experimental::scale(x, 2.0, 1.0, true);
+      auto out = experimental::scale(x, 2.0, 1.0, true);
     }
     t2 += timer.toc();
 
     timer.tic();
     for (size_t i = 0; i < cycles; ++i) {
-      auto out1 = experimental::scale_switch_case(x, 2.0, 1.0, true);
+      auto out = experimental::scale_switch_case(x, 2.0, 1.0, true);
     }
     t3 += timer.toc();
   }
