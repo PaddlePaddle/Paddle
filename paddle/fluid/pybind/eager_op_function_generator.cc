@@ -32,6 +32,8 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
+std::set<std::string> gen_list = {};
+/*
 std::set<std::string> gen_list = {
     "sigmoid",
     "matmul_v2",
@@ -55,13 +57,10 @@ std::set<std::string> gen_list = {
     "marker",
     "split",
     "fc",
-    "clear_float_status",
     "load",
     "elementwise_max",
     "adadelta",
-    "sparse_momentum",
     "tan",
-    "adam",
     "fsp",
     "where",
     "logical_xor",
@@ -104,7 +103,6 @@ std::set<std::string> gen_list = {
     "conv_shift",
     "smooth_l1_loss",
     "linear_interp_v2",
-    "momentum",
     "temporal_shift",
     "nce",
     "mv",
@@ -138,7 +136,6 @@ std::set<std::string> gen_list = {
     "max_pool3d_with_index",
     "gaussian_random",
     "flatten2",
-    "matmul",
     "cvm",
     "adamax",
     "masked_select",
@@ -181,14 +178,11 @@ std::set<std::string> gen_list = {
     "eigh",
     "stack",
     "dgc_momentum",
-    "lamb",
     "generate_proposals_v2",
     "bitwise_or",
     "gru_unit",
-    "fake_channel_wise_quantize_dequantize_abs_max",
     "sampling_id",
     "unsqueeze2",
-    "average_accumulates",
     "sequence_enumerate",
     "fusion_seqconv_eltadd_relu",
     "bce_loss",
@@ -212,7 +206,6 @@ std::set<std::string> gen_list = {
     "diag_embed",
     "unbind",
     "dropout",
-    "moving_average_abs_max_scale",
     "beam_search",
     "log_loss",
     "greater_than",
@@ -225,13 +218,11 @@ std::set<std::string> gen_list = {
     "linear_interp",
     "auc",
     "logical_or",
-    "batch_norm",
     "acos",
     "unpool",
     "cumprod",
     "sample_logits",
     "crop_tensor",
-    "fill_constant",
     "deformable_conv",
     "generate_mask_labels",
     "locality_aware_nms",
@@ -320,7 +311,6 @@ std::set<std::string> gen_list = {
     "layer_norm",
     "merge_selected_rows",
     "less_equal",
-    "rnn",
     "fusion_lstm",
     "lars_momentum",
     "hard_sigmoid",
@@ -330,7 +320,6 @@ std::set<std::string> gen_list = {
     "histogram",
     "gather_tree",
     "segment_pool",
-    "sync_batch_norm",
     "fusion_repeated_fc_relu",
     "nop",
     "expand_as_v2",
@@ -345,7 +334,6 @@ std::set<std::string> gen_list = {
     "multiplex",
     "leaky_relu",
     "allclose",
-    "adamw",
     "elementwise_pow",
     "prior_box",
     "p_norm",
@@ -390,7 +378,6 @@ std::set<std::string> gen_list = {
     "tanh",
     "yolov3_loss",
     "graph_send_recv",
-    "accuracy",
     "atan",
     "less_than",
     "unsqueeze",
@@ -423,7 +410,6 @@ std::set<std::string> gen_list = {
     "similarity_focus",
     "argsort",
     "sequence_expand",
-    "sgd",
     "fused_bn_add_activation",
     "bilinear_interp_v2",
     "clip",
@@ -433,12 +419,10 @@ std::set<std::string> gen_list = {
     "conv2d_transpose",
     "memcpy_d2h",
     "softsign",
-    "fake_quantize_dequantize_abs_max",
     "broadcast_tensors",
     "grid_sampler",
     "fft_c2r",
     "pyramid_hash",
-    "fake_quantize_dequantize_moving_average_abs_max",
     "multi_dot",
     "sequence_pool",
     "transpose",
@@ -514,7 +498,6 @@ std::set<std::string> gen_list = {
     "softmax",
     "conv2d_fusion",
     "fused_batch_norm_act",
-    "get_float_status",
     "index_sample",
     "elementwise_min",
     "logical_not",
@@ -527,7 +510,29 @@ std::set<std::string> gen_list = {
     "fake_channel_wise_quantize_abs_max",
     "dequantize_abs_max",
     "svd",
-    "flip"};
+    "flip",
+
+    "rnn",
+    "get_float_status",
+    "sgd",
+    "accuracy",
+    "sync_batch_norm",
+    "fill_constant",
+    "batch_norm",
+    "clear_float_status",
+    "sparse_momentum",
+    "adam",
+    "momentum",
+    "matmul",
+    "lamb",
+    "fake_channel_wise_quantize_dequantize_abs_max",
+    "average_accumulates",
+    "moving_average_abs_max_scale",
+    "adamw",
+    "fake_quantize_dequantize_abs_max",
+    "fake_quantize_dequantize_moving_average_abs_max",
+};
+*/
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
@@ -724,7 +729,7 @@ std::string GenerateOpFunctionsBody(
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
 
-      // call_api_str += out_name + ", ";
+      call_api_str += out_name + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -824,11 +829,27 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
+static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
+  std::string line;
+  std::ifstream op_list_file(op_list_path);
+  if (op_list_file.is_open()) {
+    while (getline(op_list_file, line)) {
+      gen_list.insert(line);
+    }
+    op_list_file.close();
+  } else {
+    PADDLE_THROW(
+        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
+  }
+}
+
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "argc must be 2" << std::endl;
+  if (argc != 3) {
+    std::cerr << "argc must be 3" << std::endl;
     return -1;
   }
+
+  CollectOperatorsToCodeGen(argv[2]);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();

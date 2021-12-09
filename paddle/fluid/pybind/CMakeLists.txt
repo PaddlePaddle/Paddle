@@ -181,7 +181,7 @@ if(WITH_PYTHON)
     ":retry\n"
     "ECHO eager_op_function_generator run %build_times% time\n"
     "taskkill /f /im eager_op_function_generator.exe 2>NUL\n"
-    "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file}\n"
+    "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file} ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
     "    if %build_times% GEQ 10 (\n"
@@ -256,7 +256,7 @@ if(WITH_PYTHON)
       add_custom_command(OUTPUT ${eager_impl_file}
             COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
                 "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
-                "${tmp_eager_impl_file}"
+                "${tmp_eager_impl_file}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
             COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
             DEPENDS ${EAGER_OP_IMPL_DEPS}
