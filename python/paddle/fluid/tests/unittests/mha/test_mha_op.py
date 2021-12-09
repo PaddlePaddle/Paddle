@@ -15,13 +15,15 @@
 
 from __future__ import print_function
 
-import sys
-sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid.core as core
 import paddle
+import paddle.fluid.core as core
+from utils import generate_weight, generate_data, generate_varlen_data
+
+import sys
+sys.path.append("..")
+from op_test import OpTest, skip_check_grad_ci
 
 
 def _softmax(x):
@@ -29,16 +31,16 @@ def _softmax(x):
     return e_x / e_x.sum(axis=-1, keepdims=True)
 
 
-def _get_attn_output(q, k, v, wq, wk, wv, wo, bq, bk, bv, bo, attn_mask,
-                     seq_len, nheads, vec_size, sm_scaler):
+def _get_attn_output(q, k, v, wq, bq, wk, bk, wv, bv, wo, bo, attn_mask, seqlen,
+                     nheads, vec_size, sm_scaler):
 
     origin_dtype = q.dtype
     np_compute_dtype = np.double if origin_dtype == np.double else np.single
     proj_size = vec_size // nheads
 
-    q_bar = q.reshape((-1, seq_len, vec_size)).astype(np_compute_dtype)
-    k_bar = k.reshape((-1, seq_len, vec_size)).astype(np_compute_dtype)
-    v_bar = v.reshape((-1, seq_len, vec_size)).astype(np_compute_dtype)
+    q_bar = q.reshape((-1, seqlen, vec_size)).astype(np_compute_dtype)
+    k_bar = k.reshape((-1, seqlen, vec_size)).astype(np_compute_dtype)
+    v_bar = v.reshape((-1, seqlen, vec_size)).astype(np_compute_dtype)
 
     wq = wq.astype(np_compute_dtype)
     wk = wk.astype(np_compute_dtype)
@@ -46,103 +48,38 @@ def _get_attn_output(q, k, v, wq, wk, wv, wo, bq, bk, bv, bo, attn_mask,
     wo = wo.astype(np_compute_dtype)
 
     q_bar = (np.matmul(q_bar, wq) + bq).reshape(
-        (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
+        (-1, seqlen, nheads, proj_size)).transpose((0, 2, 1, 3))
     k_bar = (np.matmul(k_bar, wk) + bk).reshape(
-        (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
+        (-1, seqlen, nheads, proj_size)).transpose((0, 2, 1, 3))
     v_bar = (np.matmul(v_bar, wv) + bv).reshape(
-        (-1, seq_len, nheads, proj_size)).transpose((0, 2, 1, 3))
+        (-1, seqlen, nheads, proj_size)).transpose((0, 2, 1, 3))
 
     beta = np.matmul(q_bar, k_bar.transpose((0, 1, 3, 2))) * sm_scaler
     beta = beta + ((attn_mask - 1.0) * 1e9)
     alpha = _softmax(beta)
 
     h_bar = np.matmul(alpha, v_bar).transpose((0, 2, 1, 3)).reshape(
-        (-1, seq_len, vec_size))
+        (-1, seqlen, vec_size))
     out = np.matmul(h_bar, wo) + bo
-    return out.reshape((-1, seq_len, vec_size)).astype(origin_dtype)
+    return out.reshape((-1, seqlen, vec_size)).astype(origin_dtype)
 
 
-def _generate_data(batch_size, max_seq_len, vec_size, dtype):
-    Q = (np.random.random(
-        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
-    K = (np.random.random(
-        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
-    V = (np.random.random(
-        (batch_size, max_seq_len, vec_size)) - .5).astype(dtype)
-    W = np.random.uniform(
-        low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
-    B = np.random.uniform(
-        low=-0.01, high=0.01, size=(4 * vec_size, )).astype(dtype)
-    W = np.concatenate((W, B), dtype=dtype)
-
-    stride = vec_size * vec_size
-    WQ = W[0:stride].reshape((vec_size, vec_size))
-    WK = W[stride:2 * stride].reshape((vec_size, vec_size))
-    WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
-    WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
-
-    bias_start = 4 * stride
-    BQ = W[bias_start:bias_start + vec_size]
-    BK = W[bias_start + vec_size:bias_start + 2 * vec_size]
-    BV = W[bias_start + 2 * vec_size:bias_start + 3 * vec_size]
-    BO = W[bias_start + 3 * vec_size:bias_start + 4 * vec_size]
-
-    return (Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO)
-
-
-def _generate_varlen_data(seq_lens, vec_size, dtype):
-    """
-    seq_lens (list): the desired seq_lens
-    """
-
-    assert len(seq_lens) > 0, "batch size should be greater than 0"
-
-    Qs = [(np.random.random((1, seq_len, vec_size)) - .5).astype(dtype)
-          for seq_len in seq_lens]
-    Ks = [(np.random.random((1, seq_len, vec_size)) - .5).astype(dtype)
-          for seq_len in seq_lens]
-    Vs = [(np.random.random((1, seq_len, vec_size)) - .5).astype(dtype)
-          for seq_len in seq_lens]
-
-    Q = np.concatenate(Qs, axis=1)
-    K = np.concatenate(Ks, axis=1)
-    V = np.concatenate(Vs, axis=1)
-    W = np.random.uniform(
-        low=-0.03, high=0.03, size=(4 * vec_size * vec_size)).astype(dtype)
-    B = np.random.uniform(
-        low=-0.01, high=0.01, size=(4 * vec_size, )).astype(dtype)
-    W = np.concatenate((W, B), dtype=dtype)
-
-    stride = vec_size * vec_size
-    WQ = W[0:stride].reshape((vec_size, vec_size))
-    WK = W[stride:2 * stride].reshape((vec_size, vec_size))
-    WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
-    WO = W[3 * stride:4 * stride].reshape((vec_size, vec_size))
-
-    bias_start = 4 * stride
-    BQ = W[bias_start:bias_start + vec_size]
-    BK = W[bias_start + vec_size:bias_start + 2 * vec_size]
-    BV = W[bias_start + 2 * vec_size:bias_start + 3 * vec_size]
-    BO = W[bias_start + 3 * vec_size:bias_start + 4 * vec_size]
-    return (Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO)
-
-
-def _generate_seq_len(batch, min_seq_len, max_seq_len, is_pad=True):
-    seq_len = np.random.randint(
-        low=min_seq_len, high=max_seq_len + 1, size=(batch, ), dtype=np.int32)
+def _generate_seqlen(batch, min_seqlen, max_seqlen, is_pad=True):
+    seqlen = np.random.randint(
+        low=min_seqlen, high=max_seqlen + 1, size=(batch, ), dtype=np.int32)
     if is_pad:
         # if pad, then nothing to do
-        lo_win = np.zeros((max_seq_len, ), dtype=np.int32)
-        hi_win = np.full(
-            (max_seq_len, ), max_seq_len, dtype=np.int32)  # set a large number
+        low_windows = np.zeros((max_seqlen, ), dtype=np.int32)
+        high_windows = np.full(
+            (max_seqlen, ), max_seqlen, dtype=np.int32)  # set a large number
     else:
         # if not pad, we should set the low, high windows inside a batch for each sequence
-        cumsum = np.cumsum(seq_len, dtype=np.int32)
-        lo_win = np.insert(cumsum[:-1], 0, 0)  # compute for each sequence
-        lo_win = np.repeat(lo_win, seq_len)  # set for each token
-        hi_win = cumsum
-        hi_win = np.repeat(hi_win, seq_len)
-    return seq_len, seq_len, lo_win, hi_win
+        cumsum = np.cumsum(seqlen, dtype=np.int32)
+        low_windows = np.insert(cumsum[:-1], 0, 0)  # compute for each sequence
+        low_windows = np.repeat(low_windows, seqlen)  # set for each token
+        high_windows = cumsum
+        high_windows = np.repeat(high_windows, seqlen)
+    return seqlen, seqlen, low_windows, high_windows
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -155,22 +92,27 @@ class TestMHAOpFP16(OpTest):
 
         batch_size = 4
         nheads = 4
-        seq_len = 4
-        vec_size = 8
-        proj_size = vec_size // nheads
+        seqlen = 4
+        embed_dim = 8
+        proj_size = embed_dim // nheads
 
-        Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO = \
-            _generate_data(batch_size, seq_len, vec_size, self.dtype)
-        qo_slen, kv_slen, lo_win, hi_win = _generate_seq_len(
-            batch_size, min_seq_len=seq_len, max_seq_len=seq_len)
-        attn_mask = np.ones((batch_size, nheads, seq_len, seq_len))
+        query, key, value = generate_data(batch_size, seqlen, embed_dim,
+                                          self.dtype)
+        weight,  q_proj_weight, q_proj_bias, \
+            k_proj_weight, k_proj_bias, \
+            v_proj_weight, v_proj_bias, \
+            out_proj_weight, out_proj_bias = generate_weight(embed_dim, self.dtype)
+
+        qo_seqlen, kv_seqlen, _, _ = _generate_seqlen(
+            batch_size, min_seqlen=seqlen, max_seqlen=seqlen)
+        attn_mask = np.ones((batch_size, nheads, seqlen, seqlen))
 
         self.inputs = {
-            'query': Q,
-            'key': K,
-            'value': V,
-            'weight': W,
-            'qo_kv_seqlen': np.concatenate((qo_slen, kv_slen))
+            'query': query,
+            'key': key,
+            'value': value,
+            'weight': weight,
+            'qo_kv_seqlen': np.concatenate((qo_seqlen, kv_seqlen))
         }
 
         self.attrs = {
@@ -178,19 +120,21 @@ class TestMHAOpFP16(OpTest):
             'pre_dropout_rate': 0.,
             'num_heads': nheads,
             'softmax_scaler': 1.,
-            'embedding_size': vec_size,
+            'embedding_size': embed_dim,
             'query_proj_size': proj_size,
             'key_proj_size': proj_size,
             'value_proj_size': proj_size,
-            'output_proj_size': vec_size,
-            'max_qo_seqlen': seq_len,
-            'max_kv_seqlen': seq_len
+            'output_proj_size': embed_dim,
+            'max_qo_seqlen': seqlen,
+            'max_kv_seqlen': seqlen
         }
 
-        O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, BQ, BK, BV, BO, attn_mask,
-                             seq_len, nheads, vec_size,
-                             self.attrs["softmax_scaler"])
-        self.outputs = {'output': O}
+        output = _get_attn_output(query, key, value, q_proj_weight, q_proj_bias,
+                                  k_proj_weight, k_proj_bias, v_proj_weight,
+                                  v_proj_bias, out_proj_weight, out_proj_bias,
+                                  attn_mask, seqlen, nheads, embed_dim,
+                                  self.attrs["softmax_scaler"])
+        self.outputs = {'output': output}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -242,26 +186,31 @@ class TestMHAOpPadVarLenFP16(OpTest):
         self.place = core.CUDAPlace(0)
         self.init_dtype_type()
 
-        batch_size = 1
+        batch_size = 4
         nheads = 4
-        max_seq_len = 4
-        vec_size = 8
-        proj_size = vec_size // nheads
+        max_seqlen = 4
+        embed_dim = 8
+        proj_size = embed_dim // nheads
 
-        Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO = \
-            _generate_data(batch_size, max_seq_len, vec_size, self.dtype)
-        qo_slen, kv_slen, lo_win, hi_win = _generate_seq_len(
-            batch_size, min_seq_len=1, max_seq_len=max_seq_len)
-        attn_mask = np.ones((batch_size, nheads, max_seq_len, max_seq_len))
-        for sid, slen in enumerate(kv_slen):
+        query, key, value = generate_data(batch_size, max_seqlen, embed_dim,
+                                          self.dtype)
+        weight,  q_proj_weight, q_proj_bias, \
+            k_proj_weight, k_proj_bias, \
+            v_proj_weight, v_proj_bias, \
+            out_proj_weight, out_proj_bias = generate_weight(embed_dim, self.dtype)
+
+        qo_seqlen, kv_seqlen, _, _ = _generate_seqlen(
+            batch_size, min_seqlen=1, max_seqlen=max_seqlen)
+        attn_mask = np.ones((batch_size, nheads, max_seqlen, max_seqlen))
+        for sid, slen in enumerate(kv_seqlen):
             attn_mask[sid, :, :, slen:] = 0.0
 
         self.inputs = {
-            'query': Q,
-            'key': K,
-            'value': V,
-            'weight': W,
-            'qo_kv_seqlen': np.concatenate((qo_slen, kv_slen))
+            'query': query,
+            'key': key,
+            'value': value,
+            'weight': weight,
+            'qo_kv_seqlen': np.concatenate((qo_seqlen, kv_seqlen))
         }
 
         self.attrs = {
@@ -269,25 +218,27 @@ class TestMHAOpPadVarLenFP16(OpTest):
             'pre_dropout_rate': 0.,
             'num_heads': nheads,
             'softmax_scaler': 1.,
-            'embedding_size': vec_size,
+            'embedding_size': embed_dim,
             'query_proj_size': proj_size,
             'key_proj_size': proj_size,
             'value_proj_size': proj_size,
-            'output_proj_size': vec_size,
-            'max_qo_seqlen': max_seq_len,
-            'max_kv_seqlen': max_seq_len
+            'output_proj_size': embed_dim,
+            'max_qo_seqlen': max_seqlen,
+            'max_kv_seqlen': max_seqlen
         }
 
-        O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, BQ, BK, BV, BO, attn_mask,
-                             max_seq_len, nheads, vec_size,
-                             self.attrs["softmax_scaler"])
+        output = _get_attn_output(query, key, value, q_proj_weight, q_proj_bias,
+                                  k_proj_weight, k_proj_bias, v_proj_weight,
+                                  v_proj_bias, out_proj_weight, out_proj_bias,
+                                  attn_mask, max_seqlen, nheads, embed_dim,
+                                  self.attrs["softmax_scaler"])
 
         # The output of padding part does not need to care.
         # Here we set output projection's bias to make reference be the same as cuDNN's output.
-        for sid, slen in enumerate(kv_slen):
-            O[sid, slen:, :] = BO
+        for sid, slen in enumerate(kv_seqlen):
+            output[sid, slen:, :] = out_proj_bias
 
-        self.outputs = {'output': O}
+        self.outputs = {'output': output}
 
     def init_dtype_type(self):
         self.dtype = np.float16
@@ -341,25 +292,32 @@ class TestMHAOpVarLenFP16(OpTest):
 
         batch_size = 4
         nheads = 4
-        max_seq_len = 4
-        vec_size = 8
-        proj_size = vec_size // nheads
+        max_seqlen = 4
+        embed_dim = 8
+        proj_size = embed_dim // nheads
 
-        qo_slen, kv_slen, lo_win, hi_win = _generate_seq_len(
-            batch_size, min_seq_len=1, max_seq_len=max_seq_len, is_pad=False)
-        Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO = \
-            _generate_varlen_data(qo_slen, vec_size, self.dtype)
+        qo_seqlen, kv_seqlen, low_winows, high_windows = _generate_seqlen(
+            batch_size, min_seqlen=1, max_seqlen=max_seqlen, is_pad=False)
 
-        qo_slens = np.sum(qo_slen, dtype=np.int32).reshape(1, )
-        kv_slens = np.sum(kv_slen, dtype=np.int32).reshape(1, )
+        query, key, value = generate_varlen_data(qo_seqlen, embed_dim,
+                                                 self.dtype)
+        weight,  q_proj_weight, q_proj_bias, \
+            k_proj_weight, k_proj_bias, \
+            v_proj_weight, v_proj_bias, \
+            out_proj_weight, out_proj_bias = generate_weight(embed_dim, self.dtype)
+        # Q, K, V, W, WQ, WK, WV, WO, BQ, BK, BV, BO = \
+        #     _generate_varlen_data(qo_slen, vec_size, self.dtype)
+
+        qo_seqlens = np.sum(qo_seqlen, dtype=np.int32).reshape(1, )
+        kv_seqlens = np.sum(kv_seqlen, dtype=np.int32).reshape(1, )
 
         self.inputs = {
-            'query': Q,
-            'key': K,
-            'value': V,
-            'weight': W,
-            'qo_kv_seqlen': np.concatenate((qo_slens, kv_slens)),
-            'low_high_windows_host': np.concatenate((lo_win, hi_win))
+            'query': query,
+            'key': key,
+            'value': value,
+            'weight': weight,
+            'qo_kv_seqlen': np.concatenate((qo_seqlens, kv_seqlens)),
+            'low_high_windows_host': np.concatenate((low_winows, high_windows))
         }
 
         self.attrs = {
@@ -367,30 +325,31 @@ class TestMHAOpVarLenFP16(OpTest):
             'pre_dropout_rate': 0.,
             'num_heads': nheads,
             'softmax_scaler': 1.,
-            'embedding_size': vec_size,
+            'embedding_size': embed_dim,
             'query_proj_size': proj_size,
             'key_proj_size': proj_size,
             'value_proj_size': proj_size,
-            'output_proj_size': vec_size,
-            'max_qo_seqlen': np.sum(qo_slen, dtype=np.int32),
-            'max_kv_seqlen': np.sum(kv_slen, dtype=np.int32)
+            'output_proj_size': embed_dim,
+            'max_qo_seqlen': np.sum(qo_seqlen, dtype=np.int32),
+            'max_kv_seqlen': np.sum(kv_seqlen, dtype=np.int32)
         }
 
-        offset = np.insert(np.cumsum(qo_slen), 0, 0)
-        O = None
-        for sid, slen in enumerate(qo_slen):
-            sub_o = _get_attn_output(Q[0, offset[sid]:offset[sid + 1], :],
-                                     K[0, offset[sid]:offset[sid + 1], :],
-                                     V[0, offset[sid]:offset[sid + 1], :], WQ,
-                                     WK, WV, WO, BQ, BK, BV, BO,
-                                     np.ones(
-                                         (1, nheads, slen, slen)), slen, nheads,
-                                     vec_size, self.attrs["softmax_scaler"])
-            if O is not None:
-                O = np.concatenate((O, sub_o), axis=1)
+        offset = np.insert(np.cumsum(qo_seqlen), 0, 0)
+        output = None
+        for sid, slen in enumerate(qo_seqlen):
+            sub_o = _get_attn_output(
+                query[0, offset[sid]:offset[sid + 1], :],
+                key[0, offset[sid]:offset[sid + 1], :],
+                value[0, offset[sid]:offset[sid + 1], :], q_proj_weight,
+                q_proj_bias, k_proj_weight, k_proj_bias, v_proj_weight,
+                v_proj_bias, out_proj_weight, out_proj_bias,
+                np.ones((1, nheads, slen, slen)), slen, nheads, embed_dim,
+                self.attrs["softmax_scaler"])
+            if output is not None:
+                output = np.concatenate((output, sub_o), axis=1)
             else:
-                O = sub_o
-        self.outputs = {'output': O}
+                output = sub_o
+        self.outputs = {'output': output}
 
     def init_dtype_type(self):
         self.dtype = np.float16
