@@ -238,34 +238,9 @@ class TestMLPSearcher(unittest.TestCase):
         ops = train_program.global_block().ops
         vars = train_program.global_block().vars
         new_dist_context = DistributedContext()
+        set_default_dist_attr(train_program, new_dist_context,
+                              global_process_mesh)
 
-        for op in ops:
-            op_dist_attr = OperatorDistributedAttribute()
-            op_dist_attr.process_mesh = global_process_mesh
-            for var_name in op.input_arg_names:
-                tensor_dist_attr = TensorDistributedAttribute()
-                tensor_dist_attr.process_mesh = global_process_mesh
-                tensor_dist_attr.dims_mapping = [
-                    -1 for i in vars[var_name].shape
-                ]
-                new_dist_context.set_tensor_dist_attr_for_program(
-                    vars[var_name], tensor_dist_attr)
-                op_dist_attr.set_input_dims_mapping(
-                    var_name, tensor_dist_attr.dims_mapping)
-
-            for var_name in op.output_arg_names:
-                tensor_dist_attr = TensorDistributedAttribute()
-                tensor_dist_attr.process_mesh = global_process_mesh
-                tensor_dist_attr.dims_mapping = [
-                    -1 for i in vars[var_name].shape
-                ]
-                new_dist_context.set_tensor_dist_attr_for_program(
-                    vars[var_name], tensor_dist_attr)
-                op_dist_attr.set_output_dims_mapping(
-                    var_name, tensor_dist_attr.dims_mapping)
-            new_dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
-
-        new_dist_context.add_process_mesh(global_process_mesh)
         serial_program_info = SerialProgramInfo(train_program, startup_program,
                                                 loss, optimizer, cluster)
         result = get_all_distributed_main_program(serial_program_info,
