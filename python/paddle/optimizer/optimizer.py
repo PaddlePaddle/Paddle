@@ -994,11 +994,16 @@ class Optimizer(object):
         return no_grad_set
 
     @framework.dygraph_only
-    def clear_grad(self):
+    def clear_grad(self, set_to_zero=True):
         """
         Clear the gradients of all optimized parameters for model.
 
         If not, new gradient will accumulat on previous gradient.
+
+        There are two method to clear grad: set_to_zero or delete grad.
+        
+        Args:
+            set_to_zero (bool): If set grads to zero or not, default is True.
         
         Returns:
             None
@@ -1021,54 +1026,25 @@ class Optimizer(object):
                 adam.clear_grad()
 
         """
-        if self._parameter_list is None or not isinstance(
-                self._parameter_list[0], dict):
-            for p in self._parameter_list:
-                if not p.stop_gradient:
-                    p.clear_gradient()
-        else:
-            for param_group in self._param_groups:
-                for p in param_group['params']:
-                    if not p.stop_gradient:
-                        p.clear_gradient()
-
-    @framework.dygraph_only
-    def clear_grads(self):
-        """
-        Clear the gradients of all optimized parameters for model .
-        If not, new gradient will accumulat on previous gradient.
-        
-        Returns:
-            None
-        
-        Examples:
-            .. code-block:: python
-            
-                import numpy as np
-                import paddle
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
-                                            parameters = linear.parameters())
-                out = linear(a)
-                out.backward()
-                adam.step()
-                adam.clear_grads()
-        """
         param_list = []
         if self._parameter_list is None or not isinstance(
                 self._parameter_list[0], dict):
             for p in self._parameter_list:
                 if not p.stop_gradient:
-                    param_list.append(p)
+                    if set_to_zero:
+                        p.clear_gradient()
+                    else:
+                        param_list.append(p)
         else:
             for param_group in self._param_groups:
                 for p in param_group['params']:
                     if not p.stop_gradient:
-                        param_list.append(p)
-        core.clear_gradients(param_list)
+                        if set_to_zero:
+                            p.clear_gradient()
+                        else:
+                            param_list.append(p)
+        if not set_to_zero:
+            core.clear_gradients(param_list)
 
     @imperative_base.no_grad
     def minimize(self,
