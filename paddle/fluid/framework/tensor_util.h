@@ -381,6 +381,13 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
                  size, nullptr);
   }
 #endif
+#if defined(PADDLE_WITH_MLU)
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr,
+                 BOOST_GET_CONST(platform::MLUPlace, src.place()), src_ptr,
+                 size, reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 template <>
