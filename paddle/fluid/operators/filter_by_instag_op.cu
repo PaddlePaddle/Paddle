@@ -26,6 +26,8 @@
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
+namespace cg = cooperative_groups;
+
 namespace paddle {
 namespace operators {
 
@@ -42,6 +44,67 @@ using Vector = framework::CPUVector<T>;
 
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
+#define MAX_THREADS 1024
+#define THREADS 256
+
+#define MAX_THREAD_STRIDE 32
+#define TILE_DIM 32
+
+// Maximum sequence-length support based on the number of threads (2048) allowed
+// in each block and
+// this MAX is 8K For higher sequence length we need to use higher Max, like for
+// 64K : 32
+#define MAX_THREAD_ITERATIONS 8  // Maximum 8K
+
+#define MAX_WARP_NUM 32
+
+#define MAX_REGISTERS 256
+
+// test real performance to decide one threads for ? ins
+
+template <typename T>
+__global__ void filter_by_instag_cuda_kernel(
+    const int N, const T* x1_data, size_t* x1_loads_data, T* out_data,
+    size_t* out_lods_data, int64_t* map_data, float* loss_weight_data,
+    int64_t* x2_data, size_t* x2_lods_data, int64_t* x3_data,
+    int filter_tag_size, int is_x1_lod, int embedding_dim,
+    int64_t out_val_if_empty) {
+  // one threads for one ins
+  //
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= N) {
+    return;
+  }
+  int ins_tag_start = x2_loads_data[idx];
+  int ins_tag_end = x2_loads_data[idx + 1];
+
+  // fileter logic
+  int i = ins_tag_start;
+  for (; i < ins_tag_end; i++) {
+    int64_t ins_tag = x2_data[i];
+    int j = 0;
+    for (; j < filter_tag_size; j++) {
+      if (x3_data[j] == ins_tag) break;
+    }
+    // ins_tag in filter tag
+    if (j < filter_tag_size) {
+      size_t batch_len = x1_lods_data[idx + 1] - x1_lods_data[idx]
+
+                         // shared among threads
+                         //
+                         mmap_aux[out_lods.back()] = x1_lods_data[idx];
+      out_lods.push_back(out_lods.back() + batch_len);
+
+      break;
+    }
+  }
+  // copy to output logic
+
+  //
+  // if (idx == 0) {
+  //}
+}
+
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
@@ -53,27 +116,45 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // X1 is global FC output
     // Dim [batch size, embedding size]
     auto* x1 = context.Input<LoDTensor>("Ins");
-    bool is_x1_lod = context.Attr<bool>("is_lod");
-    int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
+    bool is_lod = context.Attr<bool>("is_lod");
 
+    int is_x1_lod = -1;
+    if (is_lod)
+      is_x1_lod = 1;
+    else
+      is_x1_lod = 0;
+
+    int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
+    size_t x1_embed_size = x1->dims()[1];
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
+    // expected auto = const int64_t
+    auto* x2_data = x2->data<int64_t>();
+
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
     auto* x3 = context.Input<Tensor>("Filter_tag");
-
-    std::unordered_set<int64_t> filter_tag;
     auto* x3_data = x3->data<int64_t>();
-    size_t len = x3->dims()[0];
-    for (size_t i = 0; i < len; i++) {
-      filter_tag.insert(x3_data[i]);
-    }
 
-    // expected auto = const int64_t
-    auto* x2_data = x2->data<int64_t>();
-    // e.g get [0, 1, 2, 3, ...]
+    // set output value
+    // for those whose ins been dropout, set 0 for whole lines.
+    // otherwise, copy whole line
+    // Dim [local fc count, batch size, embedding size]
+    LoDTensor* out = context.Output<LoDTensor>("Out");
+    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
+    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
+
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
+    auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
+    auto* loss_weight_data =
+        loss_weight->mutable_data<float>(context.GetPlace());
+
+    // Vector, in GPU
     auto x2_lods = x2->lod()[0];
+    const size_t* x2_lods_data = x2_loads.CUDAData();
+    int N = static_cast<int>(x2_lods.size()) - 1;
+
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
       for (int i = 0; i < x1->dims()[0]; i++) {
@@ -82,44 +163,102 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     } else {
       x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
     }
+
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
-    for (size_t i = 0; i < x2_lods.size() - 1; i++) {
-      for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
-        if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
-          size_t batch_len = x1_lods[i + 1] - x1_lods[i];
-          mmap_aux[out_lods.back()] = x1_lods[i];
-          out_lods.push_back(out_lods.back() + batch_len);
-          break;
-        }
-      }
-    }
-    // set output value
-    // for those whose ins been dropout, set 0 for whole lines.
-    // otherwise, copy whole line
-    // Dim [local fc count, batch size, embedding size]
-    LoDTensor* out = context.Output<LoDTensor>("Out");
-    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
-    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
-    // expected auto = const T
-    auto* x1_data = x1->data<T>();
-    // expected auto = T
-    size_t x1_embed_size = x1->dims()[1];
+
+    // check configuration
+    //
+    // int block_size = 512;
+    int block_size = THREADS dim3 block_dim(block_size);
+    dim3 grid_dim((N + block_size - 1) / block_size);
+
+    filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0,
+                                   ctx.cuda_device_context().stream()>>>(
+        N, x1_data, out_data, loss_weight_data, x2_data, x2_loads_data, x3_data,
+        is_x1_lod, x1_embed_size, out_val_if_empty);
+
+    // X2 is ins tag list
+    // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
+    // auto* x2 = context.Input<LoDTensor>("Ins_tag");
+
+    // X3 is local fc tag list
+    // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
+    // auto* x3 = context.Input<Tensor>("Filter_tag");
+
+    // // cudf unordered_set
+    // //
+    // std::unordered_set<int64_t> filter_tag;
+    // auto* x3_data = x3->data<int64_t>();
+
+    // size_t len = x3->dims()[0];
+    // for (size_t i = 0; i < len; i++) {
+    //   filter_tag.insert(x3_data[i]);
+    // }
+
+    // expected auto = const int64_t
+    // auto* x2_data = x2->data<int64_t>();
+
+    // e.g get [0, 1, 2, 3, ...]
+
+    // auto x2_lods = x2->lod()[0];
+
+    // Vector<size_t> x1_lods(1, 0);
+    // if (!is_x1_lod) {
+    //   for (int i = 0; i < x1->dims()[0]; i++) {
+    //     x1_lods.push_back(i + 1);
+    //   }
+    // } else {
+    //   x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
+    // }
+
+    // std::unordered_map<int64_t, int64_t> mmap_aux;
+    // Vector<size_t> out_lods(1, 0);
+
+    // for (size_t i = 0; i < x2_lods.size() - 1; i++) {
+    //   for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
+    //     if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
+    //       size_t batch_len = x1_lods[i + 1] - x1_lods[i];
+    //       mmap_aux[out_lods.back()] = x1_lods[i];
+    //       out_lods.push_back(out_lods.back() + batch_len);
+    //       break;
+    //     }
+    //   }
+    // }
+
+    // // set output value
+    // // for those whose ins been dropout, set 0 for whole lines.
+    // // otherwise, copy whole line
+    // // Dim [local fc count, batch size, embedding size]
+    // LoDTensor* out = context.Output<LoDTensor>("Out");
+    // LoDTensor* map = context.Output<LoDTensor>("IndexMap");
+    // LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
+
+    // // expected auto = const T
+    // auto* x1_data = x1->data<T>();
+
+    // // expected auto = T
+    // size_t x1_embed_size = x1->dims()[1];
+
     if (out_lods.size() - 1 > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+
       map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
       loss_weight->Resize(
           framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+
     } else {
       out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({1, 3}));
       loss_weight->Resize(framework::make_ddim({1, 1}));
     }
-    auto* out_data = out->mutable_data<T>(context.GetPlace());
-    auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
-    auto* loss_weight_data =
-        loss_weight->mutable_data<float>(context.GetPlace());
+
+    // auto* out_data = out->mutable_data<T>(context.GetPlace());
+    // auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
+    // auto* loss_weight_data =
+    //     loss_weight->mutable_data<float>(context.GetPlace());
+
     if (out_lods.size() - 1 > 0) {
       Vector<size_t> map_lods;
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
@@ -128,6 +267,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
         map_lods.push_back(i);
       }
+
       map_lods.push_back(out_lods.size() - 1);
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
@@ -151,6 +291,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
           ++pos;
         }
       }
+
     } else {
       Vector<size_t> map_lods;
       map_data[0] = 0;
