@@ -234,7 +234,4 @@ void Copy(const CUDAContext& dev_ctx,
 }
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(UtilsCUDA);
-
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", CUDA, ANY, pten::Copy) {}
+PT_REGISTER_KERNEL_ALL_DTYPE(copy, CUDA, ANY, pten::Copy) {}
