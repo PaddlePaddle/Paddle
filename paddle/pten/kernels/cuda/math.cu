@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/pten/kernels/cuda/math.h"
 
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise.h"
-#include "paddle/pten/kernels/functions/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/functions/eigen/scale.h"
-#include "paddle/pten/kernels/functions/eigen/sign.h"
-#include "paddle/pten/kernels/functions/general/elementwise_functor.h"
-#include "paddle/pten/kernels/functions/general/reduce_impl.h"
+#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
+#include "paddle/pten/kernels/hybird/eigen/scale.h"
+#include "paddle/pten/kernels/hybird/eigen/sign.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
