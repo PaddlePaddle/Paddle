@@ -33,7 +33,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class PD_DLL_DECL OpMetaInfoHelper;
+class PADDLE_API OpMetaInfoHelper;
 }  // namespace framework
 
 using Tensor = paddle::Tensor;
@@ -425,7 +425,7 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
 ////////////////////// Op Meta Info //////////////////////
 
-class PD_DLL_DECL OpMetaInfo {
+class PADDLE_API OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
 
@@ -464,7 +464,7 @@ class PD_DLL_DECL OpMetaInfo {
 
 //////////////// Op Meta Info Map /////////////////
 
-class PD_DLL_DECL OpMetaInfoMap {
+class PADDLE_API OpMetaInfoMap {
  public:
   // this function's impl should keep in header file.
   // if move to cc file, meta info can not be added
@@ -488,7 +488,7 @@ class PD_DLL_DECL OpMetaInfoMap {
 
 //////////////// Op Meta Info Builder /////////////////
 
-class PD_DLL_DECL OpMetaInfoBuilder {
+class PADDLE_API OpMetaInfoBuilder {
  public:
   explicit OpMetaInfoBuilder(std::string&& name, size_t index);
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);

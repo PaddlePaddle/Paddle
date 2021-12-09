@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
+#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -45,7 +45,7 @@ namespace imperative {
 TEST(Benchmark, FluidScaleCPU) {
   // Prepare Device Contexts
   platform::CPUPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -88,7 +88,7 @@ TEST(Benchmark, FluidScaleCPU) {
 TEST(Benchmark, FluidMatmulCPU) {
   // Prepare Device Contexts
   platform::CPUPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -141,7 +141,7 @@ TEST(Benchmark, FluidMatmulCPU) {
 TEST(Benchmark, FluidMLPCPU) {
   // Prepare Device Contexts
   platform::CPUPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::vector<float> x_src_data(MLP_M * MLP_N, MLP_X_VAL);
@@ -217,5 +217,6 @@ TEST(Benchmark, FluidMLPCPU) {
 }  // namespace paddle
 
 USE_OP(scale);
+USE_OP(elementwise_add);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);

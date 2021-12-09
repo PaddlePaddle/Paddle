@@ -57,5 +57,46 @@ paddle::platform::DeviceContext* GetDeviceContextByBackend(
   return pool.Get(pten::TransToFluidPlace(backend));
 }
 
+DataType ParseDataType(DataType dtype) { return dtype; }
+DataType ParseDataType(const Tensor& tensor) { return tensor.type(); }
+DataType ParseDataType(const std::vector<Tensor>& tensors) {
+  if (tensors.empty()) {
+    return DataType::UNDEFINED;
+  }
+  DataType dtype = tensors[0].type();
+  auto n = tensors.size();
+  for (size_t i = 1; i < n; ++i) {
+    if (tensors[i].type() != dtype) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The data_type of input tensor in list isn't consistent, "
+          "the first tensor is %s, but %dth tensor is %s.",
+          dtype,
+          i,
+          tensors[i].type()));
+    }
+  }
+  return dtype;
+}
+
+DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
+  return dtype != DataType::UNDEFINED ? dtype : ParseDataType(tensor);
+}
+
+Backend ParseBackend(Backend backend) { return backend; }
+Backend ParseBackend(const Tensor& tensor) {
+  return pten::TransToPtenBackend(tensor.inner_place());
+}
+
+Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {
+  return backend != Backend::UNDEFINED ? backend : ParseBackend(tensor);
+}
+
+DataLayout ParseLayout(DataLayout layout) { return layout; }
+DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+
+DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
+  return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
+}
+
 }  // namespace experimental
 }  // namespace paddle

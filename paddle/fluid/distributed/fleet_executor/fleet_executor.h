@@ -39,7 +39,6 @@ class FleetExecutor final {
   void Init(const framework::ProgramDesc& program_desc, framework::Scope* scope,
             const platform::Place& place);
   void Run();
-  void Release();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
@@ -47,7 +46,7 @@ class FleetExecutor final {
   void InitCarrier();
   void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
   FleetExecutorDesc exe_desc_;
-  std::unique_ptr<RuntimeGraph> runtime_graph_;
+  std::shared_ptr<RuntimeGraph> runtime_graph_;
   framework::Scope* root_scope_;
   framework::Scope* minibatch_scope_;
   platform::Place place_;
