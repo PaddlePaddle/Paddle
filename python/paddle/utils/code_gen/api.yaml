@@ -64,7 +64,7 @@
     func : FullLikeInferMeta
     param : [x, dtype, layout]
   kernel : 
-    func : fill_any_like
+    func : full_like
     param : [value]
     data_type : dtype > x
     backend : place > x

@@ -136,9 +136,8 @@ static void ScaleCPU(DataType kernel_dtype,
     default: {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Detected unsupported data type."
-          "Only Float64, Float32, Float16, Int64, Int32, Int16, Int8, UInt8 "
-          "are "
-          "supported for now."));
+          "Only Float64, Float32, BFloat16, Int64, Int32, Int16, Int8, UInt8 "
+          "are supported for now."));
       break;
     }
   }
@@ -196,7 +195,8 @@ static void ScaleCUDA(DataType kernel_dtype,
     default: {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Detected unsupported data type."
-          "Only Float64, Float32, Int64, Int32, Int16, Int8, UInt8 are "
+          "Only Float64, Float32, Float16, Int64, Int32, Int16, Int8, UInt8 "
+          "are "
           "supported for now."));
       break;
     }
