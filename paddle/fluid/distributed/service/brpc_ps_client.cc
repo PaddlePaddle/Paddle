@@ -45,7 +45,7 @@ DEFINE_int32(pserver_communicate_compress_type, 0,
 DEFINE_int32(pserver_max_async_call_num, 13,
              "max task num in async_call_server");
 
-DEFINE_int32(pserver_timeout_ms, 500000, "pserver request server timeout_ms");
+DEFINE_int32(pserver_timeout_ms, 5000000, "pserver request server timeout_ms");
 
 DEFINE_int32(pserver_connect_timeout_ms, 10000,
              "pserver connect server timeout_ms");
