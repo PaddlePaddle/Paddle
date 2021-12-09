@@ -751,7 +751,7 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,           \
       args_def_fn,                                                           \
       PT_KERNEL(kernel_fn),                                                  \
-      PT_VARIADIC_ARGS_KERNEL(kernel_fn));                              \
+      PT_VARIADIC_ARGS_KERNEL(kernel_fn));                                   \
   int TouchKernelSymbolFor_##kernel_name##_##backend() { return 0; }         \
   void __PT_SINGLE_KERNEL_args_def_FN_##kernel_name(::pten::Kernel*)
 
@@ -774,7 +774,7 @@ struct KernelRegistrar {
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,        \
           &__PT_KERNEL_ALL_DTYPE_args_def_FN_##kernel_name,                   \
           PT_KERNEL(kernel_fn),                                               \
-          PT_VARIADIC_ARGS_KERNEL(kernel_fn));                           \
+          PT_VARIADIC_ARGS_KERNEL(kernel_fn));                                \
   int TouchKernelSymbolFor_##kernel_name##_##backend() { return 0; }          \
   void __PT_KERNEL_ALL_DTYPE_args_def_FN_##kernel_name(::pten::Kernel* kernel)
 
