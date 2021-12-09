@@ -108,7 +108,6 @@ def test_sharding_stage2_offload():
                     mlp_params[i].numpy(),
                     mlp_offload_params[j].numpy(),
                     rtol=1e-6)
-
     return
 
 
