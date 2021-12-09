@@ -2614,6 +2614,68 @@ def atan2(x, y, name=None):
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
 
+def lerp(x, y, weight, name=None):
+    r"""
+    Does a linear interpolation between x and y based on weight.
+
+    Equation:
+        .. math::
+
+            lerp(x, y, weight) = x + weight * (y - x).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        y (Tensor): An N-D Tensor, the data type is float32, float64.
+        weight (float|Tensor): the weight for the interpolation formula.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.arange(1., 5., dtype='float32')
+            y = paddle.empty([4], dtype='float32')
+            y.fill_(10.)
+            out = paddle.lerp(start, end, 0.5)
+            # out: [5.5., 6., 6.5, 7.]
+
+    """
+    if in_dygraph_mode():
+        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+        if isinstance(weight, float):
+            weight = paddle.to_tensor(weight, dtype=x.dtype)
+        return _C_ops.lerp(x, y, weight)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'], 'lerp')
+
+    helper = LayerHelper('lerp', **locals())
+    inputs = {'X': x, 'Y': y, 'Weight': weight}
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def lerp_(x, y, weight, name=None):
+    r"""
+    Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_lerp`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+    if isinstance(weight, float):
+        weight = paddle.to_tensor([weight], dtype=x.dtype)
+    elif isinstance(weight, (paddle.Tensor, Variable)):
+        out_shape = broadcast_shape(out_shape, weight.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    return _C_ops.lerp_(x, y, weight)
+
 def rad2deg(x, name=None):
     """
     Convert each of the elements of input x from angles in radians to degrees.

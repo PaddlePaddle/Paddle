@@ -257,19 +257,19 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_sparse_table_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {
-            "table_parameters.accessor.embed_sgd_param.adagrad.learning_rate":
+        configs = {}
+        configs['emb'] = {
+            "table_parameters.emb.accessor.embed_sgd_param.adagrad.learning_rate":
             0.05,
-            "table_parameters.accessor.table_accessor_save_param.num": 2,
-            "table_parameters.accessor.table_accessor_save_param.param":
+            "table_parameters.emb.accessor.table_accessor_save_param.num": 2,
+            "table_parameters.emb.accessor.table_accessor_save_param.param":
             [1, 2]
         }
         strategy.sparse_table_configs = configs
-        self.assertEqual(strategy.sparse_table_configs.accessor.embed_sgd_param.
-                         adagrad.learning_rate, 0.05)
-        self.assertEqual(
-            strategy.sparse_table_configs.accessor.table_accessor_save_param[
-                0].param, 1)
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.learning_rate, 0.05)
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.table_accessor_save_param[0].param, 1)
 
         strategy.adam_d2sum = True
         self.assertEqual(strategy.adam_d2sum, True)
