@@ -1069,6 +1069,31 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
 
+def renorm(input, p, dim, max_norm):
+    input_shape = input.shape
+    # check_variable_and_dtype(
+    #     dim, 'dim', ['int32', 'int64'], 'renorm')
+    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'renorm')
+    # check_variable_and_dtype(p, 'p', ['float32', 'float64'], 'renorm')
+    # check_variable_and_dtype(max_norm, 'max_norm', ['float32', 'float64'], 'renorm')
+    if not dim < len(input_shape):
+        raise ValueError("the dim:{} should be less then the shape's size {}:{}".format(dim,len(input_shape),input_shape))
+    if not dim >=0:
+        raise ValueError("the dim:{} should not be negative".format(dim))
+    if in_dygraph_mode():
+        out = core.ops.renorm(input, 'p',p, 'dim',dim, 'max_norm', max_norm)
+        return out
+
+    inputs = {'Input': input}
+    attrs = {'p': p, 'dim': dim, 'max_norm':max_norm}
+
+    helper = LayerHelper("renorm", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    return out
+
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
     r"""
