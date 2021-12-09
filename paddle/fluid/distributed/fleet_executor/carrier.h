@@ -75,6 +75,8 @@ class Carrier final {
 
   bool IsInit() const;
 
+  std::mutex run;
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:
