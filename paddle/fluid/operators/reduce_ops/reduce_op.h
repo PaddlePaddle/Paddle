@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/math.h"
-#include "paddle/pten/kernels/functions/general/reduce_impl.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"

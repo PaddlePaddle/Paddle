@@ -32,7 +32,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_yaml_file}
+  DEPENDS ${api_yaml_file} ${api_gen_file}
   VERBATIM)
 
 cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
