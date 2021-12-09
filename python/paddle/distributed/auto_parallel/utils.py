@@ -1036,3 +1036,139 @@ def set_grad_var_shape(program, dist_context):
 
                 if list(grad_var.shape) != ref_shape:
                     grad_var.desc.set_shape(ref_shape)
+
+
+def update_op_dims_mapping_by_default_dist_impl(dist_op):
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    # The following statement will be replaced by a more elegent way
+    if op_desc.type() == "shape" or op_desc.type() == "slice":
+        return False
+    output_names = op_desc.output_names()
+    xshape_arg_names = []
+    if "XShape" in output_names:
+        xshape_arg_names = op_desc.output("XShape")
+    batch_dim_mappings = []
+    for arg_name in op_desc.input_arg_names():
+        serial_tensor = dist_op.get_serial_input(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if len(dims_mapping) > 1:
+            for idx, mapping in enumerate(dims_mapping[1:]):
+                assert mapping == -1, \
+                    "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
+                        .format(op_desc.type(), idx, mapping)
+        batch_dim_mappings.append(dims_mapping[0])
+    for arg_name in op_desc.output_arg_names():
+        serial_tensor = dist_op.get_serial_output(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if arg_name not in xshape_arg_names:
+            if len(dims_mapping) > 1:
+                for idx, mapping in enumerate(dims_mapping[1:]):
+                    assert mapping == -1, \
+                        "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
+                            .format(op_desc.type(), idx, mapping)
+            batch_dim_mappings.append(dims_mapping[0])
+        else:
+            assert dims_mapping[0] == -1, \
+                "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part."\
+                    .format(op_desc.type(), mapping)
+            if len(dims_mapping) > 2:
+                for idx, mapping in enumerate(dims_mapping[2:]):
+                    assert mapping == -1, \
+                        "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {} is sharded by {} part."\
+                            .format(op_desc.type(), idx, mapping)
+            batch_dim_mappings.append(dims_mapping[1])
+
+    compatible_dim_mapping = compute_compatible_dim_mapping(batch_dim_mappings)
+    assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+    for arg_name in op_desc.input_arg_names():
+        serial_tensor = dist_op.get_serial_input(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if compatible_dim_mapping != dims_mapping[0]:
+            dims_mapping[0] = compatible_dim_mapping
+            changed = True
+    for arg_name in op_desc.output_arg_names():
+        serial_tensor = dist_op.get_serial_output(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if arg_name not in xshape_arg_names:
+            if compatible_dim_mapping != dims_mapping[0]:
+                dims_mapping[0] = compatible_dim_mapping
+                changed = True
+        else:
+            if compatible_dim_mapping != dims_mapping[1]:
+                dims_mapping[1] = compatible_dim_mapping
+                changed = True
+
+    return changed
+
+
+def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    input_arg_names = op_desc.input_arg_names()
+    input_dims_mapping_dict = {}
+    input_dims_mapping_lens = {}
+    max_dims_mapping_len = -1
+    for arg_name in input_arg_names:
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if max_dims_mapping_len < len(dims_mapping):
+            max_dims_mapping_len = len(dims_mapping)
+        input_dims_mapping_dict[arg_name] = dims_mapping
+        input_dims_mapping_lens[arg_name] = len(dims_mapping)
+
+    dims_mapping_list = []
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [-1 for _ in range(max_dims_mapping_len)]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[new_idx] = input_dims_mapping_dict[arg_name][i]
+            dims_mapping_list.append(new_dims_mapping)
+        else:
+            dims_mapping_list.append(input_dims_mapping_dict[arg_name])
+    output_arg_names = op_desc.output_arg_names()
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        assert len(dims_mapping) == max_dims_mapping_len
+        dims_mapping_list.append(dims_mapping)
+
+    compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
+    assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [
+                -1 for _ in range(input_dims_mapping_lens[arg_name])
+            ]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[i] = compatible_dims_mapping[new_idx]
+            if new_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+                changed = True
+        else:
+            if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name,
+                                                    compatible_dims_mapping)
+                changed = True
+
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if compatible_dims_mapping != dims_mapping:
+            op_dist_attr.set_output_dims_mapping(arg_name,
+                                                 compatible_dims_mapping)
+            changed = True
+
+    return changed
