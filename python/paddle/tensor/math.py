@@ -2624,9 +2624,9 @@ def lerp(x, y, weight, name=None):
             lerp(x, y, weight) = x + weight * (y - x).
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64.
-        y (Tensor): An N-D Tensor, the data type is float32, float64.
-        weight (float|Tensor): the weight for the interpolation formula.
+        x (Tensor): An N-D Tensor with starting points, the data type is float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
