@@ -142,7 +142,6 @@ PT_REGISTER_KERNEL(flatten,
                    int8_t,
                    int,
                    int64_t) {}
-
 PT_REGISTER_KERNEL(flatten_mid,
                    CPU,
                    ANY,
@@ -153,6 +152,7 @@ PT_REGISTER_KERNEL(flatten_mid,
                    int8_t,
                    int,
                    int64_t) {}
+
 PT_REGISTER_KERNEL(cast,
                    CPU,
                    ANY,
@@ -171,10 +171,7 @@ PT_REGISTER_KERNEL(cast,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-// TODO(yuanrisheng): "reshape2" is compatible with old kernel
-// architecture, kernel_name should be "reshape".
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape, CPU, ANY, pten::ReshapeFromVectorVal) {}
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mid,
                              CPU,
                              ANY,
@@ -197,7 +194,6 @@ PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost,
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost_mid,
                              CPU,
                              ANY,

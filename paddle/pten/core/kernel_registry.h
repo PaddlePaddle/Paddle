@@ -711,6 +711,10 @@ struct KernelRegistrar {
                                          __VA_ARGS__))
 
 /** PT_REGISTER_SINGLE_KERNEL
+ *
+ * Used to register a single kernel, pass in the complete function pointer
+ * of the kernel, this registration macro will not do automatic template
+ * instantiation.
  */
 #define PT_REGISTER_SINGLE_KERNEL(                                           \
     kernel_name, backend, layout, dtype, kernel_fn)                          \
@@ -730,6 +734,9 @@ struct KernelRegistrar {
   void __PT_SINGLE_KERNEL_args_def_FN_##kernel_name(::pten::Kernel*)
 
 /** PT_REGISTER_KERNEL_ALL_DTYPE
+ *
+ * Used to register a kernel that supports all data types, such as copy and
+ * reshape that are not sensitive to data types.
  */
 #define PT_REGISTER_KERNEL_ALL_DTYPE(kernel_name, backend, layout, kernel_fn) \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \

@@ -130,8 +130,7 @@ void Cast(const CUDAContext& dev_ctx,
 }  // namespace pten
 
 using float16 = paddle::platform::float16;
-// TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
-// architecture, kernel_name should be "flatten".
+
 PT_REGISTER_KERNEL(flatten,
                    CUDA,
                    ANY,
@@ -143,7 +142,6 @@ PT_REGISTER_KERNEL(flatten,
                    int8_t,
                    int,
                    int64_t) {}
-
 PT_REGISTER_KERNEL(flatten_mid,
                    CUDA,
                    ANY,
@@ -182,17 +180,14 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape, CUDA, ANY, pten::ReshapeFromVectorVal) {}
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mid,
                              CUDA,
                              ANY,
                              pten::ReshapeFromVectorValWithXShape) {}
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host, CUDA, ANY, pten::ReshapeFromDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host_mid,
                              CUDA,
                              ANY,
@@ -200,7 +195,6 @@ PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host_mid,
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost,
                              CUDA,
                              ANY,
@@ -208,7 +202,6 @@ PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost,
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-
 PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost_mid,
                              CUDA,
                              ANY,
