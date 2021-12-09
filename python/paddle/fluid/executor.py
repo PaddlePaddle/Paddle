@@ -1954,7 +1954,7 @@ class Executor(object):
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
         trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        fleet_exe_desc.cur_rank = os.getenv("PADDLE_TRAINER_ID", 0)
+        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
         nrank = len(trainer_endpoints)
         for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
