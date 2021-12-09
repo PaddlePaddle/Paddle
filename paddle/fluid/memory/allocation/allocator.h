@@ -116,20 +116,6 @@ class Allocation {
 
   inline const platform::Place& place() const { return place_; }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // NOTE(Ruibiao): This function is to make it easy to get stream from a CUDA
-  // AllocationPtr. Without this function, other module must get stream from a
-  // CUDA allocation like "dynamic_cast<StreamSafeCUDAAllocation*>(allocation)
-  // ->stream" and the concept of 'StreamSafeCUDAAllocation' has to be exposed.
-  // This function should not be called. It is not pure virtual just because
-  // other existing derived allocator class did not override it.
-  virtual const gpuStream_t& stream() const {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "A general 'DeviceStream' has not implemented yet, you can only call "
-        "stream() from a StreamSafeCUDAAllocation object"));
-  }
-#endif
-
   virtual ~Allocation() {}
 
  private:

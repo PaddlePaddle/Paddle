@@ -42,7 +42,8 @@ namespace allocation {
 class CUDADeviceContextAllocation : public Allocation {
  public:
   explicit CUDADeviceContextAllocation(AllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
+      : Allocation(allocation->ptr(), allocation->base_ptr(),
+                   allocation->size(), allocation->place()),
         underlying_allocation_(std::move(allocation)) {}
 
   ~CUDADeviceContextAllocation() {
