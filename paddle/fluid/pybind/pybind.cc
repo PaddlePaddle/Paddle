@@ -75,7 +75,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
+#endif
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
@@ -541,7 +543,9 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+#ifndef PADDLE_ON_INFERENCE
   BindEager(&m);
+#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
