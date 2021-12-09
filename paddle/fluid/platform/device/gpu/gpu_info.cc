@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include <cstdlib>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include "gflags/gflags.h"

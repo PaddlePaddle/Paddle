@@ -137,16 +137,24 @@ void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
   VLOG(10) << "  pointer=" << p;
   return p;
 }
+
 template <>
 void Free<platform::IPUPlace>(const platform::IPUPlace &place, void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
+
 template <>
 uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Release();
 }
+
+template <>
+void *BasePtr<platform::IPUPlace>(const platform::IPUPlace &place, void *p) {
+  return GetCPUBuddyAllocator()->BasePtr(p);
+}
+
 template <>
 size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
