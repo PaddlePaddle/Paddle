@@ -33,15 +33,16 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
-    output->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlActivationDesc act_desc(act_mode, alpha_);
     MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
         ToCnnlDataType(input->type()));
     MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
         ToCnnlDataType(output->type()));
 
-    MLUCnnlActivationDesc act_desc(act_mode, alpha_);
     MLUCnnl::Active(dev_ctx, act_desc.get(),
         input_desc.get(), reinterpret_cast<const void*>(input->data<T>()),
         output_desc.get(), reinterpret_cast<void*>(output->data<T>()));
@@ -61,6 +62,7 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     dx->mutable_data<T>(ctx.GetPlace());
+
     MLUCnnlTensorDesc dout_desc(*dout, CNNL_LAYOUT_ARRAY,
         ToCnnlDataType(dout->type()));
     MLUCnnlTensorDesc out_desc(*out, CNNL_LAYOUT_ARRAY,

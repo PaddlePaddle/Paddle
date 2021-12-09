@@ -25,6 +25,10 @@ function(op_library TARGET)
     if (WITH_ASCEND_CL)
       set(op_common_deps ${op_common_deps} npu_op_runner)
     endif()
+    if (WITH_MLU)
+      set(op_common_deps ${op_common_deps} mlu_baseop)
+    endif()
+
     # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
     set(options UNITY)
     set(oneValueArgs "")
