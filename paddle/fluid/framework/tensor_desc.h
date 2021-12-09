@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
 #include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"

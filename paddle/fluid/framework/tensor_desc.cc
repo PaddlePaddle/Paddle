@@ -13,23 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/tensor_desc.h"
+#include <string>
+
+#include "glog/logging.h"
+#include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
 namespace framework {
 
-// template<typename T>
-// const std::vector<T>& ExtractTensorDescValue(const TensorDescValue& desc_val)
-// {
-//   // PADDLE_ENFORCE_EQ(desc_val.type(), typeid(std::vector<T>),
-//   //                   platform::errors::PreconditionNotMet(
-//   //                       "Found mismatch type in
-//   ExtractTensorDescValue."));
-//   return BOOST_GET_CONST(std::vector<T>, desc_val);
-// }
-
 template <typename T, typename RepeatedField>
-inline static void VectorToRepeated(const std::vector<T> &vec,
-                                    RepeatedField *repeated_field) {
+inline void VectorToRepeated(const std::vector<T> &vec,
+                             RepeatedField *repeated_field) {
   repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (const auto &elem : vec) {
@@ -37,10 +31,19 @@ inline static void VectorToRepeated(const std::vector<T> &vec,
   }
 }
 
-// convert between std::vector and protobuf repeated.
 template <typename T>
-inline static std::vector<T> RepeatedToVector(
+inline std::vector<T> RepeatedToVector(
     const google::protobuf::RepeatedField<T> &repeated_field) {
+  std::vector<T> ret;
+  ret.reserve(repeated_field.size());
+  std::copy(repeated_field.begin(), repeated_field.end(),
+            std::back_inserter(ret));
+  return ret;
+}
+
+template <typename T>
+inline std::vector<T> RepeatedToVector(
+    const google::protobuf::RepeatedPtrField<T> &repeated_field) {
   std::vector<T> ret;
   ret.reserve(repeated_field.size());
   std::copy(repeated_field.begin(), repeated_field.end(),
@@ -50,23 +53,26 @@ inline static std::vector<T> RepeatedToVector(
 
 TensorDescValue GetTensorDescValue(
     const proto::VarType::TensorDesc &tensor_desc) {
+  VLOG(1) << "GetTensorDescValue with data_type: "
+          << DataTypeToString(tensor_desc.data_type());
   switch (tensor_desc.data_type()) {
-    case proto::VarType::Type::VarType_Type_INT32: {
+    case proto::VarType::INT32: {
       return RepeatedToVector(tensor_desc.int32_val());
     }
-    case proto::VarType::Type::VarType_Type_INT64: {
+    case proto::VarType::INT64: {
       return RepeatedToVector(tensor_desc.int64_val());
     }
-    case proto::VarType::Type::VarType_Type_FP32: {
+    case proto::VarType::FP32: {
       return RepeatedToVector(tensor_desc.float_val());
     }
-    // case proto::VarType::Type::VarType_Type_STRING: {
-    //   return RepeatedToVector(tensor_desc.string_val());
-    // }
+    case proto::VarType::STRING: {
+      return RepeatedToVector(tensor_desc.string_val());
+    }
 
     default:
       PADDLE_THROW(platform::errors::Unavailable(
-          "Unsupport TensorDesc type %d.", tensor_desc.data_type()));
+          "Not support TensorDesc type %s.",
+          DataTypeToString(tensor_desc.data_type())));
   }
 
   return boost::blank();
@@ -74,26 +80,33 @@ TensorDescValue GetTensorDescValue(
 
 void SetTensorDescValue(proto::VarType::TensorDesc *tensor_desc,
                         const TensorDescValue &val) {
+  VLOG(1) << "SetTensorDescValue with data_type: "
+          << DataTypeToString(tensor_desc->data_type());
   switch (tensor_desc->data_type()) {
-    case proto::VarType::Type::VarType_Type_INT32: {
+    case proto::VarType::INT32: {
       auto &vec = ExtractTensorDescValue<std::vector<int>>(val);
       VectorToRepeated(vec, tensor_desc->mutable_int32_val());
+      break;
     }
-    case proto::VarType::Type::VarType_Type_INT64: {
+    case proto::VarType::INT64: {
       auto &vec = ExtractTensorDescValue<std::vector<int64_t>>(val);
       VectorToRepeated(vec, tensor_desc->mutable_int64_val());
+      break;
     }
-    case proto::VarType::Type::VarType_Type_FP32: {
+    case proto::VarType::FP32: {
       auto &vec = ExtractTensorDescValue<std::vector<float>>(val);
       VectorToRepeated(vec, tensor_desc->mutable_float_val());
+      break;
     }
-    // case proto::VarType::Type::VarType_Type_STRING: {
-    //   auto &vec = ExtractTensorDescValue<std::vector<std::string>>(val);
-    //   VectorToRepeated(vec, tensor_desc->mutable_string_val());
-    // }
+    case proto::VarType::STRING: {
+      auto &vec = ExtractTensorDescValue<std::vector<std::string>>(val);
+      VectorToRepeated(vec, tensor_desc->mutable_string_val());
+      break;
+    }
     default:
       PADDLE_THROW(platform::errors::Unavailable(
-          "Unsupport TensorDesc type %d.", tensor_desc->data_type()));
+          "Not support TensorDesc type %s.",
+          DataTypeToString(tensor_desc->data_type())));
   }
 }
 

@@ -22,7 +22,7 @@ class TestTopk(unittest.TestCase):
         self.k = 2
 
     def test_compile_infer(self):
-        k = paddle.full([1], fill_value=self.k, dtype='int64')
+        k = paddle.full([1], fill_value=self.k, dtype='int32')
         k.desc.set_desc_value([self.k])
         out, _ = paddle.topk(self.x, k)
         self.assertEqual(out.shape[0], self.k)
@@ -36,7 +36,7 @@ class TestReshape(unittest.TestCase):
     def test_compile_infer(self):
         shape = paddle.shape(self.x)
         out = paddle.reshape(self.x, shape)
-        self.assertEqual(shape.desc.get_content(), list(self.shape))
+        self.assertEqual(shape.desc.get_desc_value(), list(self.shape))
         self.assertEqual(out.shape, self.shape)
 
 
