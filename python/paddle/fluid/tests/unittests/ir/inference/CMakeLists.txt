@@ -83,6 +83,8 @@ if (WITH_MKLDNN AND TENSORRT_FOUND AND WITH_GPU)
   set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv_elementwise_add2_act_fuse_pass PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv_elementwise_add_act_fuse_pass PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT 60)
 endif()
 
 if (WITH_MKLDNN)
