@@ -417,9 +417,10 @@ class Adam(Optimizer):
                             if not p[0].stop_gradient
                         ])
                     else:
+                        parameters = self._update_param_group(
+                            parameters_and_grads)
                         self._multi_tensor_init(target_block, [
-                            p for p in parameters_and_grads['params']
-                            if not p[0].stop_gradient
+                            p for p in parameters if not p[0].stop_gradient
                         ])
 
                 self._append_optimize_multi_tensor_op(target_block,
