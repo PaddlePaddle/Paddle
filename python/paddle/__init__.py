@@ -225,6 +225,7 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import lerp  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
 from .tensor.math import diff  # noqa: F401
@@ -260,6 +261,7 @@ from .framework.random import set_cuda_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
 from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
+from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
@@ -291,6 +293,7 @@ from .fluid.framework import get_flags  # noqa: F401
 from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
+from .device import is_compiled_with_ipu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
@@ -471,6 +474,7 @@ __all__ = [  # noqa
            'conj',
            'neg',
            'lgamma',
+           'lerp',
            'square',
            'divide',
            'ceil',

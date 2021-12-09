@@ -191,6 +191,8 @@ from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
+from .math import lerp  # noqa: F401
+from .math import lerp_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
 from .math import diff  # noqa: F401
@@ -409,6 +411,8 @@ tensor_method_func  = [ #noqa
            'solve',
            'triangular_solve',
            'diff',
+           'lerp',
+           'lerp_',
            'angle',
 ]
 
