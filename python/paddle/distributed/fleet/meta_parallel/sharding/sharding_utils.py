@@ -62,14 +62,13 @@ class ShardingClipGrad:
         sum_square_fp32 = []
 
         for p, g in params_grads:
-            if g is None:
+            if g is None or getattr(p, 'need_clip', True) is False:
                 continue
-            if getattr(p, 'need_clip', True) is False:
-                continue
+
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.merge_selected_rows(g)
-                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+                merge_grad = layers.get_tensor_from_selected_rows(
+                    layers.merge_selected_rows(g))
             square = layers.square(merge_grad)
             sum_square = layers.reduce_sum(square)
 
@@ -149,11 +148,13 @@ def ShardingScaler(scaler, sharding_group):
     def unscale_method(self, optimizer):
         if not self._enable:
             return
+        param_grads = []
+        param_grads_fp16 = []
+        param_grads_fp32 = []
+
         if getattr(optimizer, '_param_groups', None) and isinstance(
                 optimizer._param_groups[0], dict):
-            param_grads = []
-            param_grads_fp16 = []
-            param_grads_fp32 = []
+
             for group in optimizer._param_groups:
                 for param in group['params']:
                     if param._grad_ivar() is not None:
