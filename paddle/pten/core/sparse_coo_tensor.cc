@@ -26,27 +26,79 @@ SparseCooTensor::SparseCooTensor(const std::shared_ptr<Allocator>& a,
   DenseTensorMeta values_meta(dense_meta.dtype, values_dims, dense_meta.layout);
   std::unique_ptr<DenseTensor> indices_ptr(new DenseTensor(a, indices_meta));
   std::unique_ptr<DenseTensor> values_ptr(new DenseTensor(a, values_meta));
-  this->indices_.reset(indices_ptr.release());
-  this->values_.reset(values_ptr.release());
+  this->non_zero_indices_.reset(indices_ptr.release());
+  this->non_zero_elements_.reset(values_ptr.release());
 }
 
-SparseCooTensor::SparseCooTensor(std::unique_ptr<DenseTensor> indices,
-                                 std::unique_ptr<DenseTensor> values,
+SparseCooTensor::SparseCooTensor(std::unique_ptr<DenseTensor> non_zero_indices,
+                                 std::unique_ptr<DenseTensor> non_zero_elements,
                                  const DDim& dims) {
   this->coalesced_ = false;
-  this->sparse_dim_ = indices->dims()[0];
-  this->dense_dim_ = values->dims().size() == 1 ? 0 : values->dims()[1];
+  this->sparse_dim_ = non_zero_indices->dims()[0];
+  this->dense_dim_ =
+      non_zero_elements->dims().size() == 1 ? 0 : non_zero_elements->dims()[1];
   this->dims_ = dims;
-  this->indices_.reset(indices.release());
-  this->values_.reset(values.release());
+  this->non_zero_indices_.reset(non_zero_indices.release());
+  this->non_zero_elements_.reset(non_zero_elements.release());
 }
 
-void SparseCooTensor::set_indices_and_values_unsafe(
-    std::unique_ptr<DenseTensor> indices,
-    std::unique_ptr<DenseTensor> values,
+int64_t SparseCooTensor::nnz() const { return non_zero_indices_->dims()[1]; }
+
+void SparseCooTensor::SetNonZeroIndicesAndElementsUnsafe(
+    std::unique_ptr<DenseTensor> non_zero_indices,
+    std::unique_ptr<DenseTensor> non_zero_elements,
     const DDim& dims) {
-  this->indices_.reset(indices.release());
-  this->values_.reset(values.release());
+  this->non_zero_indices_.reset(non_zero_indices.release());
+  this->non_zero_elements_.reset(non_zero_elements.release());
   this->dims_ = dims;
 }
+
+int64_t SparseCooTensor::Index(const std::vector<int64_t>& indices) const {
+  PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(place()),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "this method only support CPU place."));
+  PADDLE_ENFORCE_EQ(
+      indices.size(),
+      sparse_dim_,
+      paddle::platform::errors::InvalidArgument(
+          "the query indices.size()=%d should be equal the sparse_dim=%d",
+          static_cast<int>(indices.size()),
+          static_cast<int>(sparse_dim_)));
+
+  const int64_t non_zero_num = this->nnz();
+  const int64_t* non_zero_indices = non_zero_indices_->data<int64_t>();
+  for (int64_t i = 0; i < non_zero_num; i++) {
+    bool flag = true;
+    for (int64_t j = 0; j < sparse_dim_; j++) {
+      if (non_zero_indices[j * non_zero_num + i] != indices[j]) {
+        flag = false;
+        break;
+      }
+    }
+    if (flag == true) return i;
+  }
+  PADDLE_THROW(paddle::platform::errors::NotFound(
+      "Input query indices is not in current rows table."));
+}
+
+int64_t SparseCooTensor::Index(int64_t key) const {
+  PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(place()),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "this method only support CPU place."));
+  PADDLE_ENFORCE_EQ(sparse_dim_,
+                    1,
+                    paddle::platform::errors::InvalidArgument(
+                        "this method is only valid when sparse_dim_ = 1"));
+  const int64_t* indices = non_zero_indices_->data<int64_t>();
+  for (int64_t i = 0; i < this->nnz(); i++) {
+    if (indices[i] == key) {
+      return i;
+    }
+  }
+  PADDLE_THROW(paddle::platform::errors::NotFound(
+      "Input id (%lld) is not in current rows table.", key));
+}
+
 }  // namespace pten

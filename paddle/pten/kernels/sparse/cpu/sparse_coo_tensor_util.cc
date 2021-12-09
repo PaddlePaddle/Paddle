@@ -72,7 +72,7 @@ void ToSparseCoo(const CPUContext& dev_ctx,
     }
   }
 
-  dst->set_indices_and_values_unsafe(
+  dst->SetNonZeroIndicesAndElementsUnsafe(
       std::move(indices_ptr), std::move(values_ptr), src.dims());
 }
 

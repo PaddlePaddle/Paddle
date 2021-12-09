@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
@@ -22,6 +23,7 @@ limitations under the License. */
 namespace pten {
 
 class CompatibleDenseTensorUtils;
+using RWLock = paddle::framework::RWLock;
 
 class SparseCooTensor : public TensorBase,
                         public TypeInfoTraits<TensorBase, SparseCooTensor> {
@@ -29,20 +31,13 @@ class SparseCooTensor : public TensorBase,
   SparseCooTensor() = default;
   SparseCooTensor(const std::shared_ptr<Allocator>& a,
                   const DenseTensorMeta& dense_meta);
-  SparseCooTensor(std::unique_ptr<DenseTensor> indices,
-                  std::unique_ptr<DenseTensor> values,
+  SparseCooTensor(std::unique_ptr<DenseTensor> non_zero_indices,
+                  std::unique_ptr<DenseTensor> non_zero_elements,
                   const DDim& dims);
   virtual ~SparseCooTensor() = default;
 
-  const DenseTensor& indices() { return *indices_; }
-  const DenseTensor& values() { return *values_; }
-
-  int64_t* mutable_indices() { return indices_->mutable_data<int64_t>(); }
-
-  template <typename T>
-  T* mutable_values() {
-    return values_->mutable_data<T>();
-  }
+  const DenseTensor& non_zero_indices() { return *non_zero_indices_; }
+  const DenseTensor& non_zero_elements() { return *non_zero_elements_; }
 
   int64_t sparse_dim() { return sparse_dim_; }
   int64_t dense_dim() { return dense_dim_; }
@@ -50,29 +45,52 @@ class SparseCooTensor : public TensorBase,
 
   static const char* name() { return "SparseCooTensor"; }
 
-  int64_t numel() const { return values_->numel(); }
+  int64_t nnz() const;
+
+  int64_t numel() const { return product(dims_); }
 
   const DDim& dims() const noexcept override { return dims_; }
 
-  DataType dtype() const noexcept override { return values_->dtype(); }
+  DataType dtype() const noexcept override {
+    return non_zero_elements_->dtype();
+  }
 
   DataLayout layout() const { return DataLayout::SPARSE_COO; }
 
-  const Place& place() const override { return values_->place(); }
-  bool valid() const noexcept { return values_->valid(); }
-  bool initialized() const override { return values_->initialized(); }
+  const Place& place() const override { return non_zero_elements_->place(); }
+  bool valid() const noexcept { return non_zero_elements_->valid(); }
+  bool initialized() const override {
+    return non_zero_elements_->initialized();
+  }
 
-  void set_indices_and_values_unsafe(std::unique_ptr<DenseTensor> indices,
-                                     std::unique_ptr<DenseTensor> values,
-                                     const DDim& dims);
+  void SetNonZeroIndicesAndElementsUnsafe(
+      std::unique_ptr<DenseTensor> non_zero_indices,
+      std::unique_ptr<DenseTensor> non_zero_elements,
+      const DDim& dims);
+
+  int64_t Index(const std::vector<int64_t>& indices) const;
+  int64_t Index(int64_t indices) const;
+
+  int64_t AutoGrownIndex(const std::vector<int64_t>& indices,
+                         bool auto_grown,
+                         bool is_test = false) const;
+  int64_t AutoGrownIndex(int64_t indices,
+                         bool auto_grown,
+                         bool is_test = false) const;
+
+  void SyncIndex();
 
  private:
   int64_t sparse_dim_ = 0;
   int64_t dense_dim_ = 0;
-  std::unique_ptr<DenseTensor> indices_;
-  std::unique_ptr<DenseTensor> values_;
+  std::unique_ptr<DenseTensor> non_zero_indices_;
+  std::unique_ptr<DenseTensor> non_zero_elements_;
   bool coalesced_ = false;
   DDim dims_;
+
+  std::map<int64_t, int64_t> indices_to_index_;
+  int64_t height_;  // height indicates the underline tensor's height
+  std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 
 }  // namespace pten

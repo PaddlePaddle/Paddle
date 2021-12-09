@@ -48,11 +48,11 @@ TEST(API, to_sparse_coo) {
   auto out = paddle::experimental::to_sparse_coo(x, sparse_dim);
   auto sparse_out =
       std::dynamic_pointer_cast<pten::SparseCooTensor>(out.impl());
-  const auto& values = sparse_out->values();
+  const auto& values = sparse_out->non_zero_elements();
   int64_t non_zero_num = values.numel();
   ASSERT_EQ(static_cast<uint64_t>(non_zero_num), dense_data.size());
 
-  const auto& indices = sparse_out->indices();
+  const auto& indices = sparse_out->non_zero_indices();
   for (int64_t i = 0; i < non_zero_num; i++) {
     ASSERT_EQ(values.data<float>()[i], dense_data[i]);
   }
@@ -84,8 +84,8 @@ TEST(API, to_sparse_coo_hybird) {
   auto out = paddle::experimental::to_sparse_coo(x, sparse_dim);
   auto sparse_out =
       std::dynamic_pointer_cast<pten::SparseCooTensor>(out.impl());
-  const auto& values = sparse_out->values();
-  const auto& indices = sparse_out->indices();
+  const auto& values = sparse_out->non_zero_elements();
+  const auto& indices = sparse_out->non_zero_indices();
   int64_t non_zero_num = indices.numel();
   ASSERT_EQ(static_cast<uint64_t>(non_zero_num), dense_data.size());
   for (int64_t i = 0; i < non_zero_num; i++) {
