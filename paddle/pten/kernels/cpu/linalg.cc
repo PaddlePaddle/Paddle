@@ -70,12 +70,10 @@ void Matmul(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(LinalgCPU);
-
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL("dot",
+PT_REGISTER_KERNEL(dot,
                    CPU,
                    ANY,
                    pten::Dot,
@@ -87,4 +85,4 @@ PT_REGISTER_KERNEL("dot",
                    complex128) {}
 
 PT_REGISTER_KERNEL(
-    "matmul", CPU, ANY, pten::Matmul, float, double, complex64, complex128) {}
+    matmul, CPU, ANY, pten::Matmul, float, double, complex64, complex128) {}

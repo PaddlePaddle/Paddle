@@ -26,6 +26,9 @@ class TestDygraphShardingStage2(TestMultipleGpus):
     def test_dygraph_sharding_optimizer_stage2(self):
         self.run_mnist_2gpu('dygraph_sharding_stage2.py')
 
+    def test_dygraph_sharding_optimizer_stage2_offload(self):
+        self.run_mnist_2gpu('dygraph_sharding_stage2_offload.py')
+
 
 if __name__ == "__main__":
     unittest.main()
