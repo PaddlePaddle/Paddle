@@ -370,6 +370,15 @@ PyObject* ToPyObject(const platform::Place& value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const void* value) {
+  if (value == nullptr) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  PADDLE_THROW(
+      platform::errors::Fatal("ToPyObject do not support void* with value."));
+}
+
 egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
                                         const std::string& arg_name,
                                         PyObject* args, ssize_t arg_idx,
