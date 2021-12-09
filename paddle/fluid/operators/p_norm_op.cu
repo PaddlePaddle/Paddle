@@ -160,11 +160,9 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     auto ndim = out_norm->dims();
     float porder = ctx.Attr<float>("porder");
     int axis = ctx.Attr<int>("axis");
-    bool asvector = ctx.Attr<bool>("asvector");
     if (axis < 0) axis = xdim.size() + axis;
     std::vector<int> reduce_axis = {axis};
 
-    auto& dev_ctx = ctx.cuda_device_context();
     auto stream = ctx.cuda_device_context().stream();
 
     using MT = typename details::MPTypeTrait<T>::Type;
@@ -246,20 +244,14 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* out_dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     T* dx = out_dx->mutable_data<T>(ctx.GetPlace());
-    const T* x = in_x->data<T>();
-    const T* x_norm = in_norm->data<T>();
-    const T* norm_dy = in_norm_dy->data<T>();
 
     auto xdim = in_x->dims();
     float porder = ctx.Attr<float>("porder");
-    T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
     int axis = ctx.Attr<int>("axis");
     bool reduce_all = ((axis < 0) || (in_norm->numel() == 1));
-    bool asvector = ctx.Attr<bool>("asvector");
     if (axis < 0) axis = xdim.size() + axis;
     const std::vector<int> dims = {axis};
 
-    auto& dev_ctx = ctx.cuda_device_context();
     auto& cuda_ctx = ctx.template device_context<DeviceContext>();
 
     if (porder == 0) {
