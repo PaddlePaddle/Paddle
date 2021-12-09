@@ -75,7 +75,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
+#endif
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
@@ -201,6 +203,14 @@ bool IsCompiledWithNPU() {
 
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithCINN() {
+#ifndef PADDLE_WITH_CINN
   return false;
 #else
   return true;
@@ -533,7 +543,9 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+#ifndef PADDLE_ON_INFERENCE
   BindEager(&m);
+#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -2191,6 +2203,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
