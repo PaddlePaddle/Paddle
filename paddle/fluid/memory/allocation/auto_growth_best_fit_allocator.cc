@@ -100,11 +100,13 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
   }
+  VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
   return new BlockAllocation(block_it);
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
-  VLOG(10) << "Free " << allocation->size() << " bytes";
+  VLOG(10) << "Free " << allocation->size()
+           << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;

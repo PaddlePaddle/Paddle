@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/pten/kernels/cuda/math.h"
 
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/pten/kernels/functions/cuda/elementwise/elementwise.h"
-#include "paddle/pten/kernels/functions/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/functions/eigen/scale.h"
-#include "paddle/pten/kernels/functions/eigen/sign.h"
-#include "paddle/pten/kernels/functions/general/elementwise_functor.h"
-#include "paddle/pten/kernels/functions/general/reduce_impl.h"
+#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
+#include "paddle/pten/kernels/hybird/eigen/scale.h"
+#include "paddle/pten/kernels/hybird/eigen/sign.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -79,30 +79,12 @@ void Mean(const CUDAContext& dev_ctx,
 template <typename T>
 void Scale(const CUDAContext& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  eigen::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
-
-template <typename T>
-void ScaleHost(const CUDAContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(scale.place()),
-                    false,
-                    paddle::platform::errors::InvalidArgument(
-                        "Scale argument isn't a host tensor."));
-  eigen::Scale<CUDAContext, T>(dev_ctx,
-                               x,
-                               static_cast<float>(*scale.data<T>()),
-                               bias,
-                               bias_after_scale,
-                               out);
+  eigen::Scale<CUDAContext, T>(
+      dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
 }
 
 // Create the definition of ElementwiseAdd
@@ -137,7 +119,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("reduce_mean", CUDA, ANY, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL("scale",
                    CUDA,
                    ANY,
@@ -150,21 +132,7 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.host",
-                   CUDA,
-                   ANY,
-                   pten::ScaleHost,
-                   float,
-                   double,
-                   float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-}
-PT_REGISTER_KERNEL("elementwise_add",
+PT_REGISTER_KERNEL("add",
                    CUDA,
                    ANY,
                    pten::ElementwiseAdd,
@@ -175,7 +143,7 @@ PT_REGISTER_KERNEL("elementwise_add",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_sub",
+PT_REGISTER_KERNEL("subtract",
                    CUDA,
                    ANY,
                    pten::ElementwiseSub,
@@ -186,7 +154,7 @@ PT_REGISTER_KERNEL("elementwise_sub",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_div",
+PT_REGISTER_KERNEL("divide",
                    CUDA,
                    ANY,
                    pten::ElementwiseDiv,
@@ -197,7 +165,7 @@ PT_REGISTER_KERNEL("elementwise_div",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("elementwise_mul",
+PT_REGISTER_KERNEL("multiply",
                    CUDA,
                    ANY,
                    pten::ElementwiseMul,
@@ -209,7 +177,7 @@ PT_REGISTER_KERNEL("elementwise_mul",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("reduce_sum",
+PT_REGISTER_KERNEL("sum",
                    CUDA,
                    ANY,
                    pten::Sum,

@@ -20,9 +20,26 @@
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_sequential_run, false,
+    "Enable sequential execution for standalone executor, used for debug");
 namespace paddle {
 namespace framework {
 namespace interpreter {
+
+void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
+                             std::function<void()> fn) {
+  // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
+  if (FLAGS_new_executor_sequential_run) {
+    VLOG(4) << "FLAGS_new_executor_sequential_run:"
+            << FLAGS_new_executor_sequential_run;
+    queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
+                          std::move(fn));
+  } else {
+    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
+  }
+}
+
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
