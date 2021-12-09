@@ -45,7 +45,7 @@ class CinnCacheKey {
                const std::map<std::string, DDim>& input_shapes,
                const std::string& arch_str, GraphHashStrategy graph_hash);
 
-  ~CinnCacheKey() {}
+  ~CinnCacheKey() = default;
 
   void SetKey(const ir::Graph& graph,
               const std::map<std::string, const LoDTensor*>& input_tensors,
@@ -64,50 +64,36 @@ class CinnCacheKey {
 
  private:
   GraphHashStrategy graph_hash_;
-  std::string graph_serialize_str_;
+  size_t graph_hash_val_;
   std::map<std::string, DDim> input_shapes_;
   std::string arch_str_;
 };
 
-// Class to store the keys by graph structure for compiling CINN.
-class CinnCacheKeyByStructure : public CinnCacheKey {
- public:
-  CinnCacheKeyByStructure() : CinnCacheKey(HashGraph) {}
-
-  CinnCacheKeyByStructure(
-      const ir::Graph& graph,
-      const std::map<std::string, const LoDTensor*>& input_tensors,
-      const std::string& arch_str)
-      : CinnCacheKey(graph, input_tensors, arch_str, HashGraph) {}
-
-  CinnCacheKeyByStructure(const ir::Graph& graph,
-                          const std::map<std::string, DDim>& input_shapes,
-                          const std::string& arch_str)
-      : CinnCacheKey(graph, input_shapes, arch_str, HashGraph) {}
-
- private:
-  static size_t HashGraph(const ir::Graph& graph);
-};
+#define CINN_CACHE_KEY_CREATE(NAME)                                    \
+  class NAME : public CinnCacheKey {                                   \
+   public:                                                             \
+    NAME() : CinnCacheKey(HashGraph) {}                                \
+                                                                       \
+    NAME(const ir::Graph& graph,                                       \
+         const std::map<std::string, const LoDTensor*>& input_tensors, \
+         const std::string& arch_str)                                  \
+        : CinnCacheKey(graph, input_tensors, arch_str, HashGraph) {}   \
+                                                                       \
+    NAME(const ir::Graph& graph,                                       \
+         const std::map<std::string, DDim>& input_shapes,              \
+         const std::string& arch_str)                                  \
+        : CinnCacheKey(graph, input_shapes, arch_str, HashGraph) {}    \
+                                                                       \
+   private:                                                            \
+    static size_t HashGraph(const ir::Graph& graph);                   \
+  };
 
 // Class to store the keys by graph address for compiling CINN.
-class CinnCacheKeyByAddress : public CinnCacheKey {
- public:
-  CinnCacheKeyByAddress() : CinnCacheKey(HashGraph) {}
+CINN_CACHE_KEY_CREATE(CinnCacheKeyByAddress)
+// Class to store the keys by graph structure for compiling CINN.
+CINN_CACHE_KEY_CREATE(CinnCacheKeyByStructure)
 
-  CinnCacheKeyByAddress(
-      const ir::Graph& graph,
-      const std::map<std::string, const LoDTensor*>& input_tensors,
-      const std::string& arch_str)
-      : CinnCacheKey(graph, input_tensors, arch_str, HashGraph) {}
-
-  CinnCacheKeyByAddress(const ir::Graph& graph,
-                        const std::map<std::string, DDim>& input_shapes,
-                        const std::string& arch_str)
-      : CinnCacheKey(graph, input_shapes, arch_str, HashGraph) {}
-
- private:
-  static size_t HashGraph(const ir::Graph& graph);
-};
+#undef CINN_CACHE_KEY_CREATE
 
 }  // namespace paddle2cinn
 }  // namespace framework
