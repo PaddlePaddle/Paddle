@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import core as core
+# from .. import core as core
 
 
 def monkey_patch_eagertensor():
-    def __str__(self):
-        from paddle.tensor.to_string import eager_tensor_to_string
-        return eager_tensor_to_string(self)
+    # def __str__(self):
+    #     from paddle.tensor.to_string import eager_tensor_to_string
+    #     return eager_tensor_to_string(self)
 
-    setattr(core.eager.EagerTensor, "__str__", __str__)
+    # setattr(core.eager.EagerTensor, "__str__", __str__)
+    pass
