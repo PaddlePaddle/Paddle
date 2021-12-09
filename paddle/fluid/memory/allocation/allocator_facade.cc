@@ -615,13 +615,14 @@ class AllocatorFacadePrivate {
   }
 #endif
 
-<<<<<<< HEAD
 #ifdef PADDLE_WITH_IPU
   void InitNaiveBestFitIPUAllocator(platform::IPUPlace p) {
-=======
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+#endif
+
 #ifdef PADDLE_WITH_MLU
   void InitNaiveBestFitMLUAllocator(platform::MLUPlace p) {
->>>>>>> gitlab_mlu_dev
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 #endif
@@ -695,17 +696,16 @@ class AllocatorFacadePrivate {
       places.emplace_back(platform::NPUPlace(dev_id));
     }
 #endif
-<<<<<<< HEAD
 #ifdef PADDLE_WITH_IPU
     int device_count = platform::GetIPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::IPUPlace(dev_id));
-=======
+    }
+#endif
 #ifdef PADDLE_WITH_MLU
     int device_count = platform::GetMLUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::MLUPlace(dev_id));
->>>>>>> gitlab_mlu_dev
     }
 #endif
 
