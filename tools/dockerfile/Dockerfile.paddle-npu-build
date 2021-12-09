@@ -1,0 +1,4 @@
+FROM registry.baidubce.com/jiachen/paddle:latest-dev-cann5.0.2.alpha005-gcc82-x86_64-with-drive
+RUN yum -y install pigz
+CMD ["/bin/bash"]
+EXPOSE 22
