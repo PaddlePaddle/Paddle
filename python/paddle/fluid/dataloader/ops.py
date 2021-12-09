@@ -59,8 +59,8 @@ def map(map_func, inputs):
         program_inputs = [
             map_block.create_var(
                 name=unique_name.generate("map_sub"),
-                type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-                persistable=False) for i in range(len(inputs))]
+                type=inputs[0].desc.type(),
+                persistable=False) for inp in inputs]
         program_outputs = map_func(*program_inputs)
         program_outputs = _to_list(program_outputs)
     
@@ -70,8 +70,8 @@ def map(map_func, inputs):
     outputs = \
         [helper.create_variable(
             name=unique_name.generate("map"),
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=True) for _ in range(len(program_outputs))]
+            type=outp.desc.type(),
+            persistable=True) for outp in program_outputs]
     attrs = {
         "map_block": map_block,
         "program_id": program_id,

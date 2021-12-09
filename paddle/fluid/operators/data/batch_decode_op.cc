@@ -31,7 +31,6 @@ class CPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(LieLinJiang): add cpu implement.
-    LOG(ERROR) << "CPUBatchDecodeJpegKernel enter";
     PADDLE_THROW(platform::errors::Unimplemented(
         "DecodeJpeg op only supports GPU now."));
   }
@@ -65,8 +64,6 @@ class BatchDecodeJpegOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // return framework::OpKernelType(
-    //     OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
     return framework::OpKernelType(
         framework::proto::VarType::UINT8, ctx.GetPlace());
   }
@@ -74,7 +71,6 @@ class BatchDecodeJpegOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
-    LOG(ERROR) << "GetKernelTypeForVar enter ";
     if (var_name == "X") {
       return expected_kernel_type;
     }
