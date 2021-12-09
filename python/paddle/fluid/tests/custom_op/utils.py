@@ -24,6 +24,11 @@ IS_MAC = sys.platform.startswith('darwin')
 build_path = os.path.abspath(os.path.join(get_python_paddle_path(), '..', '..'))
 paddle_path = os.path.abspath(os.path.join(build_path, '..'))
 
+path = os.path.abspath("")
+eigen_path = os.path.abspath(
+    os.path.join(path, '..', '..', '..', '..', '..', 'third_party', 'eigen3',
+                 'src', 'extern_eigen3'))
+
 site_packages_path = get_python_lib()
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
 # `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
@@ -33,8 +38,7 @@ paddle_includes = [
     os.path.join(site_packages_path, 'paddle', 'include'),
     os.path.join(site_packages_path, 'paddle', 'include', 'third_party'),
     os.path.join(paddle_path),
-    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'),
-    os.path.join(build_path, 'third_party', 'eigen3', 'src', 'extern_eigen3')
+    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'), eigen_path
 ]
 
 # Test for extra compile args
