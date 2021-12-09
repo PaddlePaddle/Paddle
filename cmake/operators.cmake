@@ -25,6 +25,10 @@ function(op_library TARGET)
     if (WITH_ASCEND_CL)
       set(op_common_deps ${op_common_deps} npu_op_runner)
     endif()
+    if (WITH_MLU)
+      set(op_common_deps ${op_common_deps} mlu_baseop)
+    endif()
+
     # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
     set(options UNITY)
     set(oneValueArgs "")
@@ -333,8 +337,23 @@ function(op_library TARGET)
         endif()
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${NPU_TARGET}, NPU);\n")
     endif()
-    if (WITH_MLU AND ${pybind_flag} EQUAL 0 AND ${mlu_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, MLU);\n")
+    if (WITH_MLU AND ${mlu_cc_srcs_len} GREATER 0)
+        file(READ ${ORIGINAL_TARGET}_mlu.cc TARGET_MLU_CONTENT)
+        # It is different from the logic above, becareful
+        string(REGEX MATCH "REGISTER_OP_MLU_KERNEL\\(.*" multi_mlu_register "${TARGET_MLU_CONTENT}")
+        # [ \t\r\n]* is used for blank characters
+        string(REGEX MATCH "REGISTER_OP_MLU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_mlu_register "${multi_mlu_register}")
+
+        if (one_mlu_register STREQUAL "")
+            string(REPLACE "_op" "" MLU_TARGET "${TARGET}")
+        else ()
+            string(REPLACE "REGISTER_OP_MLU_KERNEL(" "" MLU_TARGET "${one_mlu_register}")
+            string(REPLACE "," "" MLU_TARGET "${MLU_TARGET}")
+            # [ \t\r\n]+ is used for blank characters.
+            # Here we use '+' instead of '*' since it is a REPLACE operation.
+            string(REGEX REPLACE "[ \t\r\n]+" "" MLU_TARGET "${MLU_TARGET}")
+        endif()
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${MLU_TARGET}, MLU);\n")
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for MKLDNN

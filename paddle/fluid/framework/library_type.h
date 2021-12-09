@@ -26,6 +26,7 @@ enum class LibraryType {
   kPlain = 0,
   kMKLDNN = 1,
   kCUDNN = 2,
+  kCNNL = 3,
 };
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
@@ -64,6 +65,8 @@ inline LibraryType StringToLibraryType(const char* ctype) {
   } else if (s == std::string("IPU")) {
     return LibraryType::kPlain;
   } else if (s == std::string("NPU")) {
+    return LibraryType::kPlain;
+  } else if (s == std::string("MLU")) {
     return LibraryType::kPlain;
   } else if (s == std::string("CUDA")) {
     return LibraryType::kPlain;

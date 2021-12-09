@@ -90,12 +90,6 @@ class OpFallbackKernelTest : public OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(proto::VarType::FP32, ctx.device_context());
   }
-  // framework::OpKernelType GetExpectedKernelType(
-  //     const framework::ExecutionContext& ctx) const override {
-  //   return framework::OpKernelType(proto::VarType::FP32, platform::MLUPlace(0),
-  //                                  DataLayout::kAnyLayout,
-  //                                  framework::LibraryType::kPlain);
-  // }
 };
 
 template <typename DeviceContext, typename T>

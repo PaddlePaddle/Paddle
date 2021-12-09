@@ -11,91 +11,151 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/activation_op.h"
-
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
-// template <typename T>
-// void Compare(f::Scope* scope, const p::DeviceContext& ctx,
-//              std::string op_type) {
-//   // init
-//   auto x = scope->Var("X");
-//   auto tensor_x = x->GetMutable<f::LoDTensor>();
-
-//   std::vector<T> init;
-//   init.push_back(static_cast<T>(1.0));
-//   init.push_back(static_cast<T>(2.0));
-//   init.push_back(static_cast<T>(3.0));
-//   init.push_back(static_cast<T>(4.0));
-
-//   TensorFromVector(init, ctx, tensor_x);
-//   tensor_x->Resize({4});
-
-//   ctx.Wait();
-
-//   auto place = ctx.GetPlace();
-//   auto out = scope->Var("Out");
-//   auto tensor_out = out->GetMutable<f::LoDTensor>();
-
-//   auto op =
-//       f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, {});
-
-//   op->Run(*scope, place);
-
-//   std::vector<T> out_vec;
-//   TensorToVector(*tensor_out, ctx, &out_vec);
-
-//   ctx.Wait();
-
-//   EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)4);
-//   EXPECT_EQ(out_vec[0], static_cast<T>(1.0));
-//   EXPECT_EQ(out_vec[1], static_cast<T>(2.0));
-//   EXPECT_EQ(out_vec[2], static_cast<T>(3.0));
-//   EXPECT_EQ(out_vec[3], static_cast<T>(4.0));
-// }
-
-// f::AttributeMap attrs;
-//   float dropout_prob = 0.5;
-//   attrs.insert({"fix_seed", 1});
-//   attrs.insert({"seed", 3});
-//   attrs.insert({"dropout_prob", dropout_prob});
-//   auto dropout_op = f::OpRegistry::CreateOp(
-//       "dropout", {{"X", {"X"}}}, {{"Out", {"Out"}}, {"Mask", {"Mask"}}}, attrs);
+namespace fw = paddle::framework;
+namespace plat = paddle::platform;
+namespace math = paddle::operators::math;
 
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MLU);
 
-TEST(ActivationOpTest, TestReluOp) {
-  paddle::platform::MLUPlace mlu_place(0);
-  auto ctx = paddle::platform::DeviceContextPool::Instance().Get(mlu_place);
+// relu
+template <typename T>
+inline T relu(T x) { return x > 0 ? x : 0.; }
 
-  paddle::framework::AttributeMap attrs;
-  auto op = paddle::framework::OpRegistry::CreateOp(
-                "relu", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
+template <typename T>
+inline T relu_grad_dx(T x, T out, T dout) {
+  return out > 0 ? dout : 0;
+}
 
+template <typename T>
+void Compare(fw::Scope* scope, const plat::DeviceContext& ctx, std::string op_type) {
   // init
-  paddle::framework::Scope scope;
-  auto x = scope.Var("X");
-  auto tensor_x = x->GetMutable<paddle::framework::LoDTensor>();
+  auto x = scope->Var("X");
+  auto tensor_x = x->GetMutable<fw::LoDTensor>();
+  
+  const int num = 10;
+  std::vector<T> init_x;
+  for (int64_t i = 0; i < num * num; ++i) {
+    init_x.push_back(static_cast<T>(i - 50));
+  }
+  TensorFromVector(init_x, ctx, tensor_x);
+  tensor_x->Resize({num, num});
 
-  std::vector<float> init;
-  init.push_back(-1.0);
-  init.push_back(2.0);
-  init.push_back(-3.0);
-  init.push_back(4.0);
+  auto place = ctx.GetPlace();
+  auto out = scope->Var("Out");
+  auto tensor_out = out->GetMutable<fw::LoDTensor>();
 
-  TensorFromVector(init, *ctx, tensor_x);
-  tensor_x->Resize({4});
+  fw::AttributeMap attrs;
+  auto op = fw::OpRegistry::CreateOp(
+                op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
+  op->Run(*scope, place);
 
-  // ctx.Wait();
+  ctx.Wait();
 
-  auto out = scope.Var("Out");
-  auto tensor_out = out->GetMutable<paddle::framework::LoDTensor>();
+  // eval time
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+
+  for (int i = 0; i < 100; i++) {
+    op->Run(*scope, place);
+  }
+
+  ctx.Wait();
+
+  gettimeofday(&end, NULL);
+  int micros =
+      (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
+  printf("used time: %d\n", micros / 100);
+
+  // eval value
+  std::vector<T> out_vec;
+  TensorToVector(*tensor_out, ctx, &out_vec);
+
+  ctx.Wait();
+
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
+    EXPECT_FLOAT_EQ(out_vec[i], relu<T>(init_x[i]));
+  }
+}
+
+template <typename T>
+void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx, std::string op_type) {
+  auto dout = scope->Var("DOut");
+  auto tensor_dout = dout->GetMutable<fw::LoDTensor>();
+  auto out = scope->Var("Out");
+  auto tensor_out = out->GetMutable<fw::LoDTensor>();
+
+  const int num = 10;
+  std::vector<T> init_dout;
+  for (int64_t i = 0; i < num * num; ++i) {
+    init_dout.push_back(static_cast<T>(1.0));
+  }
+
+  std::vector<T> init_out;
+  for (int64_t i = 0; i < num * num; ++i) {
+    init_out.push_back(static_cast<T>(i - 50));
+  }
+
+  TensorFromVector(init_dout, ctx, tensor_dout);
+  tensor_dout->Resize({num, num});
+  TensorFromVector(init_out, ctx, tensor_out);
+  tensor_out->Resize({num, num});
+
+  auto dx = scope->Var("DX");
+  auto tensor_dx = dx->GetMutable<fw::LoDTensor>();
+
+  // run
+  auto place = ctx.GetPlace();
+  fw::AttributeMap attrs;
+  auto op = fw::OpRegistry::CreateOp(op_type,
+                                    {{"Out@GRAD", {"DOut"}}, {"Out", {"Out"}}},
+                                    {{"X@GRAD", {"DX"}}}, attrs);
+  op->Run(*scope, place);
+
+  ctx.Wait();
+
+  // eval time
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+
+  for (int i = 0; i < 100; i++) {
+    op->Run(*scope, place);
+  }
+
+  ctx.Wait();
+
+  gettimeofday(&end, NULL);
+  int micros =
+      (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
+  printf("used time: %d\n", micros / 100);
+
+  // eval value
+  std::vector<T> dx_vec;
+  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  
+  ctx.Wait();
+
+  for (uint32_t i = 0; i < dx_vec.size(); i++) {
+    EXPECT_FLOAT_EQ(dx_vec[i], relu_grad_dx<T>(dx_vec[i], init_out[i], init_dout[i]));
+  }
+}
 
 
-  op->Run(scope, mlu_place);
-  LOG(INFO) << tensor_out;
+TEST(relu, MLU_fp32) {
+  fw::Scope scope;
+  auto* ctx = plat::DeviceContextPool::Instance().Get(plat::MLUPlace(3));
+  Compare<float>(&scope, *ctx, "relu");
+}
+
+TEST(relu_grad, MLU_fp32) {
+  fw::Scope scope;
+  auto* ctx = plat::DeviceContextPool::Instance().Get(plat::MLUPlace(3));
+  CompareGrad<float>(&scope, *ctx, "relu_grad");
 }
