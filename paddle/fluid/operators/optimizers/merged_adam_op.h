@@ -26,12 +26,50 @@ class MergedAdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto param = ctx.MultiInput<framework::Tensor>("Param");
+    size_t n = param.size();
     auto grad = ctx.MultiInput<framework::Tensor>("Grad");
+    PADDLE_ENFORCE_EQ(n, grad.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Input(Grad) must be equal to "
+                          "Input(Param), but got the size of Input(Grad) "
+                          "is %d, the size of Input(Param) is %d.",
+                          grad.size(), n));
     auto lr = ctx.MultiInput<framework::Tensor>("LearningRate");
+    PADDLE_ENFORCE_EQ(
+        n, lr.size(),
+        platform::errors::InvalidArgument(
+            "The size of Input(LearningRate) must be equal to "
+            "Input(Param), but got the size of Input(LearningRate) "
+            "is %d, the size of Input(Param) is %d.",
+            lr.size(), n));
     auto mom1 = ctx.MultiInput<framework::Tensor>("Moment1");
+    PADDLE_ENFORCE_EQ(n, mom1.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Input(Moment1) must be equal to "
+                          "Input(Param), but got the size of Input(Moment1) "
+                          "is %d, the size of Input(Param) is %d.",
+                          mom1.size(), n));
     auto mom2 = ctx.MultiInput<framework::Tensor>("Moment2");
+    PADDLE_ENFORCE_EQ(n, mom2.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Input(Moment2) must be equal to "
+                          "Input(Param), but got the size of Input(Moment2) "
+                          "is %d, the size of Input(Param) is %d.",
+                          mom2.size(), n));
     auto beta1_pow = ctx.MultiInput<framework::Tensor>("Beta1Pow");
+    PADDLE_ENFORCE_EQ(n, beta1_pow.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Input(Beta1Pow) must be equal to "
+                          "Input(Param), but got the size of Input(Beta1Pow) "
+                          "is %d, the size of Input(Param) is %d.",
+                          beta1_pow.size(), n));
     auto beta2_pow = ctx.MultiInput<framework::Tensor>("Beta2Pow");
+    PADDLE_ENFORCE_EQ(n, beta2_pow.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Input(Beta2Pow) must be equal to "
+                          "Input(Param), but got the size of Input(Beta2Pow) "
+                          "is %d, the size of Input(Param) is %d.",
+                          beta2_pow.size(), n));
 
     auto param_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
     auto mom1_out = ctx.MultiOutput<framework::Tensor>("Moment1Out");
