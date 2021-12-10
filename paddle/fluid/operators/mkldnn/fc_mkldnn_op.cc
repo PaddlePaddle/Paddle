@@ -458,7 +458,9 @@ class FCPrimitiveFactory {
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
-    auto [output_shift_scale, scale] = ComputeOutputShiftScale(ctx);
+    std::vector<float> output_shift_scale;
+    float scale;
+    std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
     int mask = CreateMask(1, output_shift_scale.size() > 1);
     attributes.set_output_scales(mask, output_shift_scale);
 
