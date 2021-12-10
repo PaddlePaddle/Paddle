@@ -36,6 +36,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/imperative/hccl_context.h"
+#include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -57,18 +59,6 @@ namespace pybind {
 PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;
-
-class Layer : public imperative::Layer {
- public:
-  using imperative::Layer::Layer;  // Inherit constructors
-
-  std::vector<std::shared_ptr<imperative::VarBase>> Forward(
-      const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
-      override {
-    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
-                      Forward, inputs);  // NOLINT
-  }
-};
 
 template <typename T>
 static T PyObjectCast(PyObject *obj) {
@@ -262,12 +252,16 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
   InitVarBaseAndTensor(self, array, place, "");
 }
 
-static void InitVarBaseFromTensorWithArgDefault(
-    imperative::VarBase *self, const framework::Tensor &tensor) {
+static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
+                                                const framework::Tensor &tensor,
+                                                const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
-  new (self) imperative::VarBase(
-      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  auto name_ = name == ""
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
+  new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
@@ -285,10 +279,14 @@ static void InitVarBaseFromTensorWithArgDefault(
 template <typename P>
 static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
                                          const framework::Tensor &tensor,
-                                         const P &place) {
+                                         const P &place,
+                                         const std::string &name) {
   VLOG(4) << "Init VarBase";
-  new (self) imperative::VarBase(
-      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  auto name_ = name == ""
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
+  new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
@@ -562,7 +560,7 @@ static void ParseIndexingSlice(
   PADDLE_ENFORCE_LE(ell_count, 1,
                     platform::errors::InvalidArgument(
                         "An index can only have a single ellipsis ('...')"));
-
+  int none_count = 0;
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
 
@@ -608,7 +606,8 @@ static void ParseIndexingSlice(
     } else if (slice_item == Py_Ellipsis) {
       dim += rank - specified_dims;
     } else if (slice_item == Py_None) {
-      none_axes->push_back(dim);
+      none_axes->push_back(dim + none_count);
+      none_count++;
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
       PADDLE_ENFORCE_EQ(
@@ -926,17 +925,18 @@ void BindImperative(py::module *m_ptr) {
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
-      .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
+      .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"),
+           py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
           "__setitem_varbase__",
@@ -1212,29 +1212,6 @@ void BindImperative(py::module *m_ptr) {
                      }
                    }
                    axis -= len;
-                 }
-
-                 // Deal with cases that there are more than one
-                 // prefix none index, For example:
-                 // [None, None, :, :, None]
-                 // the none_axes int the return of ParseIndexingSlice is:
-                 // [0,    0,          2   ]
-                 // according to the interface of "unsqueeze2",
-                 // we should convert it to:
-                 // [0,    0,          4   ]
-                 int prefix_zero_cnt = 0;
-                 for (const auto &axis : none_axes) {
-                   if (axis == 0) {
-                     prefix_zero_cnt++;
-                   } else {
-                     break;
-                   }
-                 }
-                 if (prefix_zero_cnt > 0) {
-                   int none_axes_num = static_cast<int>(none_axes.size());
-                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
-                     none_axes[i] += prefix_zero_cnt;
-                   }
                  }
 
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
@@ -1569,9 +1546,33 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, framework::proto::VarType::Type type) {
              self.MutableGradVarBase()->SetType(type);
            })
+      .def("_reset_grad_inplace_version",
+           [](imperative::VarBase &self, bool set_to_zero) {
+             /*
+             *** This interfaceis a complete hack ***
+             reset_grad_inplace_version removes all inplace related records to
+             Grad VarBase/VariableWrapper,
+             the essential purpose of which is to let you use inplace operations
+             as if using its non-inplaced version,
+             which of course will cause unexpected consequences if not used with
+             care.
+             Make sure you fully understand what you're doing before make use of
+             this interface, and prepare for the worst.
+             */
+             py::gil_scoped_release release;
+
+             if (self.HasGradVar()) {
+               auto grad_var = self.GradVarBase();
+               auto var_wrapper = grad_var->SharedVar();
+               if (var_wrapper) {
+                 var_wrapper->ResetInplaceVersion(set_to_zero);
+               }
+             }
+           })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
+
              if (grad_var && grad_var->Var().IsInitialized()) {
                auto *tensor =
                    grad_var->MutableVar()->IsType<framework::LoDTensor>()
@@ -1580,6 +1581,7 @@ void BindImperative(py::module *m_ptr) {
                        : grad_var->MutableVar()
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
+
                if (tensor->IsInitialized()) {
                  return grad_var;
                }
@@ -1639,6 +1641,21 @@ void BindImperative(py::module *m_ptr) {
                      "Cannot remove gradient hook on a Tensor that stop "
                      "gradient or without gradient."));
              return self.GradVarBase()->RemoveVariableWrapperHook(hook_id);
+           })
+      .def("_register_void_function_post_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register void function post hook on a Tensor that "
+                     "stop "
+                     "gradient or without gradient."));
+             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+             auto grad_node = self.MutableGradVarBase()->GradNode();
+             for (auto &cur_op : *grad_node) {
+               cur_op.AddVoidFunctionPostHook(
+                   std::make_shared<std::function<void()>>(py_func));
+             }
            })
       .def("_register_backward_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
@@ -1743,7 +1760,7 @@ void BindImperative(py::module *m_ptr) {
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetCUDADeviceCount();
+             int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
              if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
@@ -1910,54 +1927,50 @@ void BindImperative(py::module *m_ptr) {
       .def("_clear",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              t->clear();
            })
       .def("_offset",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->offset();
            })
-      .def("_share_buffer_with",
+      .def("_share_buffer_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
-              std::shared_ptr<imperative::VarBase> &target_t) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *t_t =
-                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             t->ShareBufferWith(*t_t);
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 src->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
+             dst_->ShareBufferWith(*src);
            })
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
-              std::shared_ptr<imperative::VarBase> &target_t) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *t_t =
-                 target_t->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             PADDLE_ENFORCE_EQ(t_t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
-             return t->IsSharedBufferWith(*t_t);
+              std::shared_ptr<imperative::VarBase> &dst) {
+             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+               return false;
+             }
+             return dst_->IsSharedBufferWith(*src);
            })
       .def("_slice",
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx, int64_t end_idx) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
+             PADDLE_ENFORCE_EQ(
+                 t->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self->Name()));
              return t->Slice(begin_idx, end_idx);
            })
       .def("_copy_gradient_from",
@@ -1966,9 +1979,6 @@ void BindImperative(py::module *m_ptr) {
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                               platform::errors::InvalidArgument(
-                                   "tensor has not been initialized"));
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
@@ -2040,18 +2050,6 @@ void BindImperative(py::module *m_ptr) {
                              })
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
-
-  // NOTE(zhiqiu): set the metaclass of Layer.
-  // See details: https://github.com/pybind/pybind11/pull/679
-  // https://github.com/pybind/pybind11/blob/028812ae7eee307dca5f8f69d467af7b92cc41c8/tests/test_methods_and_attributes.cpp#L284
-  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(
-      m, "Layer", py::metaclass((PyObject *)&PyType_Type));  // NOLINT
-  layer.def(py::init<>())
-      .def("forward",
-           [](imperative::Layer &self,
-              const std::vector<std::shared_ptr<imperative::VarBase>> &inputs) {
-             return self.Forward(inputs);
-           });
 
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
@@ -2336,6 +2334,27 @@ void BindImperative(py::module *m_ptr) {
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
            py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HCCLParallelContext>>(
+      m, "HCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::NPUPlace &>())
+      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::HCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HeterParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HeterParallelContext>>(
+      m, "HeterParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &, const int &>())
+      .def("init", [](imperative::HeterParallelContext &self) { self.Init(); });
 #endif
 
   m.def("pylayer_apply",

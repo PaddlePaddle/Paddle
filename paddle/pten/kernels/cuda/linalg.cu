@@ -15,8 +15,8 @@
 #include "paddle/pten/kernels/cuda/linalg.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/functions/eigen/dot.h"
-#include "paddle/pten/kernels/functions/math/matmul_func.h"
+#include "paddle/pten/kernels/hybird/eigen/dot.h"
+#include "paddle/pten/kernels/hybird/math/matmul_func.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
@@ -54,13 +54,11 @@ void Matmul(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(LinalgCUDA);
-
 using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL("dot",
+PT_REGISTER_KERNEL(dot,
                    CUDA,
                    ANY,
                    pten::Dot,
@@ -71,7 +69,7 @@ PT_REGISTER_KERNEL("dot",
                    complex64,
                    complex128) {}
 
-PT_REGISTER_KERNEL("matmul_v2",
+PT_REGISTER_KERNEL(matmul_v2,
                    CUDA,
                    ANY,
                    pten::Matmul,

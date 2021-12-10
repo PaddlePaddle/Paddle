@@ -117,6 +117,7 @@ from .tensor.logic import bitwise_or  # noqa: F401
 from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
+from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
@@ -149,6 +150,7 @@ from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
 from .tensor.manipulation import unstack  # noqa: F401
 from .tensor.manipulation import flip  # noqa: F401
+from .tensor.manipulation import rot90  # noqa: F401
 from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
@@ -222,6 +224,13 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import lerp  # noqa: F401
+from .tensor.math import rad2deg  # noqa: F401
+from .tensor.math import deg2rad  # noqa: F401
+from .tensor.math import gcd  # noqa: F401
+from .tensor.math import lcm  # noqa: F401
+from .tensor.math import diff  # noqa: F401
+from .tensor.math import angle  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -253,6 +262,7 @@ from .framework.random import set_cuda_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
 from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
+from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
@@ -276,6 +286,7 @@ from .tensor.stat import median  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
+from .fluid.framework import is_compiled_with_cinn  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .fluid.framework import disable_signal_handler  # noqa: F401
@@ -283,6 +294,7 @@ from .fluid.framework import get_flags  # noqa: F401
 from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
+from .device import is_compiled_with_ipu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
@@ -304,6 +316,16 @@ import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
 
 from .tensor.random import check_shape  # noqa: F401
+
+# CINN has to set a flag to include a lib
+if is_compiled_with_cinn():
+    import os
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    runtime_include_dir = os.path.join(package_dir, "libs")
+    cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
+    if os.path.exists(cuh_file):
+        os.environ['runtime_include_dir'] = runtime_include_dir
+
 disable_static()
 
 __all__ = [  # noqa
@@ -322,6 +344,7 @@ __all__ = [  # noqa
            'complex128',
            'addmm',
            'allclose',
+           'isclose',
            't',
            'add',
            'subtract',
@@ -402,6 +425,7 @@ __all__ = [  # noqa
            'bitwise_not',
            'mm',
            'flip',
+           'rot90',
            'bincount',
            'histogram',
            'multiplex',
@@ -450,11 +474,16 @@ __all__ = [  # noqa
            'conj',
            'neg',
            'lgamma',
+           'lerp',
            'square',
            'divide',
            'ceil',
            'atan',
            'atan2',
+           'rad2deg',
+           'deg2rad',
+           'gcd',
+           'lcm',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -529,5 +558,7 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags'
+           'get_flags',
+           'diff',
+           'angle',
 ]

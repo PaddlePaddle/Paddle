@@ -51,77 +51,53 @@ class KernelContext {
     return static_cast<const CtxType&>(*dev_ctx_);
   }
 
-  void EmplaceBackInput(std::shared_ptr<TensorBase> input) {
-    int index = inputs_.size();
-    inputs_.emplace_back(std::move(input));
-    // Record the start and end index of the input
-    input_range_.emplace_back(std::pair<int, int>(index, index + 1));
-  }
+  void EmplaceBackInput(std::shared_ptr<TensorBase> input);
+
+  void EmplaceBackInputWithoutSetRange(std::shared_ptr<TensorBase> input);
 
   void EmplaceBackInputs(
-      paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
-    int index = inputs_.size();
-    // Record the start and end index of the input
-    input_range_.emplace_back(
-        std::pair<int, int>(index, index + inputs.size()));
-    inputs_.insert(inputs_.end(),
-                   std::make_move_iterator(inputs.begin()),
-                   std::make_move_iterator(inputs.end()));
-  }
+      paddle::SmallVector<std::shared_ptr<TensorBase>> inputs);
 
-  void EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
-    int index = outputs_.size();
-    outputs_.emplace_back(std::move(output));
-    // Record the start and end index of the input
-    output_range_.emplace_back(std::pair<int, int>(index, index + 1));
-  }
+  void EmplaceBackOutput(std::shared_ptr<TensorBase> output);
+
+  void EmplaceBackOutputWithoutSetRange(std::shared_ptr<TensorBase> output);
 
   void EmplaceBackOutputs(
-      paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
-    int index = outputs_.size();
-    // Record the start and end index of the input
-    output_range_.emplace_back(
-        std::pair<int, int>(index, index + outputs.size()));
-    outputs_.insert(outputs_.end(),
-                    std::make_move_iterator(outputs.begin()),
-                    std::make_move_iterator(outputs.end()));
-  }
+      paddle::SmallVector<std::shared_ptr<TensorBase>> outputs);
 
-  void EmplaceBackAttr(paddle::any attr) {
-    attrs_.emplace_back(std::move(attr));
-  }
+  void EmplaceBackAttr(paddle::any attr);
+
+  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+
+  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+
+  std::pair<int, int>& MutableInputRangeAt(size_t idx);
+
+  std::pair<int, int>& MutableOutputRangeAt(size_t idx);
 
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
   }
 
+  std::shared_ptr<TensorBase>& MutableInputPtrAt(size_t idx) {
+    return inputs_.at(idx);
+  }
+
   template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+  std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
       auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
       v.emplace_back(std::move(*t.get()));
+      inputs_.at(i) = nullptr;
     }
-
     return v;
   }
 
-  const std::pair<int, int>& InputRangeAt(size_t idx) const {
-    return input_range_.at(idx);
-  }
+  void AssignInputRange(std::pair<int, int>&& range, size_t idx);
 
-  const std::pair<int, int>& OutputRangeAt(size_t idx) const {
-    return output_range_.at(idx);
-  }
-
-  std::pair<int, int>& MutableInputRangeAt(size_t idx) {
-    return input_range_[idx];
-  }
-
-  std::pair<int, int>& MutableOutputRangeAt(size_t idx) {
-    return output_range_[idx];
-  }
+  void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
   template <typename TensorType>
   TensorType* MutableInputAt(size_t idx) {
@@ -155,24 +131,11 @@ class KernelContext {
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   // Only deal with DenseTensor now
-  void ClearData() {
-    for (auto& in : inputs_) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(in.get()));
-    }
-    for (auto& out : outputs_) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(out.get()));
-    }
-    attrs_.clear();
-  }
+  void ClearData();
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
-
- private:
-  bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class

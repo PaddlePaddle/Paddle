@@ -76,8 +76,18 @@ def fused_feedforward(x,
         ln1_epsilon (float, optional): Small float of first layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
         ln2_epsilon (float, optional): Small float of second layer_norm added to denominator to avoid dividing by zero. Default is 1e-5.
         pre_layer_norm (bool, optional): add layer_norm in the pre-processing stage or post-processing state.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -245,7 +255,10 @@ def fused_multi_head_attention(x,
     	out = out * v
     	out = transpose(out, perm=[0, 2, 1, 3])
     	out = out_linear(out)
-    	out = layer_norm(x + dropout(linear_bias + out))
+    	if pre_layer_norm:
+    	    out = x + dropout(linear_bias + out)
+	else:
+    	    out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
@@ -278,8 +291,18 @@ def fused_multi_head_attention(x,
             0 for no dropout. Default 0.5.
         ln_epsilon (float, optional): Small float value added to denominator of layer_norm
             to avoid dividing by zero. Default is 1e-5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -333,6 +356,9 @@ def fused_multi_head_attention(x,
             0] == 3, "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
         assert qkv_weight.shape[3] == x.shape[
             2], "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
+        assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
+            3], "embed_dim must be divisible by num_heads."
+
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, attn_mask,
             linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
@@ -362,10 +388,12 @@ def fused_multi_head_attention(x,
         if pre_ln_bias:
             inputs['LnBias'] = [pre_ln_bias]
         inputs['QKVW'] = [qkv_weight]
-        inputs['QKVBias'] = [qkv_bias]
+        if qkv_bias is not None:
+            inputs['QKVBias'] = [qkv_bias]
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = [linear_weight]
-        inputs['OutLinearBias'] = [linear_bias]
+        if linear_bias is not None:
+            inputs['OutLinearBias'] = [linear_bias]
         if ln_scale:
             inputs['Ln2Scale'] = [ln_scale]
         if ln_bias:

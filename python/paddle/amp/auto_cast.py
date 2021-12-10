@@ -129,5 +129,18 @@ def decorate(models,
             output2 = models[1](data)
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
+        
+        # required: gpu
+        # Demo3: optimizers is None:
+        model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimizer3 = paddle.optimizer.Adam(parameters=model3.parameters())
+
+        model = paddle.amp.decorate(models=model3, level='O2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            output = model(data)
+            print(output.dtype) # FP16
     """
     return amp_decorate(models, optimizers, level, master_weight, save_dtype)
