@@ -57,24 +57,11 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 void SetCinnRuntimeFlags();
 
 template <typename DeviceContext>
-void ReleaseResource(const std::vector<void*>& resources, void* stream) {
-  auto* temp_scope = static_cast<framework::Scope*>(resources[0]);
-  auto* buffers =
-      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(resources[1]);
-  delete temp_scope;
-  delete buffers;
-}
-
-template <typename DeviceContext>
 void* GetStream(const framework::ExecutionContext& ctx) {
   return nullptr;
 }
 
 #ifdef PADDLE_WITH_CUDA
-template <>
-void ReleaseResource<platform::CUDADeviceContext>(
-    const std::vector<void*>& resources, void* stream);
-
 template <>
 void* GetStream<platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx);
@@ -116,56 +103,54 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         compilation_key, inputs_name2tensor, target, stream);
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
-    auto launch_context = std::make_unique<details::CinnLaunchContext>(
-        cinn_compiled_object.paddle2cinn_varmap, cinn_compiled_object.scope);
-
+    auto* launch_context = cinn_compiled_object.launch_context.get();
     // Step 3. Prepare arguments needed for the compiled executable program.
-    VLOG(4) << "CinnLaunchOp prepare arguments";
+    launch_context->UpdateCapturedEnv(scope, place);
+    if (!launch_context->IsArgumentsInitialized()) {
+      VLOG(4) << "CinnLaunchOp prepare arguments";
 
-    // 3.1 Prepare input variables: tensors of input variables have
-    //     been initialized before graph compiled, just check the
-    //     equiality between tensors of paddle and cinn.
-    for (const auto& var_name : input_variable_names) {
-      if (!launch_context->IsVariableUsed(var_name)) {
-        // some input variables don't need for cinn because they are
-        // eliminated by optimized passes or some cinn operators use
-        // less variables
-        VLOG(4) << "Input variable(" << var_name << ") not used by cinn";
-        continue;
+      // 3.1 Prepare input variables: tensors of input variables have
+      //     been initialized before graph compiled, just check the
+      //     equiality between tensors of paddle and cinn.
+      for (const auto& var_name : input_variable_names) {
+        if (!launch_context->IsVariableUsed(var_name)) {
+          // some input variables don't need for cinn because they are
+          // eliminated by optimized passes or some cinn operators use
+          // less variables
+          VLOG(4) << "Input variable(" << var_name << ") not used by cinn";
+          continue;
+        }
+
+        launch_context->AssignExternalVariable(var_name);
       }
 
-      launch_context->AssignExternalVariable(
-          var_name, place, scope.GetVar(var_name)->GetMutable<LoDTensor>());
-    }
+      // 3.2 Prepare output variables: all output variables should
+      //     be initialized and allocated buffer before
+      //     the runtime program start execution, the compilation result
+      //     includes details of their buffer assginment and we use that to
+      //     allocate space in Paddle. For those variables allocated yet,
+      //     like persistable parameters, just check the equiality between
+      //     Paddle allocation and CINN buffer assginment.
+      auto output_variable_names = ctx.OutputNames(kOutputs);
+      for (const auto var_name : output_variable_names) {
+        PADDLE_ENFORCE_EQ(
+            launch_context->IsVariableUsed(var_name), true,
+            platform::errors::InvalidArgument(
+                "Output variable(%s) not used by cinn", var_name));
 
-    // 3.2 Prepare output variables: all output variables should
-    //     be initialized and allocated buffer before
-    //     the runtime program start execution, the compilation result
-    //     includes details of their buffer assginment and we use that to
-    //     allocate space in Paddle. For those variables allocated yet,
-    //     like persistable parameters, just check the equiality between
-    //     Paddle allocation and CINN buffer assginment.
-    auto output_variable_names = ctx.OutputNames(kOutputs);
-    for (const auto var_name : output_variable_names) {
-      PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name), true,
-                        platform::errors::InvalidArgument(
-                            "Output variable(%s) not used by cinn", var_name));
+        launch_context->AssignExternalVariable(var_name);
+      }
 
-      auto* tensor = scope.GetVar(var_name)->GetMutable<LoDTensor>();
-      launch_context->AssignExternalVariable(var_name, place, tensor);
-    }
-
-    // 3.3 Prepare internal or temporary variables: Create a temporary
-    //     scope to keep internal variables within graph or temporary
-    //     variables needed by the compiled runtime program in addition.
-    //     Here we directly use the names from CinnScope as Paddle variable
-    //     names, because they will not be used outside the graph
-    //     and should be destructed after computation finished.
-    auto internal_variable_names = launch_context->GetInternalVariableNames();
-    framework::Scope* temp_scope = scope.NewTmpScope().release();
-    for (const auto& var_name : internal_variable_names) {
-      auto* tensor = temp_scope->Var(var_name)->GetMutable<LoDTensor>();
-      launch_context->AssignInternalVariable(var_name, place, tensor);
+      // 3.3 Prepare internal or temporary variables: Create a temporary
+      //     scope to keep internal variables within graph or temporary
+      //     variables needed by the compiled runtime program in addition.
+      //     Here we directly use the names from CinnScope as Paddle variable
+      //     names, because they will not be used outside the graph
+      //     and should be destructed after computation finished.
+      auto internal_variable_names = launch_context->GetInternalVariableNames();
+      for (const auto& var_name : internal_variable_names) {
+        launch_context->AssignInternalVariable(var_name);
+      }
     }
 
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
@@ -175,12 +160,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
     details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
     VLOG(4) << "CinnLaunchOp launch execution done.";
-
-    // Step 6. Release some resources, such as `temp_scope` and cinn_buffers.
-    auto* buffers_holder = new std::vector<std::unique_ptr<cinn_buffer_t>>{
-        launch_context->HandoverBuffers()};
-    details::ReleaseResource<DeviceContext>({temp_scope, buffers_holder},
-                                            stream);
   }
 };
 

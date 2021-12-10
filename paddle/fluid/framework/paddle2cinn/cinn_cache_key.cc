@@ -29,55 +29,32 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
+using GraphHashStrategy = CinnCacheKey::GraphHashStrategy;
+
+CinnCacheKey::CinnCacheKey(GraphHashStrategy graph_hash)
+    : graph_hash_(graph_hash) {}
+
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const std::string& arch_str) {
+    const std::string& arch_str, GraphHashStrategy graph_hash)
+    : graph_hash_(graph_hash) {
   this->SetKey(graph, input_tensors, arch_str);
 }
 
 CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
                            const std::map<std::string, DDim>& input_shapes,
-                           const std::string& arch_str) {
+                           const std::string& arch_str,
+                           GraphHashStrategy graph_hash)
+    : graph_hash_(graph_hash) {
   this->SetKey(graph, input_shapes, arch_str);
-}
-
-size_t CinnCacheKey::HashGraph(const ir::Graph& graph) {
-  // using Dot to unqiue graph
-  inference::analysis::Dot dot;
-  std::unordered_map<const ir::Node*, std::string> node2dot;
-  int id = 0;
-  // Create nodes
-  // graph.Nodes() return unordered_set, the same graph may
-  // return different result?
-  for (const ir::Node* n : graph.Nodes()) {
-    std::string node_id = std::to_string(id++);
-    dot.AddNode(node_id, {}, n->Name(), true);
-    node2dot[n] = node_id;
-  }
-
-  // Create edges
-  for (const ir::Node* n : graph.Nodes()) {
-    const auto& src_id = node2dot.at(n);
-    for (auto* out : n->outputs) {
-      const auto& dest_id = node2dot.at(out);
-      dot.AddEdge(src_id, dest_id, {});
-    }
-  }
-
-  const std::string& viz_graph = dot.Build();
-  VLOG(1) << "The hash graph:\n" << viz_graph;
-
-  size_t hash_val = std::hash<std::string>()(viz_graph);
-  VLOG(4) << "The graph's hash value is: " << hash_val;
-  return hash_val;
 }
 
 void CinnCacheKey::SetKey(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const std::string& arch_str) {
-  graph_serialize_str_ = std::to_string(HashGraph(graph));
+  graph_hash_val_ = graph_hash_(graph);
   for (const auto& name_tensor : input_tensors) {
     input_shapes_[name_tensor.first] = name_tensor.second->dims();
   }
@@ -87,7 +64,7 @@ void CinnCacheKey::SetKey(
 void CinnCacheKey::SetKey(const ir::Graph& graph,
                           const std::map<std::string, DDim>& input_shapes,
                           const std::string& arch_str) {
-  graph_serialize_str_ = std::to_string(HashGraph(graph));
+  graph_hash_val_ = graph_hash_(graph);
   input_shapes_ = input_shapes;
   arch_str_ = arch_str;
 }
@@ -97,7 +74,7 @@ bool CinnCacheKey::operator!=(const CinnCacheKey& other) const {
 }
 
 bool CinnCacheKey::operator==(const CinnCacheKey& other) const {
-  return graph_serialize_str_ == other.graph_serialize_str_ &&
+  return graph_hash_val_ == other.graph_hash_val_ &&
          input_shapes_ == other.input_shapes_ && arch_str_ == other.arch_str_;
 }
 
@@ -114,9 +91,46 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
     ret = hash_combine(ret, string_hasher(name_shape.second.to_str()));
   }
 
-  ret = hash_combine(ret, string_hasher(key.graph_serialize_str_));
+  ret = hash_combine(ret, key.graph_hash_val_);
   ret = hash_combine(ret, string_hasher(key.arch_str_));
   return ret;
+}
+
+size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
+  // sort grad node by name and id.
+  auto compare = [](ir::Node* n1, ir::Node* n2) {
+    return (n1->Name() == n2->Name()) ? (n1->id() < n2->id())
+                                      : (n1->Name() < n2->Name());
+  };
+
+  // graph.Nodes() return unordered_set, here using set to avoid the same graph
+  // may return different result
+  std::set<ir::Node *, bool (*)(ir::Node *, ir::Node *)> node_set(compare),
+      output_set(compare);
+  node_set.insert(graph.Nodes().begin(), graph.Nodes().end());
+
+  std::string hash_str;
+  for (ir::Node* n : node_set) {
+    hash_str.append(n->Name());
+
+    output_set.clear();
+    output_set.insert(n->outputs.begin(), n->outputs.end());
+    for (auto* out : output_set) {
+      hash_str.append(out->Name());
+    }
+  }
+
+  VLOG(1) << "The hash graph:\n" << hash_str;
+
+  size_t hash_val = std::hash<std::string>()(hash_str);
+  VLOG(4) << "The graph's hash value by graph structure is: " << hash_val;
+  return hash_val;
+}
+
+size_t CinnCacheKeyByAddress::HashGraph(const ir::Graph& graph) {
+  size_t hash_val = reinterpret_cast<size_t>(&graph);
+  VLOG(4) << "The graph's hash value by graph address is: " << hash_val;
+  return hash_val;
 }
 
 }  // namespace paddle2cinn

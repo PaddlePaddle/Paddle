@@ -238,7 +238,7 @@ def monkey_patch_varbase():
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
 
-            if paddle.is_compiled_with_xpu():
+            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 core.dygraph_run_backward([scaled_loss], [grad_tensor],
