@@ -38,14 +38,14 @@ extern PyTypeObject* pEagerTensorType;
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_TRY
-  self->eagertensor.SyncToTensor();
-  if (!self->eagertensor.initialized()) {
+  self->eager_tensor.SyncToTensor();
+  if (!self->eager_tensor.initialized()) {
     Py_INCREF(Py_None);
     return Py_None;
   }
-  auto tensor_dims = self->eagertensor.shape();
-  auto numpy_dtype = TensorDtype2NumpyDtype(self->eagertensor.type());
-  auto sizeof_dtype = pten::DataTypeSize(self->eagertensor.type());
+  auto tensor_dims = self->eager_tensor.shape();
+  auto numpy_dtype = TensorDtype2NumpyDtype(self->eager_tensor.type());
+  auto sizeof_dtype = pten::DataTypeSize(self->eager_tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
@@ -95,10 +95,11 @@ static PyObject* eager_tensor_method__is_initialized(EagerTensorObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
   EAGER_TRY
-  if (self->eagertensor.Var().IsInitialized()) {
-    self->eagertensor.SyncToTensor();
+  if (self->eager_tensor.Var().IsInitialized()) {
+    self->eager_tensor.SyncToTensor();
   }
-  return ToPyObject(self->eagertensor.initialized());
+  return ToPyObject(self->eager_tensor.initialized());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,

@@ -463,7 +463,7 @@ egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
     return emptytensor;
   }
 
-  return reinterpret_cast<EagerTensorObject*>(obj)->eagertensor;
+  return reinterpret_cast<EagerTensorObject*>(obj)->eager_tensor;
 }
 
 std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
@@ -494,7 +494,7 @@ std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(
           reinterpret_cast<EagerTensorObject*>(PyList_GetItem(list, i))
-              ->eagertensor);
+              ->eager_tensor);
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
@@ -507,7 +507,7 @@ std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(
           reinterpret_cast<EagerTensorObject*>(PyTuple_GetItem(list, i))
-              ->eagertensor);
+              ->eager_tensor);
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
