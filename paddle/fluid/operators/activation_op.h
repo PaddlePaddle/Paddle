@@ -1565,12 +1565,19 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct LogitFunctor {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out, float eps) const {
+  template <typename Device, typename X, typename Out, typename P>
+  void operator()(Device d, X x, Out out, P p, float eps) const {
     // logit(x) = ln(x/(1-x))
     auto tmp_x =
         (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
-    out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
+
+    if (!eps) {
+      out.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
+                          .select(p.constant(static_cast<T>(NAN)),
+                                  (tmp_x / (static_cast<T>(1) - tmp_x)).log());
+    } else {
+      out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
+    }
   }
 };
 
@@ -2635,9 +2642,10 @@ class LogitKernel : public framework::OpKernel<T> {
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_p = framework::EigenVector<T>::Flatten(*out);
 
     LogitFunctor<T> functor;
-    functor(place, eigen_in, eigen_out, eps);
+    functor(place, eigen_in, eigen_out, eigen_p, eps);
   }
 };
 
