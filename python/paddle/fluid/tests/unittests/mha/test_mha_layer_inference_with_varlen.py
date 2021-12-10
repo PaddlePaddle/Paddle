@@ -24,28 +24,32 @@ from paddle.nn import MultiHeadAttention, cuDNNMultiHeadAttention
 from paddle.nn.layer import cuDNNSeqInfoInfer
 from paddle.static import InputSpec
 import paddle.inference as paddle_infer
+from utils import compare, generate_weight
 
 
-def compare(ref, res, atol, rtol):
-    ref = ref.flatten()
-    res = res.flatten()
+def _generate_data(vocab_size, batch_size, seqlen, nheads):
+    # Input for TensorRT must be int32, even Paddle could take int64
+    sent_ids = np.random.randint(
+        0, vocab_size, (batch_size, seqlen), dtype='int32')
+    src_ids = np.zeros((batch_size, seqlen), dtype='int32')
+    pos_ids = np.array(
+        [np.arange(seqlen) for _ in range(batch_size)], dtype='int32')
+    mask = np.ones((batch_size, nheads, seqlen, seqlen), dtype='float32')
+    for i in range(batch_size):
+        mask[i, :, :, i + 1:] = 0.0
 
-    tmp_ref = ref.astype(np.float)
-    tol = atol + rtol * abs(tmp_ref)
-
-    diff = abs(res - ref)
-
-    indices = np.transpose(np.where(diff > tol))
-    if len(indices) == 0:
-        return True
-    return False
+    return sent_ids, src_ids, pos_ids, mask
 
 
-class CUDNNBERT(paddle.nn.Layer):
-    def __init__(self, vocab_size, hidden, heads, max_seq_len):
-        super(CUDNNBERT, self).__init__()
+_NHEADS = 12
+_SEQLEN = 4
+
+
+class cuDNNBERT(paddle.nn.Layer):
+    def __init__(self, vocab_size, hidden, heads, max_seqlen):
+        super(cuDNNBERT, self).__init__()
         self.word_embeddings = paddle.nn.Embedding(vocab_size, hidden)
-        self.position_embeddings = paddle.nn.Embedding(max_seq_len, hidden)
+        self.position_embeddings = paddle.nn.Embedding(max_seqlen, hidden)
         self.token_type_embeddings = paddle.nn.Embedding(2, hidden)
         self.layer_norm = paddle.nn.LayerNorm(hidden)
 
@@ -56,10 +60,13 @@ class CUDNNBERT(paddle.nn.Layer):
     # take Input Tensor by index, so name of InputSpec should follow lexicographic order
     @paddle.jit.to_static(input_spec=[
         InputSpec(
-            shape=[None, 4], dtype='int64', name="input_0"), InputSpec(
-                shape=[None, 4], dtype='int64', name="input_1"), InputSpec(
-                    shape=[None, 4], dtype='int64', name="input_2"), InputSpec(
-                        shape=[None, 12, 4, 4], dtype='float32', name="input_3")
+            shape=[None, _SEQLEN], dtype='int64', name="input_0"), InputSpec(
+                shape=[None, _SEQLEN], dtype='int64', name="input_1"),
+        InputSpec(
+            shape=[None, _SEQLEN], dtype='int64', name="input_2"), InputSpec(
+                shape=[None, _NHEADS, _SEQLEN, _SEQLEN],
+                dtype='float32',
+                name="input_3")
     ])
     def forward(self, sent_ids, src_ids, pos_ids, mask):
         input_embedings = self.word_embeddings(sent_ids)
@@ -74,14 +81,13 @@ class CUDNNBERT(paddle.nn.Layer):
 @unittest.skipIf((not core.is_compiled_with_cuda()) or
                  (not core.is_compiled_with_tensorrt()),
                  "core is not compiled with CUDA or TensorRT")
-class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
-        unittest.TestCase):
+class TestcuDNNMultiHeadAttentionWithPaddleTRTVarSeqLen(unittest.TestCase):
     def setUp(self):
         self.var_lens = np.array([0, 1, 3, 6, 10], dtype='int32')
         self.batch_size = len(self.var_lens) - 1
-        self.nheads = 12
-        self.seq_len = 4
-        self.vec_size = 768
+        self.nheads = _NHEADS
+        self.seqlen = _SEQLEN
+        self.embed_dim = 768
         self.vocab_size = 16000
 
         paddle.disable_static()
@@ -89,24 +95,22 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
         self.place = core.CUDAPlace(0)
         self.init_dtype_type()
 
-        sent_ids, src_ids, pos_ids, mask = self._generate_data()
+        sent_ids, src_ids, pos_ids, mask = _generate_data(
+            self.vocab_size, self.batch_size, self.seqlen, self.nheads)
 
-        self.cudnn_bert = CUDNNBERT(self.vocab_size, self.vec_size, self.nheads,
-                                    self.seq_len)
-        W = (np.random.uniform(-0.03, 0.03, (
-            4 * self.vec_size * self.vec_size, ))).astype(np.single)
-        W = np.concatenate(
-            (W, np.random.uniform(-0.5, 0.5, (4 * self.vec_size, ))),
-            dtype=np.single)
-        self.cudnn_bert.cudnn_mha.weight.set_value(W)
+        self.cudnn_bert = cuDNNBERT(self.vocab_size, self.embed_dim,
+                                    self.nheads, self.seqlen)
+        weight, _, _, _, _, _, _, _, _, = generate_weight(self.embed_dim,
+                                                          np.single)
+        self.cudnn_bert.cudnn_mha.weight.set_value(weight)
         self.cudnn_bert.word_embeddings.weight.set_value(
-            np.random.uniform(-0.5, 0.5, (self.vocab_size, self.vec_size))
+            np.random.uniform(-0.5, 0.5, (self.vocab_size, self.embed_dim))
             .astype(dtype='float32'))
         self.cudnn_bert.position_embeddings.weight.set_value(
-            np.random.uniform(-0.5, 0.5, (self.seq_len, self.vec_size)).astype(
+            np.random.uniform(-0.5, 0.5, (self.seqlen, self.embed_dim)).astype(
                 dtype='float32'))
         self.cudnn_bert.token_type_embeddings.weight.set_value(
-            np.random.uniform(-0.5, 0.5, (2, self.vec_size)).astype(
+            np.random.uniform(-0.5, 0.5, (2, self.embed_dim)).astype(
                 dtype='float32'))
 
         sent_ids_tensor = paddle.to_tensor(
@@ -127,21 +131,21 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
         self.src_ids = np.concatenate(
             [src_ids[i, :i + 1] for i in range(self.batch_size)], dtype='int32')
 
-        self.path_with_coverting = '/tmp/paddle_mha_convert_with_trt_varlen'
+        self.path = '/tmp/paddle_mha_inference_with_varlen'
 
         layer = cuDNNMultiHeadAttention.to_legacy(
             self.cudnn_bert,
             [sent_ids_tensor, src_ids_tensor, pos_ids_tensor, mask_tensor])
-        paddle.jit.save(layer, self.path_with_coverting)
+        paddle.jit.save(layer, self.path)
 
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-1
         self.rtol = 5e-2
 
-    def test_trt_variable_length(self):
-        config = paddle_infer.Config(self.path_with_coverting + ".pdmodel",
-                                     self.path_with_coverting + ".pdiparams")
+    def test_paddle_inference_with_variable_length(self):
+        config = paddle_infer.Config(self.path + ".pdmodel",
+                                     self.path + ".pdiparams")
         config.enable_use_gpu(4096, 0)
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
@@ -157,16 +161,16 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
             "input_3": [1, 1, 1]
         }
         max_input_shape = {
-            "input_0": [self.batch_size * self.seq_len],
-            "input_1": [self.batch_size * self.seq_len],
+            "input_0": [self.batch_size * self.seqlen],
+            "input_1": [self.batch_size * self.seqlen],
             "input_2": [self.batch_size + 1],
-            "input_3": [1, self.seq_len, 1]
+            "input_3": [1, self.seqlen, 1]
         }
         opt_input_shape = {
-            "input_0": [self.batch_size * self.seq_len],
-            "input_1": [self.batch_size * self.seq_len],
+            "input_0": [self.batch_size * self.seqlen],
+            "input_1": [self.batch_size * self.seqlen],
             "input_2": [self.batch_size + 1],
-            "input_3": [1, self.seq_len, 1]
+            "input_3": [1, self.seqlen, 1]
         }
 
         config.set_trt_dynamic_shape_info(
@@ -190,8 +194,8 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
         src_ids_handle.copy_from_cpu(self.src_ids)
         pos_ids_handle.reshape([len(self.var_lens), ])
         pos_ids_handle.copy_from_cpu(self.var_lens)
-        mask_handle.reshape([1, self.seq_len, 1])
-        last_input = np.zeros((1, self.seq_len, 1), dtype='float32')
+        mask_handle.reshape([1, self.seqlen, 1])
+        last_input = np.zeros((1, self.seqlen, 1), dtype='float32')
         mask_handle.copy_from_cpu(last_input)
 
         predictor.run()
@@ -202,24 +206,8 @@ class TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen(
 
         self.assertTrue(
             compare(self.output_ref, output_data, self.atol, self.rtol),
-            "[TestCUDNNMHALayerConvertToPaddleMHAWithPaddleTRTVarSeqLen] output is miss-match."
+            "[TestcuDNNMultiHeadAttentionWithPaddleTRTVarSeqLen] output is miss-match."
         )
-
-    def _generate_data(self):
-        # Input for TensorRT must be int32, even Paddle could take int64
-        sent_ids = np.random.randint(
-            0, self.vocab_size, (self.batch_size, self.seq_len), dtype='int32')
-        src_ids = np.zeros((self.batch_size, self.seq_len), dtype='int32')
-        pos_ids = np.array(
-            [np.arange(self.seq_len) for _ in range(self.batch_size)],
-            dtype='int32')
-        mask = np.ones(
-            (self.batch_size, self.nheads, self.seq_len, self.seq_len),
-            dtype='float32')
-        for i in range(self.batch_size):
-            mask[i, :, :, i + 1:] = 0.0
-
-        return sent_ids, src_ids, pos_ids, mask
 
 
 if __name__ == "__main__":
