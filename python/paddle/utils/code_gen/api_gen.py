@@ -311,7 +311,7 @@ PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
   Tensor out;
   out.set_impl(dense_out);
 
-  auto* kernel_fn = kernel.get_kernel_fn<pten::{self.api}_kernel>();
+  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.api}_kernel>();
   (*kernel_fn)({kernel_args}, dense_out.get());
 
   return out;

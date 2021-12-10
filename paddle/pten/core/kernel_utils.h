@@ -44,10 +44,9 @@ using XPUContext = paddle::platform::XPUDeviceContext;
 #define PT_KERNEL(...) \
   ::pten::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
-#define PT_VARIADIC_ARGS_KERNEL(...)              \
-  reinterpret_cast<void*>(                        \
-      &::pten::KernelImpl<decltype(&__VA_ARGS__), \
-                          &__VA_ARGS__>::VariadicArgsCompute)
+#define PT_VARIADIC_KERNEL(...)                                       \
+  reinterpret_cast<void*>(&::pten::KernelImpl<decltype(&__VA_ARGS__), \
+                                              &__VA_ARGS__>::VariadicCompute)
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
   template <typename... Tail>                                                \
@@ -185,7 +184,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
                      TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
   }
 
-  static void VariadicArgsCompute(const DeviceContext& dev_ctx, Args... args) {
+  static void VariadicCompute(const DeviceContext& dev_ctx, Args... args) {
     return kernel_fn(static_cast<DevCtx>(dev_ctx), std::forward<Args>(args)...);
   }
 
