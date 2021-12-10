@@ -23,6 +23,7 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -264,12 +265,8 @@ class KernelFactory {
 
   KernelMap& kernels() { return kernels_; }
 
-  void InsertCompatibleOpType(const std::string& op_type) {
-    compatible_op_types_.insert(op_type);
-  }
-
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return compatible_op_types_.count(op_type) > 0;
+    return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
   }
 
   const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
@@ -287,9 +284,6 @@ class KernelFactory {
   KernelFactory() = default;
 
   KernelMap kernels_;
-  // Used to be compatible with the original execution system and
-  // quickly confirm whether the new kernel can be called
-  std::unordered_set<std::string> compatible_op_types_;
 };
 
 /** operator << overload **/
