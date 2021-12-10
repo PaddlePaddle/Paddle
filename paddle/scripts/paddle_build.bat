@@ -80,15 +80,17 @@ set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
 rem ------initialize the python environment------
+set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
 echo %task_name%|findstr openblas >nul && (
-    echo In CI-Windows-Openblas, will use python vitual environment to build paddle and run unittest.
+    echo In CI-Windows-Openblas, will use python vitual environment to build paddle and run unittests.
+    set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+    set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
+    %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
+    call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+) || (
+    set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 )
-%PYTHON_ROOT%\python.exe -m venv --clear %cache_dir%\python_venv
-set PYTHON_VENV_ROOT=%cache_dir%\python_venv
-call %PYTHON_VENV_ROOT%\Scripts\activate.bat
 
-set PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe
-set PATH=%PYTHON_VENV_ROOT%\Scripts;%PYTHON_VENV_ROOT%;%PATH%
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
