@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the distribution functions
+# TODO: define the distribution functions 
 # __all__ = ['Categorical',
 #            'MultivariateNormalDiag',
 #            'Normal',
