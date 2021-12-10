@@ -237,20 +237,27 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]
-        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
-            x_shape_name)
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        if len(x_dims_mapping) != len(out_dims_mapping) - 1:
-            return False
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
 
-        if is_dim_shard(out_dims_mapping[-1]):
-            return False
-
-        for idx, item in enumerate(out_dims_mapping[:-2]):
-            if x_dims_mapping[idx] != item:
+        if len(x_dims_mapping) == len(out_dims_mapping) + 2:
+            if out_dims_mapping[0] != x_dims_mapping[0]:
                 return False
-        if out_dims_mapping[-2] != x_dims_mapping[-1]:
+            if x_dims_mapping[-1] != -1 or x_dims_mapping[-2] != -1:
+                return False
+        elif len(x_dims_mapping) != len(out_dims_mapping) + 1:
+            return False
+
+        if is_dim_shard(x_dims_mapping[-1]):
+            return False
+
+        for idx, item in enumerate(x_dims_mapping[:-2]):
+            if out_dims_mapping[idx] != item:
+                return False
+
+        if x_dims_mapping[-2] != out_dims_mapping[-1]:
             return False
 
         if x_shape_dims_mapping[0] != -1:
