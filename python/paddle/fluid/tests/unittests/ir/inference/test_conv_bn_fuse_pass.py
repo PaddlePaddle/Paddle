@@ -31,7 +31,7 @@ class TestConvBnFusePass(PassAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-
+        # mainly for TRT, which is invalid for current pass test framework!!
         if attrs[0]['data_format'] == "NHWC":
             return False
 
