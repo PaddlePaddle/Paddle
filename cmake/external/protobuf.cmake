@@ -209,7 +209,8 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(PROTOBUF_TAG         d750fbf648256c7c631f51ffdbf67d7c18b0114e)
     else()
         SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
-        SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+        # Change the tag to support building with vs2019
+        SET(PROTOBUF_TAG         01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
     endif()
 
     ExternalProject_Add(

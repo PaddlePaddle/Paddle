@@ -60,7 +60,7 @@ static __forceinline__ __device__ T reflect_indexes(T in, int twice_low,
   T span = static_cast<T>(twice_high - twice_low) / 2;
   in = fabs(in - min);
   T extra = fmod(in, span);
-  int flips = static_cast<int>(floor(in / span));
+  int flips = static_cast<int>(floorf(in / span));
   if (flips % 2 == 0) {
     return extra + min;
   } else {
@@ -135,7 +135,7 @@ reflect_indexes_with_mask(T in, int twice_low, int twice_high, T* grad_in) {
     grad_in_mult_ = 1;
   }
   T extra = fmod(in, span);
-  int flips = static_cast<int>(floor(in / span));
+  int flips = static_cast<int>(floorf(in / span));
   if (flips % 2 == 0) {
     *grad_in = static_cast<T>(grad_in_mult_);
     return extra + min;
@@ -199,8 +199,8 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
     ix = compute_positions(ix, in_w, padding_mode, align_corners);
     iy = compute_positions(iy, in_h, padding_mode, align_corners);
     if (mode == Mode::bilinear) {
-      int ix_nw = static_cast<int>(floor(ix));
-      int iy_nw = static_cast<int>(floor(iy));
+      int ix_nw = static_cast<int>(floorf(ix));
+      int iy_nw = static_cast<int>(floorf(iy));
       int ix_ne = ix_nw + 1;
       int iy_ne = iy_nw;
       int ix_sw = ix_nw;
@@ -342,8 +342,8 @@ __global__ void grid_sampler_cuda_backward_kernel(
                                      &giy_mult);
 
     if (mode == Mode::bilinear) {
-      int ix_nw = static_cast<int>(floor(ix));
-      int iy_nw = static_cast<int>(floor(iy));
+      int ix_nw = static_cast<int>(floorf(ix));
+      int iy_nw = static_cast<int>(floorf(iy));
       int ix_ne = ix_nw + 1;
       int iy_ne = iy_nw;
       int ix_sw = ix_nw;

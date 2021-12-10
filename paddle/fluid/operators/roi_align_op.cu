@@ -138,9 +138,9 @@ __global__ void GPUROIAlignForward(
 
     int roi_bin_grid_h = (sampling_ratio > 0)
                              ? sampling_ratio
-                             : ceil(roi_height / pooled_height);
+                             : ceilf(roi_height / pooled_height);
     int roi_bin_grid_w =
-        (sampling_ratio > 0) ? sampling_ratio : ceil(roi_width / pooled_width);
+        (sampling_ratio > 0) ? sampling_ratio : ceilf(roi_width / pooled_width);
     const T count = max(roi_bin_grid_h * roi_bin_grid_w, 1);
     T output_val = 0;
     for (int iy = 0; iy < roi_bin_grid_h; iy++) {
@@ -199,9 +199,9 @@ __global__ void GPUROIAlignBackward(
 
     int roi_bin_grid_h = (sampling_ratio > 0)
                              ? sampling_ratio
-                             : ceil(roi_height / pooled_height);
+                             : ceilf(roi_height / pooled_height);
     int roi_bin_grid_w =
-        (sampling_ratio > 0) ? sampling_ratio : ceil(roi_width / pooled_width);
+        (sampling_ratio > 0) ? sampling_ratio : ceilf(roi_width / pooled_width);
 
     const T count = roi_bin_grid_h * roi_bin_grid_w;
     for (int iy = 0; iy < roi_bin_grid_h; iy++) {

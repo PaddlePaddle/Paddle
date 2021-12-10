@@ -46,26 +46,26 @@ __global__ void GPUROIPoolForward(
 
     const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
-    int roi_start_w = round(offset_input_rois[0] * spatial_scale);
-    int roi_start_h = round(offset_input_rois[1] * spatial_scale);
-    int roi_end_w = round(offset_input_rois[2] * spatial_scale);
-    int roi_end_h = round(offset_input_rois[3] * spatial_scale);
+    int roi_start_w = roundf(offset_input_rois[0] * spatial_scale);
+    int roi_start_h = roundf(offset_input_rois[1] * spatial_scale);
+    int roi_end_w = roundf(offset_input_rois[2] * spatial_scale);
+    int roi_end_h = roundf(offset_input_rois[3] * spatial_scale);
 
     int roi_width = max(roi_end_w - roi_start_w + 1, 1);
     int roi_height = max(roi_end_h - roi_start_h + 1, 1);
 
-    int hstart = static_cast<int>(floor(static_cast<double>(ph) *
-                                        static_cast<double>(roi_height) /
-                                        static_cast<double>(pooled_height)));
-    int wstart = static_cast<int>(floor(static_cast<double>(pw) *
-                                        static_cast<double>(roi_width) /
-                                        static_cast<double>(pooled_width)));
-    int hend = static_cast<int>(ceil(static_cast<double>(ph + 1) *
-                                     static_cast<double>(roi_height) /
-                                     static_cast<double>(pooled_height)));
-    int wend = static_cast<int>(ceil(static_cast<double>(pw + 1) *
-                                     static_cast<double>(roi_width) /
-                                     static_cast<double>(pooled_width)));
+    int hstart = static_cast<int>(floorf(static_cast<double>(ph) *
+                                         static_cast<double>(roi_height) /
+                                         static_cast<double>(pooled_height)));
+    int wstart = static_cast<int>(floorf(static_cast<double>(pw) *
+                                         static_cast<double>(roi_width) /
+                                         static_cast<double>(pooled_width)));
+    int hend = static_cast<int>(ceilf(static_cast<double>(ph + 1) *
+                                      static_cast<double>(roi_height) /
+                                      static_cast<double>(pooled_height)));
+    int wend = static_cast<int>(ceilf(static_cast<double>(pw + 1) *
+                                      static_cast<double>(roi_width) /
+                                      static_cast<double>(pooled_width)));
     hstart = min(max(hstart + roi_start_h, 0), height);
     hend = min(max(hend + roi_start_h, 0), height);
     wstart = min(max(wstart + roi_start_w, 0), width);

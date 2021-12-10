@@ -865,11 +865,11 @@ __global__ void KernelPool3DGrad(
           if (adaptive) {
             pool_size =
                 static_cast<int>(
-                    ceil(static_cast<double>(input_depth) / ksize_depth)) *
+                    ceilf(static_cast<double>(input_depth) / ksize_depth)) *
                 static_cast<int>(
-                    ceil(static_cast<double>(input_height) / ksize_height)) *
+                    ceilf(static_cast<double>(input_height) / ksize_height)) *
                 static_cast<int>(
-                    ceil(static_cast<double>(input_width) / ksize_width));
+                    ceilf(static_cast<double>(input_width) / ksize_width));
           } else {
             int dstart = pd * stride_depth - padding_depth;
             int hstart = ph * stride_height - padding_height;

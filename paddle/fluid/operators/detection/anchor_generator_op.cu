@@ -42,8 +42,8 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
     T anchor_size = anchor_sizes[as_idx];
     area = stride_width * stride_height;
     area_ratios = area / aspect_ratio;
-    base_w = round(sqrt(area_ratios));
-    base_h = round(base_w * aspect_ratio);
+    base_w = roundf(sqrt(area_ratios));
+    base_h = roundf(base_w * aspect_ratio);
     scale_w = anchor_size / stride_width;
     scale_h = anchor_size / stride_height;
     anchor_width = scale_w * base_w;

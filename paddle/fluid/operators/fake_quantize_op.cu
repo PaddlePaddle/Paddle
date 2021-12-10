@@ -204,7 +204,7 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
-    out[i] = round(v);
+    out[i] = roundf(v);
   }
 }
 
@@ -224,7 +224,7 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
     x = x > s ? s : x;
     x = x < -s ? -s : x;
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(round(static_cast<float>(x)));
+    x = static_cast<T>(roundf(static_cast<float>(x)));
     out[i] = (x * s) / bin_cnt_t;
   }
 }
@@ -287,7 +287,7 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
-    out_c[i] = round(v);
+    out_c[i] = roundf(v);
   }
 }
 
@@ -309,7 +309,7 @@ __global__ void ChannelClipAndQuantKernelQuantAxis1(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
-    out_c[i] = round(v);
+    out_c[i] = roundf(v);
   }
 }
 
@@ -461,7 +461,7 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis0(
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
-    out_c[i] = round(v) * s / bin_cnt;
+    out_c[i] = roundf(v) * s / bin_cnt;
   }
 }
 
@@ -482,7 +482,7 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
-    out_c[i] = round(v) * s / bin_cnt;
+    out_c[i] = roundf(v) * s / bin_cnt;
   }
 }
 

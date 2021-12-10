@@ -57,7 +57,7 @@ __global__ void GPUDistFpnProposalsHelper(
     // get the target level of current rois
     T roi_area = RoIArea(offset_roi, pixel_offset);
     T roi_scale = sqrt(roi_area);
-    int tgt_lvl = floor(
+    int tgt_lvl = floorf(
         log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;

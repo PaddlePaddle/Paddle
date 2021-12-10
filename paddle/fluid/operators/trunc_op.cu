@@ -24,7 +24,7 @@ template <typename T>
 class TruncFunctor {
  public:
   __device__ TruncFunctor(const T x) : x_(x) {}
-  __device__ T operator()() { return trunc(x_); }
+  __device__ T operator()() { return truncf(x_); }
 
  public:
   const T x_;

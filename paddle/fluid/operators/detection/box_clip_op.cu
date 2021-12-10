@@ -30,10 +30,10 @@ template <typename T, int BlockSize>
 static __global__ void GPUBoxClip(const T *input, const size_t *lod,
                                   const size_t width, const T *im_info,
                                   T *output) {
-  T im_w = round(im_info[blockIdx.x * ImInfoSize + 1] /
-                 im_info[blockIdx.x * ImInfoSize + 2]);
-  T im_h = round(im_info[blockIdx.x * ImInfoSize] /
-                 im_info[blockIdx.x * ImInfoSize + 2]);
+  T im_w = roundf(im_info[blockIdx.x * ImInfoSize + 1] /
+                  im_info[blockIdx.x * ImInfoSize + 2]);
+  T im_h = roundf(im_info[blockIdx.x * ImInfoSize] /
+                  im_info[blockIdx.x * ImInfoSize + 2]);
   for (int i = threadIdx.x; i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * width;
        i += BlockSize) {
     int idx = lod[blockIdx.x] * width + i;

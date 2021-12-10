@@ -129,8 +129,8 @@ __device__ void bilinear_interpolate(const T* in_data, const int channels,
     in_h = 0;
   }
 
-  int in_w_floor = floor(in_w);
-  int in_h_floor = floor(in_h);
+  int in_w_floor = floorf(in_w);
+  int in_h_floor = floorf(in_h);
   int in_w_ceil;
   int in_h_ceil;
 
@@ -240,7 +240,7 @@ __device__ void get_transform_matrix(const int transformed_width,
   // Get the normalized height and normalized width
   int normalized_height = max(2, transformed_height);
   int normalized_width =
-      round(estimated_width * (normalized_height - 1) / estimated_height) + 1;
+      roundf(estimated_width * (normalized_height - 1) / estimated_height) + 1;
   normalized_width = max(2, min(normalized_width, transformed_width));
 
   T dx1 = x1 - x2;
@@ -418,8 +418,8 @@ __device__ T get_feature_gradient(T xs, T ys, int w, int h, const int width,
     ys = 0;
   }
 
-  int xs_floor = floor(xs);
-  int ys_floor = floor(ys);
+  int xs_floor = floorf(xs);
+  int ys_floor = floorf(ys);
   int xs_ceil;
   int ys_ceil;
 

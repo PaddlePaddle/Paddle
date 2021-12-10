@@ -50,8 +50,8 @@ __device__ T DmcnGetGradientWeight(T argmax_h, T argmax_w, const int h,
     return 0;
   }
 
-  int argmax_h_low = floor(argmax_h);
-  int argmax_w_low = floor(argmax_w);
+  int argmax_h_low = floorf(argmax_h);
+  int argmax_w_low = floorf(argmax_w);
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
@@ -165,8 +165,8 @@ __device__ T DmcnGetCoordinateWeight(T argmax_h, T argmax_w, const int height,
     return 0;
   }
 
-  int argmax_h_low = floor(argmax_h);
-  int argmax_w_low = floor(argmax_w);
+  int argmax_h_low = floorf(argmax_h);
+  int argmax_w_low = floorf(argmax_w);
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
@@ -205,8 +205,8 @@ __device__ T DmcnGetCoordinateWeight(T argmax_h, T argmax_w, const int height,
 template <typename T>
 __device__ T DmcnIm2colBilinear(const T* bottom_data, const int data_width,
                                 const int height, const int width, T h, T w) {
-  int h_low = floor(h);
-  int w_low = floor(w);
+  int h_low = floorf(h);
+  int w_low = floorf(w);
   int h_high = h_low + 1;
   int w_high = w_low + 1;
 

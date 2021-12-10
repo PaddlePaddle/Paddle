@@ -94,9 +94,9 @@ __global__ void GPUROIAlignOpt(const int nthreads,
     const T bin_size_w = roi_width / static_cast<T>(pooled_width);
     const int roi_bin_grid_h = (sampling_ratio > 0)
                                    ? sampling_ratio
-                                   : ceil(roi_height / pooled_height);
+                                   : ceilf(roi_height / pooled_height);
     const int roi_bin_grid_w =
-        (sampling_ratio > 0) ? sampling_ratio : ceil(roi_width / pooled_width);
+        (sampling_ratio > 0) ? sampling_ratio : ceilf(roi_width / pooled_width);
     const T count = roi_bin_grid_h * roi_bin_grid_w;
 
     T output_val = 0.f;

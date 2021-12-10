@@ -248,7 +248,7 @@ __device__ half kFloor<half>(half x) {
 
 template <>
 __device__ float kFloor<float>(float x) {
-  return floor(x);
+  return floorf(x);
 }
 
 template <typename T>

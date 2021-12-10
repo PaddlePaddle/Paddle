@@ -72,10 +72,10 @@ __global__ void GPUPRROIPoolForward(
         (roi_batch_id * input_channels + input_channel) * height * width;
 
     if (win_size > static_cast<T>(0.0)) {
-      int s_w = floor(win_start_w);
-      int e_w = ceil(win_end_w);
-      int s_h = floor(win_start_h);
-      int e_h = ceil(win_end_h);
+      int s_w = floorf(win_start_w);
+      int e_w = ceilf(win_end_w);
+      int s_h = floorf(win_start_h);
+      int e_h = ceilf(win_end_h);
       T sum_out = 0;
 
       for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
@@ -142,10 +142,10 @@ __global__ void GPUPRROIPoolBackward(
     T win_end_h = win_start_h + bin_size_h;
 
     T win_size = max(static_cast<T>(0.0), bin_size_w * bin_size_h);
-    int s_w = floor(win_start_w);
-    int e_w = ceil(win_end_w);
-    int s_h = floor(win_start_h);
-    int e_h = ceil(win_end_h);
+    int s_w = floorf(win_start_w);
+    int e_w = ceilf(win_end_w);
+    int s_h = floorf(win_start_h);
+    int e_h = ceilf(win_end_h);
 
     T sum_out = win_size == static_cast<T>(0.)
                     ? static_cast<T>(0.)

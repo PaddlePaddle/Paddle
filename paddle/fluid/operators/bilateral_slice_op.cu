@@ -78,9 +78,9 @@ __global__ void BilateralSliceCudaForwardKernel(
     T gy = (y + 0.5f) * gh / (1.0f * h);
     T gz = guide[x + w * (y + h * b)] * gd;
 
-    int fx = static_cast<int>(floor(gx - 0.5f));
-    int fy = static_cast<int>(floor(gy - 0.5f));
-    int fz = static_cast<int>(floor(gz - 0.5f));
+    int fx = static_cast<int>(floorf(gx - 0.5f));
+    int fy = static_cast<int>(floorf(gy - 0.5f));
+    int fz = static_cast<int>(floorf(gz - 0.5f));
 
     int sy = gw;
     int sz = gw * gh;
@@ -204,10 +204,10 @@ __global__ void BilateralSliceCudaGridGradKernel(
     T scale_w = w * 1.0 / gw;
     T scale_h = h * 1.0 / gh;
 
-    int left_x = static_cast<int>(floor(scale_w * (gx + 0.5 - 1)));
-    int right_x = static_cast<int>(ceil(scale_w * (gx + 0.5 + 1)));
-    int left_y = static_cast<int>(floor(scale_h * (gy + 0.5 - 1)));
-    int right_y = static_cast<int>(ceil(scale_h * (gy + 0.5 + 1)));
+    int left_x = static_cast<int>(floorf(scale_w * (gx + 0.5 - 1)));
+    int right_x = static_cast<int>(ceilf(scale_w * (gx + 0.5 + 1)));
+    int left_y = static_cast<int>(floorf(scale_h * (gy + 0.5 - 1)));
+    int right_y = static_cast<int>(ceilf(scale_h * (gy + 0.5 + 1)));
 
     int sy = w;
     int sc = w * h;
@@ -297,9 +297,9 @@ __global__ void BilateralSliceCudaGuideGradKernel(
     T gy = (y + 0.5f) * gh / (1.0f * h);
     T gz = guide[x + w * (y + h * b)] * gd;
 
-    int fx = static_cast<int>(floor(gx - 0.5f));
-    int fy = static_cast<int>(floor(gy - 0.5f));
-    int fz = static_cast<int>(floor(gz - 0.5f));
+    int fx = static_cast<int>(floorf(gx - 0.5f));
+    int fy = static_cast<int>(floorf(gy - 0.5f));
+    int fz = static_cast<int>(floorf(gz - 0.5f));
 
     int sy = gw;
     int sz = gh * gw;
@@ -376,9 +376,9 @@ __global__ void BilateralSliceCudaInputGradKernel(
     T gy = (y + 0.5f) * gh / (1.0f * h);
     T gz = guide[x + w * (y + h * b)] * gd;
 
-    int fx = static_cast<int>(floor(gx - 0.5f));
-    int fy = static_cast<int>(floor(gy - 0.5f));
-    int fz = static_cast<int>(floor(gz - 0.5f));
+    int fx = static_cast<int>(floorf(gx - 0.5f));
+    int fy = static_cast<int>(floorf(gy - 0.5f));
+    int fz = static_cast<int>(floorf(gz - 0.5f));
 
     int sy = gw;
     int sz = gh * gw;

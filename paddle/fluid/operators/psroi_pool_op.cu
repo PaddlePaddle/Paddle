@@ -49,12 +49,14 @@ __global__ void GPUPSROIPoolForward(
 
     // [start, end) interval for spatial sampling
     const T* offset_input_rois = input_rois + n * 4;
-    T roi_start_w = static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
-    T roi_start_h = static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
+    T roi_start_w =
+        static_cast<T>(roundf(offset_input_rois[0])) * spatial_scale;
+    T roi_start_h =
+        static_cast<T>(roundf(offset_input_rois[1])) * spatial_scale;
     T roi_end_w =
-        static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
+        static_cast<T>(roundf(offset_input_rois[2]) + 1.) * spatial_scale;
     T roi_end_h =
-        static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
+        static_cast<T>(roundf(offset_input_rois[3]) + 1.) * spatial_scale;
 
     // Force too small ROIs to be 1x1
     T roi_height = max(roi_end_h - roi_start_h, (T)0.1);  // avoid 0
@@ -64,10 +66,10 @@ __global__ void GPUPSROIPoolForward(
     T bin_size_h = roi_height / static_cast<T>(pooled_height);
     T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
-    int hstart = floor(bin_size_h * static_cast<T>(ph) + roi_start_h);
-    int wstart = floor(bin_size_w * static_cast<T>(pw) + roi_start_w);
-    int hend = ceil(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
-    int wend = ceil(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
+    int hstart = floorf(bin_size_h * static_cast<T>(ph) + roi_start_h);
+    int wstart = floorf(bin_size_w * static_cast<T>(pw) + roi_start_w);
+    int hend = ceilf(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
+    int wend = ceilf(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
 
     // Add roi offsets and clip to input boundaries
     hstart = min(max(hstart, 0), height);
@@ -118,12 +120,14 @@ __global__ void GPUPSROIPoolBackward(
 
     // [start, end) interval for spatial sampling
     const T* offset_input_rois = input_rois + n * 4;
-    T roi_start_w = static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
-    T roi_start_h = static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
+    T roi_start_w =
+        static_cast<T>(roundf(offset_input_rois[0])) * spatial_scale;
+    T roi_start_h =
+        static_cast<T>(roundf(offset_input_rois[1])) * spatial_scale;
     T roi_end_w =
-        static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
+        static_cast<T>(roundf(offset_input_rois[2]) + 1.) * spatial_scale;
     T roi_end_h =
-        static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
+        static_cast<T>(roundf(offset_input_rois[3]) + 1.) * spatial_scale;
 
     // Force too small ROIs to be 1x1
     T roi_height = max(roi_end_h - roi_start_h, (T)0.1);  // avoid 0
@@ -133,10 +137,10 @@ __global__ void GPUPSROIPoolBackward(
     T bin_size_h = roi_height / static_cast<T>(pooled_height);
     T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
-    int hstart = floor(bin_size_h * static_cast<T>(ph) + roi_start_h);
-    int wstart = floor(bin_size_w * static_cast<T>(pw) + roi_start_w);
-    int hend = ceil(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
-    int wend = ceil(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
+    int hstart = floorf(bin_size_h * static_cast<T>(ph) + roi_start_h);
+    int wstart = floorf(bin_size_w * static_cast<T>(pw) + roi_start_w);
+    int hend = ceilf(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
+    int wend = ceilf(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
 
     // Add roi offsets and clip to input boundaries
     hstart = min(max(hstart, 0), height);

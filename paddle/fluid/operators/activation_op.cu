@@ -227,10 +227,10 @@ template <typename T>
 struct CudaCeilFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
 
-  // ceil(x) = ceil(x)
+  // ceilf(x) = ceilf(x)
   __device__ __forceinline__ T operator()(const T& arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(ceil(x));
+    return static_cast<T>(ceilf(x));
   }
 };
 
@@ -238,10 +238,10 @@ template <typename T>
 struct CudaFloorFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
 
-  // floor(x) = floor(x)
+  // floorf(x) = floorf(x)
   __device__ __forceinline__ T operator()(const T& arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(floor(x));
+    return static_cast<T>(floorf(x));
   }
 };
 
@@ -249,10 +249,10 @@ template <typename T>
 struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
 
-  // round(x) = round(x)
+  // roundf(x) = roundf(x)
   __device__ __forceinline__ T operator()(const T& arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(round(x));
+    return static_cast<T>(roundf(x));
   }
 };
 
