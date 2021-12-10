@@ -156,6 +156,9 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
+from .tensor.manipulation import as_complex  # noqa: F401
+from .tensor.manipulation import as_real  # noqa: F401
+
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -227,6 +230,8 @@ from .tensor.math import lgamma  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
+from .tensor.math import gcd  # noqa: F401
+from .tensor.math import lcm  # noqa: F401
 from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
 
@@ -260,6 +265,7 @@ from .framework.random import set_cuda_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
 from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
+from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
@@ -291,6 +297,7 @@ from .fluid.framework import get_flags  # noqa: F401
 from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
+from .device import is_compiled_with_ipu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
@@ -478,6 +485,8 @@ __all__ = [  # noqa
            'atan2',
            'rad2deg',
            'deg2rad',
+           'gcd',
+           'lcm',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -553,6 +562,8 @@ __all__ = [  # noqa
            'einsum',
            'set_flags',
            'get_flags',
+           'as_complex',
+           'as_real',
            'diff',
            'angle',
 ]

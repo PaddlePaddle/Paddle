@@ -24,7 +24,7 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace operators {
@@ -40,16 +40,22 @@ class CinnLaunchContext {
       const std::unordered_map<std::string, std::string>& paddle2cinn_varmap,
       const std::shared_ptr<CinnScope>& cinn_scope);
 
+  // explicitly update several environment variables captured
+  // by callback of execution arguments
+  void UpdateCapturedEnv(const framework::Scope& scope,
+                         const platform::Place& place);
+
+  // Return whether execution arguments has been initialized
+  bool IsArgumentsInitialized() const;
+
   // Return whether a Paddle variable used on compiled kernels
-  bool IsVariableUsed(const std::string& var_name);
+  bool IsVariableUsed(const std::string& paddle_var_name) const;
 
   // Assign tensor buffer to input or output variables
-  void AssignExternalVariable(const std::string& var_name,
-                              const platform::Place& place, LoDTensor* tensor);
+  void AssignExternalVariable(const std::string& paddle_var_name);
 
   // Assign tensor buffer to internal variables
-  void AssignInternalVariable(const std::string& var_name,
-                              const platform::Place& place, LoDTensor* tensor);
+  void AssignInternalVariable(const std::string& cinn_var_name);
 
   // Extract internal variable names from CinnScope
   // by excluding used input and output variables
@@ -57,10 +63,6 @@ class CinnLaunchContext {
 
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
-
-  std::vector<std::unique_ptr<cinn_buffer_t>> HandoverBuffers() {
-    return std::move(hold_buffers_);
-  }
 
  private:
   // Get CinnTensor with CINN variable name
@@ -72,16 +74,15 @@ class CinnLaunchContext {
                              const LoDTensor& paddle_tensor,
                              const CinnTensor& cinn_tensor);
 
-  // Share the buffer of a Paddle tensor to CINN by delivering memory address
-  // to a cinn_buffer_t object
-  std::unique_ptr<cinn_buffer_t> ShareTensorWithCinnBuffer(
-      const platform::Place& place, bool free_mem_callback, LoDTensor* tensor);
-
-  // Set an argument with (cinn name)->(paddle tensor) pair
-  void SetArgument(const std::string& cinn_name, const platform::Place& place,
-                   bool free_mem_callback, LoDTensor* paddle_tensor);
+  // Set an argument with (cinn name)->(cinn_buffer_t) pair
+  void SetArgument(const std::string& cinn_var_name,
+                   std::unique_ptr<cinn_buffer_t>&& buffer);
 
  private:
+  const framework::Scope* cached_scope_ = nullptr;
+  const platform::Place* cached_place_ = nullptr;
+  std::unique_ptr<framework::Scope> cached_temp_scope_ = nullptr;
+
   // a variable name map from paddle to cinn
   const std::unordered_map<std::string, std::string>& paddle2cinn_varmap_;
   // the variable scope of cinn
