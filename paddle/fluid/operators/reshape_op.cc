@@ -83,8 +83,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
-    // TODO(Aurelius84): Do we only need deal complie time case?
-    if (HasCompiledContent(ctx, "ShapeTensor")) {
+    if (ctx->HasInputs("ShapeTensor")) {
+      if (ctx->IsRuntime()) return;
       // top prority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
       PADDLE_ENFORCE_GT(
@@ -94,6 +94,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
               "which contains Tensor, the shape's size can't be zero. "
               "But received shape's size is %d.",
               ShapeTensor.size()));
+
       auto infer_shape =
           GetScalarsFromVarDescs<int>(ctx, "ShapeTensor", /*default_val=*/-1);
       const int64_t copy_dim_val = 0;

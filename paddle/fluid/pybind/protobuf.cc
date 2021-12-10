@@ -173,6 +173,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("get_shape", &pd::VarDesc::GetShape)
       .def("set_desc_value", &pd::VarDesc::SetDescValue)
       .def("get_desc_value", &pd::VarDesc::GetDescValue)
+      .def("has_desc_value", &pd::VarDesc::HasDescValue)
       .def("set_dtype", &pd::VarDesc::SetDataType)
       .def("set_dtypes", &pd::VarDesc::SetDataTypes)
       .def("shape", &pd::VarDesc::GetShape,

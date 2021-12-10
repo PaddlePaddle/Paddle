@@ -74,7 +74,7 @@ inline std::vector<T> GetScalarsFromVarDescs(framework::InferShapeContext* ctx,
 inline bool HasCompiledContent(const framework::InferShapeContext* ctx,
                                const std::string& name) {
   bool flag = false;
-  if (!ctx->IsRuntime() && ctx->HasInput(name)) {
+  if (!ctx->IsRuntime()) {
     auto var_descs = ctx->GetInputVarPtrs(name);
     if (!var_descs.empty()) {
       flag = std::any_of(

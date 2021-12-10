@@ -40,8 +40,11 @@ class TopkV2Op : public framework::OperatorWithKernel {
     if (axis < 0) axis += dim_size;
 
     int k = -1;
-    if (HasCompiledContent(ctx, "K")) {
-      k = GetScalarDataFromVarDesc<int>(ctx, "K");
+    if (ctx->HasInput("K")) {
+      if (HasCompiledContent(ctx, "K")) {
+        k = GetScalarDataFromVarDesc<int>(ctx, "K");
+        VLOG(1) << "k tensor " << k;
+      }
     } else {
       k = static_cast<int>(ctx->Attrs().Get<int>("k"));
       PADDLE_ENFORCE_EQ(k >= 1, true,
@@ -64,7 +67,7 @@ class TopkV2Op : public framework::OperatorWithKernel {
     }
 
     framework::DDim dims = input_dims;
-
+    VLOG(1) << "k " << k;
     dims[axis] = k;
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
