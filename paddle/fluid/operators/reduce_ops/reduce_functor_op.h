@@ -65,6 +65,17 @@ struct CustomSum {
 };
 
 template <typename Tx, typename Ty = Tx>
+struct CustomSub {
+  using Transformer = kps::InverseFunctor<Tx>;
+
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
+    return b + a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
 struct CustomMean {
   using Transformer = kps::DivideFunctor<Tx>;
 

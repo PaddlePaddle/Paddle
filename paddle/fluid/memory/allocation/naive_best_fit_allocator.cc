@@ -116,6 +116,34 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
+// For Graphcore IPU
+template <>
+void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "IPUPlace, Allocate on cpu.";
+
+  void *p = GetCPUBuddyAllocator()->Alloc(size);
+  if (FLAGS_init_allocated_mem) {
+    memset(p, 0xEF, size);
+  }
+  VLOG(10) << "  pointer=" << p;
+  return p;
+}
+template <>
+void Free<platform::IPUPlace>(const platform::IPUPlace &place, void *p,
+                              size_t size) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetCPUBuddyAllocator()->Free(p);
+}
+template <>
+uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
+  return GetCPUBuddyAllocator()->Release();
+}
+template <>
+size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
+  return GetCPUBuddyAllocator()->Used();
+}
+
 // For kunlun XPU
 template <>
 void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
