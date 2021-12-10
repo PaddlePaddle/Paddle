@@ -37,10 +37,10 @@ namespace experimental {
 
 // use to declare symbol
 #define PT_REGISTER_API(name) \
-  PD_DLL_DECL int RegisterSymbolsFor##name() { return 0; }
+  PADDLE_API int RegisterSymbolsFor##name() { return 0; }
 
-#define PT_DECLARE_API(name)                         \
-  extern PD_DLL_DECL int RegisterSymbolsFor##name(); \
+#define PT_DECLARE_API(name)                        \
+  extern PADDLE_API int RegisterSymbolsFor##name(); \
   UNUSED static int use_pten_api_##name = RegisterSymbolsFor##name()
 
 }  // namespace experimental

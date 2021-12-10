@@ -676,6 +676,57 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
   PrettyLogDetail("---    quantized %d reshape ops", quantize_reshape_count);
 }
 
+void CPUQuantizePass::QuantizeSlice(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::Slice slice_pattern{pattern, name_scope_};
+  slice_pattern();
+
+  int quantize_slice_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize slice op";
+    GET_IR_NODE_FROM_SUBGRAPH(slice_op, slice_op, slice_pattern);
+
+    // skip if should not be quantized
+    if (!platform::HasOpINT8DataType(slice_op->Op())) {
+      LogQuantizationDisabled(slice_op);
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, slice_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, slice_pattern);
+
+    // skip if prev op and next op is not quantized
+    if (!IsOpDequantized(prev_op) && !IsOpQuantized(next_op)) {
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(slice_in, slice_in, slice_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(slice_out, slice_out, slice_pattern);
+
+    if (!AreScalesPresentForNodes({slice_out})) {
+      LogCannotQuantizeOp(slice_op);
+      return;
+    }
+
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(slice_out, &is_input_unsigned);
+    QuantizeInput(g, slice_op, slice_in, "Input", input_scale,
+                  is_input_unsigned);
+
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(slice_out, &is_output_unsigned);
+    DequantizeOutput(g, slice_op, slice_out, "Out", output_scale,
+                     is_output_unsigned);
+
+    ++quantize_slice_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_slice_count);
+
+  PrettyLogDetail("---    quantized %d slice ops", quantize_slice_count);
+}
+
 void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
@@ -1024,6 +1075,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);
+  QuantizeSlice(graph);
 }
 
 }  // namespace ir
