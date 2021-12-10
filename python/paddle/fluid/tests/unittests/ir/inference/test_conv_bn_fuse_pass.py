@@ -157,8 +157,8 @@ class TestConvBnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # for mkldnn
-        config = self.create_inference_config()
         if program_config.ops[0].attrs['use_mkldnn']:
+            config = self.create_inference_config()
             config.enable_mkldnn()
             yield config, ['conv2d'], (1e-5, 1e-5)
         else:
@@ -168,15 +168,15 @@ class TestConvBnFusePass(PassAutoScanTest):
             config = self.create_inference_config(use_gpu=True)
             yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
-            # config = self.create_trt_inference_config()
-            # config.enable_tensorrt_engine(
-            #     workspace_size=1<<20,
-            #     max_batch_size=4,
-            #     min_subgraph_size=1,
-            #     precision_mode=paddle_infer.PrecisionType.Float32,
-            #     use_static=False,
-            #     use_calib_mode=False)
-            # yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
+            config = self.create_trt_inference_config()
+            config.enable_tensorrt_engine(
+                workspace_size=1 << 20,
+                max_batch_size=4,
+                min_subgraph_size=1,
+                precision_mode=paddle_infer.PrecisionType.Float32,
+                use_static=False,
+                use_calib_mode=False)
+            yield config, ['conv2d_fusion'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
