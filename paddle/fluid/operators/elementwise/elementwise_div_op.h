@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -124,18 +121,6 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-default_elementwise_div_grad(const framework::ExecutionContext& ctx,
-                             const framework::Tensor* x,
-                             const framework::Tensor* y,
-                             const framework::Tensor* out,
-                             const framework::Tensor* dout,
-                             framework::Tensor* dx, framework::Tensor* dy);
-#endif
-
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
@@ -144,13 +129,21 @@ elementwise_div_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  int axis = ctx.Attr<int>("axis");
-  ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
-      ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+  default_elementwise_div_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename DeviceContext, typename T>
 // cuda definition
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_elementwise_div_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy);
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
