@@ -757,3 +757,18 @@ endif()
 if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()
+
+# IPU
+if (WITH_IPU)  
+    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_inference_io ir_pass_manager analysis_predictor benchmark)
+    # ERNIE from test_analyzer_ernie
+    set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+    inference_analysis_api_test(ipu_ernie_test ${ERNIE_INSTALL_DIR} ipu_ernie_test.cc
+            ARGS --warmup=true --repeat=1000)
+
+    #resnet50
+    set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+    inference_analysis_test(ipu_resnet50_test SRCS ipu_resnet50_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=1000)
+endif()
