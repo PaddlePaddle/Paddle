@@ -194,6 +194,8 @@ from .math import lerp  # noqa: F401
 from .math import lerp_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
+from .math import gcd  # noqa: F401
+from .math import lcm  # noqa: F401
 from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
 
@@ -409,6 +411,10 @@ tensor_method_func  = [ #noqa
            'multi_dot',
            'solve',
            'triangular_solve',
+           'rad2deg',
+           'deg2rad',
+           'gcd',
+           'lcm',
            'diff',
            'lerp',
            'lerp_',
