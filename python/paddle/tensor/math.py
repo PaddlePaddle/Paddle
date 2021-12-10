@@ -2796,11 +2796,11 @@ def gcd(x, y, name=None):
     Note:
         gcd(0,0)=0, gcd(0, y)=|y|
 
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
     Args:
         x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
         y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2874,11 +2874,11 @@ def lcm(x, y, name=None):
     Note:
         lcm(0,0)=0, lcm(0, y)=0
 
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
     Args:
         x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
         y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
