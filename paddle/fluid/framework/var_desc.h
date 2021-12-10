@@ -114,7 +114,7 @@ class VarDesc {
 
   TensorDescValue GetDescValue() const;
 
-  // bool HasDescValue() const;
+  bool HasDescValue() const;
 
   bool Persistable() const { return desc_.persistable(); }
 

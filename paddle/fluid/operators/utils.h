@@ -77,13 +77,11 @@ inline bool HasCompiledContent(const framework::InferShapeContext* ctx,
   if (!ctx->IsRuntime() && ctx->HasInput(name)) {
     auto var_descs = ctx->GetInputVarPtrs(name);
     if (!var_descs.empty()) {
-      flag = std::any_of(var_descs.begin(), var_descs.end(),
-                         [](framework::InferShapeVarPtr& var_ptr) {
-                           // FIXME(Aurelius84): return
-                           // BOOST_GET(framework::VarDesc*,
-                           // var_ptr)->HasContent();
-                           return true;
-                         });
+      flag = std::any_of(
+          var_descs.begin(), var_descs.end(),
+          [](framework::InferShapeVarPtr& var_ptr) {
+            return BOOST_GET(framework::VarDesc*, var_ptr)->HasDescValue();
+          });
     }
   }
   return flag;

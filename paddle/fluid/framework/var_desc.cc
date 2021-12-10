@@ -135,8 +135,11 @@ TensorDescValue VarDesc::GetDescValue() const {
   return GetTensorDescValue(tensor_desc());
 }
 
-// bool VarDesc::HasDescValue() const { return tensor_desc().content_size() > 0;
-// }
+bool VarDesc::HasDescValue() const {
+  auto &desc = tensor_desc();
+  return desc.int32_val_size() > 0 || desc.int64_val_size() > 0 ||
+         desc.float_val_size() > 0 || desc.string_val_size() > 0;
+}
 
 void VarDesc::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type().type()) {
