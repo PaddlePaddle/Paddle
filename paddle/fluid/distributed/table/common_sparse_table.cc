@@ -383,6 +383,22 @@ int32_t CommonSparseTable::pour() {
   return 0;
 }
 
+/*
+
+  const void *data = cntl->request_attachment().fetch(
+      const_cast<char *>(req_buffer.data()), req_buffer_size);
+
+  auto value = PullSparseValue(num, dim);
+
+  value.DeserializeFromBytes(const_cast<void *>(data));
+
+  auto res_data = butil::get_object<std::vector<float>>();
+  res_data->resize(num * dim);
+  table->pull_sparse(res_data->data(), value);
+
+
+*/
+
 int32_t CommonSparseTable::pull_sparse(float* pull_values,
                                        const PullSparseValue& pull_value) {
   auto shard_num = task_pool_size_;
@@ -426,13 +442,14 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
     print_cnt_++;
     if (print_cnt_ % 200 == 0) {
       // print feasigns
-      int table_feasigns = 0;
+      uint64_t table_feasigns = 0;
       for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
         auto& block = shard_values_[shard_id];
         table_feasigns += block->feasigns();
       }
       std::cout << "===========server feasigns size============" << std::endl;
-      std::cout << "server " << _shard_idx << " feasign size: " << table_feasigns
+      std::cout << "server " << _shard_idx
+                << " feasign size: " << table_feasigns
                 << " parameter size: " << table_feasigns * 10 << std::endl;
     }
   }
@@ -481,11 +498,11 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
-  //for (int x = 0; x < num; ++x) {
+  // for (int x = 0; x < num; ++x) {
   //  std::cout << x;
   //  if (x != num - 1) std::cout << " ";
   //}
-  //std::cout << std::endl;
+  // std::cout << std::endl;
 
   for (int x = 0; x < num; ++x) {
     auto y = keys[x] % task_pool_size_;

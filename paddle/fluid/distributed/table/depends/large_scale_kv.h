@@ -72,6 +72,7 @@ struct VALUE {
   bool is_entry_;    // whether knock-in
 };
 
+//
 inline bool count_entry(VALUE *value, int threshold) {
   return value->count_ >= threshold;
 }
@@ -163,16 +164,27 @@ class ValueBlock {
     return pts;
   }
 
+  /*
+  auto feasign = pull_value.feasigns_[offset];
+  auto frequencie = pull_value.frequencies_[offset];
+  auto* value = block->Init(feasign, true, frequencie);
+  */
   // pull
   float *Init(const uint64_t &id, const bool with_update = true,
               const int counter = 1) {
+    //{
+    // std::unique_lock<std::mutex> lk(mu_);
+    // std::cout << "DEBUG in pull sparse init id:" << id << std::endl;
+    //}
     size_t hash = _hasher(id);
     size_t bucket = compute_bucket(hash);
 
-    auto &table = values_[bucket];
+    auto &table = values_[bucket];  // Value*
+
     auto res = table.find(id);
 
     VALUE *value = nullptr;
+
     if (res == table.end()) {
       value = butil::get_object<VALUE>(value_length_);
 
@@ -238,27 +250,49 @@ class ValueBlock {
     // auto &value = table.at(id);
     // return value->data_.data();
     auto res = table.find(id);
+    if (res == table.end()) return nullptr;
     VALUE *value = res->second;
     return value->data_.data();
   }
 
   // for load, to reset count, unseen_days
   VALUE *GetValue(const uint64_t &id) {
-    size_t hash = _hasher(id);
-    size_t bucket = compute_bucket(hash);
+    std::cout << "DEBUG for core in GetValue before _hasher " << std::endl;
 
-    auto &table = values_[bucket];
-    auto res = table.find(id);
-    return res->second;
+    size_t hash = _hasher(id);
+    std::cout << "DEBUG for core in GetValue after _hasher" << hash
+              << std::endl;
+    size_t bucket = compute_bucket(hash);
+    std::cout << "DEBUG for core in GetValue after compute_hash" << bucket
+              << std::endl;
+    std::cout << "DEBUG for core in GetValue before get table"
+              << SPARSE_SHARD_BUCKET_NUM << std::endl;
+
+    auto &table = values_[bucket];  // unordered_map
+    std::cout << "DEBUG for core in GetValue after get table" << table.size()
+              << std::endl;
+
+    std::cout << "DEBUG for core in GetValue "
+              << (table.find(id) == table.end()) << std::endl;
+
+    auto res = table.find(id);  // Value* res
+
+    if (res == table.end()) {
+      return nullptr;
+    } else {
+      return res->second;
+    }
   }
 
   bool GetEntry(const uint64_t &id) {
     auto value = GetValue(id);
+    if (value == nullptr) return false;
     return value->is_entry_;
   }
 
   void SetEntry(const uint64_t &id, const bool state) {
     auto value = GetValue(id);
+    if (value == nullptr) return;
     value->is_entry_ = state;
   }
 
@@ -294,6 +328,7 @@ class ValueBlock {
   }
 
   float GetThreshold() { return threshold_; }
+
   size_t compute_bucket(size_t hash) {
     if (SPARSE_SHARD_BUCKET_NUM == 1) {
       return 0;
@@ -343,8 +378,11 @@ class ValueBlock {
 
  public:
   map_type values_[SPARSE_SHARD_BUCKET_NUM];
+
   size_t value_length_ = 0;
   std::hash<uint64_t> _hasher;
+
+  std::mutex mu_;
 
  private:
   const std::vector<std::string> &value_names_;

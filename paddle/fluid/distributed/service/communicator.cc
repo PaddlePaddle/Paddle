@@ -360,8 +360,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
               << " from 0' trainer done";
     }
   }
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(100 + trainer_id_ * 10));
+  std::this_thread::sleep_for(std::chrono::milliseconds(trainer_id_));
   BarrierWithTable(1);
   return;
 }

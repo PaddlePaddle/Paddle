@@ -158,6 +158,14 @@ int32_t BrpcPsClient::initialize() {
 
   // 获取server列表，并连接
   std::vector<PSHost> server_list = _env->get_ps_servers();
+
+  std::cout << "==========DEBUG GET PORT ===================" << std::endl;
+  for (size_t i = 0; i < server_list.size(); i++) {
+    PSHost temp = server_list[i];
+    std::cout << temp.ip << " " << temp.port << " " << temp.rank << " ";
+  }
+  std::cout << "============DEBUG GET PORT================" << std::endl;
+
   _server_channels.resize(server_list.size());
   for (size_t i = 0; i < server_list.size(); ++i) {
     server_ip_port.assign(server_list[i].ip.c_str());
@@ -774,6 +782,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
 
   auto shard_sorted_kvs = std::make_shared<
       std::vector<std::vector<std::pair<uint64_t, float *>>>>();
+
   shard_sorted_kvs->resize(request_call_num);
 
   for (size_t i = 0; i < num; ++i) {
@@ -788,6 +797,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
       request_call_num, [shard_sorted_kvs, value_size](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;
+
         for (size_t i = 0; i < shard_sorted_kvs->size(); ++i) {
           if (closure->check_response(i, PS_PULL_SPARSE_TABLE) != 0) {
             ret = -1;
@@ -805,9 +815,11 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
             if (kv_pair->first == last_key) {
               memcpy((void *)kv_pair->second, (void *)last_value_data,
                      value_size);
+
             } else {
               last_key = kv_pair->first;
               last_value_data = kv_pair->second;
+
               if (value_size !=
                   io_buffer_itr.copy_and_forward((void *)(last_value_data),
                                                  value_size)) {
@@ -827,6 +839,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
 
   for (size_t i = 0; i < request_call_num; ++i) {
     auto &sorted_kvs = shard_sorted_kvs->at(i);
+
     std::sort(sorted_kvs.begin(), sorted_kvs.end(),
               [](const std::pair<uint64_t, float *> &k1,
                  const std::pair<uint64_t, float *> &k2) {
@@ -839,6 +852,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
     auto &request_buffer = closure->cntl(i)->request_attachment();
 
     request_buffer.append((void *)&is_training, sizeof(bool));
+
     std::vector<uint32_t> keys_counter;
     keys_counter.reserve(sorted_kv_size);
 
