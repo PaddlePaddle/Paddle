@@ -54,7 +54,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
 from . import utils  # noqa: F401
-
+from .model import moe
 
 __all__ = [  # noqa
       "spawn",
@@ -85,4 +85,5 @@ __all__ = [  # noqa
       "wait",
       "get_rank",
       "ProbabilityEntry",
+      "moe"
 ]
