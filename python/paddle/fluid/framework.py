@@ -40,6 +40,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from paddle import _C_ops
 
 __all__ = [
     'Program',
@@ -54,6 +55,7 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
@@ -83,10 +85,12 @@ core._disable_eager_mode()
 @signature_safe_contextmanager
 def test_eager_guard():
     core._enable_eager_mode()
+    _C_ops.switch_to_eager_ops()
     try:
         yield
     finally:
         core._disable_eager_mode()
+        _C_ops.switch_to_core_ops()
 
 
 def in_eager_mode():
@@ -477,6 +481,21 @@ def disable_signal_handler():
             paddle.disable_signal_handler()
     """
     core.disable_signal_handler()
+
+
+def is_compiled_with_cinn():
+    """
+    Whether this whl package can be used to run the model on CINN.
+
+    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_cinn = paddle.device.is_compiled_with_cinn()
+    """
+    return core.is_compiled_with_cinn()
 
 
 def is_compiled_with_cuda():

@@ -1619,6 +1619,26 @@ PDNode *patterns::Reshape::operator()() {
   return reshape_out;
 }
 
+PDNode *patterns::Slice::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto slice_op = pattern->NewNode(slice_op_repr())->assert_is_op("slice");
+
+  auto slice_in = pattern->NewNode(slice_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("slice", "Input");
+  auto slice_out = pattern->NewNode(slice_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("slice", "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({slice_in});
+  slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
+  next_op->LinksFrom({slice_out});
+  return slice_out;
+}
+
 PDNode *patterns::Matmul::operator()() {
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
 
@@ -2315,7 +2335,7 @@ PDNode *patterns::QuantizePlacement::operator()(
       std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
                                        "fc", "matmul", "pool2d", "prior_box",
                                        "reshape2", "transpose2", "fusion_gru",
-                                       "fusion_lstm", "multi_gru"});
+                                       "fusion_lstm", "multi_gru", "slice"});
   if (!quantize_enabled_op_types.empty()) {
     supported_op_types = quantize_enabled_op_types;
   }

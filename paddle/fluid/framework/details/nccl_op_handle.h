@@ -27,7 +27,7 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
 DECLARE_bool(sync_nccl_allreduce);
 
@@ -52,16 +52,16 @@ class NCCLOpHandleBase : public OpHandleBase {
   virtual ~NCCLOpHandleBase() {
     for (auto& ev : inter_events_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
     }
     for (auto& ev : exter_events_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
     }
   }
@@ -109,14 +109,14 @@ class NCCLOpHandleBase : public OpHandleBase {
 
       platform::SetDeviceId(dev_id);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(
           &inter_events_[dev_id], hipEventDisableTiming));
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(
           &exter_events_[dev_id], hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(
           &inter_events_[dev_id], cudaEventDisableTiming));
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(
           &exter_events_[dev_id], cudaEventDisableTiming));
 #endif
       VLOG(10) << "Create events on dev_id:" << dev_id
@@ -142,7 +142,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
@@ -192,7 +192,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dtype:" << datatype << ", place:" << place
              << ", stream:" << stream;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
         sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream));
 
 #ifdef PADDLE_WITH_HIP
@@ -202,11 +202,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 #endif
 
     if (FLAGS_sync_nccl_allreduce) {
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
   }
 
@@ -230,26 +226,21 @@ class NCCLOpHandleBase : public OpHandleBase {
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     hipEventRecord(exter_events_.at(dev_id), stream);
-
-    if (FLAGS_sync_nccl_allreduce) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-    }
 #else
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     cudaEventRecord(exter_events_.at(dev_id), stream);
-
-    if (FLAGS_sync_nccl_allreduce) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-    }
 #endif
+    if (FLAGS_sync_nccl_allreduce) {
+      platform::GpuStreamSync(stream);
+    }
   }
 
   void InterBroadCast(platform::Place place, void* sendbuff, size_t count,
@@ -269,7 +260,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 #else
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         sendbuff, count, datatype, 0, comm, stream));
   }
 

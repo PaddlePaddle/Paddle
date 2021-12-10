@@ -20,12 +20,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -453,14 +449,14 @@ static void SoftmaxWithCrossEntropyHardLabel(
 #ifdef PADDLE_WITH_HIP
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
         handle, platform::CudnnDataType<T>::kOne(), descp, logits_data,
         platform::CudnnDataType<T>::kZero(), descp, softmax_data,
         MIOPEN_SOFTMAX_LOG, mode));
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
         handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
         descp, logits_data, platform::CudnnDataType<T>::kZero(), descp,
         softmax_data));

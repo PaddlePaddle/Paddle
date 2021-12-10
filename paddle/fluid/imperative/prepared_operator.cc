@@ -24,6 +24,8 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
@@ -485,6 +487,14 @@ static void PreparedOpRunImpl(
         op.Type(), outs, dev_ctx->GetPlace());
   }
 
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+  }
+
   /**
    * [ Why need handle complex gradient to real gradient? ]
    *
@@ -523,12 +533,8 @@ static void PreparedOpRunPtImpl(
 
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
 #endif
   }

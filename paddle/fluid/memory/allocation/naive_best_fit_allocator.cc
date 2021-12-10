@@ -20,8 +20,8 @@
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/string/printf.h"
@@ -113,6 +113,34 @@ uint64_t Release<platform::CPUPlace>(const platform::CPUPlace &place) {
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
+  return GetCPUBuddyAllocator()->Used();
+}
+
+// For Graphcore IPU
+template <>
+void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "IPUPlace, Allocate on cpu.";
+
+  void *p = GetCPUBuddyAllocator()->Alloc(size);
+  if (FLAGS_init_allocated_mem) {
+    memset(p, 0xEF, size);
+  }
+  VLOG(10) << "  pointer=" << p;
+  return p;
+}
+template <>
+void Free<platform::IPUPlace>(const platform::IPUPlace &place, void *p,
+                              size_t size) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetCPUBuddyAllocator()->Free(p);
+}
+template <>
+uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
+  return GetCPUBuddyAllocator()->Release();
+}
+template <>
+size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
