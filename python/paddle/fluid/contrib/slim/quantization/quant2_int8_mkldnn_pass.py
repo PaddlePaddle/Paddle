@@ -426,7 +426,7 @@ class Quant2Int8MkldnnPass(object):
         if self._is_fc_quantized(graph):
             # Disabled due to topology-dependent speed-up
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
-            # graph = self._apply_pass(graph, 'fc_act_mkldnn_fuse_pass')
+            graph = self._apply_pass(graph, 'fc_act_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
