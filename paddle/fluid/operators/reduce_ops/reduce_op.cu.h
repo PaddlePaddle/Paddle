@@ -937,21 +937,5 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
       x_data, y_data, reducer, reducer.initial(), stream, config);
 }
 
-template <typename Tx, template <typename, typename> class ReduceOp>
-struct TensorReduceFunc {
-  const framework::Tensor& x;
-  framework::Tensor* y;
-  std::vector<int> origin_reduce_dims;
-  gpuStream_t stream;
-  TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
-                   std::vector<int> origin_reduce_dims, gpuStream_t stream)
-      : x(x), y(y), origin_reduce_dims(origin_reduce_dims), stream(stream) {}
-
-  template <typename Ty>
-  void apply() const {
-    TensorReduceFunctorImpl<Tx, Ty, ReduceOp>(x, y, origin_reduce_dims, stream);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle

@@ -71,27 +71,6 @@ inline void GetShuffledDim(const DDim& src_dims, DDim* dst_dims,
   }
 }
 
-static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
-                                            int dim_size, bool reduce_all) {
-  std::vector<int> reduce_dims;
-  if (reduce_all) {
-    reduce_dims.resize(dim_size);
-    int reduce_size = reduce_dims.size();
-    for (int i = 0; i < reduce_size; ++i) {
-      reduce_dims[i] = i;
-    }
-  } else {
-    for (auto e : dims) {
-      PADDLE_ENFORCE_LT(e, dim_size,
-                        paddle::platform::errors::InvalidArgument(
-                            "ReduceOp: invalid axis, when x_dims is %d, "
-                            "axis[i] should less than x_dims, but got %d.",
-                            dim_size, e));
-      reduce_dims.push_back(e >= 0 ? e : e + dim_size);
-    }
-  }
-  return reduce_dims;
-}
 template <typename DeviceContext, typename OutT>
 void GetShuffledInput(const framework::ExecutionContext& context,
                       const Tensor* input, Tensor* shuffled_input,
@@ -540,14 +519,14 @@ class ReduceOp : public framework::OperatorWithKernel {
     if (Type() == "reduce_sum") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         return framework::KernelSignature(
-            "reduce_sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
             {"Out"});
       }
     }
     if (Type() == "reduce_mean") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         return framework::KernelSignature(
-            "reduce_mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
       }
     }
     // TODO(chentianyu03): support other cases after selected rows added
@@ -697,21 +676,6 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
           dev_ctx.GetPlace(),
           static_cast<framework::proto::VarType::Type>(input->type()));
     }
-    /*
-        std::vector<int> reduce_dims =
-            GetReduceDim(dims, input->dims().size(), reduce_all);
-
-        gpuStream_t stream = context.cuda_device_context().stream();
-        if (out_dtype >= 0) {
-          framework::VisitDataTypeSmall(
-              static_cast<framework::proto::VarType::Type>(out_dtype),
-              TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims,
-       stream));
-        } else {
-          TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                                  stream);
-        }
-        */
 
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
@@ -719,7 +683,6 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
-    // pt_out->mutable_data();
 
     pten::Reduce<T, ReduceOp>(dev_ctx, *pt_x.get(), reduce_all, dims_int64,
                               false, pt_out_dtype, pt_out.get());
