@@ -85,8 +85,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
       PADDLE_THROW(
           platform::errors::Unimplemented("Please compile with WITH_IPU"));
     }
-#endif
   }
+#endif
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
