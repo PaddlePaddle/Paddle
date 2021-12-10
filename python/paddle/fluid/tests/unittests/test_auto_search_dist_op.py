@@ -1,4 +1,4 @@
-#Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -152,6 +152,22 @@ class Testcompatible(unittest.TestCase):
                                                     [1, -1, -1])
                 self.assertFalse(impls[1].is_auto_compatible(
                     DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [0, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [0, -1, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, 0, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1])
+
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
 
     def test_reshape_remove_two_compatible(self):
         valid_op_dist_attr_list = []
@@ -225,6 +241,15 @@ class Testcompatible(unittest.TestCase):
                                                      [1, 1])
                 self.assertFalse(impls[0].is_auto_compatible(
                     DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1, 1])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [0, -1])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
 
     def test_transpose_compatible(self):
         valid_op_dist_attr_list = []
@@ -257,6 +282,17 @@ class Testcompatible(unittest.TestCase):
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, 0, 0])
                 dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [0, -1, -1])
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [0, 1, 1])
                 self.assertFalse(impls[0].is_auto_compatible(dist_op))
 
     def test_softmax_compatible(self):
@@ -299,6 +335,7 @@ class Testcompatible(unittest.TestCase):
             if op.type == 'c_embedding' or op.type == 'lookup_table_v2':
                 dist_op_impl_container = get_distributed_operator_impl_container(
                     op.type)
+                impls = dist_op_impl_container.get_impls()
                 op_dist_attr = OperatorDistributedAttribute()
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
                                                     [-1, -1])
@@ -307,9 +344,33 @@ class Testcompatible(unittest.TestCase):
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
                                                      [-1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
-                impls = dist_op_impl_container.get_impls()
-                for idx, impl in enumerate(impls):
-                    self.assertTrue(impl.is_auto_compatible(dist_op))
+                self.assertTrue(impls[0].is_auto_compatible(dist_op))
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [-1, 1])
+
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, 1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, 1, 1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [1, 1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, -1, -1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [1, 1, -1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
 
 
 if __name__ == "__main__":
