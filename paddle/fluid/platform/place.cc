@@ -37,6 +37,7 @@ class PlacePrinter : public boost::static_visitor<> {
   void operator()(const MLUPlace &p) { os_ << "MLUPlace(" << p.device << ")"; }
   void operator()(const NPUPlace &p) { os_ << "NPUPlace(" << p.device << ")"; }
   void operator()(const NPUPinnedPlace &p) { os_ << "NPUPinnedPlace"; }
+  void operator()(const IPUPlace &p) { os_ << "IPUPlace(" << p.device << ")"; }
   void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
 
  private:
@@ -59,6 +60,10 @@ bool is_mlu_place(const Place &p) {
 
 bool is_npu_place(const Place &p) {
   return boost::apply_visitor(IsNPUPlace(), p);
+}
+
+bool is_ipu_place(const Place &p) {
+  return boost::apply_visitor(IsIPUPlace(), p);
 }
 
 bool is_cpu_place(const Place &p) {
@@ -87,6 +92,8 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return BOOST_GET_CONST(MLUPlace, p1) == BOOST_GET_CONST(MLUPlace, p2);
     } else if (is_npu_place(p1)) {
       return BOOST_GET_CONST(NPUPlace, p1) == BOOST_GET_CONST(NPUPlace, p2);
+    } else if (is_ipu_place(p1)) {
+      return BOOST_GET_CONST(IPUPlace, p1) == BOOST_GET_CONST(IPUPlace, p2);
     } else {
       return BOOST_GET_CONST(CUDAPlace, p1) == BOOST_GET_CONST(CUDAPlace, p2);
     }

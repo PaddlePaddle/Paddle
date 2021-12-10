@@ -1,5 +1,5 @@
-# IPU
 IF(WITH_IPU)
+  FILE(GLOB POPART_CANONICALIZATION_SRC ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/device/ipu/popart_canonicalization/*.cc)
   cc_library(ipu_device SRCS device.cc DEPS enforce popart)
   cc_library(ipu_utils SRCS ipu_utils.cc DEPS memory framework_proto popart)
   cc_library(ipu_strategy SRCS ipu_strategy.cc DEPS popart graph framework_proto enforce)

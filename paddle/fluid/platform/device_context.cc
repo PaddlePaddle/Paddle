@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/ipu/ipu_backend.h"
+#endif
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -119,8 +122,9 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU, WITH_XPU, WITH_MLU or WITH_ASCEND_CL option or check that "
-        "your train process set the correct device id if you use Executor.",
+        "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option or check "
+        "that your train process set the correct device id if you use "
+        "Executor.",
         place));
   }
   return it->second.get().get();
@@ -190,6 +194,14 @@ DeviceContextPool::DeviceContextPool(
           platform::errors::Unimplemented("MLUPlace is not supported. Please "
                                           "re-compile with WITH_MLU option."));
 #endif
+    } else if (platform::is_ipu_place(p)) {
+#ifdef PADDLE_WITH_IPU
+      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("IPUPlace is not supported. Please "
+                                          "re-compile with WITH_IPU option."));
+#endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
@@ -226,6 +238,22 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
+#ifdef PADDLE_WITH_IPU
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
+  int id = place.GetDeviceId();
+  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
+      platform::ipu::IpuBackend::GetInstance();
+  device_ = ipu_backend->GetDevice(id);
+}
+
+Place IPUDeviceContext::GetPlace() const { return place_; }
+void IPUDeviceContext::Wait() const {
+  /*! \brief  Wait for all operations completion in the stream. */
+}
+
+IPUDeviceContext::~IPUDeviceContext() {}
+
+#endif
 #ifdef PADDLE_WITH_XPU
 XPUDeviceContext::XPUDeviceContext() {
   context_ = xpu::create_context();
