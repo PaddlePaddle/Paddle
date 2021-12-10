@@ -9,6 +9,11 @@ public class Tensor {
         this.nativeTensorPointer = nativeTensorPointer;
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        if(nativeTensorPointer != 0) cppTensorDestroy(nativeTensorPointer);
+    }
+
     public void destroyNativeTensor() {
         cppTensorDestroy(nativeTensorPointer);
     }

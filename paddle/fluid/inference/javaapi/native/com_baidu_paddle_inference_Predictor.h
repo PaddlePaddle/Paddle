@@ -16,8 +16,8 @@
 #include <jni.h>
 /* Header for class com_baidu_paddle_inference_Predictor */
 
-#ifndef _Included_com_baidu_paddle_inference_Predictor  // NOLINT
-#define _Included_com_baidu_paddle_inference_Predictor
+#ifndef PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_PREDICTOR_H_
+#define PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_PREDICTOR_H_
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -124,4 +124,4 @@ Java_com_baidu_paddle_inference_Predictor_runPD(JNIEnv *, jobject, jlong);
 #ifdef __cplusplus
 }
 #endif
-#endif  // NOLINT
+#endif  // PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_PREDICTOR_H_

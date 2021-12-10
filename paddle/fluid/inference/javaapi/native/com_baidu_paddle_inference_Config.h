@@ -16,11 +16,19 @@
 #include <jni.h>
 /* Header for class com_baidu_paddle_inference_Config */
 
-#ifndef _Included_com_baidu_paddle_inference_Config  // NOLINT
-#define _Included_com_baidu_paddle_inference_Config
+#ifndef PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_CONFIG_H_
+#define PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_CONFIG_H_
 #ifdef __cplusplus
 extern "C" {
 #endif
+/*
+ * Class:     com_baidu_paddle_inference_Config
+ * Method:    cppConfigDestroy
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_cppConfigDestroy(
+    JNIEnv *, jobject, jlong);
+
 /*
  * Class:     com_baidu_paddle_inference_Config
  * Method:    createCppConfig
@@ -274,4 +282,4 @@ Java_com_baidu_paddle_inference_Config_summary(JNIEnv *, jobject, jlong);
 #ifdef __cplusplus
 }
 #endif
-#endif  // NOLINT
+#endif  // PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_CONFIG_H_

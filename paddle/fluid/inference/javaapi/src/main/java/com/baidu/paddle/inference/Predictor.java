@@ -15,13 +15,18 @@ public class Predictor {
         outputNum = getOutputNum(cppPaddlePredictorPointer);
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        if(cppPaddlePredictorPointer == 0) destroyNativePredictor();
+    }
+
     public static Predictor createPaddlePredictor(Config config){
         Predictor predictor = new Predictor(config);
         return predictor.cppPaddlePredictorPointer == 0L ? null : predictor;
     }
 
     public void destroyNativePredictor() {
-        cppPredictorDestroy(cppPaddlePredictorPointer);
+        if(cppPaddlePredictorPointer != 0) cppPredictorDestroy(cppPaddlePredictorPointer);
     }
 
     public String getInputNameById(long id){

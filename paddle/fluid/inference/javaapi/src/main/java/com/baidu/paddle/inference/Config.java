@@ -13,6 +13,10 @@ public class Config {
         this.cppPaddleConfigPointer = createCppConfig();
     }
 
+    public void destroyNativePredictor() {
+        if(cppPaddleConfigPointer != 0) cppConfigDestroy(cppPaddleConfigPointer);
+    }
+
     public boolean isValid() {
         return isCppConfigValid(cppPaddleConfigPointer);
     }
@@ -164,6 +168,8 @@ public class Config {
     public void resetCppPaddleConfigPointer() {
         cppPaddleConfigPointer = 0;
     }
+
+    private native void cppConfigDestroy(long cppPaddleConfigPointer);
 
     // 1. create Config
 

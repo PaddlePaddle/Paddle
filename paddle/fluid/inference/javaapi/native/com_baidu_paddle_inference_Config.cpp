@@ -18,6 +18,11 @@
 
 #include "pd_inference_api.h"  // NOLINT
 
+JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_cppConfigDestroy(
+    JNIEnv*, jobject, jlong cppPaddleConfigPointer) {
+  PD_ConfigDestroy(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer));
+}
+
 // 1. create Config
 
 JNIEXPORT jlong JNICALL Java_com_baidu_paddle_inference_Config_createCppConfig(

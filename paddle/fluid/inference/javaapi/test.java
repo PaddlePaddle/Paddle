@@ -16,10 +16,10 @@ public class test {
         config.enableProfile();
         config.enableMKLDNN();
 
-            System.out.println("summary:\n" + config.summary());
-            System.out.println("model dir:\n" + config.getCppModelDir());
-            System.out.println("prog file:\n" + config.getProgFile());
-            System.out.println("params file:\n" + config.getCppParamsFile());
+        System.out.println("summary:\n" + config.summary());
+        System.out.println("model dir:\n" + config.getCppModelDir());
+        System.out.println("prog file:\n" + config.getProgFile());
+        System.out.println("params file:\n" + config.getCppParamsFile());
 
         config.getCpuMathLibraryNumThreads();
         config.getFractionOfGpuMemoryForPool();
