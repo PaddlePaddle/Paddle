@@ -32,6 +32,7 @@ limitations under the License. */
 
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
 #endif
 
 namespace paddle {
@@ -686,18 +687,42 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     auto out_dtype = context.Attr<int>("out_dtype");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
-    std::vector<int> reduce_dims =
-        GetReduceDim(dims, input->dims().size(), reduce_all);
-
-    gpuStream_t stream = context.cuda_device_context().stream();
+    auto& dev_ctx = context.cuda_device_context();
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+      output->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(out_dtype));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      output->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(input->type()));
     }
+    /*
+        std::vector<int> reduce_dims =
+            GetReduceDim(dims, input->dims().size(), reduce_all);
+
+        gpuStream_t stream = context.cuda_device_context().stream();
+        if (out_dtype >= 0) {
+          framework::VisitDataTypeSmall(
+              static_cast<framework::proto::VarType::Type>(out_dtype),
+              TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims,
+       stream));
+        } else {
+          TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
+                                                  stream);
+        }
+        */
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
+    std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
+
+    auto pt_out_dtype = pten::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+    // pt_out->mutable_data();
+
+    pten::Reduce<T, ReduceOp>(dev_ctx, *pt_x.get(), reduce_all, dims_int64,
+                              false, pt_out_dtype, pt_out.get());
   }
 };
 #endif
