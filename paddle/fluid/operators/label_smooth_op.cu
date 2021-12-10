@@ -21,8 +21,7 @@ template <typename T>
 __global__ void LabelSmoothRunOriginKernel(const int N, const float epsilon,
                                            const int label_dim, const T* src,
                                            T* dst) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < N; idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(idx, N) {
     dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
                static_cast<T>(epsilon / label_dim);
   }
@@ -32,8 +31,7 @@ template <typename T>
 __global__ void LabelSmoothRunDistKernel(const int N, const float epsilon,
                                          const int dist_numel, const T* src,
                                          const T* dist_data, T* dst) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < N; idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(idx, N) {
     int dist_idx = idx % dist_numel;
     dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
                static_cast<T>(epsilon) * dist_data[dist_idx];
@@ -43,8 +41,7 @@ __global__ void LabelSmoothRunDistKernel(const int N, const float epsilon,
 template <typename T>
 __global__ void LabelSmoothGradRunKernel(const int N, const float epsilon,
                                          const T* src, T* dst) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < N; idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(idx, N) {
     dst[idx] = static_cast<T>(1 - epsilon) * src[idx];
   }
 }

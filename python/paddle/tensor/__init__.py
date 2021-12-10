@@ -111,6 +111,9 @@ from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
+from .manipulation import as_complex  # noqa: F401
+from .manipulation import as_real  # noqa: F401
+
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -411,6 +414,8 @@ tensor_method_func  = [ #noqa
            'multi_dot',
            'solve',
            'triangular_solve',
+           'as_complex',
+           'as_real',
            'rad2deg',
            'deg2rad',
            'gcd',
