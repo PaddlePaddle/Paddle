@@ -51,17 +51,11 @@ def limit_by_capacity(topk_idx, num_expert, world_size, capacity, group=None):
         new_gec = paddle.distributed.utils.limit_by_capacity(gec, capacity,
                                                              world_size)
         if world_size > 1:
-            # new_lec = []
-            # paddle.disstributed.alltoall(
-            #     paddle.split(new_gec, world_size, axis=0),
-            #     new_lec, group=group
-            # )
-            # new_lec = paddle.concat(new_lec, axis=0)
             assert group.nranks == world_size
             new_lec = _alltoall(new_gec, group=group)
         else:
             new_lec = new_gec
-        # new_lec = paddle.to_tensor(new_lec, dtype="int64")
+
         topk_idx = paddle.distributed.utils.prune_gate_by_capacity(
             topk_idx, new_lec, num_expert, world_size)
 
