@@ -25,7 +25,7 @@
 
 ### 安装最新稳定版本:
 ```
-# CPU
+# CPU Test
 pip install paddlepaddle
 # GPU
 pip install paddlepaddle-gpu
