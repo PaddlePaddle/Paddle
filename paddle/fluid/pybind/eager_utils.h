@@ -18,7 +18,7 @@ namespace paddle {
 namespace pybind {
 
 typedef struct {
-  PyObject_HEAD egr::EagerTensor eagertensor;
+  PyObject_HEAD egr::EagerTensor eager_tensor;
 } EagerTensorObject;
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
@@ -33,7 +33,9 @@ egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
                                                             ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
-
+std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
+framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
+                                                    ssize_t arg_pos);
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
@@ -49,6 +51,7 @@ PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 
 }  // namespace pybind
 }  // namespace paddle

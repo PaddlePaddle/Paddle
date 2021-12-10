@@ -45,7 +45,7 @@ __all__ = [
     'Program',
     'default_startup_program',
     'default_main_program',
-    'eager_guard',
+    'test_eager_guard',
     'in_eager_mode',
     'program_guard',
     'name_scope',
@@ -77,21 +77,20 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _global_flags_ = core.globals()
-_eager_mode_ = False
+core._disable_eager_mode()
 
 
 @signature_safe_contextmanager
-def eager_guard():
-    global _eager_mode_
-    _eager_mode_ = True
+def test_eager_guard():
+    core._enable_eager_mode()
     try:
         yield
     finally:
-        _eager_mode_ = False
+        core._disable_eager_mode()
 
 
 def in_eager_mode():
-    return _eager_mode_
+    return core._in_eager_mode()
 
 
 def require_version(min_version, max_version=None):
@@ -228,7 +227,10 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return _dygraph_tracer_ is not None
+    if in_eager_mode():
+        return in_eager_mode()
+    else:
+        return _dygraph_tracer_ is not None
 
 
 def _dygraph_not_support_(func):
@@ -6401,14 +6403,19 @@ def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
-
-    _set_dygraph_tracer_expected_place(place)
+    if in_eager_mode():
+        core.eager._set_expected_place(place)
+    else:
+        _set_dygraph_tracer_expected_place(place)
 
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
-        _set_dygraph_tracer_expected_place(tmp_place)
+        if in_eager_mode():
+            core.eager._set_expected_place(_global_expected_place_)
+        else:
+            _set_dygraph_tracer_expected_place(_global_expected_place_)
 
 
 def switch_device(device):

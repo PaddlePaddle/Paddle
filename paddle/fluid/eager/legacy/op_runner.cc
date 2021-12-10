@@ -131,10 +131,10 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
 
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
   NameTensorMap new_ins = ins;
-  if (amp_level == 1) {
+  if (amp_level == paddle::imperative::AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (amp_level == 2) {
+  } else if (amp_level == paddle::imperative::AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }
