@@ -487,6 +487,14 @@ static void PreparedOpRunImpl(
         op.Type(), outs, dev_ctx->GetPlace());
   }
 
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+  }
+
   /**
    * [ Why need handle complex gradient to real gradient? ]
    *
