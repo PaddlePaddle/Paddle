@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -168,10 +170,17 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
+  Carrier& carrier_instance = Carrier::Instance();
+  std::unique_lock<std::mutex> lock(carrier_instance.run);
   VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
           << step_ + 1 << " time.";
   for (auto op : node_->ops()) {
     op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
+    if (gc_) {
+      framework::DeleteUnusedTensors(
+          *microbatch_scopes_[step_ % node_->max_run_times()], op,
+          node_->unused_vars(), gc_.get());
+    }
   }
 }
 
