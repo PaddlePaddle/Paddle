@@ -1,3 +1,17 @@
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #include <mutex>
 #include <vector>
 #include "gflags/gflags.h"
@@ -39,27 +53,6 @@ static int GetMLUDeviceCountImpl() {
     return 0;
   }
 
-  const auto *mlu_visible_devices = std::getenv("MLU_VISIBLE_DEVICES");
-  if (mlu_visible_devices != nullptr) {
-    std::string mlu_visible_devices_str(mlu_visible_devices);
-    if (!mlu_visible_devices_str.empty()) {
-      mlu_visible_devices_str.erase(
-          0, mlu_visible_devices_str.find_first_not_of('\''));
-      mlu_visible_devices_str.erase(
-          mlu_visible_devices_str.find_last_not_of('\'') + 1);
-      mlu_visible_devices_str.erase(
-          0, mlu_visible_devices_str.find_first_not_of('\"'));
-      mlu_visible_devices_str.erase(
-          mlu_visible_devices_str.find_last_not_of('\"') + 1);
-    }
-    if (std::all_of(mlu_visible_devices_str.begin(),
-                    mlu_visible_devices_str.end(),
-                    [](char ch) { return ch == ' '; })) {
-      VLOG(2) << "MLU_VISIBLE_DEVICES  is set to be "
-                 "empty. No MLU detected.";
-      return 0;
-    }
-  }
   int count;
   PADDLE_ENFORCE_MLU_SUCCESS(cnDeviceGetCount(&count));
   return count;

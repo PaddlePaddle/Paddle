@@ -386,23 +386,22 @@ void* MLUAllocator::Alloc(size_t* index, size_t size) {
     size_t allocated = total - avail;
 
     std::string err_msg;
-    // TODO(fwg): modify err msg
     if (is_limited) {
       auto limit_size = (total >> 20);
       err_msg = string::Sprintf(
           "\n   3) Set environment variable `FLAGS_gpu_memory_limit_mb` to a "
           "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
-          "maximum GPU memory usage is limited to %d MB.\n"
+          "maximum MLU memory usage is limited to %d MB.\n"
           "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
           limit_size, limit_size);
     }
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
-        "\n\nOut of memory error on GPU %d. "
-        "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
+        "\n\nOut of memory error on MLU %d. "
+        "Cannot allocate %s memory on MLU %d, %s memory has been allocated and "
         "available memory is only %s.\n\n"
-        "Please check whether there is any other process using GPU %d.\n"
-        "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+        "Please check whether there is any other process using MLU %d.\n"
+        "1. If yes, please stop them, or start PaddlePaddle on another MLU.\n"
         "2. If no, please try one of the following suggestions:\n"
         "   1) Decrease the batch size of your model.\n"
         "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "

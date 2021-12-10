@@ -740,8 +740,7 @@ void *Alloc<platform::MLUPlace>(const platform::MLUPlace &place,
   if (ptr == nullptr) {
     platform::MLUDeviceGuard(place.device);
     size_t avail = 0, total = 0;
-    // TODO(fwg): get real mem usage
-    // platform::MluMemoryUsage(&avail, &total);
+    platform::MLUMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
         "Cannot allocate %s in MLU %d, avaliable %s, total %s, MLUMinChunkSize "
         "%s, MLUMinChunkSize %s, MLU memory used: %s.",
@@ -752,7 +751,7 @@ void *Alloc<platform::MLUPlace>(const platform::MLUPlace &place,
         string::HumanReadableSize(Used<platform::MLUPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
-      // TODO(fwg): memset
+      cnrtMemset(ptr, 0xEF, size);
     }
   }
   return ptr;
