@@ -16,7 +16,6 @@
 
 #include <memory>
 #include <string>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/io.h"
@@ -68,10 +67,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                               "The scope ptr should not be nullptr."));
   argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
-  // ipu related
+// ipu related
+#ifdef PADDLE_WITH_IPU
   if (argument->Has("use_ipu")) {
     if (argument->use_ipu()) {
-#ifdef PADDLE_WITH_IPU
       argument->main_graph().SetNotOwned("num_ipus",
                                          &argument->ipu_device_num());
       argument->main_graph().SetNotOwned("need_avg_shard",
@@ -82,11 +81,11 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                                          &argument->ipu_batches_per_step());
       argument->main_graph().SetNotOwned("batch_size",
                                          &argument->ipu_batch_size());
-#else
+    } else {
       PADDLE_THROW(
           platform::errors::Unimplemented("Please compile with WITH_IPU"));
-#endif
     }
+#endif
   }
 }
 

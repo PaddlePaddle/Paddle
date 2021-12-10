@@ -247,6 +247,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     }
 
     pass->Set("disable_logs", new bool(disable_logs_));
+
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
