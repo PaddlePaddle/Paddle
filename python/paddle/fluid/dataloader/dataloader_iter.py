@@ -273,6 +273,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
                     data = [
                         _restore_batch(d, s)
                         for d, s in zip(data, self._structure_infos[:len(
@@ -718,6 +720,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
                     data = [
                         _restore_batch(d, s)
                         for d, s in zip(data, self._structure_infos[:len(

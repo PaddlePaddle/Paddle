@@ -180,10 +180,11 @@ enum TableType {
 
 message TableParameter {
   optional uint64 table_id = 1;
-  optional string table_class = 2;
-  optional uint64 shard_num = 3 [ default = 1000 ];
-  optional TableType type = 4;
-  optional TableAccessorParameter accessor = 5;
+  optional string table_name = 2;
+  optional string table_class = 3;
+  optional uint64 shard_num = 4 [ default = 1000 ];
+  optional TableType type = 5;
+  optional TableAccessorParameter accessor = 6;
 }
 
 message TableAccessorParameter {
@@ -198,7 +199,6 @@ message TableAccessorParameter {
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
 }
 
-// TODO(guanqun): add NaiveSGD/Adam...
 message SGDParameter {
   optional string name = 1;
   optional SparseNaiveSGDRuleParameter naive = 2;
@@ -321,7 +321,7 @@ message DistributedStrategy {
   optional HybridConfig hybrid_configs = 112;
   optional TensorParallelConfig tensor_parallel_configs = 113;
   optional TrainerDescConfig trainer_desc_configs = 114;
-  optional TableParameter downpour_table_param = 115;
+  repeated TableParameter downpour_table_param = 115;
   optional FsClientParameter fs_client_param = 116;
 
   optional BuildStrategy build_strategy = 201;

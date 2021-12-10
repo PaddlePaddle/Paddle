@@ -1760,7 +1760,8 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(Type());
+  return KernelSignatureMap::Instance().Get(
+      pten::TransToPtenKernelName(Type()));
 }
 
 void OperatorWithKernel::BuildPtenKernelContext(
