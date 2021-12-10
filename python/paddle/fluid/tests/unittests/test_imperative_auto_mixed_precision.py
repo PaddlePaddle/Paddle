@@ -524,38 +524,29 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
-    def test_input_formate_exception(self):
-        def test_model_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                opt = paddle.optimizer.SGD(parameters=model.parameters())
-                paddle.amp.decorate(models=None, optimizers=opt, level='O2')
-
-        self.assertRaises(TypeError, test_model_error)
-
-        def test_optimizer_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                paddle.amp.decorate(models=model, optimizers=None, level='O2')
-
-        self.assertRaises(TypeError, test_optimizer_error)
-
     def test_input_type_exception(self):
-        def test_error_model_optimizer():
+        def test_error_model():
             class MyModel(object):
                 def __init__(self):
                     print("A fake Model")
 
+            model = MyModel()
+            with fluid.dygraph.guard():
+                paddle.amp.decorate(models=model, optimizers=None, level='O2')
+
+        self.assertRaises(TypeError, test_error_model)
+
+        def test_error_optimizer():
             class MyOptimizer(object):
                 def __init__(self):
                     print("A fake Optimizer")
 
-            model = MyModel()
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
             opt = MyOptimizer()
             with fluid.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
 
-        self.assertRaises(TypeError, test_error_model_optimizer)
+        self.assertRaises(TypeError, test_error_optimizer)
 
     def test_set_master_weight(self):
         model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
@@ -563,32 +554,49 @@ class TestAmpDecorator(unittest.TestCase):
             learning_rate=0.0001,
             parameters=model1.parameters(),
             multi_precision=True)
-        model1, opt1 = paddle.amp.decorate(
-            models=model1, optimizers=opt1, level='O2', master_weight=None)
-        self.assertEqual(opt1._multi_precision, True)
 
         model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt2 = paddle.optimizer.Adam(
             learning_rate=0.0001,
             parameters=model2.parameters(),
             multi_precision=False)
-        model2, opt2 = paddle.amp.decorate(
-            models=model2, optimizers=opt2, level='O2', master_weight=None)
+
+        model1, opt1 = paddle.amp.decorate(
+            models=model1, optimizers=opt1, level='O2', master_weight=None)
+        self.assertEqual(opt1._multi_precision, True)
+
+        models, opt2 = paddle.amp.decorate(
+            models=[model1, model2],
+            optimizers=opt2,
+            level='O2',
+            master_weight=None)
         self.assertEqual(opt2._multi_precision, True)
 
         model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt3 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model3.parameters())
-        model3, opt3 = paddle.amp.decorate(
-            models=model3, optimizers=opt3, level='O2', master_weight=True)
-        self.assertEqual(opt3._multi_precision, True)
 
         model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt4 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model4.parameters())
-        model4, opt4 = paddle.amp.decorate(
-            models=model4, optimizers=opt4, level='O2', master_weight=False)
-        self.assertEqual(opt4._multi_precision, False)
+
+        model3, opts = paddle.amp.decorate(
+            models=model3,
+            optimizers=[opt3, opt4],
+            level='O2',
+            master_weight=True)
+        self.assertEqual(opts[0]._multi_precision, True)
+        self.assertEqual(opts[1]._multi_precision, True)
+
+        models = [model3, model4]
+        optimizers = [opt3, opt4]
+        models, optimizers = paddle.amp.decorate(
+            models=models,
+            optimizers=optimizers,
+            level='O2',
+            master_weight=False)
+        self.assertEqual(optimizers[0]._multi_precision, False)
+        self.assertEqual(optimizers[1]._multi_precision, False)
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
@@ -893,8 +901,7 @@ class TestResnet2(unittest.TestCase):
             train_reader = train_loader
 
         if enable_amp and (level == 'O2'):
-            resnet, optimizer = paddle.amp.decorate(
-                models=resnet, optimizers=optimizer, level='O2')
+            resnet = paddle.amp.decorate(models=resnet, level='O2')
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:

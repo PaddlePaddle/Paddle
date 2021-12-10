@@ -642,7 +642,7 @@ def _load_distributed_state_dict(checkpoint_path):
     """ Load parameters' state_dict from checkpoint_path """
     all_state_dict = {}
     for idx, ckpt_file in enumerate(checkpoint_path):
-        state_dict_info = paddle.load(ckpt_file)
+        state_dict_info = paddle.load(ckpt_file, return_numpy=True)
         pre_world_size = state_dict_info["world_size"]
         assert pre_world_size == len(checkpoint_path), \
             "The number of 'checkpoint_path' must be equal to the last training world size."
@@ -778,12 +778,16 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
                                              dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
+    merged_partiton = []
     for process in process_group:
         partition_index = _compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
-        _merge_parameter(partition_param_list, param_list[index],
-                         partition_index)
+        if partition_index not in merged_partiton:
+            merged_partiton.append(partition_index)
+            _merge_parameter(partition_param_list, param_list[index],
+                             partition_index, complete_shape)
+
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
     complete_param = _to_LodTensor(partition_param_list[0][0])
@@ -810,7 +814,8 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
     return sliced_param
 
 
-def _merge_parameter(partition_param_list, param, partition_index):
+def _merge_parameter(partition_param_list, param, partition_index,
+                     complete_shape):
     """
     Merge partitial parameters to a complete one.
 
@@ -830,16 +835,23 @@ def _merge_parameter(partition_param_list, param, partition_index):
     """
     from .reshard import _compute_concat_info
 
+    if len(partition_param_list) == 1:
+        is_complete_data = True
+        for idx, item in enumerate(partition_param_list[0][1]):
+            if item[0] != 0 or item[1] != complete_shape[idx]:
+                is_complete_data = False
+                break
+        if is_complete_data:
+            return
+
     if not partition_param_list:
         partition_param_list.append((param, partition_index))
     else:
         i = 0
-        has_concat = False
         while i < len(partition_param_list):
             concat_axis, first_order, new_partition = _compute_concat_info(
                 partition_param_list[i][1], partition_index)
             if concat_axis != -1:
-                has_concat = True
                 if first_order == 0:
                     new_param = np.concatenate(
                         (partition_param_list[i][0], param), axis=concat_axis)
@@ -848,18 +860,10 @@ def _merge_parameter(partition_param_list, param, partition_index):
                         (param, partition_param_list[i][0]), axis=concat_axis)
 
                 partition_param_list.pop(i)
-                _merge_parameter(partition_param_list, new_param, new_partition)
+                _merge_parameter(partition_param_list, new_param, new_partition,
+                                 complete_shape)
                 break
             i += 1
-
-        if not has_concat:
-            need_append = True
-            for i in range(len(partition_param_list)):
-                if partition_index == partition_param_list[i][1]:
-                    need_append = False
-                    break
-            if need_append:
-                partition_param_list.append((param, partition_index))
 
 
 def _slice_parameter(complete_param, partition_index_list, length):
@@ -977,3 +981,194 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             complete_shape))
     split_indices_list = [sorted(x) for x in split_indices_list]
     return split_indices_list
+
+
+def set_grad_var_shape(program, dist_context):
+    from .operators.common import infer_shape
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+    block = program.global_block()
+    vars = block.vars
+    for op in block.ops:
+        if op.type == "sum":
+            continue
+        if int(op.attr('op_role')) == int(OpRole.Backward):
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            assert op_dist_attr is not None
+
+            for var_name in op.output_arg_names:
+                assert "@GRAD" in var_name
+                forward_var_name = var_name[:var_name.find("@GRAD")]
+                if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
+                    forward_var_name = op.input_arg_names[0]
+
+                need_set_shape_list = [
+                    "reshape2_grad", "softmax_with_cross_entropy_grad",
+                    "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
+                    "dropout_grad"
+                ]
+                forward_list = [
+                    "reshape2", "softmax_with_cross_entropy", "transpose2",
+                    "softmax", "cross_entropy2", "dropout"
+                ]
+                if op.type in need_set_shape_list:
+                    for forward_op in block.ops:
+                        assert int(forward_op.attr('op_role')) != int(
+                            OpRole.Backward)
+                        idx = need_set_shape_list.index(op.type)
+                        forward_op_name = forward_list[idx]
+                        if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
+                            op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                                forward_op)
+                            break
+
+                forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                    forward_var_name)
+                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                forward_var = vars[forward_var_name]
+                forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    forward_var)
+                assert forward_var_dist_attr is not None
+                grad_var = vars[var_name]
+                ref_shape = infer_shape(block, forward_var,
+                                        forward_var_dist_attr,
+                                        forward_input_dist_attr)
+
+                if list(grad_var.shape) != ref_shape:
+                    grad_var.desc.set_shape(ref_shape)
+
+
+def update_op_dims_mapping_by_default_dist_impl(dist_op):
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    # The following statement will be replaced by a more elegent way
+    if op_desc.type() == "shape" or op_desc.type() == "slice":
+        return False
+    output_names = op_desc.output_names()
+    xshape_arg_names = []
+    if "XShape" in output_names:
+        xshape_arg_names = op_desc.output("XShape")
+    batch_dim_mappings = []
+    for arg_name in op_desc.input_arg_names():
+        serial_tensor = dist_op.get_serial_input(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if len(dims_mapping) > 1:
+            for idx, mapping in enumerate(dims_mapping[1:]):
+                assert mapping == -1, \
+                    "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
+                        .format(op_desc.type(), idx, mapping)
+        batch_dim_mappings.append(dims_mapping[0])
+    for arg_name in op_desc.output_arg_names():
+        serial_tensor = dist_op.get_serial_output(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if arg_name not in xshape_arg_names:
+            if len(dims_mapping) > 1:
+                for idx, mapping in enumerate(dims_mapping[1:]):
+                    assert mapping == -1, \
+                        "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
+                            .format(op_desc.type(), idx, mapping)
+            batch_dim_mappings.append(dims_mapping[0])
+        else:
+            assert dims_mapping[0] == -1, \
+                "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part."\
+                    .format(op_desc.type(), mapping)
+            if len(dims_mapping) > 2:
+                for idx, mapping in enumerate(dims_mapping[2:]):
+                    assert mapping == -1, \
+                        "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {} is sharded by {} part."\
+                            .format(op_desc.type(), idx, mapping)
+            batch_dim_mappings.append(dims_mapping[1])
+
+    compatible_dim_mapping = compute_compatible_dim_mapping(batch_dim_mappings)
+    assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+    for arg_name in op_desc.input_arg_names():
+        serial_tensor = dist_op.get_serial_input(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if compatible_dim_mapping != dims_mapping[0]:
+            dims_mapping[0] = compatible_dim_mapping
+            changed = True
+    for arg_name in op_desc.output_arg_names():
+        serial_tensor = dist_op.get_serial_output(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if arg_name not in xshape_arg_names:
+            if compatible_dim_mapping != dims_mapping[0]:
+                dims_mapping[0] = compatible_dim_mapping
+                changed = True
+        else:
+            if compatible_dim_mapping != dims_mapping[1]:
+                dims_mapping[1] = compatible_dim_mapping
+                changed = True
+
+    return changed
+
+
+def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    input_arg_names = op_desc.input_arg_names()
+    input_dims_mapping_dict = {}
+    input_dims_mapping_lens = {}
+    max_dims_mapping_len = -1
+    for arg_name in input_arg_names:
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if max_dims_mapping_len < len(dims_mapping):
+            max_dims_mapping_len = len(dims_mapping)
+        input_dims_mapping_dict[arg_name] = dims_mapping
+        input_dims_mapping_lens[arg_name] = len(dims_mapping)
+
+    dims_mapping_list = []
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [-1 for _ in range(max_dims_mapping_len)]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[new_idx] = input_dims_mapping_dict[arg_name][i]
+            dims_mapping_list.append(new_dims_mapping)
+        else:
+            dims_mapping_list.append(input_dims_mapping_dict[arg_name])
+    output_arg_names = op_desc.output_arg_names()
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        assert len(dims_mapping) == max_dims_mapping_len
+        dims_mapping_list.append(dims_mapping)
+
+    compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
+    assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [
+                -1 for _ in range(input_dims_mapping_lens[arg_name])
+            ]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[i] = compatible_dims_mapping[new_idx]
+            if new_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+                changed = True
+        else:
+            if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name,
+                                                    compatible_dims_mapping)
+                changed = True
+
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if compatible_dims_mapping != dims_mapping:
+            op_dist_attr.set_output_dims_mapping(arg_name,
+                                                 compatible_dims_mapping)
+            changed = True
+
+    return changed

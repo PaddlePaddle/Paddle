@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #endif
 
 namespace paddle {
@@ -33,6 +33,32 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
   VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
   std::memcpy(dst, src, num);
 }
+#ifdef PADDLE_WITH_IPU
+template <>
+void Copy<platform::IPUPlace, platform::CPUPlace>(platform::IPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+template <>
+void Copy<platform::CPUPlace, platform::IPUPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::IPUPlace src_place,
+                                                  const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+template <>
+void Copy<platform::IPUPlace, platform::IPUPlace>(platform::IPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::IPUPlace src_place,
+                                                  const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+#endif
 
 #ifdef PADDLE_WITH_XPU
 template <>

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_def.h"
@@ -87,26 +88,26 @@ using XPUContext = paddle::platform::XPUDeviceContext;
     }                                                                   \
   }
 
-#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)     \
-  template <typename... Tail>                                           \
-  struct KernelCallHelper<const std::vector<tensor_type>&, Tail...> {   \
-    template <int dev_ctx_idx,                                          \
-              int in_idx,                                               \
-              int attr_idx,                                             \
-              int out_idx,                                              \
-              typename... PreviousArgs>                                 \
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {   \
-      static_assert(attr_idx == 0,                                      \
-                    "Kernel's Input should appear before Attributes."); \
-      static_assert(out_idx == 0,                                       \
-                    "Kernel's Input should appear before Outputs.");    \
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);      \
-      std::vector<tensor_type> arg = std::move(                         \
-          ctx->InputBetween<tensor_type>(range.first, range.second));   \
-      KernelCallHelper<Tail...>::                                       \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>( \
-              ctx, pargs..., arg);                                      \
-    }                                                                   \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)        \
+  template <typename... Tail>                                              \
+  struct KernelCallHelper<const std::vector<tensor_type>&, Tail...> {      \
+    template <int dev_ctx_idx,                                             \
+              int in_idx,                                                  \
+              int attr_idx,                                                \
+              int out_idx,                                                 \
+              typename... PreviousArgs>                                    \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {      \
+      static_assert(attr_idx == 0,                                         \
+                    "Kernel's Input should appear before Attributes.");    \
+      static_assert(out_idx == 0,                                          \
+                    "Kernel's Input should appear before Outputs.");       \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);         \
+      std::vector<tensor_type> arg = std::move(                            \
+          ctx->MoveInputsBetween<tensor_type>(range.first, range.second)); \
+      KernelCallHelper<Tail...>::                                          \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(    \
+              ctx, pargs..., arg);                                         \
+    }                                                                      \
   }
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
@@ -207,7 +208,10 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
 
   /* Output Helpers */
 

@@ -1,0 +1,10 @@
+add_subdirectory(eigen)
+add_subdirectory(blas)
+add_subdirectory(general)
+
+cc_library(pten_transpose_cpu SRCS transpose.cc DEPS dense_tensor device_context)
+if(WITH_GPU)
+  nv_library(pten_transpose_cuda SRCS transpose.cu DEPS dense_tensor malloc device_context)
+elseif(WITH_ROCM)
+  hip_library(pten_transpose_cuda SRCS transpose.cu DEPS dense_tensor malloc device_context)
+endif()

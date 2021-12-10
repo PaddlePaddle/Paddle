@@ -23,6 +23,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
+
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -232,43 +239,29 @@ class ReduceKernel : public framework::OpKernel<T> {
     bool keep_dim = context.Attr<bool>("keep_dim");
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
-
-    // The dims has full dim, set the reduce_all is True
-    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
-    std::set<int> dims_set(dims.begin(), dims.end());
-    bool full_dim = true;
-    for (auto i = 0; i < input_dim_size; i++) {
-      if (dims_set.find(i) == dims_set.end()) {
-        full_dim = false;
-        break;
-      }
-    }
-    reduce_all = (reduce_all || full_dim);
+    auto* input = context.Input<Tensor>("X");
 
     if (out_dtype < 0) {
-      auto* cast_input = context.Input<Tensor>("X");
       cast_out_dtype =
-          static_cast<framework::proto::VarType::Type>(cast_input->type());
-      framework::VisitDataType(
-          cast_out_dtype,
-          ReduceKernelFunctor<DeviceContext, T, Functor>(
-              cast_input, output, dims, keep_dim, reduce_all, context));
+          static_cast<framework::proto::VarType::Type>(input->type());
     } else {
-      Tensor tmp_tensor;
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
-      auto* input = context.Input<Tensor>("X");
-
-      tmp_tensor.Resize(input->dims());
-      framework::VisitDataType(
-          cast_out_dtype,
-          CastOpFunctor<DeviceContext, T>(
-              input, &tmp_tensor,
-              context.template device_context<DeviceContext>()));
-      framework::VisitDataType(
-          cast_out_dtype,
-          ReduceKernelFunctor<DeviceContext, T, Functor>(
-              &tmp_tensor, output, dims, keep_dim, reduce_all, context));
     }
+
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    output->mutable_data(
+        dev_ctx.GetPlace(),
+        static_cast<framework::proto::VarType::Type>(cast_out_dtype));
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
+
+    std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
+
+    // call new kernel
+    pten::general::Reduce<DeviceContext, T, Functor>(
+        dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
+        pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }
 };
 template <typename DeviceContext, typename OutT, typename Functor>

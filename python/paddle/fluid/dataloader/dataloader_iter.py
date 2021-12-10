@@ -24,7 +24,7 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
-from paddle.fluid.framework import _set_expected_place, _current_expected_place
+from paddle.fluid.framework import _set_expected_place, _current_expected_place, set_flags
 
 # NOTE: queue has a different name in python2 and python3
 import queue
@@ -202,6 +202,22 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
+        # NOTE(chenweihang): [ Why need to set not to execute pten kernel here? ]
+        # Now, in order to ensure that the execution performance of the dynamic
+        # graph mode in pten compatible state does not decline significantly,
+        # we have adopted the approach of caching a KernelContext globally for
+        # the dynamic graph tracer to reduce the construction and deconstruction
+        # overhead of data interfaces such as the compatible state DenseTensor.
+        # The static graph is each op caches a KernelContext, but the op of
+        # the dynamic graph will be constructed and destroyed every round of
+        # execution, so it is impossible to cache KernelContext for each op.
+        # However, it is not thread-safe if using only one global kernel context in
+        # dynamic graph. If the pten op of paddle is used in the DataLoader thread,
+        # it may cause access errors. We temporarily do not execute pten kernel
+        # in this scenario and will find a better solution later and remove
+        # this setting.
+        set_flags({'FLAGS_run_pten_kernel': False})
+
         while not self._thread_done_event.is_set():
             try:
                 indices = next(self._sampler_iter)
@@ -257,6 +273,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
                     data = [
                         _restore_batch(d, s)
                         for d, s in zip(data, self._structure_infos[:len(
@@ -501,6 +519,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
+        # NOTE(chenweihang): See Note [ Why need to set not to execute pten kernel here? ]
+        set_flags({'FLAGS_run_pten_kernel': False})
+
         while not self._thread_done_event.is_set():
             batch = self._get_data()
             if not self._thread_done_event.is_set():
@@ -699,6 +720,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
                     data = [
                         _restore_batch(d, s)
                         for d, s in zip(data, self._structure_infos[:len(
