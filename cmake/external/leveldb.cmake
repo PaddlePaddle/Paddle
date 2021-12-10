@@ -14,7 +14,7 @@
 
 INCLUDE(ExternalProject)
 
-SET(LEVELDB_SOURCES_DIR ${THIRD_PARTY_PATH}/leveldb)
+SET(LEVELDB_PREFIX_DIR ${THIRD_PARTY_PATH}/leveldb)
 SET(LEVELDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/leveldb)
 SET(LEVELDB_INCLUDE_DIR "${LEVELDB_INSTALL_DIR}/include" CACHE PATH "leveldb include directory." FORCE)
 SET(LEVELDB_LIBRARIES "${LEVELDB_INSTALL_DIR}/lib/libleveldb.a" CACHE FILEPATH "leveldb library." FORCE)
@@ -23,15 +23,15 @@ INCLUDE_DIRECTORIES(${LEVELDB_INCLUDE_DIR})
 ExternalProject_Add(
         extern_leveldb
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        PREFIX ${LEVELDB_SOURCES_DIR}
+        PREFIX ${LEVELDB_PREFIX_DIR}
         GIT_REPOSITORY "https://github.com/google/leveldb"
         GIT_TAG v1.18
         UPDATE_COMMAND ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
         INSTALL_COMMAND mkdir -p ${LEVELDB_INSTALL_DIR}/lib/
-        && cp ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
-        && cp -r ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/include ${LEVELDB_INSTALL_DIR}/
+        && cp ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
+        && cp -r ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/include ${LEVELDB_INSTALL_DIR}/
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES}
 )

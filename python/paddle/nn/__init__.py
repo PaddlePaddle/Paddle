@@ -52,6 +52,7 @@ from .layer.activation import LogSoftmax  # noqa: F401
 from .layer.activation import Maxout  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
+from .layer.common import ZeroPad2D  # noqa: F401
 from .layer.common import Pad3D  # noqa: F401
 from .layer.common import CosineSimilarity  # noqa: F401
 from .layer.common import Embedding  # noqa: F401
@@ -293,5 +294,7 @@ __all__ = [     #noqa
            'PixelShuffle',
            'ELU',
            'ReLU6',
-           'LayerDict'
+           'LayerDict',
+           'ZeroPad2D',
+           'MaxUnPool2D',
 ]

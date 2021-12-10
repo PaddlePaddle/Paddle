@@ -49,7 +49,7 @@ class InterpreterCore {
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
-  paddle::framework::FetchList Run();
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
@@ -83,6 +83,10 @@ class InterpreterCore {
   void BuildSkipShareLoDInfo();
 
   void BuildOperatorDependences();
+
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+
+  void ClearLoDTensorArrayInLocalScope();
 
   bool is_build_;
 

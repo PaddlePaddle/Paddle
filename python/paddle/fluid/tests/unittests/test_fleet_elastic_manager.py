@@ -20,7 +20,9 @@ import unittest
 import argparse
 
 from paddle.distributed.fleet.elastic.manager import ElasticManager
+from paddle.distributed.fleet.elastic.manager import LauncherInterface
 from paddle.distributed.fleet.elastic.manager import ELASTIC_TIMEOUT
+from paddle.distributed.fleet.elastic.manager import ELASTIC_AUTO_PARALLEL_EXIT_CODE
 
 
 class MockLease():
@@ -346,6 +348,47 @@ class TestElasticManager(unittest.TestCase):
 
         args.elastic_pre_hook = "hostname"
         elastic.pre_hook()
+
+    def test_watch(self):
+        class Argument:
+            elastic_server = "127.0.0.1:2379"
+            job_id = "test_job_id_123"
+            np = "2"
+            gpus = "0"
+            nproc_per_node = 1
+            host = None
+            curr_host = None
+            ips = None
+            scale = None
+            force = None
+            backend = 'gloo'
+            elastic_pre_hook = None
+
+        class ElasticLauncher:
+            def watch(self):
+                return ELASTIC_AUTO_PARALLEL_EXIT_CODE
+
+            def stop(self):
+                pass
+
+        args = Argument()
+        elastic = ElasticManager(args, self.etcd_client)
+        elastic.stopped = False
+        elastic.launcher = ElasticLauncher()
+        elastic.watch()
+
+    def test_launcher_interface_check_procs(self):
+        class Proc:
+            def poll(self):
+                return ELASTIC_AUTO_PARALLEL_EXIT_CODE
+
+        class ProcList:
+            def __init__(self):
+                self.proc = Proc()
+
+        launch = LauncherInterface(None)
+        launch.procs = [ProcList()]
+        launch._check_procs()
 
 
 if __name__ == "__main__":

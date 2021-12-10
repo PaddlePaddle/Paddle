@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/manipulation.h"
 #include "paddle/pten/api/include/utils.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -66,6 +65,9 @@ inline bool IsDenseTensor(
 }
 
 }  // namespace detail
+
+// declare cast api
+Tensor cast(const Tensor &x, DataType out_dtype);
 
 /////// Tensor Methods ////////
 
@@ -157,19 +159,19 @@ T *Tensor::mutable_data() {
   return nullptr;
 }
 
-template PD_DLL_DECL float *Tensor::mutable_data<float>();
-template PD_DLL_DECL double *Tensor::mutable_data<double>();
-template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>();
-template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>();
-template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
-template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
-template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
-template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
-template PD_DLL_DECL paddle::platform::complex<float>
+template PADDLE_API float *Tensor::mutable_data<float>();
+template PADDLE_API double *Tensor::mutable_data<double>();
+template PADDLE_API int64_t *Tensor::mutable_data<int64_t>();
+template PADDLE_API int32_t *Tensor::mutable_data<int32_t>();
+template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>();
+template PADDLE_API int8_t *Tensor::mutable_data<int8_t>();
+template PADDLE_API int16_t *Tensor::mutable_data<int16_t>();
+template PADDLE_API bool *Tensor::mutable_data<bool>();
+template PADDLE_API paddle::platform::complex<float>
     *Tensor::mutable_data<paddle::platform::complex<float>>();
-template PD_DLL_DECL paddle::platform::complex<double>
+template PADDLE_API paddle::platform::complex<double>
     *Tensor::mutable_data<paddle::platform::complex<double>>();
-template PD_DLL_DECL paddle::platform::float16 *
+template PADDLE_API paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>();
 
 template <typename T>
@@ -183,25 +185,25 @@ T *Tensor::mutable_data(const PlaceType &place) {
   return mutable_data<T>();
 }
 
-template PD_DLL_DECL float *Tensor::mutable_data<float>(const PlaceType &place);
-template PD_DLL_DECL double *Tensor::mutable_data<double>(
+template PADDLE_API float *Tensor::mutable_data<float>(const PlaceType &place);
+template PADDLE_API double *Tensor::mutable_data<double>(
     const PlaceType &place);
-template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>(
+template PADDLE_API int64_t *Tensor::mutable_data<int64_t>(
     const PlaceType &place);
-template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>(
+template PADDLE_API int32_t *Tensor::mutable_data<int32_t>(
     const PlaceType &place);
-template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>(
+template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>(
     const PlaceType &place);
-template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
+template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(
     const PlaceType &place);
-template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
+template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
-template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex<float> *
+template PADDLE_API bool *Tensor::mutable_data<bool>(const PlaceType &place);
+template PADDLE_API paddle::platform::complex<float> *
 Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex<double> *
+template PADDLE_API paddle::platform::complex<double> *
 Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::float16 *
+template PADDLE_API paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 
 template <typename T>
@@ -212,20 +214,23 @@ const T *Tensor::data() const {
   return nullptr;
 }
 
-template PD_DLL_DECL const float *Tensor::data<float>() const;
-template PD_DLL_DECL const double *Tensor::data<double>() const;
-template PD_DLL_DECL const int64_t *Tensor::data<int64_t>() const;
-template PD_DLL_DECL const int32_t *Tensor::data<int32_t>() const;
-template PD_DLL_DECL const uint8_t *Tensor::data<uint8_t>() const;
-template PD_DLL_DECL const int8_t *Tensor::data<int8_t>() const;
-template PD_DLL_DECL const int16_t *Tensor::data<int16_t>() const;
-template PD_DLL_DECL const bool *Tensor::data<bool>() const;
-template PD_DLL_DECL const paddle::platform::complex<float>
+template PADDLE_API const float *Tensor::data<float>() const;
+template PADDLE_API const double *Tensor::data<double>() const;
+template PADDLE_API const int64_t *Tensor::data<int64_t>() const;
+template PADDLE_API const int32_t *Tensor::data<int32_t>() const;
+template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
+template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
+template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
+template PADDLE_API const uint16_t *Tensor::data<uint16_t>() const;
+template PADDLE_API const bool *Tensor::data<bool>() const;
+template PADDLE_API const paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>() const;
-template PD_DLL_DECL const paddle::platform::complex<double>
+template PADDLE_API const paddle::platform::complex<double>
     *Tensor::data<paddle::platform::complex<double>>() const;
-template PD_DLL_DECL const paddle::platform::float16 *
+template PADDLE_API const paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
+template PADDLE_API const paddle::platform::bfloat16 *
+Tensor::data<paddle::platform::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -236,19 +241,19 @@ T *Tensor::data() {
   return nullptr;
 }
 
-template PD_DLL_DECL float *Tensor::data<float>();
-template PD_DLL_DECL double *Tensor::data<double>();
-template PD_DLL_DECL int64_t *Tensor::data<int64_t>();
-template PD_DLL_DECL int32_t *Tensor::data<int32_t>();
-template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>();
-template PD_DLL_DECL int8_t *Tensor::data<int8_t>();
-template PD_DLL_DECL int16_t *Tensor::data<int16_t>();
-template PD_DLL_DECL bool *Tensor::data<bool>();
-template PD_DLL_DECL paddle::platform::complex<float>
+template PADDLE_API float *Tensor::data<float>();
+template PADDLE_API double *Tensor::data<double>();
+template PADDLE_API int64_t *Tensor::data<int64_t>();
+template PADDLE_API int32_t *Tensor::data<int32_t>();
+template PADDLE_API uint8_t *Tensor::data<uint8_t>();
+template PADDLE_API int8_t *Tensor::data<int8_t>();
+template PADDLE_API int16_t *Tensor::data<int16_t>();
+template PADDLE_API bool *Tensor::data<bool>();
+template PADDLE_API paddle::platform::complex<float>
     *Tensor::data<paddle::platform::complex<float>>();
-template PD_DLL_DECL paddle::platform::complex<double>
+template PADDLE_API paddle::platform::complex<double>
     *Tensor::data<paddle::platform::complex<double>>();
-template PD_DLL_DECL paddle::platform::float16 *
+template PADDLE_API paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>();
 
 // TODO(chenweihang): replace slice impl by API
@@ -283,33 +288,33 @@ template <typename T>
 Tensor Tensor::copy_to(const PlaceType &target_place) const {
   LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
                   "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argumentinstead. "
+                  "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
   return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
 }
 
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<float>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<double>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<float>>(
+template PADDLE_API Tensor Tensor::copy_to<paddle::platform::complex<float>>(
     const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
+template PADDLE_API Tensor Tensor::copy_to<paddle::platform::complex<double>>(
     const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor
+template PADDLE_API Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
 
 Tensor Tensor::copy_to(Backend backend, bool blocking) const {

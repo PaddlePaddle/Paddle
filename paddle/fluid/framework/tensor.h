@@ -81,6 +81,7 @@ class TensorInplaceVersion {
   bool IsUnique() const { return inplace_version_ == 0; }
   void Bump() { ++inplace_version_; }
   uint32_t CurrentVersion() const { return inplace_version_; }
+  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
  private:
   uint32_t inplace_version_;
@@ -90,9 +91,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format_tag format() const { return format_; }
+  inline dnnl::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format_tag format) {
+  inline void set_format(const dnnl::memory::format_tag format) {
     format_ = format;
   }
 
@@ -106,7 +107,7 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
  public:
@@ -148,6 +149,11 @@ class Tensor {
                      size_t requested_size = 0);
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void* mutable_data(const platform::CUDAPlace& place,
+                     proto::VarType::Type type, const gpuStream_t& stream);
+#endif
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -259,6 +265,8 @@ class Tensor {
     // data type, layout, and other metadata associated with a Tensor
     // should not be copied.
   }
+
+  void ShareDataTypeWith(const Tensor& tensor) { type_ = tensor.type_; }
 
   bool IsSharedBufferWith(const Tensor& src) const {
     return holder_ && holder_ == src.Holder();
