@@ -103,12 +103,25 @@ std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
           y = y <= 0 ? 0 : y;
           x = x <= 0 ? 0 : x;
 
+
           std::size_t x_low_index = static_cast<std::size_t>(x);
-          std::size_t x_high_index = x_low_index + 1;
+          std::size_t x_high_index;
+          if (x_low_index >= width - 1) {
+            x_high_index = x_low_index = width - 1;
+            x = static_cast<T>(x_low_index);
+          } else {
+            x_high_index = x_low_index + 1;
+          }
           T x_ratio = x_high_index - x;
 
           std::size_t y_low_index = static_cast<std::size_t>(y);
-          std::size_t y_high_index = y_low_index + 1;
+          std::size_t y_high_index;
+          if (y_low_index >= height - 1) {
+            y_high_index = y_low_index = height - 1;
+            y = static_cast<T>(y_low_index);
+          } else {
+            y_high_index = y_low_index + 1;
+          }
           T y_ratio = y_high_index - y;
 
           auto xy = get_offset(x_low_index, y_low_index, width);
