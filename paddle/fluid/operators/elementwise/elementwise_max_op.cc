@@ -68,7 +68,9 @@ class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
 
   std::string GetOpFuntionality() const override {
     return "Compare two tensors and returns a new tensor containing the "
-           "element-wise maxima.";
+           "element-wise maxima. If the element of one tensor is nan, "
+           "return the element value of the other tensor, if both are nan, "
+           "return the first nan";
   }
 };
 
