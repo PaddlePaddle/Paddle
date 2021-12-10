@@ -107,6 +107,8 @@ def eager_guard(place=None):
     global _eager_mode_
     _eager_mode_ = True
     _C_ops.switch_to_eager_ops()
+    from .eager.eager_tensor_patch_methods import monkey_patch_eagertensor
+    monkey_patch_eagertensor()
     try:
         with eager_mode_place_guard(place):
             yield
