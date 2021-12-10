@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/tensor_desc.h"
+#include <algorithm>
 #include <string>
 
 #include "glog/logging.h"
@@ -89,7 +90,14 @@ void SetTensorDescValue(proto::VarType::TensorDesc *tensor_desc,
       break;
     }
     case proto::VarType::INT64: {
-      auto &vec = ExtractTensorDescValue<std::vector<int64_t>>(val);
+      std::vector<int64_t> vec;
+      // NOTE(dev): value from python is type<int> which is int32.
+      if (val.type() == typeid(std::vector<int>)) {
+        auto vec_int = ExtractTensorDescValue<std::vector<int>>(val);
+        std::copy(vec_int.begin(), vec_int.end(), std::back_inserter(vec));
+      } else {
+        vec = ExtractTensorDescValue<std::vector<int64_t>>(val);
+      }
       VectorToRepeated(vec, tensor_desc->mutable_int64_val());
       break;
     }
