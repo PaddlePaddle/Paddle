@@ -578,7 +578,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
             1]))
 
     ## k % 4
-    k = k % 4 if k >= 0 else 4 - (-k % 4)
+    k %= 4
     if k == 0:
         return x
     if k == 2:
