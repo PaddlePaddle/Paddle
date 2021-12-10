@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -338,3 +339,9 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(fc_elementwise_layernorm_fuse_pass,
               paddle::framework::ir::FCElementwiseLayerNormFusePass);
+REGISTER_PASS_CAPABILITY(fc_elementwise_layernorm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fc", 0)
+            .LE("elementwise_add", 1)
+            .EQ("layer_norm", 0));

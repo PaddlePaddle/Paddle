@@ -27,11 +27,13 @@ from collections import OrderedDict
 import paddle
 import paddle.fluid as fluid
 from paddle import framework
+from paddle.fluid import core
 import paddle.distributed as dist
 from paddle.optimizer import Optimizer
+from paddle.fluid.clip import ClipGradByGlobalNorm
 
 from ...utils.internal_storage import ParamStorage
-from ...meta_parallel.sharding.sharding_utils import Type
+from ...meta_parallel.sharding.sharding_utils import Type, device_guard, ShardingClipGrad
 
 # CUDA alignment 256 bytes
 alignment = {"gpu": 256, }
@@ -83,8 +85,14 @@ class ShardingOptimizerStage2(Optimizer):
         # Default information
         self._optim_defaults = kw
         self._optim = optim
+        assert hasattr(self._optim, "_master_weights"
+                       ), "Must use optimizer with _master_weights attribute"
         self._local_params = params
         self._default_device = device
+        self._pfp16 = len(
+            list(
+                filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
+                       self._local_params))) > 0
 
         assert group is not None, "Distributed communication group is must be gived"
         self.group = group
@@ -93,10 +101,41 @@ class ShardingOptimizerStage2(Optimizer):
 
         self.broadcast_fp16 = broadcast_fp16
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
+
+        if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
+            logging.warning(
+                "While using ClipGradByGlobalNorm in ShardingOptimizer, the grad clip of original optimizer will be changed."
+            )
+            self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
+                                                      group,
+                                                      paddle.get_device())
+
+        if offload:
+            assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
+
         self.offload = offload  # Using for offload
+        self.offload_device = "cpu"
+
+        self._master_params = {}
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self.update_opt_status()
+
+    def _generate_master_params(self, trainable_params):
+        if self.offload:
+            for param in trainable_params:
+                if param.name not in self._master_params.keys():
+                    self._master_params[param.name] = core.VarBase(
+                        name=param.name,
+                        value=param.cast(dtype=Type.fp32.value).numpy(),
+                        place=core.CPUPlace(),
+                        stop_gradient=param.stop_gradient)
+            self._optim._master_weights = self._master_params
+        else:
+            for param in trainable_params:
+                if param.dtype == Type.fp16.value:
+                    self._optim._master_weights[param.name] = paddle.cast(
+                        param, Type.fp32.value)
 
     def update_opt_status(self):
         """Update optimizer status and parameter storage information, and special functions to be developed.
@@ -207,6 +246,8 @@ class ShardingOptimizerStage2(Optimizer):
                     # Merge all the trainable params in a single InternalStorage
                     trainable_params = list(
                         filter(lambda x: x.trainable, params))
+                    if self._pfp16 and dst_rank == self.rank:
+                        self._generate_master_params(trainable_params)
                     if trainable_params:
                         param_storage = ParamStorage(
                             size=self.rank_buffer_size[dtype][dst_rank],
@@ -229,22 +270,43 @@ class ShardingOptimizerStage2(Optimizer):
         A wrapper for Optimizer's step function to finish the update operation of the optimizer.
         """
 
-        # Synchronize optimizer parameters for the current rank
-        if len(self.dtype_rank_params.keys(
-        )) == 1 and Type.fp32.value in self.dtype_rank_params.keys():
-            self._optim._parameter_list = self.dtype_rank_params[
-                Type.fp32.value][self.rank]
-        elif len(self.dtype_rank_params.keys(
-        )) == 1 and Type.fp16.value in self.dtype_rank_params.keys():
-            self._optim._parameter_list = self.dtype_rank_params[
-                Type.fp16.value][self.rank]
+        if self.offload:
+            self._optim._parameter_list = [
+                param for name, param in self._master_params.items()
+            ]
         else:
-            self._optim._parameter_list = self.dtype_rank_params[
-                Type.fp16.value][self.rank] + self.dtype_rank_params[
+            # Synchronize optimizer parameters for the current rank
+            if len(self.dtype_rank_params.keys(
+            )) == 1 and Type.fp32.value in self.dtype_rank_params.keys():
+                self._optim._parameter_list = self.dtype_rank_params[
                     Type.fp32.value][self.rank]
+            elif len(self.dtype_rank_params.keys(
+            )) == 1 and Type.fp16.value in self.dtype_rank_params.keys():
+                self._optim._parameter_list = self.dtype_rank_params[
+                    Type.fp16.value][self.rank]
+            else:
+                self._optim._parameter_list = self.dtype_rank_params[
+                    Type.fp16.value][self.rank] + self.dtype_rank_params[
+                        Type.fp32.value][self.rank]
 
         # Run the optimizer of the current rank step
-        self._optim.step()
+        if self.offload:
+            with device_guard(self.rank, self.offload_device):
+                self._optim.step()
+
+                for param in self._optim._parameter_list:
+                    self._master_params[param.name].set_value(param)
+
+            dev_id = 0 if paddle.get_device() == "cpu" else int(
+                paddle.get_device().split(":")[1])
+
+            for param in self._local_params:
+                if param.name in self._master_params.keys():
+                    param.set_value(self._master_params[param.name].cuda(dev_id)
+                                    .cast(dtype=param.dtype))
+                    self._master_params[param.name].clear_gradient(False)
+        else:
+            self._optim.step()
 
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()

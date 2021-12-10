@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
-#include <string>
-
 #include <chrono>
+#include <iostream>
 #include <map>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 // #include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 USE_OP(fill_constant);
 USE_OP(uniform_random);
@@ -123,7 +123,12 @@ int main(int argc, char* argv[]) {
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
-  std::cout << "time cost " << diff.count() << std::endl;
+  std::cout << "time cost: " << diff.count() << " seconds" << std::endl;
+  std::cout << "memory use: "
+            << static_cast<double>(paddle::platform::RecordedGpuMallocSize(
+                   place.GetDeviceId())) /
+                   1024 / 1024
+            << " MB" << std::endl;
 
   return 1;
 }
