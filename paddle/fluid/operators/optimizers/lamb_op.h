@@ -418,9 +418,11 @@ class LambOpKernel : public framework::OpKernel<T> {
     using paddle::framework::Tensor;
 
     const auto* skip_update = ctx.Input<Tensor>("SkipUpdate");
-    const bool* skip_update_flag =
-        skip_update ? skip_update->data<bool>() : nullptr;
-    if (platform::is_cpu_place(ctx.GetPlace()) && (*skip_update_flag)) {
+    const bool* skip_update_flag = skip_update && skip_update->IsInitialized()
+                                       ? skip_update->data<bool>()
+                                       : nullptr;
+    if (skip_update_flag && platform::is_cpu_place(skip_update->place()) &&
+        (*skip_update_flag)) {
       return;
     }
 
@@ -477,9 +479,11 @@ class LambOpKernel : public framework::OpKernel<T> {
     const void* param_ptr = param.template data<void>();
     const void* master_param_ptr =
         master_param ? master_param->template data<void>() : nullptr;
-    void* param_out_ptr = param_out.template data<void>();
+    void* param_out_ptr = param_out.template mutable_data<T>(ctx.GetPlace());
     void* master_param_out_ptr =
-        master_param_out ? master_param_out->template data<void>() : nullptr;
+        master_param_out
+            ? master_param_out->template mutable_data<MT>(ctx.GetPlace())
+            : nullptr;
 
     // Update moments
     if (grad_var->IsType<framework::LoDTensor>()) {
@@ -610,7 +614,7 @@ class LambOpKernel : public framework::OpKernel<T> {
     auto t = framework::EigenVector<MT>::Flatten(trust_ratio_div);
 
     // TODO(zengjinle): remove the following Eigen operations when
-    // *skip_update == true.  
+    // *skip_update == true.
     auto* place = dev_ctx.eigen_device();
     if (IsMultiPrecision) {
       auto mp = framework::EigenVector<MT>::Flatten(*master_param);

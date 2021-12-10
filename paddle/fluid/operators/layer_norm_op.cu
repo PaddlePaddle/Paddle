@@ -79,8 +79,6 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
       }
     } else {
       scale_bias_dtype = (void_bias_data != nullptr ? bias->type() : x_dtype);
-      scale_bias_dtype =
-          void_scale_data != nullptr ? scale->type() : bias->type();
     }
 
     bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
