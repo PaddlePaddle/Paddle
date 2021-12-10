@@ -103,10 +103,10 @@
   invoke : full_like(x, 1, dtype, place, layout)
 
 - api : reshape
-  args : (const Tensor& x, const std::vector<int64_t>& shape)
+  args : (const Tensor& x, const ScalarArray& shape)
   output : Tensor
   infer_meta : 
-    func : InferMetaFromVecValue
+    func : ReshapeInferMeta
   kernel : 
     func : reshape
 

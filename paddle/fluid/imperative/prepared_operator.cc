@@ -358,6 +358,10 @@ static void BuildDygraphPtenKernelContext(
             std::type_index(typeid(std::vector<int64_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
