@@ -11,11 +11,11 @@ public class Tensor {
 
     @Override
     protected void finalize() throws Throwable {
-        if(nativeTensorPointer != 0) cppTensorDestroy(nativeTensorPointer);
+        destroyNativeTensor();
     }
 
     public void destroyNativeTensor() {
-        cppTensorDestroy(nativeTensorPointer);
+        if(nativeTensorPointer != 0) cppTensorDestroy(nativeTensorPointer);
         nativeTensorPointer = 0;
     }
 

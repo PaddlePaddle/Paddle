@@ -61,6 +61,7 @@ public class test {
         System.out.println("model dir:\n" + newConfig.getCppModelDir());
         System.out.println("prog file:\n" + newConfig.getProgFile());
         System.out.println("params file:\n" + newConfig.getCppParamsFile());
+        config.destroyNativeConfig();
 
     }
 }

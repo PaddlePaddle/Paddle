@@ -17,7 +17,7 @@ public class Predictor {
 
     @Override
     protected void finalize() throws Throwable {
-        if(cppPaddlePredictorPointer == 0) destroyNativePredictor();
+        destroyNativePredictor();
     }
 
     public static Predictor createPaddlePredictor(Config config){

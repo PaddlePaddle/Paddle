@@ -15,10 +15,10 @@ public class Config {
 
     @Override
     protected void finalize() throws Throwable {
-        if(cppPaddleConfigPointer != 0) cppConfigDestroy(cppPaddleConfigPointer);
+        destroyNativeConfig();
     }
 
-    public void destroyNativePredictor() {
+    public void destroyNativeConfig() {
         if(cppPaddleConfigPointer != 0) cppConfigDestroy(cppPaddleConfigPointer);
         cppPaddleConfigPointer = 0;
     }
