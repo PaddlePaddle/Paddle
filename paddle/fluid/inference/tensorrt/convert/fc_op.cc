@@ -58,8 +58,7 @@ class FcOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *before_fc);
     reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
     reshape_before_fc_layer->setName(
-        ("fc_op_reshape_before_fc: Shuffle (Output: " + output_name + ")")
-            .c_str());
+        ("reshape_before_fc: Shuffle (Output: " + output_name + ")").c_str());
     return reshape_before_fc_layer;
   }
 
@@ -169,8 +168,7 @@ class FcOpConverter : public OpConverter {
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
           fc_after_reshape_int8->setName(
-              ("fc_op_int8_reshape_after_fc: Shuffle (Output: " + output_name +
-               ")")
+              ("int8_reshape_after_fc: Shuffle (Output: " + output_name + ")")
                   .c_str());
           engine_->SetTensorDynamicRange(fc_after_reshape_int8->getOutput(0),
                                          out_scale);
@@ -196,8 +194,7 @@ class FcOpConverter : public OpConverter {
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
           fc_after_reshape_float->setName(
-              ("fc_op_float_reshape_after_fc: Shuffle (Output: " + output_name +
-               ")")
+              ("float_reshape_after_fc: Shuffle (Output: " + output_name + ")")
                   .c_str());
           nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
               engine_, Activation, *(fc_after_reshape_float->getOutput(0)),
