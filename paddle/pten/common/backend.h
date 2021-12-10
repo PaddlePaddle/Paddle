@@ -37,8 +37,44 @@ namespace experimental {
  * in the future
  */
 enum class Backend : uint8_t {
-  // kernel backend cannot be undefined
+  // Undefined is invalid backend type
   UNDEFINED = 0,
+
+  /**
+   * [ Why we need ALL in baisc kernel key member? ]
+   *
+   * For Tensor, ALL represents an illegal Backend, but for Kernel, some
+   * kernels may be device-independent by nature, such as reshape; and when
+   * and some kernels are also device-independent when implemented based on
+   * primitive API.
+   *
+   * In this case, we need to provide a more concise registration method,
+   * instead of registering the kernels for each device with almost
+   * repetitive code, we need one registration covers all situations,
+   * so if we provide the ALL field with Register the kernel in this statement.
+   *
+   * Of course, we have also considered solving this problem through different
+   * named macros, for example, we define
+   *
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND
+   *
+   * However, dtype and layout also have the same requirements, we need to
+   * define a series of macros
+   *
+   * PT_REGISTER_KERNEL_FOR_ALL_DTYPE
+   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
+   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
+   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
+   *
+   * This makes the system of registering macros more complicated, we think
+   * this is not a simple design, so we still adopt the design of providing
+   * the ALL field.
+   *
+   * Note: ALL_BACKEND only used for Kernel registration and selection
+   */
+  ALL_BACKEND = UNDEFINED,
 
   // basic kernel backend
   CPU,
@@ -59,7 +95,7 @@ enum class Backend : uint8_t {
 inline std::ostream& operator<<(std::ostream& os, Backend backend) {
   switch (backend) {
     case Backend::UNDEFINED:
-      os << "Undefined";
+      os << "Undefined(All)";
       break;
     case Backend::CPU:
       os << "CPU";

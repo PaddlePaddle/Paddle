@@ -58,23 +58,23 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(dot,
-                   CUDA,
-                   ANY,
-                   pten::Dot,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
+PT_REGISTER_TEMPLATE_KERNEL(dot,
+                            CUDA,
+                            ALL_LAYOUT,
+                            pten::Dot,
+                            float,
+                            double,
+                            int,
+                            int64_t,
+                            complex64,
+                            complex128) {}
 
-PT_REGISTER_KERNEL(matmul_v2,
-                   CUDA,
-                   ANY,
-                   pten::Matmul,
-                   float,
-                   double,
-                   float16,
-                   complex64,
-                   complex128) {}
+PT_REGISTER_TEMPLATE_KERNEL(matmul_v2,
+                            CUDA,
+                            ALL_LAYOUT,
+                            pten::Matmul,
+                            float,
+                            double,
+                            float16,
+                            complex64,
+                            complex128) {}

@@ -132,72 +132,72 @@ void Cast(const CPUContext& dev_ctx,
 
 // TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
 // architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL(flatten,
-                   CPU,
-                   ANY,
-                   pten::Flatten,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
-PT_REGISTER_KERNEL(flatten_mid,
-                   CPU,
-                   ANY,
-                   pten::FlattenWithXShape,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
+PT_REGISTER_TEMPLATE_KERNEL(flatten,
+                            CPU,
+                            ALL_LAYOUT,
+                            pten::Flatten,
+                            float,
+                            double,
+                            uint8_t,
+                            int8_t,
+                            int,
+                            int64_t) {}
+PT_REGISTER_TEMPLATE_KERNEL(flatten_mid,
+                            CPU,
+                            ALL_LAYOUT,
+                            pten::FlattenWithXShape,
+                            float,
+                            double,
+                            uint8_t,
+                            int8_t,
+                            int,
+                            int64_t) {}
 
-PT_REGISTER_KERNEL(cast,
-                   CPU,
-                   ANY,
-                   pten::Cast,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
+PT_REGISTER_TEMPLATE_KERNEL(cast,
+                            CPU,
+                            ALL_LAYOUT,
+                            pten::Cast,
+                            float,
+                            double,
+                            int,
+                            int64_t,
+                            int16_t,
+                            bool,
+                            uint8_t,
+                            paddle::platform::float16,
+                            paddle::platform::bfloat16,
+                            paddle::platform::complex<float>,
+                            paddle::platform::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape, CPU, ANY, pten::ReshapeFromVectorVal) {}
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mid,
-                             CPU,
-                             ANY,
-                             pten::ReshapeFromVectorValWithXShape) {}
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host, CPU, ANY, pten::ReshapeFromDT) {
+PT_REGISTER_KERNEL(reshape, CPU, ALL_LAYOUT, pten::ReshapeFromVectorVal) {}
+PT_REGISTER_KERNEL(reshape_mid,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ReshapeFromVectorValWithXShape) {}
+PT_REGISTER_KERNEL(reshape_host, CPU, ALL_LAYOUT, pten::ReshapeFromDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_host_mid,
-                             CPU,
-                             ANY,
-                             pten::ReshapeFromDTWithXShape) {
+PT_REGISTER_KERNEL(reshape_host_mid,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ReshapeFromDTWithXShape) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost,
-                             CPU,
-                             ANY,
-                             pten::ReshapeFromVectorDT) {
+PT_REGISTER_KERNEL(reshape_mulhost,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ReshapeFromVectorDT) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_mulhost_mid,
-                             CPU,
-                             ANY,
-                             pten::ReshapeFromVectorDTWithXShape) {
+PT_REGISTER_KERNEL(reshape_mulhost_mid,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ReshapeFromVectorDTWithXShape) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }

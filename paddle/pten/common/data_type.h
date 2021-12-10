@@ -30,6 +30,8 @@ using bfloat16 = ::paddle::platform::bfloat16;
 
 enum class DataType {
   UNDEFINED = 0,
+  // See Note [ Why we need ALL in baisc kernel key member? ]
+  ALL_DTYPE = UNDEFINED,
   BOOL,
   INT8,   // Char
   UINT8,  // BYte
@@ -125,7 +127,7 @@ PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_CppTypeToDataType)
 inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   switch (dtype) {
     case DataType::UNDEFINED:
-      os << "Undefined";
+      os << "Undefined(All)";
       break;
     case DataType::BOOL:
       os << "bool";
