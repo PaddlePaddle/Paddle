@@ -2,7 +2,7 @@ if(NOT WITH_MLU)
     return()
 endif()
 
-if(NOT NEUWARE_HOME)
+if(NOT ENV{NEUWARE_HOME})
     set(NEUWARE_HOME "/usr/local/neuware")
 endif()
 message(STATUS "NEUWARE_HOME: " ${NEUWARE_HOME})

@@ -692,19 +692,19 @@ class MLUBuddyAllocatorList {
           std::unique_ptr<detail::SystemAllocator>(
               new detail::MLUAllocator(devices_[pos])),
           platform::MLUMinChunkSize(), platform::MLUMaxChunkSize()));
-      // TODO(fwg): clear it
-      // VLOG(10) << "\n\nNOTE:\n"
-      //          << "You can set GFlags environment variable "
-      //          << "'FLAGS_fraction_of_gpu_memory_to_use' "
-      //          << "or 'FLAGS_initial_gpu_memory_in_mb' "
-      //          << "or 'FLAGS_reallocate_gpu_memory_in_mb' "
-      //          << "to change the memory size for GPU usage.\n"
-      //          << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
-      //          << FLAGS_fraction_of_gpu_memory_to_use
-      //          << ". Current 'FLAGS_initial_gpu_memory_in_mb' value is "
-      //          << FLAGS_initial_gpu_memory_in_mb
-      //          << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
-      //          << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
+      VLOG(10) << "\n\nNOTE:\n"
+               << "You can set GFlags environment variable "
+               << "(mlu reuse gpu GFlags) "
+               << "'FLAGS_fraction_of_gpu_memory_to_use' "
+               << "or 'FLAGS_initial_gpu_memory_in_mb' "
+               << "or 'FLAGS_reallocate_gpu_memory_in_mb' "
+               << "to change the memory size for MLU usage.\n"
+               << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
+               << FLAGS_fraction_of_gpu_memory_to_use
+               << ". Current 'FLAGS_initial_gpu_memory_in_mb' value is "
+               << FLAGS_initial_gpu_memory_in_mb
+               << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
+               << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
     });
 
     return allocators_[pos].get();

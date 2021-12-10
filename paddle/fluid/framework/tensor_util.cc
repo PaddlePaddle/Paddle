@@ -594,9 +594,9 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
-                 const platform::MLUPlace& xpu) const {
-    // TODO(mlu)
-    // return GetResultHelper(out, mlu);
+                 const platform::MLUPlace& mlu) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Not supported on place (%s) ", mlu));
     return true;
   }
 
