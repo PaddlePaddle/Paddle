@@ -21,7 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
-// #include "gperftools/profiler.h"
+#include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
@@ -63,6 +63,7 @@ USE_OP(sgd);
 USE_OP(squared_l2_norm);
 USE_OP(memcpy_h2d);
 USE_OP(memcpy_d2h);
+DECLARE_double(eager_delete_tensor_gb);
 
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -77,9 +78,16 @@ paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
 }
 
 int main(int argc, char* argv[]) {
+  FLAGS_eager_delete_tensor_gb = 0.1;
   paddle::framework::InitDevices();
   std::cout << "main" << std::endl;
   int64_t batch_size = std::stoi(argv[1]);
+
+  int enable_profiler = 0;
+  if (argc > 2) {
+    enable_profiler = std::stoi(argv[2]);
+  }
+
   paddle::framework::InitDevices();
   auto place = paddle::platform::CUDAPlace(0);
   auto test_prog = load_from_file("lm_startup_program");
@@ -106,9 +114,12 @@ int main(int argc, char* argv[]) {
   paddle::framework::Scope scope;
   paddle::framework::StandaloneExecutor exec(place, test_prog, main_prog,
                                              &scope);
-
+  exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
-  // ProfilerStart("new_executor.prof");
+  if (enable_profiler) {
+    ProfilerStart("new_executor.prof");
+  }
+
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;
@@ -116,7 +127,9 @@ int main(int argc, char* argv[]) {
 
     exec.Run({}, {}, {});
   }
-  // ProfilerStop();
+  if (enable_profiler) {
+    ProfilerStop();
+  }
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
