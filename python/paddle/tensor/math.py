@@ -3082,7 +3082,6 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
 
         return out
 
-
 def angle(x, name=None):
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
@@ -3098,7 +3097,7 @@ def angle(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
 
     Examples:
         .. code-block:: python
