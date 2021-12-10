@@ -13,6 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_XPU2
+#include "paddle/fluid/platform/eigen_ext.h"
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -59,13 +65,19 @@ namespace details {
  */
 template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
-  HOSTDEVICE inline IdentityFunctor() {}
+  inline IdentityFunctor() {}
 
-  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+  explicit inline IdentityFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  inline Ty operator()(const Tx& x) const { return static_cast<Ty>(x); }
+  __device__ inline IdentityFunctor() {}
+
+  __device__ explicit inline IdentityFunctor(int n) {}
+
+  __device__ inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x);
   }
+  __device__ inline void SetDiv(int n) {}
 };
 
 /**
@@ -73,12 +85,24 @@ struct IdentityFunctor {
  */
 template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
-  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
+  inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((Tx)(1.0 / n)) {}
+  explicit inline DivideFunctor(int n)
+      : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  inline Ty operator()(const Tx& x) const { return static_cast<Ty>(x * n_inv); }
+
+  __device__ inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
+
+  __device__ inline DivideFunctor(int n)
+      : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
+
+  __device__ inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x * n_inv);
+  }
+
+  __device__ inline void SetDiv(int n) {
+    n_inv = static_cast<Tx>(((float)1.0) / (static_cast<float>(n)));
   }
 
  private:

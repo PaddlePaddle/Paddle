@@ -11,31 +11,23 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #ifdef PADDLE_WITH_XPU
+
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
+// TODO(liuxiandong): add template
+void ElementwiseAddXPU2Compute(const framework::ExecutionContext& ctx,
+                               const std::vector<const framework::Tensor*>& ins,
+                               std::vector<framework::Tensor*>* outs, int axis);
 
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    std::cout << "*************** XPU  niuliling:  this is add_xpu.cc "
-                 "************************"
-              << std::endl;
-    XPUElementwise<T, XPUType>(ctx, xpu::broadcast_add<XPUType>);
-  }
-};
-
+void ElementwiseAddGradXPU2Compute(const framework::ExecutionContext& ctx);
 static std::vector<int> get_rdims(const std::vector<int>& xdims,
                                   const std::vector<int>& ydims) {
   std::vector<int> rdims;
@@ -48,14 +40,27 @@ static std::vector<int> get_rdims(const std::vector<int>& xdims,
 }
 
 template <typename T>
-class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
+class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    //  std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    //  std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
+    int axis = PackTensorsIntoVector<float>(ctx, &ins, &outs);
+    ElementwiseAddXPU2Compute(ctx, ins, &outs, axis);
+    //  std::cout<<"lxd_debug: XPU2 forward elementwise_add end!"<<std::endl;
+  }
+};
+
+template <typename T>
+class ElementwiseAddGradXPUKernel
+    : public ::paddle::operators::ElemwiseGradKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    std::cout << "*************** XPU  niuliling_backward:  this is add_xpu.cc "
-                 "************************"
-              << std::endl;
+    // std::cout<<"lxd_debug: XPU2 backward element_add !"<<std::endl;
     ElemwiseGradKernel<T>::Compute(ctx);
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
@@ -160,4 +165,5 @@ REGISTER_OP_XPU_KERNEL(elementwise_add, ops::ElementwiseAddXPUKernel<float>,
 REGISTER_OP_XPU_KERNEL(
     elementwise_add_grad, ops::ElementwiseAddGradXPUKernel<float>,
     ops::ElementwiseAddGradXPUKernel<paddle::platform::float16>);
+
 #endif

@@ -27,6 +27,9 @@ class ElementwiseSubXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << "*************** XPU niuliling:  this is sub_xpu.cc "
+                 "************************"
+              << std::endl;
     XPUElementwise<T, XPUType>(ctx, xpu::broadcast_sub<XPUType>);
   }
 };

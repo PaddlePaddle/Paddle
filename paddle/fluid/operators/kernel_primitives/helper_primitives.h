@@ -13,24 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_XPU2
+#include "paddle/fluid/platform/eigen_ext.h"
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
+#endif
 
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
-
-#ifdef PADDLE_WITH_XPU2
-struct dim3 {
-  int x;
-  int y;
-  int z;
-
-  explicit inline dim3(int split_x, int split_y = 1, int split_z = 1) {
-    x = split_x;
-    y = split_y;
-    z = split_z;
-  }
-};
-#endif
 
 struct DimConfig {
   int split_num_x;
@@ -43,14 +35,33 @@ struct DimConfig {
   int rem_y;
   int rem_z;
 
-  HOSTDEVICE explicit inline DimConfig(int split_x, int split_y, int split_z,
-                                       int size_x, int size_y, int size_z) {
+  explicit inline DimConfig(int split_x, int split_y, int split_z, int size_x,
+                            int size_y, int size_z, int rem_size_x = 0,
+                            int rem_size_y = 0, int rem_size_z = 0) {
     split_num_x = split_x;
     split_num_y = split_y;
     split_num_z = split_z;
     deal_size_x = size_x;
     deal_size_y = size_y;
     deal_size_z = size_z;
+    rem_x = rem_size_x;
+    rem_y = rem_size_y;
+    rem_z = rem_size_z;
+  }
+
+  __device__ explicit inline DimConfig(int split_x, int split_y, int split_z,
+                                       int size_x, int size_y, int size_z,
+                                       int rem_size_x = 0, int rem_size_y = 0,
+                                       int rem_size_z = 0) {
+    split_num_x = split_x;
+    split_num_y = split_y;
+    split_num_z = split_z;
+    deal_size_x = size_x;
+    deal_size_y = size_y;
+    deal_size_z = size_z;
+    rem_x = rem_size_x;
+    rem_y = rem_size_y;
+    rem_z = rem_size_z;
   }
 
   HOSTDEVICE void SetRem(int rem_nx, int rem_ny, int rem_nz) {

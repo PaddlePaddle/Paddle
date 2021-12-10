@@ -23,9 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
-#if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#endif
+//#if defined(__HIPCC__) || defined(__NVCC__) || defined(PADDLE_WITH_XPU2)
+//#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+//#endif
 
 namespace paddle {
 namespace operators {
@@ -663,7 +663,10 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetOpType() const = 0;
 };
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(PADDLE_WITH_XPU2)
+void TensorReduceXPUMean(const framework::Tensor& x, framework::Tensor* y,
+                         std::vector<int> origin_reduce_dims,
+                         const framework::ExecutionContext& stream);
 template <typename T, template <typename, typename> class ReduceOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
@@ -671,21 +674,26 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     bool reduce_all = context.Attr<bool>("reduce_all");
     const Tensor* input = context.Input<Tensor>("X");
     Tensor* output = context.Output<Tensor>("Out");
-    auto out_dtype = context.Attr<int>("out_dtype");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
     std::vector<int> reduce_dims =
         GetReduceDim(dims, input->dims().size(), reduce_all);
 
+#ifdef PADDLE_WITH_XPU2
+    // TensorReduceXPU<T, T, ReduceOp>(*input, output, reduce_dims, stream);
+    TensorReduceXPUMean(*input, output, reduce_dims, context);
+#else
     gpuStream_t stream = context.cuda_device_context().stream();
+    auto out_dtype = context.Attr<int>("out_dtype");
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+      // framework::VisitDataTypeSmall(
+      //    static_cast<framework::proto::VarType::Type>(out_dtype),
+      //    TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
     } else {
       TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
                                               stream);
     }
+#endif
   }
 };
 #endif

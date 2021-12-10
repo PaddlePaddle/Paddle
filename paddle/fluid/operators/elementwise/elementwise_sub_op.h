@@ -46,6 +46,9 @@ template <typename DeviceContext, typename T>
 class ElementwiseSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << "############# CPU niuliling:  this is sub_op.h for sub_op.cc "
+                 "############"
+              << std::endl;
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");

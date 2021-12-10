@@ -33,6 +33,7 @@ template <typename DeviceContext, typename T>
 class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    std::cout << " this is xpu1 reduce max" << std::endl;
     auto dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* x = context.Input<Tensor>("X");

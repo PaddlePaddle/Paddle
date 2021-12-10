@@ -25,6 +25,9 @@ class ElementwiseMulXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << "*************** XPU niuliling:  this is mult_xpu.cc "
+                 "************************"
+              << std::endl;
     XPUElementwise<T, XPUType>(ctx, xpu::broadcast_mul<XPUType>);
   }
 };

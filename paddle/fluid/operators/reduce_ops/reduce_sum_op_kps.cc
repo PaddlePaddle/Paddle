@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,29 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
 #include "paddle/fluid/platform/xpu/xpu_header.h"
-
 namespace paddle {
 namespace operators {
-
-template <typename DeviceContext, typename T>
-class ReduceSumXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    XPUReduce<DeviceContext, T>(context, xpu::reduce_sum<T>);
-  }
+template <typename Tx, typename Ty = Tx>
+struct CustomSum {
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
 };
 
 template <typename DeviceContext, typename T>
 class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::cout << " this is xpu1 reduce sum" << std::endl;
     auto dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* x = context.Input<Tensor>("X");
@@ -87,8 +82,7 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_XPU_KERNEL(
-    reduce_sum,
-    ops::ReduceSumXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    reduce_sum, ops::ReduceCudaKernel<float, paddle::operators::CustomSum>);
 REGISTER_OP_XPU_KERNEL(
     reduce_sum_grad,
     ops::ReduceSumGradXPUKernel<paddle::platform::XPUDeviceContext, float>);

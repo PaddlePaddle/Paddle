@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,52 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifdef PADDLE_WITH_XPU
-
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include <memory>
 #include <string>
-#include <vector>
-
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
-class ReduceMeanXPUKernel : public framework::OpKernel<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    std::cout << " this is xpu1 reduce mean" << std::endl;
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
-        platform::errors::Unavailable("This kernel only runs on XPU."));
-    bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<T>(context.GetPlace());
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-
-    std::vector<int> xdims;
-    for (int i = 0; i < input->dims().size(); i++) {
-      xdims.push_back(input->dims()[i]);
-    }
-    auto rdims = context.Attr<std::vector<int>>("dim");
-    if (reduce_all) {
-      rdims.clear();
-      for (size_t i = 0; i < xdims.size(); i++) {
-        rdims.push_back(static_cast<int>(i));
-      }
-    }
-    int r = xpu::reduce_mean(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), xdims, rdims);
-
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU reduce_mean kernel return wrong value[%d %s]", r,
-                          XPUAPIErrorMsg[r]));
-  }
+template <typename Tx, typename Ty = Tx>
+struct CustomSum {
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
 };
 
 template <typename DeviceContext, typename T>
@@ -125,9 +91,7 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_XPU_KERNEL(
-    reduce_mean,
-    ops::ReduceMeanXPUKernel<paddle::platform::XPUDeviceContext, float>);
-
+    reduce_mean, ops::ReduceCudaKernel<float, paddle::operators::CustomSum>);
 REGISTER_OP_XPU_KERNEL(
     reduce_mean_grad,
     ops::ReduceMeanGradXPUKernel<paddle::platform::XPUDeviceContext, float>);

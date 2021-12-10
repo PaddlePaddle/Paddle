@@ -101,6 +101,7 @@ template <typename T>
 struct XPUReluFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Relu \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::relu<XPUType>);
   }
@@ -110,6 +111,7 @@ template <typename T>
 struct XPUSigmoidFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Sigmoid \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::sigmoid<XPUType>);
   }
@@ -119,6 +121,7 @@ template <typename T>
 struct XPUTanhFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Tanh \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::tanh<XPUType>);
   }
@@ -128,6 +131,7 @@ template <typename T>
 struct XPULogFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Log \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::log<XPUType>);
   }
@@ -137,6 +141,7 @@ template <typename T>
 struct XPUSquareFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Square \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::square<XPUType>);
   }
@@ -146,6 +151,7 @@ template <typename T>
 struct XPUSqrtFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Sqrt \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::sqrt<XPUType>);
   }
@@ -155,6 +161,7 @@ template <typename T>
 struct XPUAbsFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf("Abs \n");
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::abs<XPUType>);
   }
@@ -163,6 +170,7 @@ struct XPUAbsFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct XPUPowFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf(" Pow \n");
     const auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Output<Tensor>("Out");
     auto pow_factor = ctx.Attr<float>("factor");
@@ -198,6 +206,7 @@ template <typename T>
 struct XPUHardSwishFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf(" HardSwishFunctor \n");
     float threshold = ctx.Attr<float>("threshold");
     float scale = ctx.Attr<float>("scale");
     float offset = ctx.Attr<float>("offset");
@@ -218,6 +227,7 @@ template <typename T>
 struct XPUReluGradFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
+    printf(" Relu_grad \n");
     xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::relu_grad<XPUType>);
   }
@@ -340,7 +350,7 @@ namespace ops = paddle::operators;
       act_type##_grad,                                                   \
       ops::XPUActivationGradKernel<ops::grad_functor<float>>);
 
-REGISTER_ACTIVATION_XPU_KERNEL(relu, XPUReluFunctor, XPUReluGradFunctor)
+// REGISTER_ACTIVATION_XPU_KERNEL(relu, XPUReluFunctor, XPUReluGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
