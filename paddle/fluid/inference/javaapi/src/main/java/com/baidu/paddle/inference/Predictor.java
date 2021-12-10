@@ -27,6 +27,7 @@ public class Predictor {
 
     public void destroyNativePredictor() {
         if(cppPaddlePredictorPointer != 0) cppPredictorDestroy(cppPaddlePredictorPointer);
+        cppPaddlePredictorPointer = 0;
     }
 
     public String getInputNameById(long id){

@@ -16,6 +16,7 @@ public class Tensor {
 
     public void destroyNativeTensor() {
         cppTensorDestroy(nativeTensorPointer);
+        nativeTensorPointer = 0;
     }
 
     public void reshape(int dim_num, int[] shape) {
