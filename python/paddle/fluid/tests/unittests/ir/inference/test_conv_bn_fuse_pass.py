@@ -27,6 +27,14 @@ import hypothesis.strategies as st
 
 class TestConvBnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if attrs[0]['data_format'] == "NHWC":
+            return False
+
         return True
 
     def sample_program_config(self, draw):
