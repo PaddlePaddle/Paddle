@@ -27,12 +27,12 @@ from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
 from ..fluid.framework import in_eager_mode
-from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = []
 

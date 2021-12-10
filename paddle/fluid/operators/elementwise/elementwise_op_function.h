@@ -1548,12 +1548,7 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
 // explicit gradient can cut off X, Y, Out from gradient op
 // In elementwise_add, elementwise_sub, we use dout as fake X, Y, Out to reuse
 // elementwise code.
-// NOTE(chenfeiyu): there is some caveats using this, faking dout as x, y and
-// out
-// avoids accessing the data pointer of these tensors, so as to be compatible
-// with NoNeedBufferInferer
-template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
-          typename Tout = T>
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
 void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
                                  const framework::Tensor &x,
                                  const framework::Tensor &y,
@@ -1564,10 +1559,10 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
   const framework::DDim &x_dim = x.dims();
   const framework::DDim &y_dim = y.dims();
   if (x.dims() == y.dims()) {
-    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP, Tout>(
+    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
         ctx, x_dim, y_dim, dout, dout, out, dout, axis, dx, dy, dx_op, dy_op);
   } else {
-    ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP, Tout>(
+    ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
         ctx, x_dim, y_dim, dout, dout, out, dout, axis, dx, dy, dx_op, dy_op);
   }
 }
