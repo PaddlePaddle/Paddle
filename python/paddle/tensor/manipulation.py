@@ -577,7 +577,6 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         raise ValueError("Rotation axis1 out of range, axis1 = {}".format(axes[
             1]))
 
-    ## k % 4
     k %= 4
     if k == 0:
         return x
