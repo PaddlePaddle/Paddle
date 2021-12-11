@@ -72,7 +72,8 @@ struct VALUE {
   bool is_entry_;    // whether knock-in
 };
 
-//
+
+// 
 inline bool count_entry(VALUE *value, int threshold) {
   return value->count_ >= threshold;
 }
@@ -95,6 +96,12 @@ class ValueBlock {
         value_dims_(value_dims),
         value_offsets_(value_offsets),
         value_idx_(value_idx) {
+
+
+
+
+
+    
     for (size_t x = 0; x < value_dims.size(); ++x) {
       value_length_ += value_dims[x];
     }
@@ -105,7 +112,6 @@ class ValueBlock {
       if (slices[0] == "none") {
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
         threshold_ = 0;
-      } else if (slices[0] == "count_filter_entry") {
         threshold_ = std::stoi(slices[1]);
         entry_func_ =
             std::bind(&count_entry, std::placeholders::_1, threshold_);
@@ -250,7 +256,7 @@ class ValueBlock {
     // auto &value = table.at(id);
     // return value->data_.data();
     auto res = table.find(id);
-    if (res == table.end()) return nullptr;
+    //if (res == table.end()) return nullptr;
     VALUE *value = res->second;
     return value->data_.data();
   }
@@ -277,22 +283,22 @@ class ValueBlock {
 
     auto res = table.find(id);  // Value* res
 
-    if (res == table.end()) {
-      return nullptr;
-    } else {
+    //if (res == table.end()) {
+    //  return nullptr;
+    //} else {
       return res->second;
-    }
+    //}
   }
 
   bool GetEntry(const uint64_t &id) {
     auto value = GetValue(id);
-    if (value == nullptr) return false;
+    //if (value == nullptr) return false;
     return value->is_entry_;
   }
 
   void SetEntry(const uint64_t &id, const bool state) {
     auto value = GetValue(id);
-    if (value == nullptr) return;
+    //if (value == nullptr) return;
     value->is_entry_ = state;
   }
 
@@ -397,3 +403,5 @@ class ValueBlock {
 
 }  // namespace distributed
 }  // namespace paddle
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//

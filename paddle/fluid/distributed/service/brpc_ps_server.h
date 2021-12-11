@@ -129,6 +129,7 @@ class BrpcPsService : public PsBaseService {
   std::unordered_map<int32_t, serviceHandlerFunc> _service_handler_map;
   std::unordered_map<int32_t, serviceHandlerFunc> _msg_handler_map;
   std::vector<float> _ori_values;
+  std::mutex debug_mu_;
 };
 
 class DownpourPServerBrpcClosure : public PServerClosure {

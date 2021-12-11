@@ -169,6 +169,9 @@ int64_t CommonSparseTable::LoadFromText(
 }
 
 int32_t CommonSparseTable::initialize() {
+
+
+
   _shards_task_pool.resize(task_pool_size_);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
@@ -221,6 +224,8 @@ int32_t CommonSparseTable::initialize_value() {
     shard_values_.emplace_back(shard);
   }
 
+
+
   auto accessor = _config.accessor();
   std::vector<uint64_t> feasigns;
 
@@ -233,7 +238,9 @@ int32_t CommonSparseTable::initialize_value() {
   VLOG(3) << "has " << feasigns.size() << " ids need to be pre inited";
 
   auto buckets = bucket(feasigns.size(), 10);
+
   for (int x = 0; x < 10; ++x) {
+
     auto bucket_feasigns = buckets[x + 1] - buckets[x];
     std::vector<uint64_t> ids(bucket_feasigns);
     std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
@@ -246,8 +253,7 @@ int32_t CommonSparseTable::initialize_value() {
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
     pull_sparse(pulls.data(), pull_value);
-  }
-
+  } 
   return 0;
 }
 
@@ -399,6 +405,22 @@ int32_t CommonSparseTable::pour() {
 
 */
 
+/*
+    void Fission(const int shard_id, const int shard_num,
+                 std::vector<int>* offset_shard) const {
+  
+      offset_shard->reserve(numel_ / shard_num + 1);
+      for (int x = 0; x < numel_; ++x) {
+        if (feasigns_[x] % shard_num == shard_id) {
+          offset_shard->push_back(x);
+        }
+      }
+    }
+
+*/
+
+
+
 int32_t CommonSparseTable::pull_sparse(float* pull_values,
                                        const PullSparseValue& pull_value) {
   auto shard_num = task_pool_size_;
@@ -406,7 +428,8 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
 
   for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, shard_num, &pull_value, &pull_values]() -> int {
+  
+       [this, shard_id, shard_num, &pull_value, &pull_values]() -> int {
           auto& block = shard_values_[shard_id];
 
           std::vector<int> offsets;
@@ -417,8 +440,10 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
               auto feasign = pull_value.feasigns_[offset];
               auto frequencie = pull_value.frequencies_[offset];
               auto* value = block->Init(feasign, true, frequencie);
+
               std::copy_n(value + param_offset_, param_dim_,
                           pull_values + param_dim_ * offset);
+
             }
           } else {
             for (auto& offset : offsets) {

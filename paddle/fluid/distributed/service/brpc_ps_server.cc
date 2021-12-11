@@ -171,12 +171,64 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     set_response_code(*response, -1, err_msg.c_str());
     return;
   }
+  
+  {
+     std::unique_lock<std::mutex> lk(debug_mu_);
+     std::cout << "cmd is push sparse" << (request->cmd_id() == PS_PUSH_SPARSE_TABLE) << std::endl;  
+     std::cout <<  "cmd is pull sparse" << (request->cmd_id() == PS_PULL_SPARSE_TABLE) << std::endl;
+     std::cout << "client id " << request->client_id() << std::endl;
+  
+     if (request->cmd_id() == PS_PUSH_SPARSE_TABLE) {
+       auto &push_data = (*request).data();
+       uint32_t num = *(uint32_t *)((*request).params(0).c_str());
+       /*
+       Push Content:
+       |---keysData---|---valuesData---|
+       |---8*{num}B---|----------------|
+       */
+       const uint64_t *keys = (const uint64_t *)push_data.data();
+       
+       for (int i = 0; i < num; i++) {
+         std::cout << keys[i] << " ";
+       }
+       std::cout << std::endl;
+
+
+     } else if (request->cmd_id() == PS_PULL_SPARSE_TABLE){
+       uint32_t num = *(uint32_t *)((*request).params(0).c_str());
+       auto dim = table->value_accesor()->select_dim();
+  
+       auto &req_io_buffer = cntl->request_attachment();
+       auto req_buffer_size = req_io_buffer.size();
+
+       thread_local std::string req_buffer;
+       req_buffer.reserve(req_buffer_size);
+
+       const void *data = cntl->request_attachment().fetch(
+      const_cast<char *>(req_buffer.data()), req_buffer_size);
+
+      auto value = PullSparseValue(num, dim);
+
+      value.DeserializeFromBytes(const_cast<void *>(data));
+
+      for (int i = 0; i < num; i++) {
+        std::cout << value.feasigns_[i] << " ";
+      }
+      std::cout << std::endl;
+
+     }
+     std::cout << "==================DEBUG in server service end================" << std::endl; 
+ 
+
   serviceHandlerFunc handler_func = itr->second;
   int service_ret = (this->*handler_func)(table, *request, *response, cntl);
   if (service_ret != 0) {
     response->set_err_code(service_ret);
     response->set_err_msg("server internal error");
   }
+ 
+  }
+
 }
 
 int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
@@ -396,6 +448,7 @@ int32_t BrpcPsService::push_sparse(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
+  
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
   /*
   Push Content:
