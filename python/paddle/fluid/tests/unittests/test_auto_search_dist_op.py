@@ -138,7 +138,10 @@ class Testcompatible(unittest.TestCase):
                                                      [-1, -1, -1, 1])
                 self.assertFalse(impls[1].is_auto_compatible(
                     DistributedOperator(op, op_dist_attr)))
-
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [0, -1, -1, 1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, 1, -1, -1])
                 self.assertFalse(impls[1].is_auto_compatible(
@@ -190,6 +193,24 @@ class Testcompatible(unittest.TestCase):
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertTrue(impls[1].is_auto_compatible(
                     DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, 1, 0])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [0, 1, 1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [1, -1, -1, -1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, 1, 1])
+                self.assertFalse(impls[1].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, -1, -1, 1])
                 self.assertFalse(impls[1].is_auto_compatible(
@@ -226,8 +247,24 @@ class Testcompatible(unittest.TestCase):
                                                      [-1, -1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, -1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, -1])
                 self.assertTrue(impls[0].is_auto_compatible(
                     DistributedOperator(op, op_dist_attr)))
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, 0])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1])
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [0, -1])
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1])
+                self.assertFalse(impls[0].is_auto_compatible(
+                    DistributedOperator(op, op_dist_attr)))
+
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
                                                      [-1, 1])
                 self.assertFalse(impls[0].is_auto_compatible(
@@ -271,10 +308,17 @@ class Testcompatible(unittest.TestCase):
                                                      [-1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertTrue(impls[0].is_auto_compatible(dist_op))
-                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1])
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [-1, 0, 0])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertFalse(impls[0].is_auto_compatible(dist_op))
+
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[1],
+                                                     [0, 0, 0])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
                                                     [1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
@@ -345,18 +389,28 @@ class Testcompatible(unittest.TestCase):
                                                      [-1, -1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertTrue(impls[0].is_auto_compatible(dist_op))
-
-                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
-                                                    [-1, 1])
-
+                op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
+                                                     [-1, 0, 0])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertFalse(impls[0].is_auto_compatible(dist_op))
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
                                                     [-1, 1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertFalse(impls[0].is_auto_compatible(dist_op))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [-1, 1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
+                                                    [1, 1])
                 op_dist_attr.set_output_dims_mapping(op.output_arg_names[0],
-                                                     [-1, 1, 1])
+                                                     [-1, -1, -1])
+                dist_op = DistributedOperator(op, op_dist_attr)
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+
+                self.assertFalse(impls[0].is_auto_compatible(dist_op))
+                op_dist_attr.set_input_dims_mapping(op.input_arg_names[0],
+                                                    [-1, 1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 self.assertFalse(impls[0].is_auto_compatible(dist_op))
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[1],
