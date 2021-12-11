@@ -228,7 +228,7 @@ class TestRot90_API(unittest.TestCase):
                           fetch_list=[output])
 
             out_np = np.array(res[0])
-            out_ref = np.array([[[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
