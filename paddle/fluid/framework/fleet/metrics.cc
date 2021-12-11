@@ -48,7 +48,7 @@ void BasicAucCalculator::reset() {
   }
   _local_abserr = 0;
   _local_sqrerr = 0;
-  _local_pred = 0;  
+  _local_pred = 0;
 }
 
 void BasicAucCalculator::add_data(const float* d_pred, const int64_t* d_label,
@@ -88,6 +88,30 @@ void BasicAucCalculator::add_unlock_data(double pred, int label) {
   _local_sqrerr += (pred - label) * (pred - label);
   _local_pred += pred;
   ++_table[label][pos];
+}
+
+// add mask data
+void BasicAucCalculator::add_mask_data(const float* d_pred,
+                                       const int64_t* d_label,
+                                       const int64_t* d_mask, int batch_size,
+                                       const paddle::platform::Place& place) {
+  thread_local std::vector<float> h_pred;
+  thread_local std::vector<int64_t> h_label;
+  thread_local std::vector<int64_t> h_mask;
+  h_pred.resize(batch_size);
+  h_label.resize(batch_size);
+  h_mask.resize(batch_size);
+
+  memcpy(h_pred.data(), d_pred, sizeof(float) * batch_size);
+  memcpy(h_label.data(), d_label, sizeof(int64_t) * batch_size);
+  memcpy(h_mask.data(), d_mask, sizeof(int64_t) * batch_size);
+
+  std::lock_guard<std::mutex> lock(_table_mutex);
+  for (int i = 0; i < batch_size; ++i) {
+    if (h_mask[i]) {
+      add_unlock_data(h_pred[i], h_label[i]);
+    }
+  }
 }
 
 void BasicAucCalculator::compute() {
@@ -216,7 +240,5 @@ void BasicAucCalculator::calculate_bucket_error() {
   }
   _bucket_error = error_count > 0 ? error_sum / error_count : 0.0;
 }
-
-
-}
-}
+}  // namespace framework
+}  // namespace paddle

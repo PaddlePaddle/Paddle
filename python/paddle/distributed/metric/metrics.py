@@ -21,6 +21,7 @@ from paddle.distributed.utils import get_logger
 __all__ = []
 logger = get_logger(logging.INFO, name="metrics")
 
+
 # read metric config from yaml and init MetricMsg in fleet_wrapper
 def init_metric(metric_ptr,
                 metric_yaml_path,
@@ -34,8 +35,8 @@ def init_metric(metric_ptr,
     if sys.version.startswith('2.7.13'):
         content = yaml.load(yaml_fobj)
     else:
-        content = yaml.load(yaml_fobj, Loader = yaml.FullLoader)
-    
+        content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
+
     print("yaml metric config: \n")
     print(content)
 
@@ -45,45 +46,46 @@ def init_metric(metric_ptr,
 
     for metric_runner in metric_runner_list:
         is_join = metric_runner['phase'] == 'JOINING'
-        phase=1 if is_join else 0
+        phase = 1 if is_join else 0
 
-        metric_ptr.init_metric(metric_runner['method'], 
-                              metric_runner['name'],
-                              metric_runner['label'], 
-                              metric_runner['target'],
-                              cmatch_rank_var,
-                              mask_var,
-                              phase,
-                              cmatch_rank_group,
-                              ignore_rank,
-                              bucket_size)
-
-        # if auc_runner['method'] == 'CmatchRankMaskAucCalculator':
-        #     util.init_metric(box, auc_runner['method'], auc_runner['name'],
-        #             auc_runner['label'], target, mask_var=auc_runner['mask'], phase=1 if is_join else 0,
-        #             cmatch_rank_var="cmatch_rank",
-        #             cmatch_rank_group=auc_runner['cmatch_group'], ignore_rank=True,
-        #             sample_scale_var=sample_scale_var)
-        # elif 'cmatch_rank_group' in auc_runner:
-        #     util.init_metric(box, auc_runner['method'], auc_runner['name'],
-        #             auc_runner['label'], target, phase=1 if is_join else 0,
-        #             cmatch_rank_var="cmatch_rank",
-        #             cmatch_rank_group=auc_runner['cmatch_rank_group'],
-        #             sample_scale_var=sample_scale_var)
-        # elif 'cmatch_group' in auc_runner:
-        #     util.init_metric(box, 'CmatchRankAucCalculator', auc_runner['name'],
-        #             auc_runner['label'], target, phase=1 if is_join else 0,
-        #             cmatch_rank_var="cmatch_rank",
-        #             cmatch_rank_group=auc_runner['cmatch_group'], ignore_rank=True,
-        #             sample_scale_var=sample_scale_var)
-        # elif 'mask' in auc_runner:
-        #     util.init_metric(box, auc_runner['method'], auc_runner['name'],
-        #             auc_runner['label'], target, mask_var=auc_runner['mask'], phase=1 if is_join else 0,
-        #             sample_scale_var=sample_scale_var)
-        # else:
-        #     util.init_metric(box, auc_runner['method'], auc_runner['name'],
-        #             auc_runner['label'], target, phase=1 if is_join else 0,
-        #             sample_scale_var=sample_scale_var)
+        if metric_runner['method'] == 'AucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                cmatch_rank_var, mask_var, phase, cmatch_rank_group,
+                ignore_rank, bucket_size)
+        elif metric_runner['method'] == 'MultiTaskAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                metric_runner['cmatch_var'], mask_var, phase,
+                metric_runner['cmatch_group'], ignore_rank, bucket_size)
+        elif metric_runner['method'] == 'CmatchRankAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                metric_runner['cmatch_var'], mask_var, phase,
+                metric_runner['cmatch_group'], metric_runner['ignore_rank'],
+                bucket_size)
+        elif metric_runner['method'] == 'MaskAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                cmatch_rank_var, metric_runner['mask'], phase,
+                cmatch_rank_group, ignore_rank, bucket_size)
+        elif metric_runner['method'] == 'CmatchRankMaskAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                metric_runner['cmatch_var'], metric_runner['mask'], phase,
+                metric_runner['cmatch_group'], metric_runner['ignore_rank'],
+                bucket_size)
+        else:
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                cmatch_rank_var, mask_var, phase, cmatch_rank_group,
+                ignore_rank, bucket_size)
 
 
 def print_metric(metric_ptr, name):
