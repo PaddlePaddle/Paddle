@@ -233,7 +233,7 @@ class TestRot90_API(unittest.TestCase):
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np))
-            
+
     def test_error_api(self):
         paddle.enable_static()
 
