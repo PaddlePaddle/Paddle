@@ -20,12 +20,16 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
+inline size_t AlignedMemoryBlockDescSize(size_t alignment) {
+  return (sizeof(MemoryBlock::Desc) + alignment - 1) / alignment * alignment;
+}
+
 void MemoryBlock::Init(MetadataCache* cache, Type t, size_t index, size_t size,
                        void* base_ptr, void* left_buddy, void* right_buddy) {
-  cache->Save(
-      this, MemoryBlock::Desc(t, index, size - sizeof(MemoryBlock::Desc), size,
-                              base_ptr, static_cast<MemoryBlock*>(left_buddy),
-                              static_cast<MemoryBlock*>(right_buddy)));
+  cache->Save(this,
+              MemoryBlock::Desc(t, index, size - aligned_desc_size, size,
+                                base_ptr, static_cast<MemoryBlock*>(left_buddy),
+                                static_cast<MemoryBlock*>(right_buddy)));
 }
 
 MemoryBlock* MemoryBlock::GetLeftBuddy(MetadataCache* cache) {
@@ -46,7 +50,7 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
                         desc->total_size, size));
 
   // bail out if there is no room for another partition
-  if (desc->total_size - size <= sizeof(MemoryBlock::Desc)) {
+  if (desc->total_size - size <= aligned_desc_size) {
     return;
   }
 
@@ -60,14 +64,14 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   auto new_block_right_buddy = desc->right_buddy;
   void* new_block_base_ptr = desc->base_ptr;
 
-  cache->Save(static_cast<MemoryBlock*>(right_partition),
-              MemoryBlock::Desc(FREE_CHUNK, desc->index,
-                                remaining_size - sizeof(MemoryBlock::Desc),
-                                remaining_size, new_block_base_ptr, this,
-                                new_block_right_buddy));
+  cache->Save(
+      static_cast<MemoryBlock*>(right_partition),
+      MemoryBlock::Desc(FREE_CHUNK, desc->index,
+                        remaining_size - aligned_desc_size, remaining_size,
+                        new_block_base_ptr, this, new_block_right_buddy));
 
   desc->right_buddy = static_cast<MemoryBlock*>(right_partition);
-  desc->size = size - sizeof(MemoryBlock::Desc);
+  desc->size = size - aligned_desc_size;
   desc->total_size = size;
 
   desc->UpdateGuards();
@@ -129,15 +133,21 @@ void* MemoryBlock::BasePtr(MetadataCache* cache) {
 }
 
 void* MemoryBlock::Data() const {
-  return const_cast<MemoryBlock::Desc*>(
-             reinterpret_cast<const MemoryBlock::Desc*>(this)) +
-         1;
+  return const_cast<char*>(reinterpret_cast<const char*>(this) +
+                           aligned_desc_size);
 }
 
 MemoryBlock* MemoryBlock::Metadata() const {
   return const_cast<MemoryBlock*>(reinterpret_cast<const MemoryBlock*>(
-      reinterpret_cast<const MemoryBlock::Desc*>(this) - 1));
+      reinterpret_cast<const char*>(this) - aligned_desc_size));
 }
+
+// NOTE(Ruibiao): Some data type in Paddle, e.g., platform::Complex<double>,
+// assume that the allocation address is 16B aligned. It seems an inappropriate
+// assumption. However, if we don't keep this alignment, many code will have
+// memory out of range problems. Only a temporary solution, a better mechanism
+// is needed to solve this problem in future.
+size_t MemoryBlock::aligned_desc_size = AlignedMemoryBlockDescSize(16);
 
 }  // namespace detail
 }  // namespace memory

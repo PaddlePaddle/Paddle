@@ -102,6 +102,8 @@ struct MemoryBlock {
     MemoryBlock* right_buddy = nullptr;
     size_t guard_end = 0;
   };
+
+  static size_t aligned_desc_size;
 };
 
 // A cache for accessing memory block meta-data that may be expensive
