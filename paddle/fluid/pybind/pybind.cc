@@ -289,7 +289,7 @@ std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
            std::unordered_set<std::string>>
 OpSupportedInfos(const std::string &place,
                  framework::proto::VarType::Type dtype) {
-  std::string query_place;
+  std::string query_place = place;
   std::transform(place.begin(), place.end(), std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
@@ -301,9 +301,9 @@ OpSupportedInfos(const std::string &place,
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
-      platform::errors::InvalidArgument(
-          "The argument `place` should be 'GPU' or 'CPU', but get '%s'.",
-          place));
+      platform::errors::InvalidArgument("The argument `place` should be 'GPU', "
+                                        "'CPU', 'XPU', or 'NPU', but get '%s'.",
+                                        query_place));
 
   std::unordered_set<std::string> all_ops;
   const auto &op_info = framework::OpInfoMap::Instance().map();
