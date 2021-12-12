@@ -681,14 +681,21 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsInterpretercoreFastGCEnabled()) {
         static_cast<InterpreterCoreFastGarbageCollector*>(gc_.get())->Add(
             var_scope.Var(var_id));
+
       } else {
         static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
             var_scope.Var(var_id), gc_event_.at(instr_id),
             &instr.DeviceContext());
       }
+#else
+      static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
+          var_scope.Var(var_id), gc_event_.at(instr_id),
+          &instr.DeviceContext());
+#endif
     }
   }
 }
