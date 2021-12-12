@@ -39,7 +39,7 @@ class StreamSafeCUDAAllocation : public Allocation {
   void RecordStream(const gpuStream_t &stream);
   bool CanBeFreed();
 
-  const gpuStream_t &stream() const override;
+  const gpuStream_t &GetOwningStream() const;
 
  private:
   AllocationPtr underlying_allocation_;

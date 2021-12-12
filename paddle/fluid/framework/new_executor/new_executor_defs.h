@@ -325,10 +325,6 @@ class Instruction {
 
   const std::vector<size_t>& GCCheckVars() const;
 
-  void InferNeedStreamSyncVars();
-
-  const std::vector<size_t>& NeedStreamSyncVars() const;
-
   void ResetContext(const VariableValueMap& in_vars,
                     const VariableValueMap& out_vars);
 

@@ -104,7 +104,8 @@ void* Tensor::mutable_data(const platform::CUDAPlace& place,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_ ||
-      !(platform::is_gpu_place(place) && holder_->stream() == stream)) {
+      !(platform::is_gpu_place(place) &&
+        memory::GetStream(holder_) == stream)) {
     holder_.reset();
     holder_ = memory::AllocShared(place, size, stream);
     offset_ = 0;
@@ -240,7 +241,7 @@ void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 void Tensor::RecordStream(const gpuStream_t& stream) {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
                                        "The tensor is not initialized."));
-  memory::RecordStream(holder_.get(), stream);
+  memory::RecordStream(holder_, stream);
 }
 #endif
 

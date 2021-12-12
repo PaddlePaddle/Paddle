@@ -92,7 +92,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     for (size_t i = 0; i < stream_num_; ++i) {
       int *x = reinterpret_cast<int *>(workspaces_[i]->ptr());
       add_kernel<<<grid_num_, block_num_, 0, streams_[idx]>>>(x, data_num_);
-      RecordStream(workspaces_[i].get(), streams_[idx]);
+      RecordStream(workspaces_[i], streams_[idx]);
     }
   }
 
@@ -260,8 +260,9 @@ TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
   EXPECT_THROW(Alloc(place, alloc_size, nullptr),
                paddle::platform::EnforceNotMet);
   EXPECT_THROW(Release(place, nullptr), paddle::platform::EnforceNotMet);
-  EXPECT_THROW(RecordStream(allocation.get(), nullptr),
+  EXPECT_THROW(RecordStream(allocation, nullptr),
                paddle::platform::EnforceNotMet);
+  EXPECT_THROW(GetStream(allocation), paddle::platform::EnforceNotMet);
   platform::EndCUDAGraphCapture();
 
   allocation.reset();

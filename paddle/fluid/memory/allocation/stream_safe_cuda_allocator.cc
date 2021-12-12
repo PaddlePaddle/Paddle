@@ -92,7 +92,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
   return true;
 }
 
-const gpuStream_t& StreamSafeCUDAAllocation::stream() const {
+const gpuStream_t& StreamSafeCUDAAllocation::GetOwningStream() const {
   return owning_stream_;
 }
 
