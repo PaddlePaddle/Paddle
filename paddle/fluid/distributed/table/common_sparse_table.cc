@@ -225,7 +225,7 @@ int32_t CommonSparseTable::initialize_value() {
   }
 
 
-
+/*
   auto accessor = _config.accessor();
   std::vector<uint64_t> feasigns;
 
@@ -253,7 +253,8 @@ int32_t CommonSparseTable::initialize_value() {
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
     pull_sparse(pulls.data(), pull_value);
-  } 
+  }
+*/ 
   return 0;
 }
 
