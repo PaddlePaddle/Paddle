@@ -395,27 +395,27 @@ class TestMoveAxis(unittest.TestCase):
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [1, 0], [2])
 
-        # each elment of src must be unique
+        # each element of src must be unique
         with self.assertRaises(ValueError):
             paddle.moveaxis(x, [1, 1], [0, 2])
 
-        # each elment of dst must be unique
+        # each element of dst must be unique
         with self.assertRaises(ValueError):
             paddle.moveaxis(x, [0, 1], [2, 2])
 
-        # each elment of src must be integer
+        # each element of src must be integer
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [0.5], [1])
 
-        # each elment of dst must be integer
+        # each element of dst must be integer
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [0], [1.5])
 
-        # each elment of src must be in the range of [-4, 3)
+        # each element of src must be in the range of [-4, 3)
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [-10, 1], [2, 3])
 
-        # each elment of dst must be in the range of [-4, 3)
+        # each element of dst must be in the range of [-4, 3)
         with self.assertRaises(AssertionError):
             paddle.moveaxis(x, [2, 1], [10, 3])
 
