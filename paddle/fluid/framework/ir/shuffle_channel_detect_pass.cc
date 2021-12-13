@@ -112,7 +112,7 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
         return;
       }
 
-      for (int i = 0; i < x_shape.size(); i++) {
+      for (size_t i = 0; i < x_shape.size(); i++) {
         if (x_shape[i] != reshape2_shape[i]) return;
       }
     }
