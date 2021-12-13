@@ -533,19 +533,6 @@ class Reshape2Op : public ReshapeOp {
       shape = "shape";
     }
     return framework::KernelSignature("reshape", {"X"}, {shape}, {"Out"});
-    // auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    // if (multi_inputs.size() > 0) {
-    //   return framework::KernelSignature("reshape_from_vector_dt", {"X",
-    //   "ShapeTensor"},
-    //                                     {}, {"Out"});
-    // } else if (ctx.HasInput("Shape")) {
-    //   return framework::KernelSignature("reshape_from_dt", {"X", "Shape"},
-    //   {},
-    //                                     {"Out"});
-    // } else {
-    //   return framework::KernelSignature("reshape", {"X"}, {"shape"},
-    //   {"Out"});
-    // }
   }
 };
 
