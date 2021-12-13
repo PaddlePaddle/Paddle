@@ -46,11 +46,11 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
         random_input_dim2 = draw(st.integers(min_value=50, max_value=512))
         random_out_channel = draw(st.integers(min_value=20, max_value=256))
 
-        random_groups = draw(st.sampled_from([1]))
+        random_groups = draw(st.integers(min_value=1, max_value=3))
         random_dilations = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=1), min_size=2, max_size=2))
+                    min_value=1, max_value=3), min_size=2, max_size=2))
         random_strides = draw(
             st.lists(
                 st.integers(
@@ -70,7 +70,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
         def generate_conv2d_Input():
             shape = [random_input_dim1, random_input_dim2]
             if random_data_layout == "NCHW":
-                shape.insert(0, random_channel)
+                shape.insert(0, random_channel * random_groups)
                 shape.insert(0, random_batch_size)
             else:
                 shape.append(random_channel)
@@ -80,7 +80,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
         def generate_conv2d_Filter():
             shape = cp.copy(random_filter)
             shape.insert(0, random_channel)
-            shape.insert(0, random_out_channel)
+            shape.insert(0, random_out_channel * random_groups)
             return np.random.random(shape).astype(np.float32)
 
         # define op
