@@ -129,7 +129,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 std::shared_ptr<TrainerBase> Executor::InitForDataset(
     const ProgramDesc& main_program, const std::string& trainer_desc_str,
     Scope* scope, Dataset* dataset) {
-  VLOG(3) << "Start to RunFromDataset in executor";
+  VLOG(3) << "Start to InitForDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
   PADDLE_ENFORCE_EQ(success, true,
@@ -463,6 +463,14 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
+#endif
+    } else if (platform::is_ipu_place(place_)) {
+#ifdef PADDLE_WITH_IPU
+      gc.reset(new IPUGarbageCollector(
+          BOOST_GET_CONST(platform::IPUPlace, place_), max_memory_size));
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
 #endif
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL

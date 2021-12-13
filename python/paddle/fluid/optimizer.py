@@ -2068,6 +2068,7 @@ class LarsMomentumOptimizer(Optimizer):
             "lars_coeff": self._lars_coeff,
             "lars_weight_decay": [_lars_weight_decay],
             "multi_precision": find_master,
+            "epsilon": self._epsilon,
             "rescale_grad": self._rescale_grad
         }
 
@@ -6581,7 +6582,10 @@ class RecomputeOptimizer(Optimizer):
                 print("Finished apply_optimize")
         """
 
-        return self._optimizer.apply_optimize(
+        func = self._optimizer.apply_optimize if hasattr(
+            self._optimizer,
+            'apply_optimize') else self._optimizer._apply_optimize
+        return func(
             loss, startup_program=startup_program, params_grads=params_grads)
 
     def minimize(self,

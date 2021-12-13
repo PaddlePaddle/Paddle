@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -27,7 +28,7 @@ namespace framework {
 namespace details {
 // assert false when meets NAN or inf
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const std::string& var_name,
                          const platform::Place& place);
 
@@ -37,7 +38,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const platform::Place& place);
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::Scope& scope,
+                        const framework::ScopeBase& scope,
                         const platform::Place& place);
 
 template <typename VarType>
@@ -53,9 +54,22 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
   }
 }
 
+template <typename TensorType>
+static void CheckOpHasNanOrInfInEager(
+    const std::string& op_type, const egr::legacy::NameMap<TensorType>& op_outs,
+    platform::Place place) {
+  for (const auto& pair : op_outs) {
+    for (const auto& tensor : pair.second) {
+      auto* var = tensor->MutableVar();
+      if (var == nullptr) continue;
+      CheckVarHasNanOrInf(op_type, tensor->name(), var, place);
+    }
+  }
+}
+
 #ifdef PADDLE_WITH_ASCEND_CL
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::Scope& scope,
+                                 const framework::ScopeBase& scope,
                                  const platform::Place& place);
 #endif
 

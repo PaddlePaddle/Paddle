@@ -15,9 +15,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/unsqueeze_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -142,12 +142,18 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     reduce_sum,
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+#endif
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>);
 REGISTER_OP_NPU_KERNEL(
     reduce_sum_grad,
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+#endif
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext,
                                 paddle::platform::float16>);

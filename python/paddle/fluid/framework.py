@@ -40,11 +40,14 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from paddle import _C_ops
 
 __all__ = [
     'Program',
     'default_startup_program',
     'default_main_program',
+    'eager_guard',
+    'in_eager_mode',
     'program_guard',
     'name_scope',
     'cuda_places',
@@ -52,6 +55,7 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
@@ -75,6 +79,44 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _global_flags_ = core.globals()
+_eager_mode_ = False
+
+
+@signature_safe_contextmanager
+def eager_mode_place_guard(place):
+    if place is not None:
+        expected_place = _get_paddle_place(place)
+    else:
+        expected_place = _current_expected_place()
+
+    global _global_expected_place_
+    tmp_place = _global_expected_place_
+    _global_expected_place_ = expected_place
+
+    _set_expected_place(expected_place)
+
+    try:
+        yield
+    finally:
+        _global_expected_place_ = tmp_place
+        _set_expected_place(tmp_place)
+
+
+@signature_safe_contextmanager
+def eager_guard(place=None):
+    global _eager_mode_
+    _eager_mode_ = True
+    _C_ops.switch_to_eager_ops()
+    try:
+        with eager_mode_place_guard(place):
+            yield
+    finally:
+        _eager_mode_ = False
+        _C_ops.switch_to_core_ops()
+
+
+def in_eager_mode():
+    return _eager_mode_
 
 
 def require_version(min_version, max_version=None):
@@ -340,7 +382,10 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
-    _set_dygraph_tracer_expected_place(place)
+    if in_eager_mode():
+        return core.eager._set_expected_place(place)
+    else:
+        _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
@@ -457,6 +502,21 @@ def disable_signal_handler():
     core.disable_signal_handler()
 
 
+def is_compiled_with_cinn():
+    """
+    Whether this whl package can be used to run the model on CINN.
+
+    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_cinn = paddle.device.is_compiled_with_cinn()
+    """
+    return core.is_compiled_with_cinn()
+
+
 def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
@@ -467,7 +527,7 @@ def is_compiled_with_cuda():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_cuda()
+            support_gpu = paddle.device.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -482,7 +542,7 @@ def is_compiled_with_rocm():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_rocm()
+            support_gpu = paddle.device.is_compiled_with_rocm()
     """
     return core.is_compiled_with_rocm()
 
@@ -1308,13 +1368,12 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
-            self)
-        if var_dist_attr is not None:
+        dist_tensor = dist_context.get_dist_tensor_for_program(self)
+        if dist_tensor is not None:
             var_str += ", {name} = {value}".format(
-                name="dist_attr", value=var_dist_attr)
+                name="dist_attr", value=dist_tensor)
 
         return var_str
 
@@ -2529,12 +2588,12 @@ class Operator(object):
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
         dist_context = get_default_distributed_context()
-        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
-        if op_dist_attr is not None:
+        dist_op = dist_context.get_dist_op_for_program(self)
+        if dist_op is not None:
             attrs_str += ", {name} = {value}".format(
-                name="dist_attr", value=op_dist_attr)
+                name="dist_attr", value=dist_op)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
@@ -4477,6 +4536,9 @@ class Program(object):
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+
+        # assigned if this program has been parsed by a heter pipeline parameter server optimizer
+        self._heter_pipeline_opt = None
 
         # appending gradients times
         self._appending_grad_times = 0

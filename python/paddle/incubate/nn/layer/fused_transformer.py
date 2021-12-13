@@ -24,11 +24,12 @@ import collections
 
 class FusedMultiHeadAttention(Layer):
     """
-   Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
     Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_
     for more details.
+
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
         num_heads (int): The number of heads in multi-head attention.
@@ -42,17 +43,20 @@ class FusedMultiHeadAttention(Layer):
             `embed_dim`. Default None.
         vdim (int, optional): The feature size in value. If None, assumed equal to
             `embed_dim`. Default None.
-        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm (True)
-            or post_layer_norm architecture (False). Default False.
+        normalize_before (bool, optional): Indicate  whether it is pre_layer_norm
+            (True) or post_layer_norm architecture (False). Default False.
         need_weights (bool, optional): Indicate whether to return the attention
             weights. Now, only False is supported. Default False.
         weight_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
-            See usage for details in :code:`ParamAttr` .
+            See usage for details in :code:`ParamAttr`.
         bias_attr (ParamAttr|bool, optional): To specify the bias parameter property.
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
-            See usage for details in :code:`ParamAttr` .
+            See usage for details in :code:`ParamAttr`.
+        epsilon (float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+
     Examples:
 
         .. code-block:: python
@@ -78,6 +82,7 @@ class FusedMultiHeadAttention(Layer):
                  need_weights=False,
                  weight_attr=None,
                  bias_attr=None,
+                 epsilon=1e-5,
                  name=None):
         super(FusedMultiHeadAttention, self).__init__()
 
@@ -86,13 +91,18 @@ class FusedMultiHeadAttention(Layer):
         assert num_heads > 0, ("Expected nhead to be greater than 0, "
                                "but recieved {}".format(num_heads))
 
-        attn_dropout_rate = dropout_rate if attn_dropout_rate is None else attn_dropout_rate
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._epsilon = epsilon
 
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
+        self.kdim = kdim
+        self.vdim = vdim
+        self.need_weights = need_weights
         assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
         assert need_weights == False, "Only support need_weight is False now."
 
@@ -139,6 +149,7 @@ class FusedMultiHeadAttention(Layer):
         """
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
+
         Parameters:
             query (Tensor): The queries for multi-head attention. It is a
                 tensor with shape `[batch_size, query_length, embed_dim]`. The
@@ -163,6 +174,7 @@ class FusedMultiHeadAttention(Layer):
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 Now, only None is supported. Default None.
+
         Returns:
             Tensor|tuple: It is a tensor that has the same shape and data type \
                 as `query`, representing attention output.
@@ -182,14 +194,23 @@ class FusedMultiHeadAttention(Layer):
             pre_ln_bias=self.pre_ln_bias,
             ln_scale=self.ln_scale,
             ln_bias=self.ln_bias,
-            pre_ln_epsilon=1e-05,
+            pre_ln_epsilon=self._epsilon,
             qkv_bias=self.qkv_bias,
             linear_bias=self.linear_bias,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             attn_dropout_rate=self.attn_dropout_rate,
-            ln_epsilon=1e-05)
+            ln_epsilon=self._epsilon,
+            training=self.training,
+            name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
+            self.embed_dim, self.num_heads, self.dropout_rate,
+            self.attn_dropout_rate, self._epsilon, self.kdim, self.vdim,
+            self.normalize_before, self.need_weights, self._dtype, name_str)
 
 
 class FusedFeedForward(Layer):
@@ -199,6 +220,8 @@ class FusedFeedForward(Layer):
         dim_feedforward (int): The hidden layer size.
         dropout_rate (float, optional): The dropout probability used in pre-process
             and post-precess. Default 0.1
+        epsilon (float, optional): he small value added to the variance to prevent
+            division by zero. Default: 1e-05.
         activation (str, optional): The activation function. Default relu.
         act_dropout_rate (float, optional): The dropout probability after activition.
             If None, use the value of `dropout_rate`. Default None
@@ -231,11 +254,13 @@ class FusedFeedForward(Layer):
                  d_model,
                  dim_feedforward,
                  dropout_rate=0.1,
+                 epsilon=1e-05,
                  activation="relu",
                  act_dropout_rate=None,
                  normalize_before=False,
                  weight_attr=None,
-                 bias_attr=None):
+                 bias_attr=None,
+                 name=None):
 
         super(FusedFeedForward, self).__init__()
         assert d_model > 0, (
@@ -252,6 +277,7 @@ class FusedFeedForward(Layer):
         self._act_dropout_rate = dropout_rate if act_dropout_rate is None else act_dropout_rate
         self._act_method = activation
         self._normalize_before = normalize_before
+        self._epsilon = epsilon
 
         self._linear1_weight = self.create_parameter(
             shape=[d_model, dim_feedforward],
@@ -288,14 +314,35 @@ class FusedFeedForward(Layer):
             default_initializer=Constant(1.0))
         self._ln2_bias = self.create_parameter(
             shape=[d_model], attr=None, is_bias=True)
+        self.name = name
 
     def forward(self, src, cache=None):
         out = incubate_f.fused_feedforward(
-            src, self._linear1_weight, self._linear2_weight, self._linear1_bias,
-            self._linear2_bias, self._ln1_scale, self._ln1_bias,
-            self._ln2_scale, self._ln2_bias, self._dropout_rate,
-            self._act_dropout_rate, self._act_method, self._normalize_before)
+            src,
+            self._linear1_weight,
+            self._linear2_weight,
+            self._linear1_bias,
+            self._linear2_bias,
+            self._ln1_scale,
+            self._ln1_bias,
+            self._ln2_scale,
+            self._ln2_bias,
+            dropout1_rate=self._act_dropout_rate,
+            dropout2_rate=self._dropout_rate,
+            activation=self._act_method,
+            ln1_epsilon=self._epsilon,
+            ln2_epsilon=self._epsilon,
+            pre_layer_norm=self._normalize_before,
+            training=self.training,
+            name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
+            self._d_model, self._dim_feedforward, self._dropout_rate,
+            self._epsilon, self._act_method, self._act_dropout_rate,
+            self._normalize_before, self._dtype, name_str)
 
 
 class FusedTransformerEncoderLayer(Layer):
@@ -389,7 +436,9 @@ class FusedTransformerEncoderLayer(Layer):
         self.fused_attn = FusedMultiHeadAttention(
             d_model,
             nhead,
-            dropout_rate=attn_dropout_rate,
+            dropout_rate=dropout_rate,
+            attn_dropout_rate=attn_dropout_rate,
+            normalize_before=self.normalize_before,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0])
 
@@ -397,6 +446,7 @@ class FusedTransformerEncoderLayer(Layer):
             d_model,
             dim_feedforward,
             dropout_rate=dropout_rate,
+            activation=activation,
             act_dropout_rate=act_dropout_rate,
             normalize_before=self.normalize_before,
             weight_attr=weight_attrs[1],

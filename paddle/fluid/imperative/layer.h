@@ -36,6 +36,7 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace framework {
@@ -221,7 +222,10 @@ class VarBase {
 
   const platform::Place Place() const { return var_->Place(); }
 
-  void ClearGradient();
+  void ClearGradient(bool set_to_zero = true);
+
+  void _GradientSetEmpty(bool is_empty = true);
+  bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
@@ -229,6 +233,8 @@ class VarBase {
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
   void BumpInplaceVersion();
+
+  void _CopyGradientFrom(const imperative::VarBase& src);
 
   /* Hook related method: now only used for GradVarBase */
   bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
@@ -273,16 +279,6 @@ class VarBase {
   mutable size_t copied_counter_ = 0;
 
   static ThreadSafeNameSet name_set_;
-};
-
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual std::vector<std::shared_ptr<VarBase>> Forward(
-      const std::vector<std::shared_ptr<VarBase>>& inputs) {
-    return {};
-  }
 };
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(

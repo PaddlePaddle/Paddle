@@ -314,6 +314,21 @@ void SetTensorFromPyArrayT(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
+  } else if (paddle::platform::is_ipu_place(place)) {
+#ifdef PADDLE_WITH_IPU
+    if (zero_copy) {
+      auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
+      auto type = framework::ToDataType(std::type_index(typeid(T)));
+      self->ResetHolderWithType(holder, type);
+    } else {
+      auto dst = self->mutable_data<T>(place);
+      std::memcpy(dst, array.data(), array.nbytes());
+    }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
+        "Please recompile or reinstall Paddle with IPU support."));
+#endif
   } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
     platform::Place tmp_place = place;

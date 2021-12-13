@@ -192,8 +192,11 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      return (in.type == nvinfer1::DataType::kFLOAT ||
-              in.type == nvinfer1::DataType::kHALF) &&
+      return (
+#if IS_TRT_VERSION_LT(8000)
+                 in.type == nvinfer1::DataType::kFLOAT ||
+#endif
+                 in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -229,7 +232,9 @@ template <typename T>
 __global__ void apply_scale(T *data, T scale, int n) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  data[tid] = data[tid] * scale;
+  if (tid < n) {
+    data[tid] = data[tid] * scale;
+  }
 #endif
 }
 

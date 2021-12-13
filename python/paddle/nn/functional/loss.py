@@ -903,7 +903,15 @@ def kl_div(input, label, reduction='mean', name=None):
         label = paddle.cast(label, 'float64')
 
     if paddle.in_dynamic_mode():
-        out = _C_ops.kldiv_loss(input, label, 'reduction', reduction)
+        out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
+        if reduction == 'mean':
+            out = paddle.mean(out)
+        elif reduction == 'sum':
+            out = paddle.sum(out)
+        elif reduction == 'batchmean':
+            if len(input.shape) > 0:
+                batch_size = input.shape[0]
+                out = paddle.sum(out) / batch_size
         return out
 
     helper = LayerHelper('kl_div', **locals())
@@ -920,7 +928,15 @@ def kl_div(input, label, reduction='mean', name=None):
         inputs={'X': input,
                 'Target': label},
         outputs={'Loss': loss},
-        attrs={'reduction': reduction})
+        attrs={'reduction': 'none'})
+
+    if reduction == 'mean':
+        loss = paddle.mean(loss)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+    elif reduction == 'batchmean':
+        batch_size = paddle.shape(input)[0]
+        loss = paddle.sum(loss) / batch_size
     return loss
 
 
@@ -1001,9 +1017,7 @@ def ctc_loss(log_probs,
              label_lengths,
              blank=0,
              reduction='mean',
-             norm_by_times=False,
-             norm_by_batchsize=False,
-             norm_by_total_logits_len=False):
+             norm_by_times=False):
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1019,9 +1033,7 @@ def ctc_loss(log_probs,
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
         norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
-        norm_by_batchsize (bool): normalize the loss by the batch size (default: `False`). If `True`, supersedes `norm_by_times` (default: `False`)
-        norm_by_total_logits_len (bool): normalize the loss by the total number of frames in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times` (default: `False`)
-            
+
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
 
@@ -1029,7 +1041,6 @@ def ctc_loss(log_probs,
 
         .. code-block:: python
 
-            # required: skiptest
             # declarative mode
             import paddle.nn.functional as F
             import numpy as np
@@ -1086,10 +1097,9 @@ def ctc_loss(log_probs,
     """
 
     loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,
-                                    input_lengths, label_lengths,
-                                    norm_by_batchsize, norm_by_total_logits_len)
+                                    input_lengths, label_lengths)
 
-    loss_out = fluid.layers.squeeze(loss_out, [-1])  # (B)
+    loss_out = fluid.layers.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths)
@@ -1544,7 +1554,7 @@ def cross_entropy(input,
             Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            If :attr:`norm_by_batchsize` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
 

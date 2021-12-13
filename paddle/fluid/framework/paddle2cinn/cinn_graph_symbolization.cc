@@ -15,16 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 #include <algorithm>
-#include <iterator>
 #include <queue>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
 #include "cinn/frontend/op_mappers/use_op_mappers.h"
 #include "cinn/frontend/var_type_utils.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -57,8 +60,21 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
+    PADDLE_ENFORCE_NE(tensor, nullptr,
+                      platform::errors::PreconditionNotMet(
+                          "The input variable %s's tensor cannot be NULL,"
+                          "we need the variable's dtype and shape from tensor.",
+                          feed_name.c_str()));
 
+    VLOG(4) << "Get feed info from input: " << feed_name;
     feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+
+    PADDLE_ENFORCE_NE(
+        feed_map[feed_name].shape.size(), 0UL,
+        platform::errors::PreconditionNotMet(
+            "The input variable %s's tensor shape cannot be empty,"
+            "we need the variable's dtype and shape from tensor.",
+            feed_name.c_str()));
   }
   return feed_map;
 }
@@ -86,35 +102,99 @@ CinnGraphSymbolization::GetGraphInputParameterNames() const {
 // Transform paddle scope to cinn, note that we only preserve the graph’s
 // input parameter variable and ignore others.
 std::shared_ptr<::cinn::hlir::framework::Scope>
-CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) const {
+CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
   auto cinn_scope = ::cinn::hlir::framework::Scope::Create();
 
   // get the graph's input parameter variable name list
   auto parameter_names = GetGraphInputParameterNames();
 
   for (const auto& param_name : parameter_names) {
-    VLOG(4) << "add param var [" << param_name << "] info scope";
+    PADDLE_ENFORCE_GT(
+        feed_map.count(param_name), 0UL,
+        platform::errors::NotFound("Cannot find parameter %s from input list,"
+                                   "please add the tensor into input.",
+                                   param_name.c_str()));
+
     // if cannot find var in graph input, skip.
     // scope accepte the CINN format name, so here we need transform
     // paddle format name to CINN format.
-    auto* cinn_var = cinn_scope->Var<CinnTensor>(
-        ::cinn::utils::TransValidVarName(param_name));
+    auto valid_name = ::cinn::utils::TransValidVarName(param_name);
+    auto* cinn_var = cinn_scope->Var<CinnTensor>(valid_name);
 
     auto& cinn_tensor = absl::get<CinnTensor>(*cinn_var);
     // here we only need preserve dtype and shape, do not need preserve data
     auto feed_info = feed_map.at(param_name);
     cinn_tensor->set_type(feed_info.type);
     cinn_tensor->Resize(::cinn::hlir::framework::Shape(feed_info.shape));
+    VLOG(4) << "add paddle param var [" << param_name
+            << "] info cinn scope var[" << valid_name << "]";
+    var_model_to_program_map_[param_name] = valid_name;
   }
 
   return cinn_scope;
+}
+
+std::vector<Node*> CinnGraphSymbolization::TopologicalSort() const {
+  std::unordered_set<Node*> op_nodes;
+  std::for_each(graph_.Nodes().begin(), graph_.Nodes().end(),
+                [&op_nodes](Node* n) {
+                  if (n->IsOp()) {
+                    op_nodes.emplace(n);
+                  }
+                });
+
+  std::unordered_map<Node*, std::unordered_map<Node*, size_t>> adj_list;
+  std::unordered_map<Node*, size_t> in_degrees;
+  for (auto* n : op_nodes) {
+    // the op's input is var
+    for (auto* in_var : n->inputs) {
+      // the var's input is op
+      for (auto* in_op : in_var->inputs) {
+        if (op_nodes.count(in_op)) {
+          ++adj_list[in_op][n];
+          ++in_degrees[n];
+        }
+      }
+    }
+  }
+
+  // find topology entries
+  std::queue<Node*> queue;
+  for (auto* n : op_nodes) {
+    if (!in_degrees[n]) {
+      queue.push(n);
+    }
+  }
+
+  // topological sorting
+  std::vector<Node*> sorted_ops;
+  while (!queue.empty()) {
+    auto* cur_op = queue.front();
+    queue.pop();
+
+    VLOG(4) << "topological sort insert: " << cur_op->Name() << " "
+            << reinterpret_cast<void*>(cur_op) << " input "
+            << cur_op->inputs.size();
+    sorted_ops.emplace_back(cur_op);
+    for (const auto& adj_pair : adj_list[cur_op]) {
+      in_degrees.at(adj_pair.first) -= adj_pair.second;
+      if (!in_degrees[adj_pair.first]) {
+        queue.push(adj_pair.first);
+      }
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(sorted_ops.size(), op_nodes.size(),
+                    platform::errors::PreconditionNotMet(
+                        "The sorting graph contains cycles."));
+  return sorted_ops;
 }
 
 std::vector<std::unique_ptr<CinnOpDesc>>
 CinnGraphSymbolization::TransformAllGraphOpToCinn() const {
   std::vector<std::unique_ptr<CinnOpDesc>> cinn_op_descs;
 
-  const auto& sorted_ops = ir::TopologySortOperations(graph_);
+  auto sorted_ops = TopologicalSort();
   for (auto* node : sorted_ops) {
     cinn_op_descs.emplace_back(std::make_unique<CinnOpDesc>());
     auto& cinn_desc = cinn_op_descs.back();
@@ -146,6 +226,21 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
+std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
+  std::unordered_set<std::string> fetch_names;
+  fetch_names.reserve(fetch_var_names_.size());
+  std::for_each(
+      fetch_var_names_.begin(), fetch_var_names_.end(),
+      [this, &fetch_names](const std::string& name) {
+        PADDLE_ENFORCE_EQ(
+            var_model_to_program_map_.count(name), 1,
+            platform::errors::PreconditionNotMet(
+                "Cannot find %s in var_model_to_program_map_", name.c_str()));
+        fetch_names.insert(var_model_to_program_map_.at(name));
+      });
+  return fetch_names;
+}
+
 ::cinn::frontend::Program CinnGraphSymbolization::operator()() {
   std::string builder_name = "NetBuilder_of_graph_" + std::to_string(graph_id_);
   VLOG(4) << "NetBuilder Name " << builder_name;
@@ -156,7 +251,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   auto cinn_scope = CreateCinnScope(feed_map);
 
   OpMapperContext ctx(*cinn_scope, target_, &builder, &var_map_,
-                      &var_model_to_program_map_);
+                      &var_model_to_program_map_, &fetch_var_names_);
   // add all tensor's feed info into context
   for (auto& feed_pair : feed_map) {
     ctx.AddFeedInfo(feed_pair.first, feed_pair.second);

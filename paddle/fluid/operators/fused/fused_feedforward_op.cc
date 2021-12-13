@@ -41,17 +41,7 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
                    "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Dropout2Mask"), "Output", "Dropout2Mask",
                    "fused_feedforward");
-    OP_INOUT_CHECK(context->HasOutput("Ln1Mean"), "Output", "Ln1Mean",
-                   "fused_feedforward");
-    OP_INOUT_CHECK(context->HasOutput("Ln1Variance"), "Output", "Ln1Variance",
-                   "fused_feedforward");
-    OP_INOUT_CHECK(context->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
-                   "fused_feedforward");
-    OP_INOUT_CHECK(context->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
-                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Linear1Out"), "Output", "Linear1Out",
-                   "fused_feedforward");
-    OP_INOUT_CHECK(context->HasOutput("Ln1Out"), "Output", "Ln1Out",
                    "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Dropout1Out"), "Output", "Dropout1Out",
                    "fused_feedforward");
@@ -76,7 +66,6 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     }
     context->SetOutputDim("Dropout1Out", tmp_dim_x);
     context->SetOutputDim("Linear1Out", tmp_dim_x);
-    context->SetOutputDim("Ln1Out", dim_x);
     context->SetOutputDim("Dropout2Out", dim_x);
 
     if (context->Attrs().Get<bool>("dropout2_is_test") == false) {
@@ -84,10 +73,25 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     }
     framework::DDim mean_dim =
         framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
-    context->SetOutputDim("Ln1Mean", mean_dim);
-    context->SetOutputDim("Ln1Variance", mean_dim);
-    context->SetOutputDim("Ln2Mean", mean_dim);
-    context->SetOutputDim("Ln2Variance", mean_dim);
+    bool pre_layer_norm = context->Attrs().Get<bool>("pre_layer_norm");
+    if (pre_layer_norm) {
+      OP_INOUT_CHECK(context->HasOutput("Ln1Mean"), "Output", "Ln1Mean",
+                     "fused_feedforward");
+      OP_INOUT_CHECK(context->HasOutput("Ln1Variance"), "Output", "Ln1Variance",
+                     "fused_feedforward");
+      OP_INOUT_CHECK(context->HasOutput("Ln1Out"), "Output", "Ln1Out",
+                     "fused_feedforward");
+      context->SetOutputDim("Ln1Out", dim_x);
+      context->SetOutputDim("Ln1Mean", mean_dim);
+      context->SetOutputDim("Ln1Variance", mean_dim);
+    } else {
+      OP_INOUT_CHECK(context->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
+                     "fused_feedforward");
+      OP_INOUT_CHECK(context->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
+                     "fused_feedforward");
+      context->SetOutputDim("Ln2Mean", mean_dim);
+      context->SetOutputDim("Ln2Variance", mean_dim);
+    }
     context->ShareLoD("X", "Out");
   }
 
@@ -218,13 +222,12 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("dropout2_is_test"), false,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
+    bool pre_layer_norm = ctx->Attrs().Get<bool>("pre_layer_norm");
     OP_INOUT_CHECK(ctx->HasInput("Dropout1Mask"), "Input", "Dropout1Mask",
                    "FusedFeedForwardGrad");
     OP_INOUT_CHECK(ctx->HasInput("Dropout2Mask"), "Input", "Dropout1Mask",
                    "FusedFeedForwardGrad");
     OP_INOUT_CHECK(ctx->HasInput("Linear1Out"), "Input", "Linear1Out",
-                   "FusedFeedForwardGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln1Out"), "Input", "Ln1Out",
                    "FusedFeedForwardGrad");
     OP_INOUT_CHECK(ctx->HasInput("Dropout1Out"), "Input", "Dropout1Out",
                    "FusedFeedForwardGrad");
@@ -234,14 +237,19 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
                    "FusedFeedForwardGrad");
     OP_INOUT_CHECK(ctx->HasInput("Linear2Weight"), "Input", "Linear2Weight",
                    "FusedFeedForwardGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln1Mean"), "Input", "Ln1Mean",
-                   "FusedFeedForwardGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln1Variance"), "Input", "Ln1Variance",
-                   "FusedFeedForwardGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
-                   "FusedFeedForwardGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"), "Input", "Ln2Variance",
-                   "FusedFeedForwardGrad");
+    if (pre_layer_norm) {
+      OP_INOUT_CHECK(ctx->HasInput("Ln1Mean"), "Input", "Ln1Mean",
+                     "FusedFeedForwardGrad");
+      OP_INOUT_CHECK(ctx->HasInput("Ln1Variance"), "Input", "Ln1Variance",
+                     "FusedFeedForwardGrad");
+      OP_INOUT_CHECK(ctx->HasInput("Ln1Out"), "Input", "Ln1Out",
+                     "FusedFeedForwardGrad");
+    } else {
+      OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
+                     "FusedFeedForwardGrad");
+      OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"), "Input", "Ln2Variance",
+                     "FusedFeedForwardGrad");
+    }
 
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "FusedFeedForwardGrad");
@@ -299,30 +307,36 @@ class FusedFeedForwardOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Linear1Weight", this->Input("Linear1Weight"));
     op->SetInput("Linear1Bias", this->Input("Linear1Bias"));
     op->SetInput("Linear2Weight", this->Input("Linear2Weight"));
-    op->SetInput("Ln1Scale", this->Input("Ln1Scale"));
-    op->SetInput("Ln1Bias", this->Input("Ln1Bias"));
-    op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
-    op->SetInput("Ln2Bias", this->Input("Ln2Bias"));
     op->SetInput("Dropout1Mask", this->Output("Dropout1Mask"));
     op->SetInput("Dropout2Mask", this->Output("Dropout2Mask"));
     op->SetInput("Linear1Out", this->Output("Linear1Out"));
-    op->SetInput("Ln1Out", this->Output("Ln1Out"));
-    op->SetInput("Ln1Mean", this->Output("Ln1Mean"));
-    op->SetInput("Ln1Variance", this->Output("Ln1Variance"));
-    op->SetInput("Ln2Mean", this->Output("Ln2Mean"));
-    op->SetInput("Ln2Variance", this->Output("Ln2Variance"));
     op->SetInput("Dropout1Out", this->Output("Dropout1Out"));
     op->SetInput("Dropout2Out", this->Output("Dropout2Out"));
 
+    op->SetAttrMap(this->Attrs());
+    bool pre_layer_norm = BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Ln1Scale"),
-                  this->InputGrad("Ln1Scale"));
-    op->SetOutput(framework::GradVarName("Ln1Bias"),
-                  this->InputGrad("Ln1Bias"));
-    op->SetOutput(framework::GradVarName("Ln2Scale"),
-                  this->InputGrad("Ln2Scale"));
-    op->SetOutput(framework::GradVarName("Ln2Bias"),
-                  this->InputGrad("Ln2Bias"));
+    if (pre_layer_norm) {
+      op->SetInput("Ln1Scale", this->Input("Ln1Scale"));
+      op->SetInput("Ln1Bias", this->Input("Ln1Bias"));
+      op->SetInput("Ln1Out", this->Output("Ln1Out"));
+      op->SetInput("Ln1Mean", this->Output("Ln1Mean"));
+      op->SetInput("Ln1Variance", this->Output("Ln1Variance"));
+      op->SetOutput(framework::GradVarName("Ln1Scale"),
+                    this->InputGrad("Ln1Scale"));
+      op->SetOutput(framework::GradVarName("Ln1Bias"),
+                    this->InputGrad("Ln1Bias"));
+    } else {
+      op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
+      op->SetInput("Ln2Bias", this->Input("Ln2Bias"));
+      op->SetInput("Ln2Mean", this->Output("Ln2Mean"));
+      op->SetInput("Ln2Variance", this->Output("Ln2Variance"));
+      op->SetOutput(framework::GradVarName("Ln2Scale"),
+                    this->InputGrad("Ln2Scale"));
+      op->SetOutput(framework::GradVarName("Ln2Bias"),
+                    this->InputGrad("Ln2Bias"));
+    }
     op->SetOutput(framework::GradVarName("Linear1Weight"),
                   this->InputGrad("Linear1Weight"));
     op->SetOutput(framework::GradVarName("Linear1Bias"),
@@ -334,8 +348,6 @@ class FusedFeedForwardOpGradMaker : public framework::SingleGradOpMaker<T> {
       op->SetOutput(framework::GradVarName("Linear2Bias"),
                     this->InputGrad("Linear2Bias"));
     }
-
-    op->SetAttrMap(this->Attrs());
   }
 };
 

@@ -21,7 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {

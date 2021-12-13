@@ -16,11 +16,10 @@ INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
 SET(MKLDNN_PREFIX_DIR     ${THIRD_PARTY_PATH}/mkldnn)
-SET(MKLDNN_SOURCE_DIR     ${THIRD_PARTY_PATH}/mkldnn/src/extern_mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     ${GIT_URL}/oneapi-src/oneDNN.git)
-SET(MKLDNN_TAG            e2d45252ae9c3e91671339579e3c0f0061f81d49)
+SET(MKLDNN_TAG            145c4b50196ac90ec1b946fb80cb5cef6e7d2d35)
 
 
 # Introduce variables:
@@ -49,19 +48,14 @@ ELSE()
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
 ENDIF(NOT WIN32)
 
-cache_third_party(${MKLDNN_PROJECT}
-    REPOSITORY    ${MKLDNN_REPOSITORY}
-    TAG           ${MKLDNN_TAG}
-    DIR           MKLDNN_SOURCE_DIR)
-
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${MKLDNN_DOWNLOAD_CMD}"
+    GIT_REPOSITORY      ${MKLDNN_REPOSITORY}
+    GIT_TAG             ${MKLDNN_TAG}
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
-    SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     #BUILD_ALWAYS        1
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

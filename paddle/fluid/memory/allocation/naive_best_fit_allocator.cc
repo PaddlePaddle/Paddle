@@ -20,9 +20,8 @@
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/string/printf.h"
@@ -31,7 +30,10 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -111,6 +113,34 @@ uint64_t Release<platform::CPUPlace>(const platform::CPUPlace &place) {
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
+  return GetCPUBuddyAllocator()->Used();
+}
+
+// For Graphcore IPU
+template <>
+void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "IPUPlace, Allocate on cpu.";
+
+  void *p = GetCPUBuddyAllocator()->Alloc(size);
+  if (FLAGS_init_allocated_mem) {
+    memset(p, 0xEF, size);
+  }
+  VLOG(10) << "  pointer=" << p;
+  return p;
+}
+template <>
+void Free<platform::IPUPlace>(const platform::IPUPlace &place, void *p,
+                              size_t size) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetCPUBuddyAllocator()->Free(p);
+}
+template <>
+uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
+  return GetCPUBuddyAllocator()->Release();
+}
+template <>
+size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
@@ -327,8 +357,8 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
     size_t avail, total;
     platform::NPUMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
-        "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
+        "Cannot allocate %s in NPU %d, avaliable %s, total %s, NpuMinChunkSize "
+        "%s, NpuMaxChunkSize %s, NPU memory used: %s.",
         string::HumanReadableSize(size), place.device,
         string::HumanReadableSize(avail), string::HumanReadableSize(total),
         string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
@@ -336,7 +366,7 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
         string::HumanReadableSize(Used<platform::NPUPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
-      aclrtMemset(ptr, size, 0xEF, size);
+      platform::NPUMemsetSync(ptr, 0xEF, size, size);
     }
   }
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
@@ -387,8 +417,7 @@ void *Alloc<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "aclrtMallocHost Cannot allocate " << size
-                 << " bytes in NPUPinnedPlace";
+    LOG(WARNING) << "Cannot allocate " << size << " bytes in NPUPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
     memset(ptr, 0xEF, size);
