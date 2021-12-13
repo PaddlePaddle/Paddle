@@ -1116,6 +1116,7 @@ void BindImperative(py::module *m_ptr) {
               {
                 // Release gil and do tracing
                 py::gil_scoped_release release;
+                self->BumpInplaceVersion();
                 tracer->TraceOp("set_value", ins, outs, std::move(attrs),
                                 {{"Input", "Out"}});
               }
