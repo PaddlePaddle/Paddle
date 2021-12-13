@@ -1275,7 +1275,7 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->name);
+  auto pt_kernel_name = pt_kernel_signature_->name;
   auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
