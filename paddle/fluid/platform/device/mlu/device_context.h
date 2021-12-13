@@ -124,7 +124,8 @@ class MLUDeviceContext : public DeviceContext {
 
  private:
   int compute_capability_;
-  mluDim3 driver_version_;
+  int driver_version_;
+  int runtime_version_;
   MLUPlace place_;
   std::shared_ptr<MLUContext> default_ctx_;
 

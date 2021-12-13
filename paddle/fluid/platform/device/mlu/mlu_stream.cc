@@ -33,6 +33,7 @@ bool MLUStream::Init(const MLUPlace& place,
 }
 
 void MLUStream::Destroy() {
+  MLUDeviceGuard guard(place_.device);
   Wait();
   WaitCallback();
   if (stream_) {

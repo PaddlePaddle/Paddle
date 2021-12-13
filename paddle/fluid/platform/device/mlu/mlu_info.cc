@@ -44,10 +44,10 @@ namespace paddle {
 namespace platform {
 
 static int GetMLUDeviceCountImpl() {
-  mluDim3 ver;
+  int x, y, z;
   // When cnrtDriverGetVersion is executed, the device is initialized, 
   // no longer needs to call cnrtInit().
-  cnrtStatus stat = cnrtDriverGetVersion(&ver.x, &ver.y, &ver.z);
+  cnrtStatus stat = cnrtDriverGetVersion(&x, &y, &z);
   if (stat != cnrtSuccess) {
     VLOG(2) << "MLU Driver Version can't be detected. No MLU driver!";
     return 0;
@@ -88,11 +88,18 @@ void CheckDeviceId(int id) {
                         id, GetMLUDeviceCount()));
 }
 
-mluDim3 GetMLUDriverVersion(int id) {
+int GetMLUDriverVersion(int id) {
   CheckDeviceId(id);
-  mluDim3 ret;
-  PADDLE_ENFORCE_MLU_SUCCESS(cnGetDriverVersion(&ret.x, &ret.y, &ret.z));
-  return ret;
+  int x, y, z;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtDriverGetVersion(&x, &y, &z));
+  return x * 10000 + y * 100 + z;
+}
+
+int GetMLURuntimeVersion(int id) {
+  CheckDeviceId(id);
+  int x, y, z;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetLibVersion(&x, &y, &z));
+  return  x * 10000 + y * 100 + z;
 }
 
 int GetMLUCurrentDeviceId() {

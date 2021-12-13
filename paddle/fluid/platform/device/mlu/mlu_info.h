@@ -26,20 +26,17 @@ using cnStatus = CNresult;
 using cnrtStatus = cnrtRet_t;
 using cnnlStatus = cnnlStatus_t;
 using mluStream = cnrtQueue_t;
-using mluCnnlHandle = cnnlHandle_t;                                                            
+using mluCnnlHandle = cnnlHandle_t;
 using mluEventHandle = CNnotifier;
 using mluDeviceHandle = CNdev;
-
-typedef struct {
-  int x;
-  int y;
-  int z;
-} mluDim3;
 
 namespace platform {
 
 //! Get the driver version of the ith MLU.
-mluDim3 GetMLUDriverVersion(int id);
+int GetMLUDriverVersion(int id);
+
+//! Get the runtime version of the ith MLU.
+int GetMLURuntimeVersion(int id);
 
 //! Get the total number of MLU devices in system.
 int GetMLUDeviceCount();
