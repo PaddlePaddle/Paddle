@@ -216,13 +216,13 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<paddle::framework::InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "GetInputVarPtrs not support in dygraph runtime context"));
   }
 
   std::vector<paddle::framework::InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "GetOutputVarPtrs not support in dygraph runtime context"));
   }
