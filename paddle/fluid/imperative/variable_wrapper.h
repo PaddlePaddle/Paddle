@@ -209,13 +209,23 @@ class VariableWrapper {
 
   uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
 
-  void ResetInplaceVersion() {
-    auto new_version = var_.CurrentInplaceVersion();
+  void ResetInplaceVersion(bool set_to_zero = false) {
+    if (!set_to_zero) {
+      auto new_version = var_.CurrentInplaceVersion();
 
-    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
-            << "' will be updated from " << inplace_version_snapshot_ << "to "
-            << new_version;
-    inplace_version_snapshot_ = new_version;
+      VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+              << "' will be updated from " << inplace_version_snapshot_ << "to "
+              << new_version;
+      inplace_version_snapshot_ = new_version;
+
+    } else {
+      // Reset Snapshot & InplaceVersion to zero
+      inplace_version_snapshot_ = 0;
+      auto var = this->MutableVar();
+      if (var) {
+        var->SetInplaceVersionToZero();
+      }
+    }
   }
 
   bool hasCacheKey(const paddle::framework::OpKernelType& key) {

@@ -26,6 +26,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -342,6 +343,19 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
         self.assertEqual(net.training, False)
         with self.assertRaises(RuntimeError):
             net.foo.train()
+
+
+class TestRemoveCommentInDy2St(unittest.TestCase):
+    def func_with_comment(self):
+        # Comment1
+        x = paddle.to_tensor([1, 2, 3])
+        # Comment2
+        # Comment3
+        y = paddle.to_tensor([4, 5, 6])
+
+    def test_remove_comment(self):
+        code_string = func_to_source_code(self.func_with_comment)
+        self.assertEqual('#' not in code_string, True)
 
 
 if __name__ == '__main__':

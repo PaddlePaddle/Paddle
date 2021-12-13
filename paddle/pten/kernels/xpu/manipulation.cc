@@ -14,7 +14,7 @@
 
 #include "paddle/pten/kernels/xpu/manipulation.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/functions/general/manipulation.h"
+#include "paddle/pten/kernels/hybird/general/manipulation.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {
@@ -95,12 +95,7 @@ void ReshapeFromVectorDT(const XPUContext& dev_ctx,
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(ManipulationXPU);
-
-// TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
-// architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL("flatten_contiguous_range",
+PT_REGISTER_KERNEL(flatten,
                    XPU,
                    ANY,
                    pten::Flatten,
@@ -112,7 +107,7 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
+PT_REGISTER_KERNEL(flatten_mid,
                    XPU,
                    ANY,
                    pten::FlattenWithXShape,
@@ -124,9 +119,4 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int,
                    int64_t) {}
 
-// TODO(yuanrisheng): "reshape2" is compatible with old kernel
-// architecture, kernel_name should be "reshape".
-PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
-                                XPU,
-                                ANY,
-                                pten::ReshapeFromVectorVal) {}
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape, XPU, ANY, pten::ReshapeFromVectorVal) {}
