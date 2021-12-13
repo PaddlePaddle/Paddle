@@ -31,6 +31,27 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+RepeatedFCReluFusePass::RepeatedFCReluFusePass() {
+  AddOpCompat(OpCompat("fc"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("W")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("in_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("activation_type")
+      .IsStringEQ("relu")
+      .End();
+}
 static bool IsInputOfFC(Node* n) {
   if (n && n->IsVar() && VarLinksToOp(n, "fc")) {
     return true;
@@ -66,9 +87,13 @@ static bool IsFCWithPaddingWeights(Node* n) {
 }
 
 static bool IsParamOfFC(Node* n, const std::string& param_name) {
-  if (IsInputOfFC(n) && n->inputs.empty() &&
-      (n->Name() == n->outputs[0]->Op()->Input(param_name)[0])) {
-    return true;
+  if (IsInputOfFC(n) && n->inputs.empty()) {
+    for (auto* out : n->outputs) {
+      if (out->Op()->Type() == "fc" &&
+          n->Name() == out->Op()->Input(param_name)[0]) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -291,8 +316,9 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
   }
 }
 
-static int BuildFusion(Graph* graph, const std::string& name_scope,
-                       int num_fc) {
+int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
+                                        const std::string& name_scope,
+                                        int num_fc) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   BuildRepeatedFCReluPattern(pattern, name_scope, num_fc);
@@ -312,6 +338,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "repeated_fc_relu_fuse_pass failed in op compat.";
+      return;
+    }
     LOG(INFO) << "handle Repeated FC Act fuse";
     std::vector<Node*> weights_vars(num_fc);
     std::vector<Node*> bias_vars(num_fc);

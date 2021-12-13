@@ -40,7 +40,7 @@ _fp16_guard_pattern = "__use_fp16__"
 
 def _rename_arg(op, old_name, new_name):
     """
-    If an op has old_name input and output, rename these input 
+    If an op has old_name input and output, rename these input
     args new_name.
 
     Args:
@@ -80,6 +80,36 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
+def _keep_fp32_input(op, in_name):
+    op_type = op.type
+    if op_type in ['batch_norm', 'layer_norm']:
+        # Scale, Bias, Mean, Variance should be float32.
+        return in_name != 'X'
+    if op_type == 'fused_bn_add_activation':
+        return in_name not in {'X', 'Z'}
+    if op_type == 'resnet_unit':
+        return in_name not in {'X', 'FilterX', 'Z', 'FilterZ'}
+    if op_type in ['fused_attention', 'fused_feedforward']:
+        return in_name in {
+            'LnScale', 'LnBias', 'Ln2Scale', 'Ln2Bias', "Ln1Scale", "Ln1Bias"
+        }
+    return False
+
+
+def _keep_fp32_output(op, out_name):
+    op_type = op.type
+    if op_type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+        return out_name != 'Y'
+    if op_type == 'resnet_unit':
+        return out_name not in {'Y', 'ConvX', 'ConvZ'}
+    if op_type in ['fused_attention', 'fused_feedforward']:
+        return out_name in {
+            'LnMean', 'LnVariance', 'Ln2Mean', 'Ln2Variance', 'Ln1Mean',
+            'Ln1Variance'
+        }
+    return False
+
+
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     """
     Insert cast op and rename args of input and output.
@@ -97,11 +127,9 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     num_cast_ops = 0
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
-                'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-        ]:
-            if in_name not in {'X', 'Z'}:
-                continue
+        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(op,
+                                                                       in_name):
+            continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
             if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
@@ -110,6 +138,27 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
                 out_var = block.vars.get(cast_name)
                 if out_var is None or out_var.dtype != dest_dtype:
+                    op_device = op.attr('op_device')
+                    # NOTE(wangxi): optimize for pipeline, reduce one send.
+                    # if in_var is stop_gradient and prev_op device is `all`,
+                    # set cast_op device to `all`, can reduce send cast_var.
+                    # TODO: need remove this after we unified the dynamic
+                    # and static pipeline interface.
+                    if src_dtype == core.VarDesc.VarType.FP32 and in_var.stop_gradient:
+                        prev_op = None
+                        if in_var.op is op:
+                            prev_op = find_true_prev_op(block.ops, op,
+                                                        in_var_name)
+                        elif in_var.op is not None:
+                            prev_op = in_var.op
+
+                        prev_op_device = None
+                        if prev_op is not None:
+                            prev_op_device = prev_op.attr('op_device')
+
+                        if prev_op_device is not None and 'all' in prev_op_device:
+                            op_device = prev_op_device
+
                     out_var = block.create_var(
                         name=cast_name,
                         dtype=dest_dtype,
@@ -124,7 +173,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         attrs={
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype,
-                            "op_device": op.attr("op_device")
+                            "op_device": op_device
                         })
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
@@ -133,9 +182,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     op._set_attr('in_dtype', dest_dtype)
     if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
         for out_name in op.output_names:
-            if op.type in [
-                    'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-            ] and out_name != 'Y':
+            if _keep_fp32_output(op, out_name):
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
@@ -218,16 +265,16 @@ def find_true_post_op(ops, cur_op, var_name, search_all=False):
         ops (list): A list of ops.
         cur_op (Operator): Current operator which has var_name variable.
         var_name (string): Variable name.
-        search_all (bool): The type of operator search. Use if \"cur_op\" is not in the \"ops\" set. 
+        search_all (bool): The type of operator search. Use if \"cur_op\" is not in the \"ops\" set.
     """
     post_op = []
     if search_all:
         """
-        \"cur_op\" do not have to be in list of \"ops\". E.g. \"cur_op\" can come 
-        from startup_prog block and \"ops\" list from main_prog block. 
-        By setting idx to -1, we'll start looking for post-ops from the top of the list. 
-        If search_all is False, assume that \"cur_op\" is in \"ops\" list, 
-        so to reduce the time of search we can start iterating from \"cur_op\" idx. 
+        \"cur_op\" do not have to be in list of \"ops\". E.g. \"cur_op\" can come
+        from startup_prog block and \"ops\" list from main_prog block.
+        By setting idx to -1, we'll start looking for post-ops from the top of the list.
+        If search_all is False, assume that \"cur_op\" is in \"ops\" list,
+        so to reduce the time of search we can start iterating from \"cur_op\" idx.
         """
         idx = -1
     else:
@@ -350,9 +397,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
-                if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-                } and in_name not in {'X', 'Z'}:
+                if _keep_fp32_input(op, in_name):
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -380,9 +425,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-                } and out_name != 'Y':
+                if _keep_fp32_output(op, out_name):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
@@ -483,19 +526,19 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
 
 def rewrite_program(main_prog, amp_lists):
     """
-    Traverse all ops in current block and insert cast op according to 
+    Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
 
     1. When an op belongs to the black list, add it to black set
     2. When an op belongs to the white list, add it to white set
-    3. When an op belongs to the gray list. If one 
-       of its inputs is the output of black set op or black list op, 
-       add it to black set. If all of its previous ops are not black 
-       op and one of its inputs is the output of white set op or 
+    3. When an op belongs to the gray list. If one
+       of its inputs is the output of black set op or black list op,
+       add it to black set. If all of its previous ops are not black
+       op and one of its inputs is the output of white set op or
        white list op, add it to white set.
     4. When an op isn't in the lists, add it to black op set.
-    5. Add necessary cast ops to make sure that black set op will be 
-       computed in fp32 mode, while white set op will be computed in 
+    5. Add necessary cast ops to make sure that black set op will be
+       computed in fp32 mode, while white set op will be computed in
        fp16 mode.
 
     Args:

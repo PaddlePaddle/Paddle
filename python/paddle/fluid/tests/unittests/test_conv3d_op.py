@@ -984,6 +984,21 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         self.assertRaises(ValueError, run_7)
 
+        # ValueError: filter num
+        def run_8():
+            fluid.layers.conv3d(
+                input=input,
+                num_filters=0,
+                filter_size=0,
+                stride=0,
+                padding=0,
+                dilation=0,
+                groups=1,
+                use_cudnn=False,
+                data_format="NDHWC")
+
+        self.assertRaises(ValueError, run_8)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -88,7 +88,8 @@ bool SetPlaceAndCheck(PlaceType place, size_t length) {
   const std::vector<std::vector<size_t>> lod{{0, length}};
   scope.Var(name);
   auto tensor = CreateTensor(place, &scope, name);
-  tensor->Reshape({static_cast<int>(length)});
+  std::vector<int> shape{static_cast<int>(length)};
+  tensor->Reshape(shape);
   tensor->mutable_data<T>(place);
   tensor->SetLoD(lod);
 
@@ -132,6 +133,14 @@ TEST(Tensor, FillRandomDataAndCheck) {
 #ifdef PADDLE_WITH_CUDA
   ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kGPU));
   ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kGPU));
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kNPU));
+  ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kNPU));
+#endif
+#ifdef PADDLE_WITH_XPU
+  ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kXPU));
+  ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kXPU));
 #endif
 }
 

@@ -49,9 +49,6 @@ class TestSumOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')
 
-    def init_kernel_type(self):
-        pass
-
 
 class TestSelectedRowsSumOp(unittest.TestCase):
     def setUp(self):
@@ -209,6 +206,11 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
     def test_w_is_selected_rows(self):
         for inplace in [True, False]:
             self.check_with_place(core.CPUPlace(), inplace)
+
+
+class TestSelectedRowsSumBF16OpBigRow(TestSelectedRowsSumBF16Op):
+    def init_kernel_type(self):
+        self.row_numel = 102
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):

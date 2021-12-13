@@ -21,8 +21,8 @@
 
 #include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/dynload/hccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -72,10 +72,14 @@ class NCCLCommContext {
     return comm_ctx;
   }
 
-  NCCLComm* CreateNCCLComm(ncclUniqueId* nccl_id, int nranks, int rank,
-                           int dev_id, int ring_id = 0);
+  NCCLComm* CreateComm(ncclUniqueId* nccl_id, int nranks, int rank, int dev_id,
+                       int ring_id = 0);
 
   void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
+
+  void CreateNCCLCommMultiTrainer(const std::vector<int>& dev_ids,
+                                  ncclUniqueId* nccl_id, int nranks, int rank,
+                                  int ring_id);
 
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
@@ -274,8 +278,8 @@ class BKCLCommContext {
     return comm_ctx;
   }
 
-  BKCLComm* CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks, int rank,
-                           int dev_id, int ring_id = 0);
+  BKCLComm* CreateComm(BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id,
+                       int ring_id = 0);
 
   void CreateAllBKCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 

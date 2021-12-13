@@ -1,0 +1,24 @@
+type: "fake_channel_wise_dequantize_max_abs"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Scales"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "quant_bits"
+    type: INTS
+  }
+  attrs {
+    name: "quant_axis"
+    type: INT
+  }
+  attrs {
+    name: "x_num_col_dims"
+    type: INT
+  }
+}

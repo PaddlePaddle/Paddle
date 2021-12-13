@@ -18,12 +18,17 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
+#include "paddle/fluid/framework/pten_utils.h"
+
+// only can include the headers in paddle/pten/include dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
 namespace paddle {
 namespace operators {
 
@@ -43,13 +48,6 @@ void default_elementwise_div(const framework::ExecutionContext& ctx,
   }
 }
 
-template <typename DeviceContext, typename T, class Enable = void>
-struct SameDimsElemwiseDiv {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z);
-};
-
 template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
@@ -59,13 +57,13 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
 
-    auto dims_equal = x->dims() == y->dims();
-    if (dims_equal) {
-      SameDimsElemwiseDiv<DeviceContext, T> same_dims_div;
-      same_dims_div(ctx, x, y, z);
-    } else {
-      default_elementwise_div<DeviceContext, T>(ctx, x, y, z);
-    }
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    int axis = ctx.Attr<int>("axis");
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    pten::ElementwiseDiv<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis,
+                            pt_z.get());
   }
 };
 
@@ -74,23 +72,13 @@ struct DivGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
 };
 
-template <>
-struct DivGradDX<paddle::platform::complex64> {
-  HOSTDEVICE paddle::platform::complex64 operator()(
-      paddle::platform::complex64 x, paddle::platform::complex64 y,
-      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
-    paddle::platform::complex64 y_conj(y.real, -y.imag);
-    return dout / y_conj;
-  }
-};
-
-template <>
-struct DivGradDX<paddle::platform::complex128> {
-  HOSTDEVICE paddle::platform::complex128 operator()(
-      paddle::platform::complex128 x, paddle::platform::complex128 y,
-      paddle::platform::complex128 out,
-      paddle::platform::complex128 dout) const {
-    paddle::platform::complex128 y_conj(y.real, -y.imag);
+template <typename T>
+struct DivGradDX<paddle::platform::complex<T>> {
+  HOSTDEVICE paddle::platform::complex<T> operator()(
+      paddle::platform::complex<T> x, paddle::platform::complex<T> y,
+      paddle::platform::complex<T> out,
+      paddle::platform::complex<T> dout) const {
+    paddle::platform::complex<T> y_conj(y.real, -y.imag);
     return dout / y_conj;
   }
 };
@@ -102,23 +90,13 @@ struct DivGradDY {
   }
 };
 
-template <>
-struct DivGradDY<paddle::platform::complex64> {
-  HOSTDEVICE paddle::platform::complex64 operator()(
-      paddle::platform::complex64 x, paddle::platform::complex64 y,
-      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
-    paddle::platform::complex64 out_div_y_conj((out / y).real, -(out / y).imag);
-    return -dout * out_div_y_conj;
-  }
-};
-
-template <>
-struct DivGradDY<paddle::platform::complex128> {
-  HOSTDEVICE paddle::platform::complex128 operator()(
-      paddle::platform::complex128 x, paddle::platform::complex128 y,
-      paddle::platform::complex128 out,
-      paddle::platform::complex128 dout) const {
-    paddle::platform::complex128 out_div_y_conj((out / y).real,
+template <typename T>
+struct DivGradDY<paddle::platform::complex<T>> {
+  HOSTDEVICE paddle::platform::complex<T> operator()(
+      paddle::platform::complex<T> x, paddle::platform::complex<T> y,
+      paddle::platform::complex<T> out,
+      paddle::platform::complex<T> dout) const {
+    paddle::platform::complex<T> out_div_y_conj((out / y).real,
                                                 -(out / y).imag);
     return -dout * out_div_y_conj;
   }

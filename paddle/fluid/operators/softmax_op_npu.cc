@@ -12,8 +12,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +31,7 @@ class SoftmaxNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("SoftmaxV2", {*in}, {*out}, attr_input);
+    const auto& runner = NpuOpRunner("SoftmaxV2", {*in}, {*out}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -71,8 +71,8 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
     dX->mutable_data<T>(ctx.GetPlace());
 
     framework::NPUAttributeMap attr_input = {};
-    auto runner = NpuOpRunner(std::string("SoftmaxGrad"), {tmp_out, tmp_dOut},
-                              {*dX}, attr_input);
+    const auto& runner = NpuOpRunner(std::string("SoftmaxGrad"),
+                                     {tmp_out, tmp_dOut}, {*dX}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()

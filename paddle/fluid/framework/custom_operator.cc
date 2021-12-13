@@ -25,15 +25,20 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/api/lib/api_declare.h"
+#include "paddle/pten/api/lib/ext_compat_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/convert_utils.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
@@ -127,10 +132,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "The %d-th tensor in input vector<tensor> (%s) "
                               "is not initialized.",
                               i, in_name));
-        auto custom_t = paddle::Tensor(
-            CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
-        CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_t);
-        CustomTensorUtils::SetTensorCurrentStream(&custom_t, ctx.GetPlace());
+        paddle::Tensor custom_t;
+        custom_t.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
         custom_vec_in.emplace_back(custom_t);
       }
       custom_vec_ins.emplace_back(custom_vec_in);
@@ -141,15 +144,13 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
-      auto custom_in = paddle::Tensor(
-          CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
-      CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_in);
-      CustomTensorUtils::SetTensorCurrentStream(&custom_in, ctx.GetPlace());
+      paddle::Tensor custom_in;
+      custom_in.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
       custom_ins.emplace_back(custom_in);
     }
   }
 
-  std::vector<boost::any> custom_attrs;
+  std::vector<paddle::any> custom_attrs;
   for (auto& attr_str : attrs) {
     auto attr_name_and_type = detail::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
@@ -206,11 +207,17 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "Tensors.",
                 vec_true_outs.size(), outs.size()));
         for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          CustomTensorUtils::ShareDataTo(outs.at(j), vec_true_outs.at(j));
+          experimental::MovesStorage(
+              std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl())
+                  .get(),
+              vec_true_outs.at(j));
         }
       } else {
         auto* true_out = ctx.Output<Tensor>(out_name);
-        CustomTensorUtils::ShareDataTo(outs.at(i), true_out);
+        experimental::MovesStorage(
+            std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl())
+                .get(),
+            true_out);
       }
     }
   } catch (platform::EnforceNotMet& exception) {
@@ -478,8 +485,7 @@ void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const std::vector<std::string>& inputs,
                                      const std::vector<std::string>& outputs,
                                      const std::vector<std::string>& attrs) {
-  OpKernelType key(type,
-                   CustomTensorUtils::ConvertEnumPlaceToInnerPlace(place));
+  OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
   VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
       [kernel_func, inputs, outputs,
@@ -502,7 +508,7 @@ void RegisterOperatorKernel(const std::string& name,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kCPU, inputs, outputs, attrs);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kGPU, inputs, outputs, attrs);
 #endif
@@ -516,6 +522,12 @@ void RegisterOperatorWithMetaInfo(
   auto& base_op_meta = op_meta_infos.front();
 
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
+
+  if (OpInfoMap::Instance().Has(op_name)) {
+    LOG(WARNING) << "Operator (" << op_name << ")has been registered.";
+    return;
+  }
+
   auto& op_inputs = OpMetaInfoHelper::GetInputs(base_op_meta);
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(base_op_meta);
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(base_op_meta);
@@ -605,7 +617,7 @@ void RegisterOperatorWithMetaInfo(
         }
       }
 
-      std::vector<boost::any> custom_attrs;
+      std::vector<paddle::any> custom_attrs;
       for (auto& attr_str : op_attrs) {
         auto attr_name_and_type = detail::ParseAttrStr(attr_str);
         auto attr_name = attr_name_and_type[0];
@@ -710,14 +722,12 @@ void RegisterOperatorWithMetaInfo(
           std::vector<DataType> vec_custom_dtype;
           for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
             auto dtype = ctx->GetInputDataType(in_name, i);
-            vec_custom_dtype.emplace_back(
-                CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
+            vec_custom_dtype.emplace_back(pten::TransToPtenDataType(dtype));
           }
           vec_input_dtypes.emplace_back(vec_custom_dtype);
         } else {
           auto dtype = ctx->GetInputDataType(in_name);
-          input_dtypes.emplace_back(
-              CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
+          input_dtypes.emplace_back(pten::TransToPtenDataType(dtype));
         }
       }
 
@@ -729,14 +739,12 @@ void RegisterOperatorWithMetaInfo(
         auto out_name = op_outputs[i];
         if (detail::IsDuplicableVar(out_name)) {
           for (size_t j = 0; j < output_dtypes.size(); ++j) {
-            auto dtype = CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-                output_dtypes[i]);
+            auto dtype = pten::TransToProtoVarType(output_dtypes[i]);
             ctx->SetOutputDataType(out_name, dtype, j);
           }
         } else {
-          ctx->SetOutputDataType(
-              out_name, CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-                            output_dtypes[i]));
+          ctx->SetOutputDataType(out_name,
+                                 pten::TransToProtoVarType(output_dtypes[i]));
         }
       }
     };
@@ -781,10 +789,12 @@ void RegisterOperatorWithMetaInfo(
         const imperative::NameVarBaseMap& var_base_map_in,
         const imperative::NameVarBaseMap& var_base_map_out,
         const framework::AttributeMap& attrs,
+        const framework::AttributeMap& default_attrs,
         const std::map<std::string, std::string>& inplace_map) {
       CustomGradOpMaker<paddle::imperative::OpBase> maker(
           type, var_base_map_in, var_base_map_out, attrs, inplace_map,
           grad_op_name, grad_op_inputs, grad_op_outputs);
+      maker.SetDygraphDefaultAttrsMap(default_attrs);
       return maker();
     };
 
@@ -864,7 +874,7 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
-
+  VLOG(1) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");

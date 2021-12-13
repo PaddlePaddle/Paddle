@@ -25,10 +25,13 @@
 
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 
 namespace py = pybind11;
 namespace paddle {
@@ -165,7 +168,7 @@ static inline void HandleViewBetweenInputAndOutput(
 
     auto* view_output_tensor =
         view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    view_output_tensor->ShareDataWith(input_tensor);
+    view_output_tensor->ShareBufferWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 
     VLOG(3) << "Perform View between Output Var(" << view_output_var->Name()
@@ -173,6 +176,58 @@ static inline void HandleViewBetweenInputAndOutput(
             << "), share allocation and inplace version.";
   }
 }
+
+PyObject* MakeReturnPyObject(
+    const std::shared_ptr<paddle::imperative::VarBase>& out) {
+  return ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
+             ::pybind11::detail::holder_helper<
+                 std::shared_ptr<imperative::VarBase>>::get(out),
+             &out)
+      .ptr();
+}
+
+PyObject* MakeReturnPyObject(
+    const std::vector<std::shared_ptr<imperative::VarBase>>& out) {
+  PyObject* result = PyList_New((Py_ssize_t)out.size());
+
+  for (size_t i = 0; i < out.size(); i++) {
+    PyList_SET_ITEM(
+        result, (Py_ssize_t)i,
+        ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
+            ::pybind11::detail::holder_helper<
+                std::shared_ptr<imperative::VarBase>>::get(out[i]),
+            &out[i])
+            .ptr());  // NOLINT
+  }
+
+  return result;
+}
+
+template <typename Tuple, size_t N>
+struct TupleVarBasesResult {
+  static void Run(const Tuple& out, PyObject* result) {
+    TupleVarBasesResult<Tuple, N - 1>::Run(out, result);
+    PyTuple_SET_ITEM(result, N - 1, MakeReturnPyObject(std::get<N - 1>(out)));
+  }
+};
+
+template <typename Tuple>
+struct TupleVarBasesResult<Tuple, 1> {
+  static void Run(const Tuple& out, PyObject* result) {
+    PyTuple_SET_ITEM(result, 0, MakeReturnPyObject(std::get<0>(out)));
+  }
+};
+
+template <typename... Args>
+PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
+  auto len = sizeof...(Args);
+  PyObject* result = PyTuple_New(len);
+
+  TupleVarBasesResult<decltype(out), sizeof...(Args)>::Run(out, result);
+
+  return result;
+}
+
 }  // namespace pybind
 }  // namespace paddle
 

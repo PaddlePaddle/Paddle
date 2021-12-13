@@ -17,6 +17,7 @@ import warnings
 import paddle.nn as nn
 import numpy as np
 from .static_flops import static_flops, Table
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 
 __all__ = []
 
@@ -100,6 +101,10 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             #Total Flops: 347560     Total Params: 61610
     """
     if isinstance(net, nn.Layer):
+        # If net is a dy2stat model, net.forward is StaticFunction instance,
+        # we set net.forward to original forward function.
+        _, net.forward = unwrap_decorators(net.forward)
+
         inputs = paddle.randn(input_size)
         return dynamic_flops(
             net,
@@ -211,8 +216,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     def add_hooks(m):
         if len(list(m.children())) > 0:
             return
-        m.register_buffer('total_ops', paddle.zeros([1], dtype='int32'))
-        m.register_buffer('total_params', paddle.zeros([1], dtype='int32'))
+        m.register_buffer('total_ops', paddle.zeros([1], dtype='int64'))
+        m.register_buffer('total_params', paddle.zeros([1], dtype='int64'))
         m_type = type(m)
 
         flops_fn = None

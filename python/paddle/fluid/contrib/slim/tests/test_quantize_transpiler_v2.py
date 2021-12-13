@@ -79,6 +79,7 @@ class TestQuantizeProgramPass(unittest.TestCase):
         random.seed(0)
         np.random.seed(0)
 
+        # 1 Define program
         train_program = fluid.Program()
         startup_program = fluid.Program()
         test_program = fluid.Program()
@@ -93,15 +94,14 @@ class TestQuantizeProgramPass(unittest.TestCase):
             test_graph = IrGraph(core.Graph(test_program.desc), for_test=True)
             test_graph.draw('.', 'test_program_1')
 
+        # 2 Apply quantization
         qt = QuantizeTranspilerV2(
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quant_type,
-            quantizable_op_type=[
-                'conv2d', 'depthwise_conv2d', 'mul', 'pool2d'
-            ])
-        qt.apply(train_program, startup_program)
-        qt.apply(test_program, startup_program)
+            weight_quantize_type=weight_quant_type)
+        qt.apply(train_program, startup_program, is_test=False)
+        qt.apply(test_program, startup_program, is_test=True)
 
+        # 3 Train
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()
@@ -120,28 +120,34 @@ class TestQuantizeProgramPass(unittest.TestCase):
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(train_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
-        iters = 2
+        iters = 5
         batch_size = 8
 
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
-            for _ in range(iters):
+            for idx in range(iters):
                 data = next(train_reader())
                 loss_v = exe.run(binary,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
-                if not for_ci:
-                    print('{}: {}'.format('loss', loss_v))
+                if not for_ci and idx % 20 == 0:
+                    print('{}: {}'.format('loss', np.mean(loss_v)))
 
+        print('{}: {}'.format('loss', np.mean(loss_v)))
+
+        # 4 Convert
+        qt.convert(test_program, scope)
         if not for_ci:
             with fluid.scope_guard(scope):
-                fluid.io.save_inference_model('./infer_model',
-                                              ['image', 'label'], [loss], exe,
-                                              test_program)
+                fluid.io.save_inference_model(
+                    './infer_model', ['image', 'label'], [loss],
+                    exe,
+                    test_program,
+                    clip_extra=True)
 
-    def test_quantize_program_gpu(self):
+    def test_gpu_1(self):
         if fluid.core.is_compiled_with_cuda():
             self.quantize_program(
                 use_cuda=True,
@@ -150,12 +156,29 @@ class TestQuantizeProgramPass(unittest.TestCase):
                 weight_quant_type='abs_max',
                 for_ci=True)
 
-    def test_quantize_program_cpu(self):
+    def test_gpu_2(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.quantize_program(
+                use_cuda=True,
+                seed=1,
+                activation_quant_type='moving_average_abs_max',
+                weight_quant_type='channel_wise_abs_max',
+                for_ci=True)
+
+    def test_cpu_1(self):
         self.quantize_program(
             use_cuda=False,
             seed=2,
             activation_quant_type='abs_max',
             weight_quant_type='abs_max',
+            for_ci=True)
+
+    def test_cpu_2(self):
+        self.quantize_program(
+            use_cuda=False,
+            seed=2,
+            activation_quant_type='moving_average_abs_max',
+            weight_quant_type='channel_wise_abs_max',
             for_ci=True)
 
 

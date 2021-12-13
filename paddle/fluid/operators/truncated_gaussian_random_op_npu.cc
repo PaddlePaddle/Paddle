@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -59,7 +59,7 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner = NpuOpRunner(
+    const auto& runner = NpuOpRunner(
         "ParameterizedTruncatedNormal",
         {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor}, {*out},
         {{"seed", seed_var}});

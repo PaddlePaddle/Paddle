@@ -198,7 +198,8 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
                                       "Users should not set this manually.")
-        .SetDefault(std::vector<std::string>());
+        .SetDefault(std::vector<std::string>())
+        .AsExtra();
     AddComment(R"DOC(
 )DOC");
   }

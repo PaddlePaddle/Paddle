@@ -31,7 +31,13 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "StridedSlice");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "StridedSlice");
-
+    auto input_var_type = ctx->GetInputsVarType("Input")[0];
+    if (input_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      if (ctx->IsRuntime()) {
+        // shape is determined by Runtime.
+        return;
+      }
+    }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(
         in_dims.size(), 7,
@@ -55,6 +61,20 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     auto starts_size = starts.size();
     auto ends_size = ends.size();
     auto strides_size = strides.size();
+
+    for (size_t i = 0; i < axes.size(); ++i) {
+      PADDLE_ENFORCE_GE(axes[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The axis should be greater than or equal to 0."
+                            "But received %d of axes[%d]",
+                            axes[i], i));
+      PADDLE_ENFORCE_LT(
+          axes[i], in_dims.size(),
+          platform::errors::InvalidArgument(
+              "The axes should be less than or equal to input tensor's rank."
+              "But received %d of axes[%d], input tensor shape [%d]",
+              axes[i], i, in_dims.size()));
+    }
 
     if (ctx->HasInputs("StartsTensorList")) {
       auto StartsTensorList = ctx->Inputs("StartsTensorList");
@@ -154,6 +174,27 @@ class StridedSliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    auto *in_var = ctx.InputVar("Input");
+    auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
+    if (is_in_var_array) {
+      auto &tensor_array = in_var->Get<framework::LoDTensorArray>();
+      for (auto &tensor : tensor_array) {
+        if (!platform::is_cuda_pinned_place(tensor.place())) {
+          PADDLE_ENFORCE_EQ(
+              platform::is_same_place(tensor.place(),
+                                      ctx.device_context().GetPlace()),
+              true,
+              platform::errors::InvalidArgument(
+                  "Place of context is %s. Place of input tensor is %s. They "
+                  "are should be same, but reveived different place.",
+                  string::to_string(ctx.device_context().GetPlace()),
+                  string::to_string(tensor.place())));
+        }
+      }
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+          ctx.device_context());
+    }
     // NOTE: cuda pinned tensor need to copy its data to target place
     auto in_tensor = ctx.Input<Tensor>("Input");
     if (platform::is_cuda_pinned_place(in_tensor->place())) {
@@ -176,6 +217,14 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
+  }
+};
+
+class StridedSliceOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SetOutputType("Out", ctx->GetInputType("Input"));
+    ctx->SetOutputDataType("Out", ctx->GetInputDataType("Input"));
   }
 };
 
@@ -259,6 +308,13 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "StridedSliceGrad");
 
+    auto input_var_type = ctx->GetInputsVarType("Input")[0];
+    if (input_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      if (ctx->IsRuntime()) {
+        // shape is determined by Runtime
+        return;
+      }
+    }
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {
@@ -308,6 +364,16 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetType("strided_slice_grad");
   }
 };
+class StridedSliceGradOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SetOutputType(framework::GradVarName("Input"),
+                       ctx->GetInputType(framework::GradVarName("Out")));
+    ctx->SetOutputDataType(
+        framework::GradVarName("Input"),
+        ctx->GetInputDataType(framework::GradVarName("Out")));
+  }
+};
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
                                     "Input");
@@ -318,28 +384,33 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
-                  ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>);
+                  ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>,
+                  ops::StridedSliceOpVarTypeInference);
+
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
-                  ops::StridedSliceOpGradNoNeedBufferVarsInferer);
+                  ops::StridedSliceOpGradNoNeedBufferVarsInferer,
+                  ops::StridedSliceGradOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice,
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex64>,
+                            paddle::platform::complex<float>>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex128>);
+                            paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice_grad,
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
-                                paddle::platform::complex64>,
+                                paddle::platform::complex<float>>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
-                                paddle::platform::complex128>);
+                                paddle::platform::complex<double>>);

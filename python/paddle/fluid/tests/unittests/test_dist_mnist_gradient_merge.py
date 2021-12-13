@@ -16,6 +16,7 @@ from __future__ import print_function
 import os
 import unittest
 from test_dist_base import TestDistBase
+import paddle.fluid as fluid
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -27,7 +28,6 @@ class TestDistMnistGradMerge(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist_gradient_merge.py",
@@ -44,13 +44,43 @@ class TestDistMnistGradMergeNoFuse(TestDistBase):
         self._fuse_all_reduce = False
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist_gradient_merge.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name + "_no_fuse")
+
+
+class TestDistMnistGradMergeRawOptimizerBase(TestDistBase):
+    def _setup_config(self):
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._use_fleet_api = True
+        self._use_fleet_api_20 = True
+
+    def enable_avg(self):
+        return False
+
+    def test_dist_train(self):
+        if fluid.core.is_compiled_with_cuda():
+            avg = str(self.enable_avg())
+            log_name = flag_name + "_raw_optimizer_gm_avg_" + avg
+            self.check_with_place(
+                "dist_mnist_gradient_merge_raw_optimizer.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=log_name,
+                need_envs={
+                    'FLAGS_apply_pass_to_program': '1',
+                    'enable_gm_avg': avg,
+                })
+
+
+class TestDistMnistGradMergeRawOptimizerAvg(
+        TestDistMnistGradMergeRawOptimizerBase):
+    def enable_avg(self):
+        return True
 
 
 if __name__ == "__main__":

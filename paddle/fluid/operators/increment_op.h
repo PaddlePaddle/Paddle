@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -30,8 +31,9 @@ class IncrementKernel : public framework::OpKernel<T> {
     out_tensor->mutable_data<T>(context.GetPlace());
     auto& dev =
         *context.template device_context<DeviceContext>().eigen_device();
-    framework::EigenScalar<T>::From(*out_tensor).device(dev) =
-        framework::EigenScalar<T>::From(*x_tensor) + static_cast<T>(step);
+    EigenAdd<std::decay_t<decltype(dev)>, T>::Eval(
+        dev, framework::EigenScalar<T>::From(*out_tensor),
+        framework::EigenScalar<T>::From(*x_tensor), static_cast<T>(step));
   }
 };
 

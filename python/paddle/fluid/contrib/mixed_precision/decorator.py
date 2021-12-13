@@ -173,6 +173,10 @@ class OptimizerWithMixedPrecision(object):
             self._train_program.global_block().append_op(
                 type="alloc_float_status",
                 outputs={"FloatStatus": float_status}, )
+            self._train_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status}, )
             self._float_status = float_status
         else:
             self._float_status = None
@@ -303,14 +307,23 @@ class OptimizerWithMixedPrecision(object):
         if self._is_distributed:
             # if distributed, split check_finite_and_unscale to overlap
             # unscale with communication
-            for p, g in params_grads:
-                with self._train_program._optimized_guard([p, g]):
+            if core.is_compiled_with_npu():
+                with self._train_program._optimized_guard(grads):
                     _, found_inf = check_finite_and_unscale(
-                        [g, ],
+                        grads,
                         self._loss_scaling,
                         name="find_infinite_scale",
                         float_status=self._float_status)
                     found_infs.append(found_inf)
+            else:
+                for p, g in params_grads:
+                    with self._train_program._optimized_guard([p, g]):
+                        _, found_inf = check_finite_and_unscale(
+                            [g, ],
+                            self._loss_scaling,
+                            name="find_infinite_scale",
+                            float_status=self._float_status)
+                        found_infs.append(found_inf)
         elif self._use_pure_fp16:
             if fp32_grads:
                 with self._train_program._optimized_guard(fp32_grads):
@@ -385,7 +398,19 @@ class OptimizerWithMixedPrecision(object):
                         self._incr_ratio,
                         self._decr_ratio,
                         name="update_loss_scaling")
-
+        # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+        # With fleet, optimizers are nested and the real optimizer set by user is the inner most one.
+        real_optimizer = self._optimizer
+        while hasattr(real_optimizer, "inner_opt"):
+            real_optimizer = real_optimizer.inner_opt
+        if isinstance(real_optimizer, (paddle.fluid.optimizer.Adam,
+                                       paddle.optimizer.AdamW)):
+            # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we 
+            # copy it in advance to avoid multiple time copies.
+            with self._train_program._optimized_guard([]):
+                found_inf = paddle.tensor.creation._memcpy(found_inf,
+                                                           paddle.CPUPlace())
+            real_optimizer._set_auxiliary_var('found_inf', found_inf)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 

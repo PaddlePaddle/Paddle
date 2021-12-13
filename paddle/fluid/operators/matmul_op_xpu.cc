@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/xpu_api_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -102,6 +103,7 @@ template <typename T, typename FCT>
 static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
                               bool trans_x, bool trans_y,
                               const paddle::framework::ExecutionContext &ctx) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const auto &x_dims = x->dims();
   const auto &y_dims = y->dims();
   auto &dev_ctx =
@@ -150,46 +152,46 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
                         x_dims.to_str().c_str(), y_dims.to_str().c_str()));
 
   float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
-
   T *data_c = out->data<T>();
   int m = mat_dim_a.height_;
   int n = mat_dim_b.width_;
   int k = mat_dim_a.width_;
   int batch_size = mat_dim_a.batch_size_;
-
   int ldx = mat_dim_a.trans_ ? m : k;
   int ldy = mat_dim_b.trans_ ? k : n;
   int ldout = n;
   if (batch_size <= 1) {
     int r = 0;
-    r = xpu::fc_fusion<T, T, T, FCT>(
-        dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
-        mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx, ldy,
-        ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU fc_fusion kernel return wrong value[%d %s]", r,
-                          XPUAPIErrorMsg[r]));
+    r = xpu_fc_wrapper<XPUType, FCT>(
+        dev_ctx.x_context(), reinterpret_cast<const XPUType *>(x->data<T>()),
+        reinterpret_cast<const XPUType *>(y->data<T>()),
+        reinterpret_cast<XPUType *>(data_c), m, n, k, mat_dim_a.trans_,
+        mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx, ldy, ldout, alpha, 0,
+        nullptr, xpu::Activation_t::LINEAR);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU fc kernel return wrong value[%d %s]", r,
+                                   XPUAPIErrorMsg[r]));
   } else {
     // batch matmul
-    int r = xpu::fc_batched<T, T, T, FCT>(
-        dev_ctx.x_context(),                        // Context* ctx,
-        batch_size,                                 // int batch_size,
-        mat_dim_a.trans_,                           // bool x_trans,
-        mat_dim_b.trans_,                           // bool w_trans,
-        m,                                          // int m,
-        n,                                          // int n,
-        k,                                          // int k,
-        alpha,                                      // float alpha,
-        reinterpret_cast<const T *>(x->data<T>()),  // const TX* x,
-        mat_dim_a.stride_,                          // int stride_a,
-        reinterpret_cast<const T *>(y->data<T>()),  // const TW* w,
-        mat_dim_b.stride_,                          // int stride_b,
-        0.0,                                        // float beta,
-        reinterpret_cast<T *>(data_c),              // TY* y,
-        m * n,                                      // int stride_c,
-        nullptr,                                    // const float* x_maxptr,
-        nullptr);                                   // const float* w_maxptr
+    int r = xpu::fc_batched<XPUType, XPUType, XPUType, FCT>(
+        dev_ctx.x_context(),                              // Context* ctx,
+        batch_size,                                       // int batch_size,
+        mat_dim_a.trans_,                                 // bool x_trans,
+        mat_dim_b.trans_,                                 // bool w_trans,
+        m,                                                // int m,
+        n,                                                // int n,
+        k,                                                // int k,
+        alpha,                                            // float alpha,
+        reinterpret_cast<const XPUType *>(x->data<T>()),  // const TX* x,
+        mat_dim_a.stride_,                                // int stride_a,
+        reinterpret_cast<const XPUType *>(y->data<T>()),  // const TW* w,
+        mat_dim_b.stride_,                                // int stride_b,
+        0.0,                                              // float beta,
+        reinterpret_cast<XPUType *>(data_c),              // TY* y,
+        m * n,                                            // int stride_c,
+        nullptr,   // const float* x_maxptr,
+        nullptr);  // const float* w_maxptr
 
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External(
@@ -210,10 +212,16 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     bool trans_x = context.Attr<bool>("transpose_X");
     bool trans_y = context.Attr<bool>("transpose_Y");
-    if (std::getenv("XPU_PADDLE_MAT_MUL_FCINT32") != nullptr) {
-      MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, context);
-    } else {
+    if (std::is_same<paddle::platform::float16, T>::value) {
       MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, context);
+    } else {
+      if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
+        MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, context);
+      } else if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
+        MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, context);
+      } else {
+        MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, context);
+      }
     }
   }
 };
@@ -224,6 +232,7 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 static framework::Tensor XPUFoldHeadAndLastDims(
     const DeviceContext &context, const framework::Tensor &input) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = input.dims();
   if (in_dims.size() != 3) {
     return input;
@@ -236,8 +245,9 @@ static framework::Tensor XPUFoldHeadAndLastDims(
                                     static_cast<int>(in_dims[1]),
                                     static_cast<int>(in_dims[2])};
   std::vector<int> axis_host = {1, 0, 2};
-  int r = xpu::transpose(context.x_context(), input.data<T>(), output.data<T>(),
-                         in_shape_host, axis_host);
+  int r = xpu::transpose(
+      context.x_context(), reinterpret_cast<const XPUType *>(input.data<T>()),
+      reinterpret_cast<XPUType *>(output.data<T>()), in_shape_host, axis_host);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU transpose kernel return wrong value[%d %s]", r,
@@ -280,10 +290,16 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    if (std::getenv("XPU_PADDLE_MAT_MUL_GRAD_FCINT32") != nullptr) {
-      MatMulXPUFunction<T, int32_t>(&a, &b, out, trans_a, trans_b, context);
-    } else {
+    if (std::is_same<paddle::platform::float16, T>::value) {
       MatMulXPUFunction<T, int16_t>(&a, &b, out, trans_a, trans_b, context);
+    } else {
+      if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
+        MatMulXPUFunction<T, int32_t>(&a, &b, out, trans_a, trans_b, context);
+      } else if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
+        MatMulXPUFunction<T, float>(&a, &b, out, trans_a, trans_b, context);
+      } else {
+        MatMulXPUFunction<T, int16_t>(&a, &b, out, trans_a, trans_b, context);
+      }
     }
   }
 
@@ -370,10 +386,14 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    matmul, ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    matmul, ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 REGISTER_OP_XPU_KERNEL(
     matmul_grad,
-    ops::MatMulGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::MatMulGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MatMulGradXPUKernel<paddle::platform::XPUDeviceContext,
+                             plat::float16>);
 #endif

@@ -37,6 +37,56 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestSumOp_fp16(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {
+            'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
+        }
+        self.attrs = {'dim': [0, 1, 2]}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+        self.gradient = self.calc_gradient()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return grad,
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+class TestSumOp_fp16_withInt(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {
+            # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+            # Precision limitations on integer values between 0 and 2048 can be exactly represented
+            'X': np.random.randint(0, 30, (10, 10)).astype("float16")
+        }
+        self.attrs = {'dim': [0, 1]}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+        self.gradient = self.calc_gradient()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return grad,
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
 class TestSumOp5D(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -511,24 +561,6 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
 
 
-class TestReduceAll(Test1DReduce):
-    def setUp(self):
-        self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
-        self.attrs = {'reduce_all': True}
-        self.outputs = {'Out': self.inputs['X'].sum()}
-
-
-class TestReduceAll(Test1DReduce):
-    def setUp(self):
-        self.op_type = "reduce_sum"
-        self.inputs = {
-            'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
-        }
-        self.attrs = {'reduce_all': True, 'dim': (3, 4, 5)}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=self.attrs['dim'])}
-
-
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
@@ -698,37 +730,6 @@ class TestReduceSumOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
 
 
-class API_TestSumOpError(unittest.TestCase):
-    def test_errors(self):
-        def test_dtype1():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float64")
-                paddle.sum(data, dtype="float32")
-
-        self.assertRaises(ValueError, test_dtype1)
-
-        def test_dtype2():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int64")
-                paddle.sum(data, dtype="int32")
-
-        self.assertRaises(ValueError, test_dtype2)
-
-        def test_dtype3():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float64")
-                paddle.sum(data, dtype="int32")
-
-        self.assertRaises(ValueError, test_dtype3)
-
-        def test_type():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int32")
-                paddle.sum(data, dtype="bool")
-
-        self.assertRaises(TypeError, test_type)
-
-
 class API_TestSumOp(unittest.TestCase):
     def run_static(self,
                    shape,
@@ -755,13 +756,25 @@ class API_TestSumOp(unittest.TestCase):
         shape = [10, 10]
         axis = 1
 
+        self.run_static(shape, "bool", axis, attr_dtype=None)
+        self.run_static(shape, "bool", axis, attr_dtype="int32")
+        self.run_static(shape, "bool", axis, attr_dtype="int64")
+
         self.run_static(shape, "int32", axis, attr_dtype=None)
         self.run_static(shape, "int32", axis, attr_dtype="int32")
         self.run_static(shape, "int32", axis, attr_dtype="int64")
 
+        self.run_static(shape, "int64", axis, attr_dtype=None)
+        self.run_static(shape, "int64", axis, attr_dtype="int64")
+        self.run_static(shape, "int64", axis, attr_dtype="int32")
+
         self.run_static(shape, "float32", axis, attr_dtype=None)
         self.run_static(shape, "float32", axis, attr_dtype="float32")
         self.run_static(shape, "float32", axis, attr_dtype="float64")
+
+        self.run_static(shape, "float64", axis, attr_dtype=None)
+        self.run_static(shape, "float64", axis, attr_dtype="float32")
+        self.run_static(shape, "float64", axis, attr_dtype="float64")
 
         shape = [5, 5, 5]
         self.run_static(shape, "int32", (0, 1), attr_dtype="int32")

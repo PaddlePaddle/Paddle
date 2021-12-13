@@ -95,11 +95,11 @@ REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
 REGISTER_OPERATOR(real_grad, ops::RealGradOp);
 
 REGISTER_OP_CPU_KERNEL(real, ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                             paddle::platform::complex64>,
+                                             paddle::platform::complex<float>>,
                        ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                       paddle::platform::complex128>);
+                                       paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(real_grad,
                        ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex64>,
+                                           paddle::platform::complex<float>>,
                        ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex128>);
+                                           paddle::platform::complex<double>>);

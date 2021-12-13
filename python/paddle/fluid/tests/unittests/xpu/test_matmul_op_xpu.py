@@ -127,45 +127,23 @@ class Generator(object):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-
-        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
-                self.inputs['Y'].shape) and self.inputs['X'].shape[
-                    0] == self.inputs['Y'].shape[0]:
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
-
-        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
-                self.inputs['Y'].shape) and self.inputs['X'].shape[
-                    0] == self.inputs['Y'].shape[0]:
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place, ['X', 'Y'], 'Out', max_relative_error=5e-2)
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=5e-2)
 
     def test_check_grad_ignore_x(self):
-
-        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
-                self.inputs['Y'].shape) and self.inputs['X'].shape[
-                    0] == self.inputs['Y'].shape[0]:
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place, ['Y'],
-                'Out',
-                max_relative_error=5e-2,
-                no_grad_set=set("X"))
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', max_relative_error=5e-2, no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
-
-        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
-                self.inputs['Y'].shape) and self.inputs['X'].shape[
-                    0] == self.inputs['Y'].shape[0]:
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place, ['X'],
-                'Out',
-                max_relative_error=5e-2,
-                no_grad_set=set('Y'))
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=5e-2, no_grad_set=set('Y'))
 
 
 class TestMatmulOpError(unittest.TestCase):
@@ -266,7 +244,7 @@ for dims in xpu_support_dims_list:
 
 
             # Test case n-dim
-def generate_compatible_shapes(dim, transpose_X, transpose_Y):
+def generate_compatible_shapes_(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
     K = 3
@@ -293,8 +271,8 @@ for dim in [4]:
             test_name = (
                 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
                     dim, dim, transpose_X, transpose_Y))
-            shape_X, shape_Y = generate_compatible_shapes(dim, transpose_X,
-                                                          transpose_Y)
+            shape_X, shape_Y = generate_compatible_shapes_(dim, transpose_X,
+                                                           transpose_Y)
             globals()[test_name] = type(test_name, (Generator, XPUOpTest), {
                 'shape_X': shape_X,
                 'shape_Y': shape_Y,

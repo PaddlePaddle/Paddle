@@ -25,26 +25,26 @@ import warnings
 import time
 import socket
 import contextlib
-from collections import Iterable
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-from paddle.fluid.framework import in_dygraph_mode, Variable, _get_paddle_place
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
+from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers import collective
 
-from paddle.io import DataLoader, Dataset, DistributedBatchSampler
-from paddle.fluid.executor import scope_guard, Executor
-from paddle.fluid.dygraph.layers import Layer
+from paddle.io import DataLoader
+from paddle.io import Dataset
+from paddle.io import DistributedBatchSampler
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 import paddle.distributed as dist
@@ -163,10 +163,9 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
             })
     elif core.is_compiled_with_npu():
         hccl_id_var = block.create_var(
-            name=unique_name.generate('hccl_id'),
+            name=fluid.unique_name.generate('hccl_id'),
             persistable=True,
             type=core.VarDesc.VarType.RAW)
-        endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
         block.append_op(
             type='c_gen_hccl_id',
             inputs={},
@@ -219,8 +218,6 @@ def prepare_distributed_context(place=None):
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
-        else:
-            _init_context()
 
     else:
         assert ("Only support CUDAPlace for now.")
@@ -281,7 +278,7 @@ class StaticGraphAdapter(object):
         self._amp_level = "O0"
         self._amp_configs = {}
         self._amp_custom_lists = {}
-        self._use_fp16_guard = True
+        self._use_fp16_guard = None
 
     @property
     def mode(self):
@@ -291,10 +288,11 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
+        assert update is True, "Does not support `update == False` in static mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -340,6 +338,7 @@ class StaticGraphAdapter(object):
 
         _save(optim, optim_path)
 
+    # TODO: support save/load scaler state in static graph
     def load(self, param_state_pairs, optim_state):
         if self._executor is None:
             executor = fluid.Executor(fluid.CPUPlace())._default_executor
@@ -457,10 +456,19 @@ class StaticGraphAdapter(object):
 
         feed = {}
         input_names = [v.name for v in self._input_vars[self.mode]]
+        input_dtypes = [v.dtype for v in self._input_vars[self.mode]]
+
         for idx, n in enumerate(input_names):
             # train and test may take different arguments
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
+            if self._amp_level == 'O2' and input_dtypes[
+                    idx] == core.VarDesc.VarType.FP16:
+                if isinstance(feed[n], core.LoDTensor):
+                    feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
+                elif isinstance(feed[n], numpy.array):
+                    feed[n] = feed[n].astype('float16')
+
         if labels is not None:
             for idx, v in enumerate(self._label_vars[self.mode]):
                 feed[v.name] = labels[idx]
@@ -594,7 +602,6 @@ class StaticGraphAdapter(object):
                     amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                         **self.
                         _amp_custom_lists) if self._amp_custom_lists else None
-
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
@@ -694,7 +701,7 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.model.network.train()
@@ -704,35 +711,41 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        if self._amp_level != "O0":
-            scaler = paddle.amp.GradScaler(**self._amp_configs)
+        # scaler should be initialized only once
+        if self._amp_level != "O0" and self.model._scaler is None:
+            self.model._scaler = paddle.amp.GradScaler(**self._amp_configs)
+
         with paddle.amp.auto_cast(
-                enable=self._amp_level != 'O0', **self._amp_custom_lists):
+                enable=self._amp_level != 'O0',
+                **self._amp_custom_lists,
+                level=self._amp_level):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
-                    * [to_variable(x) for x in inputs])
+                    *[to_variable(x) for x in inputs])
             else:
                 outputs = self.model.network.forward(
-                    * [to_variable(x) for x in inputs])
+                    *[to_variable(x) for x in inputs])
 
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
+        losses = self.model._loss(*(to_list(outputs) + labels))
+        losses = to_list(losses)
+        final_loss = fluid.layers.sum(losses)
 
         if self._amp_level != "O0":
-            scaled = scaler.scale(final_loss)
+            scaled = self.model._scaler.scale(final_loss)
             scaled.backward()
-            scaler.minimize(self.model._optimizer, scaled)
-            self.model.network.clear_gradients()
+            if update:
+                self.model._scaler.minimize(self.model._optimizer, scaled)
+                self.model.network.clear_gradients()
         else:
             final_loss.backward()
-            self.model._optimizer.minimize(final_loss)
-            self.model.network.clear_gradients()
+            if update:
+                self.model._optimizer.minimize(final_loss)
+                self.model.network.clear_gradients()
 
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -746,7 +759,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -777,7 +790,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -804,16 +817,23 @@ class DynamicGraphAdapter(object):
     def save(self, path):
         params = self.model.network.state_dict()
         fluid.save_dygraph(params, path)
-        if self.model._optimizer is None:
-            return
-        if self.model._optimizer.state_dict():
-            optim = self.model._optimizer.state_dict()
-            fluid.save_dygraph(optim, path)
+        if self.model._optimizer is not None:
+            if self.model._optimizer.state_dict():
+                optim = self.model._optimizer.state_dict()
+                fluid.save_dygraph(optim, path)
+        if hasattr(self.model, '_scaler') and self.model._scaler is not None:
+            if self.model._scaler.state_dict():
+                scaler = self.model._scaler.state_dict()
+                paddle.save(scaler, path + '.pdscaler')
 
-    def load(self, param_state_pairs, optim_state):
+    def load(self, param_state_pairs, optim_state, scaler_state=None):
         # restore parameter states
         for param, state in param_state_pairs:
             param.set_value(state)
+
+        if hasattr(self.model, '_scaler') and self.model._scaler is not None:
+            if scaler_state:
+                self.model._scaler.load_state_dict(scaler_state)
 
         # resotre optimizer states
         if not self.model._optimizer or not optim_state:
@@ -872,6 +892,16 @@ class DynamicGraphAdapter(object):
         else:
             self.model._optimizer.set_state_dict(converted_state)
 
+    def prepare(self):
+        if self._amp_level == "O2" and self.model.mode == 'train' and core.is_compiled_with_cuda(
+        ):
+            self.model.network, self.model._optimizer = paddle.amp.decorate(
+                models=self.model.network,
+                optimizers=self.model._optimizer,
+                level='O2')
+        if self._amp_level != "O0":
+            self.model._scaler = None
+
 
 class Model(object):
     """
@@ -882,9 +912,9 @@ class Model(object):
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
-    When training on GPU, auto mixed precision (AMP) training is supported, and
-    pure float16 training is also supported in static mode while using Adam,
-    AdamW and Momentum optimizer. Before using pure float16 training,
+    When training on GPU, auto mixed precision (AMP O1) and pure float16 
+    (AMP O2) training are both supported in static mode and dynamic mode.
+    In static graph mode, before traing with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
     should be cast to float16 by users. `paddle.static.amp.fp16_guard` API
@@ -946,7 +976,8 @@ class Model(object):
         2. An example using mixed precision training.
 
         .. code-block:: python
-
+        
+          # required: gpu
           import paddle
           import paddle.nn as nn
           import paddle.vision.transforms as T
@@ -1010,9 +1041,10 @@ class Model(object):
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         """
-        Run one training step on a batch of data.
+        Run one training step on one batch of data. And using `update` indicates
+        whether optimizer update gradients computing by this batch.
 
         Args:
             inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
@@ -1022,6 +1054,8 @@ class Model(object):
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
+            update (bool): Whether update parameters after loss.backward() computing.
+                Using it to accumulate gradients. Default is True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -1055,7 +1089,7 @@ class Model(object):
               loss = model.train_batch([data], [label])
               print(loss)
         """
-        loss = self._adapter.train_batch(inputs, labels)
+        loss = self._adapter.train_batch(inputs, labels, update)
         if fluid.in_dygraph_mode() and self._input_info is None:
             self._update_inputs()
         return loss
@@ -1289,8 +1323,7 @@ class Model(object):
             if not os.path.exists(path):
                 return
             with open(path, 'rb') as f:
-                return pickle.load(f) if six.PY2 else pickle.load(
-                    f, encoding='latin1')
+                return pickle.load(f, encoding='latin1')
 
         def _check_match(key, param):
             state = param_state.get(key, None)
@@ -1329,7 +1362,18 @@ class Model(object):
 
         optim_state = None if reset_optimizer else _load_state_from_path(
             path + ".pdopt")
-        return self._adapter.load(matched_param_state, optim_state)
+
+        # TODO: support save/load scaler state in static graph
+        if in_dygraph_mode():
+            scaler_state = None
+            if hasattr(self, '_scaler') and self._scaler is not None:
+                if os.path.exists(path + '.pdscaler'):
+                    scaler_state = paddle.load(path + '.pdscaler')
+
+            return self._adapter.load(matched_param_state, optim_state,
+                                      scaler_state)
+        else:
+            return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
         """
@@ -1361,14 +1405,10 @@ class Model(object):
     def _prepare_amp(self, amp_configs):
         def _check_pure_fp16_configs():
             # pure float16 training has some restricts now
-            if self._adapter._amp_level == "O2":
-                if in_dygraph_mode():
-                    warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
-                        "and it will be supported in future version.")
-                else:
-                    # grad clip is not supported in pure fp16 training now
-                    assert self._optimizer._grad_clip is None, \
-                        "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
+            if self._adapter._amp_level == "O2" and self._optimizer._grad_clip:
+                # clip by value is not supported
+                assert isinstance(self._optimizer._grad_clip, (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm)), \
+                     "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1398,8 +1438,7 @@ class Model(object):
 
         if 'use_pure_fp16' in amp_configs:
             raise ValueError(
-                "''use_pure_fp16' is an invalid parameter, "
-                "the level of mixed precision training only depends on 'O1' or 'O2'."
+                "'use_pure_fp16' is an invalid parameter, the level of mixed precision training only depends on 'O1' or 'O2'."
             )
 
         _check_pure_fp16_configs()
@@ -1427,9 +1466,8 @@ class Model(object):
             }
             if amp_config_key_set - accepted_param_set:
                 raise ValueError(
-                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, "
-                    "but {} could not be recognized.".format(
-                        tuple(amp_config_key_set - accepted_param_set)))
+                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, but {} could not be recognized.".
+                    format(tuple(amp_config_key_set - accepted_param_set)))
 
             if 'use_fp16_guard' in amp_config_key_set:
                 if in_dygraph_mode():
@@ -1478,7 +1516,6 @@ class Model(object):
         Returns:
             None
         """
-
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
@@ -1501,8 +1538,9 @@ class Model(object):
         self._optimizer = optimizer
         if loss is not None:
             if not isinstance(loss, paddle.nn.Layer) and not callable(loss):
-                raise TypeError("'loss' must be sub classes of " \
-                    "`paddle.nn.Layer` or any callable function.")
+                raise TypeError(
+                    "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+                )
         self._loss = loss
 
         metrics = metrics or []
@@ -1513,11 +1551,9 @@ class Model(object):
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
-        if not in_dygraph_mode():
-            self._adapter.prepare()
+        self._adapter.prepare()
 
-    def fit(
-            self,
+    def fit(self,
             train_data=None,
             eval_data=None,
             batch_size=1,
@@ -1530,7 +1566,9 @@ class Model(object):
             drop_last=False,
             shuffle=True,
             num_workers=0,
-            callbacks=None, ):
+            callbacks=None,
+            accumulate_grad_batches=1,
+            num_iters=None):
         """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
@@ -1573,7 +1611,13 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-
+            accumulate_grad_batches (int): The number of batches to accumulate gradident 
+                during training process before optimizer updates. It can mimic large batch
+                size. Default: 1.
+            num_iters (int|None): Integer number. The number of iterations to train
+                the model. If None, follow `epochs` to train the model, otherwise, train
+                the model `num_iters` times. Default: None.
+            
         Returns:
             None
 
@@ -1658,7 +1702,6 @@ class Model(object):
                         epochs=2,
                         save_dir='mnist_checkpoint')
         """
-
         assert train_data is not None, \
                 "train_data must be given!"
 
@@ -1694,7 +1737,15 @@ class Model(object):
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
 
+        self._accumulate = accumulate_grad_batches
+
         steps = self._len_data_loader(train_loader)
+        self.num_iters = num_iters
+        if num_iters is not None and isinstance(num_iters, int) and isinstance(
+                steps, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
+            epochs = (num_iters // steps) + 1
+            steps = min(num_iters, steps)
         cbks = config_callbacks(
             callbacks,
             model=self,
@@ -1726,20 +1777,20 @@ class Model(object):
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
                 cbks.on_end('eval', eval_logs)
-                if self.stop_training:
-                    break
+            if self.stop_training:
+                break
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
 
-    def evaluate(
-            self,
-            eval_data,
-            batch_size=1,
-            log_freq=10,
-            verbose=2,
-            num_workers=0,
-            callbacks=None, ):
+    def evaluate(self,
+                 eval_data,
+                 batch_size=1,
+                 log_freq=10,
+                 verbose=2,
+                 num_workers=0,
+                 callbacks=None,
+                 num_iters=None):
         """
         Evaluate the loss and metrics of the model on input dataset.
 
@@ -1761,6 +1812,9 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
+            num_iters (int|None): Integer number. The number of iterations to
+                evaluate the model. If None, evaluate on whole input dataset,
+                otherwise, evaluate `num_iters` times. Default: None.
         Returns:
             dict: Result of metric. The key is the names of Metric,
                 value is a scalar or numpy.array.
@@ -1810,6 +1864,12 @@ class Model(object):
             metrics=self._metrics_name(), )
 
         eval_steps = self._len_data_loader(eval_loader)
+        self.num_iters = num_iters
+        if num_iters is not None and isinstance(num_iters, int) and isinstance(
+                eval_steps, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
+            eval_steps = min(num_iters, eval_steps)
+            self.num_iters = eval_steps
         cbks.on_begin('eval',
                       {'steps': eval_steps,
                        'metrics': self._metrics_name()})
@@ -1831,6 +1891,7 @@ class Model(object):
                 batch_size=1,
                 num_workers=0,
                 stack_outputs=False,
+                verbose=1,
                 callbacks=None):
         """
         Compute the output predictions on testing data.
@@ -1851,7 +1912,10 @@ class Model(object):
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
+            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+                1 = progress bar, 2 = one line per batch. Default: 1.
             callbacks(Callback): A Callback instance, default None.
+
         Returns:
             list: output of models.
 
@@ -1911,7 +1975,7 @@ class Model(object):
 
         self._test_dataloader = test_loader
 
-        cbks = config_callbacks(callbacks, model=self, verbose=1)
+        cbks = config_callbacks(callbacks, model=self, verbose=verbose)
 
         test_steps = self._len_data_loader(test_loader)
         logs = {'steps': test_steps}
@@ -1994,7 +2058,12 @@ class Model(object):
                 model_filename=model_filename,
                 params_filename=params_filename)
 
-    def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
+    def _run_one_epoch(
+            self,
+            data_loader,
+            callbacks,
+            mode,
+            logs={}, ):
         outputs = []
         for step, data in enumerate(data_loader):
             # data might come from different types of data_loader and have
@@ -2018,8 +2087,14 @@ class Model(object):
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
-                outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
-                                                      data[len(self._inputs):])
+
+                _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
+                if mode == 'train':
+                    _inputs.append((step + 1) % self._accumulate == 0 or
+                                   step + 1 == len(data_loader))
+
+                outs = getattr(self, mode + '_batch')(*_inputs)
+
                 if self._metrics and self._loss:
                     metrics = [[l[0] for l in outs[0]]]
                 elif self._loss:
@@ -2051,6 +2126,12 @@ class Model(object):
                 logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 
             callbacks.on_batch_end(mode, step, logs)
+            if hasattr(self, 'num_iters') and self.num_iters is not None:
+                self.num_iters -= 1
+                if self.num_iters <= 0:
+                    self.stop_training = True
+                    del self.num_iters
+                    break
         self._reset_metrics()
 
         if mode == 'predict':
@@ -2066,7 +2147,7 @@ class Model(object):
                     one input, input_size can be tuple or InputSpec. if model have multiple 
                     input, input_size must be a list which contain every input's shape. 
                     Default: None.
-            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+            dtype (str, optional): if dtype is None, 'float32' will be used, Default: None.
 
         Returns:
             Dict: a summary of the network including total params and total trainable params.
@@ -2080,7 +2161,7 @@ class Model(object):
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
            
-              model = paddle.Model(paddle.vision.LeNet(),
+              model = paddle.Model(paddle.vision.models.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -2098,7 +2179,7 @@ class Model(object):
             _input_size = input_size
         else:
             _input_size = self._inputs
-        return summary(self.network, _input_size, dtype)
+        return summary(self.network, _input_size, dtypes=dtype)
 
     def _verify_spec(self, specs, shapes=None, dtypes=None, is_input=False):
         out_specs = []
@@ -2122,9 +2203,11 @@ class Model(object):
             else:
                 out_specs = to_list(specs)
         elif isinstance(specs, dict):
-            assert is_input == False
-            out_specs = [specs[n] \
-                for n in extract_args(self.network.forward) if n != 'self']
+            assert is_input is False
+            out_specs = [
+                specs[n] for n in extract_args(self.network.forward)
+                if n != 'self'
+            ]
         else:
             out_specs = to_list(specs)
         # Note: checks each element has specificed `name`.

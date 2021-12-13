@@ -14,8 +14,9 @@
 
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.backward import gradients_with_optimizer
 import paddle
-__all__ = ['backward']
+__all__ = []
 
 
 @framework.dygraph_only

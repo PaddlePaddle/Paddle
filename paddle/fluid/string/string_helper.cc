@@ -24,26 +24,6 @@
 namespace paddle {
 namespace string {
 
-inline size_t count_spaces(const char* s) {
-  size_t count = 0;
-
-  while (*s != 0 && isspace(*s++)) {
-    count++;
-  }
-
-  return count;
-}
-
-inline size_t count_nonspaces(const char* s) {
-  size_t count = 0;
-
-  while (*s != 0 && !isspace(*s++)) {
-    count++;
-  }
-
-  return count;
-}
-
 // remove leading and tailing spaces
 std::string trim_spaces(const std::string& str) {
   const char* p = str.c_str();
@@ -74,18 +54,9 @@ std::string erase_spaces(const std::string& str) {
   return result;
 }
 
-inline int str_to_float(const char* str, float* v) {
-  const char* head = str;
-  char* cursor = NULL;
-  int index = 0;
-  while (*(head += count_spaces(head)) != 0) {
-    v[index++] = std::strtof(head, &cursor);
-    if (head == cursor) {
-      break;
-    }
-    head = cursor;
-  }
-  return index;
+bool ends_with(std::string const& input, std::string const& test) {
+  if (test.size() > input.size()) return false;
+  return std::equal(test.rbegin(), test.rend(), input.rbegin());
 }
 
 // A helper class for reading lines from file.
@@ -100,7 +71,7 @@ char* LineFileReader::getdelim(FILE* f, char delim) {
       _buffer[--ret] = 0;
     }
 
-    _length = (size_t)ret;
+    _length = static_cast<size_t>(ret);
     return _buffer;
   } else {
     _length = 0;

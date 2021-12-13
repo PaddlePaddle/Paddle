@@ -23,9 +23,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_bool(enable_unused_var_check, false,
-            "Checking whether operator contains unused inputs, "
-            "especially for grad operator. It should be in unittest.");
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_unused_var_check, false,
+    "Checking whether operator contains unused inputs, "
+    "especially for grad operator. It should be in unittest.");
 
 namespace paddle {
 namespace framework {
@@ -75,6 +76,7 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
       "data_norm_grad",                     // 0
       "update_loss_scaling",                // 0
       "fused_embedding_eltwise_layernorm",  // 0
+      "trunc_grad",                         // 1
   });
   return *allow_set;
 }

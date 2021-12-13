@@ -22,6 +22,65 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
+  op_name_ = "matmul";
+
+  AddOpCompat(OpCompat(op_name_))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")  // unconstrained. can be any float value.
+      .IsType<float>()
+      .End()
+      .AddAttr("transpose_X")  // unconstrained. can be any bool value.
+      .IsType<bool>()
+      .End()
+      .AddAttr("transpose_Y")  // unconstrained. can be any bool value.
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")  // ints
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Shape")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("shape")  // ints
+      .IsType<std::vector<int>>()
+      .End();
+}
 void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
@@ -32,12 +91,16 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
   patterns::MatmulTransposeReshapePattern mtrp(gpd.mutable_pattern(),
                                                name_scope_);
 
-  mtrp();
+  mtrp(op_name_);
 
   int found_matmul_transpose_reshape_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "handle matmul_transpose_reshape fuse";
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+    VLOG(4) << "handle " + op_name_ + "_transpose_reshape fuse";
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, mtrp);
@@ -57,17 +120,17 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     const bool supported_transpose_axis = std::equal(
         transpose_axis.begin(), transpose_axis.end(), supported_axis.begin());
     if (transpose_out_size != 4) {
-      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
               << "supported rank is 4, received " << transpose_out_size;
       return;
     }
     if (!supported_transpose_axis) {
-      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
               << "supported transpose axis for the fuse are {0, 2, 1, 3}";
       return;
     }
     if (reshape_out_size != 3) {
-      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
               << "reshape_out supported rank is 3, received "
               << reshape_out_size;
       return;
@@ -88,10 +151,12 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
 
   gpd(graph, handler);
   AddStatis(found_matmul_transpose_reshape_count);
-  std::stringstream msg_ss;
-  msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
-         << " MatmulTransposeReshape patterns";
-  paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+    std::stringstream msg_ss;
+    msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
+           << " MatmulTransposeReshape patterns for " + op_name_ + " Op";
+    paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+  }
 }
 }  // namespace ir
 }  // namespace framework

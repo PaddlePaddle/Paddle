@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
 #endif
 
+#include "paddle/fluid/distributed/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -106,7 +107,7 @@ class HeterContext {
   }
 
   void batch_add_keys(int shard_num,
-                      const std::unordered_set<uint64_t>& shard_keys) {
+                      const robin_hood::unordered_set<uint64_t>& shard_keys) {
     int idx = feature_keys_[shard_num].size();
     feature_keys_[shard_num].resize(feature_keys_[shard_num].size() +
                                     shard_keys.size());

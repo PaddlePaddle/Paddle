@@ -17,7 +17,11 @@ import six
 import numpy as np
 import warnings
 from collections import OrderedDict
+import itertools
+import warnings
+from contextlib import contextmanager
 
+import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -26,9 +30,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-import warnings
-import paddle
-import itertools
+from paddle.fluid.framework import ParamBase
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -60,9 +62,12 @@ def prepare_context(strategy=None):
         elif isinstance(place, core.XPUPlace):
             parallel_helper._set_parallel_ctx(
                 core.BKCLParallelContext(strategy, place))
+        elif isinstance(place, core.NPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.HCCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace or XPUPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace or NPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
@@ -120,6 +125,9 @@ class ParallelEnv(object):
         elif core.is_compiled_with_xpu():
             selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
             self._device_id = int(selected_xpus[0])
+        elif core.is_compiled_with_npu():
+            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+            self._device_id = int(selected_npus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -352,8 +360,17 @@ def sync_params_buffers(model,
         if not isinstance(param, core.VarBase):
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)
+
         # is_distributed param not need to sync when in mp mode
-        if is_model_parallel and param.is_distributed:
+        if isinstance(param, ParamBase):
+            if is_model_parallel and param.is_distributed:
+                continue
+
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters, 
+            # such as moe's expert parameters
+            if getattr(param, "no_sync", False):
+                continue
+        if param.type == core.VarDesc.VarType.VOCAB:
             continue
 
         model_vars.append(param.detach())
@@ -423,8 +440,10 @@ class DataParallel(layers.Layer):
         Layer: The data paralleled module.
 
     Examples:
+
         .. code-block:: python
-        
+            :name: dp-example
+
             # required: distributed
             import paddle
             import paddle.nn as nn
@@ -468,6 +487,72 @@ class DataParallel(layers.Layer):
                 dist.spawn(train, nprocs=2)
                 # 2. start by ``paddle.distributed.launch``
                 # train()
+
+
+    .. note::
+        ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
+        it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
+        and manually implement 'all_reduce' before model optimization. There is an example 
+        showing specific implemetation processing.
+
+    Examples:
+
+        .. code-block:: python
+            :name: dp-pylayer-example
+
+            # required: distributed
+            import numpy
+            import paddle
+            import paddle.distributed as dist
+            from paddle.autograd import PyLayer
+            from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+
+            class cus_tanh(PyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    y = paddle.tanh(x)
+                    ctx.save_for_backward(y)
+                    return y
+
+                @staticmethod
+                def backward(ctx, dy):
+                    y, = ctx.saved_tensor()
+                    grad = dy * (1 - paddle.square(y))
+                    return grad
+
+            class SimpleNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
+                    self.linear = paddle.nn.Linear(2, 2)
+
+                def forward(self, inputs):
+                    inputs = cus_tanh.apply(inputs)
+                    return self.linear(inputs)
+
+            if __name__ == '__main__':
+                dist.init_parallel_env()
+
+                model = SimpleNet()
+                model = paddle.DataParallel(model)
+                opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+
+                for step in range(10):
+                    x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+                    x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
+
+                    # step 1 : skip gradient synchronization by 'no_sync'
+                    with model.no_sync():
+                        y_pred = model(x)
+                        loss = y_pred.mean()
+                        loss.backward()
+
+                    # step 2 : fuse + allreduce manually before optimization
+                    fused_allreduce_gradients(list(model.parameters()), None)
+
+                    opt.step()
+                    opt.clear_grad()
+
     """
 
     def __init__(self,
@@ -481,6 +566,7 @@ class DataParallel(layers.Layer):
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
+        self.grad_need_sync = True
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -574,9 +660,55 @@ class DataParallel(layers.Layer):
             return itertools.chain(*map(self._find_varbase, obj.values()))
         return []
 
+    @contextmanager
+    def no_sync(self):
+        """
+        A context manager to stop gradient synchronization. Within no_sync(), 
+        gradients of parameters will only be accumulated on model and not 
+        synchronized util the first forward-backward out of this context.
+
+        Examples:
+            .. code-block:: python
+
+                # required: distributed
+                import paddle
+                import paddle.nn as nn
+                import paddle.distributed as dist
+
+                class SimpleNet(nn.Layer):
+                    def __init__(self):
+                        super(SimpleNet, self).__init__()
+                        self._linear = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear(x)
+
+                dist.init_parallel_env()
+                model = SimpleNet()
+                dp_model = paddle.DataParallel(model)
+
+                inputs_1 = paddle.randn([10, 10], 'float32')
+                inputs_2 = paddle.ones([10, 10], 'float32')
+
+                with dp_model.no_sync():
+                    # gradients will not be synchronized
+                    dp_model(inputs_1).backward()
+
+                # synchronization happens here
+                dp_model(inputs_2).backward()
+
+        """
+        tmp_grad_need_sync = self.grad_need_sync
+        self.grad_need_sync = False
+        try:
+            yield
+        finally:
+            self.grad_need_sync = tmp_grad_need_sync
+
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
-        if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
+        if self._strategy.nranks > 1 and framework._dygraph_tracer(
+        )._has_grad and self.grad_need_sync:
             self._reducer.prepare_for_backward(
                 list(self._find_varbase(outputs)))
         return outputs

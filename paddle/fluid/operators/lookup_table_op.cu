@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -227,7 +227,8 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
                         ops::LookupTableCUDAKernel<plat::float16>,
-                        ops::LookupTableCUDAKernel<int8_t>);
+                        ops::LookupTableCUDAKernel<int8_t>,
+                        ops::LookupTableCUDAKernel<int16_t>);
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
                         ops::LookupTableGradCUDAKernel<double>,

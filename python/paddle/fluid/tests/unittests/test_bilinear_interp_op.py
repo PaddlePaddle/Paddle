@@ -19,6 +19,8 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle
+paddle.enable_static()
 
 
 def bilinear_interp_np(input,

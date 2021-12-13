@@ -85,3 +85,5 @@ message(STATUS "HIP library name: ${hip_library_name}")
 # set HIP link libs
 find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
+
+include(thrust)

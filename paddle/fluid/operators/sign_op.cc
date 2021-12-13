@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/sign_op.h"
 #include <memory>
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -69,3 +70,10 @@ REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
 REGISTER_OP_CPU_KERNEL(
     sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SignKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    sign,
+    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, float>,
+    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, double>,
+    paddle::operators::SignKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>);

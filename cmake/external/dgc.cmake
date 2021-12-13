@@ -22,23 +22,19 @@ SET(DGC_LIBRARIES   "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc librar
 SET(DGC_URL         "https://fleet.bj.bcebos.com/dgc/collective_f66ef73.tgz")
 INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
 
-cache_third_party(extern_dgc
-        URL       ${DGC_URL}
-        DIR       DGC_SOURCES_DIR)
-
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    "${DGC_DOWNLOAD_CMD}"
+    URL             ${DGC_URL}
     URL_MD5         "94e6fa1bc97169d0e1aad44570fe3251"
     PREFIX          "${DGC_PREFIX_DIR}"
-    SOURCE_DIR      "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND make -j $(nproc)
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
         && cp ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES}
         && cp ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
     BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS ${DGC_LIBRARIES}
 )
 
 ADD_LIBRARY(dgc STATIC IMPORTED GLOBAL)

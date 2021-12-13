@@ -141,16 +141,27 @@ class GraphPyClient : public GraphPyService {
   void finalize_worker();
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
+  void clear_nodes(std::string name);
+  void add_graph_node(std::string name, std::vector<uint64_t>& node_ids,
+                      std::vector<bool>& weight_list);
+  void remove_graph_node(std::string name, std::vector<uint64_t>& node_ids);
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
-  std::vector<std::vector<std::pair<uint64_t, float>>> batch_sample_neighboors(
-      std::string name, std::vector<uint64_t> node_ids, int sample_size);
+  std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>>
+  batch_sample_neighbors(std::string name, std::vector<uint64_t> node_ids,
+                         int sample_size, bool return_weight,
+                         bool return_edges);
   std::vector<uint64_t> random_sample_nodes(std::string name, int server_index,
                                             int sample_size);
   std::vector<std::vector<std::string>> get_node_feat(
       std::string node_type, std::vector<uint64_t> node_ids,
       std::vector<std::string> feature_names);
+  void use_neighbors_sample_cache(std::string name, size_t total_size_limit,
+                                  size_t ttl);
+  void set_node_feat(std::string node_type, std::vector<uint64_t> node_ids,
+                     std::vector<std::string> feature_names,
+                     const std::vector<std::vector<std::string>> features);
   std::vector<FeatureNode> pull_graph_list(std::string name, int server_index,
                                            int start, int size, int step = 1);
   ::paddle::distributed::PSParameter GetWorkerProto();

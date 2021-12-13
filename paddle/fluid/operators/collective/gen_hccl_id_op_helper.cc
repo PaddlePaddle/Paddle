@@ -31,8 +31,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
+
+DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace operators {
@@ -226,7 +228,15 @@ static int ConnectAddr(const std::string& ep, const char* head) {
 
   char* ip = NULL;
   struct hostent* hp = NULL;
-  hp = gethostbyname(host.c_str());
+  // sleep for get_host_by_name_time seconds.
+  for (int i = 0; 2 * i < FLAGS_get_host_by_name_time; i++) {
+    hp = gethostbyname(host.c_str());
+    if (hp != NULL) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    LOG(WARNING) << "gethostbyname " << host.c_str() << " error!";
+  }
   PADDLE_ENFORCE_NOT_NULL(hp, platform::errors::InvalidArgument(
                                   "Fail to get host by name %s.", host));
 

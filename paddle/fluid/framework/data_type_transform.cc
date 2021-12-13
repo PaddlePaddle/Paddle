@@ -65,11 +65,24 @@ struct CastDataType {
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type, const Tensor& in,
                    Tensor* out) {
+  PADDLE_ENFORCE_EQ(in.type(), kernel_type_for_var.data_type_,
+                    platform::errors::InvalidArgument(
+                        "The src dtype(%s) of input tensor and kernel_type(%s) "
+                        "are not conststent.",
+                        DataTypeToString(in.type()),
+                        DataTypeToString(kernel_type_for_var.data_type_)));
+  auto dst_type = expected_kernel_type.data_type_;
+  TransDataType(in, dst_type, out);
+}
+
+void TransDataType(const Tensor& in,
+                   const paddle::framework::proto::VarType::Type& type,
+                   Tensor* out) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
-  auto src_type = kernel_type_for_var.data_type_;
-  auto dst_type = expected_kernel_type.data_type_;
+  auto src_type = in.type();
+  auto dst_type = type;
   auto ctx = pool.Get(in.place());
 
   switch (src_type) {
@@ -119,12 +132,12 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
   // complex -> real
   switch (src_type) {
     case proto::VarType::COMPLEX64:
-      framework::VisitDataType(dst_type,
-                               CastDataType<platform::complex64>(in, out, ctx));
+      framework::VisitDataType(
+          dst_type, CastDataType<platform::complex<float>>(in, out, ctx));
       break;
     case proto::VarType::COMPLEX128:
       framework::VisitDataType(
-          dst_type, CastDataType<platform::complex128>(in, out, ctx));
+          dst_type, CastDataType<platform::complex<double>>(in, out, ctx));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

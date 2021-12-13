@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -46,7 +46,7 @@ enum FuseOptions {
   FUSE_MKLDNN   // fusing will be done with MKL-DNN
 };
 
-class FusePassBase : public Pass {
+class FusePassBase : public OpCompatSensiblePass {
  public:
   void Init(const std::string& repr, Graph* graph) const;
   Scope* param_scope() const;

@@ -31,9 +31,10 @@ namespace detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size)
+    size_t max_chunk_size, size_t extra_padding_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
+      extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
       system_allocator_(std::move(system_allocator)) {}
 
@@ -59,9 +60,14 @@ inline size_t align(size_t size, size_t alignment) {
 
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
-  size_t size =
-      align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
 
+  size_t size =
+      align(unaligned_size + sizeof(MemoryBlock::Desc) + extra_padding_size_,
+            min_chunk_size_);
+  VLOG(10) << "alloc: " << unaligned_size
+           << ", padding for desc: " << sizeof(MemoryBlock::Desc)
+           << ", extra padding: " << extra_padding_size_
+           << ", alignment: " << min_chunk_size_;
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 

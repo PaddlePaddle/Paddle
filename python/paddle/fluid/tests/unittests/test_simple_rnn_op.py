@@ -19,6 +19,7 @@ import math
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import random
 import sys
@@ -44,8 +45,10 @@ class TestSimpleRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
-        self.dtype = np.float64
-        self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array(
+            [12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.is_bidirec = False
         self.is_test = False
@@ -76,7 +79,8 @@ class TestSimpleRNNOp(OpTest):
             time_major=True,
             direction=direction,
             dropout=self.dropout,
-            nonlinearity=self.mode)
+            nonlinearity=self.mode,
+            dtype=self.dtype)
 
         flat_w = get_params_for_net(rnn1)
 

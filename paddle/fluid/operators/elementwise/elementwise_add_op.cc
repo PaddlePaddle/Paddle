@@ -20,8 +20,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-struct complex128;
-struct complex64;
+template <typename T>
+struct complex;
 }  // namespace platform
 }  // namespace paddle
 
@@ -110,6 +110,25 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elementwise_add_triple_grad");
+    op->SetInput("DDX", this->Input("DDX"));
+    op->SetInput("DDY", this->Input("DDY"));
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput("D_DDX", this->InputGrad("DDX"));
+    op->SetOutput("D_DDY", this->InputGrad("DDY"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -123,10 +142,16 @@ REGISTER_OPERATOR(
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_add_grad_grad,
-                  ops::ElementwiseOpDoubleGradWithoutDXDY,
-                  ops::ElementwiseDoubleGradOpInplaceInferer,
-                  ops::ElementwiseDoubleGradNoBufVarsInferer);
+REGISTER_OPERATOR(
+    elementwise_add_grad_grad, ops::ElementwiseOpDoubleGradWithoutDXDY,
+    ops::ElementwiseDoubleGradOpInplaceInferer,
+    ops::ElementwiseDoubleGradNoBufVarsInferer,
+    ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
+                  ops::ElementwiseTripleGradOpInplaceInferer,
+                  ops::ElementwiseTripleGradNoBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
@@ -135,9 +160,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -145,9 +170,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex64>,
+                                  paddle::platform::complex<float>>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex128>);
+                                  paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad_grad,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
@@ -159,9 +184,23 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex64>,
+                                        paddle::platform::complex<float>>,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex128>);
+                                        paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(
+    elementwise_add_triple_grad,
+    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
+                                        float>,
+    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
+                                        double>,
+    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
+                                        int>,
+    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
+                                        int64_t>,
+    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex<float>>,
+    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex<double>>);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
@@ -178,9 +217,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_add)
     .AddCheckpoint(

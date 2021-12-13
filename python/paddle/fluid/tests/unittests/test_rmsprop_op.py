@@ -240,6 +240,7 @@ class TestRMSPropV2(unittest.TestCase):
         adam.clear_gradients()
 
     def test_rmsprop(self):
+        paddle.enable_static()
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
@@ -288,6 +289,30 @@ class TestRMSPropV2(unittest.TestCase):
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.RMSProp(
                 0.1, rho=-1, parameters=linear.parameters())
+
+
+class TestRMSPropV2Group(TestRMSPropV2):
+    def test_rmsprop_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.RMSProp(
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear_1.parameters()
+            }, {
+                'params': linear_2.parameters(),
+                'weight_decay': 0.001
+            }],
+            weight_decay=0.01)
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
 
 
 if __name__ == "__main__":

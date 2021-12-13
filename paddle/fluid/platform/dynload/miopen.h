@@ -21,9 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
-#define MIOPEN_VERSION                                        \
-  (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 100 + \
+#define MIOPEN_VERSION                                       \
+  (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 10 + \
    MIOPEN_VERSION_PATCH)  // NOLINT
+
+// MIOPEN only support NCHW, just for compatibility with CUDNN API
+typedef enum {
+  MIOPEN_TENSOR_NCHW = 0,
+  MIOPEN_TENSOR_NHWC = 1,
+} miopenTensorFormat_t;
 
 namespace paddle {
 namespace platform {

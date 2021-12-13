@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +37,7 @@ class ElementwiseFloorDivNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("FloorDiv", {*x, *y}, {*out}, {});
+    const auto& runner = NpuOpRunner("FloorDiv", {*x, *y}, {*out}, {});
     runner.Run(stream);
   }
 };

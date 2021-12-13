@@ -305,6 +305,15 @@ def mul_scale_func(x, y, x_bcast, y_bcast, scale, mode=0):
         return y, x, x * scale, y_bcast * (x_bcast * scale)
 
 
+def gelu_add_func(x, y, x_bcast, y_bcast, mode=0):
+    im = x_bcast + y_bcast
+    out = im * 0.5 * (1.0 + np.tanh(0.79788456 * im * (1 + 0.044715 * im * im)))
+    if mode == 0:
+        return x, y, im, out
+    else:
+        return y, x, im, out
+
+
 scale = 0.1
 scale_add_func = partial(scale_add_func, scale=scale)
 add_scale_func = partial(add_scale_func, scale=scale)
@@ -316,6 +325,7 @@ for mode in {0, 1}:
     mul_scale_func = partial(mul_scale_func, mode=mode)
     relu_add_func = partial(relu_add_func, mode=mode)
     add_relu_func = partial(add_relu_func, mode=mode)
+    gelu_add_func = partial(gelu_add_func, mode=mode)
 
     for save_intermediate_out in {True, False}:
         suffix = ("_save_intermediate_out" if save_intermediate_out else "") \
@@ -343,6 +353,11 @@ for mode in {0, 1}:
             'functor_list': ["elementwise_mul", "scale"],
             'save_intermediate_out': save_intermediate_out,
         })
+        create_test_class('gelu_add' + suffix, gelu_add_func, {
+            'functor_list': ["gelu", "elementwise_add"],
+            'save_intermediate_out': save_intermediate_out,
+        })
+
         if core.is_compiled_with_cuda():
             create_test_class(
                 'scale_add_fp16' + suffix,
@@ -384,6 +399,14 @@ for mode in {0, 1}:
                 mul_scale_func, {
                     'scale': scale,
                     'functor_list': ["elementwise_mul", "scale"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'gelu_add_fp16' + suffix,
+                gelu_add_func, {
+                    'functor_list': ["gelu", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,

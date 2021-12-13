@@ -24,7 +24,7 @@ import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Cifar10', 'Cifar100']
+__all__ = []
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
@@ -140,11 +140,10 @@ class Cifar10(Dataset):
             names = (each_item.name for each_item in f
                      if self.flag in each_item.name)
 
+            names = sorted(list(names))
+
             for name in names:
-                if six.PY2:
-                    batch = pickle.load(f.extractfile(name))
-                else:
-                    batch = pickle.load(f.extractfile(name), encoding='bytes')
+                batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
                 labels = batch.get(

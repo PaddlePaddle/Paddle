@@ -31,6 +31,8 @@ void SetOp(ProgramDesc* prog, const std::string& type,
     op->SetAttr("scale", scale);
     op->SetAttr("bias", bias);
   } else if (type == "matmul") {
+    op->SetAttr("transpose_X", false);
+    op->SetAttr("transpose_Y", false);
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetAttr("alpha", scale);

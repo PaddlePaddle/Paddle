@@ -83,7 +83,9 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 
       if (k > input_width) k = input_width;
 
-      if ((input_width <= 1024 || k >= 128 || k == input_width)) {
+      // The conclusion is drawn from the data through multiple sets of
+      // statistics
+      if (input_width >= 128 && k >= input_width * 0.75) {
         if (SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
                         indices, largest)) {
           // Successed, return.
@@ -99,12 +101,21 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       const int kMaxHeight = 2048;
       int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
       switch (GetDesiredBlockDim(input_width)) {
+#ifdef PADDLE_WITH_HIP
+        FIXED_BLOCK_DIM(
+            KeMatrixTopK<T, 20,
+                         kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+                output_data, k, indices_data, input_data, input_width,
+                input_width, static_cast<int>(k), gridx, input_height,
+                largest));
+#else
         FIXED_BLOCK_DIM(
             KeMatrixTopK<T, 5,
                          kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
                 output_data, k, indices_data, input_data, input_width,
                 input_width, static_cast<int>(k), gridx, input_height,
                 largest));
+#endif
         default:
           PADDLE_THROW(platform::errors::Fatal(
               "the input data shape has error in the topk cuda kernel."));
@@ -150,8 +161,9 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 
       if (k > input_width) k = input_width;
 
-      if (((input_width <= 1024 && input_height <= 2048) || k >= 128 ||
-           k == input_width)) {
+      // The conclusion is drawn from the data through multiple sets of
+      // statistics
+      if (input_width >= 128 && k >= input_width * 0.75) {
         if (SortTopk<T>(dev_ctx, &trans_input, input_width, input_height, k,
                         &trans_out, &trans_ind, largest)) {
           // last step, tranpose back the indices and output
@@ -169,12 +181,21 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       const int kMaxHeight = 2048;
       int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
       switch (GetDesiredBlockDim(input_width)) {
+#ifdef PADDLE_WITH_HIP
+        FIXED_BLOCK_DIM(
+            KeMatrixTopK<T, 20,
+                         kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+                trans_out.data<T>(), k, trans_ind.data<int64_t>(),
+                trans_input.data<T>(), input_width, input_width,
+                static_cast<int>(k), gridx, input_height, largest));
+#else
         FIXED_BLOCK_DIM(
             KeMatrixTopK<T, 5,
                          kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
                 trans_out.data<T>(), k, trans_ind.data<int64_t>(),
                 trans_input.data<T>(), input_width, input_width,
                 static_cast<int>(k), gridx, input_height, largest));
+#endif
         default:
           PADDLE_THROW(platform::errors::Fatal(
               "the input data shape has error in the topk cuda kernel."));

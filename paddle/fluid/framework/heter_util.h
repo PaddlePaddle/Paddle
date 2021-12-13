@@ -36,7 +36,7 @@ enum HeterTaskState { PULL_SPARSE, OP_RUN, XPU, OP_RUN_END, PUSH_GRAD, DONE };
 class HeterTask {
  public:
   HeterTask() {}
-  virtual ~HeterTask(){};
+  virtual ~HeterTask() {}
 
   void Update() {
     if (state_ == PULL_SPARSE) {
@@ -111,7 +111,7 @@ template <class T>
 class HeterObjectPool {
  public:
   HeterObjectPool() {}
-  virtual ~HeterObjectPool(){};
+  virtual ~HeterObjectPool() {}
   std::shared_ptr<T> Get() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
@@ -130,6 +130,10 @@ class HeterObjectPool {
   int Size() {
     std::lock_guard<std::mutex> lock(mutex_);
     return pool_.size();
+  }
+  bool Empty() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pool_.empty();
   }
   std::shared_ptr<T>& GetElement(int i) { return pool_[i]; }
 
@@ -160,7 +164,7 @@ class BtObjectPool {
   virtual ~BtObjectPool() {
     bthread_cond_destroy(&cond_);
     bthread_mutex_destroy(&mutex_);
-  };
+  }
 
   std::shared_ptr<T> Get() {
     BthreadMutextGuard guard(&mutex_);

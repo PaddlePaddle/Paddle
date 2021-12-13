@@ -32,7 +32,7 @@ import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable
+from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
 from paddle.fluid.tests.unittests.testsuite import (
     create_op,
     set_input,
@@ -132,6 +132,12 @@ def get_numeric_gradient(place,
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
+    elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
+        tensor_to_check_dtype = np.float32
+    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
+        tensor_to_check_dtype = np.complex64
+    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
+        tensor_tp_check_dtype = np.complex128
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
@@ -140,9 +146,13 @@ def get_numeric_gradient(place,
         sum = []
         op.run(scope, place)
         for output_name in output_names:
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).astype(
-                    tensor_to_check_dtype).mean())
+            output_numpy = np.array(scope.find_var(output_name).get_tensor())
+            # numpy.dtype does not have bfloat16, thus we use numpy.uint16 to
+            # store bfloat16 data, and need to be converted to float to check
+            # the floating precision.
+            if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+                output_numpy = convert_uint16_to_float(output_numpy)
+            sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
@@ -152,6 +162,11 @@ def get_numeric_gradient(place,
             numpy_tensor = np.array(tensor).astype(np.float16)
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
+        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            numpy_tensor = np.array(tensor).astype(np.uint16)
+            numpy_tensor = numpy_tensor.flatten()
+            return struct.unpack('<f', struct.pack('<I', numpy_tensor[i]
+                                                   << 16))[0]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -166,6 +181,13 @@ def get_numeric_gradient(place,
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
             numpy_tensor[i] = e
+            numpy_tensor = numpy_tensor.reshape(shape)
+            tensor.set(numpy_tensor, place)
+        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            numpy_tensor = np.array(tensor).astype(np.uint16)
+            shape = numpy_tensor.shape
+            numpy_tensor = numpy_tensor.flatten()
+            numpy_tensor[i] = np.uint16(copy_bits_from_float_to_uint16(e))
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
@@ -343,9 +365,26 @@ class OpTest(unittest.TestCase):
             self.dtype = data_type
 
     def is_bfloat16_op(self):
+        # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
+        # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
         return self.dtype == np.uint16 or (
-            hasattr(self, 'mkldnn_data_type') and
-            getattr(self, 'mkldnn_data_type') is "bfloat16")
+            hasattr(self, 'output_dtype') and
+            self.output_dtype == np.uint16) or (
+                hasattr(self, 'mkldnn_data_type') and
+                getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                    hasattr(self, 'attrs') and
+                    'mkldnn_data_type' in self.attrs and
+                    self.attrs['mkldnn_data_type'] == 'bfloat16')
+
+    def is_mkldnn_op(self):
+        return (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or (
+            hasattr(self, "attrs") and "use_mkldnn" in self.attrs and
+            self.attrs["use_mkldnn"] == True)
+
+    def is_xpu_op(self):
+        return (hasattr(self, "use_xpu") and self.use_xpu == True) or (
+            hasattr(self, "attrs") and "use_xpu" in self.attrs and
+            self.attrs["use_xpu"] == True)
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
@@ -377,8 +416,8 @@ class OpTest(unittest.TestCase):
 
         # infer dtype from inputs, and dtype means the precision of the test
         # collect dtype of all inputs
-        dtype_set = set()
-        infer_dtype(inputs, dtype_set)
+        input_dtype_set = set()
+        infer_dtype(inputs, input_dtype_set)
         dtype_list = [
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
             np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.uint16),
@@ -387,11 +426,19 @@ class OpTest(unittest.TestCase):
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:
-            if dtype in dtype_set:
+            if dtype in input_dtype_set:
                 self.dtype = dtype
                 break
-        # save dtype in class attr
+        # save input dtype in class attr
         self.__class__.dtype = self.dtype
+
+        # infer dtype of outputs
+        output_dtype_set = set()
+        infer_dtype(outputs, output_dtype_set)
+        for dtype in dtype_list:
+            if dtype in output_dtype_set:
+                self.output_dtype = dtype
+                break
 
     def feed_var(self, input_vars, place):
         feed_map = {}
@@ -418,14 +465,10 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
-        if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
-            (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
-                    self.attrs["use_mkldnn"] == True):
+        if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
 
-        if (hasattr(self, "use_xpu") and self.use_xpu == True) or \
-            (hasattr(self, "attrs") and "use_xpu" in self.attrs and \
-                    self.attrs["use_xpu"] == True):
+        if self.is_xpu_op():
             self.__class__.use_xpu = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
@@ -1071,12 +1114,15 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            check_dygraph = False
-            if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'):
-                atol = 1e-2
+            if self.is_mkldnn_op():
+                check_dygraph = False
+                if hasattr(self, 'force_fp32_output') and getattr(
+                        self, 'force_fp32_output'):
+                    atol = 1e-2
+                else:
+                    atol = 2
             else:
-                atol = 2
+                atol = 1e-2
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
@@ -1087,6 +1133,7 @@ class OpTest(unittest.TestCase):
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
+
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -1171,19 +1218,42 @@ class OpTest(unittest.TestCase):
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
 
+                # np.uint16 represents bfloat16
                 if actual_t.dtype == np.uint16 and expect_t.dtype in [
                         np.float32, np.float64
                 ]:
                     actual_t = convert_uint16_to_float(actual_t)
-                    atol = 0.03
+                    rtol = 1.e-2
+                else:
+                    rtol = 1.e-5
+
+                if expect_t.dtype == np.uint16 and actual_t.dtype == np.uint16:
+                    expect_t = convert_uint16_to_float(expect_t)
+                    actual_t = convert_uint16_to_float(actual_t)
+                    atol = max(atol, 0.03)
+
+                # NOTE(zhiqiu): np.allclose([], [1.]) returns True
+                # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
+                if expect_t.size == 0:
+                    self.assertTrue(actual_t.size == 0)
 
                 self.assertTrue(
                     np.allclose(
-                        actual_t, expect_t, atol=atol, equal_nan=equal_nan),
+                        actual_t,
+                        expect_t,
+                        atol=atol,
+                        rtol=rtol,
+                        equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
                 if check_dygraph:
+                    if self.is_bfloat16_op():
+                        if imperative_actual_t.dtype == np.uint16:
+                            imperative_actual_t = convert_uint16_to_float(
+                                imperative_actual_t)
+                        if expect_t.dtype == np.uint16:
+                            expect_t = convert_uint16_to_float(expect_t)
                     if six.moves.reduce(
                             lambda x, y: x * y, imperative_actual_t.shape,
                             1) == 0 and six.moves.reduce(
@@ -1195,6 +1265,7 @@ class OpTest(unittest.TestCase):
                                 imperative_actual_t,
                                 expect_t,
                                 atol=atol,
+                                rtol=rtol,
                                 equal_nan=equal_nan),
                             "Output (" + out_name + ") has diff at " +
                             str(place) + "\nExpect " + str(expect_t) + "\n" +
@@ -1303,20 +1374,17 @@ class OpTest(unittest.TestCase):
                      check_dygraph=True,
                      inplace_atol=None):
         self.__class__.op_type = self.op_type
-        if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
-            (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
-                    self.attrs["use_mkldnn"] == True):
+        if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
 
-        if (hasattr(self, "use_xpu") and self.use_xpu == True) or \
-            (hasattr(self, "attrs") and "use_xpu" in self.attrs and \
-                    self.attrs["use_xpu"] == True):
+        if self.is_xpu_op():
             self.__class__.use_xpu = True
 
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph)
+                                               equal_nan, check_dygraph,
+                                               inplace_atol)
             if check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
@@ -1324,13 +1392,21 @@ class OpTest(unittest.TestCase):
             if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
-    def check_output_customized(self, checker):
+    def check_output_customized(self, checker, custom_place=None):
         places = self._get_places()
+        if custom_place:
+            places.append(custom_place)
         for place in places:
             outs = self.calc_output(place)
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             checker(outs)
+
+    def check_output_with_place_customized(self, checker, place):
+        outs = self.calc_output(place)
+        outs = [np.array(out) for out in outs]
+        outs.sort(key=len)
+        checker(outs)
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
@@ -1347,6 +1423,8 @@ class OpTest(unittest.TestCase):
                 abs_a[abs_a < 1e-10] = 1e-3
                 abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
                 abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+            elif self.is_bfloat16_op():
+                abs_a[abs_a < 1e-2] = 1
             else:
                 abs_a[abs_a < 1e-3] = 1
 
@@ -1397,13 +1475,17 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
-                              check_dygraph=True):
+                              check_dygraph=True,
+                              numeric_place=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
         self._check_grad_helper()
+        if self.is_bfloat16_op() and self.is_mkldnn_op():
+            check_dygraph = False
+
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
             numeric_grad_delta = 1e-5
@@ -1451,13 +1533,7 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        # FIXME: Replace numeric_place with place to calculate numeric_grads.
-        # NOTE(liym27): There is an unknown error when call op.run() on NPUPlace, which
-        # needs to be fixed.
-        if hasattr(self.__class__,
-                   "use_npu") and self.__class__.use_npu == True:
-            numeric_place = paddle.CPUPlace()
-        else:
+        if numeric_place is None:
             numeric_place = place
 
         numeric_grads = user_defined_grads or [
@@ -1478,13 +1554,21 @@ class OpTest(unittest.TestCase):
 
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
-        fp32_grads = []
+        fp32_analytic_grads = []
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03
-            fp32_grads.append(grad)
-        analytic_grads = fp32_grads
+                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+            fp32_analytic_grads.append(grad)
+        analytic_grads = fp32_analytic_grads
+
+        fp32_numeric_grads = []
+        for grad in numeric_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+            fp32_numeric_grads.append(grad)
+        numeric_grads = fp32_numeric_grads
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
@@ -1494,6 +1578,13 @@ class OpTest(unittest.TestCase):
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set)
+            fp32_grads = []
+            for grad in dygraph_grad:
+                if grad.dtype == np.uint16:
+                    grad = convert_uint16_to_float(grad)
+                    max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                fp32_grads.append(grad)
+            dygraph_grad = fp32_grads
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
@@ -1537,6 +1628,21 @@ class OpTest(unittest.TestCase):
                 inputs=inputs,
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
+
+            if self.dtype == np.uint16:
+                cast_inputs = self._find_var_in_dygraph(outputs,
+                                                        output_names[0])
+                cast_outputs = block.create_var(
+                    dtype="float32", shape=cast_inputs[0].shape)
+                cast_op = block.append_op(
+                    inputs={"X": cast_inputs},
+                    outputs={"Out": cast_outputs},
+                    type="cast",
+                    attrs={
+                        "in_dtype": core.VarDesc.VarType.BF16,
+                        "out_dtype": core.VarDesc.VarType.FP32
+                    })
+                outputs = {output_names[0]: cast_outputs}
 
             outputs_valid = {}
             for output_name in output_names:
@@ -1653,6 +1759,21 @@ class OpTest(unittest.TestCase):
         feed_dict = self.feed_var(inputs, place)
 
         if user_defined_grad_outputs is None:
+            if self.dtype == np.uint16:
+                cast_inputs = list(map(block.var, output_names))
+                cast_outputs = block.create_var(
+                    dtype="float32", shape=cast_inputs[0].shape)
+                cast_op = block.append_op(
+                    inputs={"X": cast_inputs},
+                    outputs={"Out": cast_outputs},
+                    type="cast",
+                    attrs={
+                        "in_dtype": core.VarDesc.VarType.BF16,
+                        "out_dtype": core.VarDesc.VarType.FP32
+                    })
+                cast_op.desc.infer_var_type(block.desc)
+                cast_op.desc.infer_shape(block.desc)
+                output_names = [cast_outputs.name]
             loss = append_loss_ops(block, output_names)
             param_grad_list = append_backward(
                 loss=loss,
@@ -1698,3 +1819,22 @@ class OpTest(unittest.TestCase):
                              fetch_list,
                              scope=scope,
                              return_numpy=False)))
+
+
+class OpTestTool:
+    @classmethod
+    def skip_if(cls, condition: object, reason: str):
+        return unittest.skipIf(condition, reason)
+
+    @classmethod
+    def skip_if_not_cpu_bf16(cls):
+        return OpTestTool.skip_if(
+            not (isinstance(_current_expected_place(), core.CPUPlace) and
+                 core.supports_bfloat16()),
+            "Place does not support BF16 evaluation")
+
+    @classmethod
+    def skip_if_not_cpu(cls):
+        return OpTestTool.skip_if(
+            not isinstance(_current_expected_place(), core.CPUPlace),
+            "OneDNN supports only CPU for now")

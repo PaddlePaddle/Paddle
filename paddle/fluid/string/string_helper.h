@@ -21,15 +21,30 @@
 #include <utility>
 #include <vector>
 
-#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 
 namespace paddle {
 namespace string {
 
-inline size_t count_spaces(const char* s);
+inline size_t count_spaces(const char* s) {
+  size_t count = 0;
 
-inline size_t count_nonspaces(const char* s);
+  while (*s != 0 && isspace(*s++)) {
+    count++;
+  }
+
+  return count;
+}
+
+inline size_t count_nonspaces(const char* s) {
+  size_t count = 0;
+
+  while (*s != 0 && !isspace(*s++)) {
+    count++;
+  }
+
+  return count;
+}
 
 template <class... ARGS>
 void format_string_append(std::string& str, const char* fmt,  // NOLINT
@@ -38,7 +53,9 @@ void format_string_append(std::string& str, const char* fmt,  // NOLINT
   CHECK_GE(len, 0);
   size_t oldlen = str.length();
   str.resize(oldlen + len + 1);
-  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) == len);
+
+  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) ==  // NOLINT
+        len);
   str.resize(oldlen + len);
 }
 
@@ -52,7 +69,7 @@ template <class... ARGS>
 std::string format_string(const char* fmt, ARGS&&... args) {
   std::string str;
   format_string_append(str, fmt, args...);
-  return std::move(str);
+  return str;
 }
 
 template <class... ARGS>
@@ -66,7 +83,22 @@ std::string trim_spaces(const std::string& str);
 // erase all spaces in str
 std::string erase_spaces(const std::string& str);
 
-int str_to_float(const char* str, float* v);
+inline int str_to_float(const char* str, float* v) {
+  const char* head = str;
+  char* cursor = NULL;
+  int index = 0;
+  while (*(head += count_spaces(head)) != 0) {
+    v[index++] = std::strtof(head, &cursor);
+    if (head == cursor) {
+      break;
+    }
+    head = cursor;
+  }
+  return index;
+}
+
+// checks whether the test string is a suffix of the input string.
+bool ends_with(std::string const& input, std::string const& test);
 
 // split string by delim
 template <class T = std::string>
@@ -127,13 +159,34 @@ template <class Container>
 std::string join_strings(const Container& strs, char delim) {
   std::string str;
 
-  int i = 0;
+  size_t i = 0;
   for (auto& elem : strs) {
     if (i > 0) {
       str += delim;
     }
 
-    str += boost::lexical_cast<std::string>(elem);
+    std::stringstream ss;
+    ss << elem;
+    str += ss.str();
+    ++i;
+  }
+
+  return str;
+}
+
+template <class Container>
+std::string join_strings(const Container& strs, const std::string& delim) {
+  std::string str;
+
+  size_t i = 0;
+  for (auto& elem : strs) {
+    if (i > 0) {
+      str += delim;
+    }
+
+    std::stringstream ss;
+    ss << elem;
+    str += ss.str();
     ++i;
   }
 

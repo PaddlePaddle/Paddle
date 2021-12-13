@@ -15,7 +15,6 @@
 INCLUDE(ExternalProject)
 
 SET(GLOG_PREFIX_DIR  ${THIRD_PARTY_PATH}/glog)
-SET(GLOG_SOURCE_DIR  ${THIRD_PARTY_PATH}/glog/src/extern_glog)
 SET(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 SET(GLOG_INCLUDE_DIR "${GLOG_INSTALL_DIR}/include" CACHE PATH "glog include directory." FORCE)
 SET(GLOG_REPOSITORY ${GIT_URL}/google/glog.git)
@@ -32,19 +31,15 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 
-cache_third_party(extern_glog
-    REPOSITORY   ${GLOG_REPOSITORY}
-    TAG          ${GLOG_TAG}
-    DIR          GLOG_SOURCE_DIR)
-
 ExternalProject_Add(
     extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${GLOG_DOWNLOAD_CMD}"
+    GIT_REPOSITORY  ${GLOG_REPOSITORY}
+    GIT_TAG         ${GLOG_TAG}
     DEPENDS         gflags
     PREFIX          ${GLOG_PREFIX_DIR}
-    SOURCE_DIR      ${GLOG_SOURCE_DIR}
+    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}
@@ -64,6 +59,7 @@ ExternalProject_Add(
                      -DCMAKE_INSTALL_LIBDIR:PATH=${GLOG_INSTALL_DIR}/lib
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+    BUILD_BYPRODUCTS ${GLOG_LIBRARIES}
 )
 
 ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)

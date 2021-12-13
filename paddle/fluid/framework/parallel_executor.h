@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -56,6 +56,12 @@ class ParallelExecutor {
                             const std::vector<std::string> &bcast_vars,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
+                            const ExecutionStrategy &exec_strategy,
+                            const BuildStrategy &build_strategy,
+                            ir::Graph *graph);
+
+  // NOTE(Aurelius84): Construct a PE running on single device for @to_static
+  explicit ParallelExecutor(const platform::Place &place, Scope *scope,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
@@ -84,7 +90,16 @@ class ParallelExecutor {
   FetchResultType Run(const std::vector<std::string> &fetch_tensors,
                       bool return_merged = true);
 
+  void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
+
+  void ResetOpHandleScopeMapOfGraphs(
+      const std::unordered_map<Scope *, Scope *> &scope_map);
+
   const ir::Graph &Graph() const;
+  void PrepareVariables(Scope *scope);
+
+  void SkipMemoryReuse(size_t scope_idx,
+                       const std::vector<std::string> &skip_vars);
 
  private:
   // broadcast the parameters from the 0th device.
@@ -129,8 +144,11 @@ class ParallelExecutor {
   void SetReaderOpDeviceInfoOfGraphs(
       const std::vector<ir::Graph *> &final_graphs);
 
+  void PrepareForCUDAGraphCapture(ir::Graph *graph);
+
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
+  std::vector<VariableInfo> var_infos_;
 };
 }  // namespace framework
 }  // namespace paddle

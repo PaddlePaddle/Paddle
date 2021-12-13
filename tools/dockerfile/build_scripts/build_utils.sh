@@ -151,8 +151,8 @@ function build_cpythons {
         curl -sLO $GET_PIP_URL
         build_cpython $py_ver
     done
-    rm get-pip.py
-    rm ez_setup.py
+    rm -f get-pip.py
+    rm -f ez_setup.py
 }
 
 

@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -35,7 +35,8 @@ namespace detail {
 class BuddyAllocator {
  public:
   BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
-                 size_t min_chunk_size, size_t max_chunk_size);
+                 size_t min_chunk_size, size_t max_chunk_size,
+                 size_t extra_padding_size = 0);
 
   ~BuddyAllocator();
 
@@ -86,7 +87,9 @@ class BuddyAllocator {
   size_t min_chunk_size_;  // the minimum size of each chunk
   size_t max_chunk_size_;  // the maximum size of each chunk
 
-  size_t realloc_size_ = 0;  // the size of re-allocated chunk
+  size_t realloc_size_ = 0;        // the size of re-allocated chunk
+  size_t extra_padding_size_ = 0;  // the size of padding to the size of memory
+                                   // to alloc, especially used in NPU
 
  private:
   /**

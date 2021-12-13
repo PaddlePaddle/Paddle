@@ -232,7 +232,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
-    head_number = context.Attr<int>("head_number");
+    if (context.HasAttr("head_number")) {
+      head_number = context.Attr<int>("head_number");
+    }
 #endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
@@ -328,6 +330,14 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+
+  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,
@@ -347,6 +357,43 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
             "Ranks of shape_%s and axis_%s attributes of MatMulOp "
             "must be equal.",
             input_name, input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative, 1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name, num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i, dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name, i, dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+    // if "-1" is present then one of reshape dims must be infered
+    auto it_negative = std::find(shape.begin(), shape.end(), -1);
+    if (it_negative != shape.end()) {
+      int64_t dim_product = 1;
+      for (int i = 0; i < dim.size(); i++) {
+        dim_product *= dim.at(i);
+      }
+
+      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                              std::multiplies<int>());
+      int index = std::distance(shape.begin(), it_negative);
+      shape[index] = dim_product / shape_product;
+    }
+
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -647,6 +694,24 @@ class MatMulOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument("reshape_out supported rank is 3, "
                                             "received %d",
                                             reshape_out_size));
+
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+
+      // if "-1" is present then one of reshape dims must be infered
+      if (it != reshape_out.end()) {
+        int index = std::distance(reshape_out.begin(), it);
+
+        auto ddim_out_vec = framework::vectorize(ddim_out);
+
+        int ddim_out_product =
+            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
+                            std::multiplies<int>());
+        int reshape_out_product = std::accumulate(
+            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
+
+        reshape_out[index] = ddim_out_product / reshape_out_product;
+      }
+
       framework::DDim shape_out =
           ddim_out.transpose(transpose_out).reshape(reshape_out);
       context->SetOutputDim("Out", shape_out);
@@ -665,7 +730,7 @@ class MatMulOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
+    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
@@ -707,53 +772,66 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_X",
                               R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_Y",
                               R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_X",
                               R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_Y",
                               R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     /* int8 parameters */
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_y",
                    "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_out",
                    "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
@@ -824,6 +902,21 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     if (context->HasOutput(y_grad_name)) {
       context->SetOutputDim(y_grad_name, y_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

@@ -21,6 +21,8 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
 
+np.random.seed(123)
+
 
 def trilinear_interp_np(input,
                         out_d,

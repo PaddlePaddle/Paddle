@@ -18,15 +18,14 @@ limitations under the License. */
 #include <vector>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
-#include "paddle/fluid/platform/miopen_helper.h"
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {

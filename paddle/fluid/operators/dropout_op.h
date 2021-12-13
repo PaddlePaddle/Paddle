@@ -21,57 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
-
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
-
-template <typename T>
-inline int VectorizedSize(const T* pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
-  }
-  return 1;
-}
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename MaskType, int VecSize>
-__global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
-                                      const T factor, const int64_t size,
-                                      T* dx) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-  using LoadT = AlignedVector<T, VecSize>;
-  using MaskLoadT = AlignedVector<MaskType, VecSize>;
-
-  for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
-    T dout_vec[VecSize];
-    LoadT* dout_value = reinterpret_cast<LoadT*>(&dout_vec);
-    *dout_value = *reinterpret_cast<const LoadT*>(&dout[i]);
-
-    MaskType mask_vec[VecSize];
-    MaskLoadT* mask_value = reinterpret_cast<MaskLoadT*>(&mask_vec);
-    *mask_value = *reinterpret_cast<const MaskLoadT*>(&mask[i]);
-
-    T dx_vec[VecSize];
-
-#pragma unroll
-    for (int ii = 0; ii < VecSize; ii++) {
-      dx_vec[ii] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
-    }
-
-    *(reinterpret_cast<LoadT*>(&dx[i])) = *reinterpret_cast<LoadT*>(&dx_vec[0]);
-  }
-}
-#endif
 
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -155,22 +107,15 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 template <typename DeviceContext, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"), true,
-                      platform::errors::PreconditionNotMet(
-                          "GradOp is only callable when is_test is false"));
-
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
-    auto size = grad_x->numel();
 
-    auto M = EigenVector<uint8_t>::Flatten(*mask);
     auto dX = EigenVector<T>::Flatten(*grad_x);
     auto dY = EigenVector<T>::Flatten(*grad_y);
 
@@ -178,32 +123,26 @@ class DropoutGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     auto& dropout_implementation =
         context.Attr<std::string>("dropout_implementation");
-    if (dropout_implementation == "upscale_in_train") {
-      float dropout_prob = context.Attr<float>("dropout_prob");
-      if (dropout_prob == 1.0f) {
-        dX.device(place) = static_cast<T>(0) * dY;
+    if (context.Attr<bool>("is_test") == true) {
+      if (dropout_implementation == "upscale_in_train") {
+        dX.device(place) = static_cast<T>(1) * dY;
       } else {
-        int vec_size = VectorizedSize<T>(grad_y->data<T>());
-        if (platform::is_gpu_place(context.GetPlace()) && vec_size == 4 &&
-            size % 4 == 0) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-          auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-          auto stream = context.cuda_device_context().stream();
-          platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(
-              context.cuda_device_context(), size);
-          DropoutGradCUDAKernel<
-              T, uint8_t,
-              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-              grad_y->data<T>(), mask->data<uint8_t>(), factor, size,
-              grad_x->data<T>());
-#endif
+        float dropout_prob = context.Attr<float>("dropout_prob");
+        dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
+      }
+    } else {
+      auto M = EigenVector<uint8_t>::Flatten(*mask);
+      if (dropout_implementation == "upscale_in_train") {
+        float dropout_prob = context.Attr<float>("dropout_prob");
+        if (dropout_prob == 1.0f) {
+          dX.device(place) = static_cast<T>(0) * dY;
         } else {
           dX.device(place) =
               dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
         }
+      } else {
+        dX.device(place) = dY * M.cast<T>();
       }
-    } else {
-      dX.device(place) = dY * M.cast<T>();
     }
   }
 };

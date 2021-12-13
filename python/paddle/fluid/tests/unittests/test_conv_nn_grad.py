@@ -52,7 +52,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestConvDoubleGradCheck(unittest.TestCase):
+class TestConvDoubleGradCheckTest0(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 3]

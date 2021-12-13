@@ -86,7 +86,20 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
   nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
-  nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
+  nvinfer1::DimsHW nv_paddings;
+  nvinfer1::Dims nv_pre_paddings;
+  nvinfer1::Dims nv_post_paddings;
+  if (paddings.size() == 2) {
+    nv_paddings.d[0] = paddings[0];
+    nv_paddings.d[1] = paddings[1];
+  } else {
+    nv_pre_paddings.nbDims = 2;
+    nv_post_paddings.nbDims = 2;
+    nv_pre_paddings.d[0] = paddings[0];
+    nv_pre_paddings.d[1] = paddings[2];
+    nv_post_paddings.d[0] = paddings[1];
+    nv_post_paddings.d[1] = paddings[3];
+  }
 
   TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_data),
@@ -103,13 +116,26 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                               static_cast<void*>(bias_data), bias_size};
-  auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
-                           nv_ksize, weight, bias);
-  PADDLE_ENFORCE_NOT_NULL(layer,
-                          platform::errors::Fatal("TensorRT create conv2d"
-                                                  " layer error."));
+  // In conv2d_transpose and depthwise_conv2d_transpose,
+  // output channels = filter_dims[1] * groups
+  auto* layer = (op_desc.Type() == "conv2d_transpose" ||
+                 op_desc.Type() == "depthwise_conv2d_transpose")
+                    ? fadd_layer(const_cast<nvinfer1::ITensor*>(X),
+                                 n_input * groups, nv_ksize, weight, bias)
+                    : fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output,
+                                 nv_ksize, weight, bias);
+
+  PADDLE_ENFORCE_NOT_NULL(
+      layer, platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
+                                     " layer failed."));
   layer->setStride(nv_strides);
-  layer->setPadding(nv_paddings);
+  if (paddings.size() == 2) {
+    layer->setPadding(nv_paddings);
+  } else {
+    layer->setPrePadding(nv_pre_paddings);
+    layer->setPostPadding(nv_post_paddings);
+  }
+
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
@@ -134,7 +160,6 @@ class Conv2dOpConverter : public OpConverter {
     ConvertConv2d(
         engine_, op, scope, test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Conv output maps */
-            int n_input,                             /* Conv input maps */
             nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IConvolutionLayer* {
           auto* layer =
@@ -156,7 +181,6 @@ class Deconv2dOpConverter : public OpConverter {
     ConvertConv2d(
         engine_, op, scope, test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Deconv input maps */
-            int n_input,                             /* Deconv output maps */
             nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IDeconvolutionLayer* {
           auto* layer =

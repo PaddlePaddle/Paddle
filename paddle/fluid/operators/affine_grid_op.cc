@@ -18,12 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -138,7 +133,8 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(true);
+        .SetDefault(true)
+        .AsExtra();
     AddAttr<bool>("align_corners",
                   "(bool, default false) Whether to align the corners of input"
                   "and ouput.")

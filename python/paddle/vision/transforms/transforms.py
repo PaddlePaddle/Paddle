@@ -35,13 +35,7 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-__all__ = [
-    "BaseTransform", "Compose", "Resize", "RandomResizedCrop", "CenterCrop",
-    "RandomHorizontalFlip", "RandomVerticalFlip", "Transpose", "Normalize",
-    "BrightnessTransform", "SaturationTransform", "ContrastTransform",
-    "HueTransform", "ColorJitter", "RandomCrop", "Pad", "RandomRotation",
-    "Grayscale", "ToTensor"
-]
+__all__ = []
 
 
 def _get_image_size(img):
@@ -315,7 +309,14 @@ class ToTensor(BaseTransform):
         data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+    
+    Shape:
+        - img(PIL.Image|np.ndarray): The input image with shape (H x W x C).
+        - output(np.ndarray): A tensor with shape (C x H x W) or (H x W x C) according option data_format.
+
+    Returns:
+        A callable object of ToTensor.
+
     Examples:
     
         .. code-block:: python
@@ -374,6 +375,13 @@ class Resize(BaseTransform):
             - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A resized image.
+
+    Returns:
+        A callable object of Resize.
+
     Examples:
     
         .. code-block:: python
@@ -427,6 +435,13 @@ class RandomResizedCrop(BaseTransform):
             - "bicubic": cv2.INTER_CUBIC, 
             - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A cropped image.
+
+    Returns:
+        A callable object of RandomResizedCrop.
 
     Examples:
     
@@ -509,6 +524,13 @@ class CenterCrop(BaseTransform):
         size (int|list|tuple): Target size of output image, with (height, width) shape.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A cropped image.
+
+    Returns:
+        A callable object of CenterCrop.
+
     Examples:
     
         .. code-block:: python
@@ -543,6 +565,13 @@ class RandomHorizontalFlip(BaseTransform):
         prob (float, optional): Probability of the input data being flipped. Should be in [0, 1]. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A horiziotal flipped image.
+
+    Returns:
+        A callable object of RandomHorizontalFlip.
+
     Examples:
     
         .. code-block:: python
@@ -561,6 +590,7 @@ class RandomHorizontalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomHorizontalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
@@ -576,6 +606,13 @@ class RandomVerticalFlip(BaseTransform):
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A vertical flipped image.
+
+    Returns:
+        A callable object of RandomVerticalFlip.
+
     Examples:
     
         .. code-block:: python
@@ -584,7 +621,7 @@ class RandomVerticalFlip(BaseTransform):
             from PIL import Image
             from paddle.vision.transforms import RandomVerticalFlip
 
-            transform = RandomVerticalFlip(224)
+            transform = RandomVerticalFlip()
 
             fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
 
@@ -595,6 +632,7 @@ class RandomVerticalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomVerticalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
@@ -616,7 +654,14 @@ class Normalize(BaseTransform):
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A normalized array or tensor.
+
+    Returns:
+        A callable object of Normalize.
+
     Examples:
     
         .. code-block:: python
@@ -669,7 +714,15 @@ class Transpose(BaseTransform):
     Args:
         order (list|tuple, optional): Target order of input data. Default: (2, 0, 1).
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+    
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(np.ndarray|Paddle.Tensor): A transposed array or tensor. If input 
+            is a PIL.Image, output will be converted to np.ndarray automatically.
+
+    Returns:
+        A callable object of Transpose.
+
     Examples:
     
         .. code-block:: python
@@ -711,6 +764,13 @@ class BrightnessTransform(BaseTransform):
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brghtness.
+
+    Returns:
+        A callable object of BrightnessTransform.
+
     Examples:
     
         .. code-block:: python
@@ -746,6 +806,13 @@ class ContrastTransform(BaseTransform):
         value (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in contrast.
+
+    Returns:
+        A callable object of ContrastTransform.
 
     Examples:
     
@@ -785,6 +852,13 @@ class SaturationTransform(BaseTransform):
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in saturation.
+
+    Returns:
+        A callable object of SaturationTransform.
+
     Examples:
     
         .. code-block:: python
@@ -821,6 +895,13 @@ class HueTransform(BaseTransform):
             between 0 and 0.5, 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in hue.
+
+    Returns:
+        A callable object of HueTransform.
+
     Examples:
     
         .. code-block:: python
@@ -854,15 +935,22 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness: How much to jitter brightness.
+        brightness (float): How much to jitter brightness.
             Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast: How much to jitter contrast.
+        contrast (float): How much to jitter contrast.
             Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation: How much to jitter saturation.
+        saturation (float): How much to jitter saturation.
             Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue: How much to jitter hue.
+        hue (float): How much to jitter hue.
             Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A color jittered image.
+
+    Returns:
+        A callable object of ColorJitter.
 
     Examples:
     
@@ -942,7 +1030,14 @@ class RandomCrop(BaseTransform):
         pad_if_needed (boolean|optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+    
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A random cropped image.
+
+    Returns:
+        A callable object of RandomCrop.
+
     Examples:
     
         .. code-block:: python
@@ -1044,7 +1139,14 @@ class Pad(BaseTransform):
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
             will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+    
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A paded image.
+
+    Returns:
+        A callable object of Pad.
+
     Examples:
     
         .. code-block:: python
@@ -1117,7 +1219,14 @@ class RandomRotation(BaseTransform):
             Origin is the upper left corner.
             Default is the center of the image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+    
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A rotated image.
+
+    Returns:
+        A callable object of RandomRotation.
+
     Examples:
     
         .. code-block:: python
@@ -1184,11 +1293,15 @@ class Grayscale(BaseTransform):
     Args:
         num_output_channels (int): (1 or 3) number of channels desired for output image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): Grayscale version of the input image. 
+            - If output_channels == 1 : returned image is single channel
+            - If output_channels == 3 : returned image is 3 channel with r == g == b
+
     Returns:
-        CV Image: Grayscale version of the input.
-        - If output_channels == 1 : returned image is single channel
-        - If output_channels == 3 : returned image is 3 channel with r == g == b
+        A callable object of Grayscale.
 
     Examples:
     

@@ -44,6 +44,9 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
   }
 }
 
+void add_graph_node(std::vector<uint64_t> node_ids,
+                    std::vector<bool> weight_list) {}
+void remove_graph_node(std::vector<uint64_t> node_ids) {}
 void GraphPyService::set_up(std::string ips_str, int shard_num,
                             std::vector<std::string> node_types,
                             std::vector<std::string> edge_types) {
@@ -104,6 +107,7 @@ void GraphPyServer::start_server(bool block) {
   empty_vec.push_back(empty_prog);
   pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
   pserver_ptr->start(ip, port);
+  pserver_ptr->build_peer2peer_connection(rank);
   std::condition_variable* cv_ = pserver_ptr->export_cv();
   if (block) {
     std::mutex mutex_;
@@ -247,6 +251,34 @@ void GraphPyClient::load_edge_file(std::string name, std::string filepath,
   }
 }
 
+void GraphPyClient::clear_nodes(std::string name) {
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status = get_ps_client()->clear_nodes(table_id);
+    status.wait();
+  }
+}
+
+void GraphPyClient::add_graph_node(std::string name,
+                                   std::vector<uint64_t>& node_ids,
+                                   std::vector<bool>& weight_list) {
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status =
+        get_ps_client()->add_graph_node(table_id, node_ids, weight_list);
+    status.wait();
+  }
+}
+
+void GraphPyClient::remove_graph_node(std::string name,
+                                      std::vector<uint64_t>& node_ids) {
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status = get_ps_client()->remove_graph_node(table_id, node_ids);
+    status.wait();
+  }
+}
+
 void GraphPyClient::load_node_file(std::string name, std::string filepath) {
   // 'n' means load nodes and 'node_type' follows
   std::string params = "n" + name;
@@ -257,20 +289,59 @@ void GraphPyClient::load_node_file(std::string name, std::string filepath) {
     status.wait();
   }
 }
-std::vector<std::vector<std::pair<uint64_t, float>>>
-GraphPyClient::batch_sample_neighboors(std::string name,
-                                       std::vector<uint64_t> node_ids,
-                                       int sample_size) {
-  std::vector<std::vector<std::pair<uint64_t, float>>> v;
+
+std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>>
+GraphPyClient::batch_sample_neighbors(std::string name,
+                                      std::vector<uint64_t> node_ids,
+                                      int sample_size, bool return_weight,
+                                      bool return_edges) {
+  // std::vector<std::vector<std::pair<uint64_t, float>>> v;
+  std::vector<std::vector<uint64_t>> v;
+  std::vector<std::vector<float>> v1;
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status = worker_ptr->batch_sample_neighbors(
+        table_id, node_ids, sample_size, v, v1, return_weight);
+    status.wait();
+  }
+
+  // res.first[0]: neighbors (nodes)
+  // res.first[1]: slice index
+  // res.first[2]: src nodes
+  // res.second: edges weight
+  std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>> res;
+  res.first.push_back({});
+  res.first.push_back({});
+  if (return_edges) res.first.push_back({});
+  for (size_t i = 0; i < v.size(); i++) {
+    for (size_t j = 0; j < v[i].size(); j++) {
+      // res.first[0].push_back(v[i][j].first);
+      res.first[0].push_back(v[i][j]);
+      if (return_edges) res.first[2].push_back(node_ids[i]);
+      if (return_weight) res.second.push_back(v1[i][j]);
+    }
+    if (i == v.size() - 1) break;
+
+    if (i == 0) {
+      res.first[1].push_back(v[i].size());
+    } else {
+      res.first[1].push_back(v[i].size() + res.first[1].back());
+    }
+  }
+
+  return res;
+}
+
+void GraphPyClient::use_neighbors_sample_cache(std::string name,
+                                               size_t total_size_limit,
+                                               size_t ttl) {
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
     auto status =
-        worker_ptr->batch_sample_neighboors(table_id, node_ids, sample_size, v);
+        worker_ptr->use_neighbors_sample_cache(table_id, total_size_limit, ttl);
     status.wait();
   }
-  return v;
 }
-
 std::vector<uint64_t> GraphPyClient::random_sample_nodes(std::string name,
                                                          int server_index,
                                                          int sample_size) {
@@ -297,6 +368,19 @@ std::vector<std::vector<std::string>> GraphPyClient::get_node_feat(
     status.wait();
   }
   return v;
+}
+
+void GraphPyClient::set_node_feat(
+    std::string node_type, std::vector<uint64_t> node_ids,
+    std::vector<std::string> feature_names,
+    const std::vector<std::vector<std::string>> features) {
+  if (this->table_id_map.count(node_type)) {
+    uint32_t table_id = this->table_id_map[node_type];
+    auto status =
+        worker_ptr->set_node_feat(table_id, node_ids, feature_names, features);
+    status.wait();
+  }
+  return;
 }
 
 std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,

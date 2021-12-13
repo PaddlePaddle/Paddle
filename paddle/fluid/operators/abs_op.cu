@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/abs_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -26,15 +24,15 @@ struct CudaAbsFunctor;
 
 template <typename T>
 struct CudaAbsFunctor<T, math::Complex<T, math::Real<T>>> {
-  __device__ __forceinline__ math::Real<T> operator()(const T* args) const {
-    return abs(args[0]);
+  __device__ __forceinline__ math::Real<T> operator()(const T& x) const {
+    return abs(x);
   }
 };
 
 template <typename T>
 struct CudaAbsFunctor<T, math::NoComplex<T, math::Real<T>>> {
-  __device__ __forceinline__ T operator()(const T* args) const {
-    return std::abs(args[0]);
+  __device__ __forceinline__ T operator()(const T& x) const {
+    return std::abs(x);
   }
 };
 
@@ -52,8 +50,9 @@ class AbsKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaAbsFunctor<T>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, math::Real<T>>(
-        dev_ctx, ins, &outs, functor);
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T,
+                                        math::Real<T>>(dev_ctx, ins, &outs,
+                                                       functor);
   }
 };
 
@@ -69,8 +68,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AbsKernel<plat::CUDADeviceContext, int>,
     ops::AbsKernel<plat::CUDADeviceContext, int64_t>,
     ops::AbsKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::AbsKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::AbsKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::AbsKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::AbsKernel<plat::CUDADeviceContext, plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     abs_grad, ops::AbsGradKernel<plat::CUDADeviceContext, float>,
@@ -78,8 +77,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AbsGradKernel<plat::CUDADeviceContext, int>,
     ops::AbsGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::AbsGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     abs_grad_grad, ops::AbsDoubleGradKernel<plat::CUDADeviceContext, float>,
@@ -87,5 +86,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AbsDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::AbsDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex<double>>);

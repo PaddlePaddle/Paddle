@@ -13,15 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/conj_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     conj, ops::ConjKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::complex64>,
+                          paddle::platform::complex<float>>,
     ops::ConjKernel<paddle::platform::CUDADeviceContext,
-                    paddle::platform::complex128>,
+                    paddle::platform::complex<double>>,
     ops::ConjKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ConjKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ConjKernel<paddle::platform::CUDADeviceContext, int>,

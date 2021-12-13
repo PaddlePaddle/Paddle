@@ -25,12 +25,16 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/string/printf.h"
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #endif
 
+namespace paddle_infer {
+using float16 = paddle::platform::float16;
+}
 ///
 /// \file analysis_predictor.h
 ///
@@ -87,6 +91,10 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
+    if (config_.shape_range_info_collected()) {
+      config_.SwitchIrOptim(false);
+      config_.EnableMemoryOptim(false);
+    }
     predictor_id_ = inference::GetUniqueId();
   }
   ///
@@ -374,6 +382,10 @@ class AnalysisPredictor : public PaddlePredictor {
 #endif
 
  private:
+  void StatisticShapeRangeInfo();
+  void CollectShapeRangeInfo();
+
+ private:
   AnalysisConfig config_;
   Argument argument_;
   std::unique_ptr<NaiveExecutor> executor_;
@@ -415,6 +427,8 @@ class AnalysisPredictor : public PaddlePredictor {
  private:
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
+
+  std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
 };
 
 }  // namespace paddle

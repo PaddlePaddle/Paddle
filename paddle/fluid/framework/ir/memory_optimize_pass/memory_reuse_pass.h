@@ -113,6 +113,8 @@ class MemoryReusePass : public Pass {
                                      details::VarHandle *in_var,
                                      details::VarHandle *out_var) const;
 
+  bool SupportApplyProgramViaGraph() const override { return false; }
+
  private:
   VarDesc *GetVarDesc(const details::VarHandle &var) const;
 

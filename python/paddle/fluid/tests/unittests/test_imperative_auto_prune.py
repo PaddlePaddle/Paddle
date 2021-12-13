@@ -375,18 +375,6 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case3.linear2.weight._grad_ivar() is None)
             self.assertTrue(case3.linear.weight._grad_ivar() is not None)
 
-    def test_case2_prune_no_grad_branch(self):
-        with fluid.dygraph.guard():
-            value1 = np.arange(784).reshape(1, 784)
-            value2 = np.arange(1).reshape(1, 1)
-            v1 = fluid.dygraph.to_variable(value1).astype("float32")
-            v2 = fluid.dygraph.to_variable(value2).astype("float32")
-            case3 = AutoPruneLayer2(input_size=784)
-            loss = case3(v1, v2)
-            loss.backward()
-            self.assertTrue(case3.linear2.weight._grad_ivar() is None)
-            self.assertTrue(case3.linear.weight._grad_ivar() is not None)
-
     def test_case3_prune_no_grad_branch2(self):
         with fluid.dygraph.guard():
             value1 = np.arange(1).reshape(1, 1)

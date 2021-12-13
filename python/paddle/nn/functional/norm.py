@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define normalization api  
+# TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
+from ..initializer import Constant
+from ...framework import ParamAttr
 from ...fluid import core, dygraph_utils
 import numbers
+from paddle import _C_ops
 
 __all__ = []
 
@@ -33,18 +34,18 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     .. math::
 
-        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
-    
-    .. math::
-        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
+        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
 
-    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
+    .. math::
+        \lvert \lvert x \rvert \rvert_p = \left( \sum_i {\lvert x_i \rvert^p}  \right)^{1/p}
+
+    where, :math:`\sum_i{\lvert x_i \rvert^p}` is calculated along the ``axis`` dimension.
 
 
     Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2
-        axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension. 
+        axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -79,13 +80,14 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = core.ops.p_norm(x, 'axis', axis, 'porder',
-                              float(p), 'keepdim', True, 'epsilon', epsilon)
-        return x / core.ops.elementwise_max(out, eps)
+        out = _C_ops.p_norm(x, 'axis', axis, 'porder',
+                            float(p), 'keepdim', True, 'epsilon', epsilon)
+        return x / _C_ops.elementwise_max(out, eps)
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'normalize')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'normalize')
     if len(x.shape) == 1 and axis != 0 and axis != -1:
         raise ValueError(
             "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".
@@ -103,8 +105,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
     paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
-    return paddle.fluid.layers.elementwise_div(
-        x, paddle.maximum(out, eps), name=name)
+    return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(x,
@@ -122,13 +123,13 @@ def batch_norm(x,
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     nn.functional.batch_norm is uesd for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
-    
+
     Parameters:
         x(Tesnor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
         weight(Tensor): The weight tensor of batch_norm, can not be None.
-        bias(Tensor): The bias tensor of batch_norm can not be None. 
+        bias(Tensor): The bias tensor of batch_norm can not be None.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
@@ -185,7 +186,7 @@ def batch_norm(x,
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
-        batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
+        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
         return dygraph_utils._append_activation_in_dygraph(
@@ -251,7 +252,7 @@ def layer_norm(x,
                name=None):
     """
     see more detail in paddle.nn.LayerNorm
-    
+
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
         normalized_shape(int|list|tuple): Input shape from an expected input of
@@ -276,7 +277,7 @@ def layer_norm(x,
 
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.to_tensor(x_data)
           layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
@@ -301,8 +302,8 @@ def layer_norm(x,
                              1:] + ', but got input shape ' + str(input_shape))
 
     if in_dygraph_mode():
-        pre_act, _, _ = core.ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
-                                            'begin_norm_axis', begin_norm_axis)
+        pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
+                                          'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
@@ -377,7 +378,7 @@ def instance_norm(x,
 
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.to_tensor(x_data)
           instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
@@ -385,9 +386,9 @@ def instance_norm(x,
     """
 
     if in_dygraph_mode():
-        out, _, _ = core.ops.instance_norm(x, weight, bias, "epsilon", eps,
-                                           "momentum", momentum, "data_format",
-                                           data_format)
+        out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
+                                         "momentum", momentum, "data_format",
+                                         data_format)
         return out
 
     check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")
@@ -432,7 +433,7 @@ def local_response_norm(x,
 
         .. math::
 
-            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
+            Output(i, x, y) = Input(i, x, y) / \left(k + \alpha \sum\limits^{\min(C-1, i + size/2)}_{j = \max(0, i - size/2)}(Input(j, x, y))^2\right)^{\beta}
 
         In the above equation:
 
@@ -486,6 +487,12 @@ def local_response_norm(x,
         raise ValueError(
             'Expected 3D or higher dimensionality input, but got {} dimensions'.
             format(dim))
+
+    for i, sz in enumerate(sizes):
+        if not sz > 0:
+            raise ValueError("Expected every dim's size to be larger than 0, "
+                             "but the size of the {}-th dim is {}".format(i,
+                                                                          sz))
 
     channel_last = True if data_format[-1] == "C" else False
 

@@ -36,6 +36,16 @@ class SelectedRows;
 namespace paddle {
 namespace operators {
 class MemcpyFunctor {
+ private:
+  enum DeviceType {
+    CPU = 0,
+    CUDA = 1,
+    CUDA_PINNED = 2,
+    XPU = 3,
+    NPU = 4,
+    NPU_PINNED = 5,
+  };
+
  public:
   MemcpyFunctor(framework::Variable *out,
                 const platform::DeviceContext &dev_ctx,
@@ -45,23 +55,23 @@ class MemcpyFunctor {
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 
-    if (dst_place_type_ == 2) {
+    if (dst_place_type_ == DeviceType::CUDA_PINNED) {
       framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
                             &out_tensor);
-    } else if (dst_place_type_ == 1) {
+    } else if (dst_place_type_ == DeviceType::CUDA) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
                             &out_tensor);
-    }
+    } else if (dst_place_type_ == DeviceType::CPU) {
+      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
 #ifdef PADDLE_WITH_ASCEND_CL
-    else if (dst_place_type_ == 0) {  // NOLINT
-      framework::TensorCopy(lod_tensor, platform::CPUPlace(), dev_ctx_,
-                            &out_tensor);
-    } else if (dst_place_type_ == 4) {
+    } else if (dst_place_type_ == DeviceType::NPU) { /* npu_pin->npu */
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
                             &out_tensor);
-    }
+    } else if (dst_place_type_ == DeviceType::NPU_PINNED) { /* npu->npu_pin */
+      framework::TensorCopy(lod_tensor, platform::NPUPinnedPlace(), dev_ctx_,
+                            &out_tensor);
 #endif
-    else {  // NOLINT
+    } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }

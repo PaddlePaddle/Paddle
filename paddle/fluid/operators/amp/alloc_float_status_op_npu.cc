@@ -15,7 +15,7 @@ limitations under the License. */
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,8 @@ class AllocFloatStatusKernel : public framework::OpKernel<T> {
     auto* float_status = ctx.Output<framework::Tensor>("FloatStatus");
     float_status->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
+    const auto& runner =
+        NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

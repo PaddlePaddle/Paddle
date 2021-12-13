@@ -16,6 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/ipu/ipu_backend.h"
+#endif
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -75,16 +78,30 @@ void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
 bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
 
+DeviceType Place2DeviceType(const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return platform::DeviceType::CPU;
+  } else if (platform::is_gpu_place(place)) {
+    return platform::DeviceType::CUDA;
+  } else if (platform::is_xpu_place(place)) {
+    return platform::DeviceType::XPU;
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported place %s to convert into platform::DeviceType.", place));
+  }
+}
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
-  VLOG(4) << "DeviceContextPool Get: " << place;
+  VLOG(6) << "DeviceContextPool Get: " << place;
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU, WITH_XPU or WITH_ASCEND_CL option or check that "
-        "your train process set the correct device id if you use Executor.",
+        "with WITH_GPU, WITH_XPU, WITH_IPU or WITH_ASCEND_CL option or check "
+        "that your train process set the correct device id if you use "
+        "Executor.",
         place));
   }
   return it->second.get().get();
@@ -146,6 +163,14 @@ DeviceContextPool::DeviceContextPool(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
                                           "re-compile with WITH_XPU option."));
 #endif
+    } else if (platform::is_ipu_place(p)) {
+#ifdef PADDLE_WITH_IPU
+      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("IPUPlace is not supported. Please "
+                                          "re-compile with WITH_IPU option."));
+#endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
@@ -153,6 +178,16 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported. Please "
           "re-compile with WITH_ASCEND_CL option."));
+#endif
+    } else if (platform::is_npu_pinned_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
+          &device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPinnedPlace is not supported. Please re-compile with "
+          "WITH_ASCEND_CL "
+          "option."));
 #endif
     }
   }
@@ -172,8 +207,27 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
+#ifdef PADDLE_WITH_IPU
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
+  int id = place.GetDeviceId();
+  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
+      platform::ipu::IpuBackend::GetInstance();
+  device_ = ipu_backend->GetDevice(id);
+}
+
+Place IPUDeviceContext::GetPlace() const { return place_; }
+void IPUDeviceContext::Wait() const {
+  /*! \brief  Wait for all operations completion in the stream. */
+}
+
+IPUDeviceContext::~IPUDeviceContext() {}
+
+#endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
+XPUDeviceContext::XPUDeviceContext() {
+  context_ = xpu::create_context();
+  xpu_version_ = get_xpu_version(place_.device);
+}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
@@ -196,8 +250,12 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
 
   context_ = xpu::create_context();
   const int MAX_XPU_NUM = 16;
-  const int l3_size = 13.5 * 1024 * 1024;
   static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
+
+  int l3_size = 13.5 * 1024 * 1024;
+  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
+    l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
+  }
 
   auto selected_xpus = GetXPUSelectedDevices();
   for (unsigned int i = 0; i < selected_xpus.size(); i++) {
@@ -244,7 +302,7 @@ NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
   // NOTE(zhiqiu): Usually, no need to create context explicitly,
   // ACL creates a default context which contains 1 default stream
   // and 1 sync strean after aclrtSetDevice.
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  platform::GetCurrentNPUContext(&context_);
   stream_.reset(new stream::NPUStream(place));
 }
 
@@ -264,6 +322,22 @@ aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 Place NPUDeviceContext::GetPlace() const { return place_; }
 
 aclrtContext NPUDeviceContext::context() const { return context_; }
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext(NPUPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -324,10 +398,10 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
 #endif
     }
@@ -369,10 +443,11 @@ void CUDAContext::InitEigenContext() {
 }
 
 CUDAContext::CUDAContext(const CUDAPlace& place,
-                         const stream::Priority& priority) {
+                         const stream::Priority& priority,
+                         const stream::StreamFlag& flag) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.reset(new stream::CUDAStream(place, priority));
+  stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();
@@ -392,14 +467,14 @@ CUDAContext::~CUDAContext() {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
-  compute_capability_ = GetCUDAComputeCapability(place_.device);
-  multi_process_ = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  compute_capability_ = GetGPUComputeCapability(place_.device);
+  multi_process_ = GetGPUMultiProcessors(place_.device);
+  max_threads_per_mp_ = GetGPUMaxThreadsPerMultiProcessor(place_.device);
   max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
-  max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
+  max_threads_per_block_ = GetGPUMaxThreadsPerBlock(place_.device);
 
-  driver_version_ = GetCUDADriverVersion(place_.device);
-  runtime_version_ = GetCUDARuntimeVersion(place_.device);
+  driver_version_ = GetGPUDriverVersion(place_.device);
+  runtime_version_ = GetGPURuntimeVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
                           << ", GPU Compute Capability: "
@@ -412,7 +487,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
                           << (runtime_version_ % 100) / 10;
 #ifdef PADDLE_WITH_HIP
   size_t version_major, version_minor, version_patch;
-  PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
       &version_major, &version_minor, &version_patch));
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", MIOpen Version: " << version_major << "."
@@ -452,7 +527,7 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nccl_comm_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }
 #endif
 }
@@ -537,12 +612,12 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
     : CPUDeviceContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
-  p_exec_items_.reset(new ExecMap());
+  p_exec_items_.reset(new ExecShape());
   p_mutex_.reset(new std::mutex());
 }
 
 MKLDNNDeviceContextThreadLocals::Body::Body()
-    : cur_engine(mkldnn::engine::kind::cpu, 0), cur_stream(cur_engine) {
+    : cur_engine(dnnl::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
@@ -600,11 +675,11 @@ void MKLDNNDeviceContextThreadLocals::Body::log_lib_version(void) {
   }
 }
 
-const mkldnn::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
+const dnnl::engine& MKLDNNDeviceContextThreadLocals::Body::get_engine(void) {
   return cur_engine;
 }
 
-mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
+dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 
@@ -618,10 +693,15 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
     if (ptr == nullptr) {
       p_blobmap_->clear();
     } else {
-      for (auto& v : (*p_exec_items_)[ptr]) {
-        (v.first)->erase(v.second);
+      // Iterate through all shapes and release
+      // for each shape and active executor all entries
+      // of this executor
+      for (auto& s : *p_exec_items_) {
+        for (auto& v : (*s.second)[ptr]) {
+          (v.first)->erase(v.second);
+        }
+        s.second->erase(ptr);
       }
-      p_exec_items_->erase(ptr);
     }
   } else {
     VLOG(3) << "Prevented Clearing DNNL cache.";
@@ -629,11 +709,24 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   }
 }
 
+void MKLDNNDeviceContext::RemoveShapeEntriesWithExecutor(void) const {
+  p_exec_items_->erase(p_exec_items_->begin());
+}
+
 void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
                                                 KeyBlob::iterator it) const {
+  // Take current input shape from TLS
   // Take current executor addess from TLS
   // and for this executor's items add the one defined with arguments
-  (*p_exec_items_)[tls().get_curr_exec()].push_back(std::make_pair(pblob, it));
+  auto key_it = p_exec_items_
+                    ->insert(std::make_pair(tls().cur_input_shape_str,
+                                            std::make_shared<ExecMap>()))
+                    .first;
+  (*key_it->second)[tls().get_curr_exec()].push_back(std::make_pair(pblob, it));
+
+  VLOG(3) << "LinkEntryWithExecutor, shapes: " << p_exec_items_->size()
+          << " curr exec size: "
+          << (*key_it->second)[tls().get_curr_exec()].size() << "\n";
 }
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
@@ -690,6 +783,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
       VLOG(2) << "sid=" << sid
               << ", remove all blobs of shape: " << sBlob->begin()->first;
       sBlob->erase(sBlob->begin()->first);
+      RemoveShapeEntriesWithExecutor();
     }
     pBlob = std::make_shared<KeyBlob>();
     (*sBlob)[tls().cur_input_shape_str] = pBlob;
@@ -713,7 +807,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   return;
 }
 
-unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) {
+unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   unsigned int num_entries = 0;
   for (auto const& l3 : *p_blobmap_) {
     for (auto const& l2 : *(l3.second)) {

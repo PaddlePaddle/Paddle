@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cmath>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +36,8 @@ class ErfKernel : public framework::OpKernel<T> {
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    eigen_out.device(place) = eigen_in.erf();
+    EigenErf<std::decay_t<decltype(place)>, T>::Eval(place, eigen_out,
+                                                     eigen_in);
   }
 };
 
@@ -55,8 +57,8 @@ class ErfGradKernel : public framework::OpKernel<T> {
     auto eigen_dx = framework::EigenVector<T>::Flatten(*dx);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    eigen_dx.device(place) =
-        eigen_dout * static_cast<T>(M_2_SQRTPI) * (-(eigen_x.square())).exp();
+    EigenErfGrad<std::decay_t<decltype(place)>, T>::Eval(place, eigen_dx,
+                                                         eigen_x, eigen_dout);
   }
 };
 

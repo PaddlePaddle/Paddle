@@ -30,7 +30,7 @@ std::unique_ptr<Node> CreateNodeForTest(const std::string &name,
 }
 
 std::unique_ptr<Node> CreateNodeForTest(VarDesc *var_desc) {
-  return std::unique_ptr<Node>(new Node(var_desc));
+  return std::unique_ptr<Node>(new Node(var_desc, 0));
 }
 
 std::unique_ptr<Node> CreateNodeForTest(OpDesc *op_desc) {

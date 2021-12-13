@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-
+from paddle import enable_static
 from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2DTransposeOp
 
 
@@ -134,7 +134,7 @@ class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad, self).init_test_case()
+        super(TestMKLDNNWithValidPad_NHWC, self).init_test_case()
         self.data_format = "NHWC"
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
@@ -152,6 +152,27 @@ class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
         self.filter_size = [f_c, 6, 4, 3]
         self.pad = [1, 3, 2, 1]
         self.padding_algorithm = "EXPLICIT"
+
+
+class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.groups = 2
+        self.input_size = [2, 4, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 3, 3, 3]
+
+
+class TestMKLDNNWithGroups_NHWC(TestConv2DTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.groups = 2
+        self.input_size = [2, 5, 5, 4]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 3, 3, 3]
+        self.data_format = 'NHWC'
 
 
 if __name__ == '__main__':

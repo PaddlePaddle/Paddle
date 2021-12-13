@@ -27,9 +27,7 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestCast1(OpTest):
+class TestCast1_FP32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -49,10 +47,10 @@ class TestCast1(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-class TestCast2(OpTest):
+class TestCast_INT32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -72,10 +70,10 @@ class TestCast2(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-class TestCast3(OpTest):
+class TestCast2_FP32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -95,10 +93,10 @@ class TestCast3(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-class TestCast4(OpTest):
+class TestCast3_FP32(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -119,7 +117,30 @@ class TestCast4(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
+
+
+class TestCast_INT64(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "scatter"
+        self.place = paddle.NPUPlace(0)
+
+        ref_np = np.ones((3, 2)).astype("int64")
+        index_np = np.array([1]).astype("int32")
+        updates_np = np.zeros((1, 2)).astype("int64")
+
+        output_np = np.copy(ref_np)
+        output_np[index_np] = updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+        self.attrs = {'overwrite': True}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
 
 
 if __name__ == '__main__':

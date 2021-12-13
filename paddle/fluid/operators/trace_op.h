@@ -179,7 +179,7 @@ class TraceKernel : public framework::OpKernel<T> {
 
     auto output_dims = out->dims();
 
-    out->mutable_data<T>(context.GetPlace());
+    T* out_data = out->mutable_data<T>(context.GetPlace());
 
     const framework::Tensor diag =
         Diagonal<DeviceContext, T>(context, input, offset, dim1, dim2);
@@ -191,6 +191,8 @@ class TraceKernel : public framework::OpKernel<T> {
       auto reduce_dim = Eigen::array<int, 1>({1});
       output.device(place) = x.sum(reduce_dim);
       out->Resize(output_dims);
+    } else {
+      std::fill(out_data, out_data + out->numel(), static_cast<T>(0));
     }
   }
 };

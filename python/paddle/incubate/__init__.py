@@ -12,10 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import optimizer
-from . import checkpoint
-from ..fluid.layer_helper import LayerHelper
+from .optimizer import LookAhead  # noqa: F401
+from .optimizer import ModelAverage  # noqa: F401
+from .checkpoint import auto_checkpoint  # noqa: F401
+from ..fluid.layer_helper import LayerHelper  # noqa: F401
+from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
+from .operators import softmax_mask_fuse  # noqa: F401
+from .operators import graph_send_recv
+from .tensor import segment_sum
+from .tensor import segment_mean
+from .tensor import segment_max
+from .tensor import segment_min
+from .passes import fuse_resnet_unit_pass
 
-__all__ = []
-__all__ += optimizer.__all__
-__all__ += checkpoint.__all__
+from . import nn  #noqa: F401
+
+__all__ = [
+    'LookAhead',
+    'ModelAverage',
+    'softmax_mask_fuse_upper_triangle',
+    'softmax_mask_fuse',
+    'graph_send_recv',
+    'segment_sum',
+    'segment_mean',
+    'segment_max',
+    'segment_min',
+]

@@ -66,11 +66,15 @@ std::shared_ptr<TrainerBase> TrainerFactory::CreateTrainer(
 
 REGISTER_TRAINER_CLASS(MultiTrainer);
 REGISTER_TRAINER_CLASS(DistMultiTrainer);
+
+#if defined(PADDLE_WITH_PSCORE)
+REGISTER_TRAINER_CLASS(HeterPipelineTrainer);
+#endif
+
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
      defined PADDLE_WITH_XPU) &&                            \
     (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(HeterXpuTrainer);
-REGISTER_TRAINER_CLASS(HeterBoxTrainer);
 #endif
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)

@@ -81,6 +81,7 @@ class TensorInplaceVersion {
   bool IsUnique() const { return inplace_version_ == 0; }
   void Bump() { ++inplace_version_; }
   uint32_t CurrentVersion() const { return inplace_version_; }
+  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
  private:
   uint32_t inplace_version_;
@@ -90,9 +91,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format_tag format() const { return format_; }
+  inline dnnl::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format_tag format) {
+  inline void set_format(const dnnl::memory::format_tag format) {
     format_ = format;
   }
 
@@ -106,7 +107,7 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
  public:
@@ -149,6 +150,11 @@ class Tensor {
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void* mutable_data(const platform::CUDAPlace& place,
+                     proto::VarType::Type type, const gpuStream_t& stream);
+#endif
+
   /**
    * @brief     Return a pointer to mutable memory block.
    *
@@ -186,6 +192,22 @@ class Tensor {
    *                        The index number begins from 0.
    */
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
+
+  /**
+   * @brief  Return a tensor list of the given tensor.
+   *
+   * @param[in] split_size  The size of tensor to be split along axis.
+   * @param[in] axis        The axis along which to split.
+   */
+  std::vector<Tensor> Split(int64_t split_size, int64_t axis) const;
+
+  /**
+   * @brief  Return a tensor list of the given tensor.
+   *
+   * @param[in] chunks   The number of tensor to be split along axis.
+   * @param[in] axis     The axis along which to split.
+   */
+  std::vector<Tensor> Chunk(int64_t chunks, int64_t axis) const;
 
   const platform::Place& place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -238,8 +260,13 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
-    type_ = tensor.type_;
+    // NOTE(chenfeiyu): when sharing buffer, by definition only holder
+    // to the memory allocation and offset should be shared. Shape,
+    // data type, layout, and other metadata associated with a Tensor
+    // should not be copied.
   }
+
+  void ShareDataTypeWith(const Tensor& tensor) { type_ = tensor.type_; }
 
   bool IsSharedBufferWith(const Tensor& src) const {
     return holder_ && holder_ == src.Holder();
@@ -255,7 +282,9 @@ class Tensor {
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
-                           const proto::VarType::Type type);
+                           const proto::VarType::Type& type);
+
+  void set_type(const proto::VarType::Type& type);
 
   TensorInplaceVersion& InplaceVersionCounter() {
     return *inplace_version_counter_;

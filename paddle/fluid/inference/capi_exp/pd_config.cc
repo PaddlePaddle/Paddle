@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/capi_exp/pd_types.h"
+#include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #define CHECK_NULL_POINTER_PARM(param)                  \
@@ -125,13 +127,27 @@ PD_Bool PD_ConfigUseGpu(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
-                        int32_t l3_workspace_size) {
+                        int32_t l3_workspace_size, PD_Bool locked,
+                        PD_Bool autotune, const char* autotune_file,
+                        const char* precision, PD_Bool adaptive_seqlen) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableXpu(l3_workspace_size);
+  config->EnableXpu(l3_workspace_size, locked, autotune, autotune_file,
+                    precision, adaptive_seqlen);
 }
+
+void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableNpu(device_id);
+}
+
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
+}
+
+PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_npu();
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -141,6 +157,10 @@ int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
+}
+int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->npu_device_id();
 }
 int32_t PD_ConfigMemoryPoolInitSizeMb(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -209,6 +229,48 @@ void PD_ConfigSetTrtDynamicShapeInfo(__pd_keep PD_Config* pd_config,
   }
   config->SetTRTDynamicShapeInfo(min_input_shapes, max_input_shapes,
                                  optim_input_shapes, disable_trt_plugin_fp16);
+}
+
+PD_Bool PD_ConfigTensorRtDynamicShapeEnabled(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->tensorrt_dynamic_shape_enabled();
+}
+
+void PD_ConfigEnableTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config,
+                                              const char* shape_range_info_path,
+                                              PD_Bool allow_build_at_runtime) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableTunedTensorRtDynamicShape(shape_range_info_path,
+                                          allow_build_at_runtime);
+}
+
+PD_Bool PD_ConfigTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->tuned_tensorrt_dynamic_shape();
+}
+
+PD_Bool PD_ConfigTrtAllowBuildAtRuntime(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->trt_allow_build_at_runtime();
+}
+
+void PD_ConfigCollectShapeRangeInfo(__pd_keep PD_Config* pd_config,
+                                    const char* shape_range_info_path) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->CollectShapeRangeInfo(shape_range_info_path);
+}
+
+const char* PD_ConfigShapeRangeInfoPath(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto shape_str = config->shape_range_info_path();
+  char* c = reinterpret_cast<char*>(malloc(shape_str.length() + 1));
+  snprintf(c, shape_str.length() + 1, "%s", shape_str.c_str());
+  return c;
+}
+
+PD_Bool PD_ConfigShapeRangeInfoCollected(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->shape_range_info_collected();
 }
 
 void PD_ConfigDisableTensorRtOPs(__pd_keep PD_Config* pd_config, size_t ops_num,
@@ -338,9 +400,9 @@ PD_Bool PD_ConfigModelFromMemory(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->model_from_memory();
 }
-void PD_ConfigEnableMemoryOptim(__pd_keep PD_Config* pd_config) {
+void PD_ConfigEnableMemoryOptim(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableMemoryOptim();
+  config->EnableMemoryOptim(x);
 }
 PD_Bool PD_ConfigMemoryOptimEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -377,6 +439,32 @@ void PD_ConfigEnableGpuMultiStream(__pd_keep PD_Config* pd_config) {
 void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->PartiallyRelease();
+}
+void PD_ConfigDeletePass(__pd_keep PD_Config* pd_config, const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->DeletePass(pass);
+}
+void PD_ConfigInsertPass(__pd_keep PD_Config* pd_config, size_t idx,
+                         const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->InsertPass(idx, pass);
+}
+void PD_ConfigAppendPass(__pd_keep PD_Config* pd_config, const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->AppendPass(pass);
+}
+__pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
+    __pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  std::vector<std::string> passes = config->pass_builder()->AllPasses();
+  return paddle_infer::CvtVecToOneDimArrayCstr(passes);
+}
+const char* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto sum_str = config->Summary();
+  char* c = reinterpret_cast<char*>(malloc(sum_str.length() + 1));
+  snprintf(c, sum_str.length() + 1, "%s", sum_str.c_str());
+  return c;
 }
 
 }  // extern "C"

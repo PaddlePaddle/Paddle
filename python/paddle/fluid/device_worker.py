@@ -16,7 +16,8 @@
 from __future__ import print_function
 
 __all__ = [
-    'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
+    'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT',
+    'HeterSection'
 ]
 
 
@@ -91,7 +92,10 @@ class Hogwild(DeviceWorker):
         trainer_desc.device_worker_name = "HogwildWorker"
         if self._infer:
             # just ignore feed op for inference model
-            trainer_desc.hogwild_param.skip_ops.extend(["feed"])
+            trainer_desc.hogwild_param.skip_ops.extend([
+                "feed", "push_sparse", "push_sparse_v2", "push_dense",
+                "distributed_push_sparse", "send"
+            ])
 
         dense_table_set = set()
         program_id = str(id(self._program))
@@ -439,6 +443,36 @@ class Section(DeviceWorker):
             assert isinstance(place, core.NPUPlace)
         cfg.place = cfg.CUDAPlace
         cfg.place_id = place_id
+
+
+class HeterSection(DeviceWorker):
+    """HeterSectionWorker."""
+
+    def __init__(self):
+        """Init."""
+        super(HeterSection, self).__init__()
+
+    def _gen_worker_desc(self, trainer_desc):
+        """
+        Generator worker desc, which device worker is HeterSectionWorker.
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
+        from google.protobuf import text_format
+        from . import core
+        trainer_desc.device_worker_name = "HeterSectionWorker"
+        heter_pipeline_opt = self._program._heter_pipeline_opt
+        heter_section_param = trainer_desc.heter_section_param
+        heter_section_param.num_microbatches = heter_pipeline_opt[
+            "num_microbatches"]
+        heter_section_param.pipeline_stage = heter_pipeline_opt[
+            "pipeline_stage"]
+        heter_section_param.num_pipeline_stages = heter_pipeline_opt[
+            "num_pipeline_stages"]
+        cfg = heter_section_param.section_config
+        program = heter_pipeline_opt["section_program"]
+        cfg.program_desc.ParseFromString(program._get_desc()
+                                         .serialize_to_string())
 
 
 class DeviceWorkerFactory(object):

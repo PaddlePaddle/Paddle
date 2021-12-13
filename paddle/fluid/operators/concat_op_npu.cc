@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -52,9 +52,11 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner = NpuOpRunner(
-        "ConcatD", {inputs}, {*out},
-        {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}});
+    NpuOpRunner runner{
+        "ConcatD",
+        {inputs},
+        {*out},
+        {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}}};
     runner.AddInputNames(names);
     runner.Run(stream);
   }
@@ -101,8 +103,9 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
             sizes.push_back(ins[j]->dims()[dim]);
           }
         }
-        auto runner = NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
-                                  {{"offsets", offsets}, {"size", sizes}});
+        const auto& runner =
+            NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
+                        {{"offsets", offsets}, {"size", sizes}});
         runner.Run(stream);
       }
       if (ins[j]->numel() != 0UL) {
@@ -119,8 +122,14 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(concat, ops::ConcatNPUKernel<float>,
                        ops::ConcatNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ConcatNPUKernel<int64_t>,
+#endif
                        ops::ConcatNPUKernel<int>);
 
 REGISTER_OP_NPU_KERNEL(concat_grad, ops::ConcatGradNPUKernel<float>,
                        ops::ConcatGradNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ConcatGradNPUKernel<int64_t>,
+#endif
                        ops::ConcatGradNPUKernel<int>);

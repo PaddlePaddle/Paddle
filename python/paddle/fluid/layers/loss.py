@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+import paddle
 from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
@@ -26,6 +27,8 @@ from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
+import warnings
+from paddle import _C_ops
 
 __all__ = [
     'center_loss',
@@ -260,8 +263,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         return cross_entropy2(input, label, ignore_index)
 
     if in_dygraph_mode():
-        return core.ops.cross_entropy(input, label, "soft_label", soft_label,
-                                      "ignore_index", ignore_index)
+        return _C_ops.cross_entropy(input, label, "soft_label", soft_label,
+                                    "ignore_index", ignore_index)
 
     inputs = {'X': [input], 'Label': [label]}
     attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
@@ -277,8 +280,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     if in_dygraph_mode():
-        loss, _, _ = core.ops.cross_entropy2(input, label, 'ignore_index',
-                                             ignore_index)
+        loss, _, _ = _C_ops.cross_entropy2(input, label, 'ignore_index',
+                                           ignore_index)
         return loss
 
     inputs = {'X': [input], 'Label': [label]}
@@ -334,8 +337,8 @@ def square_error_cost(input, label):
 
     """
     if in_dygraph_mode():
-        minus_out = core.ops.elementwise_sub(input, label)
-        square_out = core.ops.square(minus_out)
+        minus_out = _C_ops.elementwise_sub(input, label)
+        square_out = _C_ops.square(minus_out)
         return square_out
 
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
@@ -599,7 +602,7 @@ def warpctc(input,
             raise ValueError(
                 "input_length and label_length must not be None in dygraph mode!"
             )
-        grad, loss_out = core.ops.warpctc(
+        grad, loss_out = _C_ops.warpctc(
             input,
             label,
             input_length,
@@ -1258,10 +1261,16 @@ def softmax_with_cross_entropy(logits,
             print(out)
     """
     if in_dygraph_mode():
-        softmax, loss = core.ops.softmax_with_cross_entropy(
-            logits, label, 'soft_label', soft_label, 'ignore_index',
-            ignore_index, 'numeric_stable_mode', numeric_stable_mode, 'axis',
-            axis)
+        if core.is_compiled_with_npu():
+            softmax, backprop, loss = _C_ops.softmax_with_cross_entropy(
+                logits, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', numeric_stable_mode,
+                'axis', axis)
+        else:
+            softmax, loss = _C_ops.softmax_with_cross_entropy(
+                logits, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', numeric_stable_mode,
+                'axis', axis)
         if not return_softmax:
             return loss
         else:
@@ -1276,12 +1285,16 @@ def softmax_with_cross_entropy(logits,
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    outputs = {'Softmax': softmax, 'Loss': loss}
+    if core.is_compiled_with_npu():
+        backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
+        outputs['Backprop'] = backprop
     helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': logits,
                 'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': loss},
+        outputs=outputs,
         attrs=attrs)
 
     if return_softmax:
@@ -1698,7 +1711,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     batch_size = labels.shape[0]
 
     labels = nn.reshape(labels, shape=[batch_size, 1])
-    labels = nn.expand(labels, expand_times=[1, batch_size])
+    labels = paddle.tile(labels, repeat_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
     labels = labels / nn.reduce_sum(labels, dim=1, keep_dim=True)
@@ -1707,7 +1720,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
              + nn.reduce_mean(nn.reduce_sum(square(positive), 1))
     l2loss = l2loss * Beta * l2_reg
 
-    similarity_matrix = nn.matmul(
+    similarity_matrix = paddle.matmul(
         anchor, positive, transpose_x=False, transpose_y=True)
     softmax_ce = softmax_with_cross_entropy(
         logits=similarity_matrix, label=labels, soft_label=True)

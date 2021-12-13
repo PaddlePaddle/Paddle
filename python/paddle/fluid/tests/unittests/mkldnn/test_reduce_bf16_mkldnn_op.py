@@ -16,16 +16,14 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTestTool, OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
+paddle.enable_static()
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
-@unittest.skipIf(core.is_compiled_with_cuda(),
-                 "core is compiled with CUDA which has no BF implementation")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestReduceSumDefaultBF16OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"

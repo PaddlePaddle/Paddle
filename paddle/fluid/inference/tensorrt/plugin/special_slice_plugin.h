@@ -31,37 +31,38 @@ class SpecialSlicePluginDynamic : public DynamicPluginTensorRT {
   SpecialSlicePluginDynamic();
   SpecialSlicePluginDynamic(void const* serial_data, size_t serial_length);
   ~SpecialSlicePluginDynamic();
-  nvinfer1::IPluginV2DynamicExt* clone() const override;
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
   nvinfer1::DimsExprs getOutputDimensions(
       int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-      nvinfer1::IExprBuilder& exprBuilder) override;
+      nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT override;
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
-                                 int nbInputs, int nbOutputs) override;
+                                 int nbInputs,
+                                 int nbOutputs) TRT_NOEXCEPT override;
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) override;
+                       int nbOutputs) TRT_NOEXCEPT override;
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nbOutputs) const override;
+                          int nbOutputs) const TRT_NOEXCEPT override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
               const void* const* inputs, void* const* outputs, void* workspace,
-              cudaStream_t stream) override;
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
-  nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* inputTypes,
-                                       int nbInputs) const override;
+  nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* inputTypes,
+      int nbInputs) const TRT_NOEXCEPT override;
 
-  const char* getPluginType() const override;
-  int getNbOutputs() const override;
-  int initialize() override;
-  void terminate() override;
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
-  void destroy() override;
+  const char* getPluginType() const TRT_NOEXCEPT override;
+  int getNbOutputs() const TRT_NOEXCEPT override;
+  int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
+  size_t getSerializationSize() const TRT_NOEXCEPT override;
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
+  void destroy() TRT_NOEXCEPT override;
 
  private:
   int axis_;
@@ -71,16 +72,17 @@ class SpecialSlicePluginDynamic : public DynamicPluginTensorRT {
 class SpecialSlicePluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
   SpecialSlicePluginDynamicCreator();
-  const char* getPluginName() const override;
-  const char* getPluginVersion() const override;
-  const nvinfer1::PluginFieldCollection* getFieldNames() override;
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override;
-  nvinfer1::IPluginV2* deserializePlugin(const char* name,
-                                         const void* serial_data,
-                                         size_t serial_length) override;
-  void setPluginNamespace(const char* lib_namespace) override;
-  const char* getPluginNamespace() const override;
+  const char* getPluginName() const TRT_NOEXCEPT override;
+  const char* getPluginVersion() const TRT_NOEXCEPT override;
+  const nvinfer1::PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2* createPlugin(const char* name,
+                                    const nvinfer1::PluginFieldCollection* fc)
+      TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2* deserializePlugin(
+      const char* name, const void* serial_data,
+      size_t serial_length) TRT_NOEXCEPT override;
+  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;
+  const char* getPluginNamespace() const TRT_NOEXCEPT override;
 
  private:
   std::string plugin_namespace_;

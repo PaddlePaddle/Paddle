@@ -83,7 +83,7 @@ TEST(PD_Config, interface) {
   EXPECT_TRUE(mkldnn_bf16_enabled);
 #endif
 
-  PD_ConfigEnableMemoryOptim(config);
+  PD_ConfigEnableMemoryOptim(config, true);
   bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
   EXPECT_TRUE(memory_enabled);
 

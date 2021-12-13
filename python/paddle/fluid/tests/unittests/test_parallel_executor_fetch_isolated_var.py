@@ -17,6 +17,7 @@ import numpy as np
 import six
 import paddle.fluid as fluid
 import paddle
+import os
 
 
 def enable_parallel_ssa_executor(enabled=True):
@@ -64,6 +65,9 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
         if fluid.is_compiled_with_cuda():
             if fluid.core.globals()[
                     'FLAGS_enable_parallel_graph'] and not use_gpu:
+                return
+            # windows has only 1 GPU
+            if use_gpu and dev_cnt > 1 and os.name == "nt":
                 return
         else:
             if use_gpu:

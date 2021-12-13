@@ -61,7 +61,8 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "pooltype",
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")

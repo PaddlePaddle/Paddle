@@ -117,6 +117,7 @@ class TestFleetAMPInit(unittest.TestCase):
             optimizer.minimize(cost)
 
         print(fleet._get_applied_meta_list())
+        loss_scale = optimizer.get_loss_scaling()
 
         place = paddle.CUDAPlace(0)
 

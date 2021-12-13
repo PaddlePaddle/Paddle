@@ -14,7 +14,6 @@
 
 import os
 import re
-import six
 import sys
 import json
 import glob
@@ -57,7 +56,12 @@ CLANG_LINK_FLAGS = [
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
 
-COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
+if core.is_compiled_with_rocm():
+    COMMON_HIPCC_FLAGS = [
+        '-DPADDLE_WITH_HIP', '-DEIGEN_USE_GPU', '-DEIGEN_USE_HIP'
+    ]
+else:
+    COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
 
 GCC_MINI_VERSION = (5, 4, 0)
 MSVC_MINI_VERSION = (19, 0, 24215)
@@ -101,7 +105,8 @@ DEFAULT_OP_ATTR_NAMES = [
     core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
     core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
     core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
-    core.op_proto_and_checker_maker.kOpDeviceAttrName()
+    core.op_proto_and_checker_maker.kOpDeviceAttrName(),
+    core.op_proto_and_checker_maker.kOpWithQuantAttrName()
 ]
 
 
@@ -319,10 +324,14 @@ def prepare_unix_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + [
-        '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
-        '-DNVCC'
-    ] + cflags + get_cuda_arch_flags(cflags)
+    if core.is_compiled_with_rocm():
+        cflags = COMMON_HIPCC_FLAGS + ['-Xcompiler', '-fPIC'
+                                       ] + cflags + get_rocm_arch_flags(cflags)
+    else:
+        cflags = COMMON_NVCC_FLAGS + [
+            '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
+            '-DNVCC'
+        ] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
 
@@ -356,6 +365,14 @@ def get_cuda_arch_flags(cflags):
     """
     # TODO(Aurelius84):
     return []
+
+
+def get_rocm_arch_flags(cflags):
+    """
+    For ROCm platform, amdgpu target should be added for HIPCC.
+    """
+    cflags = cflags + ['-fno-gpu-rdc', '-amdgpu-target=gfx906']
+    return cflags
 
 
 def _get_fluid_path():
@@ -469,13 +486,12 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         ###########################   -- END --    ###########################
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
-        # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
-        # We align it automatically with pre-installed Paddle.
-        if core.is_compiled_with_mkldnn():
-            add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
         if use_cuda:
-            extra_link_args.append('-lcudart')
+            if core.is_compiled_with_rocm():
+                extra_link_args.append('-lamdhip64')
+            else:
+                extra_link_args.append('-lcudart')
 
         kwargs['extra_link_args'] = extra_link_args
 
@@ -545,8 +561,7 @@ def find_cuda_home():
             with open(os.devnull, 'w') as devnull:
                 nvcc_path = subprocess.check_output(
                     [which_cmd, 'nvcc'], stderr=devnull)
-                if six.PY3:
-                    nvcc_path = nvcc_path.decode()
+                nvcc_path = nvcc_path.decode()
                 # Multi CUDA, select the first
                 nvcc_path = nvcc_path.split('\r\n')[0]
 
@@ -584,8 +599,7 @@ def find_rocm_home():
             with open(os.devnull, 'w') as devnull:
                 hipcc_path = subprocess.check_output(
                     [which_cmd, 'hipcc'], stderr=devnull)
-                if six.PY3:
-                    hipcc_path = hipcc_path.decode()
+                hipcc_path = hipcc_path.decode()
                 hipcc_path = hipcc_path.rstrip('\r\n')
 
                 # for example: /opt/rocm/bin/hipcc
@@ -656,8 +670,7 @@ def find_clang_cpp_include(compiler='clang'):
     std_v1_includes = None
     try:
         compiler_version = subprocess.check_output([compiler, "--version"])
-        if six.PY3:
-            compiler_version = compiler_version.decode()
+        compiler_version = compiler_version.decode()
         infos = compiler_version.split("\n")
         for info in infos:
             if "InstalledDir" in info:
@@ -899,13 +912,9 @@ def _load_module_from_file(api_file_path, verbose=False):
     # Unique readable module name to place custom api.
     log_v('import module from file: {}'.format(api_file_path), verbose)
     ext_name = "_paddle_cpp_extension_"
-    if six.PY2:
-        import imp
-        module = imp.load_source(ext_name, api_file_path)
-    else:
-        from importlib import machinery
-        loader = machinery.SourceFileLoader(ext_name, api_file_path)
-        module = loader.load_module()
+    from importlib import machinery
+    loader = machinery.SourceFileLoader(ext_name, api_file_path)
+    module = loader.load_module()
 
     return module
 
@@ -1009,8 +1018,7 @@ def _jit_compile(file_path, verbose=False):
 
     try:
         py_version = subprocess.check_output([interpreter, '-V'])
-        if six.PY3:
-            py_version = py_version.decode()
+        py_version = py_version.decode()
         log_v("Using Python interpreter: {}, version: {}".format(
             interpreter, py_version.strip()), verbose)
     except Exception:
@@ -1087,8 +1095,7 @@ def check_abi_compatibility(compiler, verbose=False):
     if not IS_WINDOWS:
         cmd_out = subprocess.check_output(
             ['which', compiler], stderr=subprocess.STDOUT)
-        compiler_path = os.path.realpath(cmd_out.decode()
-                                         if six.PY3 else cmd_out).strip()
+        compiler_path = os.path.realpath(cmd_out.decode()).strip()
         # if not found any suitable compiler, raise warning
         if not any(name in compiler_path
                    for name in _expected_compiler_current_platform()):
@@ -1108,18 +1115,16 @@ def check_abi_compatibility(compiler, verbose=False):
             mini_required_version = GCC_MINI_VERSION
             version_info = subprocess.check_output(
                 [compiler, '-dumpfullversion', '-dumpversion'])
-            if six.PY3:
-                version_info = version_info.decode()
+            version_info = version_info.decode()
             version = version_info.strip().split('.')
         elif IS_WINDOWS:
             mini_required_version = MSVC_MINI_VERSION
             compiler_info = subprocess.check_output(
                 compiler, stderr=subprocess.STDOUT)
-            if six.PY3:
-                try:
-                    compiler_info = compiler_info.decode('UTF-8')
-                except UnicodeDecodeError:
-                    compiler_info = compiler_info.decode('gbk')
+            try:
+                compiler_info = compiler_info.decode('UTF-8')
+            except UnicodeDecodeError:
+                compiler_info = compiler_info.decode('gbk')
             match = re.search(r'(\d+)\.(\d+)\.(\d+)', compiler_info.strip())
             if match is not None:
                 version = match.groups()

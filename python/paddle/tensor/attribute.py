@@ -21,6 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype
 # TODO: define functions to get tensor attributes  
 from ..fluid.layers import rank  # noqa: F401
 from ..fluid.layers import shape  # noqa: F401
+from paddle import _C_ops
 
 __all__ = []
 
@@ -32,6 +33,41 @@ def _complex_to_real_dtype(dtype):
         return core.VarDesc.VarType.FP64
     else:
         return dtype
+
+
+def _real_to_complex_dtype(dtype):
+    if dtype == core.VarDesc.VarType.FP32:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == core.VarDesc.VarType.FP64:
+        return core.VarDesc.VarType.COMPLEX128
+    else:
+        return dtype
+
+
+def is_complex(x):
+    dtype = x.dtype
+    is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64 or
+                        dtype == core.VarDesc.VarType.COMPLEX128)
+    return is_complex_dtype
+
+
+def is_floating_point(x):
+    dtype = x.dtype
+    is_fp_dtype = (dtype == core.VarDesc.VarType.FP32 or
+                   dtype == core.VarDesc.VarType.FP64 or
+                   dtype == core.VarDesc.VarType.FP16 or
+                   dtype == core.VarDesc.VarType.BF16)
+    return is_fp_dtype
+
+
+def is_integer(x):
+    dtype = x.dtype
+    is_int_dtype = (dtype == core.VarDesc.VarType.UINT8 or
+                    dtype == core.VarDesc.VarType.INT8 or
+                    dtype == core.VarDesc.VarType.INT16 or
+                    dtype == core.VarDesc.VarType.INT32 or
+                    dtype == core.VarDesc.VarType.INT64)
+    return is_int_dtype
 
 
 def real(x, name=None):
@@ -68,7 +104,7 @@ def real(x, name=None):
             #         [4., 5., 6.]])
     """
     if in_dygraph_mode():
-        return core.ops.real(x)
+        return _C_ops.real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
     helper = LayerHelper('real', **locals())
@@ -112,7 +148,7 @@ def imag(x, name=None):
             #         [3., 2., 1.]])
     """
     if in_dygraph_mode():
-        return core.ops.imag(x)
+        return _C_ops.imag(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
     helper = LayerHelper('imag', **locals())

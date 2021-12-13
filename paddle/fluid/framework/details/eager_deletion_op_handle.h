@@ -64,6 +64,8 @@ class EagerDeletionOpHandle : public OpHandleBase {
 
   size_t GetScopeIdx() const { return scope_idx_; }
 
+  std::vector<std::string> VarsToDelete() const;
+
  protected:
   void RunImpl() override;
 

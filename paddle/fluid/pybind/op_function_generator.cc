@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/pybind/op_function_generator.h"
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -30,139 +32,6 @@
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
 
-// NOTE(zhiqiu): Commonly, the inputs in auto-generated OP function are
-// determined by the OP`s proto automatically, i.e., all the inputs registered
-// in OpMaker.
-// However, some OPs have dispensable inputs, which means the input can
-// be none for some conditions. It is discovered that most dispensable inputs
-// is not used in imperative mode, so we drop those inputs when generating OP
-// functions. While, for very few OPs, the dispensable inputs are used, we
-// need to manually specify them in this map.
-std::map<std::string, std::set<std::string>> op_ins_map = {
-    {"layer_norm", {"X", "Scale", "Bias"}},
-    {"instance_norm", {"X", "Scale", "Bias"}},
-    {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
-    {"label_smooth", {"X", "PriorDist"}},
-    {"assign", {"X"}},
-    {"reshape2", {"X", "Shape"}},
-    {"expand", {"X", "ExpandTimes"}},
-    {"slice", {"Input", "StartsTensor", "EndsTensor"}},
-    {"fake_quantize_dequantize_moving_average_abs_max",
-     {"X", "InScale", "InAccum", "InState"}},
-    {"nll_loss", {"X", "Label", "Weight"}},
-    {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
-    {"gather", {"X", "Index", "Axis"}},
-    {"roi_pool", {"X", "ROIs", "RoisNum"}},
-    {"roi_align", {"X", "ROIs", "RoisNum"}},
-    {"collect_fpn_proposals",
-     {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
-    {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
-    {"warpctc", {"Logits", "Label", "LogitsLength", "LabelLength"}},
-    {"hierarchical_sigmoid",
-     {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
-    {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
-    {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
-    {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
-    {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
-    {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
-};
-
-// NOTE(zhiqiu): Like op_ins_map.
-// Commonly, the outputs in auto-generated OP function are determined by the
-// OP`s proto automatically, i.e., all the outputs registered in OpMaker.
-// However, some OPs have dispensable outputs, which means the output can
-// be none for some conditions. It is discovered that most dispensable outputs
-// is not used in imperative mode, so we drop those outputs when generating OP
-// functions. While, for very few OPs, the dispensable outputs are used, we
-// need to manually specify them in this map.
-std::map<std::string, std::set<std::string>> op_outs_map = {
-    {"fake_quantize_dequantize_moving_average_abs_max",
-     {"Out", "OutScale", "OutAccum", "OutState"}},
-    {"batch_norm",
-     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
-      "ReserveSpace"}},
-    {"sync_batch_norm",
-     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
-      "ReserveSpace"}},
-    {"unique", {"Out", "Index", "Indices", "Counts"}},
-    {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
-    {"matrix_nms", {"Out", "Index", "RoisNum"}},
-    {"distribute_fpn_proposals",
-     {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
-    {"moving_average_abs_max_scale",
-     {"Out", "OutScale", "OutAccum", "OutState"}},
-    {"multiclass_nms3", {"Out", "NmsRoisNum"}},
-    {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
-    {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
-    {"lamb",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
-};
-
-// NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
-// generated in C++ automatically.
-// However, some OPs need to pass the outputs from Python instead of generating
-// them in C++. There are mainly 2 reasons for that,
-// (1) Optimizer OPs need to update the input param in-place, like sgd.
-//     So they need to pass the output which is same as input param.
-// (2) Very few python APIs has out in their arguments, like fill_constant.
-//     So they need to pass the python output to C++.
-//     Actually, this is not a good design, since it may break the SSA graph,
-//     especially in declarative mode.
-// For those OPs, we need to manually specify the outs need to pass in this map.
-std::map<std::string, std::set<std::string>> op_passing_outs_map = {
-    {"sgd", {"ParamOut"}},
-    {"adam",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
-    {"average_accumulates",
-     {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
-      "out_old_num_accumulates", "out_num_updates"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
-    {"batch_norm", {"MeanOut", "VarianceOut"}},
-    {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
-    {"accuracy", {"Correct", "Total"}},
-    {"fill_constant", {"Out"}},
-    {"recv_v2", {"Out"}},
-    {"matmul", {"Out"}},
-    {"c_broadcast", {"Out"}},
-    {"c_sync_calc_stream", {"Out"}},
-    {"c_sync_comm_stream", {"Out"}},
-    {"c_reduce_sum", {"Out"}},
-    {"c_reduce_max", {"Out"}},
-    {"c_reduce_min", {"Out"}},
-    {"c_reduce_prod", {"Out"}},
-    {"c_reduce", {"Out"}},
-    {"c_allgather", {"Out"}},
-    {"c_scatter", {"Out"}},
-    {"barrier", {"Out"}},
-    {"fake_quantize_dequantize_moving_average_abs_max",
-     {"Out", "OutScale", "OutAccum", "OutState"}},
-    {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
-    {"fake_channel_wise_quantize_dequantize_abs_max", {"Out", "OutScale"}},
-    {"check_finite_and_unscale", {"Out", "FoundInfinite"}},
-    {"update_loss_scaling",
-     {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
-    {"moving_average_abs_max_scale",
-     {"Out", "OutScale", "OutAccum", "OutState"}},
-    {"lamb",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
-    {"rnn", {"DropoutState"}},
-};
-
-// NOTE(pangyoki): Tensor View Strategy.
-// In this case, a new output varbase will be created, and this varbase will
-// reuse the input varbase's allocation.
-// It's a map. The key of outer map is the view op name, the value is
-// a pair which implies the mapping relationship between the input and
-// output varbase.
-std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
-    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
-    {"unsqueeze2", {"X", "Out"}},
-    {"reshape2", {"X", "Out"}},
-    {"flatten_contiguous_range", {"X", "Out"}},
-};
-
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.
 // The first Varbase in input needs to be specified for the inplace strategy
@@ -173,7 +42,7 @@ std::set<std::string> inplace_op_duplicable_ins_set = {
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
+    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
@@ -209,16 +78,17 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-  auto %s = CastPyHandleToVarBase("%s", "%s", %d, %s, %s);)";
+    auto %s = GetVarBaseFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-  auto %s = CastPyHandleToVarBaseList("%s", "%s", %d, %s, %s);)";
+    auto %s = GetVarBaseListFromArgs("%s", "%s", args, %d, %s);)";
 
+const char* CAST_SIZE_T_TEMPLATE = R"(
+    auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* ARG_TEMPLATE = R"(const %s& %s)";
 
 const char* RETURN_TUPLE_TYPE = R"(std::tuple<%s>)";
-const char* RETURN_TYPE = R"(%s)";
 const char* RETURN_TUPLE_TEMPLATE = R"(std::make_tuple(%s))";
 const char* RETURN_LIST_TEMPLATE = R"(outs["%s"])";
 const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
@@ -248,24 +118,34 @@ const char* INPLACE_MAPPING_TEMPLATE = R"({"%s", "%s"})";
 
 const char* OP_FUNCTION_TEMPLATE =
 R"(
-%s %s(%s)
+static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-  %s
-  framework::AttributeMap attrs;
-  ConstructAttrMapFromPyArgs("%s", %d, &attrs, args);
+  PyThreadState *tstate = nullptr;
+  try
   {
-    py::gil_scoped_release release;
-    auto tracer = imperative::GetCurrentTracer();
+    %s
+    framework::AttributeMap attrs;
+    ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
+    tstate = PyEval_SaveThread();
     %s
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
-    tracer->TraceOp("%s", ins, outs, attrs, {%s});
-    return %s;
+    imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    %s
+  }
+  catch(...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
   }
 })";
 
-const char* PYBIND_ITEM_TEMPLATE = R"(  %s.def("%s", &%s);)";
+const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -324,9 +204,8 @@ std::string GenerateOpFunctionsBody(
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
     auto dispensable = input.dispensable() ? "true" : "false";
-    ins_cast_str +=
-        paddle::string::Sprintf(in_cast_type, in_name, op_type, in_name,
-                                arg_idx++, TempName(in_name), dispensable);
+    ins_cast_str += paddle::string::Sprintf(in_cast_type, in_name, op_type,
+                                            in_name, arg_idx++, dispensable);
 
     if (input.dispensable()) {
       const auto in_template = input.duplicable()
@@ -354,7 +233,6 @@ std::string GenerateOpFunctionsBody(
   // Generate outs initializer
   std::string outs_initializer = "{";
   std::string outs_initializer_with_null = "";
-  std::string return_type = "";
   std::string inplace_mapping_str = "";
   std::string return_str = "";
 
@@ -393,6 +271,12 @@ std::string GenerateOpFunctionsBody(
             paddle::string::Sprintf(out_template, out_name, out_name);
         outs_initializer += ",";
       }
+
+      const auto in_cast_type =
+          output.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
+      auto dispensable = output.dispensable() ? "true" : "false";
+      ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
+                                              out_name, arg_idx++, dispensable);
     } else if (use_inplace_strategy && inplace_map.count(out_name)) {
       PADDLE_ENFORCE_NE(
           inplace_map[out_name], "",
@@ -438,6 +322,11 @@ std::string GenerateOpFunctionsBody(
         input_args_num++;
         outs_initializer += paddle::string::Sprintf(
             OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
+
+        auto dispensable = output.dispensable() ? "true" : "false";
+        ins_cast_str +=
+            paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE, out_num_str, op_type,
+                                    out_num_str, arg_idx++, dispensable);
       } else {
         outs_initializer +=
             paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -445,15 +334,12 @@ std::string GenerateOpFunctionsBody(
       outs_initializer += ",";
     }
 
-    return_type += out_type;
-    return_type += ",";
     return_str += paddle::string::Sprintf(return_template, out_name);
     return_str += ",";
     outs_num += 1;
   }
   if (outs_initializer.back() == ',') {
     outs_initializer.pop_back();
-    return_type.pop_back();
     return_str.pop_back();
   }
   outs_initializer += "}";
@@ -468,11 +354,13 @@ std::string GenerateOpFunctionsBody(
         viwe_input_name, viwe_output_name);
   }
   if (outs_num == 0) {
-    return_type = "void";
-  }
-  if (outs_num > 1) {
-    return_str = paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str);
-    return_type = paddle::string::Sprintf(RETURN_TUPLE_TYPE, return_type);
+    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
+  } else if (outs_num == 1) {
+    return_str = "return MakeReturnPyObject(" + return_str + ");";
+  } else {
+    return_str = "return MakeReturnPyObject(" +
+                 paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str) +
+                 ");";
   }
   std::string function_args = "";
   if (input_args == "") {
@@ -483,17 +371,17 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, return_type, func_name, function_args, ins_cast_str,
-      op_type, input_args_num, inplace_strategy_str, outs_initializer,
-      ins_initializer, ins_initializer_with_null + outs_initializer_with_null +
-                           view_strategy_str,
+      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
+      inplace_strategy_str, outs_initializer, ins_initializer,
+      ins_initializer_with_null + outs_initializer_with_null +
+          view_strategy_str,
       op_type, inplace_mapping_str, return_str);
 
   return op_function_str;
 }
 
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
-GenerateOpFunctions(const std::string& module_name) {
+GenerateOpFunctions() {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
   std::vector<std::string> op_function_list, bind_function_list;
@@ -508,7 +396,9 @@ GenerateOpFunctions(const std::string& module_name) {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    if (!all_kernels.count(op_type)) {
+    // if the pten lib contains op kernel, we still generate ops method
+    if (!all_kernels.count(op_type) &&
+        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 
@@ -534,7 +424,7 @@ GenerateOpFunctions(const std::string& module_name) {
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(
-        PYBIND_ITEM_TEMPLATE, module_name, op_type, func_name);
+        PYBIND_ITEM_TEMPLATE, op_type, func_name, op_type);
 
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
@@ -549,8 +439,8 @@ GenerateOpFunctions(const std::string& module_name) {
 
       // generate pybind item
       auto inplace_bind_function_str =
-          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, module_name,
-                                  inplace_op_type, inplace_func_name);
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
+                                  inplace_func_name, inplace_op_type);
 
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
@@ -570,7 +460,9 @@ int main(int argc, char* argv[]) {
   ascend_ptr->InitGEForUT();
 #endif
 
-  std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\""};
+  std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
+                                   "\"pybind11/detail/common.h\"",
+                                   "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
 
@@ -580,21 +472,29 @@ int main(int argc, char* argv[]) {
     out << "#include  " + header + "\n";
   }
 
-  auto op_funcs = GenerateOpFunctions("m");
+  out << "\n\n";
 
-  out << "namespace py = pybind11;"
-      << "\n";
+  auto op_funcs = GenerateOpFunctions();
+
   out << "namespace paddle {\n"
-      << "namespace pybind {\n";
+      << "namespace pybind {\n\n";
+  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
-  out << "inline void BindOpFunctions(pybind11::module *module) {\n"
-      << "  auto m = module->def_submodule(\"ops\");\n\n";
+  out << "static PyMethodDef ExtestMethods[] = {\n"
+      << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
+      << "\n  {nullptr,nullptr,0,nullptr}"
+      << "};\n\n";
 
-  out << paddle::string::join_strings(std::get<1>(op_funcs), '\n');
-  out << "\n";
-  out << "}\n\n"
+  out << "inline void BindOpFunctions(pybind11::module *module) {\n"
+      << "  auto m = module->def_submodule(\"ops\");\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  InitOpsAttrTypeMap();"
+      << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";
 

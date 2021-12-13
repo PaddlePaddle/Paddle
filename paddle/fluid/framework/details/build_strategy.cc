@@ -19,7 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
+DECLARE_bool(convert_all_blocks);
 DECLARE_bool(use_mkldnn);
+#ifdef PADDLE_WITH_CINN
+DECLARE_bool(use_cinn);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -35,8 +39,8 @@ static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
          !strategy.enable_parallel_graph_;
 }
 
-static inline void ConvertDefaultValue(boost::optional<bool> *default_value) {
-  if (*default_value == boost::none) {
+static inline void ConvertDefaultValue(paddle::optional<bool> *default_value) {
+  if (*default_value == paddle::none) {
     *default_value = true;
   }
 }
@@ -48,6 +52,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     ResolveOptionConfliction();
 
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
+
+#ifdef PADDLE_WITH_CINN
+    if (FLAGS_use_cinn) {
+      // Note: This pass is used to enable cinn.
+      AppendPass("build_cinn_pass");
+      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
+    }
+#endif
+
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
@@ -246,7 +259,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
-  void AppendPassWithCheck(const boost::optional<bool> &append_pass,
+  void AppendPassWithCheck(const paddle::optional<bool> &append_pass,
                            const std::string &pass_name) {
     AppendPassWithCheck(append_pass == true, pass_name);
   }
@@ -312,6 +325,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 DeviceType use_device) const {
 #endif
   VLOG(1) << "apply all passes";
+  if (FLAGS_convert_all_blocks) {
+    PADDLE_ENFORCE_EQ(
+        graph->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+  }
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
@@ -432,7 +450,14 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       }
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
-    graph = pass->Apply(graph);
+    if (FLAGS_convert_all_blocks) {
+      for (size_t i = 0; i < graph->SubGraphsSize(); ++i) {
+        VLOG(3) << "Apply Pass " << pass->Type() << "to SubGraph " << i;
+        pass->Apply(graph->GetSubGraph(i));
+      }
+    } else {
+      graph = pass->Apply(graph);
+    }
     VLOG(1) << "Finish Apply Pass " << pass->Type();
   }
   VLOG(1) << "All Passes Applied";
@@ -468,6 +493,9 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+#ifdef PADDLE_WITH_CINN
+USE_PASS(build_cinn_pass);
+#endif
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

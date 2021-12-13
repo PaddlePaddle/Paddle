@@ -123,7 +123,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
     }
 
     std::vector<framework::Tensor> sliced_x;
-    std::vector<boost::optional<framework::Tensor>> sliced_dx;
+    std::vector<paddle::optional<framework::Tensor>> sliced_dx;
 
     for (size_t i = 1; i < xs[0]->lod()[0].size(); ++i) {
       for (size_t j = 0; j < xs.size(); ++j) {
@@ -145,7 +145,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         if (dx) {
           sliced_dx.emplace_back(dx->Slice(prev_lod, next_lod));
         } else {
-          sliced_dx.emplace_back(boost::none);
+          sliced_dx.emplace_back(paddle::none);
         }
       }
     }

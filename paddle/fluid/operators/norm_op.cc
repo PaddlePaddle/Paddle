@@ -35,7 +35,12 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Norm",
               "(Tensor) A tensor saved the `sqrt(sum(x) + epsion)` will "
               "be used in backward kernel.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training.")
+        .SetDefault(false);
     AddOutput("Out", "(Tensor) A tensor of the same shape as X.");
     AddComment(R"DOC(
 
@@ -59,10 +64,13 @@ class NormOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NormOp");
     auto xdim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", xdim);
-    int axis = ctx->Attrs().Get<int>("axis");
-    if (axis < 0) axis = xdim.size() + axis;
-    xdim[axis] = 1;
-    ctx->SetOutputDim("Norm", xdim);
+
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
+      int axis = ctx->Attrs().Get<int>("axis");
+      if (axis < 0) axis = xdim.size() + axis;
+      xdim[axis] = 1;
+      ctx->SetOutputDim("Norm", xdim);
+    }
   }
 };
 
@@ -88,7 +96,11 @@ class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+#ifndef PADDLE_WITH_ASCEND_CL
     op->SetInput("Norm", this->Output("Norm"));
+#else
+    op->SetInput("Out", this->Output("Out"));
+#endif
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };

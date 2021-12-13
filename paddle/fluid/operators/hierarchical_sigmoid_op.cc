@@ -71,8 +71,17 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
     if (with_prefetch) {
       OP_INOUT_CHECK(ctx->HasOutput("W_Out"), "Output", "W_Out", "hsigmoid");
     }
-    const int64_t batch_size = ctx->GetInputDim("X")[0];
-    std::vector<int64_t> output_shape({batch_size, 1});
+    const int64_t input_dims = ctx->GetInputDim("X")[0];
+    const int64_t label_dims = ctx->GetInputDim("Label")[0];
+    PADDLE_ENFORCE_EQ(input_dims, label_dims,
+                      platform::errors::InvalidArgument(
+                          "The first dimension of "
+                          "input and label is expected to be the same. "
+                          "But received input's first dimension is %d; "
+                          "label's first dimension is %d.",
+                          input_dims, label_dims));
+
+    std::vector<int64_t> output_shape({input_dims, 1});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

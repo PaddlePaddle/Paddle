@@ -73,6 +73,7 @@ __global__ void update_kernel(Table* table,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
+  rwlock_.reset(new RWLock);
 }
 
 template <typename KeyType, typename ValType>
@@ -127,7 +128,7 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
       downpour_value->resize(gpu_val.mf_size + downpour_value_size);
     }
     float* cpu_val = downpour_value->data();
-    cpu_val[0] = 0;
+    // cpu_val[0] = 0;
     cpu_val[1] = gpu_val.delta_score;
     cpu_val[2] = gpu_val.show;
     cpu_val[3] = gpu_val.clk;

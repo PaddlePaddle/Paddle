@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math.h"
 
 namespace paddle {
@@ -38,6 +39,11 @@ template <typename T>
 struct AddFunctor {
   // out = x + y;
   inline HOSTDEVICE T operator()(T x, T y) { return x + y; }
+};
+
+template <typename T>
+struct MaxFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? b : a; }
 };
 
 template <typename T>
@@ -127,6 +133,63 @@ struct SigmoidGradFunctor {
   inline HOSTDEVICE T UseOut(T out) { return out * (static_cast<T>(1) - out); }
   inline HOSTDEVICE T UseXAndOut(T x, T out) {
     return out * (static_cast<T>(1) - out);
+  }
+};
+
+template <typename T>
+struct GeluFunctor {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T x) {
+    // this function is tanh approximation of gelu
+    // actual gelu is:
+    // x * 0.5 * (1.0 + torch.erf(x * 0.70710678))
+    MT mx = static_cast<MT>(x);
+    MT out = mx * static_cast<MT>(0.5) *
+             (static_cast<MT>(1.0) +
+              tanh(static_cast<MT>(0.79788456) * mx *
+                   (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx)));
+    return static_cast<T>(out);
+  }
+};
+
+template <typename T>
+struct GeluGradFunctor {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T UseX(T x) {
+    MT mx = static_cast<MT>(x);
+    MT tanh_out =
+        tanh(static_cast<MT>(0.79788456) * mx *
+             (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx));
+    MT ans = static_cast<MT>(0.5) * mx *
+                 ((static_cast<MT>(1) - tanh_out * tanh_out) *
+                  (static_cast<MT>(0.79788456) +
+                   static_cast<MT>(0.1070322243) * mx * mx)) +
+             static_cast<MT>(0.5) * (static_cast<MT>(1) + tanh_out);
+    return static_cast<T>(ans);
+  }
+  inline HOSTDEVICE T UseOut(T x) {
+    MT mx = static_cast<MT>(x);
+    MT tanh_out =
+        tanh(static_cast<MT>(0.79788456) * mx *
+             (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx));
+    MT ans = static_cast<MT>(0.5) * mx *
+                 ((static_cast<MT>(1) - tanh_out * tanh_out) *
+                  (static_cast<MT>(0.79788456) +
+                   static_cast<MT>(0.1070322243) * mx * mx)) +
+             static_cast<MT>(0.5) * (static_cast<MT>(1) + tanh_out);
+    return static_cast<T>(ans);
+  }
+  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+    MT mx = static_cast<MT>(x);
+    MT tanh_out =
+        tanh(static_cast<MT>(0.79788456) * mx *
+             (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx));
+    MT ans = static_cast<MT>(0.5) * mx *
+                 ((static_cast<MT>(1) - tanh_out * tanh_out) *
+                  (static_cast<MT>(0.79788456) +
+                   static_cast<MT>(0.1070322243) * mx * mx)) +
+             static_cast<MT>(0.5) * (static_cast<MT>(1) + tanh_out);
+    return static_cast<T>(ans);
   }
 };
 

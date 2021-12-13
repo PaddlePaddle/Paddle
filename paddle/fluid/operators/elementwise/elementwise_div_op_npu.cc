@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +40,7 @@ class ElementwiseDivNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Div", {*x, *y}, {*out}, {});
+    const auto& runner = NpuOpRunner("Div", {*x, *y}, {*out}, {});
     runner.Run(stream);
   }
 };
@@ -63,48 +63,56 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor y_power(y->type());
-    y_power.mutable_data<T>(y->dims(), place);
-    auto y_power_runner = NpuOpRunner("Power", {*y}, {y_power},
-                                      {{"power", static_cast<float>(-1)}});
-    y_power_runner.Run(stream);
-
     if (dx) {
       dx->mutable_data<T>(place);
 
+      Tensor tensor_one(y->type());
+      tensor_one.mutable_data<float>({1}, place);
+      FillNpuTensorWithConstant<float>(&tensor_one, static_cast<float>(1.0));
+
+      // Use `Div` CANN OP to achieve `1/y` instead of `Power` CANN OP.
+      // Because `Power` will cause precision overflow, that is, `float_status`
+      // will be set to 1.
+      Tensor y_div(y->type());
+      y_div.mutable_data<T>(y->dims(), place);
+      const auto& runner_one_div_y =
+          NpuOpRunner("Div", {tensor_one, *y}, {y_div}, {});
+      runner_one_div_y.Run(stream);
+
       Tensor tensor_zeros(x->type());
       tensor_zeros.mutable_data<T>(x->dims(), place);
-      auto tensor_zeros_runner =
+      const auto& runner_tensor_zeros =
           NpuOpRunner("ZerosLike", {*x}, {tensor_zeros}, {});
-      tensor_zeros_runner.Run(stream);
+      runner_tensor_zeros.Run(stream);
 
       Tensor x_zero(paddle::framework::proto::VarType::BOOL);
       x_zero.mutable_data<bool>(x->dims(), place);
-      auto x_zero_runner =
+      const auto& runner_x_zero =
           NpuOpRunner("Equal", {*x, tensor_zeros}, {x_zero}, {});
-      x_zero_runner.Run(stream);
+      runner_x_zero.Run(stream);
 
       Tensor x_nozero(paddle::framework::proto::VarType::BOOL);
       x_nozero.mutable_data<bool>(x->dims(), place);
-      auto x_nozero_runner =
+      const auto& runner_x_nonzero =
           NpuOpRunner("LogicalNot", {x_zero}, {x_nozero}, {});
-      x_nozero_runner.Run(stream);
+      runner_x_nonzero.Run(stream);
 
       Tensor x_nozero_f(x->type());
       x_nozero_f.mutable_data<T>(x->dims(), place);
-      auto x_nozero_f_runner =
+      const auto& runner_x_nonzero_f =
           NpuOpRunner("Cast", {x_nozero}, {x_nozero_f},
                       {{"dst_type", static_cast<int32_t>(0)}});
-      x_nozero_f_runner.Run(stream);
+      runner_x_nonzero_f.Run(stream);
 
       Tensor x_grad_w(x->type());
       x_grad_w.mutable_data<T>(x->dims(), place);
-      auto x_grad_w_runner =
-          NpuOpRunner("Mul", {x_nozero_f, y_power}, {x_grad_w}, {});
-      x_grad_w_runner.Run(stream);
+      const auto& runner_x_grad_w =
+          NpuOpRunner("Mul", {x_nozero_f, y_div}, {x_grad_w}, {});
+      runner_x_grad_w.Run(stream);
 
-      auto x_grad_runner = NpuOpRunner("Mul", {x_grad_w, *dout}, {*dx}, {});
-      x_grad_runner.Run(stream);
+      const auto& runner_x_grad =
+          NpuOpRunner("Mul", {x_grad_w, *dout}, {*dx}, {});
+      runner_x_grad.Run(stream);
     }
 
     if (dy) {
@@ -112,16 +120,18 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
 
       Tensor neg_out(y->type());
       neg_out.mutable_data<T>(y->dims(), place);
-      auto neg_out_runner = NpuOpRunner("Neg", {*out}, {neg_out}, {});
-      neg_out_runner.Run(stream);
+      const auto& runner_neg_out = NpuOpRunner("Neg", {*out}, {neg_out}, {});
+      runner_neg_out.Run(stream);
 
       Tensor y_grad_w(y->type());
       y_grad_w.mutable_data<T>(y->dims(), place);
-      auto y_grad_w_runner = NpuOpRunner("Div", {neg_out, *y}, {y_grad_w}, {});
-      y_grad_w_runner.Run(stream);
+      const auto& runner_y_grad_w =
+          NpuOpRunner("Div", {neg_out, *y}, {y_grad_w}, {});
+      runner_y_grad_w.Run(stream);
 
-      auto y_grad_runner = NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
-      y_grad_runner.Run(stream);
+      const auto& runner_y_grad =
+          NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
+      runner_y_grad.Run(stream);
     }
   }
 };

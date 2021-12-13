@@ -11,45 +11,25 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
+
+// only can include the headers in paddle/top/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/math.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
-
-/*
-   input: an array;
-   return: the result of the math functor
-   1. For Unary Op, the length of input array is 1,
-      e.g. Relu: return args[0] > 0 ? args[0] : 0;
-   2. For Binary Op, the length of input array is 2,
-      e.g. Add: return args[0] + args[1];
-*/
-template <typename T>
-struct CudaAddFunctor {
-  __device__ __forceinline__ T operator()(const T* args) const {
-    return args[0] + args[1];
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {z};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
-        CudaAddFunctor<T>());
-  }
-};
 
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
@@ -83,6 +63,56 @@ static __global__ void SimpleElemwiseAddGradCUDAKernel(
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_elementwise_add_grad(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y,
+                             const framework::Tensor* out,
+                             const framework::Tensor* dout,
+                             framework::Tensor* dx, framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  auto* dout_data = dout->data<T>();
+
+  // dx
+  if (dx != nullptr) {
+    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    if (dx->dims() == dout->dims()) {
+      if (dx_data != dout_data) {
+        framework::TensorCopy(
+            *dout, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dx);
+      }
+    } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(*dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+      }
+      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
+      gpuStream_t stream = ctx.cuda_device_context().stream();
+      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dx, reduce_dims, stream);
+    }
+  }
+  // dy
+  if (dy != nullptr) {
+    auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    if (dy->dims() == dout->dims()) {
+      if (dy_data != dout_data) {
+        framework::TensorCopy(
+            *dout, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dy);
+      }
+    } else {
+      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
+      gpuStream_t stream = ctx.cuda_device_context().stream();
+      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dy, reduce_dims, stream);
+    }
+  }
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
     std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
 elementwise_add_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* x, const framework::Tensor* y,
@@ -107,10 +137,10 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x->numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
-    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+    dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
     dim3 grid_size =
-        dim3(((size + vec_size - 1) / vec_size + PADDLE_CUDA_THREAD_SIZE - 1) /
-                 PADDLE_CUDA_THREAD_SIZE,
+        dim3(((size + vec_size - 1) / vec_size + ELEMENTWISE_BLOCK_SIZE - 1) /
+                 ELEMENTWISE_BLOCK_SIZE,
              1);
     SimpleElemwiseAddGradCUDAKernel<
         T><<<grid_size, block_size, 0,
@@ -132,8 +162,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, float>,
@@ -141,8 +171,10 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,
+                                  plat::complex<float>>,
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,
+                                  plat::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad_grad,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, float>,
@@ -151,9 +183,20 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex64>,
+                                        plat::complex<float>>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex128>);
+                                        plat::complex<double>>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_add_triple_grad,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex<float>>,
+    ops::ElementwiseAddTripleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     grad_add, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>,
@@ -161,5 +204,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<double>>);

@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSum1(OpTest):
     def setUp(self):
         self.set_npu()
@@ -52,7 +50,7 @@ class TestSum1(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 class TestSum2(OpTest):
@@ -67,7 +65,14 @@ class TestSum2(OpTest):
         x2 = np.random.random((3, 3)).astype(self.dtype)
         x3 = np.random.random((3, 3)).astype(self.dtype)
         self.inputs = {'X': [("x0", x0), ("x1", x1), ("x2", x2), ("x3", x3)]}
-        y = x0 + x1 + x2 + x3
+        # There will be a problem if just using `y=x0+x1+x2+x3` to calculate the
+        # summation result as the reference standard result. The reason is that 
+        # numpy's fp16 data has precision loss when doing `add` operation.
+        # For example, the results of `x0+x1+x2+x3` is different from that of
+        # `x3+x2+x1+x0` if the dtype is fp16.
+        # Therefore, converting the input to fp32 for calculation.
+        y = (x0.astype(np.float32) + x1.astype(np.float32) +
+             x2.astype(np.float32) + x3.astype(np.float32)).astype(self.dtype)
         self.outputs = {'Out': y}
 
         self.attrs = {'use_mkldnn': False}
@@ -79,7 +84,32 @@ class TestSum2(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
+
+
+class TestSum3(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.init_dtype()
+        self.op_type = "sum"
+        self.place = paddle.NPUPlace(0)
+
+        x0 = np.random.random((3, 3)).astype(self.dtype)
+
+        self.inputs = {'X': [("x0", x0)]}
+        y = x0
+        self.outputs = {'Out': y}
+
+        self.attrs = {'use_mkldnn': False}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
 
 
 if __name__ == '__main__':

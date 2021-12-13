@@ -1,0 +1,49 @@
+type: "while"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Condition"
+  }
+  outputs {
+    name: "Out"
+  }
+  outputs {
+    name: "StepScopes"
+  }
+  attrs {
+    name: "sub_block"
+    type: BLOCK
+  }
+}
+extra {
+  attrs {
+    name: "is_test"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "skip_eager_deletion_vars"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_role"
+    type: INT
+  }
+  attrs {
+    name: "op_role_var"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_namescope"
+    type: STRING
+  }
+  attrs {
+    name: "op_callstack"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_device"
+    type: STRING
+  }
+}

@@ -15,9 +15,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/unsqueeze_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,7 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
       cast_x.Resize(x->dims());
       cast_x.mutable_data<float>(ctx.GetPlace());
       auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP32);
-      auto runner_cast = NpuOpRunner(
+      const auto& runner_cast = NpuOpRunner(
           "Cast", {*x}, {cast_x}, {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);
 
@@ -68,20 +68,22 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
         dim_vec.push_back(i);
       }
 
-      auto runner = NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
-                                {{"axes", dim_vec}, {"keep_dims", keep_dims}});
+      const auto& runner =
+          NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
+                      {{"axes", dim_vec}, {"keep_dims", keep_dims}});
       runner.Run(stream);
 
     } else {
-      auto runner = NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
-                                {{"axes", dims}, {"keep_dims", keep_dims}});
+      const auto& runner =
+          NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
+                      {{"axes", dims}, {"keep_dims", keep_dims}});
       runner.Run(stream);
     }
 
     if (x->type() != framework::proto::VarType::FP32 &&
         x->type() != framework::proto::VarType::FP16) {
       auto dst_dtype = ConvertToNpuDtype(out->type());
-      auto runner_cast =
+      const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);
@@ -107,8 +109,9 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     if (keep_dims || reduce_all) {
-      auto runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
-                                {{"shape", framework::vectorize(x->dims())}});
+      const auto& runner =
+          NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
+                      {{"shape", framework::vectorize(x->dims())}});
       runner.Run(stream);
     } else {
       framework::DDim out_dims;
@@ -124,8 +127,9 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
           &out_grad_tmp);
       out_grad_tmp.Resize(out_dims);
 
-      auto runner = NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
-                                {{"shape", framework::vectorize(x->dims())}});
+      const auto& runner =
+          NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
+                      {{"shape", framework::vectorize(x->dims())}});
       runner.Run(stream);
     }
   }
@@ -138,12 +142,18 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     reduce_sum,
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+#endif
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>);
 REGISTER_OP_NPU_KERNEL(
     reduce_sum_grad,
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+#endif
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext,
                                 paddle::platform::float16>);

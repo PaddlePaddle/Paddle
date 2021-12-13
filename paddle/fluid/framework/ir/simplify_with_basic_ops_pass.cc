@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -33,6 +34,26 @@ namespace ir {
  *   replace dropout_op with scale_op (downgrade_in_infer) when is_test is true
  */
 class Graph;
+
+SimplifyWithBasicOpsPass::SimplifyWithBasicOpsPass() {
+  AddOpCompat(OpCompat("scale"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("scale")
+      .IsNumGE(0.f)
+      .IsNumLE(1.f)
+      .End()
+      .AddAttr("bias")
+      .IsNumEQ(0.f)
+      .End()
+      .AddAttr("bias_after_scale")
+      .IsNumEQ(true)
+      .End();
+}
 
 void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
   VLOG(3) << "Simplify the Graph with basic ops.";
@@ -137,13 +158,18 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     float scale =
         1.0f - BOOST_GET_CONST(float, dropout_op_desc->GetAttr("dropout_prob"));
 
-    framework::OpDesc new_op_desc;
+    framework::OpDesc new_op_desc(dropout_op_desc->Block());
     new_op_desc.SetType("scale");
     new_op_desc.SetInput("X", {dropout_x->Name()});
     new_op_desc.SetOutput("Out", {dropout_out->Name()});
     new_op_desc.SetAttr("scale", scale);
     new_op_desc.SetAttr("bias", static_cast<float>(0));
     new_op_desc.SetAttr("bias_after_scale", true);
+
+    if (!IsCompat(new_op_desc)) {
+      LOG(WARNING) << "Basic ops pass in scale op compat failed.";
+      return false;
+    }
 
     auto* scale_op_node = graph->CreateOpNode(&new_op_desc);
     IR_NODE_LINK_TO(dropout_x, scale_op_node);
@@ -206,3 +232,7 @@ void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
 
 REGISTER_PASS(simplify_with_basic_ops_pass,
               paddle::framework::ir::SimplifyWithBasicOpsPass);
+REGISTER_PASS_CAPABILITY(simplify_with_basic_ops_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "scale", 0));
