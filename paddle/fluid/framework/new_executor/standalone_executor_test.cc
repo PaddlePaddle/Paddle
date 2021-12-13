@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
 #include <iostream>
 #include <string>
 
@@ -79,21 +80,13 @@ paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   return program_desc;
 }
 
-int main(int argc, char* argv[]) {
+TEST(StandaloneExecutor, run) {
   FLAGS_eager_delete_tensor_gb = 0.1;
-  paddle::framework::InitDevices();
-  std::cout << "main" << std::endl;
-  int64_t batch_size = std::stoi(argv[1]);
-
+  int64_t batch_size = 20;
   int enable_profiler = 0;
-  if (argc > 2) {
-    enable_profiler = std::stoi(argv[2]);
-  }
 
-  paddle::framework::InitDevices();
   auto place = paddle::platform::CUDAPlace(0);
   auto test_prog = load_from_file("lm_startup_program");
-
   auto main_prog = load_from_file("lm_main_program");
 
   auto& global_block = main_prog.Block(0);
@@ -136,8 +129,7 @@ int main(int argc, char* argv[]) {
   std::chrono::duration<double> diff = end - start;
 
   std::cout << "time cost " << diff.count() << std::endl;
-
-  return 1;
+  ASSERT_LT(diff.count(), 30);
 }
 
 }  // namespace framework
