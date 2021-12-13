@@ -318,7 +318,8 @@ std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
 }
 
 std::vector<InferShapeVarPtr>
-InterpretercoreInferShapeContext::GetOutputVarPtrs(const std::string& name) const {
+InterpretercoreInferShapeContext::GetOutputVarPtrs(
+    const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());
