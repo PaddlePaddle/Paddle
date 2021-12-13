@@ -131,46 +131,46 @@ void Cast(const CUDAContext& dev_ctx,
 
 using float16 = paddle::platform::float16;
 
-PT_REGISTER_TEMPLATE_KERNEL(flatten,
-                            CUDA,
-                            ALL_LAYOUT,
-                            pten::Flatten,
-                            float,
-                            float16,
-                            double,
-                            uint8_t,
-                            int8_t,
-                            int,
-                            int64_t) {}
-PT_REGISTER_TEMPLATE_KERNEL(flatten_mid,
-                            CUDA,
-                            ALL_LAYOUT,
-                            pten::FlattenWithXShape,
-                            float,
-                            double,
-                            uint8_t,
-                            int8_t,
-                            int,
-                            int64_t) {}
+PT_REGISTER_KERNEL(flatten,
+                   CUDA,
+                   ALL_LAYOUT,
+                   pten::Flatten,
+                   float,
+                   float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
+PT_REGISTER_KERNEL(flatten_mid,
+                   CUDA,
+                   ALL_LAYOUT,
+                   pten::FlattenWithXShape,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
-#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)          \
-  PT_REGISTER_TEMPLATE_KERNEL(cast,                              \
-                              CUDA,                              \
-                              ALL_LAYOUT,                        \
-                              pten::Cast,                        \
-                              float,                             \
-                              double,                            \
-                              int,                               \
-                              int64_t,                           \
-                              int16_t,                           \
-                              bool,                              \
-                              uint8_t,                           \
-                              paddle::platform::float16,         \
-                              paddle::platform::complex<float>,  \
-                              paddle::platform::complex<double>, \
-                              ##__VA_ARGS__) {                   \
-    kernel->OutputAt(0).SetDataType(                             \
-        paddle::experimental::DataType::UNDEFINED);              \
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
+  PT_REGISTER_KERNEL(cast,                              \
+                     CUDA,                              \
+                     ALL_LAYOUT,                        \
+                     pten::Cast,                        \
+                     float,                             \
+                     double,                            \
+                     int,                               \
+                     int64_t,                           \
+                     int16_t,                           \
+                     bool,                              \
+                     uint8_t,                           \
+                     paddle::platform::float16,         \
+                     paddle::platform::complex<float>,  \
+                     paddle::platform::complex<double>, \
+                     ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                    \
+        paddle::experimental::DataType::UNDEFINED);     \
   }
 
 #if !defined(PADDLE_WITH_HIP)
@@ -179,36 +179,36 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_KERNEL(
+PT_REGISTER_NO_TEMPLATE_KERNEL(
     reshape, CUDA, ALL_LAYOUT, pten::ReshapeFromVectorVal, ALL_DTYPE) {}
-PT_REGISTER_KERNEL(reshape_mid,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::ReshapeFromVectorValWithXShape,
-                   ALL_DTYPE) {}
-PT_REGISTER_KERNEL(
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape_mid,
+                               CUDA,
+                               ALL_LAYOUT,
+                               pten::ReshapeFromVectorValWithXShape,
+                               ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
     reshape_host, CUDA, ALL_LAYOUT, pten::ReshapeFromDT, ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL(reshape_host_mid,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::ReshapeFromDTWithXShape,
-                   ALL_DTYPE) {
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape_host_mid,
+                               CUDA,
+                               ALL_LAYOUT,
+                               pten::ReshapeFromDTWithXShape,
+                               ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL(
+PT_REGISTER_NO_TEMPLATE_KERNEL(
     reshape_mulhost, CUDA, ALL_LAYOUT, pten::ReshapeFromVectorDT, ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL(reshape_mulhost_mid,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::ReshapeFromVectorDTWithXShape,
-                   ALL_DTYPE) {
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape_mulhost_mid,
+                               CUDA,
+                               ALL_LAYOUT,
+                               pten::ReshapeFromVectorDTWithXShape,
+                               ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }

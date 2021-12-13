@@ -95,29 +95,29 @@ void ReshapeFromVectorDT(const XPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_TEMPLATE_KERNEL(flatten,
-                            XPU,
-                            ALL_LAYOUT,
-                            pten::Flatten,
-                            float,
-                            paddle::platform::float16,
-                            double,
-                            uint8_t,
-                            int8_t,
-                            int,
-                            int64_t) {}
+PT_REGISTER_KERNEL(flatten,
+                   XPU,
+                   ALL_LAYOUT,
+                   pten::Flatten,
+                   float,
+                   paddle::platform::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
-PT_REGISTER_TEMPLATE_KERNEL(flatten_mid,
-                            XPU,
-                            ALL_LAYOUT,
-                            pten::FlattenWithXShape,
-                            float,
-                            paddle::platform::float16,
-                            double,
-                            uint8_t,
-                            int8_t,
-                            int,
-                            int64_t) {}
+PT_REGISTER_KERNEL(flatten_mid,
+                   XPU,
+                   ALL_LAYOUT,
+                   pten::FlattenWithXShape,
+                   float,
+                   paddle::platform::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int,
+                   int64_t) {}
 
-PT_REGISTER_KERNEL(
+PT_REGISTER_NO_TEMPLATE_KERNEL(
     reshape, XPU, ALL_LAYOUT, pten::ReshapeFromVectorVal, ALL_DTYPE) {}

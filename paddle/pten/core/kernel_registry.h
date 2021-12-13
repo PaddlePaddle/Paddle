@@ -93,6 +93,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   }
 };
 
+// TODO(chenweihang): Polish the kernel selection logic, support the selection
+// of ALL_DTYPE kernel, and simplify the constructor
 struct KernelRegistrar {
  public:
   KernelRegistrar(const char* kernel_name_cstr,
@@ -103,6 +105,46 @@ struct KernelRegistrar {
                   KernelArgsDefFn args_def_fn,
                   KernelFn kernel_fn,
                   void* variadic_kernel_fn) {
+    ConstructKernel(kernel_name_cstr,
+                    backend,
+                    layout,
+                    dtype,
+                    args_parse_fn,
+                    args_def_fn,
+                    kernel_fn,
+                    variadic_kernel_fn);
+  }
+
+  KernelRegistrar(const char* kernel_name_cstr,
+                  Backend backend,
+                  DataLayout layout,
+                  KernelArgsParseFn args_parse_fn,
+                  KernelArgsDefFn args_def_fn,
+                  KernelFn kernel_fn,
+                  void* variadic_kernel_fn) {
+    for (size_t dtype = static_cast<size_t>(DataType::BOOL);
+         dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
+         dtype++) {
+      ConstructKernel(kernel_name_cstr,
+                      backend,
+                      layout,
+                      static_cast<DataType>(dtype),
+                      args_parse_fn,
+                      args_def_fn,
+                      kernel_fn,
+                      variadic_kernel_fn);
+    }
+  }
+
+ private:
+  void ConstructKernel(const char* kernel_name_cstr,
+                       Backend backend,
+                       DataLayout layout,
+                       DataType dtype,
+                       KernelArgsParseFn args_parse_fn,
+                       KernelArgsDefFn args_def_fn,
+                       KernelFn kernel_fn,
+                       void* variadic_kernel_fn) {
     KernelName kernel_name(kernel_name_cstr);
     KernelKey kernel_key(backend, layout, dtype);
     Kernel kernel(kernel_fn, variadic_kernel_fn);
@@ -160,7 +202,7 @@ struct KernelRegistrar {
 #define _PT_ARG_N(args) _PT_ARG_N_EXPAND args
 #define _PT_RESQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
-/** PT_REGISTER_TEMPLATE_KERNEL
+/** PT_REGISTER_KERNEL
  *
  * The most frequently used kernel registration macro, used for kernel
  * registration with only data type as template parameter, and the function
@@ -169,16 +211,16 @@ struct KernelRegistrar {
  *
  * Note: If needed, add more marco to support 2 template arguments deduce
  */
-#define PT_REGISTER_TEMPLATE_KERNEL(                                       \
+#define PT_REGISTER_KERNEL(                                                \
     kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, ...)          \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                       \
       pt_register_tp_kernel_ns_check_##kernel_name##_##backend##_##layout, \
-      "PT_REGISTER_TEMPLATE_KERNEL must be called in global namespace.");  \
-  _PT_REGISTER_TEMPLATE_KERNEL(                                            \
+      "PT_REGISTER_KERNEL must be called in global namespace.");           \
+  _PT_REGISTER_1TA_KERNEL(                                                 \
       kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, __VA_ARGS__)
 
 #ifndef _WIN32
-#define _PT_REGISTER_TEMPLATE_KERNEL(                                       \
+#define _PT_REGISTER_1TA_KERNEL(                                            \
     kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, ...)           \
   PT_KERNEL_INSTANTIATION(meta_kernel_fn, cpp_dtype, __VA_ARGS__);          \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
@@ -206,7 +248,7 @@ struct KernelRegistrar {
  *
  * And msvc can work without template instantiation
  */
-#define _PT_REGISTER_TEMPLATE_KERNEL(                                       \
+#define _PT_REGISTER_1TA_KERNEL(                                            \
     kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, ...)           \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       ::pten::Kernel*);                                                     \
@@ -697,7 +739,7 @@ struct KernelRegistrar {
                                          meta_kernel_fn,                      \
                                          __VA_ARGS__))
 
-/** PT_REGISTER_KERNEL
+/** PT_REGISTER_NO_TEMPLATE_KERNEL
  *
  * Basic Kernel register marco, used to register a no template argument kernel
  * function, pass in the complete function pointe of the kernel, this
@@ -706,28 +748,28 @@ struct KernelRegistrar {
  * Note: developer maybe register 2 kernel with same name, backend and diff
  * layout, so the layout also need to be a part of symbol var name. If developer
  * register 2 kernel with same name, backend, layout and diff dtype, he should
- * use another register marco PT_REGISTER_TEMPLATE_KERNEL.
+ * use another register marco PT_REGISTER_KERNEL.
  */
-#define PT_REGISTER_KERNEL(kernel_name, backend, layout, kernel_fn, dtype)  \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
-      pt_register_kernel_ns_check_##kernel_name##_##backend##_##layout,     \
-      "PT_REGISTER_KERNEL must be called in global namespace.");            \
-  static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      ::pten::Kernel*);                                                     \
-  static const ::pten::KernelRegistrar                                      \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
-          #kernel_name,                                                     \
-          BACKEND(backend),                                                 \
-          DATALAYOUT(layout),                                               \
-          DATATYPE(dtype),                                                  \
-          ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
-          &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
-          PT_KERNEL(kernel_fn),                                             \
-          PT_VARIADIC_KERNEL(kernel_fn));                                   \
-  int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
-    return 0;                                                               \
-  }                                                                         \
-  void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
+#define PT_REGISTER_NO_TEMPLATE_KERNEL(                                      \
+    kernel_name, backend, layout, kernel_fn, dtype)                          \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      pt_register_no_t_kernel_ns_check_##kernel_name##_##backend##_##layout, \
+      "PT_REGISTER_NO_TEMPLATE_KERNEL must be called in global namespace."); \
+  static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(  \
+      ::pten::Kernel*);                                                      \
+  static const ::pten::KernelRegistrar                                       \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout(                  \
+          #kernel_name,                                                      \
+          BACKEND(backend),                                                  \
+          DATALAYOUT(layout),                                                \
+          ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
+          &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,     \
+          PT_KERNEL(kernel_fn),                                              \
+          PT_VARIADIC_KERNEL(kernel_fn));                                    \
+  int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {          \
+    return 0;                                                                \
+  }                                                                          \
+  void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(         \
       ::pten::Kernel* kernel)
 
 /** PT_DECLARE_KERNEL
