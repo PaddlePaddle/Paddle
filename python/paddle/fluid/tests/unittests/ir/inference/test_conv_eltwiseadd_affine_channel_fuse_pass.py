@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestConvEltwiseAddFusePass(PassAutoScanTest):
+class TestConvEltwiseAddAffineChannelFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs
@@ -60,6 +60,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             st.lists(
                 st.integers(
                     min_value=1, max_value=2), min_size=2, max_size=2))
+        has_bias = draw(st.booleans())
 
         x_shape = [
             batch_size, in_channel, 64, 64
@@ -93,6 +94,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             groups=groups,
             paddings=paddings,
             strides=strides,
+            has_bias=has_bias,
             is_test=True)
         eltwise_op = OpConfig(
             "elementwise_add",
@@ -100,8 +102,18 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
                     "Y": ["conv2d_bias"]},
             outputs={"Out": ["elementwise_output"]},
             axis=axis)
-        ops = [conv2d_op, eltwise_op]
-
+        ac_op = OpConfig(
+            "affine_channel",
+            inputs={
+                "X": ["elementwise_output"],
+                "Scale": ["affine_channel_scale"],
+                "Bias": ["affine_channel_bias"]
+            },
+            outputs={"Out": ["affine_channel_ouput"]},
+            data_layout=data_format)
+        if has_bias == True:
+            conv2d_op.inputs["Bias"] = ["conv2d_bias"]
+        ops = [conv2d_op, eltwise_op, ac_op]
         program_config = ProgramConfig(
             ops=ops,
             inputs={
@@ -110,17 +122,23 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             weights={
                 "conv2d_weight":
                 TensorConfig(data_gen=partial(generate_weight)),
-                "conv2d_bias":
+                "conv2d_bias": TensorConfig(data_gen=partial(generate_bias)),
+                "affine_channel_scale":
+                TensorConfig(data_gen=partial(generate_scale_bias)),
+                "affine_channel_bias":
                 TensorConfig(data_gen=partial(generate_scale_bias)),
             },
-            outputs=["elementwise_output"])
+            outputs=["affine_channel_ouput"])
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
-        yield config, ['conv2d_fusion'], (1e-4, 1e-4)
+        yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
-        # # TRT
+        config = self.create_inference_config(use_mkldnn=True)
+        yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
+
+        # TRT
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
             workspace_size=1 << 20,
@@ -129,7 +147,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
             use_calib_mode=False)
-        yield config, ['conv2d_fusion'], (1e-4, 1e-4)
+        yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
         # If the problem has been fixed, the judgment 
@@ -139,6 +157,11 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
                 return True
             return False
 
+        # mkldnn Output has diff with bias!
+        def teller2(program_config, predictor_config):
+            return predictor_config.mkldnn_enabled() and program_config.ops[
+                0].attrs['has_bias'] == True
+
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
@@ -146,10 +169,14 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             when data_format attribute is NHWC and axis of eltwise op is 1 for this pass."
         )
 
+        self.add_ignore_check_case(
+            teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "Currently mkldnn Output has diff with bias!")
+
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["conv_elementwise_add_fuse_pass"], )
+            passes=["conv_eltwiseadd_affine_channel_fuse_pass"], )
 
 
 if __name__ == "__main__":
