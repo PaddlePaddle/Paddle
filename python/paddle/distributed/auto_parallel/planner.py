@@ -141,9 +141,8 @@ class PlanSpace:
                 if i != 0:
                     visited[i] = True
                 path.append(nums[i])
-                Enumerater._enum_dims_mapping(process_mesh_topology, visited,
-                                              path, depth + 1, res,
-                                              tensor_shape)
+                PlanSpace._enum_dims_mapping(process_mesh_topology, visited,
+                                             path, depth + 1, res, tensor_shape)
                 visited[i] = False
                 path.pop()
 
@@ -208,9 +207,9 @@ class PlanSpace:
             depth = 0
             path = []
             dims_mapping_list = []
-            Enumerater._enum_dims_mapping(process_mesh.topology, visited, path,
-                                          depth, dims_mapping_list,
-                                          vars[var_name].shape)
+            PlanSpace._enum_dims_mapping(process_mesh.topology, visited, path,
+                                         depth, dims_mapping_list,
+                                         vars[var_name].shape)
             dims_mapping_dict[var_name] = copy.deepcopy(dims_mapping_list)
 
         # compose dims mapping
@@ -362,7 +361,7 @@ class PlanSpace:
                 op_valid_dist_attrs = [op_dist_attr]
                 pipeline_stage = 0 if pipeline_stage != -1 else pipeline_stage
             else:
-                op_valid_dist_attrs = Enumerater._enum_valid_dist_attr_for_op(
+                op_valid_dist_attrs = PlanSpace._enum_valid_dist_attr_for_op(
                     program, op, op_process_mesh)
 
             assert op_valid_dist_attrs is not None, "Enumerate {} valid distributed attribute failed.".format(
