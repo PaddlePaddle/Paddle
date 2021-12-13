@@ -204,7 +204,6 @@ class TestConvBnFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=90,
             passes=["conv_bn_fuse_pass"], )
 
 
