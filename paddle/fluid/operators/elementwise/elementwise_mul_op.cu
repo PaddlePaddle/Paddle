@@ -116,20 +116,6 @@ __global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<double>>(
   }
 }
 
-template <typename T>
-struct MulDxDyFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
-};
-template <typename T>
-struct MulDxDyFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& x,
-      const paddle::platform::complex<T>& y) const {
-    paddle::platform::complex<T> y_conj(y.real, -y.imag);
-    return x * y_conj;
-  }
-};
-
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
@@ -144,8 +130,8 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
   if (dx != nullptr) {
     if (dx->dims() == dout->dims()) {
       // dx = dout * y
-      ElementwiseComputeEx<MulDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, y, axis, MulDxDyFunctor<T>(), dx);
+      ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, y, axis, MulGradFunctor<T>(), dx);
 
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -159,8 +145,8 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
 
       framework::Tensor dx_tmp;
       dx_tmp.Resize(dout->dims());
-      ElementwiseComputeEx<MulDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, y, axis, MulDxDyFunctor<T>(), &dx_tmp);
+      ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, y, axis, MulGradFunctor<T>(), &dx_tmp);
       TensorReduceFunctorImpl<T, T, CustomSum>(dx_tmp, dx, reduce_dims, stream);
     }
   }
@@ -168,16 +154,16 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
   if (dy != nullptr) {
     if (dy->dims() == dout->dims()) {
       // dy = dout * x
-      ElementwiseComputeEx<MulDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, x, axis, MulDxDyFunctor<T>(), dy);
+      ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, x, axis, MulGradFunctor<T>(), dy);
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
 
       framework::Tensor dy_tmp;
       dy_tmp.Resize(dout->dims());
-      ElementwiseComputeEx<MulDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, x, axis, MulDxDyFunctor<T>(), &dy_tmp);
+      ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, x, axis, MulGradFunctor<T>(), &dy_tmp);
       TensorReduceFunctorImpl<T, T, CustomSum>(dy_tmp, dy, reduce_dims, stream);
     }
   }

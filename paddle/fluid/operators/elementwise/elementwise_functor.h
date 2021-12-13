@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -110,6 +111,20 @@ template <typename T>
 struct MinFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     return a < b ? a : b;
+  }
+};
+
+template <typename T>
+struct MulGradFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+};
+template <typename T>
+struct MulGradFunctor<paddle::platform::complex<T>> {
+  inline HOSTDEVICE paddle::platform::complex<T> operator()(
+      const paddle::platform::complex<T>& a,
+      const paddle::platform::complex<T>& b) const {
+    paddle::platform::complex<T> b_conj(b.real, -b.imag);
+    return a * b_conj;
   }
 };
 
