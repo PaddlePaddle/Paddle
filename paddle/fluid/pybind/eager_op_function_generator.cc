@@ -487,12 +487,12 @@ int main(int argc, char* argv[]) {
       << "};\n\n";
 
   out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
+      << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  InitOpsAttrTypeMap();"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

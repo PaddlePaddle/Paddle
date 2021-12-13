@@ -65,7 +65,7 @@
     param : [x, dtype, layout]
   kernel : 
     func : full_like
-    param : [x, value]
+    param : [value]
     data_type : dtype > x
     backend : place > x
     layout : layout > x

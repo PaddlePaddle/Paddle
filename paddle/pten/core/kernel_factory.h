@@ -228,9 +228,16 @@ class Kernel {
   // for map element contruct
   Kernel() = default;
 
-  explicit Kernel(KernelFn fn) : fn_(fn) {}
+  explicit Kernel(KernelFn fn, void* variadic_fn)
+      : fn_(fn), variadic_fn_(variadic_fn) {}
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
+
+  template <typename Fn>
+  Fn GetVariadicKernelFn() const {
+    auto* func = reinterpret_cast<Fn>(variadic_fn_);
+    return func;
+  }
 
   KernelArgsDef* mutable_args_def() { return &args_def_; }
 
@@ -244,6 +251,7 @@ class Kernel {
 
  private:
   KernelFn fn_{nullptr};
+  void* variadic_fn_ = nullptr;
   KernelArgsDef args_def_;
 };
 
