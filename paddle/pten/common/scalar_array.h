@@ -118,7 +118,7 @@ class ScalarArrayBase {
   /// \brief Assign the data_ from const data pointer value of type T.
   template <typename TYPE>
   void AssignData(const TYPE* value_data, int64_t n) {
-    if (value_data) {
+    if (value_data || n == 0) {
       array_.reserve(n);
       for (auto i = 0; i < n; ++i) {
         array_.push_back(static_cast<int64_t>(value_data[i]));

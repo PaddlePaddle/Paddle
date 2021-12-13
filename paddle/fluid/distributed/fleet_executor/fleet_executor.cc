@@ -19,6 +19,8 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -29,12 +31,23 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
                                  "Error occurs while parsing string to proto"));
 }
 
-FleetExecutor::~FleetExecutor() {
-  // Destroy Executor
-}
+FleetExecutor::~FleetExecutor() { root_scope_->DropKids(); }
 
-void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
-  runtime_graph_ = std::make_unique<RuntimeGraph>(program_desc, exe_desc_);
+void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
+                         framework::Scope* scope,
+                         const platform::Place& place) {
+  runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
+  root_scope_ = scope;
+  place_ = place;
+  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
+                                           "root_scope_ can not be nullptr"));
+  minibatch_scope_ = &root_scope_->NewScope();
+  int64_t num_micro_batches = exe_desc_.num_micro_batches();
+  microbatch_scopes_.resize(num_micro_batches);
+  for (int i = 0; i < num_micro_batches; ++i) {
+    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+    CopyParameters(i, program_desc);
+  }
   VLOG(5) << runtime_graph_->DebugString();
   InitCarrier();
   InitMessageBus();
@@ -43,7 +56,8 @@ void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
 void FleetExecutor::InitCarrier() {
   Carrier& carrier_instance = Carrier::Instance();
   if (!carrier_instance.IsInit()) {
-    carrier_instance.Init(runtime_graph_->intercepter_id_to_node());
+    carrier_instance.Init(runtime_graph_, root_scope_, minibatch_scope_,
+                          microbatch_scopes_, place_);
   }
 }
 
@@ -95,10 +109,34 @@ void FleetExecutor::Run() {
       message_bus_instance.IsInit(), true,
       platform::errors::Unavailable("MessageBus has not been init yet."));
   carrier_instance.Start();
+  for (auto* micro_scop : microbatch_scopes_) {
+    // By default, we should delete all kid scopes after run executor because
+    // some operators may create local scope when running, such as while_op.
+    // But when while_op also create a local executor to run it's sub block,
+    // the sub scopes it created should not be dropped immediately, because
+    // while_grad_op will use some variables created during while_op run, so
+    // we need to keep the kids and wait for the outer executor to drop them.
+    micro_scop->DropKids();
+  }
 }
 
-void FleetExecutor::Release() {
-  // Release
+void FleetExecutor::CopyParameters(int microbatch_id,
+                                   const framework::ProgramDesc& program) {
+  auto& global_block = program.Block(0);
+
+  for (auto& var : global_block.AllVars()) {
+    if (var->Persistable() && microbatch_id == 0) {
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(5) << "Create persistable var: " << var->Name()
+              << ", which pointer is " << ptr;
+    } else if (!var->Persistable()) {
+      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+              << microbatch_id << ", which pointer is " << ptr << ".";
+      InitializeVariable(ptr, var->GetType());
+    }
+  }
 }
 
 }  // namespace distributed

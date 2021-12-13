@@ -52,6 +52,7 @@ class RuntimeGraph final {
   void FakeDependence();
   void AssignTaskToIntercepter();
   void FakeRuntimeInfo();
+  void OriginProgramCompile(const ProgramDesc& program);
   // LRSched, Forward, Backward, Optimize
   static std::vector<paddle::framework::OpRole> functionality_order;
   std::vector<std::unique_ptr<TaskNode>> task_nodes_;

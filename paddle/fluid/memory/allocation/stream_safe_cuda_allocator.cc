@@ -103,6 +103,8 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   for (StreamSafeCUDAAllocator* allocator : allocators) {
     release_size += allocator->ProcessEventsAndFreeWithRelease();
   }
+  VLOG(8) << "Release " << release_size
+          << " bytes memory from all stream for place " << place;
   return release_size;
 }
 
@@ -112,13 +114,13 @@ void StreamSafeCUDAAllocator::CreateEventForAllRecordedStream(
   for (gpuStream_t stream : *recorded_streams) {
     gpuEvent_t event;
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&event, hipEventDisableTiming));
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, stream));
 #endif
     outstanding_events->emplace_back(event);
     VLOG(9) << "Record event " << event << " in stream " << stream;
@@ -162,8 +164,8 @@ void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
         outstanding_events.erase(outstanding_events.begin(), deque_it);
         break;
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(*deque_it));
+      PADDLE_ENFORCE_GPU_SUCCESS(err);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(*deque_it));
 #else
       gpuError_t err = hipEventQuery(*deque_it);
       if (err == hipErrorNotReady) {
@@ -173,8 +175,8 @@ void StreamSafeCUDAAllocator::ProcessEventsAndFree() {
         outstanding_events.erase(outstanding_events.begin(), deque_it);
         break;
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(*deque_it));
+      PADDLE_ENFORCE_GPU_SUCCESS(err);
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(*deque_it));
 #endif
       ++deque_it;
     }

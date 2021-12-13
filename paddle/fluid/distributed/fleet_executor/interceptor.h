@@ -26,8 +26,13 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+class GarbageCollector;
+}
 namespace distributed {
 
 class TaskNode;
@@ -48,8 +53,6 @@ class Interceptor {
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
-  virtual void HandleStop(const InterceptorMessage& msg);
-
   void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
@@ -64,11 +67,38 @@ class Interceptor {
 
   bool Send(int64_t dst_id, InterceptorMessage& msg);  // NOLINT
 
+  void SetPlace(const platform::Place& place) { place_ = place; }
+
+  void SetRootScope(framework::Scope* scope) { root_scope_ = scope; }
+  void SetMiniBatchScope(framework::Scope* scope) { minibatch_scope_ = scope; }
+  void SetMicroBatchScope(const std::vector<framework::Scope*>& scopes) {
+    microbatch_scopes_ = scopes;
+  }
+  void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
+    gc_ = gc;
+  }
+
+  TaskNode* GetTaskNode() const { return node_; }
+
   DISABLE_COPY_AND_ASSIGN(Interceptor);
 
  protected:
-  TaskNode* GetTaskNode() const { return node_; }
+  // interceptor id, handed from above layer
+  int64_t interceptor_id_;
+
+  // node need to be handled by this interceptor
+  TaskNode* node_;
+
+  // for stop
   bool stop_{false};
+  void StopCarrier();
+
+  // for runtime
+  platform::Place place_;
+  framework::Scope* root_scope_{nullptr};
+  framework::Scope* minibatch_scope_{nullptr};
+  std::vector<framework::Scope*> microbatch_scopes_{};
+  std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
  private:
   // pool the local mailbox, parse the Message
@@ -77,12 +107,6 @@ class Interceptor {
   // fetch all Message from remote mailbox to local mailbox
   // return true if remote mailbox not empty, otherwise return false
   bool FetchRemoteMailbox();
-
-  // interceptor id, handed from above layer
-  int64_t interceptor_id_;
-
-  // node need to be handled by this interceptor
-  TaskNode* node_;
 
   // interceptor handle which process message
   MsgHandle handle_{nullptr};

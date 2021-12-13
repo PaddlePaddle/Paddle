@@ -76,7 +76,4 @@ void Copy(const XPUDeviceContext& dev_ctx,
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(UtilsXPU);
-
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", XPU, ANY, pten::Copy) {}
+PT_REGISTER_KERNEL_ALL_DTYPE(copy, XPU, ANY, pten::Copy) {}

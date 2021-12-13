@@ -18,8 +18,7 @@
 INCLUDE (ExternalProject)
 
 SET(DIRENT_PREFIX_DIR       ${THIRD_PARTY_PATH}/dirent)
-SET(DIRENT_SOURCE_DIR       ${THIRD_PARTY_PATH}/dirent/src/extern_dirent)
-SET(DIRENT_INCLUDE_DIR      ${DIRENT_SOURCE_DIR}/include)
+SET(DIRENT_INCLUDE_DIR      ${THIRD_PARTY_PATH}/dirent/src/extern_dirent/include)
 
 include_directories(${DIRENT_INCLUDE_DIR})
 
@@ -30,9 +29,9 @@ ExternalProject_Add(
   extern_dirent
   ${EXTERNAL_PROJECT_LOG_ARGS}
   ${SHALLOW_CLONE}
-  GIT_REPOSITORY  ${DIRENT_REPOSITORY}
-  GIT_TAG         ${DIRENT_TAG}
-  PREFIX          ${DIRENT_PREFIX_DIR}
+  GIT_REPOSITORY    ${DIRENT_REPOSITORY}
+  GIT_TAG           ${DIRENT_TAG}
+  PREFIX            ${DIRENT_PREFIX_DIR}
   UPDATE_COMMAND    ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""

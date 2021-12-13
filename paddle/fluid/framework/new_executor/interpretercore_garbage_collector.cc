@@ -69,17 +69,20 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
-    // var->Clear(); // TODO(xiongkun03) can we clear directly? Why we must use
-    // Add interface?
+    // TODO(xiongkun03) in old executor, this type of variable is not support
+    // eager deletion. so we just leave it here ?
+  } else if (var->IsType<LoDRankTable>()) {
+    // TODO(xiongkun03) in old executor, this type of variable is not support
+    // eager deletion. so we just leave it here ?
   } else if (var->IsType<SelectedRows>()) {
     Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
         event, ctx);
+    var->GetMutable<SelectedRows>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }
-    tensor_arr->clear();
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
     // refer to executor.cc to see what old garbage collector does.

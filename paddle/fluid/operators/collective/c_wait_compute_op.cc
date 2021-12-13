@@ -57,11 +57,11 @@ class CWaitComputeOp : public framework::OperatorBase {
 
 // compute_stream-->event-->comm_stream
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, compute_stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
 #endif
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

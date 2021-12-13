@@ -16,10 +16,30 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_sequential_run, false,
+    "Enable sequential execution for standalone executor, used for debug");
 namespace paddle {
 namespace framework {
 namespace interpreter {
+
+void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
+                             std::function<void()> fn) {
+  // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
+  if (FLAGS_new_executor_sequential_run) {
+    VLOG(4) << "FLAGS_new_executor_sequential_run:"
+            << FLAGS_new_executor_sequential_run;
+    queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
+                          std::move(fn));
+  } else {
+    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
+  }
+}
+
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
@@ -127,6 +147,9 @@ void build_variable_scope(const framework::BlockDesc& block,
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
+    // TODO(xiongkun): user may create a variable with name that exists before.
+    // under such circumstances, we should raise a error. Currently we can't
+    // get the var_desc of startup_program, so leave it later.
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
@@ -149,7 +172,7 @@ void build_variable_scope(const framework::BlockDesc& block,
 }
 
 void create_all_ops(const framework::BlockDesc& block,
-                    std::vector<std::shared_ptr<OperatorBase>>* ops) {
+                    std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
     VLOG(3) << "CreateOp from : " << op->Type();
 
@@ -164,7 +187,7 @@ void create_all_ops(const framework::BlockDesc& block,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
-    ops->emplace_back(std::shared_ptr<OperatorBase>(op_base));
+    ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
 }
 
@@ -260,10 +283,24 @@ void build_op_func_list(const platform::Place& place,
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
+  std::vector<std::unique_ptr<OperatorBase>>
+      ops_unique;  // its elements will be moved to vec_func_list
+  // Step 1: create all ops for current block.
+  create_all_ops(block, &ops_unique);
+  // If gc is enabled and block size > 1
+  const ProgramDesc& main_program = *block.Program();
+  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+      main_program, block.ID(), ops_unique);
+  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+      main_program, block.ID(), ops_unique);
+  operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+      main_program, block.ID(), ops_unique);
+
   std::vector<std::shared_ptr<OperatorBase>>
       ops;  // its elements will be moved to vec_func_list
-  // Step 1: create all ops for current block.
-  create_all_ops(block, &ops);
+  for (auto& op_unique : ops_unique) {
+    ops.emplace_back(std::move(op_unique));
+  }
   auto unused_var_map = get_unused_vars(block, ops);
 
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -411,7 +448,6 @@ void build_op_func_list(const platform::Place& place,
         for (auto& t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
-        lod_tensor_arr->clear();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Type %s of variable %s is not supported eager deletion.",

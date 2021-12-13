@@ -34,14 +34,9 @@ void FillAnyLike(const CUDAContext& dev_ctx,
 
 template <typename T>
 void FillConstant(const CUDAContext& dev_ctx,
+                  const ScalarArray& shape,
                   const Scalar& val,
                   DenseTensor* out);
-
-template <typename T>
-void FillConstantDynamicShape(const CUDAContext& dev_ctx,
-                              const ScalarArray& shape,
-                              const Scalar& val,
-                              DenseTensor* out);
 
 }  // namespace pten
 

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/creation.h"
 #include "paddle/pten/kernels/cuda/creation.h"
 
