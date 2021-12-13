@@ -114,7 +114,7 @@ class EagerUtils {
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
-      std::vector<egr::EagerTensor>* targets);
+      const std::vector<egr::EagerTensor>& targets);
 
   template <typename T, typename... Args>
   static bool ComputeRequireGrad(T trace_backward, Args&&... args) {

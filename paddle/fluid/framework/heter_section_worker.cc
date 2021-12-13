@@ -277,7 +277,7 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 void HeterSectionWorker::Run() {
   if (debug_) {
     size_t total_ops_size = forward_ops_.size() + backward_ops_.size();
-    op_name_.resize(total_ops_size);
+    op_name_.reserve(total_ops_size);
     op_total_time_.resize(total_ops_size);
     platform::SetNumThreads(1);
     // forward op + backward op

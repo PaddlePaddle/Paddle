@@ -24,6 +24,7 @@
 #include "paddle/fluid/eager/legacy/type_def.h"
 
 namespace egr {
+namespace legacy {
 
 // NOTE(zhiqiu): only O1 and O2 are valid now
 enum class AmpLevel {
@@ -92,4 +93,5 @@ NameTensorMap AutoCastInputs(const std::string& op_type,
 NameTensorMap CastPureFp16Inputs(const std::string& op_type,
                                  const NameTensorMap& ins);
 
+}  // namespace legacy
 }  // namespace egr

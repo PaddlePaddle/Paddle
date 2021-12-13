@@ -22,6 +22,9 @@
 namespace egr {
 
 class EagerTensor;
+
+namespace legacy {
+
 namespace details {
 template <typename T>
 struct NameVarMapTrait {};
@@ -36,4 +39,6 @@ template <typename T>
 using NameMap = typename details::NameVarMapTrait<T>::Type;
 
 using NameTensorMap = NameMap<EagerTensor>;
+
+}  // namespace legacy
 }  // namespace egr

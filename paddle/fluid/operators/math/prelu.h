@@ -16,11 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +27,8 @@ template <typename T>
 class PreluChannelWiseDirectCUDAFunctor {
  public:
   void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
-                  size_t batch_size, size_t channel, size_t numel);
+                  size_t batch_size, size_t channel, bool channel_last,
+                  size_t numel);
 };
 
 template <typename T>

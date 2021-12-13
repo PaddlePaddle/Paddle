@@ -91,13 +91,13 @@ class TestPureFP16(TestMNIST):
                 loss_data.append(avg_loss.numpy()[0])
                 # save checkpoint
                 mnist.clear_gradients()
-                if batch_id % 10 == 0:
+                if batch_id % 2 == 0:
                     print(
                         "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}"
                         .format(epoch, batch_id,
                                 avg_loss.numpy(), acc.numpy(), time() - start))
                     start = time()
-                if batch_id == 50:
+                if batch_id == 10:
                     break
         return loss_data
 

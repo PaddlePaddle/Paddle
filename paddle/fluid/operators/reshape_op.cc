@@ -383,13 +383,13 @@ class ReshapeKernel {
     // 3. out tensor is view of input
     // We can't MakePtenDenseTensor for case 2, so we solve this case by
     // creating a temporary tensor here:
-    const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-        ctx.GetPlace());
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
                                in->dims(),
                                pten::TransToPtenDataLayout(in->layout())};
-    auto pt_out_tmp =
-        std::make_shared<pten::DenseTensor>(alloc, std::move(meta));
+    auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(
+            ctx.GetPlace()),
+        std::move(meta));
     pten::DenseTensor *pt_out = nullptr;
     if (in == out) {
       pt_out = pt_x.get();
@@ -484,7 +484,8 @@ class ReshapeKernel {
     // non-inplace need move all result from pt_out to out, inplace need set
     // result dims.
     if (in != out) {
-      paddle::experimental::MovesStorage(pt_out, static_cast<Tensor *>(out));
+      paddle::experimental::MovesSharedStorage(pt_out,
+                                               static_cast<Tensor *>(out));
     } else {
       out->Resize(pt_out->dims());
     }
@@ -554,13 +555,13 @@ class Reshape2Op : public ReshapeOp {
       const framework::ExecutionContext &ctx) const override {
     auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
     if (multi_inputs.size() > 0) {
-      return framework::KernelSignature("reshape2.mulhost",
-                                        {"X", "ShapeTensor"}, {}, {"Out"});
+      return framework::KernelSignature("reshape_mulhost", {"X", "ShapeTensor"},
+                                        {}, {"Out"});
     } else if (ctx.HasInput("Shape")) {
-      return framework::KernelSignature("reshape2.host", {"X", "Shape"}, {},
+      return framework::KernelSignature("reshape_host", {"X", "Shape"}, {},
                                         {"Out"});
     } else {
-      return framework::KernelSignature("reshape2", {"X"}, {"shape"}, {"Out"});
+      return framework::KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
     }
   }
 };

@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/variable.h"
 namespace egr {
+namespace legacy {
 
 class EagerExecutionContext : public paddle::framework::ExecutionContext {
   using Variable = paddle::framework::Variable;
@@ -209,4 +210,5 @@ class EagerExecutionContext : public paddle::framework::ExecutionContext {
   const paddle::framework::AttributeMap& default_attrs_;
 };
 
+}  // namespace legacy
 }  // namespace egr
