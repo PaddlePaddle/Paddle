@@ -176,7 +176,10 @@ class TestConvBnFusePass(PassAutoScanTest):
                 precision_mode=paddle_infer.PrecisionType.Float32,
                 use_static=False,
                 use_calib_mode=False)
-            yield config, ['conv2d_fusion'], (1e-5, 1e-5)
+            if program_config.ops[0].attrs['has_bias']:
+                yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
+            else:  # it will enter conv_elementwise_add_fuse_pass
+                yield config, ['conv2d_fusion'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
