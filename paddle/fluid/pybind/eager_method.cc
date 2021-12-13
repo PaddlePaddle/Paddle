@@ -37,8 +37,7 @@ extern PyTypeObject* pEagerTensorType;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
-  EAGER_TRY
-  self->eager_tensor.SyncToTensor();
+  EAGER_SYNC_TRY
   if (!self->eager_tensor.initialized()) {
     Py_INCREF(Py_None);
     return Py_None;
@@ -94,10 +93,7 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
 static PyObject* eager_tensor_method__is_initialized(EagerTensorObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
-  EAGER_TRY
-  if (self->eager_tensor.Var().IsInitialized()) {
-    self->eager_tensor.SyncToTensor();
-  }
+  EAGER_SYNC_TRY
   return ToPyObject(self->eager_tensor.initialized());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -105,7 +101,7 @@ static PyObject* eager_tensor_method__is_initialized(EagerTensorObject* self,
 static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
                                               PyObject* args,
                                               PyObject* kwargs) {
-  EAGER_TRY
+  EAGER_SYNC_TRY
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor =
@@ -120,7 +116,7 @@ static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
 
 static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
-  EAGER_TRY
+  EAGER_SYNC_TRY
   egr::EagerTensor src_tensor =
       CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
