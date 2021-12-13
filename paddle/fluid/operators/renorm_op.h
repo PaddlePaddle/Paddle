@@ -38,20 +38,24 @@ class RenormKernel : public framework::OpKernel<T> {
     int dim = context.Attr<int>("dim");
     auto dimension_each = input_dims[dim];
     auto dim_size = input_dims.size();
-    std::vector<int64_t> dim_index(dim_size, 0);
+    int64_t dim_divsor = 1;
+    for (int i = dim + 1; i < dim_size; i++) dim_divsor *= input_dims[i];
+    // std::vector<int64_t> dim_index(dim_size, 0);
     std::vector<T> dim_value(dimension_each,
                              0);  // dim_value = (x1^p + x2^p + x3^p....)^(1/p)
     auto* out_data =
         out->mutable_data<T>(context.GetPlace(), size_t(numel * sizeof(T)));
     for (int64_t i = 0; i < numel; i++) {
-      dim_value[dim_index[dim]] += std::pow(std::abs(x_data[i]), p);
-      int last_index = dim_size - 1;
-      dim_index[last_index]++;
-      while (last_index > 0 &&
-             dim_index[last_index] == input_dims[last_index]) {
-        dim_index[last_index] = 0;
-        dim_index[--last_index]++;
-      }
+      auto dim_index = i / dim_divsor % dimension_each;
+      dim_value[dim_index] += std::pow(std::abs(x_data[i]), p);
+      // dim_value[dim_index[dim]] += std::pow(std::abs(x_data[i]), p);
+      // int last_index = dim_size - 1;
+      // dim_index[last_index]++;
+      // while (last_index > 0 &&
+      //        dim_index[last_index] == input_dims[last_index]) {
+      //   dim_index[last_index] = 0;
+      //   dim_index[--last_index]++;
+      // }
     }
     for (int64_t i = 0; i < dimension_each; i++) {
       dim_value[i] = std::pow(dim_value[i], 1.0 / p);
@@ -59,19 +63,23 @@ class RenormKernel : public framework::OpKernel<T> {
         dim_value[i] = max_norm / dim_value[i];
       else
         dim_value[i] = 1.0;
-      dim_index[i] = 0;
+      // dim_index[i] = 0;
     }
     for (int64_t i = 0; i < numel; i++) {
-      out_data[i] = dim_value[dim_index[dim]] < 1.0
-                        ? dim_value[dim_index[dim]] * x_data[i]
+      auto dim_index = i / dim_divsor % dimension_each;
+      out_data[i] = dim_value[dim_index] < 1.0
+                        ? dim_value[dim_index] * x_data[i]
                         : x_data[i];
-      int last_index = dim_size - 1;
-      dim_index[last_index]++;
-      while (last_index > 0 &&
-             dim_index[last_index] == input_dims[last_index]) {
-        dim_index[last_index] = 0;
-        dim_index[--last_index]++;
-      }
+      // out_data[i] = dim_value[dim_index[dim]] < 1.0
+      //                   ? dim_value[dim_index[dim]] * x_data[i]
+      //                   : x_data[i];
+      // int last_index = dim_size - 1;
+      // dim_index[last_index]++;
+      // while (last_index > 0 &&
+      //        dim_index[last_index] == input_dims[last_index]) {
+      //   dim_index[last_index] = 0;
+      //   dim_index[--last_index]++;
+      // }
     }
 
     // auto& dev_ctx = context.template device_context<DeviceContext>();
@@ -100,21 +108,25 @@ class RenormGradKernel : public framework::OpKernel<T> {
     int dim = ctx.Attr<int>("dim");
     auto dimension_each = input_dims[dim];
     auto dim_size = input_dims.size();
+    int64_t dim_divsor = 1;
+    for (int i = dim + 1; i < dim_size; i++) dim_divsor *= input_dims[i];
     auto* dx_data = d_x->mutable_data<T>(
         ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
-    std::vector<int64_t> dim_index(dim_size, 0);
+    // std::vector<int64_t> dim_index(dim_size, 0);
     std::vector<T> dim_value(dimension_each, 0),
         dim_power_sum(dimension_each, 0),
         weight_derivative(dimension_each, 0.0);
     for (int64_t i = 0; i < numel; i++) {
-      dim_value[dim_index[dim]] += std::pow(std::abs(x_data[i]), p);
-      int last_index = dim_size - 1;
-      dim_index[last_index]++;
-      while (last_index > 0 &&
-             dim_index[last_index] == input_dims[last_index]) {
-        dim_index[last_index] = 0;
-        dim_index[--last_index]++;
-      }
+      auto dim_index = i / dim_divsor % dimension_each;
+      // dim_value[dim_index[dim]] += std::pow(std::abs(x_data[i]), p);
+      dim_value[dim_index] += std::pow(std::abs(x_data[i]), p);
+      // int last_index = dim_size - 1;
+      // dim_index[last_index]++;
+      // while (last_index > 0 &&
+      //        dim_index[last_index] == input_dims[last_index]) {
+      //   dim_index[last_index] = 0;
+      //   dim_index[--last_index]++;
+      //}
     }
     for (int64_t i = 0; i < dimension_each; i++) {
       auto temp = std::pow(dim_value[i], 1.0 / p);
@@ -124,33 +136,40 @@ class RenormGradKernel : public framework::OpKernel<T> {
         dim_value[i] = max_norm / temp;
       } else
         dim_value[i] = 1.0;
-      dim_index[i] = 0;
+      // dim_index[i] = 0;
     }
     for (int64_t i = 0; i < numel; i++) {
-      dx_data[i] = dim_value[dim_index[dim]] * dout_data[i];
-      weight_derivative[dim_index[dim]] += x_data[i] * dout_data[i];
-      int last_index = dim_size - 1;
-      dim_index[last_index]++;
-      while (last_index > 0 &&
-             dim_index[last_index] == input_dims[last_index]) {
-        dim_index[last_index] = 0;
-        dim_index[--last_index]++;
-      }
+      auto dim_index = i / dim_divsor % dimension_each;
+      dx_data[i] = dim_value[dim_index] * dout_data[i];
+      weight_derivative[dim_index] += x_data[i] * dout_data[i];
+      // dx_data[i] = dim_value[dim_index[dim]] * dout_data[i];
+      // weight_derivative[dim_index[dim]] += x_data[i] * dout_data[i];
+      // int last_index = dim_size - 1;
+      // dim_index[last_index]++;
+      // while (last_index > 0 &&
+      //        dim_index[last_index] == input_dims[last_index]) {
+      //   dim_index[last_index] = 0;
+      //   dim_index[--last_index]++;
+      // }
     }
-    for (int64_t i = 0; i < dimension_each; i++) {
-      dim_index[i] = 0;
-    }
+    // for (int64_t i = 0; i < dimension_each; i++) {
+    //   dim_index[i] = 0;
+    // }
     for (int64_t i = 0; i < numel; i++) {
-      dx_data[i] +=
-          weight_derivative[dim_index[dim]] * dim_power_sum[dim_index[dim]] *
-          std::pow(std::abs(x_data[i]), p - 1.0) * (x_data[i] >= 0 ? 1 : -1);
-      int last_index = dim_size - 1;
-      dim_index[last_index]++;
-      while (last_index > 0 &&
-             dim_index[last_index] == input_dims[last_index]) {
-        dim_index[last_index] = 0;
-        dim_index[--last_index]++;
-      }
+      auto dim_index = i / dim_divsor % dimension_each;
+      dx_data[i] += weight_derivative[dim_index] * dim_power_sum[dim_index] *
+                    std::pow(std::abs(x_data[i]), p - 1.0) *
+                    (x_data[i] >= 0 ? 1 : -1);
+      // dx_data[i] +=
+      //     weight_derivative[dim_index[dim]] * dim_power_sum[dim_index[dim]] *
+      //     std::pow(std::abs(x_data[i]), p - 1.0) * (x_data[i] >= 0 ? 1 : -1);
+      // int last_index = dim_size - 1;
+      // dim_index[last_index]++;
+      // while (last_index > 0 &&
+      //        dim_index[last_index] == input_dims[last_index]) {
+      //   dim_index[last_index] = 0;
+      //   dim_index[--last_index]++;
+      // }
     }
 
     // auto& dev_ctx = ctx.template device_context<DeviceContext>();
