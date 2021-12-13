@@ -1006,11 +1006,11 @@ def set_grad_var_shape(program, dist_context):
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
                     "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad"
+                    "dropout_grad", "unsqueeze2_grad"
                 ]
                 forward_list = [
                     "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout"
+                    "softmax", "cross_entropy2", "dropout", "unsqueeze2"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
