@@ -62,10 +62,10 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
 
   size_t size =
-      align(unaligned_size + sizeof(MemoryBlock::Desc) + extra_padding_size_,
+      align(unaligned_size + MemoryBlock::aligned_desc_size + extra_padding_size_,
             min_chunk_size_);
   VLOG(10) << "alloc: " << unaligned_size
-           << ", padding for desc: " << sizeof(MemoryBlock::Desc)
+           << ", padding for desc: " << MemoryBlock::aligned_desc_size 
            << ", extra padding: " << extra_padding_size_
            << ", alignment: " << min_chunk_size_;
   // acquire the allocator lock

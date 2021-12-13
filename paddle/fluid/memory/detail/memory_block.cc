@@ -142,12 +142,7 @@ MemoryBlock* MemoryBlock::Metadata() const {
       reinterpret_cast<const char*>(this) - aligned_desc_size));
 }
 
-// NOTE(Ruibiao): Some data type in Paddle, e.g., platform::Complex<double>,
-// assume that the allocation address is 16B aligned. It seems an inappropriate
-// assumption. However, if we don't keep this alignment, many code will have
-// memory out of range problems. Only a temporary solution, a better mechanism
-// is needed to solve this problem in future.
-size_t MemoryBlock::aligned_desc_size = AlignedMemoryBlockDescSize(16);
+size_t MemoryBlock::aligned_desc_size = AlignedMemoryBlockDescSize(32 /* bytes */);
 
 }  // namespace detail
 }  // namespace memory
