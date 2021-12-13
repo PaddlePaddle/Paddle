@@ -1,0 +1,1 @@
+cc_library(sparse_csr_tensor_utils_cpu SRCS sparse_csr_tensor_utils.cc DEPS dense_tensor sparse_csr_tensor kernel_context kernel_factory)

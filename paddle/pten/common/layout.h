@@ -24,6 +24,7 @@ enum class DataLayout {
   NHWC,
   NCHW,
   MKLDNN,
+  SPARSE_CSR,
   NUM_DATA_LAYOUTS,
 };
 
@@ -43,6 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
       break;
     case DataLayout::MKLDNN:
       os << "MKLDNN";
+      break;
+    case DataLayout::SPARSE_CSR:
+      os << "SPARSE_CSR";
       break;
     default:
       PD_THROW(

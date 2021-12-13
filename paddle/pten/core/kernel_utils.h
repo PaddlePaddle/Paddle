@@ -19,6 +19,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_def.h"
+#include "paddle/pten/core/sparse_csr_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -196,6 +197,8 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
 
@@ -217,6 +220,8 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
 
