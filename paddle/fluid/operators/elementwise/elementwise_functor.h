@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
-
 namespace paddle {
 namespace operators {
 
@@ -110,6 +110,36 @@ template <typename T>
 struct MinFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     return a < b ? a : b;
+  }
+};
+
+template <typename T>
+struct MulGradFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
+};
+
+template <typename T>
+struct MulGradFunctor<paddle::platform::complex<T>> {
+  inline HOSTDEVICE paddle::platform::complex<T> operator()(
+      const paddle::platform::complex<T>& x,
+      const paddle::platform::complex<T>& y) const {
+    paddle::platform::complex<T> y_conj(y.real, -y.imag);
+    return x * y_conj;
+  }
+};
+
+template <typename T>
+struct DivGradFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+};
+
+template <typename T>
+struct DivGradFunctor<paddle::platform::complex<T>> {
+  inline HOSTDEVICE paddle::platform::complex<T> operator()(
+      const paddle::platform::complex<T>& x,
+      const paddle::platform::complex<T>& y) const {
+    paddle::platform::complex<T> y_conj(y.real, -y.imag);
+    return x / y_conj;
   }
 };
 

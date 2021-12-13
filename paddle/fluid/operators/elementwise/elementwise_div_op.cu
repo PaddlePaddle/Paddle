@@ -26,34 +26,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct MulDxDyFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
-};
-template <typename T>
-struct MulDxDyFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& x,
-      const paddle::platform::complex<T>& y) const {
-    paddle::platform::complex<T> y_conj(y.real, -y.imag);
-    return x * y_conj;
-  }
-};
-
-template <typename T>
-struct DivDxDyFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
-};
-template <typename T>
-struct DivDxDyFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& x,
-      const paddle::platform::complex<T>& y) const {
-    paddle::platform::complex<T> y_conj(y.real, -y.imag);
-    return x / y_conj;
-  }
-};
-
-template <typename T>
 static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
                                                        const T* out,
                                                        const T* dout,
@@ -134,22 +106,22 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
   // dx
   if (dx != nullptr) {
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    // For inplace strategy, dx will be stored in addr of dout, which makes
+    // the result of dy wrong.
+    if (dx->IsSharedBufferWith(*dout)) {
+      dx->clear();
+      dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+    }
     if (dx->dims() == dout->dims()) {
       // dx = dout/y
-      ElementwiseComputeEx<DivDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, y, axis, DivDxDyFunctor<T>(), dx);
+      ElementwiseComputeEx<DivGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, y, axis, DivGradFunctor<T>(), dx);
     } else {
-      // For inplace strategy, dx will be stored in addr of dout, which makes
-      // the result of dy wrong.
-      if (dx->IsSharedBufferWith(*dout)) {
-        dx->clear();
-        dx->mutable_data<T>(x->dims(), ctx.GetPlace());
-      }
       framework::Tensor div_dx;
       div_dx.Resize(dout->dims());
 
-      ElementwiseComputeEx<DivDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, y, axis, DivDxDyFunctor<T>(), &div_dx);
+      ElementwiseComputeEx<DivGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, y, axis, DivGradFunctor<T>(), &div_dx);
 
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
@@ -172,16 +144,15 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
             nullptr, dy->mutable_data<T>(ctx.GetPlace()));
       }
     } else {
-      // dy = - dout * out / y
       framework::Tensor mul_dy;
       mul_dy.Resize(dout->dims());
-      ElementwiseComputeEx<MulDxDyFunctor<T>, DeviceContext, T>(
-          ctx, dout, out, axis, MulDxDyFunctor<T>(), &mul_dy);
+      ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
+          ctx, dout, out, axis, MulGradFunctor<T>(), &mul_dy);
 
       framework::Tensor div_dy;
       div_dy.Resize(dout->dims());
-      ElementwiseComputeEx<DivDxDyFunctor<T>, DeviceContext, T>(
-          ctx, &mul_dy, y, axis, DivDxDyFunctor<T>(), &div_dy);
+      ElementwiseComputeEx<DivGradFunctor<T>, DeviceContext, T>(
+          ctx, &mul_dy, y, axis, DivGradFunctor<T>(), &div_dy);
 
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
