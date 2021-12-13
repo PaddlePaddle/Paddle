@@ -2689,6 +2689,10 @@ function main() {
         parallel_test
         check_coverage
         ;;
+      check_coverage_unittest)
+        parallel_test
+        check_coverage
+        ;;
       reuse_so_cicheck_py35)
         reuse_so_cache
         parallel_test
