@@ -80,6 +80,32 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 return False
         return True
 
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        ids_name = op_desc.input('Ids')[0]
+        w_name = op_desc.input('W')[0]
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
+        w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
+        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(w_dims_mapping[
+                -1]):
+            return False
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in ids_dims_mapping[1:]:
+            if is_dim_shard(mapping):
+                return False
+        for mapping in out_dims_mapping[1:]:
+            if is_dim_shard(mapping):
+                return False
+        if w_dims_mapping[-1] != out_dims_mapping[-1]:
+            return False
+        if ids_dims_mapping != out_dims_mapping[:len(ids_dims_mapping)]:
+            return False
+
+        return True
+
     def update_dims_mapping(self, dist_op):
         changed = False
         op_desc = dist_op.serial_op.desc

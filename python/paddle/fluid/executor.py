@@ -1954,7 +1954,7 @@ class Executor(object):
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
         trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        fleet_exe_desc.cur_rank = os.getenv("PADDLE_TRAINER_ID", 0)
+        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
         nrank = len(trainer_endpoints)
         for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
@@ -1999,6 +1999,14 @@ class Executor(object):
                 fetch_list=fetch_list,
                 feed_var_name=feed_var_name,
                 fetch_var_name=fetch_var_name)
+            main_block = cached_program.block(0)
+            for op in main_block.ops:
+                # set the op_role of fetch op to Optimize to avoid
+                # erase the fetched vars by gc for pipeline
+                if op.type == 'fetch':
+                    op._set_attr(
+                        'op_role',
+                        core.op_proto_and_checker_maker.OpRole.Optimize)
             self._add_program_cache(cache_key, cached_program)
         if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
@@ -2007,6 +2015,18 @@ class Executor(object):
             self._add_ctx_cache(cache_key, cached_ctx)
         if feed:
             self._feed_data(cached_program, feed, feed_var_name, cached_scope)
+
+        from paddle.optimizer.lr import LRScheduler
+        if hasattr(program, 'lr_sheduler'):
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(cached_scope,
+                                              lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
         cached_ctx.run()
         if fetch_list:
             arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
