@@ -112,6 +112,18 @@ class ShardingStage2(nn.Layer):
         self._has_grad_storage = []
         self._grad_storage_list = []
 
+        # offload
+        # TODO(haohongxiang): Now it's not supported for multi-optimizers using Offload strategy
+        self._offload_optims = list(
+            filter(lambda optim: optim.offload, self._sharding_optimizers))
+        if len(self._offload_optims) > 0:
+            assert len(
+                self._sharding_optimizers
+            ) == 1, "Only support offload strategy for single optimizer"
+
+        self._offload = self._sharding_optimizers[0].offload
+        self._offload_device = "cpu"
+
         # Set backward pass hooks
         self._bw_hooks = []
 
@@ -156,7 +168,8 @@ class ShardingStage2(nn.Layer):
         # Release grad storages
         for dtype in self._grad_storages.keys():
             if self._rank in self._grad_storages[dtype].keys():
-                self._grad_storages[dtype][self._rank].buffer.zero_()
+                if not self._offload:
+                    self._grad_storages[dtype][self._rank].buffer.zero_()
 
         # Release params
         for param in self._trainable_params:
@@ -167,17 +180,24 @@ class ShardingStage2(nn.Layer):
         """
         Before the gradient accumulation, scale the gradient.
         """
-        # Scale grad storages
-        for dtype in self._grad_storages.keys():
-            if self._rank in self._grad_storages[dtype].keys():
-                self._grad_storages[dtype][self._rank].buffer.scale_(
-                    scale=self._world_size_scaling)
+        if self._offload:
+            for param in self._trainable_params:
+                if param.name in self._sharding_optimizers[
+                        0]._master_params.keys():
+                    self._sharding_optimizers[0]._master_params[
+                        param.name].grad.scale_(scale=self._world_size_scaling)
+        else:
+            # Scale grad storages
+            for dtype in self._grad_storages.keys():
+                if self._rank in self._grad_storages[dtype].keys():
+                    self._grad_storages[dtype][self._rank].buffer.scale_(
+                        scale=self._world_size_scaling)
 
-        # Scale params
-        for param in self._trainable_params:
-            if param.name in self._param_grads and param.grad is not None:
-                param.grad.scale_(scale=self._world_size_scaling)
-                param._reset_grad_inplace_version(True)
+            # Scale params
+            for param in self._trainable_params:
+                if param.name in self._param_grads and param.grad is not None:
+                    param.grad.scale_(scale=self._world_size_scaling)
+                    param._reset_grad_inplace_version(True)
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -195,7 +215,13 @@ class ShardingStage2(nn.Layer):
         """
         Synchronously or asynchronously convert the data type of the layer, the device is not supported now.
         """
+        assert isinstance(device, str), "Device must be type str"
         assert device == self._default_device, "New devices are not supported, because of the optimizer state is not sync"
+
+        self._layer.to(device=device, dtype=dtype, blocking=blocking)
+
+        # Re-build the buckets, hooks, etc..
+        self._fresh_trainable()
 
     def _fresh_trainable(self):
         """ Whether to update training parameters. """
@@ -283,11 +309,16 @@ class ShardingStage2(nn.Layer):
                     self._grad_reduced[index] = False
                     if not self._accumulate_grads:
                         param.grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version(True)
+                        param._reset_grad_inplace_version(True)
 
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
                         if dst_rank != self._rank:
+                            param.clear_gradient(False)
+                        elif self._offload:
+                            self._sharding_optimizers[0]._master_params[
+                                param.name]._copy_gradient_from(param.grad.cpu(
+                                ).cast(dtype=Type.fp32.value))
                             param.clear_gradient(False)
 
                     # Synchronize the reduce parameter gradient
@@ -337,6 +368,15 @@ class ShardingStage2(nn.Layer):
                                     p.clear_gradient(False)
                                     p._gradient_set_empty(False)
 
+                                grad_storage.buffer.value().get_tensor()._clear(
+                                )
+                            elif self._offload:
+                                grad_storage.to(device=self._offload_device)
+                                for param in grad_storage._params:
+                                    self._sharding_optimizers[0]._master_params[
+                                        param.name]._copy_gradient_from(
+                                            param.grad.cast(
+                                                dtype=Type.fp32.value))
                                 grad_storage.buffer.value().get_tensor()._clear(
                                 )
 
@@ -478,7 +518,7 @@ class ShardingStage2(nn.Layer):
         # Rebuild fp16/fp32 grad storages
         for dtype in self._grad_storages.keys():
             for dst_rank, grad_storage in self._grad_storages[dtype].items():
-                if dst_rank != self._rank:
+                if self._offload or dst_rank != self._rank:
                     grad_storage.manumal_relase()
                     grad_storage.rebuild()
 
