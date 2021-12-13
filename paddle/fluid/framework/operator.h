@@ -114,6 +114,10 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
+inline bool VarIsTensor(const Variable& var) {
+  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+}
+
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
@@ -588,6 +592,8 @@ class OperatorWithKernel : public OperatorBase {
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx) const;
+
+  void WriteBackToOutputs(RuntimeContext* ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

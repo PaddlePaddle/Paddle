@@ -34,6 +34,7 @@
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -62,8 +63,8 @@ std::vector<std::string> GetCompilationKeys(const Graph& graph) {
   std::vector<std::string> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(
-          BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)));
+      compilation_keys.emplace_back(BOOST_GET_CONST(
+          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;
@@ -86,7 +87,8 @@ std::unordered_map<std::string, std::vector<int64_t>> GetInputsInfo(
   std::unordered_set<std::string> inputs;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      if (BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)) !=
+      if (BOOST_GET_CONST(std::string,
+                          node->Op()->GetAttr(operators::kCompilationKey)) !=
           key) {
         continue;
       }
@@ -213,9 +215,10 @@ TEST(CinnCompilerTest, FlagController) {
     ASSERT_EQ(compilation_keys.size(), 1);
     const auto& compiling_graph = cinn_compiler->FindGraph(compilation_keys[0]);
     auto op_types = ExtractOpTypes(compiling_graph);
-    ASSERT_EQ(op_types.size(), 2);
+    ASSERT_EQ(op_types.size(), 3);
     ASSERT_EQ(op_types.count("feed"), 1);
     ASSERT_EQ(op_types.count("mul"), 1);
+    ASSERT_EQ(op_types.count("fetch"), 1);
   }
   // recover flags
   FLAGS_allow_cinn_ops = "";

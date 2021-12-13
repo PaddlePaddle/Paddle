@@ -16,14 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/pool_op.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/miopen_helper.h"
 #endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -204,17 +201,17 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
     char *pool_workspace;
     size_t pool_worksize = 0;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenPoolingGetWorkSpaceSizeV2(
             cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenPoolingForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc,
         tranformed_input_data, &beta, cudnn_output_desc, tranformed_output_data,
         false, pool_workspace, pool_worksize));
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipFree(pool_workspace));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc,
         tranformed_input_data, &beta, cudnn_output_desc,
         tranformed_output_data));
@@ -468,17 +465,17 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
       char *pool_workspace;
       size_t pool_worksize = 0;
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenPoolingGetWorkSpaceSizeV2(
               cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenPoolingBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data, pool_workspace));
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipFree(pool_workspace));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data));
