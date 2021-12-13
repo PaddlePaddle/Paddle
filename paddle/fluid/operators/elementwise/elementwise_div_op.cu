@@ -117,15 +117,15 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
       ElementwiseComputeEx<DivGradFunctor<T>, DeviceContext, T>(
           ctx, dout, y, axis, DivGradFunctor<T>(), dx);
     } else {
-      framework::Tensor div_dx;
-      div_dx.Resize(dout->dims());
+      framework::Tensor res_dx;
+      res_dx.Resize(dout->dims());
 
       ElementwiseComputeEx<DivGradFunctor<T>, DeviceContext, T>(
-          ctx, dout, y, axis, DivGradFunctor<T>(), &div_dx);
+          ctx, dout, y, axis, DivGradFunctor<T>(), &res_dx);
 
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(div_dx, dx, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, CustomSum>(res_dx, dx, reduce_dims, stream);
     }
   }
   // dy
@@ -144,19 +144,24 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
             nullptr, dy->mutable_data<T>(ctx.GetPlace()));
       }
     } else {
-      framework::Tensor mul_dy;
-      mul_dy.Resize(dout->dims());
-      ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
-          ctx, dout, out, axis, MulGradFunctor<T>(), &mul_dy);
+      framework::Tensor res_dy;
+      res_dy.mutable_data<T>(dout->dims(), ctx.GetPlace());
 
-      framework::Tensor div_dy;
-      div_dy.Resize(dout->dims());
-      ElementwiseComputeEx<DivGradFunctor<T>, DeviceContext, T>(
-          ctx, &mul_dy, y, axis, DivGradFunctor<T>(), &div_dy);
+      std::vector<const framework::Tensor*> ins;
+      std::vector<framework::Tensor*> outs;
+      ins.emplace_back(dout);
+      ins.emplace_back(out);
+      ins.emplace_back(y);
+      outs.emplace_back(&res_dy);
+
+      const auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, axis, DivGradYFunctor<T>());
 
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSub>(div_dy, dy, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, CustomSub>(res_dy, dy, reduce_dims, stream);
     }
   }
 }

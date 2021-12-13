@@ -432,8 +432,8 @@ void LaunchBroadcastElementwiseCudaKernel(
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));
-  PADDLE_ENFORCE_EQ(kArity,
-                    2,
+  PADDLE_ENFORCE_LE(kArity,
+                    3,
                     paddle::platform::errors::InvalidArgument(
                         "Currently only broadcast of binary is supported and "
                         "verified, but received %d.",
