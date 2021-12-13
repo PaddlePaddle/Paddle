@@ -65,10 +65,10 @@ RUN rm Python-3.7.0.tgz && rm -r Python-3.7.0
 
 RUN python3.7 -m pip install -U pip
 RUN rm -f /usr/bin/python3 /usr/local/bin/pip && \
-       ln -s /usr/local/bin/python3.7 /usr/bin/python3 && \
-       ln -s /usr/local/bin/python3.7 /usr/bin/python && \
-       ln -s /usr/local/bin/pip3.7 /usr/bin/pip && \
-       ln -s /usr/local/bin/pip3.7 /usr/bin/pip3
+    ln -s /usr/local/bin/python3.7 /usr/bin/python3 && \
+    ln -s /usr/local/bin/python3.7 /usr/bin/python && \
+    ln -s /usr/local/bin/pip3.7 /usr/bin/pip && \
+    ln -s /usr/local/bin/pip3.7 /usr/bin/pip3
 RUN rm /usr/bin/lsb_release
 
 <install_dali>
