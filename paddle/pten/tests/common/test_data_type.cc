@@ -25,7 +25,7 @@ namespace tests {
 TEST(DataType, OStream) {
   std::ostringstream oss;
   oss << pten::DataType::UNDEFINED;
-  EXPECT_EQ(oss.str(), "Undefined");
+  EXPECT_EQ(oss.str(), "Undefined(All)");
   oss.str("");
   oss << pten::DataType::BOOL;
   EXPECT_EQ(oss.str(), "bool");

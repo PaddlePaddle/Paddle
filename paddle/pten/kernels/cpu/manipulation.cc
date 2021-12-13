@@ -171,33 +171,36 @@ PT_REGISTER_TEMPLATE_KERNEL(cast,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PT_REGISTER_KERNEL(reshape, CPU, ALL_LAYOUT, pten::ReshapeFromVectorVal) {}
+PT_REGISTER_KERNEL(
+    reshape, CPU, ALL_LAYOUT, pten::ReshapeFromVectorVal, ALL_DTYPE) {}
 PT_REGISTER_KERNEL(reshape_mid,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ReshapeFromVectorValWithXShape) {}
-PT_REGISTER_KERNEL(reshape_host, CPU, ALL_LAYOUT, pten::ReshapeFromDT) {
+                   pten::ReshapeFromVectorValWithXShape,
+                   ALL_DTYPE) {}
+PT_REGISTER_KERNEL(
+    reshape_host, CPU, ALL_LAYOUT, pten::ReshapeFromDT, ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 PT_REGISTER_KERNEL(reshape_host_mid,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ReshapeFromDTWithXShape) {
+                   pten::ReshapeFromDTWithXShape,
+                   ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
-PT_REGISTER_KERNEL(reshape_mulhost,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::ReshapeFromVectorDT) {
+PT_REGISTER_KERNEL(
+    reshape_mulhost, CPU, ALL_LAYOUT, pten::ReshapeFromVectorDT, ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
 PT_REGISTER_KERNEL(reshape_mulhost_mid,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ReshapeFromVectorDTWithXShape) {
+                   pten::ReshapeFromVectorDTWithXShape,
+                   ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }

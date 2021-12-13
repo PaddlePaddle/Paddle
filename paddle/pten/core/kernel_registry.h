@@ -692,8 +692,7 @@ struct KernelRegistrar {
  * register 2 kernel with same name, backend, layout and diff dtype, he should
  * use another register marco PT_REGISTER_TEMPLATE_KERNEL.
  */
-#define PT_REGISTER_TEMPLATE_KERNEL(                                        \
-    kernel_name, backend, layout, kernel_fn, dtype)                         \
+#define PT_REGISTER_KERNEL(kernel_name, backend, layout, kernel_fn, dtype)  \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
       pt_register_kernel_ns_check_##kernel_name##_##backend##_##layout,     \
       "PT_REGISTER_KERNEL must be called in global namespace.");            \
@@ -706,13 +705,13 @@ struct KernelRegistrar {
           DATALAYOUT(layout),                                               \
           DATATYPE(dtype),                                                  \
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
-          args_def_fn,                                                      \
+          &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PT_KERNEL(kernel_fn));                                            \
   int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
     return 0;                                                               \
   }                                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      ::pten::Kernel*)
+      ::pten::Kernel* kernel)
 
 /** PT_DECLARE_KERNEL
  *

@@ -179,19 +179,15 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_KERNEL(reshape,
-                   CUDA,
-                   ALL_LAYOUT pten::ReshapeFromVectorVal,
-                   ALL_DTYPE) {}
+PT_REGISTER_KERNEL(
+    reshape, CUDA, ALL_LAYOUT, pten::ReshapeFromVectorVal, ALL_DTYPE) {}
 PT_REGISTER_KERNEL(reshape_mid,
                    CUDA,
                    ALL_LAYOUT,
                    pten::ReshapeFromVectorValWithXShape,
                    ALL_DTYPE) {}
-PT_REGISTER_KERNEL(reshape_host,
-                   CUDA,
-                   ALL_LAYOUT pten::ReshapeFromDT,
-                   ALL_DTYPE) {
+PT_REGISTER_KERNEL(
+    reshape_host, CUDA, ALL_LAYOUT, pten::ReshapeFromDT, ALL_DTYPE) {
   kernel->InputAt(1).SetBackend(pten::Backend::CPU);
   kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
 }
