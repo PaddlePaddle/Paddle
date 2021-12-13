@@ -164,10 +164,10 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  PD_SPECIALIZE_ComputeCallHelper(const bool&);
-  PD_SPECIALIZE_ComputeCallHelper(const int&);
-  PD_SPECIALIZE_ComputeCallHelper(const float&);
-  PD_SPECIALIZE_ComputeCallHelper(const int64_t&);
+  PD_SPECIALIZE_ComputeCallHelper(bool);
+  PD_SPECIALIZE_ComputeCallHelper(int);
+  PD_SPECIALIZE_ComputeCallHelper(float);
+  PD_SPECIALIZE_ComputeCallHelper(int64_t);
   PD_SPECIALIZE_ComputeCallHelper(const std::string&);
   PD_SPECIALIZE_ComputeCallHelper(const std::vector<int>&);
   PD_SPECIALIZE_ComputeCallHelper(const std::vector<float>&);
@@ -181,15 +181,10 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
 
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
-  PD_SPECIALIZE_ComputeCallHelper(bool);
-  PD_SPECIALIZE_ComputeCallHelper(int);
-  PD_SPECIALIZE_ComputeCallHelper(float);
-  PD_SPECIALIZE_ComputeCallHelper(int64_t);
-  PD_SPECIALIZE_ComputeCallHelper(std::string);
-  PD_SPECIALIZE_ComputeCallHelper(std::vector<int>);
-  PD_SPECIALIZE_ComputeCallHelper(std::vector<float>);
-  PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
-  PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
+  PD_SPECIALIZE_ComputeCallHelper(const bool&);
+  PD_SPECIALIZE_ComputeCallHelper(const int&);
+  PD_SPECIALIZE_ComputeCallHelper(const float&);
+  PD_SPECIALIZE_ComputeCallHelper(const int64_t&);
 
   // end: base template
   template <typename T>
@@ -315,10 +310,10 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPES(
       std::vector<std::vector<int64_t>>);
 
-  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const bool&);
-  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const int&);
-  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const float&);
-  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const int64_t&);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(bool);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(int);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(float);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(int64_t);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const std::string&);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const std::vector<int>&);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const std::vector<float>&);
@@ -326,6 +321,13 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   // NOTE(chenweihang): InferShape can't support std::vector<int64_t> attr type,
   // because the input type is std::vector<int64_t>, only can use one rule to
   // parse std::vector<int64_t> parameter
+
+  // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
+  // interface, and will be deprecated in the future
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const bool&);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const int&);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const float&);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const int64_t&);
 
   // end: base template
   template <typename T>

@@ -401,7 +401,17 @@ def _is_enable_standalone_executor():
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key. 
+    def _get_varname_from_block(block):
+        block_str = []
+        for var_name in list(block.vars.keys()):
+            block_str.append(var_name)
+        return "\n".join(block_str)
+
+    inner_program = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    return _get_varname_from_block(inner_program.blocks[0]) + str(id(
+        program)) + _get_program_cache_key(feed, fetch_list)
 
 
 def _get_program_cache_key(feed, fetch_list):
