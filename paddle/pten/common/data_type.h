@@ -127,7 +127,7 @@ PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_CppTypeToDataType)
 inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   switch (dtype) {
     case DataType::UNDEFINED:
-      os << "Undefined(All)";
+      os << "Undefined";
       break;
     case DataType::BOOL:
       os << "bool";

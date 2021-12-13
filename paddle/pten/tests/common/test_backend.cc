@@ -24,7 +24,7 @@ namespace tests {
 TEST(Backend, OStream) {
   std::ostringstream oss;
   oss << pten::Backend::UNDEFINED;
-  EXPECT_EQ(oss.str(), "Undefined(All)");
+  EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
   oss << pten::Backend::CPU;
   EXPECT_EQ(oss.str(), "CPU");

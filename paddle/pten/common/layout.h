@@ -33,7 +33,7 @@ enum class DataLayout {
 inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
   switch (layout) {
     case DataLayout::UNDEFINED:
-      os << "Undefined(All)";
+      os << "Undefined";
       break;
     case DataLayout::NHWC:
       os << "NHWC";

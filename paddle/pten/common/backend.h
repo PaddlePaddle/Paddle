@@ -37,7 +37,6 @@ namespace experimental {
  * in the future
  */
 enum class Backend : uint8_t {
-  // Undefined is invalid backend type
   UNDEFINED = 0,
 
   /**
@@ -95,7 +94,7 @@ enum class Backend : uint8_t {
 inline std::ostream& operator<<(std::ostream& os, Backend backend) {
   switch (backend) {
     case Backend::UNDEFINED:
-      os << "Undefined(All)";
+      os << "Undefined";
       break;
     case Backend::CPU:
       os << "CPU";
