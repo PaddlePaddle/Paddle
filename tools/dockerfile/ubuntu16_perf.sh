@@ -44,32 +44,26 @@ function install_whl(){
 
 
 function install_gcc(){
-  if [ "${gcc_version}" == "8.2.0" ];then
-    sed -i 's#<install_gcc>#WORKDIR /usr/bin \
-      COPY tools/dockerfile/build_scripts /build_scripts \
-      RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \
-      RUN cp gcc gcc.bak \&\& cp g++ g++.bak \&\& rm gcc \&\& rm g++ \
-      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \
-      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \
-      RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \
-      RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \
-      ENV PATH=/usr/local/gcc-8.2/bin:$PATH #g' Dockerfile.tmp
-  else
-    sed -i 's#<install_gcc>#RUN apt-get update \
-      WORKDIR /usr/bin \
-      RUN apt install -y gcc g++ #g' Dockerfile.tmp
-  fi
+  sed -i 's#<install_gcc>#WORKDIR /usr/bin \
+    COPY tools/dockerfile/build_scripts /build_scripts \
+    RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \
+    RUN cp gcc gcc.bak \&\& cp g++ g++.bak \&\& rm gcc \&\& rm g++ \
+    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \
+    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \
+    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \
+    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \
+    ENV PATH=/usr/local/gcc-8.2/bin:$PATH #g' Dockerfile.tmp
 }
 
 function make_dockerfile(){
-  cp Dockerfile.${ref_dockerfile} Dockerfile.tmp
+  cp tools/dockerfile/performance_docker/Dockerfile.${ref_dockerfile} Dockerfile.tmp
 }
 
 
 function main(){
   ref_whl
   make_dockerfile
-  # install_gcc
+  install_gcc
   install_whl
 }
 
