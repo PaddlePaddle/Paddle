@@ -87,6 +87,7 @@ std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
 
           // deal with elements out of map
           if (y < -1.0 || y > height || x < -1.0 || x > width) {
+            interpolation_cords.emplace_back();
             continue;
           }
           y = y <= 0 ? 0 : y;
