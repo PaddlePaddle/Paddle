@@ -1753,9 +1753,6 @@ CPU_PARALLEL_JOB = [
     'test_storage',
     'test_intrusive_ptr',
     'test_dense_tensor',
-    'test_sum_dev_api',
-    'test_reshape_dev_api',
-    'test_elementwise_dev_api',
     'small_vector_test',
     'test_framework_place_utils',
     'test_reshape_api',
@@ -2152,6 +2149,9 @@ TETRAD_PARALLEL_JOB = [
     'test_cast_dev_api',
     'test_scale_dev_api',
     'test_mean_dev_api',
+    'test_sum_dev_api',
+    'test_reshape_dev_api',
+    'test_elementwise_dev_api',
 ]
 
 # It run 2 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
