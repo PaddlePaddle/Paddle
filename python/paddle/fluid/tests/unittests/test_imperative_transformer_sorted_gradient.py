@@ -316,7 +316,7 @@ sync = False
 # how many batches we use
 batch_num = 5
 
-np.random.seed = 90
+np.random.seed(90)
 src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
     [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 src_pos_np = np.random.randint(
@@ -951,6 +951,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
         with guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            # NOTE(xiongkun03): In new executor, the inplace strategy is on by default, which will cause result of sumop have some differences. So we disable inplace.
+            fluid.set_flags({'FLAGS_new_executor_use_inplace': False})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(

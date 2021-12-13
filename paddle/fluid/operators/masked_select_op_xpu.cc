@@ -48,16 +48,9 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
                           "XPU nonzero_count kernel return wrong value[%d %s]",
                           ret, XPUAPIErrorMsg[ret]));
 
-    if (dev_ctx.x_context()->xpu_stream) {
-      dev_ctx.Wait();
-    }
-    ret = xpu_memcpy(static_cast<void*>(&out_size_cpu),
-                     static_cast<const void*>(out_size), sizeof(int32_t),
-                     XPU_DEVICE_TO_HOST);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External("XPU xpu_memcpy return wrong "
-                                                 "value[%d %s]",
-                                                 ret, XPUAPIErrorMsg[ret]));
+    memory::Copy(platform::CPUPlace(), static_cast<void*>(&out_size_cpu),
+                 BOOST_GET_CONST(platform::XPUPlace, mask->place()),
+                 static_cast<void*>(out_size), sizeof(int32_t));
 
     framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);

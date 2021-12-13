@@ -31,26 +31,6 @@ namespace operators {
 namespace details {
 
 #ifdef PADDLE_WITH_CUDA
-void CUDART_CB ReleaseScope(void* data) {
-  auto* temp_scope = static_cast<framework::Scope*>(data);
-  delete temp_scope;
-}
-
-void CUDART_CB ReleaseBuffers(void* data) {
-  auto* buffers =
-      static_cast<std::vector<std::unique_ptr<cinn_buffer_t>>*>(data);
-  delete buffers;
-}
-
-template <>
-void ReleaseResource<platform::CUDADeviceContext>(
-    const std::vector<void*>& resources, void* stream) {
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaLaunchHostFunc(
-      static_cast<gpuStream_t>(stream), ReleaseScope, resources[0]));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaLaunchHostFunc(
-      static_cast<gpuStream_t>(stream), ReleaseBuffers, resources[1]));
-}
-
 template <>
 void* GetStream<platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx) {
