@@ -115,6 +115,11 @@ class PlanFilter:
 
 
 class PlanSpace:
+    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    special_vars = [
+        "lod_tensor_blocking_queue_0", "create_py_reader_0", "double_buffer_0"
+    ]
+
     @staticmethod
     def _enum_dims_mapping(process_mesh_topology, visited, path, depth, res,
                            tensor_shape):
@@ -336,11 +341,11 @@ class PlanSpace:
                     pipeline_stage = len(pipeline_process_meshes) - 1
                 op_process_mesh = pipeline_process_meshes[pipeline_stage]
 
-            if op.type in MCMC.not_enum_ops:
+            if op.type in PlanSpace.not_enum_ops:
                 op_dist_attr = OperatorDistributedAttribute()
                 op_dist_attr.process_mesh = op_process_mesh
                 for var_name in op.input_arg_names:
-                    if var_name in MCMC.special_vars:
+                    if var_name in PlanSpace.special_vars:
                         op_dist_attr.set_input_dims_mapping(var_name, [])
                     else:
                         dims_mapping = [-1 for i in vars[var_name].shape]
@@ -348,7 +353,7 @@ class PlanSpace:
                                                             dims_mapping)
 
                 for var_name in op.output_arg_names:
-                    if var_name in MCMC.special_vars:
+                    if var_name in PlanSpace.special_vars:
                         op_dist_attr.set_output_dims_mapping(var_name, [])
                     else:
                         dims_mapping = [-1 for i in vars[var_name].shape]
