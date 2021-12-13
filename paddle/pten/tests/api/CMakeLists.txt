@@ -22,3 +22,4 @@ cc_test(test_slice_api SRCS test_slice_api.cc DEPS pten_tensor pten_api pten_api
 cc_test(test_sum_api SRCS test_sum_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_scale_api SRCS test_scale_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_to_sparse_coo_api SRCS test_to_sparse_coo_api.cc DEPS pten_tensor pten_api pten_api_utils)
+cc_test(test_to_sparse_csr_api SRCS test_to_sparse_csr_api.cc DEPS pten_tensor pten_api pten_api_utils)

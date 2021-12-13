@@ -58,7 +58,13 @@ TEST(sparse_csr_tensor, construct) {
                          std::move(values_ptr),
                          dense_dims);
 
-  CHECK(sparse.nnz() == static_cast<int64_t>(non_zero_data.size()));
+  CHECK_EQ(sparse.nnz(), static_cast<int64_t>(non_zero_data.size()));
+  CHECK_EQ(sparse.numel(), 9);
+  CHECK(sparse.dims() == dense_dims);
+  CHECK(sparse.dtype() == DataType::FLOAT32);
+  CHECK(sparse.layout() == DataLayout::SPARSE_CSR);
+  CHECK(sparse.place() == paddle::platform::CPUPlace());
+  CHECK(sparse.initialized() == true);
 }
 
 }  // namespace tests
