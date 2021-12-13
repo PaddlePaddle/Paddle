@@ -120,13 +120,14 @@ def set_grad_enabled(mode):
 
 def is_grad_enabled():
     """
-    Returns currently dygraph gradient calculation mode which is enabled.
+    Returns whether current dygraph gradient calculation mode is enabled.
 
     Examples:
         .. code-block:: python
             
             import paddle
             
+            # Dygraph gradient calculation mode is enabled by default.
             paddle.is_grad_enabled() # True
 
             with paddle.set_grad_enabled(False):
