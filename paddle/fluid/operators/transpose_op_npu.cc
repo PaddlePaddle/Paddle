@@ -21,6 +21,10 @@ limitations under the License. */
 #define CANN_VERSION_CODE 503003
 #endif
 
+#ifndef CANN_VERSION_CODE
+#define CANN_VERSION_CODE 503003
+#endif
+
 namespace paddle {
 namespace operators {
 
