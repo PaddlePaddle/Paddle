@@ -142,7 +142,8 @@ MemoryBlock* MemoryBlock::Metadata() const {
       reinterpret_cast<const char*>(this) - aligned_desc_size));
 }
 
-size_t MemoryBlock::aligned_desc_size = AlignedMemoryBlockDescSize(32 /* bytes */);
+size_t MemoryBlock::aligned_desc_size =
+    AlignedMemoryBlockDescSize(64 /* bytes */);
 
 }  // namespace detail
 }  // namespace memory

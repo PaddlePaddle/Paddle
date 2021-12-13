@@ -61,11 +61,11 @@ inline size_t align(size_t size, size_t alignment) {
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
 
-  size_t size =
-      align(unaligned_size + MemoryBlock::aligned_desc_size + extra_padding_size_,
-            min_chunk_size_);
+  size_t size = align(
+      unaligned_size + MemoryBlock::aligned_desc_size + extra_padding_size_,
+      min_chunk_size_);
   VLOG(10) << "alloc: " << unaligned_size
-           << ", padding for desc: " << MemoryBlock::aligned_desc_size 
+           << ", padding for desc: " << MemoryBlock::aligned_desc_size
            << ", extra padding: " << extra_padding_size_
            << ", alignment: " << min_chunk_size_;
   // acquire the allocator lock

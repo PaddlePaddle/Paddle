@@ -323,8 +323,8 @@ class RecordedGpuMallocHelper {
   static std::once_flag once_flag_;
   static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
 
-  std::set<void *> gpu_ptrs; // just for testing
-};  // NOLINT
+  std::set<void *> gpu_ptrs;  // just for testing
+};                            // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
 std::vector<std::unique_ptr<RecordedGpuMallocHelper>>
