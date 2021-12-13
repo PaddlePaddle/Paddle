@@ -52,6 +52,8 @@ PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const void* value);
+PyObject* ToPyObject(
+    const std::unordered_map<std::string, std::vector<std::string>>& value);
 
 template <typename Tuple, size_t N>
 struct TupleEagerTensorResult {
