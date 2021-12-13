@@ -22,34 +22,15 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-// performance profile
-TEST(Analyzer_Resnet50_ipu, performance_profile) {
-  std::string model_dir = FLAGS_infer_model + "/" + "model";
-  AnalysisConfig config;
-  // num_ipu, enable_pipelining, batches_per_step, batch_size,
-  // need_avg_shard
-  config.EnableIpu(1, false);
-  config.SetModel(model_dir + "/model", model_dir + "/params");
-
-  std::vector<PaddleTensor> inputs;
-  const int batch = 1;
-  const int channel = 3;
-  const int height = 318;
-  const int width = 318;
-  const int input_num = batch * channel * height * width;
-  std::vector<float> input(input_num, 1);
-
-  PaddleTensor in;
-  in.shape = {batch, channel, height, width};
-  in.data =
-      PaddleBuf(static_cast<void*>(input.data()), input_num * sizeof(float));
-  in.dtype = PaddleDType::FLOAT32;
-  inputs.emplace_back(in);
-
-  std::vector<std::vector<PaddleTensor>> outputs;
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config*>(&config),
-                 {inputs}, &outputs, FLAGS_num_threads);
-}
+static std::vector<float> truth_values = {
+    127.779f,  738.165f,  1013.22f,  -438.17f,  366.401f,  927.659f,  736.222f,
+    -633.684f, -329.927f, -430.155f, -633.062f, -146.548f, -1324.28f, -1349.36f,
+    -242.675f, 117.448f,  -801.723f, -391.514f, -404.818f, 454.16f,   515.48f,
+    -133.031f, 69.293f,   590.096f,  -1434.69f, -1070.89f, 307.074f,  400.525f,
+    -316.12f,  -587.125f, -161.056f, 800.363f,  -96.4708f, 748.706f,  868.174f,
+    -447.938f, 112.737f,  1127.2f,   47.4355f,  677.72f,   593.186f,  -336.4f,
+    551.362f,  397.823f,  78.3979f,  -715.398f, 405.969f,  404.256f,  246.019f,
+    -8.42969f, 131.365f,  -648.051f};
 
 // Compare results with 1 batch
 TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
@@ -79,17 +60,6 @@ TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
   std::vector<PaddleTensor> outputs;
 
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
-
-  const std::vector<float> truth_values = {
-      127.779f,  738.165f,  1013.22f,  -438.17f,  366.401f,  927.659f,
-      736.222f,  -633.684f, -329.927f, -430.155f, -633.062f, -146.548f,
-      -1324.28f, -1349.36f, -242.675f, 117.448f,  -801.723f, -391.514f,
-      -404.818f, 454.16f,   515.48f,   -133.031f, 69.293f,   590.096f,
-      -1434.69f, -1070.89f, 307.074f,  400.525f,  -316.12f,  -587.125f,
-      -161.056f, 800.363f,  -96.4708f, 748.706f,  868.174f,  -447.938f,
-      112.737f,  1127.2f,   47.4355f,  677.72f,   593.186f,  -336.4f,
-      551.362f,  397.823f,  78.3979f,  -715.398f, 405.969f,  404.256f,
-      246.019f,  -8.42969f, 131.365f,  -648.051f};
 
   const size_t expected_size = 1;
   EXPECT_EQ(outputs.size(), expected_size);
@@ -129,17 +99,6 @@ TEST(Analyzer_Resnet50_ipu, compare_results_2_batch) {
   std::vector<PaddleTensor> outputs;
 
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
-
-  const std::vector<float> truth_values = {
-      127.779f,  738.165f,  1013.22f,  -438.17f,  366.401f,  927.659f,
-      736.222f,  -633.684f, -329.927f, -430.155f, -633.062f, -146.548f,
-      -1324.28f, -1349.36f, -242.675f, 117.448f,  -801.723f, -391.514f,
-      -404.818f, 454.16f,   515.48f,   -133.031f, 69.293f,   590.096f,
-      -1434.69f, -1070.89f, 307.074f,  400.525f,  -316.12f,  -587.125f,
-      -161.056f, 800.363f,  -96.4708f, 748.706f,  868.174f,  -447.938f,
-      112.737f,  1127.2f,   47.4355f,  677.72f,   593.186f,  -336.4f,
-      551.362f,  397.823f,  78.3979f,  -715.398f, 405.969f,  404.256f,
-      246.019f,  -8.42969f, 131.365f,  -648.051f};
 
   const size_t expected_size = 1;
   EXPECT_EQ(outputs.size(), expected_size);
