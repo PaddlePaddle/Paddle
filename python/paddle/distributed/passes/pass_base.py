@@ -21,7 +21,7 @@ from paddle.fluid.framework import program_guard, _apply_pass as _apply_cpp_pass
 class PassContext:
     def __init__(self):
         self._applied_passes = []
-        self._attrs = []
+        self._attrs = {}
 
     def set_attr(self, key, value):
         self._attrs[key] = value
