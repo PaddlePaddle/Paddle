@@ -460,8 +460,6 @@ __all__ = [  # noqa
            'pow',
            'zeros_like',
            'maximum',
-           'fmax',
-           'fmin',
            'topk',
            'index_select',
            'CPUPlace',
@@ -570,4 +568,6 @@ __all__ = [  # noqa
            'as_real',
            'diff',
            'angle',
+           'fmax',
+           'fmin',
 ]
