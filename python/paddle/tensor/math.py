@@ -2796,9 +2796,11 @@ def gcd(x, y, name=None):
     Note:
         gcd(0,0)=0, gcd(0, y)=|y|
 
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
     Args:
-        x, y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2808,7 +2810,6 @@ def gcd(x, y, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             
             x1 = paddle.to_tensor(12)
             x2 = paddle.to_tensor(20)
@@ -2816,7 +2817,7 @@ def gcd(x, y, name=None):
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [4])
 
-            x3 = paddle.to_tensor(np.arange(6))
+            x3 = paddle.arange(6)
             paddle.gcd(x3, x2)
             # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [20, 1 , 2 , 1 , 4 , 5])
@@ -2873,9 +2874,11 @@ def lcm(x, y, name=None):
     Note:
         lcm(0,0)=0, lcm(0, y)=0
 
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
     Args:
-        x, y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
-            If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2885,7 +2888,6 @@ def lcm(x, y, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             
             x1 = paddle.to_tensor(12)
             x2 = paddle.to_tensor(20)
@@ -2893,7 +2895,7 @@ def lcm(x, y, name=None):
             # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [60])
 
-            x3 = paddle.to_tensor(np.arange(6))
+            x3 = paddle.arange(6)
             paddle.lcm(x3, x2)
             # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [0, 20, 20, 60, 20, 20])
@@ -3082,7 +3084,6 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
 
         return out
 
-
 def angle(x, name=None):
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
@@ -3098,7 +3099,7 @@ def angle(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
 
     Examples:
         .. code-block:: python
