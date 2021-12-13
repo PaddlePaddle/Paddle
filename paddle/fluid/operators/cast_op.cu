@@ -16,64 +16,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/include/manipulation.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename InT, typename OutT, int VecSize>
-__global__ void VecCastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
-  using LoadT = platform::AlignedVector<InT, VecSize>;
-  using StoreT = platform::AlignedVector<OutT, VecSize>;
-
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (int64_t i = idx * VecSize; i < N;
-       i += blockDim.x * gridDim.x * VecSize) {
-    LoadT in_val;
-    platform::Load<InT, VecSize>(&in[i], &in_val);
-
-    StoreT out_val;
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      out_val[j] = static_cast<OutT>(in_val[j]);
-    }
-
-    platform::Store<OutT, VecSize>(out_val, &out[i]);
-  }
-}
-
-template <typename InT, typename OutT>
-__global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
-  CUDA_KERNEL_LOOP(index, N) { out[index] = static_cast<OutT>(in[index]); }
-}
-
-template <typename InT>
-struct CastCUDAOpFunctor {
-  const framework::Tensor* in_;
-  framework::Tensor* out_;
-  const platform::CUDADeviceContext& ctx_;
-  CastCUDAOpFunctor(const framework::Tensor* in, framework::Tensor* out,
-                    const platform::CUDADeviceContext& ctx)
-      : in_(in), out_(out), ctx_(ctx) {}
-
-  template <typename OutT>
-  void apply() const {
-    auto* in = in_->data<InT>();
-    auto size = in_->numel();
-    auto* out = out_->mutable_data<OutT>(ctx_.GetPlace());
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(ctx_, size);
-    int vec_size = platform::GetVectorizedSize<OutT>(out);
-    if (!std::is_same<InT, OutT>::value && vec_size == 4 && size % 4 == 0) {
-      VecCastCUDAKernel<InT, OutT, 4><<<
-          config.block_per_grid, config.thread_per_block, 0, ctx_.stream()>>>(
-          in, size, out);
-    } else {
-      CastCUDAKernel<InT, OutT><<<config.block_per_grid,
-                                  config.thread_per_block, 0, ctx_.stream()>>>(
-          in, size, out);
-    }
-  }
-};
 
 template <typename InT>
 class CastCUDAOpKernel : public framework::OpKernel<InT> {
@@ -81,12 +27,25 @@ class CastCUDAOpKernel : public framework::OpKernel<InT> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    framework::VisitDataType(
-        static_cast<framework::proto::VarType::Type>(
-            context.Attr<int>("out_dtype")),
-        CastCUDAOpFunctor<InT>(
-            in, out,
-            context.template device_context<platform::CUDADeviceContext>()));
+
+    auto out_dtype = context.Attr<int>("out_dtype");
+    auto in_dtype = context.Attr<int>("in_dtype");
+
+    auto& dev_ctx = context.cuda_device_context();
+    out->mutable_data(dev_ctx.GetPlace(),
+                      static_cast<framework::proto::VarType::Type>(out_dtype));
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*in);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
+
+    auto pt_out_dtype = pten::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+    auto pt_in_dtype = pten::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(in_dtype));
+
+    // casll new kernel
+    pten::Cast<InT>(dev_ctx, *pt_x.get(), pt_out_dtype, pt_in_dtype,
+                    pt_out.get());
   }
 };
 
