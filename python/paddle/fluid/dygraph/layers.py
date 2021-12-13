@@ -1507,7 +1507,7 @@ class Layer(object):
         Examples:
             .. code-block:: python
 
-                # required: gpu
+                # required: skip
                 import paddle
 
                 linear=paddle.nn.Linear(2, 2)
