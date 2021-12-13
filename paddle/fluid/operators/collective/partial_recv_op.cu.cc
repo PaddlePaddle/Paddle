@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -80,7 +80,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
     int recv_numel = numel / num;
     int offset = recv_numel * id;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::ncclRecv(out->data<T>() + offset, recv_numel, dtype,
                                     peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv " << recv_numel

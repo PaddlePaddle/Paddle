@@ -56,8 +56,8 @@ TEST(ComputeInterceptor, Compute) {
   TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
 
   // a->b->c
-  node_a->AddDownstreamTask(1);
-  node_b->AddUpstreamTask(0);
+  node_a->AddDownstreamTask(1, 3);
+  node_b->AddUpstreamTask(0, 3);
   node_b->AddDownstreamTask(2);
   node_c->AddUpstreamTask(1);
 

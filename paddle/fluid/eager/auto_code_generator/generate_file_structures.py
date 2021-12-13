@@ -18,12 +18,6 @@ import os
 if __name__ == "__main__":
     assert len(sys.argv) == 2
     eager_dir = sys.argv[1]
-
-    op_list = []
-    with open(f"{eager_dir}/auto_code_generator/op_list.txt", "r") as f:
-        for line in f:
-            line = str(line.strip())
-            op_list.append(line)
     """
     paddle/fluid/eager
     |- generated
@@ -31,15 +25,15 @@ if __name__ == "__main__":
     |  |  "add_subdirectory(forwards), add_subdirectory(nodes)"
     |  
     |  |- forwards
-    |     |- op_name + "_dygraph.cc"
+    |     |- "dygraph_forward_functions.cc"
     |     |- CMakeLists.txt
-    |     |  "cc_library(dygraph_function SRCS op_name+"_dygraph.cc" DEPS ${eager_deps} ${fluid_deps} GLOB_OP_LIB)"
+    |     |  "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} GLOB_OP_LIB)"
     |
     |  |- nodes
-    |     |- op_name + "_node.cc"
-    |     |- op_name + "_node.h"
+    |     |- "nodes.cc"
+    |     |- "nodes.h"
     |     |- CMakeLists.txt
-    |     |  "cc_library(dygraph_node SRCS op_name+"_node.cc" DEPS ${eager_deps} ${fluid_deps})"
+    |     |  "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps})"
     | 
     |  |- dygraph_forward_api.h
     """
@@ -56,10 +50,10 @@ if __name__ == "__main__":
     dygraph_forward_api_h_path = os.path.join(generated_dir,
                                               "dygraph_forward_api.h")
     empty_files = [dygraph_forward_api_h_path]
-    for op_name in op_list:
-        empty_files.append(os.path.join(forwards_dir, op_name + "_dygraph.cc"))
-        empty_files.append(os.path.join(nodes_dir, op_name + "_node.cc"))
-        empty_files.append(os.path.join(nodes_dir, op_name + "_node.h"))
+    empty_files.append(
+        os.path.join(forwards_dir, "dygraph_forward_functions.cc"))
+    empty_files.append(os.path.join(nodes_dir, "nodes.cc"))
+    empty_files.append(os.path.join(nodes_dir, "nodes.h"))
 
     for path in empty_files:
         if not os.path.exists(path):
@@ -73,14 +67,14 @@ if __name__ == "__main__":
 
     with open(nodes_level_cmakelist_path, "w") as f:
         f.write(
-            "cc_library(dygraph_node SRCS %s DEPS ${eager_deps} ${fluid_deps})\n"
-            % " ".join([op_name + '_node.cc' for op_name in op_list]))
+            "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps})\n"
+        )
         f.write("add_dependencies(dygraph_node eager_codegen)")
 
     with open(forwards_level_cmakelist_path, "w") as f:
         f.write(
-            "cc_library(dygraph_function SRCS %s DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB})\n"
-            % " ".join([op_name + '_dygraph.cc' for op_name in op_list]))
+            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
+        )
         f.write("add_dependencies(dygraph_function eager_codegen)")
 
     with open(generated_level_cmakelist_path, "w") as f:

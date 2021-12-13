@@ -106,10 +106,14 @@ from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
 from .manipulation import flip  # noqa: F401
+from .manipulation import rot90  # noqa: F401
 from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
+from .manipulation import as_complex  # noqa: F401
+from .manipulation import as_real  # noqa: F401
+
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -121,6 +125,7 @@ from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import cumprod  # noqa: F401
+from .math import logit  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
 from .math import expm1  # noqa: F401
@@ -192,8 +197,12 @@ from .math import diagonal  # noqa: F401
 from .math import acosh  # noqa: F401
 from .math import asinh  # noqa: F401
 from .math import atanh  # noqa: F401
+from .math import lerp  # noqa: F401
+from .math import lerp_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
+from .math import gcd  # noqa: F401
+from .math import lcm  # noqa: F401
 from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
 
@@ -263,6 +272,7 @@ tensor_method_func  = [ #noqa
            'cosh',
            'cumsum',
            'cumprod',
+           'logit',
            'exp',
            'exp_',
            'floor',
@@ -373,6 +383,7 @@ tensor_method_func  = [ #noqa
            'unsqueeze_',
            'unstack',
            'flip',
+           'rot90',
            'unbind',
            'roll',
            'tile',
@@ -411,7 +422,15 @@ tensor_method_func  = [ #noqa
            'asinh',
            'atanh',
            'acosh',
+           'as_complex',
+           'as_real',
+           'rad2deg',
+           'deg2rad',
+           'gcd',
+           'lcm',
            'diff',
+           'lerp',
+           'lerp_',
            'angle',
 ]
 

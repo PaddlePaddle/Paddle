@@ -182,6 +182,15 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
     if (if_inplace) {
+      // when pylayer forward is inplace strategy, check whether tensor is leaf
+      for (auto& t : input_vars) {
+        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(), false,
+                          platform::errors::InvalidArgument(
+                              "Leaf Var (%s) that doesn't stop gradient can't "
+                              "use inplace strategy.",
+                              t->Name()));
+      }
+
       inplace_map["X"] = "Out";
     }
 

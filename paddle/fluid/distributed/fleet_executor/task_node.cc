@@ -57,14 +57,14 @@ TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {}
 
-bool TaskNode::AddUpstreamTask(int64_t task_id) {
-  const auto& ret = upstream_.insert(task_id);
-  return *ret.first == task_id;
+bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
+  const auto& ret = upstream_.emplace(task_id, buff_size);
+  return ret.second;
 }
 
-bool TaskNode::AddDownstreamTask(int64_t task_id) {
-  const auto& ret = downstream_.insert(task_id);
-  return *ret.first == task_id;
+bool TaskNode::AddDownstreamTask(int64_t task_id, int64_t buff_size) {
+  const auto& ret = downstream_.emplace(task_id, buff_size);
+  return ret.second;
 }
 
 std::string TaskNode::DebugString() const {

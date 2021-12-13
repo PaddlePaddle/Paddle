@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 
+#include <utility>
 #include <vector>
 
 #include "paddle/pten/core/compat_utils.h"
@@ -340,6 +341,29 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
           "The destination LoDTensor is nullptr when move storage."));
   SetLoD(dst->mutable_lod(), src->lod());
   MovesStorage(src, static_cast<paddle::framework::Tensor*>(dst));
+}
+
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::Tensor* dst) {
+  PADDLE_ENFORCE_NOT_NULL(
+      src,
+      platform::errors::InvalidArgument(
+          "The source DenseTensor is nullptr when move allocation."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst,
+      platform::errors::InvalidArgument(
+          "The destination Tensor is nullptr when move allocation."));
+  dst->Resize(src->dims());
+  auto* storage = static_cast<SharedStorage*>(
+      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+  dst->ResetHolderWithType(storage->GetAllocation(),
+                           pten::TransToProtoVarType(src->dtype()));
+}
+
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::LoDTensor* dst) {
+  MovesSharedStorage(src, static_cast<paddle::framework::Tensor*>(dst));
+  SetLoD(dst->mutable_lod(), src->lod());
 }
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
