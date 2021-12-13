@@ -68,7 +68,8 @@ DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace framework {
-paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
+
+ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
@@ -76,7 +77,7 @@ paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   fin.read(&buffer[0], buffer.size());
   fin.close();
 
-  paddle::framework::ProgramDesc program_desc(buffer);
+  ProgramDesc program_desc(buffer);
   return program_desc;
 }
 
@@ -85,7 +86,7 @@ TEST(StandaloneExecutor, run) {
   int64_t batch_size = 20;
   int enable_profiler = 0;
 
-  auto place = paddle::platform::CUDAPlace(0);
+  auto place = platform::CUDAPlace(0);
   auto test_prog = load_from_file("lm_startup_program");
   auto main_prog = load_from_file("lm_main_program");
 
@@ -106,9 +107,8 @@ TEST(StandaloneExecutor, run) {
   shape3[0] = batch_size;
   op3->SetAttr("shape", shape3);
 
-  paddle::framework::Scope scope;
-  paddle::framework::StandaloneExecutor exec(place, test_prog, main_prog,
-                                             &scope);
+  Scope scope;
+  StandaloneExecutor exec(place, test_prog, main_prog, &scope);
   exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
   if (enable_profiler) {
