@@ -21,13 +21,19 @@ function ref_whl(){
   if [[ ${ref_CUDA_MAJOR} == "11.0" ]];then
       ref_version=.post110
       ref_dockerfile=cuda110
+  elif [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
+      ref_version=.post112
+      ref_dockerfile=cuda112
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
       ref_version=.post101
       ref_dockerfile=cuda101
+  elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
+      ref_version=""
+      ref_dockerfile=cuda102
   fi
 
-  ref_web="https://paddle-wheel.bj.bcebos.com/with-trt/${PADDLE_BRANCH}-${ref_gpu}-mkl-gcc8.2"
-  ref_paddle37_whl=paddlepaddle_gpu-${PADDLE_VERSION}${ref_version}-cp37-cp37m-linux_x86_64.whl
+  ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}/linux/linux-${ref_gpu}-mkl-gcc8.2-avx"
+  ref_paddle37_whl=paddlepaddle_gpu-${PADDLE_VERSION/-/}${ref_version}-cp37-cp37m-linux_x86_64.whl
 }
 
 
