@@ -30,17 +30,6 @@ void SetIpuConfig(AnalysisConfig *cfg, bool use_ipu = false,
   }
 }
 
-void profile(bool use_ipu = false) {
-  AnalysisConfig config;
-  SetIpuConfig(&config, use_ipu);
-
-  std::vector<std::vector<PaddleTensor>> outputs;
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
-}
-
 // Compare Deterministic result
 TEST(Analyzer_Ernie_ipu, compare_determine) {
   AnalysisConfig cfg;
