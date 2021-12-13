@@ -65,6 +65,8 @@ USE_OP(memcpy_h2d);
 USE_OP(memcpy_d2h);
 DECLARE_double(eager_delete_tensor_gb);
 
+namespace paddle {
+namespace framework {
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
@@ -137,3 +139,6 @@ int main(int argc, char* argv[]) {
 
   return 1;
 }
+
+}  // namespace framework
+}  // namespace paddle

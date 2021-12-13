@@ -12,4 +12,13 @@ cc_library(stream_analyzer SRCS stream_analyzer.cc DEPS ${DEVICE_EVENT_LIBS} glo
 cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_garbage_collector stream_analyzer event_manager)
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
-cc_binary(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+
+if (WITH_TESTING)
+    add_custom_target(
+        download_program
+        COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
+        COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program 
+    )
+    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+    add_dependencies(standalone_executor_test download_program)
+endif()
