@@ -132,7 +132,7 @@ inline void UpdateKsize(std::vector<T>* ksize,
 inline int getReduceNum(const framework::Tensor& input,
                         const framework::Tensor* output,
                         const std::string data_format,
-                        std::vector<int>* reduce_dim) {
+                        std::vector<int64_t>* reduce_dim) {
   // data_format only can be NCHW
   bool channel_last = (data_format == "NHWC");
   if (channel_last) {
@@ -201,7 +201,7 @@ class PoolKernel : public framework::OpKernel<T> {
                          true, false, out, pool_process);
 
         } else if (pooling_type == "avg") {
-          std::vector<int> reduce_dim;
+          std::vector<int64_t> reduce_dim;
           int reduce_num = getReduceNum(*in_x, out, data_format, &reduce_dim);
 
           if (reduce_num > 0 &&

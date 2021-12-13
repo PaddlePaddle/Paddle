@@ -90,7 +90,7 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
                             platform::errors::InvalidArgument(
                                 "Input(X) of ClipByNormOp should not be null. "
                                 "Please check if it is created correctly."));
-    std::vector<int> reduce_dims;
+    std::vector<int64_t> reduce_dims;
     reduce_dims.resize(input->dims().size());
     for (int i = 0; i < reduce_dims.size(); ++i) {
       reduce_dims[i] = i;

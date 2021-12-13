@@ -35,6 +35,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -193,9 +194,9 @@ void SetConfigForColumnReduce(const int max_threads, const int reduce_num,
 
   int num_block = (max_threads / left_num);
   if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-    *blocking_size = details::GetLastPow2(reduce_num / num_block);
+    *blocking_size = pten::detail::details::GetLastPow2(reduce_num / num_block);
     if (*blocking_size <= 1) {
-      *blocking_size = details::GetLastPow2(sqrt(reduce_num));
+      *blocking_size = pten::detail::details::GetLastPow2(sqrt(reduce_num));
     } else if (*blocking_size * 2 < reduce_num) {
       *blocking_size *= 2;
     }

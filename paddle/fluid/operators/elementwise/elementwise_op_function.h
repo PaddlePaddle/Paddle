@@ -2595,12 +2595,12 @@ static inline void GetDoubleGradSafeTensor(
 }
 
 // for broadcast backwards
-static inline std::vector<int> GetReduceDim(const framework::DDim &in,
-                                            const framework::DDim &out,
-                                            int axis) {
+static inline std::vector<int64_t> GetReduceDim(const framework::DDim &in,
+                                                const framework::DDim &out,
+                                                int axis) {
   axis =
       (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);
-  std::vector<int> dims;
+  std::vector<int64_t> dims;
   for (int i = 0; i < axis; ++i) {
     dims.push_back(i);
   }

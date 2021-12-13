@@ -67,7 +67,8 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
         dx->clear();
         dx->mutable_data<T>(x->dims(), ctx.GetPlace());
       }
-      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
+      std::vector<int64_t> reduce_dims =
+          GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
       TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dx, reduce_dims, stream);
     }
@@ -88,7 +89,8 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
             dy->mutable_data<T>(ctx.GetPlace()));
       }
     } else {
-      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
+      std::vector<int64_t> reduce_dims =
+          GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
       TensorReduceFunctorImpl<T, T, CustomSub>(*dout, dy, reduce_dims, stream);
     }
