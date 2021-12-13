@@ -33,7 +33,7 @@ class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
         data_format = draw(st.sampled_from(["NCDHW", "NDHWC"]))
         dilations = draw(st.sampled_from([[1, 1, 1], [2, 2, 2], [1, 2, 1]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
+        groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3, 2], [1, 2, 3, 4, 3, 1]]))
         strides = draw(st.sampled_from([[1, 1, 1], [2, 2, 2], [1, 2, 1]]))
         axis = draw(st.sampled_from([1]))
