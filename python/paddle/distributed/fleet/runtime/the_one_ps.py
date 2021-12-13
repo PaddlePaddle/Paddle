@@ -24,7 +24,6 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
-import paddle.distributed.fleet as fleet
 
 __all__ = []
 
@@ -51,6 +50,94 @@ def parse_table_class(varname, o_main_program):
                 return op.attr('table_class')
             else:
                 return "MemorySparseTable"
+
+
+def get_default_accessor_proto(accessor, varname, o_main_program):
+    embedding_dim = 0
+    for var in o_main_program.list_vars():
+        if var.name == varname:
+            embedding_dim = var.shape[1]
+            break
+
+    if not accessor.HasField("accessor_class"):
+        accessor.accessor_class = "CtrCommonAccessor"
+    if not accessor.HasField("fea_dim"):
+        accessor.fea_dim = embedding_dim + 2
+    if not accessor.HasField("embedx_dim"):
+        accessor.embedx_dim = embedding_dim - 1
+    if not accessor.HasField("embedx_threshold"):
+        accessor.embedx_threshold = 0
+
+    ctr_accessor_param = accessor.ctr_accessor_param
+    if not ctr_accessor_param.HasField("nonclk_coeff"):
+        ctr_accessor_param.nonclk_coeff = 0.1
+    if not ctr_accessor_param.HasField("click_coeff"):
+        ctr_accessor_param.click_coeff = 1.0
+    if not ctr_accessor_param.HasField("base_threshold"):
+        ctr_accessor_param.base_threshold = 0
+    if not ctr_accessor_param.HasField("delta_threshold"):
+        ctr_accessor_param.delta_threshold = 0
+    if not ctr_accessor_param.HasField("delta_keep_days"):
+        ctr_accessor_param.delta_keep_days = 16
+    if not ctr_accessor_param.HasField("show_click_decay_rate"):
+        ctr_accessor_param.show_click_decay_rate = 1
+    if not ctr_accessor_param.HasField("delete_threshold"):
+        ctr_accessor_param.delete_threshold = 0
+    if not ctr_accessor_param.HasField("delete_after_unseen_days"):
+        ctr_accessor_param.delete_after_unseen_days = 30
+    if not ctr_accessor_param.HasField("ssd_unseenday_threshold"):
+        ctr_accessor_param.ssd_unseenday_threshold = 1
+
+    for sgd_param in [accessor.embed_sgd_param, accessor.embedx_sgd_param]:
+        if not sgd_param.HasField("name"):
+            sgd_param.name = "SparseAdaGradSGDRule"
+        if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
+            if not sgd_param.adagrad.HasField("learning_rate"):
+                sgd_param.adagrad.learning_rate = 0.05
+            if not sgd_param.adagrad.HasField("initial_g2sum"):
+                sgd_param.adagrad.initial_g2sum = 3.0
+            if not sgd_param.adagrad.HasField("initial_range"):
+                sgd_param.adagrad.initial_range = 0.0001
+            if len(sgd_param.adagrad.weight_bounds) == 0:
+                sgd_param.adagrad.weight_bounds.extend([-10.0, 10.0])
+        if sgd_param.name == "SparseNaiveSGDRule":
+            if not sgd_param.naive.HasField("learning_rate"):
+                sgd_param.naive.learning_rate = 0.05
+            if not sgd_param.naive.HasField("initial_range"):
+                sgd_param.naive.initial_range = 0.0001
+            if len(sgd_param.naive.weight_bounds) == 0:
+                sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
+        if sgd_param.name == "SparseAdamSGDRule":
+            if not sgd_param.adam.HasField("learning_rate"):
+                sgd_param.adam.learning_rate = 0.001
+            if not sgd_param.adam.HasField("initial_range"):
+                sgd_param.adam.initial_range = 0.0001
+            if not sgd_param.adam.HasField("beta1_decay_rate"):
+                sgd_param.adam.beta1_decay_rate = 0.9
+            if not sgd_param.adam.HasField("beta2_decay_rate"):
+                sgd_param.adam.beta2_decay_rate = 0.999
+            if not sgd_param.adam.HasField("ada_epsilon"):
+                sgd_param.adam.ada_epsilon = 1e-08
+            if len(sgd_param.adam.weight_bounds) == 0:
+                sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
+
+
+def check_embedding_dim(accessor, varname, o_main_program):
+    embedding_dim = 0
+    for var in o_main_program.list_vars():
+        if var.name == varname:
+            embedding_dim = var.shape[1]
+            break
+    fea_dim = accessor.fea_dim
+    if fea_dim != embedding_dim + 2:
+        raise ValueError(
+            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
+            format(embedding_dim + 2, fea_dim))
+    embedx_dim = accessor.embedx_dim
+    if embedx_dim != embedding_dim - 1:
+        raise ValueError(
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
+            format(embedding_dim - 1, embedx_dim))
 
 
 class Accessor:
@@ -344,6 +431,11 @@ class Table:
         self.accessor_proto = None
 
     def to_string(self, indent):
+        # if self.id == 1:
+        #     proto_txt = ''
+        #     with open('./sparse_table.prototxt') as f:
+        #         proto_txt = f.read()
+        #     return proto_txt
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
@@ -586,6 +678,8 @@ class TheOnePSRuntime(RuntimeBase):
             return kwargs
 
         proto_txt = str(worker) + "\n" + str(server)
+        with open('proto_txt', 'w') as f:
+            f.write(proto_txt)
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
@@ -847,54 +941,44 @@ class TheOnePSRuntime(RuntimeBase):
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        table.table_class = parse_table_class(
-                            common.table_name, self.origin_main_program)
-                        table_proto = self.context[
+                        all_table_proto = self.context[
                             "user_defined_strategy"].sparse_table_configs
-                        table.shard_num = table_proto.shard_num
+                        table_proto = all_table_proto.add()
+                        for proto in all_table_proto:
+                            if proto.table_name == common.table_name:
+                                table_proto = proto
+                                break
+                        if table_proto.HasField("table_class"):
+                            table.table_class = table_proto.table_class
+                        else:
+                            table.table_class = parse_table_class(
+                                common.table_name, self.origin_main_program)
+                        if table.table_class != 'MemorySparseTable':
+                            table.table_class = 'MemorySparseTable'
+                            warnings.warn(
+                                "The PS mode must use MemorySparseTable.")
+
+                        if table_proto.HasField("shard_num"):
+                            table.shard_num = table_proto.shard_num
+                        else:
+                            table.shard_num = 1000
+                            warnings.warn(
+                                "The shard_num of sparse table is not set, use default value 1000."
+                            )
+
+                        if table_proto.accessor.ByteSize() == 0:
+                            warnings.warn(
+                                "The accessor of sparse table is not set, use default value."
+                            )
+                        get_default_accessor_proto(table_proto.accessor,
+                                                   common.table_name,
+                                                   self.origin_main_program)
+                        check_embedding_dim(table_proto.accessor,
+                                            common.table_name,
+                                            self.origin_main_program)
                         from google.protobuf import text_format
                         table.accessor_proto = text_format.MessageToString(
                             table_proto.accessor)
-
-                        print('table proto:', table_proto)
-                        if table.table_class == 'MemorySparseTable' and table.accessor_proto == '':
-                            emb_dim = ctx.sections()[1]
-                            table.shard_num = 1950
-                            table.accessor_proto = 'accessor_class: "CtrCommonAccessor"\n' \
-                                                   'embed_sgd_param {\n' \
-                                                   '  name: "SparseAdaGradSGDRule"\n' \
-                                                   '  adagrad {\n' \
-                                                   '    learning_rate: 0.05\n' \
-                                                   '    initial_g2sum: 3.0\n' \
-                                                   '    initial_range: 0.0001\n' \
-                                                   '    weight_bounds: -10.0\n' \
-                                                   '    weight_bounds: 10.0\n' \
-                                                   '  }\n' \
-                                                   '}\n' \
-                                                   'embedx_sgd_param {\n' \
-                                                   '  name: "SparseAdaGradSGDRule"\n' \
-                                                   '  adagrad {\n' \
-                                                   '    learning_rate: 0.05\n' \
-                                                   '    initial_g2sum: 3.0\n' \
-                                                   '    initial_range: 0.0001\n' \
-                                                   '    weight_bounds: -10.0\n' \
-                                                   '    weight_bounds: 10.0\n' \
-                                                   '  }\n' \
-                                                   '}\n' \
-                                                   'fea_dim: ' + str(emb_dim+2) + '\n' \
-                                                   'embedx_dim: ' + str(emb_dim-1) + '\n' \
-                                                   'embedx_threshold: 10\n' \
-                                                   'ctr_accessor_param {\n' \
-                                                   '  nonclk_coeff: 0.1\n' \
-                                                   '  click_coeff: 1.0\n' \
-                                                   '  base_threshold: 1.5\n' \
-                                                   '  delta_threshold: 0.25\n' \
-                                                   '  delta_keep_days: 16.0\n' \
-                                                   '  show_click_decay_rate: 0.98\n' \
-                                                   '  delete_threshold: 0.8\n' \
-                                                   '  delete_after_unseen_days: 30.0\n' \
-                                                   '  ssd_unseenday_threshold: 1\n' \
-                                                   '}'
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -916,7 +1000,6 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "true"
                 else:
                     common.sync = "false"
-
                 table.common = common
 
                 if table.table_class != 'MemorySparseTable':
@@ -1108,8 +1191,6 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
-        self._communicator.pull_dense(denses)
-
         import paddle
         for var in remaining_vars:
             # if var.name not in recv_dense_varnames:
@@ -1208,11 +1289,8 @@ class TheOnePSRuntime(RuntimeBase):
             is_dense=False,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
-        print("the one ps sparses:", sparses)
-        sparse_names = []
-        for id, name in sparses.items():
-            sparse_names.extend(name)
-        print("the one ps sparse names:", sparse_names)
+        sparse_names = self._save_sparse_params(executor, dirname, sparses,
+                                                main_program, mode)
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
@@ -1225,18 +1303,15 @@ class TheOnePSRuntime(RuntimeBase):
         generate_vars = [var for var in generate_vars]
         remaining_vars = list(
             filter(
-                TheOnePSRuntime.__exclude_vars(generate_vars + sparse_names),
+                TheOnePSRuntime.__exclude_vars(sparse_names),
                 infer_program.list_vars()))
-        print("remain_vars:", [var.name for var in remaining_vars])
+
         for var in remaining_vars:
             tensor = var.get_value()
             paddle.save(
                 tensor,
                 os.path.join(model_path, var.name),
                 use_binary_format=True)
-
-        self._ps_inference_save_persistables(executor, dirname, infer_program,
-                                             mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
@@ -1314,8 +1389,15 @@ class TheOnePSRuntime(RuntimeBase):
             self._load_distributed_persistables(path, mode)
         else:
             self._ps_inference_load_inference_model(path, mode)
+        # self._load_distributed_persistables(path, mode=mode)
 
-    def _shrink(self, threshold):
+    def _shrink(self, threshold=None):
+        if threshold is not None:
+            warnings.warn(
+                "The param threshold is not used in MemorySparseTable, if you need to shrink, please set the config of accessor"
+            )
+        else:
+            threshold = 0
         import paddle.distributed.fleet as fleet
         fleet.util.barrier()
         if self.role_maker._is_first_worker():

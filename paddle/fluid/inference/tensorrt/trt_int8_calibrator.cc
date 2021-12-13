@@ -85,7 +85,7 @@ bool TRTInt8Calibrator::setBatch(
           engine_name_, it.first));
     }
     const auto& d = dataptr->second;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice));
   }
 

@@ -307,12 +307,28 @@ void SetTensorFromPyArrayT(
     platform::XPUDeviceGuard guard(
         BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
-    xpu_memcpy(dst, array.data(), array.nbytes(),
-               XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, tmp_place),
+                 static_cast<void *>(dst), platform::CPUPlace(),
+                 static_cast<const void *>(array.data()), array.nbytes());
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
+#endif
+  } else if (paddle::platform::is_ipu_place(place)) {
+#ifdef PADDLE_WITH_IPU
+    if (zero_copy) {
+      auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
+      auto type = framework::ToDataType(std::type_index(typeid(T)));
+      self->ResetHolderWithType(holder, type);
+    } else {
+      auto dst = self->mutable_data<T>(place);
+      std::memcpy(dst, array.data(), array.nbytes());
+    }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
+        "Please recompile or reinstall Paddle with IPU support."));
 #endif
   } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL

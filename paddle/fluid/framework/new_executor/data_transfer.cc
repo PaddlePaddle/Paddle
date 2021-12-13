@@ -137,7 +137,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_layout_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(new_var_name);
+  auto* ptr = local_scope->Var(*new_var_name);
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
@@ -171,8 +171,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(new_var_name);
-  var_scope->SetVarDesc(var_name, nullptr);
+  auto* ptr = local_scope->Var(*new_var_name);
+
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
 
@@ -211,7 +211,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 1. Generate new_var_name and Initialize it
   *new_var_name =
       var_name + "_device_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(new_var_name);
+  auto* ptr = local_scope->Var(*new_var_name);
 
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
@@ -266,10 +266,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         tensor_in =
             static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Variable type is %s, expect LoDTensor or SelectedRows or "
-            "LoDTensorArray.",
-            ToTypeName(var->Type())));
+        continue;
       }
       if (!tensor_in->IsInitialized()) {
         continue;

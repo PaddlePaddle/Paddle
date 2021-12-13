@@ -503,7 +503,7 @@ def append_send_ops_pass(program, config):
         split_dense_table=config.is_heter_ps_mode)
 
     for merged_name, send in sends.items():
-        if send.is_sparse():
+        if send.is_sparse() and not config.is_geo_mode():
             continue
         is_sparse = 1 if send.is_sparse() else 0
         is_sparse = 2 if send.is_distributed() else is_sparse
@@ -771,7 +771,7 @@ def find_heter_ops(program, default_device="cpu"):
 
                 """
                 output_vars_no_grad = []
-                for key in pre_op.output_names:
+                for key in op.output_names:
                     for varname in op.output(key):
                         if varname == "@EMPTY@":
                             continue

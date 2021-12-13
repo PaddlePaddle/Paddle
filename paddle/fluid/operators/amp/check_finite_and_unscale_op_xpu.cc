@@ -40,8 +40,10 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
 
     MPDType cpu_scale_data;
     if (platform::is_xpu_place(scale->place())) {
-      xpu_memcpy(&cpu_scale_data, scale_data, sizeof(MPDType),
-                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_scale_data),
+                   BOOST_GET_CONST(platform::XPUPlace, scale->place()),
+                   static_cast<const void*>(scale_data), sizeof(MPDType));
+
     } else {
       cpu_scale_data = (*scale_data);
     }
