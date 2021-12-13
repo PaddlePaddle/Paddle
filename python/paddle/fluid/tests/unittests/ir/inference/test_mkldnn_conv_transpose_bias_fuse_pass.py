@@ -43,38 +43,25 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
+        groups = draw(st.sampled_from([1, 2, 4, 8]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         axis = draw(st.sampled_from([1, 3]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
-        def generate_input(attrs):
-            if attrs[0]['data_format'] == "NCHW":
+        def generate_input():
+            if data_format == "NCHW":
                 return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
+                    [batch_size, 16, 64, 64]).astype(np.float32)
             else:
                 return np.random.random(
-                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
+                    [batch_size, 64, 64, 16]).astype(np.float32)
 
         def generate_weight1():
             return np.random.random([16, 16, 3, 3]).astype(np.float32)
 
         def generate_weight2():
-            return np.random.random([16]).astype(np.float32)
-
-        attrs = [{
-            "data_format": data_format,
-            "dilations": dilations,
-            "padding_algorithm": padding_algorithm,
-            "groups": groups,
-            "paddings": paddings,
-            "strides": strides
-        }, {
-            "axis": axis
-        }, {
-            'batch_size': batch_size
-        }]
+            return np.random.random([16 * groups]).astype(np.float32)
 
         ops_config = [{
             "op_type": "conv2d_transpose",
@@ -86,12 +73,12 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
                 "Output": ["conv_output"]
             },
             "op_attrs": {
-                "data_format": attrs[0]['data_format'],
-                "dilations": attrs[0]['dilations'],
-                "padding_algorithm": attrs[0]['padding_algorithm'],
-                "groups": attrs[0]['groups'],
-                "paddings": attrs[0]['paddings'],
-                "strides": attrs[0]['strides'],
+                "data_format": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides,
                 "output_size": [],
                 "output_padding": [],
                 "is_test": True
@@ -106,7 +93,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
                 "Out": ["elementwise_output"]
             },
             "op_attrs": {
-                'axis': attrs[1]['axis']
+                'axis': axis
             },
         }]
 
@@ -121,8 +108,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_weight2))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs))
+                "input_data": TensorConfig(data_gen=partial(generate_input))
             },
             outputs=["elementwise_output"])
 
