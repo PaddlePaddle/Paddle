@@ -18,7 +18,6 @@ limitations under the License. */
 #include <paddle/fluid/framework/data_type.h>
 #include <paddle/fluid/framework/operator.h>
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/mlu/concurrentqueue.h"
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {

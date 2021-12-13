@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "cnnl.h"
 #include "cn_api.h"
+#include "concurrentqueue.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device/mlu/enforce.h"
 

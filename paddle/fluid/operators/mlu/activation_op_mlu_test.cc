@@ -151,12 +151,12 @@ void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx, std::string o
 
 TEST(relu, MLU_fp32) {
   fw::Scope scope;
-  auto* ctx = plat::DeviceContextPool::Instance().Get(plat::MLUPlace(3));
+  auto* ctx = plat::DeviceContextPool::Instance().Get(plat::MLUPlace(0));
   Compare<float>(&scope, *ctx, "relu");
 }
 
 TEST(relu_grad, MLU_fp32) {
   fw::Scope scope;
-  auto* ctx = plat::DeviceContextPool::Instance().Get(plat::MLUPlace(3));
+  auto* ctx = plat::DeviceContextPool::Instance().Get(plat::MLUPlace(0));
   CompareGrad<float>(&scope, *ctx, "relu_grad");
 }
