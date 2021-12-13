@@ -193,9 +193,8 @@ def _make_rule_from_white_lists_dict(before_white_lists_dict,
             compatible_pass_dict[pass_name].add(k)
 
     def rule(pass_before, pass_after):
-        all_passes_before = compatible_pass_dict.get(pass_after.name)
         all_passes_after = compatible_pass_dict.get(pass_before.name)
-        if all_passes_before is None or all_passes_after is None:
+        if all_passes_after is None or pass_after.name not in compatible_pass_dict:
             return True
         else:
             return pass_after.name in all_passes_after
