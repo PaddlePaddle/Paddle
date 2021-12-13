@@ -231,6 +231,20 @@ struct PD_INFER_DECL AnalysisConfig {
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
 
+  ///
+  /// \brief Turn on IPU.
+  ///
+  /// \param device_num The number of IPUs.
+  /// \param ipu_enable_pipelining Enable data pipelining between subgraphs,
+  /// each subgraph is settled on an IPU. (This feature requires the number of
+  /// IPUs > 1.)
+  /// \param ipu_batches_per_step The number of micro_batch_size per run. (This
+  /// feature requires to enable pipelining.)
+  /// \param ipu_batch_size The micro_batch_size which is the batch_size in the
+  /// graph.
+  /// \param ipu_need_avg_shard Enable the auto graph sharding. (This feature
+  /// requires the number of IPUs > 1.)
+  ///
   void EnableIpu(int device_num = 1, bool ipu_enable_pipelining = false,
                  int ipu_batches_per_step = 1, int ipu_batch_size = 1,
                  bool ipu_need_avg_shard = false);
