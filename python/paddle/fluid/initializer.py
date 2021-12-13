@@ -53,11 +53,7 @@ class Initializer(object):
 
     def _check_block(self, block):
         if block is None:
-            if in_dygraph_mode():
-                block = default_main_program().global_block()
-            else:
-                raise ValueError(
-                    "The parameter 'block' is needed in static graph mode.")
+            block = default_main_program().global_block()
 
         return block
 
@@ -1039,9 +1035,10 @@ def calculate_gain(nonlinearity, param=None):
     Get the recommended gain value of some nonlinearity function.
 
     Args:
-        nonlinearity(str): nonlinearity function.
-        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 'leaky_relu'. Default: None,  
-        it will be calculated as 0.01 in the formula.
+        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, which is one of 
+        "linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose" , will return 1.0
+        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 
+        'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
 
     Returns:
         The recommended gain value for nonlinearity function.
@@ -1065,9 +1062,9 @@ def calculate_gain(nonlinearity, param=None):
         'conv1d': 1,
         'conv2d': 1,
         'conv3d': 1,
-        'conv_transpose1d': 1,
-        'conv_transpose2d': 1,
-        'conv_transpose3d': 1,
+        'conv1d_transpose': 1,
+        'conv2d_transpose': 1,
+        'conv3d_transpose': 1,
         'tanh': 5.0 / 3,
         'relu': math.sqrt(2.0),
         'leaky_relu': math.sqrt(2.0 / (1 + param**2)),

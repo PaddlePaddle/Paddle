@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <iostream>
 #include "paddle/fluid/operators/center_loss_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 namespace paddle {
 namespace operators {
 

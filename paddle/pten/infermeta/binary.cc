@@ -14,12 +14,12 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/kernels/functions/general/elementwise_base.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
 
 namespace pten {
 
-DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
-                              const DenseTensorMeta& y_meta) {
+DenseTensorMeta DotInferMeta(const DenseTensorMeta& x_meta,
+                             const DenseTensorMeta& y_meta) {
   auto x_dims = x_meta.dims;
   auto x_rank = static_cast<size_t>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
@@ -60,10 +60,10 @@ DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
-DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
-                                 const DenseTensorMeta& y_meta,
-                                 bool trans_x,
-                                 bool trans_y) {
+DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
+                                const DenseTensorMeta& y_meta,
+                                bool trans_x,
+                                bool trans_y) {
   std::vector<int64_t> dims_x = paddle::framework::vectorize(x_meta.dims);
   std::vector<int64_t> dims_y = paddle::framework::vectorize(y_meta.dims);
   auto ndims_x = dims_x.size();
@@ -130,9 +130,9 @@ DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
   return {x_meta.dtype, ddim_out, x_meta.layout};
 }
 
-DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
-                                      const DenseTensorMeta& y_meta,
-                                      int axis) {
+DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
+                                     const DenseTensorMeta& y_meta,
+                                     int axis) {
   DenseTensorMeta return_meta(x_meta.dtype, x_meta.dims, x_meta.layout);
   if (x_meta.dims != y_meta.dims) {
     auto x_dims = x_meta.dims;
