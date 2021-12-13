@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+docker_name=$1
 
 function ref_whl(){
   ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
@@ -42,6 +43,39 @@ function install_whl(){
   sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
 }
 
+function set_cuda_env(){
+  if [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
+      sed -i 's#<set_cuda_en>#RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.8 /usr/lib/x86_64-linux-gnu/libcudnn.so && \
+        ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/lib/x86_64-linux-gnu/libnccl.so && \
+        ln -s /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcusolver.so.10 /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcusolver.so && \
+        ln -s /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcublas.so.11 /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcublas.so
+        
+      ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib/:${LD_LIBRARY_PATH} #g' Dockerfile.tmp
+  elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
+      sed -i 's#<set_cuda_en>#RUN rm -f /usr/lib/x86_64-linux-gnu/libcublas.so && \
+        ln -s /usr/lib/x86_64-linux-gnu/libcublas.so.10 /usr/lib/x86_64-linux-gnu/libcublas.so
+
+      RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/x86_64-linux-gnu/libcudnn.so && \
+        ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/lib/x86_64-linux-gnu/libnccl.so && \
+        ln -s /usr/local/cuda-10.2/targets/x86_64-linux/lib/libcusolver.so.10 /usr/local/cuda-10.2/targets/x86_64-linux/lib/libcusolver.so
+
+      ENV LD_LIBRARY_PATH=/usr/local/cuda-10.2/targets/x86_64-linux/lib/:${LD_LIBRARY_PATH} #g' Dockerfile.tmp
+  fi
+}
+
+
+function install_dali(){
+  if [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
+      sed -i 's#<install_dali>#RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl && \
+        pip install nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl && \
+        rm -f nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl #g' Dockerfile.tmp
+  elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
+      sed -i 's#<install_dali>#RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl && \
+        pip install nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl && \
+        rm -f nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl #g' Dockerfile.tmp
+  fi
+}
+
 
 function install_gcc(){
   sed -i 's#<install_gcc>#WORKDIR /usr/bin \
@@ -56,7 +90,7 @@ function install_gcc(){
 }
 
 function make_dockerfile(){
-  cp tools/dockerfile/performance_docker/Dockerfile.${ref_dockerfile} Dockerfile.tmp
+  sed "s/<baseimg>/${docker_name}/g" tools/dockerfile/performance_docker/Dockerfile.perf >Dockerfile.tmp
 }
 
 
@@ -64,6 +98,8 @@ function main(){
   ref_whl
   make_dockerfile
   install_gcc
+  install_dali
+  set_cuda_env
   install_whl
 }
 
