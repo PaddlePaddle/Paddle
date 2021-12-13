@@ -22,6 +22,10 @@ set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
 
+if (NOT PYTHON_EXECUTABLE)
+  find_package(PythonInterp REQUIRED)
+endif()
+
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml

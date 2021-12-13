@@ -156,6 +156,9 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
+from .tensor.manipulation import as_complex  # noqa: F401
+from .tensor.manipulation import as_real  # noqa: F401
+
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -167,6 +170,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
+from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
@@ -227,6 +231,8 @@ from .tensor.math import lgamma  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
+from .tensor.math import gcd  # noqa: F401
+from .tensor.math import lcm  # noqa: F401
 from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
 
@@ -360,6 +366,7 @@ __all__ = [  # noqa
            'eye',
            'cumsum',
            'cumprod',
+           'logit',
            'sign',
            'is_empty',
            'equal',
@@ -480,6 +487,8 @@ __all__ = [  # noqa
            'atan2',
            'rad2deg',
            'deg2rad',
+           'gcd',
+           'lcm',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -555,6 +564,8 @@ __all__ = [  # noqa
            'einsum',
            'set_flags',
            'get_flags',
+           'as_complex',
+           'as_real',
            'diff',
            'angle',
 ]
