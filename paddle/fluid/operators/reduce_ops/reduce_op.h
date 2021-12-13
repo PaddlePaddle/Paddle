@@ -47,10 +47,17 @@ inline void GetShuffledDim(const DDim& src_dims, DDim* dst_dims,
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
   size_t reduce_size = reduced_dims.size();
+  std::vector<int> regular_reduced_dims = reduced_dims;
+  for (size_t i = 0; i < regular_reduced_dims.size(); i++) {
+    if (regular_reduced_dims[i] < 0) {
+      regular_reduced_dims[i] = src_size + regular_reduced_dims[i];
+    }
+  }
   for (size_t i = 0; i < reduce_size; ++i) {
-    dst_dims->at(src_size - reduce_size + i) = src_dims[reduced_dims[i]];
-    (*perm_axis)[src_size - reduce_size + i] = reduced_dims[i];
-    src_dims_check[reduced_dims[i]] = true;
+    dst_dims->at(src_size - reduce_size + i) =
+        src_dims[regular_reduced_dims[i]];
+    (*perm_axis)[src_size - reduce_size + i] = regular_reduced_dims[i];
+    src_dims_check[regular_reduced_dims[i]] = true;
   }
 
   size_t offset = 0;
