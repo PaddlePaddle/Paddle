@@ -403,7 +403,8 @@ class FCPrimitiveFactory {
   // scaled with its own scales, this data needs to be divided by
   // those scales to normalise them back to what their floating-point range
   // was. Then we multiply them by desired output scale we want on the output.
-  std::tuple<std::vector<float>, float> ComputeOutputShiftScale(const ExecutionContext& ctx) {
+  std::tuple<std::vector<float>, float> ComputeOutputShiftScale(
+      const ExecutionContext& ctx) {
     auto scale_in_data = ctx.Attr<float>("Scale_in");
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
 
