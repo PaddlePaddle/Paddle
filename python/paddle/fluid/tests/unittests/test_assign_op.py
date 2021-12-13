@@ -181,6 +181,13 @@ class TestAssignOpErrorApi(unittest.TestCase):
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, paddle.assign, x2)
 
+    def test_type_error(self):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            x = [paddle.randn([3, 3]), paddle.randn([3, 3])]
+            # not support to assign list(var)
+            self.assertRaises(TypeError, paddle.assign, x)
+
 
 if __name__ == '__main__':
     paddle.enable_static()
