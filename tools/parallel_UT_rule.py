@@ -2780,7 +2780,6 @@ TWO_PARALLEL_JOB = [
     'test_parallel_executor_fix_op_run_order',
     'test_imperative_double_grad',
     'test_cycle_gan',
-    'test_buffer_shared_memory_reuse_pass',
     'test_pretrained_model',
     'test_trt_convert_instance_norm',
     'test_hapi_amp',
