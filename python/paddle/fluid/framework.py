@@ -48,6 +48,7 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'ipu_shard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -89,6 +90,55 @@ def _test_eager_guard():
     finally:
         core._disable_eager_mode()
         _C_ops.switch_to_core_ops()
+
+
+def in_eager_mode():
+    return _eager_mode_
+
+
+global_ipu_index = None
+global_ipu_stage = None
+ipu_index_attr_name = 'ipu_index'
+ipu_stage_attr_name = 'ipu_stage'
+
+
+@signature_safe_contextmanager
+def ipu_shard(ipu_index=None, ipu_stage=None):
+    """
+    Set model sharding id and pipeline stage.
+
+    Args:
+        ipu_index: set device index of subgraph
+        ipu_stage: set pipeline stage of subgraph
+
+    Examples:
+
+    .. code-block:: python
+
+        # required: ipu
+
+        import paddle
+        paddle.enable_static()
+        a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+        with paddle.fluid.ipu_shard(ipu_index=1):
+            b = a + 1
+    """
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can not use this function since PaddlePaddle is not compiled with IPU"
+        )
+
+    global global_ipu_index
+    global global_ipu_stage
+    prev_ipu_index = global_ipu_index
+    prev_ipu_stage = global_ipu_stage
+    global_ipu_index = ipu_index
+    global_ipu_stage = ipu_stage
+    try:
+        yield
+    finally:
+        global_ipu_index = prev_ipu_index
+        global_ipu_stage = prev_ipu_stage
 
 
 def require_version(min_version, max_version=None):
@@ -2453,6 +2503,15 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+
+            # proto.attrs doesn't include ipu_index
+            if core.is_compiled_with_ipu():
+                if global_ipu_index is not None:
+                    self._update_desc_attr(ipu_index_attr_name,
+                                           global_ipu_index)
+                if global_ipu_stage is not None:
+                    self._update_desc_attr(ipu_stage_attr_name,
+                                           global_ipu_stage)
 
             self.desc.check_attrs()
             if self._has_kernel(type):
@@ -6573,7 +6632,8 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
+                          core.IPUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6628,8 +6688,20 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
+    # IPU
+    avaliable_ipu_place = re.match(r'ipu:\d+', place)
+    if avaliable_ipu_place:
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with IPU".format(avaliable_ipu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.IPUPlace(device_id)
+
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, NPUPlace and IPUPlace, but received {}.".
         format(place))
 
 
