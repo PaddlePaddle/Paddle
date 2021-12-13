@@ -614,9 +614,12 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        #bash $PADDLE_ROOT/tools/check_added_ut.sh
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
+            echo "==========Here=========="
+            pwd
+            ctest -N 
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         else
             ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
