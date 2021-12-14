@@ -101,14 +101,16 @@ struct KernelRegistrar {
                   DataType dtype,
                   KernelArgsParseFn args_parse_fn,
                   KernelArgsDefFn args_def_fn,
-                  KernelFn kernel_fn) {
+                  KernelFn kernel_fn,
+                  void* variadic_kernel_fn) {
     ConstructKernel(kernel_name_cstr,
                     backend,
                     layout,
                     dtype,
                     args_parse_fn,
                     args_def_fn,
-                    kernel_fn);
+                    kernel_fn,
+                    variadic_kernel_fn);
   }
 
   KernelRegistrar(const char* kernel_name_cstr,
@@ -116,7 +118,8 @@ struct KernelRegistrar {
                   DataLayout layout,
                   KernelArgsParseFn args_parse_fn,
                   KernelArgsDefFn args_def_fn,
-                  KernelFn kernel_fn) {
+                  KernelFn kernel_fn,
+                  void* variadic_kernel_fn) {
     for (size_t dtype = static_cast<size_t>(DataType::BOOL);
          dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
          dtype++) {
@@ -126,7 +129,8 @@ struct KernelRegistrar {
                       static_cast<DataType>(dtype),
                       args_parse_fn,
                       args_def_fn,
-                      kernel_fn);
+                      kernel_fn,
+                      variadic_kernel_fn);
     }
   }
 
@@ -137,13 +141,13 @@ struct KernelRegistrar {
                        DataType dtype,
                        KernelArgsParseFn args_parse_fn,
                        KernelArgsDefFn args_def_fn,
-                       KernelFn kernel_fn) {
-    KernelName kernel_name(kernel_name_cstr);
+                       KernelFn kernel_fn,
+                       void* variadic_kernel_fn) {
+    std::string kernel_name(kernel_name_cstr);
     KernelKey kernel_key(backend, layout, dtype);
-    Kernel kernel(kernel_fn);
+    Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());
     args_def_fn(&kernel);
-    KernelFactory::Instance().InsertCompatibleOpType(kernel_name.name());
     KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
   }
 };
@@ -357,7 +361,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   int TouchKernelSymbolFor_##kernel_name##_##backend() { return 0; }
 #define _PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                    \
                                     registrar_id,                   \
@@ -376,7 +381,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -401,7 +407,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -426,7 +433,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -451,7 +459,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -476,7 +485,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -501,7 +511,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -526,7 +537,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -551,7 +563,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_8(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -576,7 +589,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_9(kernel_name,                \
                                         PT_ID,                      \
                                         backend,                    \
@@ -601,7 +615,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_10(kernel_name,               \
                                          PT_ID,                     \
                                          backend,                   \
@@ -626,7 +641,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_11(kernel_name,               \
                                          PT_ID,                     \
                                          backend,                   \
@@ -651,7 +667,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_12(kernel_name,               \
                                          PT_ID,                     \
                                          backend,                   \
@@ -676,7 +693,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_13(kernel_name,               \
                                          PT_ID,                     \
                                          backend,                   \
@@ -701,7 +719,8 @@ struct KernelRegistrar {
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype>)>::Parse,                      \
       args_def_fn,                                                  \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype>));                        \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>),                         \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype>));               \
   PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_14(kernel_name,               \
                                          PT_ID,                     \
                                          backend,                   \
@@ -729,7 +748,8 @@ struct KernelRegistrar {
       DATATYPE(dtype),                                                       \
       ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,           \
       args_def_fn,                                                           \
-      PT_KERNEL(kernel_fn));                                                 \
+      PT_KERNEL(kernel_fn),                                                  \
+      PT_VARIADIC_KERNEL(kernel_fn));                                        \
   int TouchKernelSymbolFor_##kernel_name##_##backend() { return 0; }         \
   void __PT_SINGLE_KERNEL_args_def_FN_##kernel_name(::pten::Kernel*)
 
@@ -751,7 +771,8 @@ struct KernelRegistrar {
           DATALAYOUT(layout),                                                 \
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,        \
           &__PT_KERNEL_ALL_DTYPE_args_def_FN_##kernel_name,                   \
-          PT_KERNEL(kernel_fn));                                              \
+          PT_KERNEL(kernel_fn),                                               \
+          PT_VARIADIC_KERNEL(kernel_fn));                                     \
   int TouchKernelSymbolFor_##kernel_name##_##backend() { return 0; }          \
   void __PT_KERNEL_ALL_DTYPE_args_def_FN_##kernel_name(::pten::Kernel* kernel)
 

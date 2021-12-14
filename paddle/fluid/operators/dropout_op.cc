@@ -88,8 +88,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
-        .SetDefault(false)
-        .AsExtra();
+        .SetDefault(false);
+
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
     AddAttr<std::string>(
         "dropout_implementation",

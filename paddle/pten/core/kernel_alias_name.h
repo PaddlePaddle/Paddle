@@ -27,13 +27,13 @@ const std::unordered_map<std::string, std::string> kernel_alias_name_map = {
     {"fill_any_like", "full_like"},
     {"fill_constant", "full"},
     {"flatten_contiguous_range", "flatten"},
-    // {"matmul_v2", "matmul"},
+    {"matmul_v2", "matmul"},
     {"reduce_mean", "mean"},
     {"reduce_sum", "sum"},
     {"reshape2", "reshape"},
     // fluid kernel "mean/reshape/matmul/flatten/sum" should be deprecated
     {"flatten", "deprecated"},
-    // {"matmul", "deprecated"},
+    {"matmul", "deprecated"},
     {"mean", "deprecated"},
     {"reshape", "deprecated"},
     {"sum", "deprecated"}};
