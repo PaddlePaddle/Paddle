@@ -218,17 +218,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
                          (map_data_ptr[i * 3 + 1] + map_data_ptr[i * 3 + 2]) *
                              x1_embed_size,
                      out_data_ptr + pos * x1_embed_size);
-        // for (int k = map_data[i * 3 + 1];
-        //      k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
-
-        //   GpuMemcpyAsync(out_data + pos * x1_embed_size, x1_data + k *
-        //   x1_embed_size,
-        //          x1_embed_size * sizeof(T), cudaMemcpyDeviceToDevice,
-        //          current_stream);
-        //   ++pos;
-        // }
       }
-      // GpuStreamSync(current_stream);
     } else {
       Vector<size_t> map_lods;
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
@@ -249,15 +239,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       thrust::device_ptr<T> out_data_ptr(out_data);
       // gpu kernel
       if (std::is_same<T, int32_t>::value) {
-        // thrust::device_ptr<int32_t> out_data_ptr(out_data);
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<int32_t>(out_val_if_empty));
       } else if (std::is_same<T, int64_t>::value) {
-        // thrust::device_ptr<int64_t> out_data_ptr(out_data);
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<int64_t>(out_val_if_empty));
       } else if (std::is_same<T, float>::value) {
-        // thrust::device_ptr<double> out_data_ptr(out_data);
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<float>(out_val_if_empty));
       } else {
