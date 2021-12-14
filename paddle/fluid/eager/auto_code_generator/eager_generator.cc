@@ -1174,7 +1174,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
       } else {
         const char* FWD_INS_CONTENT_TEMPLATE =
-            "  if(%s.initialized()) "
+            "  if(%s.safe_initialized()) "
             "ins[\"%s\"] = egr::EagerUtils::SyncToVars(%s)\n;";
         generated_function_body += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
