@@ -566,4 +566,5 @@ __all__ = [  # noqa
            'as_real',
            'diff',
            'angle',
+           'moveaxis',
 ]

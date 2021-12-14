@@ -2585,8 +2585,8 @@ def as_real(x, name=None):
 
 def moveaxis(x, source, destination, name=None):
     """
-    Move the ``source`` position of axis to ``destination`` position. 
-    
+    Move the axis of tensor from ``source`` position to ``destination`` position.
+
     Other axis that have not been moved remain their original order.
 
     Args:
