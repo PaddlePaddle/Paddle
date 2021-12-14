@@ -103,6 +103,8 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   for (StreamSafeCUDAAllocator* allocator : allocators) {
     release_size += allocator->ProcessEventsAndFreeWithRelease();
   }
+  VLOG(8) << "Release " << release_size
+          << " bytes memory from all stream for place " << place;
   return release_size;
 }
 

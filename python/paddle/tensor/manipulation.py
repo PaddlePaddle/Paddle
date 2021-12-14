@@ -34,6 +34,7 @@ from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = []
 
@@ -497,42 +498,54 @@ def flip(x, axis, name=None):
 
 def rot90(x, k=1, axes=[0, 1], name=None):
     """
-    Rotate a n-D tensor by 90 degrees in the plane specified by dims axis. Rotation direction is from the first towards the second axis if k > 0, and from the second towards the first for k < 0.
+    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
     Args:
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
-            should be float32, float64, int32, int64, bool.
-        k (int): Number of times to rotate
-        axes (list|tuple): Axis to rotate
+            should be float16, float32, float64, int32, int64, bool. float16 is only supported on gpu.
+        k (int, optional): Direction and number of times to rotate, default value: 1.
+        axes (list|tuple, optional): Axes to rotate, dimension must be 2. default value: [0, 1].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
 
-    Raises:
-        TypeError: If the data type of ``x`` is not Variable
-        TypeError: If the dtype of ``x`` is not float16, float32, float64, int32, int64, bool
-        TypeError: If the data type of ``dims`` is not list, tuple
-
     Examples:
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           data = paddle.arange(4)
           data = paddle.reshape(data, (2, 2))
-          print(data) ## [[0, 1],[2, 3]]
+          print(data) 
+          #[[0, 1],
+          # [2, 3]]
+
           y = paddle.rot90(data, 1, [0, 1])
-          print(y) #[[1, 3],[0, 2]]
+          print(y) 
+          #[[1, 3],
+          # [0, 2]]
+
           y= paddle.rot90(data, -1, [0, 1])
-          print(y) #[[2, 0],[3, 1]]
+          print(y) 
+          #[[2, 0],
+          # [3, 1]]
+
           data2 = paddle.arange(8)
           data2 = paddle.reshape(data2, (2,2,2))
-          print(data2) ###[[[0, 1],[2, 3]],[[4, 5],[6, 7]]]
+          print(data2) 
+          #[[[0, 1],
+          #  [2, 3]],
+          # [[4, 5],
+          #  [6, 7]]]
+
           y = paddle.rot90(data2, 1, [1, 2])
-          print(y)   ### [[[1, 3],[0, 2]],[[5, 7],[4, 6]]]
+          print(y)
+          #[[[1, 3],
+          #  [0, 2]],
+          # [[5, 7],
+          #  [4, 6]]]
     """
 
     helper = LayerHelper("rot90", **locals())
@@ -564,8 +577,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         raise ValueError("Rotation axis1 out of range, axis1 = {}".format(axes[
             1]))
 
-    ## k % 4
-    k = k % 4 if k >= 0 else 4 - (-k % 4)
+    k %= 4
     if k == 0:
         return x
     if k == 2:
@@ -2475,4 +2487,95 @@ def tensordot(x, y, axes=2, name=None):
     y = y.transpose(perm=perm_y).reshape(
         [contraction_size, not_contraction_size_y])
     out = x.matmul(y).reshape(shape_out)
+    return out
+
+
+def as_complex(x, name=None):
+    """Transform a real tensor to a complex tensor. 
+    
+    The data type of the input tensor is 'float32' or 'float64', and the data
+    type of the returned tensor is 'complex64' or 'complex128', respectively.
+
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e. 
+    the size of the last axis shoule be 2, which represent the real and imag part
+    of a complex number. The shape of the returned tensor is ``(*,)``.
+
+    Args:
+        x (Tensor): The input tensor. Data type is 'float32' or 'float64'.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            y = paddle.as_complex(x)
+            print(y.numpy())
+
+            # [[ 0. +1.j  2. +3.j  4. +5.j]
+            #  [ 6. +7.j  8. +9.j 10.+11.j]]
+    """
+    if in_dygraph_mode():
+        return paddle._C_ops.as_complex(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
+    op_type = "as_complex"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_real_to_complex_dtype(x.dtype))
+    outputs = {"Out": out}
+    attrs = {}
+    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
+
+
+def as_real(x, name=None):
+    """Transform a complex tensor to a real tensor. 
+    
+    The data type of the input tensor is 'complex64' or 'complex128', and the data 
+    type of the returned tensor is 'float32' or 'float64', respectively.
+
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
+    the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
+    the shape of the input appended by an extra ``2``.
+
+    Args:
+        x (Tensor): The input tensor. Data type is 'complex64' or 'complex128'.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output. Data type is 'float32' or 'float64', with the same precision as the input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            y = paddle.as_complex(x)
+            z = paddle.as_real(y)
+            print(z.numpy())
+
+            # [[[ 0.  1.]
+            #   [ 2.  3.]
+            #   [ 4.  5.]]
+
+            #  [[ 6.  7.]
+            #   [ 8.  9.]
+            #   [10. 11.]]]
+    """
+    if in_dygraph_mode():
+        return paddle._C_ops.as_real(x)
+
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
+    op_type = "as_real"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(x.dtype))
+    outputs = {"Out": out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out

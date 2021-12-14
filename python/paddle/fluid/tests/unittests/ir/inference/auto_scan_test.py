@@ -324,14 +324,14 @@ class PassAutoScanTest(AutoScanTest):
             "Expected operator list after fusion is {}, but now it's {}".format(
                 op_list_after_fusion, after_op_list), )
 
-    def run_and_statis(
-            self,
-            quant=False,
-            max_examples=100,
-            reproduce=None,
-            min_success_num=25,
-            max_duration=180,
-            passes=None, ):
+    def run_and_statis(self,
+                       quant=False,
+                       max_examples=100,
+                       reproduce=None,
+                       min_success_num=25,
+                       max_duration=180,
+                       passes=None,
+                       use_gpu_run_baseline=False):
         if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
             max_examples *= 10
             min_success_num *= 10
@@ -356,7 +356,10 @@ class PassAutoScanTest(AutoScanTest):
             return self.sample_program_config(draw)
 
         def run_test(prog_config):
-            return self.run_test(quant=quant, prog_configs=[prog_config])
+            return self.run_test(
+                quant=quant,
+                prog_configs=[prog_config],
+                use_gpu_run_baseline=use_gpu_run_baseline)
 
         generator = st.composite(program_generator)
         loop_func = given(generator())(run_test)
@@ -373,8 +376,8 @@ class PassAutoScanTest(AutoScanTest):
         logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
         logging.info("Number of Ignore Tests: {}".format(self.num_ignore_tests))
         successful_ran_programs = int(self.num_ran_programs -
-                                      self.num_ignore_tests /
-                                      self.num_predictor_kinds)
+                                      self.num_ignore_tests / max(
+                                          self.num_predictor_kinds, 1))
         logging.info(
             "Number of successfully ran programs approximately equal to {}".
             format(successful_ran_programs))
@@ -393,7 +396,10 @@ class PassAutoScanTest(AutoScanTest):
                 format(max_duration))
             assert False
 
-    def run_test(self, quant=False, prog_configs=None):
+    def run_test(self,
+                 quant=False,
+                 prog_configs=None,
+                 use_gpu_run_baseline=False):
         status = True
 
         for prog_config in prog_configs:
@@ -415,7 +421,9 @@ class PassAutoScanTest(AutoScanTest):
             results: List[Dict[str, np.ndarray]] = []
 
             # baseline: cpu no ir_optim run
-            base_config = self.create_inference_config(ir_optim=False)
+
+            base_config = self.create_inference_config(
+                ir_optim=False, use_gpu=use_gpu_run_baseline)
             logging.info('RUN program_config: ' + str(prog_config))
             results.append(
                 self.run_test_config(model, params, prog_config, base_config,

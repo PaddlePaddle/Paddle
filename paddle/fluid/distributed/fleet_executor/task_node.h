@@ -57,12 +57,24 @@ class TaskNode final {
   const std::string& type() const { return type_; }
   const paddle::framework::ProgramDesc& program() const { return program_; }
   const std::vector<OperatorBase*>& ops() const { return ops_; }
+  const std::vector<std::unique_ptr<OperatorBase>>& unique_ops() const {
+    return ops_vec_;
+  }
+  const std::unordered_map<const OperatorBase*, std::vector<std::string>>&
+  unused_vars() const {
+    return unused_vars_;
+  }
 
   void SetRunPerSteps(int64_t value);
   void SetRunAtOffset(int64_t value);
   void SetReplyUpPerSteps(int64_t value);
   void SetSendDownPerSteps(int64_t value);
   void SetType(const std::string& type) { type_ = type; }
+  void SetUnusedVars(
+      const std::unordered_map<const OperatorBase*, std::vector<std::string>>&
+          unused_vars) {
+    unused_vars_ = unused_vars;
+  }
 
   // upstream need buffs?
   bool AddUpstreamTask(int64_t task_id, int64_t buff_size = 1);
@@ -79,6 +91,9 @@ class TaskNode final {
   std::unordered_map<int64_t, int64_t> downstream_;
   framework::ProgramDesc program_;
   std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
+
   int32_t role_;
   int64_t rank_;
   int64_t task_id_;

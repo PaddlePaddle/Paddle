@@ -353,7 +353,7 @@ RecordEvent::RecordEvent(const char *name, const EventRole role) {
 #endif
 #endif
   if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
-    RecordEvent(name, role, "none");
+    OriginalConstruct(name, role, "none");
     return;
   }
   shallow_copy_name_ = name;
@@ -371,7 +371,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 #endif
 #endif
   if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
-    RecordEvent(name, role, "none");
+    OriginalConstruct(name, role, "none");
     return;
   }
   name_ = new std::string(name);
@@ -389,13 +389,18 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
-  if (g_enable_host_event_recorder_hook) {
-    name_ = new std::string(name);
-    start_ns_ = PosixInNsec();
-    attr_ = new std::string(attr);
+  if (UNLIKELY(g_enable_host_event_recorder_hook == false)) {
+    OriginalConstruct(name, role, attr);
     return;
   }
+  name_ = new std::string(name);
+  start_ns_ = PosixInNsec();
+  attr_ = new std::string(attr);
+}
 
+void RecordEvent::OriginalConstruct(const std::string &name,
+                                    const EventRole role,
+                                    const std::string &attr) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
@@ -408,7 +413,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   // Maybe need the same push/pop behavior.
   Event *e = PushEvent(name, role, attr);
   SetCurAnnotation(e);
-  // name_ = e->name();
+  *name_ = e->name();
 }
 
 RecordEvent::~RecordEvent() {
@@ -431,10 +436,10 @@ RecordEvent::~RecordEvent() {
       } else {
         HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
                                                      role_, *attr_);
+        delete attr_;
       }
+      delete name_;
     }
-    delete name_;
-    delete attr_;
     return;
   }
 
