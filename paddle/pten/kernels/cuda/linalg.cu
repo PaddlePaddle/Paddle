@@ -69,7 +69,7 @@ PT_REGISTER_KERNEL(dot,
                    complex64,
                    complex128) {}
 
-PT_REGISTER_KERNEL(matmul_v2,
+PT_REGISTER_KERNEL(matmul,
                    CUDA,
                    ANY,
                    pten::Matmul,
