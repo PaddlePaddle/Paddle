@@ -81,10 +81,9 @@ def train_mlp(model, offload=False):
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             scaler.scale(avg_loss).backward()
 
-            model.grad_scale()
             scaler.step(optimizer)
             scaler.update()
-            model.clear_gradients()
+            optimizer.clear_grad()
 
     for dtype in optimizer.param_storages:
         for dst_rank, param_storage in optimizer.param_storages[dtype].items():

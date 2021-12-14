@@ -82,10 +82,7 @@ def optimizer_setting(model, use_pure_fp16):
     return optimizer
 
 
-def train_mlp(model,
-              sharding_stage,
-              use_pure_fp16=False,
-              all_test=False,
+def train_mlp(model, sharding_stage, use_pure_fp16=False,
               accumulate_grad=False):
     if sharding_stage == "dp":
         hcg = fleet.get_hybrid_communicate_group()
@@ -94,14 +91,10 @@ def train_mlp(model,
         group = paddle.distributed.new_group([0, 1])
     optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
-    if use_pure_fp16:
-        model = paddle.amp.decorate(
-            models=model, level='O2', save_dtype='float32')
-
     if sharding_stage == 2:
         optimizer = ShardingOptimizerStage2(
             params=model.parameters(), optim=optimizer, group=group)
-        if all_test:
+        if accumulate_grad:
             model = ShardingStage2(
                 model, optimizer, group=group, accumulate_grads=accumulate_grad)
         else:
@@ -132,29 +125,16 @@ def train_mlp(model,
             label.stop_gradient = True
             img.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=use_pure_fp16, level='O2'):
-                out = model(img)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=out, label=label)
+            out = model(img)
+            loss = paddle.nn.functional.cross_entropy(input=out, label=label)
 
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             avg_loss.backward()
 
+            optimizer.step()
+            optimizer.clear_grad()
+
             if accumulate_grad and batch_id == 2:
-                model.grad_scale()
-                optimizer.step()
-                model.clear_gradients()
-                return model.parameters()
-
-            if not accumulate_grad:
-                optimizer.step()
-
-                if sharding_stage == 2:
-                    model.clear_gradients()
-                else:
-                    optimizer.clear_grad()
-
-            if all_test and batch_id == 2:
                 return model.parameters()
 
     return model.parameters()
@@ -179,14 +159,9 @@ def test_dp_stage2():
                 np.testing.assert_allclose(
                     dp_params[i].numpy(), stage2_params[j].numpy(), rtol=1e-6)
 
-    stage2_params = train_mlp(
-        mlp3, sharding_stage=2, use_pure_fp16=True, all_test=True)
+    stage2_params = train_mlp(mlp3, sharding_stage=2)
     stage2_accumulate_grad = train_mlp(
-        mlp4,
-        sharding_stage=2,
-        use_pure_fp16=True,
-        all_test=True,
-        accumulate_grad=True)
+        mlp4, sharding_stage=2, accumulate_grad=True)
     for i in range(len(stage2_params)):
         for j in range(len(stage2_accumulate_grad)):
             if stage2_params[i].name == stage2_accumulate_grad[j].name:
