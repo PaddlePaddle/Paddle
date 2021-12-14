@@ -36,6 +36,7 @@ class GarbageCollector;
 namespace distributed {
 
 class TaskNode;
+class Carrier;
 
 class Interceptor {
  public:
@@ -44,7 +45,7 @@ class Interceptor {
  public:
   Interceptor() = delete;
 
-  Interceptor(int64_t interceptor_id, TaskNode* node);
+  Interceptor(int64_t interceptor_id, TaskNode* node, Carrier* carrier);
 
   virtual ~Interceptor();
 
@@ -100,6 +101,8 @@ class Interceptor {
   std::vector<framework::Scope*> microbatch_scopes_{};
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
+  Carrier* carrier_;
+
  private:
   // pool the local mailbox, parse the Message
   void PoolTheMailbox();
@@ -136,19 +139,22 @@ class Interceptor {
 class InterceptorFactory {
  public:
   using CreateInterceptorFunc = std::unique_ptr<Interceptor> (*)(int64_t,
-                                                                 TaskNode*);
+                                                                 TaskNode*,
+                                                                 Carrier*);
   using CreateInterceptorMap =
       std::unordered_map<std::string, CreateInterceptorFunc>;
 
   static void Register(const std::string& type, CreateInterceptorFunc func);
 
   static std::unique_ptr<Interceptor> Create(const std::string& type,
-                                             int64_t id, TaskNode* node);
+                                             int64_t id, TaskNode* node,
+                                             Carrier*);
 };
 
 template <typename InterceptorClass>
-std::unique_ptr<Interceptor> CreatorInterceptor(int64_t id, TaskNode* node) {
-  return std::make_unique<InterceptorClass>(id, node);
+std::unique_ptr<Interceptor> CreatorInterceptor(int64_t id, TaskNode* node,
+                                                Carrier* carrier) {
+  return std::make_unique<InterceptorClass>(id, node, carrier);
 }
 
 #define REGISTER_INTERCEPTOR(interceptor_type, interceptor_class)          \

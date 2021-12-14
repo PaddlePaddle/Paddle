@@ -61,9 +61,9 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  Carrier& carrier = Carrier::Instance();
+  Carrier carrier;
 
-  MessageBus& msg_bus = MessageBus::Instance();
+  MessageBus msg_bus;
   msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
   // FIXME: don't delete, otherwise interceptor will use undefined node
@@ -76,8 +76,9 @@ TEST(ComputeInterceptor, Compute) {
   node_b->AddUpstreamTask(0);
 
   auto* a = carrier.SetInterceptor(
-      0, InterceptorFactory::Create("Compute", 0, node_a));
-  carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+      0, InterceptorFactory::Create("Compute", 0, node_a, &carrier));
+  carrier.SetInterceptor(
+      1, InterceptorFactory::Create("Compute", 1, node_b, &carrier));
 
   a->SetPlace(place);
   a->SetMicroBatchScope(scopes);

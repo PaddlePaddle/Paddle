@@ -22,8 +22,9 @@
 namespace paddle {
 namespace distributed {
 
-ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node) {
+ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node,
+                                       Carrier* carrier)
+    : Interceptor(interceptor_id, node, carrier) {
   PrepareDeps();
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Compute(msg); });
 }
@@ -170,8 +171,7 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  Carrier& carrier_instance = Carrier::Instance();
-  std::unique_lock<std::mutex> lock(carrier_instance.run);
+  std::unique_lock<std::mutex> lock(carrier_->run);
   VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
           << step_ + 1 << " time.";
   for (auto op : node_->ops()) {

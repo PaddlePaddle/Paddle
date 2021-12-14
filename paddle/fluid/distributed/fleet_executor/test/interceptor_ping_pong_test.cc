@@ -26,8 +26,8 @@ namespace distributed {
 
 class PingPongInterceptor : public Interceptor {
  public:
-  PingPongInterceptor(int64_t interceptor_id, TaskNode* node)
-      : Interceptor(interceptor_id, node) {
+  PingPongInterceptor(int64_t interceptor_id, TaskNode* node, Carrier* carrier)
+      : Interceptor(interceptor_id, node, carrier) {
     RegisterMsgHandle([this](const InterceptorMessage& msg) { PingPong(msg); });
   }
 
@@ -58,15 +58,16 @@ class PingPongInterceptor : public Interceptor {
 REGISTER_INTERCEPTOR(PingPong, PingPongInterceptor);
 
 TEST(InterceptorTest, PingPong) {
-  MessageBus& msg_bus = MessageBus::Instance();
+  MessageBus msg_bus;
   msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
-  Carrier& carrier = Carrier::Instance();
+  Carrier carrier;
 
   Interceptor* a = carrier.SetInterceptor(
-      0, InterceptorFactory::Create("PingPong", 0, nullptr));
+      0, InterceptorFactory::Create("PingPong", 0, nullptr, &carrier));
 
-  carrier.SetInterceptor(1, std::make_unique<PingPongInterceptor>(1, nullptr));
+  carrier.SetInterceptor(
+      1, std::make_unique<PingPongInterceptor>(1, nullptr, &carrier));
   carrier.SetCreatingFlag(false);
 
   InterceptorMessage msg;

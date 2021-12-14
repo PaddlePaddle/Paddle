@@ -28,13 +28,14 @@ USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 
 void Carrier::Init(std::shared_ptr<RuntimeGraph> runtime_graph,
-                   framework::Scope* root_scope,
+                   MessageBus* msg_bus, framework::Scope* root_scope,
                    framework::Scope* minibatch_scope,
                    const std::vector<framework::Scope*>& microbatch_scopes,
                    const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "Carrier is already init."));
   runtime_graph_ = runtime_graph;
+  msg_bus_ = msg_bus;
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
   place_ = place;
@@ -49,8 +50,7 @@ void Carrier::Release() {
   // otherwise Derived object will be destructed before thread complete.
 
   // Sending STOP msg to the source interceptor
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
                         "Message bus has not been initialized."));
   for (int64_t id : source_interceptor_ids_) {
@@ -61,7 +61,7 @@ void Carrier::Release() {
     stop_msg.set_src_id(-1);
     stop_msg.set_dst_id(id);
     stop_msg.set_message_type(STOP);
-    msg_bus.Send(stop_msg);
+    msg_bus_->Send(stop_msg);
   }
 
   // TODO(wangxi): Maybe need a better to use thread.
@@ -114,8 +114,7 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
 }
 
 void Carrier::Start() {
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
                         "Message bus has not been initialized."));
 
@@ -127,7 +126,7 @@ void Carrier::Start() {
     start_msg.set_src_id(-1);
     start_msg.set_dst_id(id);
     start_msg.set_message_type(DATA_IS_READY);
-    msg_bus.Send(start_msg);
+    msg_bus_->Send(start_msg);
   }
 
   std::unique_lock<std::mutex> lock(running_mutex_);
@@ -138,6 +137,10 @@ void Carrier::Start() {
 std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
+
+bool Carrier::Send(const InterceptorMessage& msg) const {
+  return msg_bus_->Send(msg);
+}
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {
@@ -231,10 +234,10 @@ void Carrier::CreateInterceptors() {
     std::unique_ptr<Interceptor> interceptor;
     if (task_node->type().empty()) {
       // TODO(wangxi): delete this in future
-      interceptor.reset(new Interceptor(interceptor_id, task_node));
+      interceptor.reset(new Interceptor(interceptor_id, task_node, this));
     } else {
       interceptor = InterceptorFactory::Create(task_node->type(),
-                                               interceptor_id, task_node);
+                                               interceptor_id, task_node, this);
     }
     interceptor->SetPlace(place_);
     interceptor->SetMiniBatchScope(minibatch_scope_);

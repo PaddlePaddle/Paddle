@@ -40,21 +40,18 @@ namespace distributed {
 class TaskNode;
 class InterceptorMessageServiceImpl;
 class RuntimeGraph;
+class MessageBus;
 
 // A singleton MessageBus
 class Carrier final {
  public:
-  static Carrier& Instance() {
-    static Carrier carrier;
-    return carrier;
-  }
-
-  void Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+  Carrier() = default;
+  ~Carrier();
+  void Init(std::shared_ptr<RuntimeGraph> runtime_graph, MessageBus* msg_bus,
             framework::Scope* root_scope, framework::Scope* minibatch_scope,
             const std::vector<framework::Scope*>& microbatch_scopes,
             const platform::Place& place);
 
-  ~Carrier();
   void Release();
 
   // Enqueue a message to corresponding interceptor id
@@ -75,15 +72,15 @@ class Carrier final {
 
   bool IsInit() const;
 
+  bool Send(const InterceptorMessage& msg) const;
+
   // NOTE: This mutex will be used in interceptor's RunOps function.
   // This mutex is used for avoiding forward ops and backward ops run
   // simultaneously, which will lead to a random hang for some sync ops.
   std::mutex run;
 
-  DISABLE_COPY_AND_ASSIGN(Carrier);
-
  private:
-  Carrier() = default;
+  DISABLE_COPY_AND_ASSIGN(Carrier);
 
   // create each Interceptor
   void CreateInterceptors();
@@ -110,6 +107,7 @@ class Carrier final {
   paddle::platform::Place place_;
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
   std::shared_ptr<RuntimeGraph> runtime_graph_;
+  MessageBus* msg_bus_;
 };
 
 }  // namespace distributed

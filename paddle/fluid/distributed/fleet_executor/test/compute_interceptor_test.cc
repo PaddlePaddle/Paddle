@@ -27,8 +27,8 @@ namespace distributed {
 
 class StartInterceptor : public Interceptor {
  public:
-  StartInterceptor(int64_t interceptor_id, TaskNode* node)
-      : Interceptor(interceptor_id, node) {
+  StartInterceptor(int64_t interceptor_id, TaskNode* node, Carrier* carrier)
+      : Interceptor(interceptor_id, node, carrier) {
     RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
   }
 
@@ -46,8 +46,8 @@ class StartInterceptor : public Interceptor {
 };
 
 TEST(ComputeInterceptor, Compute) {
-  Carrier& carrier = Carrier::Instance();
-  MessageBus& msg_bus = MessageBus::Instance();
+  Carrier carrier;
+  MessageBus msg_bus;
   msg_bus.Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
@@ -61,10 +61,12 @@ TEST(ComputeInterceptor, Compute) {
   node_b->AddDownstreamTask(2);
   node_c->AddUpstreamTask(1);
 
-  Interceptor* a =
-      carrier.SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
-  carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
+  Interceptor* a = carrier.SetInterceptor(
+      0, std::make_unique<StartInterceptor>(0, node_a, &carrier));
+  carrier.SetInterceptor(
+      1, InterceptorFactory::Create("Compute", 1, node_b, &carrier));
+  carrier.SetInterceptor(
+      2, InterceptorFactory::Create("Compute", 2, node_c, &carrier));
 
   carrier.SetCreatingFlag(false);
 

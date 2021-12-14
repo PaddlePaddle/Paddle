@@ -51,8 +51,8 @@ void LinkNodes(const std::vector<TaskNode*>& nodes) {
 }
 
 TEST(AmplifierInterceptor, Amplifier) {
-  Carrier& carrier = Carrier::Instance();
-  MessageBus& msg_bus = MessageBus::Instance();
+  Carrier carrier;
+  MessageBus msg_bus;
   msg_bus.Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}},
                {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
@@ -73,12 +73,18 @@ TEST(AmplifierInterceptor, Amplifier) {
   node_b->SetReplyUpPerSteps(micro_steps);
   node_e->SetSendDownPerSteps(micro_steps);
 
-  carrier.SetInterceptor(0, InterceptorFactory::Create("Compute", 0, node_a));
-  carrier.SetInterceptor(1, InterceptorFactory::Create("Amplifier", 1, node_b));
-  carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
-  carrier.SetInterceptor(3, InterceptorFactory::Create("Compute", 3, node_d));
-  carrier.SetInterceptor(4, InterceptorFactory::Create("Amplifier", 4, node_e));
-  carrier.SetInterceptor(5, InterceptorFactory::Create("Compute", 5, node_f));
+  carrier.SetInterceptor(
+      0, InterceptorFactory::Create("Compute", 0, node_a, &carrier));
+  carrier.SetInterceptor(
+      1, InterceptorFactory::Create("Amplifier", 1, node_b, &carrier));
+  carrier.SetInterceptor(
+      2, InterceptorFactory::Create("Compute", 2, node_c, &carrier));
+  carrier.SetInterceptor(
+      3, InterceptorFactory::Create("Compute", 3, node_d, &carrier));
+  carrier.SetInterceptor(
+      4, InterceptorFactory::Create("Amplifier", 4, node_e, &carrier));
+  carrier.SetInterceptor(
+      5, InterceptorFactory::Create("Compute", 5, node_f, &carrier));
 
   carrier.SetCreatingFlag(false);
 
