@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
 namespace paddle {
 namespace operators {
@@ -1621,6 +1621,21 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<int64_t>>,
     ops::PowGradKernel<plat::CUDADeviceContext,
                        ops::PowGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ==========================   logit register  ============================ */
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    logit, ops::LogitKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LogitKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::LogitKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    logit_grad,
+    ops::LogitGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LogitGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::LogitGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::float16>);
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */

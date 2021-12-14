@@ -4,18 +4,6 @@ if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
 endif(WITH_GPU)
 
-if(WITH_XPU)
-  set(XPU_CTX_DEPS xpulib ssl crypto rt z resolv dl)
-ELSE()
-  set(XPU_CTX_DEPS)
-endif(WITH_XPU)
-
-if(WITH_ASCEND)
-    set(ASCEND_DEPS xpulib)
-ELSE()
-  set(ASCEND_DEPS)
-endif(WITH_ASCEND)
-
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -59,34 +47,15 @@ cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 IF(WITH_GPU)
-    nv_library(cuda_graph SRCS cuda_graph.cc DEPS enforce allocator_facade)
-    nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
-    nv_library(cuda_profiler SRCS cuda_profiler.cc DEPS enforce)
     nv_library(cuda_graph_with_memory_pool SRCS cuda_graph_with_memory_pool.cc DEPS device_context allocator_facade cuda_graph)
 ELSE()
     cc_library(cuda_graph_with_memory_pool SRCS cuda_graph_with_memory_pool.cc DEPS device_context allocator_facade)
 ENDIF()
 
-IF(WITH_ROCM)
-    hip_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
-ENDIF()
-
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
-if(WITH_XPU)
-cc_library(xpu_info SRCS xpu/xpu_info.cc DEPS gflags glog enforce xpulib)
-cc_library(xpu_op_list SRCS xpu/xpu_op_list.cc DEPS gflags glog enforce xpulib device_context)
-endif()
-
-if(WITH_ASCEND)
-    cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce atlas_acl)
-endif()
-
-if(WITH_ASCEND_CL)
-    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
-endif()
-
+add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
 
@@ -101,6 +70,12 @@ ENDIF()
 IF(WITH_GPU OR WITH_ROCM)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
+
+IF(WITH_IPU)
+    set(IPU_CTX_DEPS ipu_backend)
+ELSE()
+    set(IPU_CTX_DEPS)
+ENDIF(WITH_IPU)
 
 IF(WITH_ASCEND_CL)
     set(NPU_CTX_DEPS npu_stream npu_info)
@@ -140,18 +115,19 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
-cc_library(collective_helper SRCS collective_helper.cc collective_helper_npu.cc gen_comm_id_helper.cc DEPS framework_proto  device_context enforce)
+cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
+if(WITH_ASCEND_CL)
+    target_link_libraries(collective_helper npu_collective_helper)
+endif()
 
 if(WITH_GPU OR WITH_ROCM)
-    cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
-    target_link_libraries(device_context cuda_resource_pool)
+    target_link_libraries(device_context gpu_resource_pool)
 endif()
 
 if(WITH_ASCEND_CL)
-    cc_library(npu_resource_pool SRCS npu_resource_pool.cc DEPS npu_info)
     target_link_libraries(device_context npu_resource_pool)
 endif()
 
@@ -169,8 +145,6 @@ if(WITH_GPU)
   nv_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
 
   nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
-  nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda pten)
-  nv_test(cudnn_desc_test SRCS cudnn_desc_test.cc DEPS dynload_cuda)
   nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 endif()
 
@@ -180,8 +154,6 @@ if(WITH_ROCM)
   hip_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
 
   hip_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
-  hip_test(miopen_helper_test SRCS miopen_helper_test.cc DEPS dynload_cuda)
-  hip_test(cudnn_desc_test SRCS cudnn_desc_test.cc DEPS dynload_cuda tensor)
   hip_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 endif()
 
@@ -194,11 +166,9 @@ cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_pri
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce dynload_cuda)
-  nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
   nv_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
   hip_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
-  hip_test(cuda_helper_test SRCS cuda_helper_test.cu)
   hip_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 else()
   cc_library(profiler SRCS profiler.cc DEPS device_tracer enforce)

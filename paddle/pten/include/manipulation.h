@@ -16,7 +16,7 @@
 
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/xpu/manipulation.h"
@@ -28,7 +28,7 @@ DenseTensor Flatten(const ContextT& dev_ctx,
                     const DenseTensor& x,
                     int start_axis,
                     int stop_axis) {
-  auto out_meta = FlattenInferShape(x.meta(), start_axis, stop_axis);
+  auto out_meta = FlattenInferMeta(x.meta(), start_axis, stop_axis);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
@@ -55,12 +55,12 @@ template <typename T, typename ContextT>
 DenseTensor Reshape(const ContextT& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& shape) {
-  auto out_meta = InferShapeFromVecValue(x.meta(), shape);
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  ReshapeFromVectorVal(dev_ctx, x, shape, &dense_out);
+  Reshape(dev_ctx, x, ScalarArray(shape), &dense_out);
   return dense_out;
 }
 

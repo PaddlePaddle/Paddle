@@ -69,7 +69,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // In that case reorder must be executed to maintain compatibility with
     // PaddlePaddle reduce op
     if (input_dims == output_dims) {
-      mkldnn::memory::data_type input_type =
+      dnnl::memory::data_type input_type =
           framework::ToMKLDNNDataType(input->type());
       platform::ReorderMKLDNNHandler reorder_handler(input_dims, input->type(),
                                                      input_type, onednn_engine);
@@ -132,7 +132,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    mkldnn::memory::format_tag x_format_tag;
+    dnnl::memory::format_tag x_format_tag;
     auto input_dims =
         CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
     auto output_dims = framework::vectorize(output_dx->dims());
@@ -175,7 +175,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
+  dnnl::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
     auto tensor_dims_size = tensor->dims().size();
     PADDLE_ENFORCE_EQ(
         tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
@@ -184,16 +184,16 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
 
     switch (tensor_dims_size) {
       case 1:
-        return mkldnn::memory::format_tag::a;
+        return dnnl::memory::format_tag::a;
       case 2:
-        return mkldnn::memory::format_tag::ab;
+        return dnnl::memory::format_tag::ab;
       case 3:
-        return mkldnn::memory::format_tag::abc;
+        return dnnl::memory::format_tag::abc;
       case 4:
-        return mkldnn::memory::format_tag::abcd;
+        return dnnl::memory::format_tag::abcd;
     }
 
-    return mkldnn::memory::format_tag::abcde;
+    return dnnl::memory::format_tag::abcde;
   }
 };
 

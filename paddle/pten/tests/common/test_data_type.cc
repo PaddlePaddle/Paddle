@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/data_type.h"
 
+namespace pten {
+namespace tests {
+
 TEST(DataType, OStream) {
   std::ostringstream oss;
   oss << pten::DataType::UNDEFINED;
@@ -67,3 +70,6 @@ TEST(DataType, OStream) {
     EXPECT_TRUE(ex_msg.find("Invalid enum data type") != std::string::npos);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

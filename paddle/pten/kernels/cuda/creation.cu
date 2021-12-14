@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cuda/creation.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/functions/eigen/fill.h"
+#include "paddle/pten/kernels/hybird/eigen/fill.h"
 
 namespace pten {
 
@@ -53,18 +53,18 @@ void FillAnyLike(const CUDAContext& dev_ctx,
 
 template <typename T>
 void FillConstant(const CUDAContext& dev_ctx,
+                  const ScalarArray& shape,
                   const Scalar& val,
                   DenseTensor* out) {
+  out->Resize(paddle::framework::make_ddim(shape.GetData()));
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(CreationCUDA);
-
-PT_REGISTER_KERNEL("fill_any_like",
+PT_REGISTER_KERNEL(full_like,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillAnyLike,
                    float,
                    double,
@@ -73,9 +73,9 @@ PT_REGISTER_KERNEL("fill_any_like",
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL("fill_constant.scalar",
+PT_REGISTER_KERNEL(full,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillConstant,
                    float,
                    double,

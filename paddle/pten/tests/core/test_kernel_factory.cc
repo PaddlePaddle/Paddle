@@ -19,19 +19,10 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-// TODO(chenweihang): add more unittests later
+namespace pten {
+namespace tests {
 
-TEST(KernelName, ConstructAndOStream) {
-  std::ostringstream oss;
-  oss << pten::KernelName("scale", "host");
-  EXPECT_EQ(oss.str(), "scale.host");
-  pten::KernelName kernel_name1("scale.host");
-  EXPECT_EQ(kernel_name1.name(), "scale");
-  EXPECT_EQ(kernel_name1.overload_name(), "host");
-  pten::KernelName kernel_name2("scale.host");
-  EXPECT_EQ(kernel_name2.name(), "scale");
-  EXPECT_EQ(kernel_name2.overload_name(), "host");
-}
+// TODO(chenweihang): add more unittests later
 
 TEST(KernelKey, ConstructAndOStream) {
   pten::KernelKey key(
@@ -45,3 +36,6 @@ TEST(KernelKey, ConstructAndOStream) {
   // EXPECT_EQ(oss.str(), "scale.host");
   oss.flush();
 }
+
+}  // namespace tests
+}  // namespace pten

@@ -27,9 +27,9 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -48,7 +48,7 @@ void* AlignedMalloc(size_t size) {
   void* p = nullptr;
   size_t alignment = 32ul;
 #ifdef PADDLE_WITH_MKLDNN
-  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+  // refer to https://github.com/01org/mkl-dnn/blob/master/include/dnnl.hpp
   // memory alignment
   alignment = 4096ul;
 #endif
@@ -115,7 +115,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   void* p;
-  auto result = platform::RecordedCudaMalloc(&p, size, gpu_id_);
+  auto result = platform::RecordedGpuMalloc(&p, size, gpu_id_);
 
   if (result == gpuSuccess) {
     *index = 0;
@@ -123,7 +123,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     return p;
   } else {
     size_t avail, total, actual_avail, actual_total;
-    bool is_limited = platform::RecordedCudaMemGetInfo(
+    bool is_limited = platform::RecordedGpuMemGetInfo(
         &avail, &total, &actual_avail, &actual_total, gpu_id_);
     size_t allocated = total - avail;
 
@@ -166,7 +166,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
                         size, gpu_alloc_size_));
   gpu_alloc_size_ -= size;
 
-  platform::RecordedCudaFree(p, size, gpu_id_);
+  platform::RecordedGpuFree(p, size, gpu_id_);
 }
 
 bool GPUAllocator::UseGpu() const { return true; }
@@ -326,14 +326,14 @@ void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all NPU contexts.
-  auto result = aclrtMallocHost(&p, size);
+  auto result = platform::NPUHostMalloc(&p, size);
 
   if (result == ACL_ERROR_NONE) {
     *index = 1;  // PINNED memory
     npu_pinnd_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "aclrtMallocHost failed.";
+    LOG(WARNING) << "NPUHostMalloc failed.";
     return nullptr;
   }
 
@@ -351,14 +351,13 @@ void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
                         "allocated npu pinned memory (%d)",
                         size, npu_pinnd_alloc_size_));
   npu_pinnd_alloc_size_ -= size;
-  err = aclrtFreeHost(p);
+  err = platform::NPUHostFree(p);
 
   if (err != ACL_ERROR_NONE) {
     PADDLE_ENFORCE_EQ(
         err, 0,
         platform::errors::Fatal(
-            "aclrtFreeHost failed in NPUPinnedAllocator, error code is %d",
-            err));
+            "NPUHostFree failed in NPUPinnedAllocator, error code is %d", err));
   }
 }
 

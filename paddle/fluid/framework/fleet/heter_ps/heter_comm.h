@@ -16,6 +16,7 @@ limitations under the License. */
 #include <thread>
 #include <vector>
 #include "cub/cub.cuh"
+#include "cub/util_allocator.cuh"
 #include "hashtable.h"
 #include "heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
@@ -163,9 +164,9 @@ class HeterComm {
   };
 
   void init_path();
-  void create_storage(
-      int start_index, int end_index, int keylen, int vallen,
-      std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
+
+  void create_storage(int start_index, int end_index, int keylen, int vallen);
+  void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
                     KeyType* src_key, GradType* src_val);
   void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
@@ -178,7 +179,7 @@ class HeterComm {
   std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
   CustomGradMerger merger_;
-  int topo_aware_{1};
+  int topo_aware_{0};
   std::vector<std::vector<Path>> path_;
   std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
@@ -186,6 +187,7 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
+  std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 };
 
 }  // end namespace framework

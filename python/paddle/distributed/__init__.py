@@ -48,6 +48,7 @@ from .fleet import BoxPSDataset  # noqa: F401
 
 from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
+from .entry_attr import ShowClickEntry  # noqa: F401
 
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
@@ -69,6 +70,7 @@ __all__ = [  # noqa
       "QueueDataset",
       "split",
       "CountFilterEntry",
+      "ShowClickEntry",
       "get_world_size",
       "get_group",
       "all_gather",
