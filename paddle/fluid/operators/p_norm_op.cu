@@ -161,7 +161,7 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     float porder = ctx.Attr<float>("porder");
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis = xdim.size() + axis;
-    std::vector<int> reduce_axis = {axis};
+    std::vector<int64_t> reduce_axis = {axis};
 
     auto stream = ctx.cuda_device_context().stream();
 
