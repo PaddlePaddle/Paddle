@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestConvActivationMkldnnFusePass(PassAutoScanTest):
+class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -33,37 +33,24 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
+        groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         slope = draw(st.floats(min_value=0, max_value=10))
         offset = draw(st.floats(min_value=0, max_value=10))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
-        def generate_input(attrs):
-            if attrs[0]['data_format'] == "NCHW":
+        def generate_input():
+            if data_format == "NCHW":
                 return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
+                    [batch_size, 48, 64, 64]).astype(np.float32)
             else:
                 return np.random.random(
-                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
+                    [batch_size, 64, 64, 48]).astype(np.float32)
 
         def generate_weight():
-            return np.random.random([16, 16, 3, 3]).astype(np.float32)
-
-        attrs = [{
-            "data_format": data_format,
-            "dilations": dilations,
-            "padding_algorithm": padding_algorithm,
-            "groups": groups,
-            "paddings": paddings,
-            "strides": strides
-        }, {
-            "slope": slope,
-            "offset": offset
-        }, {
-            "batch_size": batch_size
-        }]
+            return np.random.random(
+                [16, int(48 / groups), 3, 3]).astype(np.float32)
 
         ops_config = [{
             "op_type": "conv2d",
@@ -75,12 +62,12 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
                 "Output": ["conv_output"]
             },
             "op_attrs": {
-                "data_format": attrs[0]['data_format'],
-                "dilations": attrs[0]['dilations'],
-                "padding_algorithm": attrs[0]['padding_algorithm'],
-                "groups": attrs[0]['groups'],
-                "paddings": attrs[0]['paddings'],
-                "strides": attrs[0]['strides']
+                "data_format": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides
             }
         }, {
             "op_type": "hard_sigmoid",
@@ -91,8 +78,8 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
                 "Out": ["sigmoid_output"]
             },
             "op_attrs": {
-                "slope": attrs[1]['slope'],
-                "offset": attrs[1]['offset']
+                "slope": slope,
+                "offset": offset
             },
         }]
 
@@ -104,8 +91,7 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
                 "input_weight": TensorConfig(data_gen=partial(generate_weight))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
+                "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             outputs=["sigmoid_output"])
 
