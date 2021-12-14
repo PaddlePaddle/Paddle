@@ -23,18 +23,22 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/include/infermeta.h"
 
-PT_DECLARE_MODULE(UtilsCPU);
+PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(UtilsCUDA);
+PT_DECLARE_KERNEL(copy, CUDA, ALL_LAYOUT);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
 namespace experimental {
 
-PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
+PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
@@ -55,7 +59,7 @@ PD_DLL_DECL Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   kernel_context.EmplaceBackAttr(blocking);
 
   // 4. InferMeta
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  auto out_meta = UnchangedInferMeta(dense_x->meta());
 
   // 5. Prepare outputs
   const auto allocator =

@@ -25,28 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-class StopInterceptor : public Interceptor {
- public:
-  StopInterceptor(int64_t interceptor_id, TaskNode* node)
-      : Interceptor(interceptor_id, node) {
-    RegisterMsgHandle([this](const InterceptorMessage& msg) { Stop(msg); });
-  }
-
-  void Stop(const InterceptorMessage& msg) {
-    std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
-              << std::endl;
-    count_ += 1;
-    if (count_ == 1) return;
-    InterceptorMessage stop;
-    stop.set_message_type(STOP);
-    Send(0, stop);
-    Send(1, stop);
-    Send(2, stop);
-    Send(3, stop);
-  }
-  int count_{0};
-};
-
 class StartInterceptor : public Interceptor {
  public:
   StartInterceptor(int64_t interceptor_id, TaskNode* node)
@@ -55,43 +33,45 @@ class StartInterceptor : public Interceptor {
   }
 
   void NOP(const InterceptorMessage& msg) {
+    if (msg.message_type() == STOP) {
+      stop_ = true;
+      InterceptorMessage stop;
+      stop.set_message_type(STOP);
+      Send(1, stop);  // stop 1, compute
+      return;
+    }
     std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
               << std::endl;
   }
 };
 
 TEST(ComputeInterceptor, Compute) {
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}}, {{0, "127.0.0.0:0"}},
-               "127.0.0.0:0");
-
   Carrier& carrier = Carrier::Instance();
+  MessageBus& msg_bus = MessageBus::Instance();
+  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* node_a = new TaskNode(0, 0, 0, 0, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 0, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 0, 0);
-  TaskNode* node_d = new TaskNode(0, 0, 3, 0, 0);
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
 
-  // a->b->c->d
-  node_a->AddDownstreamTask(1);
-  node_b->AddUpstreamTask(0);
+  // a->b->c
+  node_a->AddDownstreamTask(1, 3);
+  node_b->AddUpstreamTask(0, 3);
   node_b->AddDownstreamTask(2);
   node_c->AddUpstreamTask(1);
-  node_c->AddDownstreamTask(3);
-  node_d->AddUpstreamTask(2);
 
   Interceptor* a =
       carrier.SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
   carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
   carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
-  carrier.SetInterceptor(3, std::make_unique<StopInterceptor>(3, node_c));
 
   carrier.SetCreatingFlag(false);
 
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
-  // double buff, send twice
+  // test run three times
+  a->Send(1, msg);
   a->Send(1, msg);
   a->Send(1, msg);
 }

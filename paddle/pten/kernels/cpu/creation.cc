@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cpu/creation.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/functions/eigen/fill.h"
+#include "paddle/pten/kernels/hybird/eigen/fill.h"
 
 namespace pten {
 
@@ -52,27 +52,18 @@ void FillAnyLike(const CPUContext& dev_ctx,
 
 template <typename T>
 void FillConstant(const CPUContext& dev_ctx,
+                  const ScalarArray& shape,
                   const Scalar& val,
                   DenseTensor* out) {
-  eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
-}
-
-template <typename T>
-void FillConstantDynamicShape(const CPUContext& dev_ctx,
-                              const ScalarArray& shape,
-                              const Scalar& val,
-                              DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
   eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
 }
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(CreationCPU);
-
-PT_REGISTER_KERNEL("fill_any_like",
+PT_REGISTER_KERNEL(full_like,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillAnyLike,
                    float,
                    double,
@@ -81,26 +72,10 @@ PT_REGISTER_KERNEL("fill_any_like",
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL("fill_constant.scalar",
+PT_REGISTER_KERNEL(full,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillConstant,
-                   float,
-                   double,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
-
-PT_REGISTER_KERNEL("fill_constant",
-                   CPU,
-                   ANY,
-                   pten::FillConstantDynamicShape,
                    float,
                    double,
                    uint8_t,

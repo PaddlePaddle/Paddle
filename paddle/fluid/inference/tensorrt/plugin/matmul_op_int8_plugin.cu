@@ -33,31 +33,31 @@ void Ltgemm_int8_linear(
     cublasLtMatmulDesc_t matmulDesc, void* alpha_scale, void* alpha_zero,
     void* alpha_one, void* workspace, cudaStream_t stream) {
   if (transA_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransform(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransform(
         ltHandle, transformDescT, alpha_one, A, Adesc, alpha_zero, nullptr,
         nullptr, Atransform, AtransformDesc, stream));
   } else {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransform(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransform(
         ltHandle, transformDescN, alpha_one, A, Adesc, alpha_zero, nullptr,
         nullptr, Atransform, AtransformDesc, stream));
   }
 
   if (transB_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransform(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransform(
         ltHandle, transformDescN, alpha_one, B, Bdesc, alpha_zero, nullptr,
         nullptr, Btransform, BtransformDesc, stream));
   } else {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransform(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransform(
         ltHandle, transformDescT, alpha_one, B, Bdesc, alpha_zero, nullptr,
         nullptr, Btransform, BtransformDesc, stream));
   }
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmul(
+  PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmul(
       ltHandle, matmulDesc, alpha_scale, Atransform, AtransformDesc, Btransform,
       BtransformDesc, nullptr, Ctransform, CtransformDesc, Ctransform,
       CtransformDesc, nullptr, workspace, 0, stream));
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransform(
+  PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransform(
       ltHandle, transformDescN, alpha_one, Ctransform, CtransformDesc,
       alpha_zero, nullptr, nullptr, C, Cdesc, stream));
 }
@@ -69,7 +69,7 @@ void Ltgemm_fp32_linear(cublasLtHandle_t ltHandle, const float* A,
                         cublasLtMatmulDesc_t matmulDesc, void* alpha_scale,
                         void* alpha_zero, void* workspace,
                         cudaStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmul(
+  PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmul(
       ltHandle, matmulDesc, alpha_scale, A, Adesc, B, Bdesc, alpha_zero, C,
       Cdesc, C, Cdesc, nullptr, workspace, 0, stream));
 }
@@ -81,7 +81,7 @@ void Ltgemm_fp16_linear(cublasLtHandle_t ltHandle, const half* A,
                         cublasLtMatmulDesc_t matmulDesc, void* alpha_scale,
                         void* alpha_zero, void* workspace,
                         cudaStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmul(
+  PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmul(
       ltHandle, matmulDesc, alpha_scale, A, Adesc, B, Bdesc, alpha_zero, C,
       Cdesc, C, Cdesc, nullptr, workspace, 0, stream));
 }
@@ -182,98 +182,98 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     int const ldatransform = 32 * n_;
     int const ldbtransform = 32 * ((m_ + 8 - 1) / 8 * 8);
     int const ldctransform = 32 * n_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
         (void**)&Atransform_,
         sizeof(int8_t) * ((k_ + 32 - 1) / 32 * 32) / 32 * ldatransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
         (void**)&Btransform_,
         sizeof(int8_t) * ((k_ + 32 - 1) / 32 * 32) / 32 * ldbtransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
         (void**)&Ctransform_,
         sizeof(int8_t) * ((m_ + 32 - 1) / 32 * 32) / 32 * ldctransform));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Adesc_, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n_ : k_,
         AopTranspose == CUBLAS_OP_N ? k_ : n_,
         AopTranspose == CUBLAS_OP_N ? n_ : k_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridea),
         sizeof(stridea)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Bdesc_, cudadataTypeIO, BopTranspose == CUBLAS_OP_N ? k_ : m_,
         BopTranspose == CUBLAS_OP_N ? m_ : k_,
         BopTranspose == CUBLAS_OP_N ? k_ : m_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(strideb),
         sizeof(strideb)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixLayoutCreate(&Cdesc_, cudadataTypeIO, n_, m_, n_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridec),
         sizeof(stridec)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &AtransformDesc_, cudadataTypeIO, n_, k_, ldatransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         AtransformDesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         AtransformDesc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &COL32, sizeof(COL32)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &BtransformDesc_, cudadataTypeIO, m_, k_, ldbtransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         BtransformDesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         BtransformDesc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &COL4_4R2_8C,
         sizeof(COL4_4R2_8C)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &CtransformDesc_, cudadataTypeIO, n_, m_, ldctransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         CtransformDesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         CtransformDesc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &COL32, sizeof(COL32)));
 
     cublasOperation_t Transpose = CUBLAS_OP_T;
     cublasLtPointerMode_t transform_model = CUBLASLT_POINTER_MODE_DEVICE;
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescCreate(
         &transformDescT_, cudaDataTypeS));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescT_, CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE,
         &cudaDataTypeS, sizeof(cudaDataTypeS)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescT_, CUBLASLT_MATRIX_TRANSFORM_DESC_TRANSA, &Transpose,
         sizeof(Transpose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescT_, CUBLASLT_MATRIX_TRANSFORM_DESC_POINTER_MODE,
         &transform_model, sizeof(transform_model)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescCreate(
         &transformDescN_, cudaDataTypeS));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescN_, CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE,
         &cudaDataTypeS, sizeof(cudaDataTypeS)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescN_, CUBLASLT_MATRIX_TRANSFORM_DESC_POINTER_MODE,
         &transform_model, sizeof(transform_model)));
 
@@ -282,38 +282,37 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
         CUBLASLT_POINTER_MODE_ALPHA_DEVICE_VECTOR_BETA_ZERO;
 
 #if CUBLAS_VER_MAJOR < 11
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescCreate(
         &matmulDesc_, cudaComputeType, cudaDataTypeS));
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSA, &ATranspose,
         sizeof(ATranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSB, &BTranspose,
         sizeof(BTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_POINTER_MODE, &matmul_model,
         sizeof(matmul_model)));
 
-    float alpha_tem[n_];
+    std::vector<float> alpha_tem(n_, 0);
     for (int i = 0; i < n_; i++) {
       alpha_tem[i] = alpha_ * inscale_0 * inscale_1 / outscale;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMalloc((void**)&alpha_scale_, n_ * sizeof(float)));
-    cudaMemcpyAsync(alpha_scale_, alpha_tem, n_ * sizeof(float),
+    cudaMemcpyAsync(alpha_scale_, &alpha_tem[0], n_ * sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMalloc((void**)&alpha_zero_, sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float one_tem = 1;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&alpha_one_, sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_one_, sizeof(float)));
     cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   } else if (type_ == nvinfer1::DataType::kHALF) {
@@ -324,70 +323,69 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_16F;
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Adesc_, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n_ : k_,
         AopTranspose == CUBLAS_OP_N ? k_ : n_,
         AopTranspose == CUBLAS_OP_N ? n_ : k_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridea),
         sizeof(stridea)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Bdesc_, cudadataTypeIO, BopTranspose == CUBLAS_OP_N ? k_ : m_,
         BopTranspose == CUBLAS_OP_N ? m_ : k_,
         BopTranspose == CUBLAS_OP_N ? k_ : m_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(strideb),
         sizeof(strideb)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixLayoutCreate(&Cdesc_, cudadataTypeIO, n_, m_, n_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridec),
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
 
 #if CUBLAS_VER_MAJOR < 11
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescCreate(
         &matmulDesc_, cudaComputeType, cudaDataTypeS));
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSB, &BopTranspose,
         sizeof(BopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_POINTER_MODE, &matmul_model,
         sizeof(matmul_model)));
 
     half alpha_tem = static_cast<half>(alpha_);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMalloc((void**)&alpha_scale_, sizeof(half)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_scale_, sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
     half zero_tem = static_cast<half>(zero);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
   } else {
@@ -398,71 +396,70 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F_FAST_16F;
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Adesc_, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n_ : k_,
         AopTranspose == CUBLAS_OP_N ? k_ : n_,
         AopTranspose == CUBLAS_OP_N ? n_ : k_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridea),
         sizeof(stridea)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Bdesc_, cudadataTypeIO, BopTranspose == CUBLAS_OP_N ? k_ : m_,
         BopTranspose == CUBLAS_OP_N ? m_ : k_,
         BopTranspose == CUBLAS_OP_N ? k_ : m_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(strideb),
         sizeof(strideb)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixLayoutCreate(&Cdesc_, cudadataTypeIO, n_, m_, n_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch_), sizeof(batch_)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc_, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridec),
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
 
 #if CUBLAS_VER_MAJOR < 11
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescCreate(&matmulDesc_, cudaComputeType));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescCreate(
         &matmulDesc_, cudaComputeType, cudaDataTypeS));
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_TRANSB, &BopTranspose,
         sizeof(BopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc_, CUBLASLT_MATMUL_DESC_POINTER_MODE, &matmul_model,
         sizeof(matmul_model)));
 
     float alpha_tem = alpha_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMalloc((void**)&alpha_scale_, sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMalloc((void**)&alpha_zero_, sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   }
@@ -613,53 +610,50 @@ void MatmulPluginDynamic::configurePlugin(
   int const ldatransform = 32 * n_max;
   int const ldbtransform = 32 * ((m_max + 8 - 1) / 8 * 8);
   int const ldctransform = 32 * n_max;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
       (void**)&Atransform_,
       sizeof(int8_t) * ((k_max + 32 - 1) / 32 * 32) / 32 * ldatransform));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
       (void**)&Btransform_,
       sizeof(int8_t) * ((k_max + 32 - 1) / 32 * 32) / 32 * ldbtransform));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
       (void**)&Ctransform_,
       sizeof(int8_t) * ((m_max + 32 - 1) / 32 * 32) / 32 * ldctransform));
 
   if (type_ == nvinfer1::DataType::kINT8) {
-    float alpha_tem[n_max];
+    std::vector<float> alpha_tem(n_max, 0);
     for (int i = 0; i < n_max; i++) {
       alpha_tem[i] = alpha_ * inscale_0 * inscale_1 / outscale;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMalloc((void**)&alpha_scale_, n_max * sizeof(float)));
-    cudaMemcpyAsync(alpha_scale_, alpha_tem, n_max * sizeof(float),
+    cudaMemcpyAsync(alpha_scale_, &alpha_tem[0], n_max * sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMalloc((void**)&alpha_zero_, sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float one_tem = 1;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&alpha_one_, sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_one_, sizeof(float)));
     cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   } else if (type_ == nvinfer1::DataType::kHALF) {
     half alpha_tem = static_cast<half>(alpha_);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMalloc((void**)&alpha_scale_, sizeof(half)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_scale_, sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
     half zero_tem = static_cast<half>(zero);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
   } else {
     float alpha_tem = alpha_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMalloc((void**)&alpha_scale_, sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMalloc((void**)&alpha_zero_, sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc((void**)&alpha_zero_, sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   }
@@ -766,88 +760,88 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     cublasLtOrder_t COL32 = CUBLASLT_ORDER_COL32;
     cublasLtOrder_t COL4_4R2_8C = CUBLASLT_ORDER_COL4_4R2_8C;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Adesc, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n : k,
         AopTranspose == CUBLAS_OP_N ? k : n,
         AopTranspose == CUBLAS_OP_N ? n : k));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridea),
         sizeof(stridea)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Bdesc, cudadataTypeIO, BopTranspose == CUBLAS_OP_N ? k : m,
         BopTranspose == CUBLAS_OP_N ? m : k,
         BopTranspose == CUBLAS_OP_N ? k : m));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(strideb),
         sizeof(strideb)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixLayoutCreate(&Cdesc, cudadataTypeIO, n, m, n));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridec),
         sizeof(stridec)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &AtransformDesc, cudadataTypeIO, n, k, ldatransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         AtransformDesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         AtransformDesc, CUBLASLT_MATRIX_LAYOUT_ORDER, &COL32, sizeof(COL32)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &BtransformDesc, cudadataTypeIO, m, k, ldbtransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         BtransformDesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         BtransformDesc, CUBLASLT_MATRIX_LAYOUT_ORDER, &COL4_4R2_8C,
         sizeof(COL4_4R2_8C)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &CtransformDesc, cudadataTypeIO, n, m, ldctransform));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         CtransformDesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         CtransformDesc, CUBLASLT_MATRIX_LAYOUT_ORDER, &COL32, sizeof(COL32)));
 
     cublasOperation_t Transpose = CUBLAS_OP_T;
     cublasLtPointerMode_t transform_model = CUBLASLT_POINTER_MODE_DEVICE;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixTransformDescCreate(&transformDescT, cudaDataTypeS));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescT, CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE,
         &cudaDataTypeS, sizeof(cudaDataTypeS)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescT, CUBLASLT_MATRIX_TRANSFORM_DESC_TRANSA, &Transpose,
         sizeof(Transpose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescT, CUBLASLT_MATRIX_TRANSFORM_DESC_POINTER_MODE,
         &transform_model, sizeof(transform_model)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixTransformDescCreate(&transformDescN, cudaDataTypeS));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescN, CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE,
         &cudaDataTypeS, sizeof(cudaDataTypeS)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixTransformDescSetAttribute(
         transformDescN, CUBLASLT_MATRIX_TRANSFORM_DESC_POINTER_MODE,
         &transform_model, sizeof(transform_model)));
 
@@ -856,20 +850,20 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
         CUBLASLT_POINTER_MODE_ALPHA_DEVICE_VECTOR_BETA_ZERO;
 
 #if CUBLAS_VER_MAJOR < 11
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescCreate(
         &matmulDesc, cudaComputeType, cudaDataTypeS));
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &ATranspose,
         sizeof(ATranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSB, &BTranspose,
         sizeof(BTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_POINTER_MODE, &matmul_model,
         sizeof(matmul_model)));
 
@@ -889,60 +883,60 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_16F;
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Adesc, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n : k,
         AopTranspose == CUBLAS_OP_N ? k : n,
         AopTranspose == CUBLAS_OP_N ? n : k));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridea),
         sizeof(stridea)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Bdesc, cudadataTypeIO, BopTranspose == CUBLAS_OP_N ? k : m,
         BopTranspose == CUBLAS_OP_N ? m : k,
         BopTranspose == CUBLAS_OP_N ? k : m));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(strideb),
         sizeof(strideb)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixLayoutCreate(&Cdesc, cudadataTypeIO, n, m, n));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridec),
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
 
 #if CUBLAS_VER_MAJOR < 11
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescCreate(
         &matmulDesc, cudaComputeType, cudaDataTypeS));
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSB, &BopTranspose,
         sizeof(BopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_POINTER_MODE, &matmul_model,
         sizeof(matmul_model)));
 
@@ -959,60 +953,60 @@ int MatmulPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F_FAST_16F;
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Adesc, cudadataTypeIO, AopTranspose == CUBLAS_OP_N ? n : k,
         AopTranspose == CUBLAS_OP_N ? k : n,
         AopTranspose == CUBLAS_OP_N ? n : k));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Adesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridea),
         sizeof(stridea)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
         &Bdesc, cudadataTypeIO, BopTranspose == CUBLAS_OP_N ? k : m,
         BopTranspose == CUBLAS_OP_N ? m : k,
         BopTranspose == CUBLAS_OP_N ? k : m));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Bdesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(strideb),
         sizeof(strideb)));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatrixLayoutCreate(&Cdesc, cudadataTypeIO, n, m, n));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_TYPE, &cudadataTypeIO,
         sizeof(cudadataTypeIO)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &(batch), sizeof(batch)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutSetAttribute(
         Cdesc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &(stridec),
         sizeof(stridec)));
 
     cublasLtPointerMode_t matmul_model = CUBLASLT_POINTER_MODE_DEVICE;
 
 #if CUBLAS_VER_MAJOR < 11
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescCreate(&matmulDesc, cudaComputeType));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescCreate(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescCreate(
         &matmulDesc, cudaComputeType, cudaDataTypeS));
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &AopTranspose,
         sizeof(AopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_TRANSB, &BopTranspose,
         sizeof(BopTranspose)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatmulDescSetAttribute(
         matmulDesc, CUBLASLT_MATMUL_DESC_POINTER_MODE, &matmul_model,
         sizeof(matmul_model)));
 
