@@ -489,8 +489,3 @@ class PADDLE_API Tensor final {
 
 }  // namespace experimental
 }  // namespace paddle
-
-namespace paddle {
-// In order to be compatible with the original custom operator Tensor interface
-using Tensor = paddle::experimental::Tensor;
-}  // namespace paddle
