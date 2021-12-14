@@ -5,6 +5,9 @@ ENV HOME_WORK_DIR=/root/paddlejob
 # replace utc timezone with local timezone
 ENV TZ='Asia/Shanghai'
 
+ARG https_proxy
+ARG http_proxy
+ARG no_proxy
 
 # install base deps
 RUN apt-get update
@@ -84,3 +87,5 @@ ADD tools/dockerfile/performance_docker/requirements.txt ${HOME_WORK_DIR}
 RUN cd ${HOME_WORK_DIR} && pip install -r requirements.txt && rm -f requirements.txt
 
 <set_cuda_en>
+
+RUN unset https_proxy http_proxy no_proxy
