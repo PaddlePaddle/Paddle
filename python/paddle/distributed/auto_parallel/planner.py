@@ -215,7 +215,7 @@ class PlanSpace:
         # compose dims mapping
         composed_dims_mapping_list = list(
             product(
-                * [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+                *[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
         for composed_dims_mapping in composed_dims_mapping_list:
             op_dist_attr = OperatorDistributedAttribute()
             op_dist_attr.process_mesh = process_mesh
