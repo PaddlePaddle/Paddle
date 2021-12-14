@@ -453,7 +453,7 @@ class Partitioner(object):
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set,
                 callbacks=callbacks,
-                distop_context=dist_op_context)
+                dist_op_context=dist_op_context)
 
             # backward completion 
             complete_backward_annotation(
@@ -478,8 +478,8 @@ class Partitioner(object):
             backward_ops = ops[first_backward_op_idx:]
             for backward_op in backward_ops:
                 # if the backward op has a corresponding forward op
-                if backward_op.desc.id() in dist_op_context.gradopidx2opidx:
-                    forward_op_id = dist_op_context.gradopidx2opidx[
+                if backward_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+                    forward_op_id = dist_op_context.grad_op_id_to_op_id[
                         backward_op.desc.id()]
                     forward_op = forward_op_id2forward_op[forward_op_id]
                     # TODO backward attr should has _impl_idx
@@ -651,7 +651,7 @@ def _auto_backward(loss,
                    parameter_list=None,
                    no_grad_set=None,
                    callbacks=None,
-                   distop_context=None):
+                   dist_op_context=None):
     """
     modification is inplaced
     """
@@ -676,7 +676,7 @@ def _auto_backward(loss,
             parameter_list,
             act_no_grad_set,
             callbacks,
-            distop_context=distop_context)
+            dist_op_context=dist_op_context)
 
     return params_grads
 
