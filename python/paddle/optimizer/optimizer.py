@@ -687,6 +687,7 @@ class Optimizer(object):
                         if not p[0].stop_gradient
                     ])
                 else:
+                    self._update_param_group(parameters_and_grads)
                     self._multi_tensor_init(target_block, [
                         p[0] for p in parameters_and_grads['params']
                         if not p[0].stop_gradient
