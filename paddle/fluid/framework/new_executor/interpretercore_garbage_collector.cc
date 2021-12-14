@@ -28,6 +28,10 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   queue_ = CreateSingleThreadedWorkQueue(options);
 }
 
+InterpreterCoreGarbageCollector::~InterpreterCoreGarbageCollector() {
+  queue_.reset(nullptr);
+}
+
 void InterpreterCoreGarbageCollector::Add(
     std::shared_ptr<memory::Allocation> garbage,
     paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {
@@ -56,16 +60,33 @@ void InterpreterCoreGarbageCollector::Add(
 void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
                                           paddle::platform::DeviceEvent& event,
                                           const platform::DeviceContext* ctx) {
+  if (!var) {
+    return;
+  }
+
   if (var->IsType<LoDTensor>()) {
     Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
+  } else if (var->IsType<
+                 operators::reader::
+                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+    // TODO(xiongkun03) in old executor, this type of variable is not support
+    // eager deletion. so we just leave it here ?
+  } else if (var->IsType<LoDRankTable>()) {
+    // TODO(xiongkun03) in old executor, this type of variable is not support
+    // eager deletion. so we just leave it here ?
   } else if (var->IsType<SelectedRows>()) {
     Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
         event, ctx);
+    var->GetMutable<SelectedRows>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }
+  } else if (var->IsType<std::vector<Scope*>>()) {
+    // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
+    // refer to executor.cc to see what old garbage collector does.
+    // do nothing, because the sub scope will be deleted by sub-executor.
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, OpTestTool
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -74,6 +74,20 @@ class TestFP16MeanOp(TestMeanOp):
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place, ['X'], 'Out', max_relative_error=0.8)
+
+
+@OpTestTool.skip_if_not_cpu_bf16()
+class TestBF16MeanOp(TestMeanOp):
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_checkout_grad(self):
+        place = core.CPUPlace()
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -254,4 +268,5 @@ class TestMeanAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

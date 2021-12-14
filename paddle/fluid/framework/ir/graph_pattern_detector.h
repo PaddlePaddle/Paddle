@@ -577,6 +577,24 @@ struct FCActOneDNN : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+// Fuse softplus with activation
+// ops: softplus + activation
+// nodes:
+// softplus, softplus_out,
+// activation, activation_out
+struct SoftplusActivation : public PatternBase {
+  SoftplusActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "softplus_activation") {}
+
+  PDNode* operator()(std::string activation_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(softplus);
+  PATTERN_DECL_NODE(activation);
+  PATTERN_DECL_NODE(softplus_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // Embedding
 struct Embedding : public PatternBase {
   Embedding(PDPattern* pattern, const std::string& name_scope)
@@ -960,6 +978,20 @@ struct Reshape : public PatternBase {
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);
   PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(next_op);
+};
+// Slice op
+// Forward pass for slice.
+// slice_out is a result of the operator.
+struct Slice : public PatternBase {
+  Slice(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "slice") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(slice_in);
+  PATTERN_DECL_NODE(slice_op);
+  PATTERN_DECL_NODE(slice_out);
   PATTERN_DECL_NODE(next_op);
 };
 
@@ -1538,7 +1570,8 @@ struct ReshapeTransposeMatmulPattern : public PatternBase {
                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
 
-  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+  PDNode* operator()(const std::string& op_name, bool with_reshape_xshape,
+                     bool with_transpose_xshape);
 
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);

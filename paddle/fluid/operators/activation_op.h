@@ -1425,23 +1425,68 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp_a_pos = static_cast<T>(alpha > 0);
-    auto temp_a_neg = static_cast<T>(alpha <= 0);
-    auto temp_x_pos = (x > static_cast<T>(0)).template cast<T>();
-    auto temp_x_neg = (x <= static_cast<T>(0)).template cast<T>();
-
-    // dx = dout, if alpha > 0 and x > 0
-    // dx = dout * alpha * x.exp(), if alpha > 0 and x <= 0
-    // dx = dout * (1 + alpha * x.exp()), if alpha <= 0 and x > 0
-    // dx = 0, if alpha <= 0 and x <=0
-    dx.device(d) =
-        dout * temp_a_pos * temp_x_pos +
-        dout * static_cast<T>(alpha) * x.exp() * temp_a_pos * temp_x_neg +
-        dout * (static_cast<T>(1) + static_cast<T>(alpha) * x.exp()) *
-            temp_a_neg * temp_x_pos;
+    // case 1: alpha >= 0
+    // dx = dout, if out > 0
+    // dx = dout * (out + alpha), if out <= 0
+    dx.device(d) = (out > static_cast<T>(0))
+                       .select(dout, dout * (out + static_cast<T>(alpha)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct ELUGradNegativeAlphaFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    // case 2: alpha < 0
+    // dx = dout, if x > 0
+    // dx = dout * (out + alpha), if x <=0
+    dx.device(d) = (x > static_cast<T>(0))
+                       .select(dout, dout * static_cast<T>(alpha) * x.exp());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename DeviceContext, typename T>
+class ELUGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Out = context.Input<framework::Tensor>("Out");
+    auto* dOut =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    const float alpha = context.Attr<float>("alpha");
+    dX->mutable_data<T>(context.GetPlace());
+
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "elu_grad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "elu_grad"));
+    auto dout = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "dOut", "elu_grad"));
+    auto dx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dX, "Output", "dX", "elu_grad"));
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
+
+    if (alpha > 0) {
+      ELUGradFunctor<T> functor;
+      functor.alpha = alpha;
+      functor(*place, x, out, dout, dx);
+    } else {
+      ELUGradNegativeAlphaFunctor<T> functor;
+      functor.alpha = alpha;
+      functor(*place, x, out, dout, dx);
+    }
+  }
 };
 
 template <typename T>
@@ -1516,6 +1561,36 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct LogitFunctor {
+  template <typename Device, typename X, typename Out, typename P>
+  void operator()(Device d, X x, Out out, P p, float eps) const {
+    // logit(x) = ln(x/(1-x))
+    auto tmp_x =
+        (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
+
+    if (!eps) {
+      out.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
+                          .select(p.constant(static_cast<T>(NAN)),
+                                  (tmp_x / (static_cast<T>(1) - tmp_x)).log());
+    } else {
+      out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
+    }
+  }
+};
+
+template <typename T>
+struct LogitGradFunctor {
+  template <typename Device, typename X, typename dOut, typename dX, typename P>
+  void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
+    // logit(x)' = 1/(x*(1-x))
+    dx.device(d) =
+        (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
+            .select(p.constant(static_cast<T>(0)),
+                    dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
+  }
 };
 
 template <typename T>
@@ -2551,6 +2626,49 @@ class PowGradKernel
       }
     }
     functor(*place, x, out, dout, dx);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LogitKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* in = context.Input<framework::Tensor>("X");
+    auto eps = context.Attr<float>("eps");
+    out->mutable_data<T>(in->place());
+
+    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_p = framework::EigenVector<T>::Flatten(*out);
+
+    LogitFunctor<T> functor;
+    functor(place, eigen_in, eigen_out, eigen_p, eps);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LogitGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* dout =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto eps = context.Attr<float>("eps");
+    dx->mutable_data<T>(dout->place());
+
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_dout = framework::EigenVector<T>::Flatten(*dout);
+    auto eigen_dx = framework::EigenVector<T>::Flatten(*dx);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_p = framework::EigenVector<T>::Flatten(*x);
+
+    LogitGradFunctor<T> functor;
+    functor(place, eigen_x, eigen_dout, eigen_dx, eigen_p, eps);
   }
 };
 

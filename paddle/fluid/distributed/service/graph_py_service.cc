@@ -289,20 +289,59 @@ void GraphPyClient::load_node_file(std::string name, std::string filepath) {
     status.wait();
   }
 }
-std::vector<std::vector<std::pair<uint64_t, float>>>
-GraphPyClient::batch_sample_neighboors(std::string name,
-                                       std::vector<uint64_t> node_ids,
-                                       int sample_size) {
-  std::vector<std::vector<std::pair<uint64_t, float>>> v;
+
+std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>>
+GraphPyClient::batch_sample_neighbors(std::string name,
+                                      std::vector<uint64_t> node_ids,
+                                      int sample_size, bool return_weight,
+                                      bool return_edges) {
+  // std::vector<std::vector<std::pair<uint64_t, float>>> v;
+  std::vector<std::vector<uint64_t>> v;
+  std::vector<std::vector<float>> v1;
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status = worker_ptr->batch_sample_neighbors(
+        table_id, node_ids, sample_size, v, v1, return_weight);
+    status.wait();
+  }
+
+  // res.first[0]: neighbors (nodes)
+  // res.first[1]: slice index
+  // res.first[2]: src nodes
+  // res.second: edges weight
+  std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>> res;
+  res.first.push_back({});
+  res.first.push_back({});
+  if (return_edges) res.first.push_back({});
+  for (size_t i = 0; i < v.size(); i++) {
+    for (size_t j = 0; j < v[i].size(); j++) {
+      // res.first[0].push_back(v[i][j].first);
+      res.first[0].push_back(v[i][j]);
+      if (return_edges) res.first[2].push_back(node_ids[i]);
+      if (return_weight) res.second.push_back(v1[i][j]);
+    }
+    if (i == v.size() - 1) break;
+
+    if (i == 0) {
+      res.first[1].push_back(v[i].size());
+    } else {
+      res.first[1].push_back(v[i].size() + res.first[1].back());
+    }
+  }
+
+  return res;
+}
+
+void GraphPyClient::use_neighbors_sample_cache(std::string name,
+                                               size_t total_size_limit,
+                                               size_t ttl) {
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
     auto status =
-        worker_ptr->batch_sample_neighboors(table_id, node_ids, sample_size, v);
+        worker_ptr->use_neighbors_sample_cache(table_id, total_size_limit, ttl);
     status.wait();
   }
-  return v;
 }
-
 std::vector<uint64_t> GraphPyClient::random_sample_nodes(std::string name,
                                                          int server_index,
                                                          int sample_size) {

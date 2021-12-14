@@ -77,10 +77,9 @@ static void StridedSliceOutDims(
       end_index = end_index + 1;
     }
 
-    bool zero_dim_condition =
-        ((stride_index < 0 && (start_index <= end_index)) ||
-         (stride_index > 0 && (start_index >= end_index)));
-    PADDLE_ENFORCE_EQ(zero_dim_condition, false,
+    bool neg_dim_condition = ((stride_index < 0 && (start_index < end_index)) ||
+                              (stride_index > 0 && (start_index > end_index)));
+    PADDLE_ENFORCE_EQ(neg_dim_condition, false,
                       platform::errors::InvalidArgument(
                           "The start index and end index are invalid for their "
                           "corresponding stride."));

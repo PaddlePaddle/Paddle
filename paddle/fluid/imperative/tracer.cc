@@ -213,6 +213,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
+    // Compatible impl: clear pten kernel context data when throw error
+    OpBase::GetKernelContext()->ClearData();
     throw std::move(exception);
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::Fatal(

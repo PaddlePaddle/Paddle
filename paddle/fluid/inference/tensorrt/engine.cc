@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
@@ -148,11 +148,20 @@ void TensorRTEngine::FreezeNetwork() {
       // and outputs have scales,
       // this layer's precision and output type are set to float32.
       // This step has no effect if this layer is fused during TRT optimization.
+      int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
+          ++layers_no_int8;
         }
+      }
+      // Disable int8 or build engine failed if all layers aren't int8
+      if (layers_no_int8 == network()->getNbLayers()) {
+        nvinfer1::BuilderFlags flags = infer_builder_config_->getFlags();
+        flags = flags & ~(1U << static_cast<int>(nvinfer1::BuilderFlag::kINT8));
+        // reset flags
+        infer_builder_config_->setFlags(flags);
       }
 #else
       LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "

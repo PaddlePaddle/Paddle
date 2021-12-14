@@ -1061,6 +1061,27 @@ PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
   return act_out;
 }
 
+PDNode *patterns::SoftplusActivation::operator()(std::string activation_type) {
+  // Create Operators
+  auto *softplus_op =
+      pattern->NewNode(softplus_repr())->assert_is_op("softplus");
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *softplus_out = pattern->NewNode(softplus_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("softplus")
+                           ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out = pattern->NewNode(activation_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output(activation_type);
+
+  softplus_op->LinksTo({softplus_out});
+  activation_op->LinksFrom({softplus_out}).LinksTo({activation_out});
+  return activation_out;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =
@@ -1596,6 +1617,26 @@ PDNode *patterns::Reshape::operator()() {
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
   next_op->LinksFrom({reshape_out});
   return reshape_out;
+}
+
+PDNode *patterns::Slice::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto slice_op = pattern->NewNode(slice_op_repr())->assert_is_op("slice");
+
+  auto slice_in = pattern->NewNode(slice_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("slice", "Input");
+  auto slice_out = pattern->NewNode(slice_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("slice", "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({slice_in});
+  slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
+  next_op->LinksFrom({slice_out});
+  return slice_out;
 }
 
 PDNode *patterns::Matmul::operator()() {
@@ -2294,7 +2335,7 @@ PDNode *patterns::QuantizePlacement::operator()(
       std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
                                        "fc", "matmul", "pool2d", "prior_box",
                                        "reshape2", "transpose2", "fusion_gru",
-                                       "fusion_lstm", "multi_gru"});
+                                       "fusion_lstm", "multi_gru", "slice"});
   if (!quantize_enabled_op_types.empty()) {
     supported_op_types = quantize_enabled_op_types;
   }
@@ -2670,12 +2711,13 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
 }
 
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
-    bool with_reshape_xshape, bool with_transpose_xshape) {
+    const std::string &op_name, bool with_reshape_xshape,
+    bool with_transpose_xshape) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto reshape_in = pattern->NewNode(reshape_in_repr())
                         ->AsInput()
@@ -2696,7 +2738,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_op_input("matmul")
+                           ->assert_is_op_input(op_name)
                            ->assert_is_op_output("transpose2", "Out");
   if (!with_transpose_xshape)
     transpose_out->assert_is_only_output_of_op("transpose2");
@@ -2710,7 +2752,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output(op_name, "Out");
 
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
   if (with_reshape_xshape) reshape_op->LinksTo({reshape_xshape});

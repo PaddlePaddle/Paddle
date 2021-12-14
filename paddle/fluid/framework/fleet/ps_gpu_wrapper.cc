@@ -191,7 +191,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   // get day_id: day nums from 1970
   struct std::tm b;
   b.tm_year = year_ - 1900;
@@ -490,9 +490,8 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 
 void PSGPUWrapper::start_build_thread() {
   running_ = true;
-  VLOG(3) << "start build CPU&GPU ps thread.";
+  VLOG(3) << "start build CPU ps thread.";
   pre_build_threads_ = std::thread([this] { pre_build_thread(); });
-  build_threads_ = std::thread([this] { build_thread(); });
 }
 
 void PSGPUWrapper::pre_build_thread() {
@@ -515,30 +514,28 @@ void PSGPUWrapper::pre_build_thread() {
   VLOG(3) << "build cpu thread end";
 }
 
-void PSGPUWrapper::build_thread() {
-  // build: build_pull + build_gputask
-  while (running_) {
-    std::shared_ptr<HeterContext> gpu_task = nullptr;
-    if (!gpu_free_channel_->Get(gpu_task)) {
-      continue;
-    }
-    if (!buildcpu_ready_channel_->Get(gpu_task)) {
-      continue;
-    }
-    VLOG(3) << "thread BuildGPUTask start.";
-    platform::Timer timer;
-    timer.Start();
-    BuildPull(gpu_task);
-    timer.Pause();
-    timer.Start();
-    BuildGPUTask(gpu_task);
-    timer.Pause();
-    VLOG(1) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
-            << "s";
-
-    train_ready_channel_->Put(gpu_task);
+void PSGPUWrapper::build_task() {
+  // build_task: build_pull + build_gputask
+  std::shared_ptr<HeterContext> gpu_task = nullptr;
+  // train end, gpu free
+  if (!gpu_free_channel_->Get(gpu_task)) {
+    return;
   }
-  VLOG(3) << "build gpu thread end";
+  // ins and pre_build end
+  if (!buildcpu_ready_channel_->Get(gpu_task)) {
+    return;
+  }
+
+  VLOG(1) << "BuildPull start.";
+  platform::Timer timer;
+  timer.Start();
+  BuildPull(gpu_task);
+  BuildGPUTask(gpu_task);
+  timer.Pause();
+  VLOG(1) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
+          << "s";
+
+  current_task_ = gpu_task;
 }
 
 void PSGPUWrapper::BeginPass() {
@@ -548,11 +545,15 @@ void PSGPUWrapper::BeginPass() {
     PADDLE_THROW(
         platform::errors::Fatal("[BeginPass] current task is not ended."));
   }
-  // load+build done
-  if (!train_ready_channel_->Get(current_task_)) {
-    PADDLE_THROW(platform::errors::Fatal("train_ready_channel_ failed."));
-  }
+
+  build_task();
   timer.Pause();
+
+  if (current_task_ == nullptr) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "[BeginPass] after build_task, current task is not null."));
+  }
+
   VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 

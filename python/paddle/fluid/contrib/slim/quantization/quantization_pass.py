@@ -136,7 +136,7 @@ _op_real_in_out_name = {
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
     "unsqueeze2": [["X"], ["Out"]],
-    "flatten_contiguous_range": [['X'], ["Out", "XShape"]],
+    "flatten_contiguous_range": [['X'], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -1292,10 +1292,11 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        x_num_col_dims = 1
+        if op_node.name() in ['matmul', 'matmul_v2', 'mul']:
+            x_num_col_dims = len(op_node.outputs[0].shape()) - 1
         if op_node.op().has_attr("x_num_col_dims"):
             x_num_col_dims = op_node.op().attr("x_num_col_dims")
-        else:
-            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={

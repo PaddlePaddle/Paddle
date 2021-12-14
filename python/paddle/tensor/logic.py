@@ -583,3 +583,77 @@ def bitwise_not(x, out=None, name=None):
 
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
+
+
+@templatedoc()
+def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(Tensor): ${input_comment}.
+        y(Tensor): ${other_comment}.
+        rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan(equalnantype, optional): ${equal_nan_comment}.
+        name (str, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: ${out_comment}.
+
+    Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64.
+        TypeError: The data type of ``y`` must be one of float32, float64.
+        TypeError: The type of ``rtol`` must be float.
+        TypeError: The type of ``atol`` must be float.
+        TypeError: The type of ``equal_nan`` must be bool.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          x = paddle.to_tensor([10000., 1e-07])
+          y = paddle.to_tensor([10000.1, 1e-08])
+          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [True, False]
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True, False]
+
+          x = paddle.to_tensor([1.0, float('nan')])
+          y = paddle.to_tensor([1.0, float('nan')])
+          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [True, False]
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True, True]
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.isclose(x, y, 'rtol',
+                              str(rtol), 'atol',
+                              str(atol), 'equal_nan', equal_nan)
+
+    check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
+    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
+    check_type(rtol, 'rtol', float, 'isclose')
+    check_type(atol, 'atol', float, 'isclose')
+    check_type(equal_nan, 'equal_nan', bool, 'isclose')
+
+    helper = LayerHelper("isclose", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+
+    inputs = {'Input': x, 'Other': y}
+    outputs = {'Out': out}
+    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
+    helper.append_op(
+        type='isclose', inputs=inputs, outputs=outputs, attrs=attrs)
+    return out

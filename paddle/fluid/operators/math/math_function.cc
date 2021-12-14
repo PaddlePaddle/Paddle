@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/hybird/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -173,6 +174,13 @@ void set_constant_with_place<platform::NPUPinnedPlace>(
 }
 
 template <>
+void set_constant_with_place<platform::IPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
@@ -265,6 +273,13 @@ struct ElementwiseAddTo<platform::CPUDeviceContext, T> {
                   framework::Tensor* dst) {
     auto in = framework::EigenVector<T>::Flatten(src);
     auto out = framework::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+  void operator()(platform::CPUDeviceContext* ctx, const pten::DenseTensor& src,
+                  pten::DenseTensor* dst) {
+    auto in = pten::EigenVector<T>::Flatten(src);
+    auto out = pten::EigenVector<T>::Flatten(*dst);
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }

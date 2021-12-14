@@ -29,5 +29,11 @@ set(OPERATOR_DEPS ${OPERATOR_DEPS} ${DISTRIBUTE_DEPS} PARENT_SCOPE)
 set_source_files_properties(heter_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test(heter_server_test SRCS heter_server_test.cc DEPS ${RPC_DEPS} ${DISTRIBUTE_DEPS} executor scope proto_desc scale_op eigen_function)
 
+set_source_files_properties(send_and_recv_op_cpu_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+cc_test(send_and_recv_cpu_test SRCS send_and_recv_op_cpu_test.cc DEPS executor scope proto_desc scale_op send_and_recv_op ${RPC_DEPS} ${DISTRIBUTE_DEPS} eigen_function)
+
+set_source_files_properties(send_and_recv_op_gpu_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+cc_test(send_and_recv_gpu_test SRCS send_and_recv_op_gpu_test.cc DEPS executor scope proto_desc scale_op send_and_recv_op ${RPC_DEPS} ${DISTRIBUTE_DEPS} eigen_function)
+
 set_source_files_properties(heter_listen_and_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test(heter_listen_and_server_test SRCS heter_listen_and_server_test.cc DEPS executor scope proto_desc scale_op heter_listen_and_serv_op ${RPC_DEPS} ${DISTRIBUTE_DEPS} eigen_function)

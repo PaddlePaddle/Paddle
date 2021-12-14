@@ -228,7 +228,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       }
     };
 
-    if (CheckDims(dims_x, dims_y)) {
+    if (dims_x.nbDims == dims_y.nbDims) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
       nvinfer1::IElementWiseLayer* elet_layer =
