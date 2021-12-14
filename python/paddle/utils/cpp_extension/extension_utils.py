@@ -24,9 +24,16 @@ import textwrap
 import warnings
 import subprocess
 
+from importlib import machinery
 from contextlib import contextmanager
 from setuptools.command import bdist_egg
 
+try:
+    from subprocess import DEVNULL  # py3
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
+
+from .rw_lock import RWLOCK
 from ...fluid import core
 from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
@@ -797,7 +804,6 @@ def parse_op_info(op_name):
     Parse input names and outpus detail information from registered custom op
     from OpInfoMap.
     """
-    from paddle.fluid.framework import OpProtoHolder
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
             "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".
@@ -847,10 +853,12 @@ def _generate_python_module(module_name,
     api_file = os.path.join(build_directory, module_name + '.py')
     log_v("generate api file: {}".format(api_file), verbose)
 
-    # write into .py file
+    # write into .py file with RWLock
+    RWLOCK.write_acquire()
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))
+    RWLOCK.write_release()
 
     # load module
     custom_module = _load_module_from_file(api_file, verbose)
@@ -912,9 +920,12 @@ def _load_module_from_file(api_file_path, verbose=False):
     # Unique readable module name to place custom api.
     log_v('import module from file: {}'.format(api_file_path), verbose)
     ext_name = "_paddle_cpp_extension_"
-    from importlib import machinery
+
+    # load module with RWLock
+    RWLOCK.read_acquire()
     loader = machinery.SourceFileLoader(ext_name, api_file_path)
     module = loader.load_module()
+    RWLOCK.read_release()
 
     return module
 
@@ -1066,10 +1077,6 @@ def run_cmd(command, verbose=False):
     """
     # logging
     log_v("execute command: {}".format(command), verbose)
-    try:
-        from subprocess import DEVNULL  # py3
-    except ImportError:
-        DEVNULL = open(os.devnull, 'wb')
 
     # execute command
     try:
