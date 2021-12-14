@@ -293,6 +293,7 @@ class TestScatterOpFp16(OpTest):
         ref_grad_updates = paddle.gather(paddle.to_tensor(self.dout_np), 
                              paddle.to_tensor(self.index_np))
         return ref_grad_updates
+
     def test_scatter_fp16(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
