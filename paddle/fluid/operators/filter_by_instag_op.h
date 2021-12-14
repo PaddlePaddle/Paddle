@@ -64,8 +64,11 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
 
     // expected auto = const int64_t
     auto* x2_data = x2->data<int64_t>();
+
     // e.g get [0, 1, 2, 3, ...]
     size_t x2_lods_size = x2->dims()[0];
+    size_t instag_num_per_ins = x2->dims()[1];
+
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
       for (int i = 0; i < x1->dims()[0]; i++) {
@@ -84,8 +87,9 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
     for (size_t i = 0; i < x2_lods_size; i++) {
-      for (size_t j = i; j < i + 1; j++) {
-        if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
+      for (size_t j = 0; j < instag_num_per_ins; j++) {
+        if (filter_tag.find(x2_data[i * instag_num_per_ins + j]) !=
+            filter_tag.end()) {
           size_t batch_len = x1_lods[i + 1] - x1_lods[i];
           mmap_aux[out_lods.back()] = x1_lods[i];
           out_lods.push_back(out_lods.back() + batch_len);
@@ -170,8 +174,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
           out_data[oi] = (int32_t)out_val_if_empty;
         } else if (std::is_same<T, int64_t>::value) {
           out_data[oi] = (int64_t)out_val_if_empty;
-        } else {
+        } else if (std::is_same<T, double>::value) {
           out_data[oi] = static_cast<double>(out_val_if_empty);
+        } else {
+          out_data[oi] = static_cast<float>(out_val_if_empty);
         }
       }
       loss_weight_data[0] = 0;
