@@ -415,9 +415,14 @@ class LambOpKernel : public framework::OpKernel<T> {
  private:
   template <typename MT, bool IsMultiPrecision>
   void ComputeImpl(const framework::ExecutionContext& ctx) const {
-    using paddle::framework::Tensor;
-
-    const auto* skip_update = ctx.Input<Tensor>("SkipUpdate");
+    if (!IsMultiPrecision) {
+      constexpr auto kIsSameType = std::is_same<T, MT>::value;
+      PADDLE_ENFORCE_EQ(
+          kIsSameType, true,
+          platform::errors::InvalidArgument(
+              "When multi_precision=False, T and MT must be the same type."));
+    }
+    const auto* skip_update = ctx.Input<framework::LoDTensor>("SkipUpdate");
     const bool* skip_update_flag = skip_update && skip_update->IsInitialized()
                                        ? skip_update->data<bool>()
                                        : nullptr;
@@ -430,35 +435,45 @@ class LambOpKernel : public framework::OpKernel<T> {
     auto beta1 = static_cast<MT>(ctx.Attr<float>("beta1"));
     auto beta2 = static_cast<MT>(ctx.Attr<float>("beta2"));
     auto epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
-    const auto& param =
-        GET_DATA_SAFELY(ctx.Input<Tensor>("Param"), "Input", "Param", "Lamb");
+    const auto& param = GET_DATA_SAFELY(
+        ctx.Input<framework::LoDTensor>("Param"), "Input", "Param", "Lamb");
     const auto* grad_var = ctx.InputVar("Grad");
-    const auto& mom1 = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment1"), "Input",
-                                       "Moment1", "Lamb");
-    const auto& mom2 = GET_DATA_SAFELY(ctx.Input<Tensor>("Moment2"), "Input",
-                                       "Moment2", "Lamb");
-    const auto& lr = GET_DATA_SAFELY(ctx.Input<Tensor>("LearningRate"), "Input",
-                                     "LearningRate", "Lamb");
+    const auto& mom1 = GET_DATA_SAFELY(
+        ctx.Input<framework::LoDTensor>("Moment1"), "Input", "Moment1", "Lamb");
+    const auto& mom2 = GET_DATA_SAFELY(
+        ctx.Input<framework::LoDTensor>("Moment2"), "Input", "Moment2", "Lamb");
+    const auto& lr =
+        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("LearningRate"),
+                        "Input", "LearningRate", "Lamb");
 
-    const auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<Tensor>("Beta1Pow"),
-                                            "Input", "Beta1Pow", "Lamb");
-    const auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<Tensor>("Beta2Pow"),
-                                            "Input", "Beta2Pow", "Lamb");
+    const auto& beta1_pow =
+        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta1Pow"), "Input",
+                        "Beta1Pow", "Lamb");
+    const auto& beta2_pow =
+        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta2Pow"), "Input",
+                        "Beta2Pow", "Lamb");
 
-    auto& param_out = GET_DATA_SAFELY(ctx.Output<Tensor>("ParamOut"), "Output",
-                                      "ParamOut", "Lamb");
-    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Moment1Out"), "Output",
-                                     "Moment1Out", "Lamb");
-    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Moment2Out"), "Output",
-                                     "Moment2Out", "Lamb");
-    auto& beta1_pow_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Beta1PowOut"),
-                                          "Output", "Beta1PowOut", "Lamb");
-    auto& beta2_pow_out = GET_DATA_SAFELY(ctx.Output<Tensor>("Beta2PowOut"),
-                                          "Output", "Beta2PowOut", "Lamb");
+    auto& param_out =
+        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("ParamOut"), "Output",
+                        "ParamOut", "Lamb");
+    auto& mom1_out =
+        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Moment1Out"),
+                        "Output", "Moment1Out", "Lamb");
+    auto& mom2_out =
+        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Moment2Out"),
+                        "Output", "Moment2Out", "Lamb");
+    auto& beta1_pow_out =
+        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Beta1PowOut"),
+                        "Output", "Beta1PowOut", "Lamb");
+    auto& beta2_pow_out =
+        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Beta2PowOut"),
+                        "Output", "Beta2PowOut", "Lamb");
     const auto* master_param =
-        IsMultiPrecision ? ctx.Input<Tensor>("MasterParam") : nullptr;
+        IsMultiPrecision ? ctx.Input<framework::LoDTensor>("MasterParam")
+                         : nullptr;
     auto* master_param_out =
-        IsMultiPrecision ? ctx.Output<Tensor>("MasterParamOut") : nullptr;
+        IsMultiPrecision ? ctx.Output<framework::LoDTensor>("MasterParamOut")
+                         : nullptr;
 
     if (IsMultiPrecision) {
       PADDLE_ENFORCE_NOT_NULL(master_param,
@@ -473,7 +488,7 @@ class LambOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
-    framework::Tensor trust_ratio_div =
+    auto trust_ratio_div =
         ctx.AllocateTmpTensor<MT, DeviceContext>(param.dims(), dev_ctx);
 
     const void* param_ptr = param.template data<void>();
@@ -603,9 +618,8 @@ class LambOpKernel : public framework::OpKernel<T> {
     }
 
     // Update parameter
-    framework::Tensor p_norm_t =
-        ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
-    framework::Tensor trust_ratio_div_norm_t =
+    auto p_norm_t = ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
+    auto trust_ratio_div_norm_t =
         ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
 
     auto p_norm = framework::EigenScalar<MT>::From(p_norm_t);
@@ -620,8 +634,8 @@ class LambOpKernel : public framework::OpKernel<T> {
       auto mp = framework::EigenVector<MT>::Flatten(*master_param);
       p_norm.device(*place) = mp.square().sum().sqrt();
     } else {
-      auto p = framework::EigenVector<T>::Flatten(param);
-      p_norm.device(*place) = p.template cast<MT>().square().sum().sqrt();
+      auto p = framework::EigenVector<MT>::Flatten(param);
+      p_norm.device(*place) = p.square().sum().sqrt();
     }
     trust_ratio_div_norm.device(*place) = t.square().sum().sqrt();
 
