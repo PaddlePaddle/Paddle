@@ -14,7 +14,7 @@
 
 #include "paddle/pten/kernels/xpu/manipulation.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/functions/general/manipulation.h"
+#include "paddle/pten/kernels/hybird/general/manipulation.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {
@@ -51,56 +51,32 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
   xshape->ResetLoD(x.lod());
 }
 
-void ReshapeFromVectorVal(const XPUContext& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int64_t>& shape,
-                          DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
-  if (&x == out) {
+void Reshape(const XPUContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
+  if (x.data() == out->data() && x.numel() == out->numel()) {
     out->Resize(out_meta.dims);
     return;
   }
   pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
+  out->ResetLoD(x.lod());
 }
 
-void ReshapeFromDT(const XPUContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& shape,
-                   DenseTensor* out) {
-  auto* shape_data = shape.data<int>();
-  auto vector_shape =
-      std::vector<int64_t>(shape_data, shape_data + shape.numel());
-  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
-}
-
-void ReshapeFromVectorDT(const XPUContext& dev_ctx,
-                         const DenseTensor& x,
-                         const std::vector<DenseTensor>& shape,
-                         DenseTensor* out) {
-  std::vector<int64_t> vector_shape;
-  for (auto& tensor : shape) {
-    PADDLE_ENFORCE_EQ(
-        tensor.dims(),
-        paddle::framework::make_ddim({1}),
-        paddle::platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
-            "the element's shape must be [1]. But received the element's shape "
-            "is [%s]",
-            tensor.dims()));
-    vector_shape.push_back(*tensor.data<int32_t>());
-  }
-  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+void ReshapeWithXShape(const XPUContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out) {
+  general::SetXShape(x, xshape);
+  Reshape(dev_ctx, x, shape, out);
 }
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(ManipulationXPU);
-
-// TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
-// architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL("flatten_contiguous_range",
+PT_REGISTER_KERNEL(flatten,
                    XPU,
                    ANY,
                    pten::Flatten,
@@ -112,7 +88,7 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
+PT_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
                    ANY,
                    pten::FlattenWithXShape,
@@ -124,9 +100,4 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int,
                    int64_t) {}
 
-// TODO(yuanrisheng): "reshape2" is compatible with old kernel
-// architecture, kernel_name should be "reshape".
-PT_REGISTER_KERNEL_WITH_NO_TYPE("reshape2",
-                                XPU,
-                                ANY,
-                                pten::ReshapeFromVectorVal) {}
+PT_REGISTER_KERNEL_ALL_DTYPE(reshape, XPU, ANY, pten::Reshape) {}

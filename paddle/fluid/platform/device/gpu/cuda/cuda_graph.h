@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <thread>
 #include <vector>
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
@@ -26,6 +27,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace platform {
@@ -99,6 +101,25 @@ class CUDAGraph {
   // supported during capturing CUDA Graph.
   static bool IsValidCapturing();
 
+  static bool IsThreadLocalCapturing() {
+#if CUDA_VERSION >= 10010
+    return IsCapturing() &&
+           capturing_graph_->capture_mode_ == cudaStreamCaptureModeThreadLocal;
+#else
+    return false;
+#endif
+  }
+
+  static bool IsThisThreadCapturing() {
+    if (UNLIKELY(IsCapturing())) {
+      return IsThreadLocalCapturing()
+                 ? capturing_thread_id_.get() == std::this_thread::get_id()
+                 : true;
+    } else {
+      return false;
+    }
+  }
+
  private:
   static CUDAGraphID UniqueID() {
     static std::atomic<CUDAGraphID> id;
@@ -118,6 +139,7 @@ class CUDAGraph {
   bool is_reset_{false};
   std::mutex mtx_;
 
+  static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;
 };
 
