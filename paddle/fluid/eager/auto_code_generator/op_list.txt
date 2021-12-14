@@ -237,6 +237,7 @@ spp
 floor
 gelu
 retinanet_detection_output
+minus
 push_dense
 silu
 sequence_erase

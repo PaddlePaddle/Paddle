@@ -11,10 +11,14 @@ add_subdirectory(common)
 add_subdirectory(api)
 # pten core components
 add_subdirectory(core)
+# pten components of specific backends
+add_subdirectory(backends)
 # pten kernels for diff device
 add_subdirectory(kernels)
 # pten infermeta
 add_subdirectory(infermeta)
+# pten operator definitions
+add_subdirectory(ops)
 # pten tests
 add_subdirectory(tests)
 

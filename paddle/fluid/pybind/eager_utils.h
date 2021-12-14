@@ -51,6 +51,7 @@ PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const void* value);
 
 template <typename Tuple, size_t N>
 struct TupleEagerTensorResult {
