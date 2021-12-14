@@ -1444,6 +1444,18 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("erase", &Scope::EraseVars, py::arg("names"),
+           R"DOC(
+           Find variable named :code:`name` in the current scope or
+           its parent scope. Return None if not found. 
+
+           Args:
+               name (str): the variable names to be erase.
+
+           Returns:
+               None
+           )DOC",
+           py::return_value_policy::reference)
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            R"DOC(
            Create a new sub-scope of the current scope.

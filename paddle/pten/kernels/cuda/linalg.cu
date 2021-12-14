@@ -54,13 +54,11 @@ void Matmul(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(LinalgCUDA);
-
 using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL("dot",
+PT_REGISTER_KERNEL(dot,
                    CUDA,
                    ANY,
                    pten::Dot,
@@ -71,7 +69,7 @@ PT_REGISTER_KERNEL("dot",
                    complex64,
                    complex128) {}
 
-PT_REGISTER_KERNEL("matmul_v2",
+PT_REGISTER_KERNEL(matmul,
                    CUDA,
                    ANY,
                    pten::Matmul,

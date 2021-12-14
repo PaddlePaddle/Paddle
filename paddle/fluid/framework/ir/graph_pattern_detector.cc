@@ -2711,12 +2711,13 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
 }
 
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
-    bool with_reshape_xshape, bool with_transpose_xshape) {
+    const std::string &op_name, bool with_reshape_xshape,
+    bool with_transpose_xshape) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto reshape_in = pattern->NewNode(reshape_in_repr())
                         ->AsInput()
@@ -2737,7 +2738,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_op_input("matmul")
+                           ->assert_is_op_input(op_name)
                            ->assert_is_op_output("transpose2", "Out");
   if (!with_transpose_xshape)
     transpose_out->assert_is_only_output_of_op("transpose2");
@@ -2751,7 +2752,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output(op_name, "Out");
 
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
   if (with_reshape_xshape) reshape_op->LinksTo({reshape_xshape});
