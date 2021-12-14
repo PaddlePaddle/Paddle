@@ -35,6 +35,7 @@ import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
 from .compiler import _prune_feed_ops
+from ..distributed.fleet.fleet_executor_utils import *
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
