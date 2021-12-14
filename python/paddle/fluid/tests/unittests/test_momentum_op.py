@@ -843,7 +843,7 @@ class TestMultiTensorMomentum(unittest.TestCase):
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp)
 
-        for idx in range(2):
+        for idx in range(5):
             if place == 'gpu' and use_amp == True:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -877,7 +877,6 @@ class TestMultiTensorMomentum(unittest.TestCase):
             place=place, use_amp=use_amp, use_multi_tensor=True)
         output2, params2 = self._momentum_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=False)
-
         self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
         for idx in range(len(params1)):
             self.assertEqual(

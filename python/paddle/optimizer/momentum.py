@@ -286,116 +286,6 @@ class Momentum(Optimizer):
         return super(Momentum, self)._create_regularization_of_grad(
             param, grad, regularization)
 
-    def _multi_tensor_init(self, target_block, parameters):
-        """ 
-        Init param_dict, velocity_dict and regularization_dict for multi-tensor strategy.
-        """
-        self._create_accumulators(target_block, parameters)
-        for param in parameters:
-            # velocity
-            velocity_acc = self._get_accumulator(self._velocity_acc_str, param)
-            # regularization
-            regularization_method = self._regularization_method
-            regularization_coeff = self._regularization_coeff
-            if hasattr(param, 'regularizer'):
-                # we skip param's l2decay before, so fuse it with momentum here.
-                if isinstance(param.regularizer, L2DecayRegularizer):
-                    regularization_method = "l2_decay"
-                    regularization_coeff = param.regularizer._regularization_coeff
-                # the param's regularization has been done before, we avoid do l2decay in momentum.
-                else:
-                    regularization_method = ""
-                    regularization_coeff = 0
-            if param.dtype == paddle.float32:
-                # param
-                self.param_dict['FP32_LODTensor'].append(param)
-                # velocity
-                self.velocity_dict['FP32_LODTensor'].append(velocity_acc)
-                # fp32 no master weight
-                # regularization
-                self.regularization_method_dict['FP32_LODTensor'].append(
-                    regularization_method)
-                self.regularization_coeff_dict['FP32_LODTensor'].append(
-                    regularization_coeff)
-            elif param.dtype == paddle.float16:
-                # param
-                self.param_dict['FP16_LODTensor'].append(param)
-                # velocity
-                self.velocity_dict['FP16_LODTensor'].append(velocity_acc)
-                # master weight
-                if self._multi_precision:
-                    self.master_weight_dict['FP16_LODTensor'].append(
-                        self._master_weights[param.name])
-                else:
-                    self.master_weight_dict['FP16_LODTensor'] = None
-                # regularization
-                self.regularization_method_dict['FP16_LODTensor'].append(
-                    regularization_method)
-                self.regularization_coeff_dict['FP16_LODTensor'].append(
-                    regularization_coeff)
-            else:
-                raise ValueError(
-                    "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
-                )
-
-    def _create_optimization_pass(self, parameters_and_grads):
-        """Add optimization operators to update gradients to tensors.
-
-        Args:
-          parameters_and_grads(list(tuple(Tensor, Tensor))):
-            a list of (tensor, gradient) pair to update.
-
-        Returns:
-          return_op_list: a list of operators that will complete one step of
-            optimization. This will include parameter update ops, global step
-            update ops and any other custom ops required by subclasses to manage
-            their internal state.
-        """
-        # This is a Implemented create_optimization_pass of paddle.optimizer.
-        # If use_multi_tensor is True, it will call merged_momentum to update
-        # parameters, else it will use default implementation of create_optimization_pass.
-
-        if self._use_multi_tensor:
-            global_block = framework.default_main_program().global_block()
-            target_block = global_block
-            current_block = framework.default_main_program().current_block()
-            if current_block.idx != global_block.idx:
-                assert current_block.backward_block_idx != -1, \
-                    "current block is not global_block, but it doesn't have backward block."
-                target_block = framework.default_main_program().blocks[
-                    current_block.backward_block_idx]
-
-            start = len(target_block.ops)
-            self.helper = LayerHelper(self.__class__.__name__)
-
-            self._create_global_learning_rate()
-            if framework.in_dygraph_mode():
-                if len(self.param_dict['FP32_LODTensor']) == 0 and len(
-                        self.param_dict['FP16_LODTensor']) == 0:
-                    if isinstance(parameters_and_grads, list):
-                        self._multi_tensor_init(target_block, [
-                            p[0] for p in parameters_and_grads
-                            if not p[0].stop_gradient
-                        ])
-                    else:
-                        self._multi_tensor_init(target_block, [
-                            p[0] for p in parameters_and_grads['params']
-                            if not p[0].stop_gradient
-                        ])
-
-                self._append_optimize_multi_tensor_op(target_block,
-                                                      parameters_and_grads)
-
-            # Get custom finish ops for subclasses
-            # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(target_block, parameters_and_grads)
-
-            end = len(target_block.ops)
-            return target_block._slice_ops(start, end)
-        else:
-            return super(Momentum,
-                         self)._create_optimization_pass(parameters_and_grads)
-
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
@@ -472,88 +362,141 @@ class Momentum(Optimizer):
 
         return momentum_op
 
+    def _multi_tensor_init(self, target_block, parameters):
+        """
+        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
+        This function will be overridden in the corresponding optimizer file.
+
+        Args:
+            target_block: the block in which the loss tensor is present
+            parameters: list of parameter tensors for the optimizer
+        """
+        self._create_accumulators(target_block, parameters)
+        for param in parameters:
+            # velocity
+            velocity_acc = self._get_accumulator(self._velocity_acc_str, param)
+            # regularization
+            regularization_method = self._regularization_method
+            regularization_coeff = self._regularization_coeff
+            if hasattr(param, 'regularizer'):
+                # we skip param's l2decay before, so fuse it with momentum here.
+                if isinstance(param.regularizer, L2DecayRegularizer):
+                    regularization_method = "l2_decay"
+                    regularization_coeff = param.regularizer._regularization_coeff
+                # the param's regularization has been done before, we avoid do l2decay in momentum.
+                else:
+                    regularization_method = ""
+                    regularization_coeff = 0
+            if param.dtype == paddle.float32:
+                # param
+                self.param_dict['FP32_LODTensor'].append(param)
+                # velocity
+                self.velocity_dict['FP32_LODTensor'].append(velocity_acc)
+                # fp32 no master weight
+                # regularization
+                self.regularization_method_dict['FP32_LODTensor'].append(
+                    regularization_method)
+                self.regularization_coeff_dict['FP32_LODTensor'].append(
+                    regularization_coeff)
+            elif param.dtype == paddle.float16:
+                # param
+                self.param_dict['FP16_LODTensor'].append(param)
+                # velocity
+                self.velocity_dict['FP16_LODTensor'].append(velocity_acc)
+                # master weight
+                if self._multi_precision:
+                    self.master_weight_dict['FP16_LODTensor'].append(
+                        self._master_weights[param.name])
+                else:
+                    self.master_weight_dict['FP16_LODTensor'] = None
+                # regularization
+                self.regularization_method_dict['FP16_LODTensor'].append(
+                    regularization_method)
+                self.regularization_coeff_dict['FP16_LODTensor'].append(
+                    regularization_coeff)
+            else:
+                raise ValueError(
+                    "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
+                )
+
     def _append_optimize_multi_tensor_op(self, target_block,
                                          parameters_and_grads):
+        """ 
+        For Multi Tensor, append optimize merged_operator to block.
+        """
         assert isinstance(target_block, framework.Block)
 
         grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
         lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
-        if framework.in_dygraph_mode():
-            if isinstance(parameters_and_grads, list):
-                for param_and_grad in parameters_and_grads:
-                    if param_and_grad[1] is None:
-                        continue
-                    if param_and_grad[0].stop_gradient is False:
-                        if param_and_grad[
-                                0].dtype == paddle.float32 and param_and_grad[
-                                    1].type == core.VarDesc.VarType.LOD_TENSOR:
-                            # grad
-                            grad_dict['FP32_LODTensor'].append(param_and_grad[
-                                1])
-                            # lr
-                            lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP32_LODTensor'].append(lr)
-                        elif param_and_grad[
-                                0].dtype == paddle.float16 and param_and_grad[
-                                    1].type == core.VarDesc.VarType.LOD_TENSOR:
-                            # grad
-                            grad_dict['FP16_LODTensor'].append(param_and_grad[
-                                1])
-                            # lr
-                            lr = self._create_param_lr(param_and_grad)
-                            # lr_FP16_LODTensor.append(lr)
-                            lr_dict['FP16_LODTensor'].append(lr)
-            else:
-                for param_and_grad in parameters_and_grads['params']:
-                    if param_and_grad[1] is None:
-                        continue
-                    if param_and_grad[0].stop_gradient is False:
-                        param_grad_dict = dict()
-                        param_grad_dict['params'] = param_and_grad
-                        param_grad_dict.update({
-                            k: v
-                            for k, v in parameters_and_grads.items()
-                            if k != 'params'
-                        })
-                        param_and_grad = self._update_param_group(
-                            param_grad_dict)
-                        if param_and_grad[
-                                0].dtype == paddle.float32 and param_and_grad[
-                                    1].type == core.VarDesc.VarType.LOD_TENSOR:
-                            # grad
-                            grad_dict['FP32_LODTensor'].append(param_and_grad[
-                                1])
-                            # lr
-                            lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP32_LODTensor'].append(lr)
-                        elif param_and_grad[
-                                0].dtype == paddle.float16 and param_and_grad[
-                                    1].type == core.VarDesc.VarType.LOD_TENSOR:
-                            # grad
-                            grad_dict['FP16_LODTensor'].append(param_and_grad[
-                                1])
-                            # lr
-                            lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP16_LODTensor'].append(lr)
+        if isinstance(parameters_and_grads, list):
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                if param_and_grad[0].stop_gradient is False:
+                    if param_and_grad[
+                            0].dtype == paddle.float32 and param_and_grad[
+                                1].type == core.VarDesc.VarType.LOD_TENSOR:
+                        # grad
+                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
+                        # lr
+                        lr = self._create_param_lr(param_and_grad)
+                        lr_dict['FP32_LODTensor'].append(lr)
+                    elif param_and_grad[
+                            0].dtype == paddle.float16 and param_and_grad[
+                                1].type == core.VarDesc.VarType.LOD_TENSOR:
+                        # grad
+                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
+                        # lr
+                        lr = self._create_param_lr(param_and_grad)
+                        # lr_FP16_LODTensor.append(lr)
+                        lr_dict['FP16_LODTensor'].append(lr)
+        else:
+            for param_and_grad in parameters_and_grads['params']:
+                if param_and_grad[1] is None:
+                    continue
+                if param_and_grad[0].stop_gradient is False:
+                    param_grad_dict = dict()
+                    param_grad_dict['params'] = param_and_grad
+                    param_grad_dict.update({
+                        k: v
+                        for k, v in parameters_and_grads.items()
+                        if k != 'params'
+                    })
+                    param_and_grad = self._update_param_group(param_grad_dict)
+                    if param_and_grad[
+                            0].dtype == paddle.float32 and param_and_grad[
+                                1].type == core.VarDesc.VarType.LOD_TENSOR:
+                        # grad
+                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
+                        # lr
+                        lr = self._create_param_lr(param_and_grad)
+                        lr_dict['FP32_LODTensor'].append(lr)
+                    elif param_and_grad[
+                            0].dtype == paddle.float16 and param_and_grad[
+                                1].type == core.VarDesc.VarType.LOD_TENSOR:
+                        # grad
+                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
+                        # lr
+                        lr = self._create_param_lr(param_and_grad)
+                        lr_dict['FP16_LODTensor'].append(lr)
 
-            multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
-            for key in multi_tensor_list:
-                if len(self.param_dict[key]) > 0:
-                    if key == 'FP32_LODTensor':
-                        self._multi_precision = False
-                    _, _, _ = _C_ops.merged_momentum(
-                        self.param_dict[key], grad_dict[key],
-                        self.velocity_dict[key], lr_dict[key],
-                        self.master_weight_dict[key], self.param_dict[key],
-                        self.velocity_dict[key], self.master_weight_dict[key],
-                        'mu', self._momentum, 'use_nesterov',
-                        self._use_nesterov, 'regularization_method',
-                        self.regularization_method_dict[key],
-                        'regularization_coeff',
-                        self.regularization_coeff_dict[key], 'multi_precision',
-                        self._multi_precision)
-            return None
+        multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
+        for key in multi_tensor_list:
+            if len(self.param_dict[key]) > 0:
+                if key == 'FP32_LODTensor':
+                    self._multi_precision = False
+                _, _, _ = _C_ops.merged_momentum(
+                    self.param_dict[key], grad_dict[key],
+                    self.velocity_dict[key], lr_dict[key],
+                    self.master_weight_dict[key], self.param_dict[key],
+                    self.velocity_dict[key], self.master_weight_dict[key], 'mu',
+                    self._momentum, 'use_nesterov', self._use_nesterov,
+                    'regularization_method',
+                    self.regularization_method_dict[key],
+                    'regularization_coeff', self.regularization_coeff_dict[key],
+                    'multi_precision', self._multi_precision)
+        return None
 
     def _update_param_group(self, parameters):
         self._momentum = parameters.get('momentum',
