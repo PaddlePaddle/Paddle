@@ -1,7 +1,3 @@
-sigmoid
-matmul_v2
-reduce_sum
-elementwise_add
 rsqrt
 multihead_matmul
 addmm
@@ -19,7 +15,9 @@ pow2_decay_with_linear_warmup
 split
 fc
 clear_float_status
+matmul_v2
 load
+c_embedding
 elementwise_max
 adadelta
 chunk_eval
@@ -43,8 +41,10 @@ expand_v2
 lgamma
 solve
 deformable_psroi_pooling
+transfer_layout
 instance_norm
 decode_jpeg
+distributed_push_sparse
 gather_nd
 reduce_prod
 matrix_rank
@@ -57,10 +57,12 @@ sequence_slice
 lookup_table
 softplus
 depthwise_conv2d
+c_allreduce_sum
 fused_fc_elementwise_layernorm
 sigmoid_cross_entropy_with_logits
 exp
 scatter
+c_allreduce_min
 equal_all
 searchsorted
 fusion_squared_mat_sub
@@ -73,6 +75,7 @@ momentum
 temporal_shift
 nce
 mv
+global_scatter
 proximal_gd
 memcpy_h2d
 add_position_encoding
@@ -90,13 +93,18 @@ randperm
 sequence_scatter
 partial_sum
 relu6
+partial_allgather
+c_scatter
+alltoall
 conv3d
 lstm_unit
 not_equal
 transpose2
+c_sync_comm_stream
 uniform_random_batch_size_like
 unfold
 lrn
+isclose
 softmax_with_cross_entropy
 isfinite_v2
 bernoulli
@@ -105,6 +113,7 @@ gaussian_random
 flatten2
 matmul
 cvm
+recv_v2
 adamax
 masked_select
 range
@@ -112,6 +121,7 @@ bitwise_not
 trace
 multinomial
 modified_huber_loss
+c_reduce_prod
 roll
 squared_l2_distance
 conv3d_transpose
@@ -128,8 +138,10 @@ multiclass_nms2
 bpr_loss
 fft_c2c
 bicubic_interp_v2
+angle
 reshape
 coalesce_tensor
+dgc
 roi_align
 reshape2
 reduce_any
@@ -139,6 +151,7 @@ sequence_reshape
 bilateral_slice
 fill_any_like
 empty
+partial_recv
 pad_constant_like
 pool2d
 size
@@ -148,11 +161,14 @@ stack
 dgc_momentum
 lamb
 generate_proposals_v2
+c_sync_calc_stream
 bitwise_or
 gru_unit
 fake_channel_wise_quantize_dequantize_abs_max
 sampling_id
 unsqueeze2
+transfer_dtype
+allreduce
 average_accumulates
 sequence_enumerate
 fusion_seqconv_eltadd_relu
@@ -160,6 +176,7 @@ bce_loss
 generate_proposal_labels
 im2sequence
 isinf
+c_reducescatter
 adagrad
 linear_chain_crf
 retinanet_target_assign
@@ -170,6 +187,7 @@ lookup_table_v2
 detection_map
 l1_norm
 sqrt
+partial_send
 fused_elemwise_activation
 slogdeterminant
 share_buffer
@@ -191,7 +209,10 @@ linear_interp
 auc
 logical_or
 batch_norm
+c_reduce_sum
+elementwise_add
 acos
+send_and_recv
 unpool
 cumprod
 sample_logits
@@ -206,6 +227,7 @@ matrix_power
 greater_equal
 generate_proposals
 bilinear_interp
+sigmoid
 inplace_abn
 softshrink
 mul
@@ -215,6 +237,7 @@ spp
 floor
 gelu
 retinanet_detection_output
+minus
 push_dense
 silu
 sequence_erase
@@ -243,6 +266,8 @@ overlap_add
 fill_constant_batch_size_like
 fill_any
 dequantize_log
+c_split
+barrier
 max_pool2d_with_index
 pad3d
 norm
@@ -258,6 +283,7 @@ pow
 stanh
 label_smooth
 merged_momentum
+c_reduce_min
 ascend_trigger
 fused_feedforward
 rpn_target_assign
@@ -271,6 +297,7 @@ frame
 bincount
 shape
 group_norm
+c_softmax_with_cross_entropy
 resnet_unit
 sequence_expand_as
 cos_sim
@@ -319,6 +346,7 @@ adamw
 elementwise_pow
 prior_box
 p_norm
+c_concat
 unique_consecutive
 lod_reset
 pad
@@ -339,6 +367,7 @@ pad2d
 inverse
 spectral_norm
 shuffle_channel
+send_v2
 psroi_pool
 seed
 ceil
@@ -347,6 +376,7 @@ reduce_min
 cos
 ncclAllReduce
 cudnn_lstm
+reduce_sum
 digamma
 assign_value
 increment
@@ -366,6 +396,8 @@ atan
 less_than
 unsqueeze
 crf_decoding
+global_gather
+c_allreduce_prod
 log_softmax
 ftrl
 matrix_nms
@@ -374,6 +406,7 @@ cast
 tanh_shrink
 hard_shrink
 multiclass_nms
+c_broadcast
 fusion_transpose_flatten_concat
 sequence_unpad
 fused_elemwise_add_activation
@@ -393,6 +426,7 @@ alloc_float_status
 sequence_concat
 fusion_seqpool_cvm_concat
 similarity_focus
+c_allreduce_max
 argsort
 sequence_expand
 sgd
@@ -413,6 +447,7 @@ pyramid_hash
 fake_quantize_dequantize_moving_average_abs_max
 multi_dot
 sequence_pool
+broadcast
 transpose
 top_k
 dist
@@ -466,10 +501,13 @@ squared_l2_norm
 elementwise_sub
 margin_rank_loss
 faster_tokenizer
+c_identity
+c_reduce_max
 relu
 is_empty
 reduce_all
 edit_distance
+distributed_lookup_table
 bmm
 yolo_box
 soft_relu
@@ -484,6 +522,7 @@ nearest_interp
 gather
 trilinear_interp_v2
 box_clip
+c_allgather
 isnan_v2
 softmax
 conv2d_fusion
