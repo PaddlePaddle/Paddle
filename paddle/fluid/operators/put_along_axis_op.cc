@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/take_along_axis_op.h"
+#include "paddle/fluid/operators/put_along_axis_op.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class TakeAlongAxisOp : public framework::OperatorWithKernel {
+class PutAlongAxisOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -30,15 +30,19 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"), true,
         platform::errors::InvalidArgument(
-            "Input(Input) of TakeAlongAxisOp should not be null."));
+            "Input(Input) of PutAlongAxisOpOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Index"), true,
         platform::errors::InvalidArgument(
-            "Input(Index) of TakeAlongAxisOp should not be null."));
+            "Input(Index) of PutAlongAxisOpOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Value"), true,
+        platform::errors::InvalidArgument(
+            "Input(Value) of PutAlongAxisOpOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Result"), true,
         platform::errors::InvalidArgument(
-            "Output(Result) of TakeAlongAxisOp should not be null."));
+            "Output(Result) of PutAlongAxisOpOp should not be null."));
 
     auto index_dim = ctx->GetInputDim("Index");
 
@@ -60,22 +64,23 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
   }
 };
 
-class TakeAlongAxisOpMaker : public framework::OpProtoAndCheckerMaker {
+class PutAlongAxisOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "The input tensor of TakeAlongAxisOp");
-    AddInput("Index", "The index tensor of TakeAlongAxisOp");
-    AddOutput("Result", "The result tensor of TakeAlongAxisOp");
-    AddAttr<int>("Axis",
-                 "The Tensor which contains the axis that we do TakeAlongAxis "
-                 "operation.");
+    AddInput("Input", "The input tensor of PutAlongAxisOp");
+    AddInput("Index", "The index tensor of PutAlongAxisOp");
+    AddInput("Value", "The value tensor of PutAlongAxisOp");
+    AddOutput("Result", "The result tensor of PutAlongAxisOp");
+    AddAttr<int>("Axis", "The axis that we do PutAlongAxis operation");
+    AddAttr<std::string>("Reduce", "The reduce operation for scatter")
+        .SetDefault("assign");
     AddComment(R"DOC(
-        Take_along_axis Operator.)
+        PutAlongAxis Operator.)
     )DOC");
   }
 };
 
-class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
+class PutAlongAxisGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -101,15 +106,16 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class TakeAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
+class PutAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("take_along_axis_grad");
+    op->SetType("put_along_axis_grad");
     op->SetInput("Index", this->Input("Index"));
     op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Value", this->Input("Value"));
 
     op->SetInput(framework::GradVarName("Result"), this->OutputGrad("Result"));
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
@@ -121,20 +127,19 @@ class TakeAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(take_along_axis, ops::TakeAlongAxisOp,
-                  ops::TakeAlongAxisOpMaker,
-                  ops::TakeAlongAxisGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TakeAlongAxisGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(take_along_axis_grad, ops::TakeAlongAxisGradOp)
-REGISTER_OP_CPU_KERNEL(take_along_axis, ops::TakeAlongAxisOpKernel<float>,
-                       ops::TakeAlongAxisOpKernel<double>,
-                       ops::TakeAlongAxisOpKernel<int>,
-                       ops::TakeAlongAxisOpKernel<uint8_t>,
-                       ops::TakeAlongAxisOpKernel<int64_t>);
+REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
+                  ops::PutAlongAxisGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp)
+REGISTER_OP_CPU_KERNEL(put_along_axis, ops::PutAlongAxisOpKernel<float>,
+                       ops::PutAlongAxisOpKernel<double>,
+                       ops::PutAlongAxisOpKernel<int>,
+                       ops::PutAlongAxisOpKernel<uint8_t>,
+                       ops::PutAlongAxisOpKernel<int64_t>);
 
-REGISTER_OP_CPU_KERNEL(take_along_axis_grad,
-                       ops::TakeAlongAxisGradOpKernel<float>,
-                       ops::TakeAlongAxisGradOpKernel<double>,
-                       ops::TakeAlongAxisGradOpKernel<int>,
-                       ops::TakeAlongAxisGradOpKernel<uint8_t>,
-                       ops::TakeAlongAxisGradOpKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(put_along_axis_grad,
+                       ops::PutAlongAxisGradOpKernel<float>,
+                       ops::PutAlongAxisGradOpKernel<double>,
+                       ops::PutAlongAxisGradOpKernel<int>,
+                       ops::PutAlongAxisGradOpKernel<uint8_t>,
+                       ops::PutAlongAxisGradOpKernel<int64_t>);

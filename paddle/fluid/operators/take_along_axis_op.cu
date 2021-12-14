@@ -30,7 +30,7 @@ class TakeAlongAxisCUDAKernel : public framework::OpKernel<T> {
                       platform::errors::PreconditionNotMet(
                           "This kernel only runs on GPU device."));
     auto input = ctx.Input<Tensor>("Input");
-    auto dim = ctx.Attr<int>("Dim");
+    auto axis = ctx.Attr<int>("Axis");
     auto index = ctx.Input<Tensor>("Index");
     auto result = ctx.Output<Tensor>("Result");
     result->Resize(index->dims());
@@ -42,10 +42,56 @@ class TakeAlongAxisCUDAKernel : public framework::OpKernel<T> {
 
     const auto &index_type = index->type();
     if (index_type == framework::proto::VarType::INT32) {
-      gpu_gather_kernel<T, int32_t>(*input, dim, *index, *result);
+      gpu_gather_kernel<T, int32_t>(*input, axis, *index, *result,
+                                    ctx.device_context());
     } else if (index_type == framework::proto::VarType::INT64) {
-      gpu_gather_kernel<T, int64_t>(*input, dim, *index, *result);
+      gpu_gather_kernel<T, int64_t>(*input, axis, *index, *result,
+                                    ctx.device_context());
     }
+  }
+};
+
+template <typename T>
+class TakeAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("This kernel only runs on GPU."));
+
+    auto input_d = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    VLOG(3) << " GPU grad  start 111111:";
+    // VLOG(3) << " input grad:" << *(input_d->data<T>());
+    auto index = ctx.Input<Tensor>("Index");
+    auto result_d = ctx.Input<Tensor>(framework::GradVarName("Result"));
+    VLOG(3) << " index grad:" << *(index->data<int>());
+    VLOG(3) << " result_d grad:" << *(result_d->data<T>());
+    VLOG(3) << " grad 22222222:";
+    auto axis = ctx.Attr<int>("Axis");
+    VLOG(3) << " grad 3333333:";
+    VLOG(3) << " index->dims: " << sizeof(index->dims());
+    input_d->Resize(index->dims());
+    VLOG(3) << " grad 4444444:";
+    input_d->mutable_data<T>(ctx.GetPlace());
+    VLOG(3) << " grad 5555555:";
+    // // resize_output(result, index.sizes());
+    // // check_no_internal_overlap(self, result);
+    // // check_no_partial_overlap(result, index);
+    // VLOG(3) << "000000000";
+
+    const auto &index_type = index->type();
+    VLOG(3) << " grad 666666:";
+    if (index_type == framework::proto::VarType::INT32) {
+      VLOG(3) << " grad 77777:";
+      cpu_scatter_assign_kernel<T, int32_t>(
+          *input_d, axis, *index, *result_d,
+          ctx.device_context());  // the gradient of gather is scatter
+    } else if (index_type == framework::proto::VarType::INT64) {
+      VLOG(3) << " grad 88888:";
+      gpu_scatter_assign_kernel<T, int64_t>(*input_d, axis, *index, *result_d,
+                                            ctx.device_context());
+    }
+    VLOG(3) << "<<<< Done GPU gather grad Compute <<<<<";
   }
 };
 
@@ -59,8 +105,9 @@ REGISTER_OP_CUDA_KERNEL(take_along_axis, ops::TakeAlongAxisCUDAKernel<float>,
                         ops::TakeAlongAxisCUDAKernel<int64_t>,
                         ops::TakeAlongAxisCUDAKernel<int>,
                         ops::TakeAlongAxisCUDAKernel<plat::float16>);
-// REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>,
-//                         ops::GatherGradOpCUDAKernel<double>,
-//                         ops::GatherGradOpCUDAKernel<int64_t>,
-//                         ops::GatherGradOpCUDAKernel<int>,
-//                         ops::GatherGradOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(take_along_axis_grad,
+                        ops::TakeAlongAxisGradOpCUDAKernel<float>,
+                        ops::TakeAlongAxisGradOpCUDAKernel<double>,
+                        ops::TakeAlongAxisGradOpCUDAKernel<int64_t>,
+                        ops::TakeAlongAxisGradOpCUDAKernel<int>,
+                        ops::TakeAlongAxisGradOpCUDAKernel<plat::float16>);

@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-class TakeAlongAxisOpKernel : public framework::OpKernel<T> {
+class PutAlongAxisOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
@@ -33,29 +33,57 @@ class TakeAlongAxisOpKernel : public framework::OpKernel<T> {
     auto input = ctx.Input<Tensor>("Input");
     VLOG(3) << " input:" << *(input->data<T>());
     auto axis = ctx.Attr<int>("Axis");
+    auto value = ctx.Input<Tensor>("Value");
     auto index = ctx.Input<Tensor>("Index");
+    auto reduce_op = ctx.Attr<std::string>("Reduce");
     auto result = ctx.Output<Tensor>("Result");
-    result->Resize(index->dims());
+    result->Resize(input->dims());
     result->mutable_data<T>(ctx.GetPlace());
     // // resize_output(result, index.sizes());
     // // check_no_internal_overlap(self, result);
     // // check_no_partial_overlap(result, index);
     // VLOG(3) << "000000000";
-
+    const platform::DeviceContext &device_ctx = ctx.device_context();
     const auto &index_type = index->type();
-    if (index_type == framework::proto::VarType::INT32) {
-      cpu_gather_kernel<T, int32_t>(*input, axis, *index, *result,
-                                    ctx.device_context());
-    } else if (index_type == framework::proto::VarType::INT64) {
-      cpu_gather_kernel<T, int64_t>(*input, axis, *index, *result,
-                                    ctx.device_context());
+    if (reduce_op == "add") {
+      if (index_type == framework::proto::VarType::INT32) {
+        cpu_scatter_add_kernel<T, int32_t>(*input, axis, *index, *value,
+                                           device_ctx);
+      } else if (index_type == framework::proto::VarType::INT64) {
+        cpu_scatter_add_kernel<T, int64_t>(*input, axis, *index, *value,
+                                           device_ctx);
+      }
+    } else if (reduce_op == "multiply") {
+      if (index_type == framework::proto::VarType::INT32) {
+        cpu_scatter_mul_kernel<T, int32_t>(*input, axis, *index, *value,
+                                           device_ctx);
+      } else if (index_type == framework::proto::VarType::INT64) {
+        cpu_scatter_mul_kernel<T, int64_t>(*input, axis, *index, *value,
+                                           device_ctx);
+      }
+    } else if (reduce_op == "assign") {
+      if (index_type == framework::proto::VarType::INT32) {
+        cpu_scatter_assign_kernel<T, int32_t>(*input, axis, *index, *value,
+                                              device_ctx);
+      } else if (index_type == framework::proto::VarType::INT64) {
+        cpu_scatter_assign_kernel<T, int64_t>(*input, axis, *index, *value,
+                                              device_ctx);
+      }
+    } else {
+      return;
+      // platform::errors::InvalidArgument(
+      //   "can not suppor reduce_op: (%s) for scatter table: %s, only support
+      //   reduce op:
+      //   'add‘, 'assign', 'multiply', the defalut reduce op is assign ",
+      //   reduce_op);
     }
-    VLOG(3) << "<<<< Done Compute <<<<<";
+    *result = *input;  // inplace opeartion
+    VLOG(3) << "<<<< Done PutAlongAxisOpKernel Compute <<<<<";
   }
 };
 
 template <typename T>
-class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
+class PutAlongAxisGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
@@ -86,15 +114,15 @@ class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
     VLOG(3) << " grad 666666:";
     if (index_type == framework::proto::VarType::INT32) {
       VLOG(3) << " grad 77777:";
-      cpu_scatter_assign_kernel<T, int32_t>(
-          *input_d, axis, *index, *result_d,
-          ctx.device_context());  // the gradient of gather is scatter
+      cpu_gather_kernel<T, int32_t>(
+          *result_d, axis, *index, *input_d,
+          ctx.device_context());  // the gradient of scatter is gather
     } else if (index_type == framework::proto::VarType::INT64) {
       VLOG(3) << " grad 88888:";
-      cpu_scatter_assign_kernel<T, int64_t>(*input_d, axis, *index, *result_d,
-                                            ctx.device_context());
+      cpu_gather_kernel<T, int64_t>(*result_d, axis, *index, *input_d,
+                                    ctx.device_context());
     }
-    VLOG(3) << "<<<< Done Compute <<<<<";
+    VLOG(3) << "<<<< Done PutAlongAxisGradOpKernel Compute <<<<<";
   }
 };
 

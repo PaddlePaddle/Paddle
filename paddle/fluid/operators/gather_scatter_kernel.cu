@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -32,78 +33,66 @@ class ReduceMul {
  public:
   template <typename tensor_t>
   constexpr void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    gpuAtomicMul(*self_data, *src_data);
+    *self_data *= *src_data;
+    // platform::CudaAtomicMul(*self_data, *src_data);
   }
 };
-// static ReduceMul reduce_mul;
+static ReduceMul reduce_mul;
 
 class ReduceAdd {
  public:
   template <typename tensor_t>
   constexpr void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    gpuAtomicAdd(*self_data, *src_data);
+    *self_data += *src_data;
+    // platform::CudaAtomicAdd(*self_data, *src_data);
   }
 };
-// static ReduceAdd reduce_add;
+static ReduceAdd reduce_add;
 
-// // essentialy rewritten related to legacy::launch_kernel parts
-// template <int nt, int vt, typename func_t>
-// __global__ void _scatter_gather_elementwise_kernel(int N, func_t f) {
-//   constexpr int nv = nt * vt;
-//   int idx = nv * blockIdx.x + threadIdx.x;
+template <typename tensor_t, typename index_t, typename func_t,
+          bool is_scatter_like = true>
+__global__ void GatherScatterGPUKernel(
+    tensor_t* self_data, int dim, const index_t* index_data, tensor_t* src_data,
+    int64_t inner_dim_size, int select_dim_size, int64_t outer_dim_size,
+    int64_t numel, const func_t& reduce_op) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= numel) return;
+  int64_t i, j, k;
+  /* tid = i * select_dim_size * outer_dim_size + j * outer_dim_size + k */
+  i = tid / (select_dim_size * outer_dim_size);
+  int64_t remind = tid % (select_dim_size * outer_dim_size);
+  j = remind / outer_dim_size;
+  k = remind % outer_dim_size;
 
-//   #pragma unroll
-//   for (int i = 0; i < vt; ++i) {
-//     if (idx < N) {
-//       f(idx);
-//       idx += nt;
-//     }
-//   }
-// }
+  index_t index = index_data[tid];
+  /*
+    gather computation formula:
 
-// template <int nt, int vt, typename func_t>
-// static void _launch_scatter_gather_kernel(int64_t N, const func_t& f) {
-//   TORCH_INTERNAL_ASSERT(N >= 0 && N <= std::numeric_limits<int32_t>::max());
-//   if (N == 0) {
-//     return;
-//   }
+    self[i][j][k] = src[index[i][j][k]][j][k]  # if dim == 0
+    self[i][j][k] = src[i][index[i][j][k]][k]  # if dim == 1
+    self[i][j][k] = src[i][j][index[i][j][k]]  # if dim == 2
 
-//   const dim3 block(nt);
-//   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-//   const auto stream = at::cuda::getCurrentCUDAStream();
-//   _scatter_gather_elementwise_kernel<nt, vt, func_t><<<grid, block, 0,
-//   stream>>>(N, f);
-// }
+    scatter computation formula:
 
-// template <bool is_scatter_like, typename scalar_t>
-// struct _cuda_gather_scatter_kernel {
-//   template <typename func_t>
-//   void operator() (
-//     TensorIterator& iter,
-//     scalar_t src_val,
-//     int64_t index_size,
-//     int64_t index_stride,
-//     const func_t& f
-//   ) {
+    self[index[i][j][k]][j][k] = src[i][j][k]  # if dim == 0
+    self[i][index[i][j][k]][k] = src[i][j][k]  # if dim == 1
+    self[i][j][index[i][j][k]] = src[i][j][k]  # if dim == 2
 
-//     loop = [=](int i){
-//       offsets = getoffset();
-
-//       f(
-//         (scalar_t*)self_data + idx_dim * index_stride,
-//         (scalar_t*)&src_val
-//       );
-//     };
-//   }
-
-// }; // _cuda_gather_scatter_kernel
+  */
+  int64_t replace_index =
+      k + index * outer_dim_size + i * outer_dim_size * select_dim_size;
+  int64_t self_idx = is_scatter_like ? replace_index : tid;
+  int64_t src_idx = is_scatter_like ? tid : replace_index;
+  reduce_op((tensor_t*)(self_data + self_idx), (tensor_t*)(src_data + src_idx));
+}
 
 template <typename tensor_t, typename index_t = int64_t,
           bool is_scatter_like = true>
 struct gpu_gather_scatter_functor {
   template <typename func_t>
-  void operator()(Tensor self, int dim, const Tensor& index, const Tensor& src,
-                  const std::string& method_name, const func_t& kernel_func) {
+  void operator()(Tensor self, int dim, const Tensor& index, Tensor src,
+                  const std::string& method_name, const func_t& reduce_op,
+                  const platform::DeviceContext& ctx) {
     if (index.numel() == 0) {
       return;
     }
@@ -119,7 +108,7 @@ struct gpu_gather_scatter_functor {
     int64_t src_size = src.numel();
     // auto self_dims = self.dims();
     auto index_dims = index.dims();
-    // auto src_dims = src.dims();
+    auto src_dims = src.dims();
     if (self_size == 0 || src_size == 0 || index_size == 0) return;
     int select_dim_size = index_dims[dim];
     int64_t inner_dim_size = 1;
@@ -127,7 +116,6 @@ struct gpu_gather_scatter_functor {
     for (int64_t i = 0; i < dim; ++i) {
       inner_dim_size *= index_dims[i];
     }
-    printf("GPU 111111 done\n");
 
     for (int i = dim + 1; i < index_dims.size(); i++) {
       outer_dim_size *= index_dims[i];
@@ -138,61 +126,70 @@ struct gpu_gather_scatter_functor {
 
     printf("GPU inner_dim_size: %d \n", inner_dim_size);
 
-    int64_t index_idx = 0;
-    int64_t self_idx, src_idx;
+    // slice size
+    int64_t slice_size = 1;
+    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
-    // N layer loop squeezed into 3 layers loop
-    for (int64_t i = 0; i < inner_dim_size; i++) {
-      for (int64_t j = 0; j < select_dim_size; j++) {
-        for (int64_t k = 0; k < outer_dim_size; k++) {
-          printf("GPU 00000 index idx : %d \n", index_idx);
-          printf("GPU 55555 index_ptr %d :\n", index_data);
-          int64_t index = index_data[index_idx];
-          printf("GPU 55555 index_ptr:\n", index_data);
-          /*
-            gather computation formula:
+    int block = 512;
+    int64_t n = slice_size * index_size;
+    int64_t grid = (n + block - 1) / block;
 
-            out[i][j][k] = input[index[i][j][k]][j][k]  # if dim == 0
-            out[i][j][k] = input[i][index[i][j][k]][k]  # if dim == 1
-            out[i][j][k] = input[i][j][index[i][j][k]]  # if dim == 2
-
-            scatter computation formula:
-
-            self[index[i][j][k]][j][k] = src[i][j][k]  # if dim == 0
-            self[i][index[i][j][k]][k] = src[i][j][k]  # if dim == 1
-            self[i][j][index[i][j][k]] = src[i][j][k]  # if dim == 2
-
-          */
-          int64_t replace_index =
-              k + index * outer_dim_size + i * outer_dim_size * select_dim_size;
-          self_idx = is_scatter_like ? replace_index : index_idx;
-          src_idx = is_scatter_like ? index_idx : replace_index;
-
-          kernel_func((tensor_t*)(self_data + self_idx),
-                      (tensor_t*)(src_data + src_idx));
-          index_idx++;
-          printf("GPU 66666 index_idx %d\n  ", index_idx);
-        }
-      }
-    }
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    GatherScatterGPUKernel<tensor_t, index_t, func_t,
+                           is_scatter_like><<<block, grid, 0, stream>>>(
+        self_data, dim, index_data, src_data, inner_dim_size, select_dim_size,
+        outer_dim_size, self_size, reduce_op);
   }
 };  // struct gpu_gather_scatter_functor
 
 template <typename tensor_t, typename index_t>
-void gpu_gather_kernel(const Tensor& input, int dim, const Tensor& index,
-                       Tensor result) {
+void gpu_gather_kernel(Tensor self, int dim, const Tensor& index, Tensor result,
+                       const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t, index_t,
                              /*is_scatter_like=*/false>()(
-      result, dim, index, input, "gather_out_gpu", tensor_assign);
+      result, dim, index, self, "gather_out_gpu", tensor_assign, ctx);
   return;
 }
-// gpu_gather_scatter_functor<tensor_t, /*index_t=*/ int64_t,
-// /*is_scatter_like=*/false>()(result, dim, index, input, "gather_out_cpu",
-// tensor_assign);
+
+template <typename tensor_t, typename index_t>
+void gpu_scatter_assign_kernel(Tensor self, int dim, const Tensor& index,
+                               Tensor src, const platform::DeviceContext& ctx) {
+  VLOG(3) << "start scatter assign kernel";
+
+  gpu_gather_scatter_functor<tensor_t, index_t,
+                             /*is_scatter_like=*/true>()(
+      self, dim, index, src, "scatter_assign_gpu", tensor_assign, ctx);
+  VLOG(3) << "<<<< Done cpu_scatter_add_kernel <<<<<";
+}
+
+template <typename tensor_t, typename index_t>
+void gpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx) {
+  VLOG(3) << "start scatter add kernel";
+
+  gpu_gather_scatter_functor<tensor_t, index_t,
+                             /*is_scatter_like=*/true>()(
+      self, dim, index, src, "scatter_add_gpu", reduce_add, ctx);
+  VLOG(3) << "<<<< Done cpu_scatter_add_kernel <<<<<";
+}
+
+template <typename tensor_t, typename index_t>
+void gpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx) {
+  VLOG(3) << "start scatter mul kernel";
+
+  gpu_gather_scatter_functor<tensor_t, index_t,
+                             /*is_scatter_like=*/true>()(
+      self, dim, index, src, "scatter_mul_gpu", reduce_mul, ctx);
+  VLOG(3) << "<<<< Done cpu_scatter_mul_kernel <<<<<";
+}
 
 namespace plat = paddle::platform;
 Instantiate_Template_Funtion(gpu_gather_kernel)
-// Instantiate_Template_Funtion(gpu_sca_kernel)
+    Instantiate_Template_Funtion(gpu_scatter_assign_kernel)
+        Instantiate_Template_Funtion(gpu_scatter_add_kernel)
+            Instantiate_Template_Funtion(gpu_scatter_mul_kernel)
 
 }  // namespace operators
 }  // namespace paddle

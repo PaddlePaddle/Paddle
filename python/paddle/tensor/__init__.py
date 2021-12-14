@@ -109,6 +109,8 @@ from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
+from .manipulation import take_along_axis # noqa: F401
+from .manipulation import put_along_axis # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -398,7 +400,9 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
-           'triangular_solve'
+           'triangular_solve',
+           'take_along_axis',
+           'put_along_axis'
 ]
 
 #this list used in math_op_patch.py for magic_method bind

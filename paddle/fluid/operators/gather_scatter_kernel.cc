@@ -23,7 +23,6 @@ class TensorAssign {
  public:
   template <typename tensor_t>
   void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    // VLOG(3) <<">>>TensorAssign>>>";//<< *self_data;
     *self_data = *src_data;
     VLOG(3) << "self_data assigned:" << *self_data;
   }
@@ -52,12 +51,15 @@ class ReduceMultiply {
   }
 };
 
+static ReduceMultiply reduce_mul;
+
 template <typename tensor_t, typename index_t = int64_t,
           bool is_scatter_like = true>
 struct cpu_gather_scatter_functor {
   template <typename func_t>
   void operator()(Tensor self, int dim, const Tensor& index, const Tensor& src,
-                  const std::string& method_name, const func_t& kernel_func) {
+                  const std::string& method_name, const func_t& reduce_op,
+                  const platform::DeviceContext& ctx) {
     if (index.numel() == 0) {
       return;
     }
@@ -74,9 +76,10 @@ struct cpu_gather_scatter_functor {
 
     // index_sizes[dim] = 1;
     // index_strides[dim] = 0;
+    if (is_scatter_like == true) VLOG(3) << "grad op >>>>>>>>";
     VLOG(3) << "111111111";
     auto* self_data = self.data<tensor_t>();  // problem occour here
-    // VLOG(3) << "self_data:" << *self_data;
+    VLOG(3) << "self_data:" << *self_data;
     VLOG(3) << "222222222";
     auto* index_data = index.data<index_t>();
     VLOG(3) << "index_data:" << *index_data;
@@ -118,9 +121,9 @@ struct cpu_gather_scatter_functor {
           /*
             gather computation formula:
 
-            out[i][j][k] = input[index[i][j][k]][j][k]  # if dim == 0
-            out[i][j][k] = input[i][index[i][j][k]][k]  # if dim == 1
-            out[i][j][k] = input[i][j][index[i][j][k]]  # if dim == 2
+            self[i][j][k] = src[index[i][j][k]][j][k]  # if dim == 0
+            self[i][j][k] = src[i][index[i][j][k]][k]  # if dim == 1
+            self[i][j][k] = src[i][j][index[i][j][k]]  # if dim == 2
 
             scatter computation formula:
 
@@ -134,42 +137,73 @@ struct cpu_gather_scatter_functor {
           self_idx = is_scatter_like ? replace_index : index_idx;
           src_idx = is_scatter_like ? index_idx : replace_index;
 
-          kernel_func((tensor_t*)(self_data + self_idx),
-                      (tensor_t*)(src_data + src_idx));
+          reduce_op((tensor_t*)(self_data + self_idx),
+                    (tensor_t*)(src_data + src_idx));
           index_idx++;
           VLOG(3) << "55555 index_idx:" << index_idx;
         }
       }
     }
+
+    for (int n = 0; n < self_size; ++n) {
+      VLOG(3) << "self value after scatter:" << *(self_data + n);
+    }
   }
 };
 
 template <typename tensor_t, typename index_t>
-void cpu_gather_kernel(const Tensor& input, int dim, const Tensor& index,
-                       Tensor result) {
-  VLOG(3) << "input data:" << *(input.data<tensor_t>());
+void cpu_gather_kernel(Tensor self, int dim, const Tensor& index, Tensor result,
+                       const platform::DeviceContext& ctx) {
+  VLOG(3) << "self data:" << *(self.data<tensor_t>());
   VLOG(3) << "result data:" << *(result.data<tensor_t>());
   cpu_gather_scatter_functor<tensor_t, index_t,
                              /*is_scatter_like=*/false>()(
-      result, dim, index, input, "gather_out_cpu", tensor_assign);
+      result, dim, index, self, "gather_out_cpu", tensor_assign, ctx);
   VLOG(3) << "<<<< Done cpu_gather_kernel <<<<<";
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_add_kernel(const Tensor& input, int dim, const Tensor& index,
-                            Tensor result) {
-  VLOG(3) << "input data:" << *(input.data<tensor_t>());
-  VLOG(3) << "result data:" << *(result.data<tensor_t>());
+void cpu_scatter_assign_kernel(Tensor self, int dim, const Tensor& index,
+                               Tensor src, const platform::DeviceContext& ctx) {
+  VLOG(3) << "start scatter assign kernel";
+  // VLOG(3) << "input data scatter:" << *(input.data<tensor_t>());
+  VLOG(3) << "src data scatter:" << *(src.data<tensor_t>());
   cpu_gather_scatter_functor<tensor_t, index_t,
                              /*is_scatter_like=*/true>()(
-      input, dim, index, result, "gather_out_cpu", reduce_add);
+      self, dim, index, src, "scatter_assign_cpu", tensor_assign, ctx);
+  VLOG(3) << "<<<< Done cpu_scatter_assign_kernel <<<<<";
+}
+
+template <typename tensor_t, typename index_t>
+void cpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx) {
+  VLOG(3) << "start scatter add kernel";
+  // VLOG(3) << "input data scatter:" << *(input.data<tensor_t>());
+  VLOG(3) << "src data scatter:" << *(src.data<tensor_t>());
+  cpu_gather_scatter_functor<tensor_t, index_t,
+                             /*is_scatter_like=*/true>()(
+      self, dim, index, src, "scatter_add_cpu", reduce_add, ctx);
   VLOG(3) << "<<<< Done cpu_scatter_add_kernel <<<<<";
+}
+
+template <typename tensor_t, typename index_t>
+void cpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx) {
+  VLOG(3) << "start scatter mul kernel";
+  // VLOG(3) << "input data scatter:" << *(input.data<tensor_t>());
+  VLOG(3) << "src data scatter:" << *(src.data<tensor_t>());
+  cpu_gather_scatter_functor<tensor_t, index_t,
+                             /*is_scatter_like=*/true>()(
+      self, dim, index, src, "scatter_mul_cpu", reduce_mul, ctx);
+  VLOG(3) << "<<<< Done cpu_scatter_assign_kernel <<<<<";
 }
 
 namespace plat = paddle::platform;
 
 Instantiate_Template_Funtion(cpu_gather_kernel)
-    Instantiate_Template_Funtion(cpu_scatter_add_kernel)
+    Instantiate_Template_Funtion(cpu_scatter_assign_kernel)
+        Instantiate_Template_Funtion(cpu_scatter_add_kernel)
+            Instantiate_Template_Funtion(cpu_scatter_mul_kernel)
 
 }  // namespace operators
 }  // namespace paddle

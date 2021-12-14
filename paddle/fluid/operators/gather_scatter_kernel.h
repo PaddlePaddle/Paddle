@@ -27,30 +27,48 @@ namespace operators {
               Instantiate_Template_Funtion_index_t(func, plat::float16) \
                   Instantiate_Template_Funtion_index_t(func, unsigned char)
 
-#define Instantiate_Template_Funtion_index_t(func, tensor_t)             \
-  template void func<tensor_t, int>(const Tensor& input, int dim,        \
-                                    const Tensor& index, Tensor result); \
-  template void func<tensor_t, int64_t>(const Tensor& input, int dim,    \
-                                        const Tensor& index, Tensor result);
+#define Instantiate_Template_Funtion_index_t(func, tensor_t)                \
+  template void func<tensor_t, int>(Tensor input, int dim,                  \
+                                    const Tensor& index, Tensor result,     \
+                                    const platform::DeviceContext& ctx);    \
+  template void func<tensor_t, int64_t>(Tensor input, int dim,              \
+                                        const Tensor& index, Tensor result, \
+                                        const platform::DeviceContext& ctx);
 
 // static TensorMultiply tensor_multiply;
 
 using Tensor = framework::Tensor;
 
 template <typename tensor_t, typename index_t>
-void cpu_gather_kernel(const Tensor& input, int dim, const Tensor& index,
-                       Tensor result);
+void cpu_gather_kernel(Tensor self, int dim, const Tensor& index, Tensor result,
+                       const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_add_kernel(const Tensor& input, int dim, const Tensor& index,
-                            Tensor result);
+void cpu_scatter_assign_kernel(Tensor self, int dim, const Tensor& index,
+                               Tensor src, const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_gather_kernel(const Tensor& input, int dim, const Tensor& index,
-                       Tensor result);
+void cpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_add_kernel(const Tensor& input, int dim, const Tensor& index,
-                            Tensor result);
+void cpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx);
+
+template <typename tensor_t, typename index_t>
+void gpu_gather_kernel(Tensor self, int dim, const Tensor& index, Tensor result,
+                       const platform::DeviceContext& ctx);
+
+template <typename tensor_t, typename index_t>
+void gpu_scatter_assign_kernel(Tensor self, int dim, const Tensor& index,
+                               Tensor src, const platform::DeviceContext& ctx);
+
+template <typename tensor_t, typename index_t>
+void gpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx);
+
+template <typename tensor_t, typename index_t>
+void gpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
+                            Tensor src, const platform::DeviceContext& ctx);
 }  // namespace operators
 }  // namespace paddle

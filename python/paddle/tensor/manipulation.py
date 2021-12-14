@@ -2390,3 +2390,42 @@ def tensordot(x, y, axes=2, name=None):
         [contraction_size, not_contraction_size_y])
     out = x.matmul(y).reshape(shape_out)
     return out
+
+def take_along_axis(arr, indices, axis):
+    if in_dygraph_mode():
+        return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
+
+    check_variable_and_dtype(
+        arr, 'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'], 'take_along_axis')
+    check_variable_and_dtype(indices, 'index', ['int32', 'int64'], 'take_along_axis')
+    helper = LayerHelper('take_along_axis', **locals())
+    dtype = helper.input_dtype()
+    result = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="take_along_axis",
+        inputs={"Arr": arr,
+                "Index": indices},
+        attrs= {"Axis": axis},
+        outputs={"Result": result})
+    return result
+
+def put_along_axis(arr, indices, values, axis, reduce='assign'):
+    if in_dygraph_mode():
+        values = paddle.to_tensor(values) if not isinstance(values, paddle.Tensor) else values
+        return _C_ops.put_along_axis(arr, indices, values, "Axis", axis, "Reduce", reduce)
+
+    check_variable_and_dtype(
+        arr, 'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'], 'put_along_axis')
+    check_variable_and_dtype(indices, 'index', ['int32', 'int64'], 'put_along_axis')
+    helper = LayerHelper('put_along_axis', **locals())
+    dtype = helper.input_dtype()
+    helper.append_op(
+        type="put_along_axis",
+        inputs={"Arr": arr,
+                "Index": indices,
+                "Values": values},
+        attrs= {"Axis": axis},
+        outputs={"Result": arr})
+    return arr

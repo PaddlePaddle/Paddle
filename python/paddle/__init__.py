@@ -154,6 +154,8 @@ from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
+from .tensor.manipulation import take_along_axis  # noqa: F401
+from .tensor.manipulation import put_along_axis  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401

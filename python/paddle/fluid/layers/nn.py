@@ -15341,22 +15341,3 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
-
-def take_along_axis(arr, indices, axis):
-    if in_dygraph_mode():
-        return _C_ops.take_along_axis(arr, axis, indices)
-
-    check_variable_and_dtype(
-        arr, 'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'], 'take_along_axis')
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'take_along_axis')
-    helper = LayerHelper('take_along_axis', **locals())
-    dtype = helper.input_dtype()
-    result = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="take_along_axis",
-        inputs={"Self": arr,
-                "Index": indices},
-        attrs= {"Dim": axis},
-        outputs={"Result": result})
-    return result
