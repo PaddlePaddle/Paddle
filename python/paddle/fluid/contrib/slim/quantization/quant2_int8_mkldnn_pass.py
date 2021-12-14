@@ -638,6 +638,8 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph,
                                  'reshape_transpose_matmul_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales, self._get_data_layout(graph)])
