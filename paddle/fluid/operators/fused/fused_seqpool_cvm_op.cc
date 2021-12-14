@@ -21,10 +21,14 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of FusedSeqpoolCVMOp should not be empty.");
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Outputs(Out) of FusedSeqpoolCVMOp should not be empty.");
+    PADDLE_ENFORCE_GE(
+        ctx->Inputs("X").size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Inputs(X) of FusedSeqpoolCVMOp should not be empty."));
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("Out").size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Outputs(Out) of FusedSeqpoolCVMOp should not be empty."));
 
     auto cvm_dims = ctx->GetInputDim("CVM");
     PADDLE_ENFORCE_EQ(
@@ -61,9 +65,10 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       if (use_cvm) {
         PADDLE_ENFORCE_GT(
             dims[rank - 1], 2,
-            "Shape error in %lu id, the last dimension(embedding) of the "
-            "'X' tensor must be larger than 2.",
-            i);
+            platform::errors::InvalidArgument(
+                "Shape error in %lu id, the last dimension(embedding) of the "
+                "'X' tensor must be larger than 2.",
+                i));
       }
       // input lod is not accessible here
       std::vector<int64_t> out_dim;
