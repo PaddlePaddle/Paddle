@@ -780,6 +780,69 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     return out
 
 
+def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
+    """
+    Computes the sum of tensor elements over the given dimension, treating Not a Numbers (NaNs) as zero.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
+            :attr:`None`, nansum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        if `x.dtype='int32'`, it's data type is `'int64'`, 
+        otherwise it's data type is the same as `x`.
+
+    Raises:
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # x is a Tensor with following elements:
+            #    [[nan, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, -nan, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = paddle.to_tensor([[nan, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, -nan, 0.7]])
+            out1 = paddle.nansum(x)  # [2.7]
+            out2 = paddle.nansum(x, axis=0)  # [0.1, 0.5, 0.5, 1.6]
+            out3 = paddle.nansum(x, axis=-1)  # [1.7, 1.0]
+            out4 = paddle.nansum(x, axis=1, keepdim=True)  # [[1.7], [1.0]]
+
+            # y is a Tensor with shape [2, 2, 2] and elements as below:
+            #      [[[1, nan], [3, 4]],
+            #      [[5, 6], [-nan, 8]]]
+            # Each example is followed by the corresponding output tensor.
+            y = paddle.to_tensor([[[1, nan], [3, 4]], 
+                                  [[5, 6], [-nan, 8]]])
+            out5 = paddle.nansum(y, axis=[1, 2]) # [8, 19]
+            out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum')
+    check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
+
+    helper = LayerHelper('nansum', **locals())
+    zero_tensor = paddle.zeros_like(x)
+    tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
+    return sum(tmp_tensor, axis, dtype, keepdim, name)
+
+
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
