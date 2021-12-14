@@ -107,6 +107,32 @@ class TestScatterOp2(OpTest):
             self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
+'''
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestScatterOp2Fp16(OpTest):
+    def setUp(self):
+        self.op_type = "scatter"
+        ref_np = np.ones((3, 3)).astype("float16")
+        index_np = np.array([1, 2]).astype("int32")
+        updates_np = np.random.random((2, 3)).astype("float16")
+        output_np = np.copy(ref_np)
+        output_np[index_np] = updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+'''
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScatterOp3(OpTest):
