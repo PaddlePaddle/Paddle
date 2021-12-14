@@ -16,7 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
