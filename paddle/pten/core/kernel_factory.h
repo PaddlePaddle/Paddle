@@ -23,6 +23,7 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_def.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -227,9 +228,16 @@ class Kernel {
   // for map element contruct
   Kernel() = default;
 
-  explicit Kernel(KernelFn fn) : fn_(fn) {}
+  explicit Kernel(KernelFn fn, void* variadic_fn)
+      : fn_(fn), variadic_fn_(variadic_fn) {}
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
+
+  template <typename Fn>
+  Fn GetVariadicKernelFn() const {
+    auto* func = reinterpret_cast<Fn>(variadic_fn_);
+    return func;
+  }
 
   KernelArgsDef* mutable_args_def() { return &args_def_; }
 
@@ -243,6 +251,7 @@ class Kernel {
 
  private:
   KernelFn fn_{nullptr};
+  void* variadic_fn_ = nullptr;
   KernelArgsDef args_def_;
 };
 
@@ -264,12 +273,8 @@ class KernelFactory {
 
   KernelMap& kernels() { return kernels_; }
 
-  void InsertCompatibleOpType(const std::string& op_type) {
-    compatible_op_types_.insert(op_type);
-  }
-
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return compatible_op_types_.count(op_type) > 0;
+    return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
   }
 
   const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
@@ -287,9 +292,6 @@ class KernelFactory {
   KernelFactory() = default;
 
   KernelMap kernels_;
-  // Used to be compatible with the original execution system and
-  // quickly confirm whether the new kernel can be called
-  std::unordered_set<std::string> compatible_op_types_;
 };
 
 /** operator << overload **/

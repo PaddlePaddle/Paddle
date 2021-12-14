@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
 import operator
 import functools
 import json
@@ -175,9 +176,19 @@ def build_process_graph(distributed_program):
 
 def build_cluster_graph(cluster):
     graph = Graph()
+    cuda_visible_devices_env = os.getenv("CUDA_VISIBLE_DEVICES")
+    cuda_visible_devices = []
+    if cuda_visible_devices_env is not None and cuda_visible_devices_env != "":
+        cuda_visible_devices = [
+            int(d.strip()) for d in cuda_visible_devices_env.split(",")
+        ]
     for machine in cluster.machines.values():
         for device in machine.devices.values():
             graph.add_node(device.global_id, device=device)
+            if cuda_visible_devices and device.local_id not in cuda_visible_devices:
+                graph.nodes[device.global_id]["occupied"] = True
+            else:
+                graph.nodes[device.global_id]["occupied"] = False
         for link in machine.links.values():
             graph.add_edge(
                 link.source.global_id, link.target.global_id, link=link)
@@ -194,9 +205,6 @@ def mapping(distributed_program, cluster):
 
     for cur_rank_node in process_graph:
         cur_rank_node["visited"] = False
-
-    for cur_device_node in cluster_graph:
-        cur_device_node["occupied"] = False
 
     def sort_by_comm_volume(rank_edge):
         return rank_edge["comm_requirements"]["comm_volume"]

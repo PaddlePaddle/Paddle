@@ -81,6 +81,7 @@ class TensorInplaceVersion {
   bool IsUnique() const { return inplace_version_ == 0; }
   void Bump() { ++inplace_version_; }
   uint32_t CurrentVersion() const { return inplace_version_; }
+  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
  private:
   uint32_t inplace_version_;

@@ -83,6 +83,7 @@ if (WITH_MKLDNN AND TENSORRT_FOUND AND WITH_GPU)
   set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
   set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
   set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_conv_eltwiseadd_affine_channel_fuse_pass PROPERTIES TIMEOUT 100)
 endif()
 
 if (WITH_MKLDNN)

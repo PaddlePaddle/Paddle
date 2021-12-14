@@ -79,7 +79,7 @@ void AllReduceByStream(int local_rank, int device_id) {
 }
 
 TEST(AllReduceByStream, Run) {
-  if (platform::GetCUDADeviceCount() >= 2) {
+  if (platform::GetGPUDeviceCount() >= 2) {
     std::thread t0(AllReduceByStream, 0, 0);
     std::thread t1(AllReduceByStream, 1, 1);
     t0.join();

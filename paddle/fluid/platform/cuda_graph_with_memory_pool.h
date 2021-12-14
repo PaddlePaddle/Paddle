@@ -60,6 +60,23 @@ inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
   callback();
 }
 
+template <typename T>
+inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
+  static_assert(std::is_trivial<T>::value, "T must be trivial type");
+  static_assert(!std::is_same<T, void>::value, "T cannot be void");
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
+    size_t nbytes = size * sizeof(T);
+    void *new_host_mem = new uint8_t[nbytes];
+    std::memcpy(new_host_mem, host_mem, nbytes);
+    AddResetCallbackIfCapturingCUDAGraph(
+        [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
+    return reinterpret_cast<T *>(new_host_mem);
+  }
+#endif
+  return host_mem;
+}
+
 class SkipCUDAGraphCaptureGuard {
   DISABLE_COPY_AND_ASSIGN(SkipCUDAGraphCaptureGuard);
 
