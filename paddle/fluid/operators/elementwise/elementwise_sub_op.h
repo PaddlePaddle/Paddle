@@ -133,6 +133,8 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     // skip out
     auto* out = dout;
+    // dummy here
+    dout->data<T>();
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {

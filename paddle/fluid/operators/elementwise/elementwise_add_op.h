@@ -165,6 +165,8 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     // skip out
     auto *out = dout;
+    // dummy here
+    dout->data<T>();
 
     // Special case when dy is not needed and dx doesn't reduce
     if (dx != nullptr && dy == nullptr && dx->dims() == dout->dims()) {
