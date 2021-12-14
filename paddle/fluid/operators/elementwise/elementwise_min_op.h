@@ -39,14 +39,14 @@ class ElementwiseMinKernel : public framework::OpKernel<T> {
 template <typename T>
 struct MinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * (x < y);
+    return x < y ? dout : static_cast<T>(0);
   }
 };
 
 template <typename T>
 struct MinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * (x >= y);
+    return x >= y ? dout : static_cast<T>(0);
   }
 };
 
