@@ -114,4 +114,6 @@ REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>,
 			ops::ScatterOpCUDAKernel<paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>,
                         ops::ScatterGradOpCUDAKernel<double>,
+                        ops::ScatterOpCUDAKernel<int>,
+                        ops::ScatterOpCUDAKernel<int64_t>,
 			ops::ScatterGradOpCUDAKernel<paddle::platform::float16>);
