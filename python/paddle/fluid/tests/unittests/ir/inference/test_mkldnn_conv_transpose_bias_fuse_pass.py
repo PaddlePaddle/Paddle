@@ -33,8 +33,16 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         ]
 
         if attrs[0]['data_format'] == "NHWC":
-            return False
-        if attrs[1]['axis'] == 3:
+            if attrs[1]['axis'] != 3:
+                return False
+
+        if attrs[0]['data_format'] == "NCHW":
+            if attrs[1]['axis'] != 1:
+                return False
+
+        # If the problem has been fixed, the judgment 
+        # needs to be deleted!!!
+        if attrs[0]['data_format'] == "NHWC":
             return False
 
         return True
@@ -128,16 +136,6 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
 
         self.add_ignore_check_case(
             teller1, SkipReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d_transpose is wrong when data_format attribute is NHWC"
-        )
-
-        def teller2(program_config, predictor_config):
-            if program_config.ops[1].attrs['axis'] == 3:
-                return True
-            return False
-
-        self.add_ignore_check_case(
-            teller2, SkipReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d_transpose is wrong when data_format attribute is NHWC"
         )
 
