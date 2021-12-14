@@ -979,10 +979,7 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            pre_bias = _varbase_creator(dtype=input.dtype)
-            _C_ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                          'transpose_Y', False, "alpha", 1, "use_mkldnn",
-                          self._use_mkldnn)
+            pre_bias = _C_ops.matmul_v2(input, self.weight)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias,
                 self.bias,

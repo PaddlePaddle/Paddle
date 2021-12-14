@@ -237,6 +237,9 @@ class EagerTensor final {
                 "Unrecognized egr::EagerTensor type, only "
                 "DenseTensor is supported for now."));
           }
+        } else {
+          PADDLE_THROW(paddle::platform::errors::Fatal(
+              "Can not Sync EagerTensor %s to var type(%s).", name(), type));
         }
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(

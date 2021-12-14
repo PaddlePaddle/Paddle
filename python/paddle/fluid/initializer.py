@@ -22,6 +22,7 @@ import numpy as np
 from .core import VarDesc
 from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
+from paddle import _C_ops
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -132,7 +133,8 @@ class ConstantInitializer(Initializer):
         """
         block = self._check_block(block)
 
-        assert isinstance(var, framework.Variable)
+        assert (isinstance(var, framework.Variable) or
+                isinstance(var, framework.EagerParamBase))
         assert isinstance(block, framework.Block)
 
         # to be compatible of fp16 initializers
@@ -149,30 +151,39 @@ class ConstantInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        # fill constant should set the "str_value" to preserve precision
-        op = block.append_op(
-            type="fill_constant",
-            outputs={"Out": out_var},
-            attrs={
-                "shape": var.shape,
-                "dtype": int(out_dtype),
-                "value": float(self._value),
-                'str_value': str(float(self._value)),
-                'force_cpu': self._force_cpu
-            },
-            stop_gradient=True)
+        if framework.in_dygraph_mode():
+            out_var = framework._varbase_creator(dtype=out_dtype)
+            _C_ops.fill_constant(out_var, 'value',
+                                 float(self._value), 'force_cpu',
+                                 self._force_cpu, 'dtype',
+                                 int(out_dtype), 'str_value',
+                                 str(float(self._value)), 'shape', var.shape)
+            var = _C_ops.cast(out_var, 'in_dtype', out_var.dtype, 'out_dtype',
+                              var.dtype)
+            return None
+        else:
+            # fill constant should set the "str_value" to preserve precision
+            op = block.append_op(
+                type="fill_constant",
+                outputs={"Out": out_var},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": int(out_dtype),
+                    "value": float(self._value),
+                    'str_value': str(float(self._value)),
+                    'force_cpu': self._force_cpu
+                },
+                stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
-            block.append_op(
-                type="cast",
-                inputs={"X": out_var},
-                outputs={"Out": var},
-                attrs={"in_dtype": out_var.dtype,
-                       "out_dtype": var.dtype})
-
-        if not framework.in_dygraph_mode():
+            if var.dtype == VarDesc.VarType.FP16:
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype,
+                           "out_dtype": var.dtype})
             var.op = op
-        return op
+            return op
 
 
 class UniformInitializer(Initializer):
