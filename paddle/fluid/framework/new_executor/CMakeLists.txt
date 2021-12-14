@@ -45,66 +45,14 @@ if (WITH_TESTING AND NOT WIN32)
         memcpy_h2d_op
         memcpy_d2h_op)
     
-    # All deps of operator, same as GLOB_OPERATOR_DEPS.
-    # WHY list here manually?
-    # Directory framework is processed before operators in fluid/CMakeLists.txt,
-    # So the variable GLOB_OPERATOR_DEPS is not defined at here.
+    # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
     set(OP_DEPS 
-        nccl_common
-        xxhash
-        executor
-        pocketfft
-        pten
-        pten_api_utils
-        selected_rows_functor
-        selected_rows
-        lapack_function
-        lod_tensor
-        maxouting
-        unpooling
-        pooling
-        lod_rank_table
-        context_project
-        sequence_pooling
-        segment_pooling
-        executor
-        device_memory_aligment
         generator
-        dynload_warpctc
-        sequence_padding
-        sequence_scale
-        cos_sim_functor
-        memory
+        softmax
+        selected_rows_functor
         jit_kernel_helper
         concat_and_split
-        cross_entropy
-        softmax
-        vol2col
-        im2col
-        sampler
-        sample_prob
-        tree2col
-        sequence2batch
-        lstm_compute
-        matrix_bit_code
-        gru_compute
-        activation_functions
-        beam_search
-        fc
-        matrix_inverse
-        matrix_solve
-        box_wrapper
-        boost
-        ps_gpu_wrapper
-        common_infer_shape_functions
-        eigen_function
-        depthwise_conv
-        prelu
-        bert_encoder_functor
-        device_memory_aligment
-        layer
-        tensor_formatter
-        op_version_registry)
+        cross_entropy)
 
     cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${OPS} ${OP_DEPS})
     set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
