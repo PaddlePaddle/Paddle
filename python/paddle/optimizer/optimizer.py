@@ -676,7 +676,9 @@ class Optimizer(object):
 
         self._create_global_learning_rate()
 
-        if self._use_multi_tensor and framework.in_dygraph_mode():
+        # NOTE: Multi Tensor support [ Momentum ] for dygraph mode
+        if self._use_multi_tensor and framework.in_dygraph_mode(
+        ) and self.__class__.__name__ in ['Momentum']:
             if len(self.param_dict['FP32_LODTensor']) == 0 and len(
                     self.param_dict['FP16_LODTensor']) == 0:
                 if isinstance(parameters_and_grads, list):
