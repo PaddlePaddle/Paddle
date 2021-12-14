@@ -51,46 +51,27 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
   xshape->ResetLoD(x.lod());
 }
 
-void ReshapeFromVectorVal(const XPUContext& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int64_t>& shape,
-                          DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
-  if (&x == out) {
+void Reshape(const XPUContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
+  if (x.data() == out->data() && x.numel() == out->numel()) {
     out->Resize(out_meta.dims);
     return;
   }
   pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
+  out->ResetLoD(x.lod());
 }
 
-void ReshapeFromDT(const XPUContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& shape,
-                   DenseTensor* out) {
-  auto* shape_data = shape.data<int>();
-  auto vector_shape =
-      std::vector<int64_t>(shape_data, shape_data + shape.numel());
-  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
-}
-
-void ReshapeFromVectorDT(const XPUContext& dev_ctx,
-                         const DenseTensor& x,
-                         const std::vector<DenseTensor>& shape,
-                         DenseTensor* out) {
-  std::vector<int64_t> vector_shape;
-  for (auto& tensor : shape) {
-    PADDLE_ENFORCE_EQ(
-        tensor.dims(),
-        paddle::framework::make_ddim({1}),
-        paddle::platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
-            "the element's shape must be [1]. But received the element's shape "
-            "is [%s]",
-            tensor.dims()));
-    vector_shape.push_back(*tensor.data<int32_t>());
-  }
-  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
+void ReshapeWithXShape(const XPUContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out) {
+  general::SetXShape(x, xshape);
+  Reshape(dev_ctx, x, shape, out);
 }
 
 }  // namespace pten
@@ -107,7 +88,7 @@ PT_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(flatten_mid,
+PT_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
                    ALL_LAYOUT,
                    pten::FlattenWithXShape,
@@ -120,4 +101,4 @@ PT_REGISTER_KERNEL(flatten_mid,
                    int64_t) {}
 
 PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape, XPU, ALL_LAYOUT, pten::ReshapeFromVectorVal, ALL_DTYPE) {}
+    reshape, XPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}

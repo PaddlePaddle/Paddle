@@ -60,7 +60,7 @@ DenseTensor Reshape(const ContextT& dev_ctx,
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  ReshapeFromVectorVal(dev_ctx, x, shape, &dense_out);
+  Reshape(dev_ctx, x, ScalarArray(shape), &dense_out);
   return dense_out;
 }
 

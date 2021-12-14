@@ -46,74 +46,27 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
   general::SetXShape(x, xshape);
 }
 
-void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int64_t>& shape,
-                          DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
+void Reshape(const CUDAContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
   if (x.data() == out->data() && x.numel() == out->numel()) {
     out->Resize(out_meta.dims);
     return;
   }
   pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_meta.dims);
-}
-
-void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
-                                    const DenseTensor& x,
-                                    const std::vector<int64_t>& shape,
-                                    DenseTensor* xshape,
-                                    DenseTensor* out) {
-  general::SetXShape(x, xshape);
-  ReshapeFromVectorVal(dev_ctx, x, shape, out);
-}
-
-void ReshapeFromDT(const CUDAContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& shape,
-                   DenseTensor* out) {
-  auto* shape_data = shape.data<int>();
-  auto vector_shape =
-      std::vector<int64_t>(shape_data, shape_data + shape.numel());
-  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
   out->ResetLoD(x.lod());
 }
 
-void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& shape,
-                             DenseTensor* xshape,
-                             DenseTensor* out) {
+void ReshapeWithXShape(const CUDAContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out) {
   general::SetXShape(x, xshape);
-  ReshapeFromDT(dev_ctx, x, shape, out);
-}
-
-void ReshapeFromVectorDT(const CUDAContext& dev_ctx,
-                         const DenseTensor& x,
-                         const std::vector<DenseTensor>& shape,
-                         DenseTensor* out) {
-  std::vector<int64_t> vector_shape;
-  for (auto& tensor : shape) {
-    PADDLE_ENFORCE_EQ(
-        tensor.dims(),
-        paddle::framework::make_ddim({1}),
-        paddle::platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
-            "the element's shape must be [1]. But received the element's shape "
-            "is [%s]",
-            tensor.dims()));
-    vector_shape.push_back(*tensor.data<int32_t>());
-  }
-  ReshapeFromVectorVal(dev_ctx, x, vector_shape, out);
-}
-
-void ReshapeFromVectorDTWithXShape(const CUDAContext& dev_ctx,
-                                   const DenseTensor& x,
-                                   const std::vector<DenseTensor>& shape,
-                                   DenseTensor* xshape,
-                                   DenseTensor* out) {
-  general::SetXShape(x, xshape);
-  ReshapeFromVectorDT(dev_ctx, x, shape, out);
+  Reshape(dev_ctx, x, shape, out);
 }
 
 template <typename T>
@@ -142,7 +95,7 @@ PT_REGISTER_KERNEL(flatten,
                    int8_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL(flatten_mid,
+PT_REGISTER_KERNEL(flatten_with_xshape,
                    CUDA,
                    ALL_LAYOUT,
                    pten::FlattenWithXShape,
@@ -179,36 +132,6 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, CUDA, ANY, pten::Reshape, ALL_DTYPE) {}
 PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape, CUDA, ALL_LAYOUT, pten::ReshapeFromVectorVal, ALL_DTYPE) {}
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape_mid,
-                               CUDA,
-                               ALL_LAYOUT,
-                               pten::ReshapeFromVectorValWithXShape,
-                               ALL_DTYPE) {}
-PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_host, CUDA, ALL_LAYOUT, pten::ReshapeFromDT, ALL_DTYPE) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
-}
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape_host_mid,
-                               CUDA,
-                               ALL_LAYOUT,
-                               pten::ReshapeFromDTWithXShape,
-                               ALL_DTYPE) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
-}
-PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_mulhost, CUDA, ALL_LAYOUT, pten::ReshapeFromVectorDT, ALL_DTYPE) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
-}
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape_mulhost_mid,
-                               CUDA,
-                               ALL_LAYOUT,
-                               pten::ReshapeFromVectorDTWithXShape,
-                               ALL_DTYPE) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
-  kernel->InputAt(1).SetDataType(paddle::experimental::DataType::INT32);
-}
+    reshape_with_xshape, CUDA, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}
