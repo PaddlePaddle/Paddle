@@ -5,8 +5,6 @@ ENV HOME_WORK_DIR=/root/paddlejob
 # replace utc timezone with local timezone
 ENV TZ='Asia/Shanghai'
 
-ARG https_proxy
-ARG http_proxy
 
 # install base deps
 RUN apt-get update
@@ -15,7 +13,7 @@ RUN apt-get install -y wget openssh-server
 
 WORKDIR ${HOME_WORK_DIR}
 
-ADD paddle_k8s ${HOME_WORK_DIR}/
+ADD tools/dockerfile/performance_docker/paddle_k8s ${HOME_WORK_DIR}/
 RUN chmod +x ${HOME_WORK_DIR}/paddle_k8s
 
 # install rdma driver, consistent with local real machine rdma driver version.
@@ -47,7 +45,15 @@ RUN apt-get update && apt-get install -y software-properties-common && \
 RUN apt-get update && apt-get -y upgrade && apt-get -y dist-upgrade
 
 # Downgrade gcc&&g++
-<install_gcc>
+WORKDIR /usr/bin 
+COPY tools/dockerfile/build_scripts /build_scripts 
+RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
 
 # RUN python3.7 and pip3.7
 # Prepare packages for Python
@@ -64,6 +70,7 @@ WORKDIR ${HOME_WORK_DIR}
 RUN rm Python-3.7.0.tgz && rm -r Python-3.7.0
 
 RUN python3.7 -m pip install -U pip
+RUN python3.7 -m pip install -U setuptools
 RUN rm -f /usr/bin/python3 /usr/local/bin/pip && \
     ln -s /usr/local/bin/python3.7 /usr/bin/python3 && \
     ln -s /usr/local/bin/python3.7 /usr/bin/python && \
@@ -73,9 +80,7 @@ RUN rm /usr/bin/lsb_release
 
 <install_dali>
 
-ADD requirements.txt ${HOME_WORK_DIR} 
+ADD tools/dockerfile/performance_docker/requirements.txt ${HOME_WORK_DIR} 
 RUN cd ${HOME_WORK_DIR} && pip install -r requirements.txt && rm -f requirements.txt
 
 <set_cuda_en>
-
-RUN unset https_proxy http_proxy
