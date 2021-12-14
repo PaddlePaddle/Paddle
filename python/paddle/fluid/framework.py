@@ -926,6 +926,11 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if in_eager_mode():
+        return core.eager.EagerTensor(dtype if dtype else core.VarDesc.VarType.FP32,
+                            list(shape) if shape else [], name, type
+                            if type else core.VarDesc.VarType.LOD_TENSOR, True
+                            if persistable else False)
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
                         if type else core.VarDesc.VarType.LOD_TENSOR, True
