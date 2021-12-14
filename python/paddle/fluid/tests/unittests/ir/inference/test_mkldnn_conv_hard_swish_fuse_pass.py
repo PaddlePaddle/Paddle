@@ -25,15 +25,24 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestConvActivationMkldnnFusePass(PassAutoScanTest):
+class TestConvHardSwishMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+        # If the problem has been fixed, the judgment 
+        # needs to be deleted!!!
+        if attrs[0]['data_format'] == "NHWC":
+            return False
+
         return True
 
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
+        groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         threshold = draw(st.sampled_from([6.0]))
@@ -41,31 +50,17 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
         offset = draw(st.sampled_from([3.0]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
-        def generate_input(attrs):
-            if attrs[0]['data_format'] == "NCHW":
+        def generate_input():
+            if data_format == "NCHW":
                 return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
+                    [batch_size, 48, 64, 64]).astype(np.float32)
             else:
                 return np.random.random(
-                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
+                    [batch_size, 64, 64, 48]).astype(np.float32)
 
         def generate_weight():
-            return np.random.random([16, 16, 3, 3]).astype(np.float32)
-
-        attrs = [{
-            "data_format": data_format,
-            "dilations": dilations,
-            "padding_algorithm": padding_algorithm,
-            "groups": groups,
-            "paddings": paddings,
-            "strides": strides
-        }, {
-            "threshold": threshold,
-            "scale": scale,
-            "offset": offset
-        }, {
-            "batch_size": batch_size
-        }]
+            return np.random.random(
+                [16, int(48 / groups), 3, 3]).astype(np.float32)
 
         ops_config = [{
             "op_type": "conv2d",
@@ -77,12 +72,12 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
                 "Output": ["conv_output"]
             },
             "op_attrs": {
-                "data_format": attrs[0]['data_format'],
-                "dilations": attrs[0]['dilations'],
-                "padding_algorithm": attrs[0]['padding_algorithm'],
-                "groups": attrs[0]['groups'],
-                "paddings": attrs[0]['paddings'],
-                "strides": attrs[0]['strides']
+                "data_format": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides
             }
         }, {
             "op_type": "hard_swish",
@@ -93,9 +88,9 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
                 "Out": ["swish_output"]
             },
             "op_attrs": {
-                "threshold": attrs[1]['threshold'],
-                "scale": attrs[1]['scale'],
-                "offset": attrs[1]['offset']
+                "threshold": threshold,
+                "scale": scale,
+                "offset": offset
             },
         }]
 
@@ -107,8 +102,7 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
                 "input_weight": TensorConfig(data_gen=partial(generate_weight))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
+                "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             outputs=["swish_output"])
 
@@ -117,17 +111,6 @@ class TestConvActivationMkldnnFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ["conv2d"], (1e-5, 1e-5)
-
-    def add_ignore_pass_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['data_format'] == "NHWC":
-                return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1, SkipReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d is wrong when data_format attribute is NHWC"
-        )
 
     def test(self):
         self.run_and_statis(
