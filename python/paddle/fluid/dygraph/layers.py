@@ -37,6 +37,7 @@ from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
 
@@ -1488,7 +1489,7 @@ class Layer(core.Layer):
             If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
             index of the GPUs or XPUs. Default: None.
 
-            dtype(str|core.VarDesc.VarType|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
@@ -1499,7 +1500,7 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                # required: gpu
+                # required: skip
                 import paddle
 
                 linear=paddle.nn.Linear(2, 2)
@@ -1556,7 +1557,7 @@ class Layer(core.Layer):
             if dtype is None:
                 dtype = t.dtype
 
-            if type(dtype) is str:
+            if type(dtype) is not VarDesc.VarType:
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
             # 1. gpu place need to determine whether the memory is sufficient for allocation:
