@@ -143,7 +143,7 @@ struct KernelRegistrar {
                        KernelArgsDefFn args_def_fn,
                        KernelFn kernel_fn,
                        void* variadic_kernel_fn) {
-    KernelName kernel_name(kernel_name_cstr);
+    std::string kernel_name(kernel_name_cstr);
     KernelKey kernel_key(backend, layout, dtype);
     Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());

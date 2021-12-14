@@ -53,6 +53,12 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     for (const auto& edge_list : edges) {
       for (const Edge& edge : edge_list) {
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
+
+        // Next node could be nullptr if it is leaf tensor with no
+        // AccumulationNode attached
+        // Or it could also originated from dispensable inputs
+        if (!next_node) continue;
+
         // Update in_degree
         if (!node_in_degree_map.count(next_node))
           node_in_degree_map[next_node] = 0;
@@ -91,11 +97,6 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     // Get target GradNodeBase from target tensors
     GradNodeBase* grad_node = auto_grad_meta->GetMutableGradNode().get();
 
-    PADDLE_ENFORCE(grad_node,
-                   paddle::platform::errors::Fatal(
-                       "Detected null grad_node."
-                       "Grad Node is nullptr for grad input tensor %d",
-                       i));
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
       VLOG(6) << "Create Value for grad input tensor " << i;
@@ -185,6 +186,11 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
                   << ", rank: " << j << " as uninitialized or undefined tensor";
         }
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
+
+        // Next node could be nullptr if it is leaf tensor with no
+        // AccumulationNode attached
+        // Or it could also originated from dispensable inputs
+        if (!next_node) continue;
 
         if (!node_input_buffers_dict.count(next_node)) {
           node_input_buffers_dict[next_node] =
