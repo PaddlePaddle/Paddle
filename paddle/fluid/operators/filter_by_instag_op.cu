@@ -12,21 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thrust/copy.h>
+#include <thrust/device_vector.h>
 #include <cstring>
 #include <random>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
-
-namespace cg = cooperative_groups;
 
 namespace paddle {
 namespace operators {
@@ -61,7 +63,7 @@ __global__ void filter_by_instag_cuda_kernel(const int N, int64_t* x2_data,
                                              size_t* x2_lods_data,
                                              int64_t* x3_data,
                                              int filter_tag_size,
-                                             int* pass_data) {
+                                             int* flag_data) {
   // N is instance num
   // one threads for one instance
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -79,24 +81,24 @@ __global__ void filter_by_instag_cuda_kernel(const int N, int64_t* x2_data,
     for (; j < filter_tag_size; j++) {
       if (x3_data[j] == ins_tag) break;
     }
-    // ins_tag in filter tag
+    // if ins_tag in filter tag
     if (j < filter_tag_size) {
-      pass_data[idx] = 1;
+      flag_data[idx] = 1;
       break;
     }
   }
-  // copy to output logic
-  // if (idx == 0) {
-  //}
 }
 
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-    auto cpu_place = platform::CPUPlace();
-    auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
+    const auto gpu_place =
+        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    gpuStream_t current_stream = ctx.cuda_device_context().stream();
+
+    // auto cpu_place = platform::CPUPlace();
+    // auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
 
     // X1 is global FC output
     // Dim [batch size, embedding size]
@@ -115,12 +117,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
     // expected auto = const int64_t
-    auto* x2_data = x2->data<int64_t>();
+    auto* x2_data = x2->mutable_data<int64_t>(context.GetPlace());
 
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
     auto* x3 = context.Input<Tensor>("Filter_tag");
-    auto* x3_data = x3->data<int64_t>();
+    auto* x3_data = x3->mutable_data<int64_t>(context.GetPlace());
 
     // Vector, in GPU
     auto x2_lods = x2->lod()[0];
@@ -136,7 +138,9 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     } else {
       x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
     }
+
     const size_t* x1_lods_data = x1_lods.CUDAData();
+    auto* x1_data = x1->mutable_data<int64_t>(context.GetPlace());
 
     // set output value
     // for those whose ins been dropout, set 0 for whole lines.
@@ -146,82 +150,103 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
-    auto* out_data = out->mutable_data<T>(context.GetPlace());
-    auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
-    auto* loss_weight_data =
-        loss_weight->mutable_data<float>(context.GetPlace());
-
-    std::unordered_map<int64_t, int64_t> mmap_aux;
+    Vector<int> flag(N, 0);
+    int* flag_data = flag.CUDAMutableData();
 
     // check configuration
     // int block_size = 512;
-    int block_size = THREADS dim3 block_dim(block_size);
+    int block_size = THREADS;
+    dim3 block_dim(block_size);
     dim3 grid_dim((N + block_size - 1) / block_size);
 
-    filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0,
-                                   ctx.cuda_device_context().stream()>>>(
-        N, x1_data, x1_lods_data, out_data, loss_weight_data, x2_data,
-        x2_loads_data, x3_data, is_x1_lod, x1_embed_size, out_val_if_empty);
+    // fileter_logic
+    filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
+        N, x2_data, x2_loads_data, x3_data, flag_data);
 
+    GpuStreamSync(current_stream);
+    std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
+
+    int cnt = 0;
+    for (auto &it = flag.begin(); it != flag.end(); cnt++, it++) {
+      if ((*it) == 1) {
+        size_t batch_len = x1_lods[cnt + 1] - x1_lods[cnt];
+        mmap_aux[out_lods.back()] = x1_lods[i];
+        out_lods.push_back(out_lods.back() + batch_len);
+      }
+    }
 
     if (out_lods.size() - 1 > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-
       map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
       loss_weight->Resize(
           framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
-
     } else {
       out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({1, 3}));
       loss_weight->Resize(framework::make_ddim({1, 1}));
     }
-
-    // auto* out_data = out->mutable_data<T>(context.GetPlace());
-    // auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
-    // auto* loss_weight_data =
-    //     loss_weight->mutable_data<float>(context.GetPlace());
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
+    auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
+    auto* loss_weight_data =
+        loss_weight->mutable_data<float>(context.GetPlace());
 
     if (out_lods.size() - 1 > 0) {
       Vector<size_t> map_lods;
+      map_lods.reserve(out_lods.size());
+      thrust::device_ptr<int64_t> map_data_ptr(map_data);
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
-        map_data[i * 3] = (int64_t)out_lods[i];
-        map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
-        map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
+        map_data_ptr[i * 3] = (int64_t)out_lods[i];
+        map_data_ptr[i * 3 + 1] = mmap_aux[(int64_t)out_lods[i]];
+        map_data_ptr[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
         map_lods.push_back(i);
       }
-
       map_lods.push_back(out_lods.size() - 1);
+
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
 
       map->set_lod(map_lod_info);
       loss_weight->set_lod(map_lod_info);
+
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-      memset(out_data, 0, out->numel() * sizeof(T));
-      for (int i = 0; i < loss_weight->numel(); i++) {
-        loss_weight_data[i] = 1;
-      }
+
+      thrust::device_ptr<T> out_data_ptr(out_data);
+      thrust::device_ptr<T> x1_data_ptr(x1_data);
+
+      thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
+
+      thrust::fill(out_data_ptr, out_data_ptr + out->numel(), 0);
+      thrust::fill(loss_weight_data_ptr,
+                   loss_weight_data_ptr + loss_weight->numel(), 1.0);
 
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
-        for (int k = map_data[i * 3 + 1];
-             k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
-          memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
-                 x1_embed_size * sizeof(T));
-          ++pos;
-        }
-      }
+        thrust::copy(x1_data_ptr + map_data_ptr[i * 3 + 1] * x1_embed_size,
+                     x1_data_ptr +
+                         (map_data_ptr[i * 3 + 1] + map_data_ptr[i * 3 + 2]) *
+                             x1_embed_size,
+                     out_data_ptr + pos * x1_embed_size);
+        // for (int k = map_data[i * 3 + 1];
+        //      k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
 
+        //   GpuMemcpyAsync(out_data + pos * x1_embed_size, x1_data + k *
+        //   x1_embed_size,
+        //          x1_embed_size * sizeof(T), cudaMemcpyDeviceToDevice,
+        //          current_stream);
+        //   ++pos;
+        // }
+      }
+      // GpuStreamSync(current_stream);
     } else {
       Vector<size_t> map_lods;
-      map_data[0] = 0;
-      map_data[1] = 1;
-      map_data[2] = 1;
+      thrust::device_ptr<int64_t> map_data_ptr(map_data);
+      map_data_ptr[0] = 0;
+      map_data_ptr[1] = 1;
+      map_data_ptr[2] = 1;
       map_lods.push_back(0);
       map_lods.push_back(1);
       out_lods.push_back(1);
@@ -232,16 +257,23 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-      for (int64_t oi = 0; oi < out->numel(); ++oi) {
-        if (std::is_same<T, int32_t>::value) {
-          out_data[oi] = (int32_t)out_val_if_empty;
-        } else if (std::is_same<T, int64_t>::value) {
-          out_data[oi] = (int64_t)out_val_if_empty;
-        } else {
-          out_data[oi] = static_cast<double>(out_val_if_empty);
-        }
+
+      // gpu kernel
+      if (std::is_same<T, int32_t>::value) {
+        thrust::device_ptr<int32_t> out_data_ptr(out_data);
+        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+                     static_cast<int32_t>(out_val_if_empty));
+      } else if (std::is_same<T, int64_t>::value) {
+        thrust::device_ptr<int64_t> out_data_ptr(out_data);
+        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+                     static_cast<int64_t>(out_val_if_empty));
+      } else {
+        thrust::device_ptr<double> out_data_ptr(out_data);
+        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+                     static_cast<double>(out_val_if_empty));
       }
-      loss_weight_data[0] = 0;
+      thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
+      loss_weight_data_ptr[0] = 0;
     }
   }
 };
@@ -258,26 +290,32 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
 
     x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());
-    auto mmap_data = mmap->data<int64_t>();
+
+    auto mmap_data = mmap->mutable_data<int64_t>(context.GetPlace());
 
     // expected auto = T
-    auto* output_grad_data = output_grad->data<T>();
+    auto* output_grad_data = output_grad->mutable_data<T>(context.GetPlace());
+    auto* loss_weight_data =
+        loss_weight->mutable_data<float>(context.GetPlace());
 
-    auto* loss_weight_data = loss_weight->data<float>();
     // expected auto = T
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
-    memset(x1_grad_data, 0, x1->dims()[0] * x1->dims()[1] * sizeof(T));
-    if (loss_weight->numel() != 1 || loss_weight_data[0] != 0) {
+
+    thrust::device_ptr<T> loss_weight_data_ptr(loss_weight_data);
+    thrust::device_ptr<T> x1_grad_data_ptr(x1_grad_data);
+    thrust::device_ptr<T> output_grad_data_ptr(output_grad_data);
+    thrust::device_ptr<int64_t> mmap_data_ptr(mmap_data);
+    thrust::fill(x1_grad_data_ptr,
+                 x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
+    if (loss_weight->numel() != 1 || loss_weight_data_ptr[0] != 0) {
       auto output_dims = output_grad->dims();
       for (int i = 0; i < mmap->dims()[0]; i++) {
-        int src_ln = mmap_data[i * 3], dst_ln = mmap_data[i * 3 + 1];
-        int line_cnt = mmap_data[i * 3 + 2];
-        for (int l = 0; l < line_cnt; l++) {
-          for (int j = 0; j < output_dims[1]; j++) {
-            x1_grad_data[(dst_ln + l) * output_dims[1] + j] =
-                output_grad_data[(src_ln + l) * output_dims[1] + j];
-          }
-        }
+        int src_ln = mmap_data_ptr[i * 3], dst_ln = mmap_data_ptr[i * 3 + 1];
+        int line_cnt = mmap_data_ptr[i * 3 + 2];
+        thrust::copy(
+            output_grad_data_ptr + src_ln * output_dims[1],
+            output_grad_data_ptr + (src_ln + line_cnt) * output_dims[1],
+            x1_grad_data_ptr + dist_ln * output_dims[1]);
       }
     }
   }
