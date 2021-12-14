@@ -34,9 +34,36 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+
+#ifdef __HIPCC__
+#define ELEMENTWISE_BLOCK_SIZE 256
+#else
+#define ELEMENTWISE_BLOCK_SIZE 512
+#endif
 
 namespace paddle {
 namespace operators {
+
+inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
+                            int64_t numel, int vec_size) {
+  int threads = ELEMENTWISE_BLOCK_SIZE;
+  int sm_count = ctx.GetSMCount();
+  int active_threads_num = numel / vec_size;
+  if (active_threads_num / (sm_count << 1) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about twice of SM, to acquire better performance.
+    threads = platform::RoundToPowerOfTwo(active_threads_num /
+                                                  (sm_count << 1));
+  } else if (active_threads_num / (sm_count << 2) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    threads = platform::RoundToPowerOfTwo(active_threads_num /
+                                                  (sm_count << 2));
+  }
+  // Number of threads per block shall be larger than 64.
+  return std::max(64, threads);
+}
 
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
@@ -81,6 +108,7 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           uint64_t increment) {
   using LoadT = platform::AlignedVector<T, VecSize>;
   using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
+  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
 
 #ifdef PADDLE_WITH_HIP
   int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
@@ -92,7 +120,6 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   curand_init(seed, idx, increment, &state);
 #endif
 
-  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
     LoadT src_val;
     platform::Load<T, VecSize>(&src[i], &src_val);
@@ -107,7 +134,7 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     MaskLoadT mask_val;
 
 #pragma unroll
-    for (int j = 0; j < VecSize; j++) {
+    for (int j = 0; j < VecSize; ++j) {
       if ((&rand.x)[j] < dropout_prob) {
         dst_val[j] = 0;
         mask_val[j] = 0;
@@ -182,7 +209,6 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(dev_ctx, size);
-
     // increment is used to set the args(offset) of curand_init, which defines
     // offset in subsequence.
     // The detail:
@@ -194,9 +220,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     uint64_t increment;
     int vec_size = platform::GetVectorizedSize<T>(x_data);
     auto offset = ((x_numel - 1) / (config.block_per_grid.x *
-                                    config.thread_per_block.x * vec_size) +
-                   1) *
-                  vec_size;
+                                    config.thread_per_block.x * vec_size) + 1) * vec_size;
 
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
@@ -216,9 +240,14 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     }
 #else
     if (vec_size == 4 && size % 4 == 0) {
-      VectorizedRandomGenerator<
-          T, uint8_t,
-          4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+      // VectorizedRandomGenerator<
+      //     T, uint8_t,
+      //     4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+      //     size, seed_data, dropout_prob, x_data, mask_data, y_data,
+      //     upscale_in_train, increment);
+      int block_size = GetThreadsConfig(dev_ctx, size, vec_size);
+      int grid_size = ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
+      VectorizedRandomGenerator<T, uint8_t, 4><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     } else {
@@ -265,13 +294,14 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
         if (vec_size == 4 && size % 4 == 0) {
           auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
           auto stream = dev_ctx.stream();
-          platform::GpuLaunchConfig config =
-              platform::GetGpuLaunchConfig1D(dev_ctx, size);
-          DropoutGradCUDAKernel<
-              T, uint8_t,
-              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-              grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
-              grad_x->data<T>());
+          // platform::GpuLaunchConfig config =
+          //     platform::GetGpuLaunchConfig1D(dev_ctx, size);
+          
+          int block_size = GetThreadsConfig(dev_ctx, size, vec_size);
+          int grid_size = ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
+
+          DropoutGradCUDAKernel<T, uint8_t, 4><<<grid_size, block_size, 0, stream>>>(
+              grad_y.data<T>(), mask.data<uint8_t>(), factor, size, grad_x->data<T>());
         } else {
           dX.device(place) =
               dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
