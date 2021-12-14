@@ -19,8 +19,30 @@ if (WITH_TESTING)
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program 
     )
-    
-    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    set(OPS  
+    fill_constant_op
+    uniform_random_op
+    lookup_table_op
+    transpose_op
+    reshape_op
+    split_op
+    slice_op
+    concat_op
+    matmul_op
+    elementwise_add_op
+    elementwise_mul_op
+    softmax_with_cross_entropy_op
+    reduce_mean_op
+    reduce_sum_op
+    activation_op
+    sum_op
+    elementwise_max_op
+    elementwise_div_op
+    sgd_op
+    squared_l2_norm_op
+    memcpy_h2d_op
+    memcpy_d2h_op)
+    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS ${OPS} interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
     add_dependencies(standalone_executor_test download_program)
     if (WITH_PROFILER)
         target_link_libraries(standalone_executor_test profiler)
