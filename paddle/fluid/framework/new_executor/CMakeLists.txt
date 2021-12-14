@@ -19,32 +19,88 @@ if (WITH_TESTING AND NOT WIN32)
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program 
     )
+    
     set(OPS  
-    fill_constant_op
-    uniform_random_op
-    lookup_table_op
-    transpose_op
-    reshape_op
-    split_op
-    slice_op
-    concat_op
-    matmul_op
-    elementwise_add_op
-    elementwise_mul_op
-    softmax_with_cross_entropy_op
-    reduce_mean_op
-    reduce_sum_op
-    activation_op
-    sum_op
-    elementwise_max_op
-    elementwise_div_op
-    sgd_op
-    squared_l2_norm_op
-    memcpy_h2d_op
-    memcpy_d2h_op)
+        fill_constant_op
+        uniform_random_op
+        lookup_table_op
+        transpose_op
+        reshape_op
+        split_op
+        slice_op
+        concat_op
+        matmul_op
+        elementwise_add_op
+        elementwise_mul_op
+        softmax_with_cross_entropy_op
+        reduce_mean_op
+        reduce_sum_op
+        activation_op
+        sum_op
+        elementwise_max_op
+        elementwise_div_op
+        sgd_op
+        squared_l2_norm_op
+        memcpy_h2d_op
+        memcpy_d2h_op)
     
 
-    message(" GLOB_OPERATOR_DEPS ${GLOB_OPERATOR_DEPS} ")
+    set(OP_DEPS 
+        nccl_common
+        xxhash
+        executor
+        pocketfft
+        pten
+        pten_api_utils
+        selected_rows_functor
+        selected_rows
+        lapack_function
+        lod_tensor
+        maxouting
+        unpooling
+        pooling
+        lod_rank_table
+        context_project
+        sequence_pooling
+        segment_pooling
+        executor
+        device_memory_aligment
+        generator
+        dynload_warpctc
+        sequence_padding
+        sequence_scale
+        cos_sim_functor
+        memory
+        jit_kernel_helper
+        concat_and_split
+        cross_entropy
+        softmax
+        vol2col
+        im2col
+        sampler
+        sample_prob
+        tree2col
+        sequence2batch
+        lstm_compute
+        matrix_bit_code
+        gru_compute
+        activation_functions
+        beam_search
+        fc
+        matrix_inverse
+        matrix_solve
+        box_wrapper
+        boost
+        ps_gpu_wrapper
+        common_infer_shape_functions
+        eigen_function
+        depthwise_conv
+        prelu
+        bert_encoder_functor
+        device_memory_aligment
+        layer
+        tensor_formatter
+        op_version_registry)
 
     cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${OPS} ${GLOB_OPERATOR_DEPS})
     set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
