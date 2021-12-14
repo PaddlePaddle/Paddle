@@ -19,29 +19,29 @@ limitations under the License. */
 
 namespace pten {
 
-// Common InferShape Functions for binary operators, The format like:
+// Common InferMeta Functions for binary operators, The format like:
 //
-//   1. DenseTensorMeta [OpName]InferShape(const DenseTensorMeta& x_meta, ...)
+//   1. DenseTensorMeta [OpName]InferMeta(const DenseTensorMeta& x_meta, ...)
 //   {}
-//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferShape(const
+//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferMeta(const
 //   DenseTensorMeta&
 //   x_meta, ...) {}
 //   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
-//   [OpName]InferShape(const
+//   [OpName]InferMeta(const
 //   DenseTensorMeta& x_meta, ...)
-//  NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+//  NOTE: The name "InferMeta" may be not appropriate. "InferMeta" may be good.
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-DenseTensorMeta DotInferShape(const DenseTensorMeta& x_meta,
-                              const DenseTensorMeta& y_meta);
+DenseTensorMeta DotInferMeta(const DenseTensorMeta& x_meta,
+                             const DenseTensorMeta& y_meta);
 
-DenseTensorMeta MatmulInferShape(const DenseTensorMeta& x_meta,
-                                 const DenseTensorMeta& y_meta,
-                                 bool trans_x,
-                                 bool trans_y);
+DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
+                                const DenseTensorMeta& y_meta,
+                                bool trans_x,
+                                bool trans_y);
 
-DenseTensorMeta ElementwiseInferShape(const DenseTensorMeta& x_meta,
-                                      const DenseTensorMeta& y_meta,
-                                      int axis);
+DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
+                                     const DenseTensorMeta& y_meta,
+                                     int axis);
 }  // namespace pten

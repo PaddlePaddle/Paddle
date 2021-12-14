@@ -274,7 +274,9 @@ void LiteSubgraphPass::SetUpEngine(
   } else if (use_xpu) {
     target_type = TARGET(kXPU);
   } else if (use_nnadapter) {
+#ifdef LITE_WITH_NNADAPTER
     target_type = TARGET(kNNAdapter);
+#endif
   } else {
 #ifdef PADDLE_WITH_ARM
     target_type = TARGET(kARM);

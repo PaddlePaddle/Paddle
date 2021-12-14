@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {

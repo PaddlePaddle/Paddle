@@ -627,13 +627,13 @@ def _insert_allgather_op(block, idx, tensor, ranks):
         attrs={
             'ring_id': group.id,
             'use_calc_stream': True,
-            'nranks': group._nranks
+            'nranks': group.nranks
         })
     idx_offset += 1
 
     # insert split op
     split_out = _insert_split_op(block, idx + idx_offset, allgather_out,
-                                 group._nranks)
+                                 group.nranks)
     idx_offset += 1
     tensor_list.extend(split_out)
     return tensor_list, idx_offset
@@ -663,14 +663,6 @@ def _concat_partitions_with_op(partition_tensor_list, tensor, partition_index,
             i += 1
         if not has_concat:
             partition_tensor_list.append((tensor, partition_index))
-
-
-def _init_comm_for_send_recv():
-    if not _g_process_group_map:
-        genv = _get_global_env()
-        _g_process_group_map["global_group"] = ProcessGroup(
-            0, list(range(genv.world_size)))
-        _g_process_group_map["global_group"].instantiate()
 
 
 HAS_SENT = {}
@@ -726,7 +718,6 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
             assert tensor_list, "The result of parsing allgather op should not be None."
 
         elif isinstance(op_desc, SendOpDesc):
-            _init_comm_for_send_recv()
             if var_name not in HAS_SENT.keys():
                 HAS_SENT[var_name] = []
             if op_desc.dst not in HAS_SENT[var_name]:
@@ -735,7 +726,6 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
                 HAS_SENT[var_name].append(op_desc.dst)
 
         elif isinstance(op_desc, RecvOpDesc):
-            _init_comm_for_send_recv()
             if var_name not in HAS_RECV.keys():
                 HAS_RECV[var_name] = {}
             if op_desc.src not in HAS_RECV[var_name].keys():

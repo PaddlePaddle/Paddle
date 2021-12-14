@@ -19,6 +19,9 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
+namespace egr {
+class TensorWrapper;
+}
 
 namespace eager_test {
 class GradTestNode : public egr::GradNodeBase {

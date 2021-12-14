@@ -50,10 +50,10 @@ class MessageBus final {
 
   bool IsInit() const;
 
-  void Release();
-
   // called by Interceptor, send InterceptorMessage to dst
   bool Send(const InterceptorMessage& interceptor_message);
+
+  ~MessageBus();
 
   DISABLE_COPY_AND_ASSIGN(MessageBus);
 
@@ -89,6 +89,7 @@ class MessageBus final {
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
+  InterceptorMessageServiceImpl interceptor_message_service_;
   // brpc server
   brpc::Server server_;
 #endif

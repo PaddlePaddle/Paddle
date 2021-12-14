@@ -19,8 +19,8 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
@@ -257,18 +257,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
-    auto all_passes = kTRTSubgraphPasses;
+    pass_builder_->ClearPasses();
     auto other_passes = other.pass_builder()->AllPasses();
-    // We should sort them, because the user may call the SwitchIrDebug
-    // interface, which will change the pass.
-    std::sort(all_passes.begin(), all_passes.end());
-    std::sort(other_passes.begin(), other_passes.end());
-    std::vector<std::string> deleted_passes;
-    std::set_difference(all_passes.begin(), all_passes.end(),
-                        other_passes.begin(), other_passes.end(),
-                        std::inserter(deleted_passes, deleted_passes.begin()));
-    for (auto ps : deleted_passes) {
-      pass_builder_->DeletePass(ps);
+    for (auto pass : other_passes) {
+      pass_builder_->AppendPass(pass);
     }
   }
   if (use_dlnne_) {
@@ -479,6 +471,7 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
+
   if (use_dlnne_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kDlnneSubgraphPasses) {
@@ -688,8 +681,6 @@ void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   prog_file_ = std::string(prog_buffer, prog_buffer + prog_buffer_size);
   params_file_ = std::string(param_buffer, param_buffer + param_buffer_size);
   model_from_memory_ = true;
-
-  Update();
 }
 
 NativeConfig AnalysisConfig::ToNativeConfig() const {

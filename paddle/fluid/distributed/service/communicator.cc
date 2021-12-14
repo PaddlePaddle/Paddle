@@ -949,6 +949,10 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
     auto *old_var = old_scope_->Var(t);
     old_var->GetMutable<framework::LoDTensor>();
     framework::CopyVariable(*global_var, old_var);
+    // init pserver_scope_
+    auto *pserver_var = pserver_scope_->Var(t);
+    pserver_var->GetMutable<framework::LoDTensor>();
+    framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
 }
