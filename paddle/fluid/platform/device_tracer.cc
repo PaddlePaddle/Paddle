@@ -331,9 +331,6 @@ class DeviceTracerImpl : public DeviceTracer {
                      << " end_ns: " << r.end_ns;
           }
         }
-        if (evt_iter->second.first->name() == "Compute") {  // move to OP
-          ++evt_iter;
-        }
         Event *evt = evt_iter->second.first;
         uint64_t start_ns = evt_iter->second.second;
         if (start_ns > r.start_ns) {
