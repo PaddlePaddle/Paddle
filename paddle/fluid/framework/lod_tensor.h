@@ -39,6 +39,8 @@ class DeviceContext;
 namespace paddle {
 namespace framework {
 
+using LoD = std::vector<Vector<size_t>>;
+
 /*
  * LoD is short for Level of Details.
  *
@@ -54,7 +56,6 @@ namespace framework {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
@@ -108,64 +109,14 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
  */
 class LoDTensor : public Tensor {
  public:
-  LoDTensor() : Tensor() {}
-
-  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
-
-  void set_lod(const LoD& lod) { lod_ = lod; }
-
-  const LoD& lod() const { return lod_; }
-
-  LoD* mutable_lod() { return &lod_; }
-
-  /*
-   * Get the start offset and end offset of an  element from LoD.
-   */
-  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE_LT(
-        level, NumLevels(),
-        platform::errors::InvalidArgument(
-            "The input level of LoD is invalid, it should be less than LoD "
-            "size. The input level is %zu, the LoD size is %zu.",
-            level, NumLevels()));
-    PADDLE_ENFORCE_LT(elem, NumElements(level),
-                      platform::errors::InvalidArgument(
-                          "The input element of LoD is invalid, it should be "
-                          "less than the number of elements in its level."
-                          "The input element is %zu, the number of elements in "
-                          "its level is %zu.",
-                          elem, NumElements(level)));
-    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
-  }
-
-  /*
-   * Number of LoDTensor's levels, each level has units of data, for example,
-   * in the sentence's view, article, paragraph, sentence are 3 levels.
-   */
-  size_t NumLevels() const { return lod_.size(); }
-  /*
-   * Number of elements in a level.
-   */
-  size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE_LT(
-        level, NumLevels(),
-        platform::errors::InvalidArgument(
-            "The input level of LoD is invalid, it should be less than LoD "
-            "size. The input level is %zu, the LoD size is %zu.",
-            level, NumLevels()));
-    // the last offset is the end of last element
-    return (lod_)[level].size() - 1;
-  }
-
-  // Split LoDTensor and copy to each place specified in places.
-  std::vector<LoDTensor> SplitLoDTensor(
-      const std::vector<platform::Place> places) const;
-
   void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
-                      platform::Place place);
-
- private:
-  LoD lod_;
+                      platform::Place place) {
+    std::vector<const Tensor*> tmp;
+    for (const LoDTensor* lod_tensor : lod_tensors) {
+      tmp.push_back(lod_tensor);
+    }
+    Tensor::MergeLoDTensor(tmp, place);
+  }
 };
 
 /*
@@ -209,21 +160,6 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   }
   return tensor;
 }
-
-// Get the absolute offset of a lod[start_level][start_idx:end_idx] and
-// relative length of details for every levels(i.e., [start_level: ]).
-//
-// For example,
-//   lod = [[0, 3, 4, 8], [0, 9, 10, 11, 13, 17, 19, 22, 24]]
-//   start_level = 0
-//   start_idx = 1
-//   end_idx = 3
-//
-// Returns:
-//  LoD = [[1, 4], [2, 4, 2, 3, 2]]
-//  pair<size_t, size_t> = {11, 24}
-std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
-    const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
 

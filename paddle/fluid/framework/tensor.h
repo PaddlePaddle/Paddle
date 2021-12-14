@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -41,7 +42,7 @@ namespace paddle {
 
 namespace framework {
 
-class LoDTensor;
+using LoD = std::vector<Vector<size_t>>;
 
 /*
  NOTE(liym27): [ What is TensorInplaceVersion used for? ]
@@ -326,7 +327,74 @@ class Tensor {
    */
   size_t offset_;
   std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
+
+  /* ---------------------------------------------------------- */
+  /* --------------- Reserved for LoDTensor ------------------- */
+  /* ---------------------------------------------------------- */
+ public:
+  explicit Tensor(const LoD& lod) : lod_(lod) {}
+
+  void set_lod(const LoD& lod) { lod_ = lod; }
+
+  const LoD& lod() const { return lod_; }
+
+  LoD* mutable_lod() { return &lod_; }
+
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
+    PADDLE_ENFORCE_LT(
+        level, NumLevels(),
+        platform::errors::InvalidArgument(
+            "The input level of LoD is invalid, it should be less than LoD "
+            "size. The input level is %zu, the LoD size is %zu.",
+            level, NumLevels()));
+    PADDLE_ENFORCE_LT(elem, NumElements(level),
+                      platform::errors::InvalidArgument(
+                          "The input element of LoD is invalid, it should be "
+                          "less than the number of elements in its level."
+                          "The input element is %zu, the number of elements in "
+                          "its level is %zu.",
+                          elem, NumElements(level)));
+    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
+  }
+
+  size_t NumLevels() const { return lod_.size(); }
+
+  size_t NumElements(size_t level = 0) const {
+    PADDLE_ENFORCE_LT(
+        level, NumLevels(),
+        platform::errors::InvalidArgument(
+            "The input level of LoD is invalid, it should be less than LoD "
+            "size. The input level is %zu, the LoD size is %zu.",
+            level, NumLevels()));
+    // the last offset is the end of last element
+    return (lod_)[level].size() - 1;
+  }
+
+  // Split LoDTensor and copy to each place specified in places.
+  std::vector<Tensor> SplitLoDTensor(
+      const std::vector<platform::Place> places) const;
+
+  void MergeLoDTensor(const std::vector<const Tensor*>& lod_tensors,
+                      platform::Place place);
+
+ private:
+  LoD lod_;
 };
+
+// Get the absolute offset of a lod[start_level][start_idx:end_idx] and
+// relative length of details for every levels(i.e., [start_level: ]).
+//
+// For example,
+//   lod = [[0, 3, 4, 8], [0, 9, 10, 11, 13, 17, 19, 22, 24]]
+//   start_level = 0
+//   start_idx = 1
+//   end_idx = 3
+//
+// Returns:
+//  LoD = [[1, 4], [2, 4, 2, 3, 2]]
+//  pair<size_t, size_t> = {11, 24}
+std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
+    const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 }  // namespace framework
 }  // namespace paddle

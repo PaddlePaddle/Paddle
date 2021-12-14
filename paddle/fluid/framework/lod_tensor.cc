@@ -151,7 +151,8 @@ bool CheckLoD(const LoD &in, int tensor_height) {
   }
   // check: the lowest level's last offset should equals `tensor_height` if
   //        tensor_height>0.
-  if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
+  if (tensor_height > 0 &&
+      static_cast<size_t>(tensor_height) != in.back().back())
     return false;
 
   // check: the higher level's last offset should equals the lower level's
@@ -184,40 +185,11 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
     if (level.front() != 0) return false;
     if (tensor_height < 0) {
       tensor_height = level.back();
-    } else if ((size_t)tensor_height != level.back()) {
+    } else if (static_cast<size_t>(tensor_height) != level.back()) {
       return false;
     }
   }
   return true;
-}
-
-using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
-LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
-                                        size_t end_idx, size_t start_level) {
-  LoD sub_lod;
-
-  for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
-    PADDLE_ENFORCE_LE(start_idx, end_idx,
-                      platform::errors::InvalidArgument(
-                          "The start index should be less than the end index, "
-                          "but received start index is %d, end index is %d.",
-                          start_idx, end_idx));
-    PADDLE_ENFORCE_LT(
-        end_idx, lod[level_idx].size(),
-        platform::errors::InvalidArgument(
-            "The end index should be less than the LoD level size, but "
-            "received end index is %d, LoD level size is %d.",
-            end_idx, lod[level_idx].size()));
-    std::vector<size_t> level_lens;
-    for (size_t i = start_idx; i < end_idx; ++i) {
-      level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
-    }
-    sub_lod.emplace_back(level_lens);
-    start_idx = lod[level_idx][start_idx];
-    end_idx = lod[level_idx][end_idx];
-  }
-
-  return LoDAndOffset{sub_lod, {start_idx, end_idx}};
 }
 
 void AppendLoD(LoD *lod, const LoD &lod_length) {
@@ -345,153 +317,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   }
   // the 3st filed, Tensor
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
-}
-
-std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
-    const std::vector<platform::Place> places) const {
-  PADDLE_ENFORCE_GT(places.size(), 0,
-                    platform::errors::InvalidArgument(
-                        "Place number cannot be empty when splitting."));
-  check_memory_size();
-  size_t batch_size =
-      lod().empty() ? static_cast<size_t>(dims()[0]) : lod()[0].size() - 1;
-
-  // if batch_size is 0, just return #places.size() copys of empty
-  // tensors.
-  if (batch_size == 0) {
-    std::vector<LoDTensor> empty_results;
-    empty_results.reserve(places.size());
-    for (size_t i = 0; i < places.size(); ++i) {
-      LoDTensor dst;
-      dst.Resize(dims());
-      dst.mutable_data(places[i], type());
-      if (!lod().empty()) {
-        dst.set_lod(lod());
-      }
-      empty_results.emplace_back(std::move(dst));
-    }
-    return empty_results;
-  }
-
-  auto step_width = (batch_size + places.size() - 1) / places.size();
-  auto result_size = (batch_size + step_width - 1) / step_width;
-  std::vector<LoDTensor> results;
-  results.reserve(result_size);
-
-  for (size_t i = 0; i < result_size; ++i) {
-    auto begin = i * step_width;
-    auto end = std::min<size_t>((i + 1) * step_width, batch_size);
-    PADDLE_ENFORCE_LT(begin, end,
-                      platform::errors::InvalidArgument(
-                          "The begin index must be less than the end index, "
-                          "but received begin index is %d, end index is %d.",
-                          begin, end));
-
-    LoDTensor dst;
-    if (lod().empty()) {
-      auto src = Slice(begin, end);
-      auto &dst_place = places[i];
-      framework::TensorCopy(src, dst_place, &dst);
-    } else {
-      auto lod_and_offset = GetSubLoDAndAbsoluteOffset(lod(), begin, end, 0);
-
-      auto &offset = lod_and_offset.second;
-      auto src = Slice(offset.first, offset.second);
-      auto &dst_place = places[i];
-      framework::TensorCopy(src, dst_place, &dst);
-
-      LoD my_lod;
-      for (auto &l : lod_and_offset.first) {
-        std::vector<size_t> v{0};
-        for (auto &ll : l) {
-          v.push_back(ll + v.back());
-        }
-        my_lod.emplace_back(v);
-      }
-      dst.set_lod(my_lod);
-    }
-    results.emplace_back(std::move(dst));
-  }
-
-  return results;
-}
-
-void LoDTensor::MergeLoDTensor(
-    const std::vector<const LoDTensor *> &lod_tensors,
-    platform::Place dst_place) {
-  PADDLE_ENFORCE_EQ(lod_tensors.empty(), false,
-                    platform::errors::InvalidArgument(
-                        "The LoDTensors to be merged are empty."));
-
-  framework::DDim new_dim = lod_tensors[0]->dims();
-  proto::VarType::Type new_type = proto::VarType::FP32;
-  framework::DataLayout new_layout = lod_tensors[0]->layout();
-  for (auto *t : lod_tensors) {
-    if (t->numel() && t->IsInitialized()) {
-      new_dim = t->dims();
-      new_type = t->type();
-      new_layout = t->layout();
-      break;
-    }
-  }
-
-  LoD new_lod = lod_tensors[0]->lod();
-
-  for (size_t i = 1; i < lod_tensors.size(); ++i) {
-    auto *t = lod_tensors[i];
-    if (t->numel() && t->IsInitialized()) {
-      PADDLE_ENFORCE_EQ(
-          new_type, t->type(),
-          platform::errors::InvalidArgument(
-              "LoDTensor data type does not match, expected type is %s, actual "
-              "type is %s.",
-              DataTypeToString(new_type), DataTypeToString(t->type())));
-      PADDLE_ENFORCE_EQ(
-          new_layout, t->layout(),
-          platform::errors::InvalidArgument(
-              "LoDTensor layout does not match, expected layout is %s, "
-              "actual layout is %s.",
-              DataLayoutToString(new_layout), DataLayoutToString(t->layout())));
-      PADDLE_ENFORCE_EQ(
-          framework::product(new_dim) / new_dim[0],
-          framework::product(t->dims()) / t->dims()[0],
-          platform::errors::InvalidArgument(
-              "LoDTensor dimension does not match, all dimensions except the "
-              "first dimension need to be equal,"
-              "but expected dimension is %s, actual dimension is %s.",
-              new_dim, t->dims()));
-      new_dim[0] += t->dims()[0];
-    }
-
-    auto &lod = t->lod();
-    PADDLE_ENFORCE_EQ(new_lod.size(), lod.size(),
-                      platform::errors::InvalidArgument(
-                          "The LoD information of LoDTensor does not match, "
-                          "expected LoD is %s, actual LoD is %s.",
-                          new_lod, lod));
-    for (size_t j = 0; j < lod.size(); ++j) {
-      auto &sub_lod = new_lod[j];
-      size_t offset = sub_lod.back();
-      for (size_t k = 1; k < lod[j].size(); ++k) {
-        sub_lod.push_back(lod[j][k] + offset);
-      }
-    }
-  }
-  Resize(new_dim);
-  set_layout(new_layout);
-  set_lod(new_lod);
-  mutable_data(dst_place, new_type);
-
-  int begin = 0;
-  for (auto *src : lod_tensors) {
-    int end = begin + src->dims()[0];
-    if (end == begin) {
-      continue;
-    }
-    auto dst = Slice(begin, end);
-    framework::TensorCopy(*src, dst_place, &dst);
-    begin = end;
-  }
 }
 
 LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
