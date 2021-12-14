@@ -26,7 +26,7 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
@@ -46,32 +46,19 @@ using Vector = framework::CPUVector<T>;
 
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
-#define MAX_THREADS 1024
 #define THREADS 256
 
-#define MAX_THREAD_STRIDE 32
-#define TILE_DIM 32
-
-#define MAX_WARP_NUM 32
-
-#define MAX_REGISTERS 256
-
-// test real performance to decide one threads for ? ins
-
-template <typename T>
-__global__ void filter_by_instag_cuda_kernel(const int N, int64_t* x2_data,
-                                             size_t* x2_lods_data,
-                                             int64_t* x3_data,
-                                             int filter_tag_size,
-                                             int* flag_data) {
+__global__ void filter_by_instag_cuda_kernel(
+    const int N, const int64_t* x2_data, const size_t* x2_lods_data,
+    const int64_t* x3_data, int64_t filter_tag_size, int* flag_data) {
   // N is instance num
   // one threads for one instance
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
   }
-  int ins_tag_start = x2_loads_data[idx];
-  int ins_tag_end = x2_loads_data[idx + 1];
+  int ins_tag_start = x2_lods_data[idx];
+  int ins_tag_end = x2_lods_data[idx + 1];
 
   // fileter logic
   int i = ins_tag_start;
@@ -95,7 +82,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
-    gpuStream_t current_stream = ctx.cuda_device_context().stream();
+    gpuStream_t current_stream = context.cuda_device_context().stream();
 
     // auto cpu_place = platform::CPUPlace();
     // auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
@@ -115,19 +102,20 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     size_t x1_embed_size = x1->dims()[1];
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
+
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
     // expected auto = const int64_t
-    auto* x2_data = x2->mutable_data<int64_t>(context.GetPlace());
+    auto* x2_data = x2->data<int64_t>();
 
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
     auto* x3 = context.Input<Tensor>("Filter_tag");
-    auto* x3_data = x3->mutable_data<int64_t>(context.GetPlace());
+    const int64_t* x3_data = x3->data<int64_t>();
 
     // Vector, in GPU
     auto x2_lods = x2->lod()[0];
-    const size_t* x2_lods_data = x2_loads.CUDAData();
-    int N = static_cast<int>(x2_lods.size()) - 1;
+    const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
+    const int N = static_cast<int>(x2_lods.size()) - 1;
 
     // Vector, in GPU
     Vector<size_t> x1_lods(1, 0);
@@ -139,8 +127,8 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
     }
 
-    const size_t* x1_lods_data = x1_lods.CUDAData();
-    auto* x1_data = x1->mutable_data<int64_t>(context.GetPlace());
+    const size_t* x1_lods_data = x1_lods.CUDAData(context.GetPlace());
+    auto* x1_data = x1->data<T>();
 
     // set output value
     // for those whose ins been dropout, set 0 for whole lines.
@@ -151,7 +139,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
     Vector<int> flag(N, 0);
-    int* flag_data = flag.CUDAMutableData();
+    int* flag_data = flag.CUDAMutableData(context.GetPlace());
 
     // check configuration
     // int block_size = 512;
@@ -161,17 +149,17 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     // fileter_logic
     filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
-        N, x2_data, x2_loads_data, x3_data, flag_data);
+        N, x2_data, x2_lods_data, x3_data, x3->numel(), flag_data);
 
-    GpuStreamSync(current_stream);
+    platform::GpuStreamSync(current_stream);
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
 
     int cnt = 0;
-    for (auto &it = flag.begin(); it != flag.end(); cnt++, it++) {
+    for (auto it = flag.begin(); it != flag.end(); cnt++, it++) {
       if ((*it) == 1) {
         size_t batch_len = x1_lods[cnt + 1] - x1_lods[cnt];
-        mmap_aux[out_lods.back()] = x1_lods[i];
+        mmap_aux[out_lods.back()] = x1_lods[cnt];
         out_lods.push_back(out_lods.back() + batch_len);
       }
     }
@@ -215,7 +203,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       out->set_lod(out_lod_info);
 
       thrust::device_ptr<T> out_data_ptr(out_data);
-      thrust::device_ptr<T> x1_data_ptr(x1_data);
+      thrust::device_ptr<const T> x1_data_ptr(x1_data);
 
       thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
 
@@ -258,20 +246,25 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
 
+      thrust::device_ptr<T> out_data_ptr(out_data);
       // gpu kernel
       if (std::is_same<T, int32_t>::value) {
-        thrust::device_ptr<int32_t> out_data_ptr(out_data);
+        // thrust::device_ptr<int32_t> out_data_ptr(out_data);
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<int32_t>(out_val_if_empty));
       } else if (std::is_same<T, int64_t>::value) {
-        thrust::device_ptr<int64_t> out_data_ptr(out_data);
+        // thrust::device_ptr<int64_t> out_data_ptr(out_data);
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<int64_t>(out_val_if_empty));
+      } else if (std::is_same<T, float>::value) {
+        // thrust::device_ptr<double> out_data_ptr(out_data);
+        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+                     static_cast<float>(out_val_if_empty));
       } else {
-        thrust::device_ptr<double> out_data_ptr(out_data);
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<double>(out_val_if_empty));
       }
+
       thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
       loss_weight_data_ptr[0] = 0;
     }
@@ -282,6 +275,8 @@ template <typename T>
 class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    const auto gpu_place =
+        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
@@ -291,20 +286,19 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());
 
-    auto mmap_data = mmap->mutable_data<int64_t>(context.GetPlace());
+    auto* mmap_data = mmap->data<int64_t>();
 
     // expected auto = T
-    auto* output_grad_data = output_grad->mutable_data<T>(context.GetPlace());
-    auto* loss_weight_data =
-        loss_weight->mutable_data<float>(context.GetPlace());
+    auto* output_grad_data = output_grad->data<T>();
+    auto* loss_weight_data = loss_weight->data<float>();
 
     // expected auto = T
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
 
-    thrust::device_ptr<T> loss_weight_data_ptr(loss_weight_data);
+    thrust::device_ptr<const float> loss_weight_data_ptr(loss_weight_data);
     thrust::device_ptr<T> x1_grad_data_ptr(x1_grad_data);
-    thrust::device_ptr<T> output_grad_data_ptr(output_grad_data);
-    thrust::device_ptr<int64_t> mmap_data_ptr(mmap_data);
+    thrust::device_ptr<const T> output_grad_data_ptr(output_grad_data);
+    thrust::device_ptr<const int64_t> mmap_data_ptr(mmap_data);
     thrust::fill(x1_grad_data_ptr,
                  x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
     if (loss_weight->numel() != 1 || loss_weight_data_ptr[0] != 0) {
@@ -315,7 +309,7 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
         thrust::copy(
             output_grad_data_ptr + src_ln * output_dims[1],
             output_grad_data_ptr + (src_ln + line_cnt) * output_dims[1],
-            x1_grad_data_ptr + dist_ln * output_dims[1]);
+            x1_grad_data_ptr + dst_ln * output_dims[1]);
       }
     }
   }
