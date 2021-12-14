@@ -1570,7 +1570,8 @@ struct ReshapeTransposeMatmulPattern : public PatternBase {
                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
 
-  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+  PDNode* operator()(const std::string& op_name, bool with_reshape_xshape,
+                     bool with_transpose_xshape);
 
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);
