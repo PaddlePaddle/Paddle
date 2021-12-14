@@ -81,9 +81,9 @@ void CPUBfloat16PlacementPass::RemoveUnsupportedOperators(
   unsupported_bfloat16_pattern();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(op_in, op_in, unsupported_bfloat16_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(prev_out, prev_out, unsupported_bfloat16_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(op, op, unsupported_bfloat16_pattern);
-    if (op_in->Var()->GetDataType() != proto::VarType::FP32) {
+    if ((prev_out->Var()->GetDataType() != proto::VarType::FP32)) {
       op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
       bfloat16_operators--;
     }

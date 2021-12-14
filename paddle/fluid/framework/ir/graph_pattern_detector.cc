@@ -2393,13 +2393,19 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
 }
 
 PDNode *patterns::UnsupportedBfloat16::operator()() {
-  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->HasAttr("mkldnn_data_type") == false;
+  });
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";
   });
-  op->LinksFrom({op_in});
+  prev_op->LinksTo({prev_out});
+  op->LinksFrom({prev_out});
   return op;
 }
 

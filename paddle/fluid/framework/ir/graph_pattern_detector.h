@@ -1407,7 +1407,8 @@ struct UnsupportedBfloat16 : public PatternBase {
       : PatternBase(pattern, name_scope, "unsupported_bfloat16") {}
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(op_in);
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
   PATTERN_DECL_NODE(op);
 };
 
