@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
+class TestConvHardSwishMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs
@@ -45,8 +45,9 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
         groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        slope = draw(st.floats(min_value=0, max_value=10))
-        offset = draw(st.floats(min_value=0, max_value=10))
+        threshold = draw(st.sampled_from([6.0]))
+        scale = draw(st.sampled_from([6.0]))
+        offset = draw(st.sampled_from([3.0]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input():
@@ -79,15 +80,16 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
                 "strides": strides
             }
         }, {
-            "op_type": "hard_sigmoid",
+            "op_type": "hard_swish",
             "op_inputs": {
                 "X": ["conv_output"]
             },
             "op_outputs": {
-                "Out": ["sigmoid_output"]
+                "Out": ["swish_output"]
             },
             "op_attrs": {
-                "slope": slope,
+                "threshold": threshold,
+                "scale": scale,
                 "offset": offset
             },
         }]
@@ -102,7 +104,7 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
-            outputs=["sigmoid_output"])
+            outputs=["swish_output"])
 
         return program_config
 
@@ -112,7 +114,7 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["conv_hard_sigmoid_mkldnn_fuse_pass"])
+            quant=False, passes=["conv_hard_swish_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":

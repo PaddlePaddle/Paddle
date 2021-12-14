@@ -149,7 +149,7 @@ ConvActivationFusePass::ConvActivationFusePass() {
       // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
       .AddAttr("data_format")
       .IsOptional()
-      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .IsStringIn({"NCHW"})
       .End();
 
   AddOpCompat(OpCompat("relu"))
