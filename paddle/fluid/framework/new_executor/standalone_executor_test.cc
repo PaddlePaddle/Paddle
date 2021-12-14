@@ -13,16 +13,11 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <chrono>
 #include <iostream>
 #include <string>
 
-#include <chrono>
-#include <map>
-#include <memory>
-#include <unordered_map>
-#include <vector>
-
-#include "gperftools/profiler.h"
+// #include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
@@ -84,7 +79,6 @@ ProgramDesc load_from_file(const std::string& file_name) {
 TEST(StandaloneExecutor, run) {
   FLAGS_eager_delete_tensor_gb = 0.1;
   int64_t batch_size = 20;
-  int enable_profiler = 0;
 
   auto place = platform::CUDAPlace(0);
   auto test_prog = load_from_file("lm_startup_program");
@@ -111,9 +105,8 @@ TEST(StandaloneExecutor, run) {
   StandaloneExecutor exec(place, test_prog, main_prog, &scope);
   exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
-  if (enable_profiler) {
-    ProfilerStart("new_executor.prof");
-  }
+
+  // ProfilerStart("new_executor.prof");
 
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
@@ -122,9 +115,9 @@ TEST(StandaloneExecutor, run) {
 
     exec.Run({}, {}, {});
   }
-  if (enable_profiler) {
-    ProfilerStop();
-  }
+
+  // ProfilerStop();
+
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 

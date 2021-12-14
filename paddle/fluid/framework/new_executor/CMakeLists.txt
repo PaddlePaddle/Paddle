@@ -19,6 +19,11 @@ if (WITH_TESTING)
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program 
     )
-    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+    
+    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
     add_dependencies(standalone_executor_test download_program)
+    if (WITH_PROFILER)
+        target_link_libraries(standalone_executor_test profiler)
+        add_dependencies(standalone_executor_test profiler)
+    endif()
 endif()
