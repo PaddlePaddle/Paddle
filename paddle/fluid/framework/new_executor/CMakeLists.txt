@@ -42,7 +42,10 @@ if (WITH_TESTING)
     squared_l2_norm_op
     memcpy_h2d_op
     memcpy_d2h_op)
+    
     cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS ${OPS} interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
+
     add_dependencies(standalone_executor_test download_program)
     if (WITH_PROFILER)
         target_link_libraries(standalone_executor_test profiler)
