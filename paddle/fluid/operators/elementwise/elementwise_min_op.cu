@@ -41,16 +41,12 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_min,
-    ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::float16>,
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMinKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_min_grad,
-    ops::ElementwiseMinGradKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>,
     ops::ElementwiseMinGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMinGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMinGradKernel<paddle::platform::CUDADeviceContext, int>,

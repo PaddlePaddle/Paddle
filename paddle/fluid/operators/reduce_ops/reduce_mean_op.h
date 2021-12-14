@@ -35,15 +35,5 @@ struct MeanGradFunctor {
   }
 };
 
-struct FP16MeanGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    dx->device(place) =
-        dy->broadcast(dim) / dx->constant(static_cast<platform::float16>(size));
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
