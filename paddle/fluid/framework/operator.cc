@@ -871,7 +871,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(vars.size());
@@ -880,7 +880,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     const std::vector<Variable*>& vars = OutputVars(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(vars.size());
