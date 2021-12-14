@@ -111,17 +111,11 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const int64_t* x3_data = x3->data<int64_t>();
 
     // Vector, in GPU
-    // auto x2_lods = x2->lod()[0];
+    const size_t x2_lods_size = x2->dims()[0];
+    const size_t instag_num_per_ins = x2->dims()[1];
 
-    const size_t x2_lods_size = x2->dims()[0] const size_t instag_num_per_ins =
-        x2->dims()[1]
-
-        // const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
-        // const int N = static_cast<const int>(x2_lods_size);
-
-        // Vector, in GPU
-        Vector<size_t>
-            x1_lods(1, 0);
+    // Vector, in GPU
+    Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
       for (int i = 0; i < x1->dims()[0]; i++) {
         x1_lods.push_back(i + 1);
