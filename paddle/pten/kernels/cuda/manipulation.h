@@ -17,7 +17,9 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -40,38 +42,16 @@ void Cast(const CUDAContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out);
 
-void ReshapeFromDT(const CUDAContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& shape,
-                   DenseTensor* out);
+void Reshape(const CUDAContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out);
 
-void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int64_t>& shape,
-                          DenseTensor* out);
-
-void ReshapeFromVectorDT(const CUDAContext& dev_ctx,
-                         const DenseTensor& x,
-                         const std::vector<DenseTensor>& shape,
-                         DenseTensor* out);
-
-void ReshapeFromDTWithXShape(const CUDAContext& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& shape,
-                             DenseTensor* xshape,
-                             DenseTensor* out);
-
-void ReshapeFromVectorValWithXShape(const CUDAContext& dev_ctx,
-                                    const DenseTensor& x,
-                                    const std::vector<int64_t>& shape,
-                                    DenseTensor* xshape,
-                                    DenseTensor* out);
-
-void ReshapeFromVectorDTWithXShape(const CUDAContext& dev_ctx,
-                                   const DenseTensor& x,
-                                   const std::vector<DenseTensor>& shape,
-                                   DenseTensor* xshape,
-                                   DenseTensor* out);
+void ReshapeWithXShape(const CUDAContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out);
 
 }  // namespace pten
 

@@ -86,6 +86,7 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     pip install wheel --user
+    pip install pyyaml --user
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!

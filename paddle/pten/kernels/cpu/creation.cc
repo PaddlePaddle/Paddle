@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cpu/creation.h"
 
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/functions/eigen/fill.h"
+#include "paddle/pten/kernels/hybird/eigen/fill.h"
 
 namespace pten {
 
@@ -61,11 +61,9 @@ void FillConstant(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(CreationCPU);
-
-PT_REGISTER_KERNEL("fill_any_like",
+PT_REGISTER_KERNEL(full_like,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillAnyLike,
                    float,
                    double,
@@ -74,9 +72,9 @@ PT_REGISTER_KERNEL("fill_any_like",
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL("fill_constant",
+PT_REGISTER_KERNEL(full,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillConstant,
                    float,
                    double,

@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
-// TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
+// TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]

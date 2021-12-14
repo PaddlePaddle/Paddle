@@ -33,7 +33,8 @@ void BindFleetExecutor(py::module* m) {
   py::class_<FleetExecutor>(*m, "FleetExecutor")
       .def(py::init<const std::string&>())
       .def("init", &FleetExecutor::Init)
-      .def("run", &FleetExecutor::Run);
+      .def("run", &FleetExecutor::Run,
+           py::call_guard<py::gil_scoped_release>());
 
   py::class_<TaskNode>(*m, "TaskNode")
       .def(py::init<const framework::ProgramDesc&, int64_t, int64_t, int64_t>())

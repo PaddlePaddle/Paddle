@@ -17,9 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -36,6 +39,38 @@ extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+
+int TensorDtype2NumpyDtype(pten::DataType dtype) {
+  switch (dtype) {
+    case pten::DataType::BOOL:
+      return pybind11::detail::npy_api::NPY_BOOL_;
+    case pten::DataType::INT8:
+      return pybind11::detail::npy_api::NPY_INT8_;
+    case pten::DataType::UINT8:
+      return pybind11::detail::npy_api::NPY_UINT8_;
+    case pten::DataType::INT16:
+      return pybind11::detail::npy_api::NPY_INT16_;
+    case pten::DataType::INT32:
+      return pybind11::detail::npy_api::NPY_INT32_;
+    case pten::DataType::INT64:
+      return pybind11::detail::npy_api::NPY_INT64_;
+    case pten::DataType::FLOAT16:
+      return pybind11::detail::NPY_FLOAT16_;
+    case pten::DataType::FLOAT32:
+      return pybind11::detail::npy_api::NPY_FLOAT_;
+    case pten::DataType::FLOAT64:
+      return pybind11::detail::npy_api::NPY_DOUBLE_;
+    case pten::DataType::COMPLEX64:
+      return pybind11::detail::NPY_COMPLEX64;
+    case pten::DataType::COMPLEX128:
+      return pybind11::detail::NPY_COMPLEX128;
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unknow pten::DataType, the int value = %d.",
+          static_cast<int>(dtype)));
+      return 0;
+  }
+}
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj))) {
@@ -333,6 +368,92 @@ PyObject* ToPyObject(const platform::Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
+}
+
+PyObject* ToPyObject(const void* value) {
+  if (value == nullptr) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  PADDLE_THROW(
+      platform::errors::Fatal("ToPyObject do not support void* with value."));
+}
+
+egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
+                                        const std::string& arg_name,
+                                        PyObject* args, ssize_t arg_idx,
+                                        bool dispensable) {
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (PyTuple_Check(obj)) {
+    obj = PyTuple_GET_ITEM(obj, 0);
+  }
+
+  if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          op_type, arg_name, arg_idx));
+    }
+    egr::EagerTensor emptytensor;
+    return emptytensor;
+  }
+
+  return reinterpret_cast<EagerTensorObject*>(obj)->eagertensor;
+}
+
+std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "None",
+          op_type, arg_name, arg_idx));
+    }
+    return {};
+  }
+
+  std::vector<egr::EagerTensor> result;
+
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          reinterpret_cast<EagerTensorObject*>(PyList_GetItem(list, i))
+              ->eagertensor);
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          reinterpret_cast<EagerTensorObject*>(PyTuple_GetItem(list, i))
+              ->eagertensor);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s",
+        op_type, arg_name, arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+
+  return result;
 }
 
 }  // namespace pybind

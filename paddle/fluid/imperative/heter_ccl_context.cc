@@ -92,8 +92,10 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     inter_strategy_.local_rank_ = inter_rank;
     inter_strategy_.current_endpoint_ = strategy_.current_endpoint_;
     inter_strategy_.trainer_endpoints_ = inter_endpoints;
+#ifdef PADDLE_WITH_GLOO
     inter_parallel_ctx_ = std::make_shared<GLOOParallelContext>(
         inter_strategy_, platform::CPUPlace());
+#endif
   }
 
   VLOG(0) << "init inter size " << inter_endpoints.size() << " rank "
