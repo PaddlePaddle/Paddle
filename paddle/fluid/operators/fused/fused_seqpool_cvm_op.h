@@ -30,7 +30,7 @@ class FusedSeqpoolCVMOpCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unimplemented CPU kernel for FusedSeqpoolCVMOp, only support GPU "
-        "now.");
+        "now."));
   }
 };
 
@@ -40,7 +40,7 @@ class FusedSeqpoolCVMGradOpCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unimplemented CPU kernel for FusedSeqpoolCVMGradOp, only support GPU "
-        "now.");
+        "now."));
   }
 };
 
