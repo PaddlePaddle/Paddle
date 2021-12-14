@@ -90,7 +90,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "will be dropped.")
         .SetDefault(false);
 
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
+    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
