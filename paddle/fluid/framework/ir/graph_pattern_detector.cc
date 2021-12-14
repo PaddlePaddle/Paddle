@@ -2399,10 +2399,7 @@ PDNode *patterns::UnsupportedBfloat16::operator()() {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";
   });
-
   op->LinksFrom({op_in});
-  return op;
-
   return op;
 }
 
