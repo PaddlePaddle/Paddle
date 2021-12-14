@@ -80,7 +80,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         def generate_conv2d_Input():
             shape = [random_input_dim1, random_input_dim2]
             if random_data_layout == "NCHW":
-                shape.insert(0, random_channel)
+                shape.insert(0, random_channel * random_groups)
                 shape.insert(0, random_batch_size)
             else:
                 shape.append(random_channel)
@@ -89,21 +89,29 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
 
         def generate_conv2d_Filter():
             shape = cp.copy(random_filter)
-            shape.insert(0, random_out_channel)
-            shape.insert(0, random_channel)
+            shape.insert(0, random_out_channel * random_groups)
+            shape.insert(0, random_channel * random_groups)
             return np.random.random(shape).astype(np.float32)
 
         def generate_batch_norm_Scale():
-            return np.random.random([random_out_channel]).astype(np.float32)
+            return np.random.random(
+                [random_out_channel * random_groups * random_groups]).astype(
+                    np.float32)
 
         def generate_batch_norm_Bias():
-            return np.random.random([random_out_channel]).astype(np.float32)
+            return np.random.random(
+                [random_out_channel * random_groups * random_groups]).astype(
+                    np.float32)
 
         def generate_batch_norm_Mean():
-            return np.random.random([random_out_channel]).astype(np.float32)
+            return np.random.random(
+                [random_out_channel * random_groups * random_groups]).astype(
+                    np.float32)
 
         def generate_batch_norm_Variance():
-            return np.random.random([random_out_channel]).astype(np.float32)
+            return np.random.random(
+                [random_out_channel * random_groups * random_groups]).astype(
+                    np.float32)
 
         # define op
         conv2d_op = OpConfig(
