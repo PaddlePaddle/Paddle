@@ -24,7 +24,7 @@ namespace pten {
 // TODO(YuanRisheng) This function name should be same as User API name.
 // TODO(zyfncg) Automatic code generation
 template <typename T, typename ContextT>
-DenseTensor FillAnyLike(
+DenseTensor FullLike(
     const ContextT& dev_ctx,
     const DenseTensor& x,
     const Scalar& val,
@@ -36,7 +36,7 @@ DenseTensor FillAnyLike(
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  FillAnyLike<T>(dev_ctx, val, &dense_out);
+  FullLike<T>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 

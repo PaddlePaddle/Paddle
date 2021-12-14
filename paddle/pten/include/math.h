@@ -100,7 +100,7 @@ DenseTensor Add(const ContextT& dev_ctx,
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  ElementwiseAdd<T>(dev_ctx, x, y, axis, &dense_out);
+  Add<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -114,7 +114,7 @@ DenseTensor Subtract(const ContextT& dev_ctx,
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  ElementwiseSub<T>(dev_ctx, x, y, axis, &dense_out);
+  Subtract<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -128,7 +128,7 @@ DenseTensor Divide(const ContextT& dev_ctx,
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  ElementwiseDiv<T>(dev_ctx, x, y, axis, &dense_out);
+  Divide<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -142,7 +142,7 @@ DenseTensor Multiply(const ContextT& dev_ctx,
       std::make_shared<paddle::experimental::DefaultAllocator>(
           dev_ctx.GetPlace());
   pten::DenseTensor dense_out(allocator, out_meta);
-  ElementwiseMul<T>(dev_ctx, x, y, axis, &dense_out);
+  Multiply<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 }  // namespace pten
