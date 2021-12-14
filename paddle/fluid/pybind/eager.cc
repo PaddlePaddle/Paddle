@@ -63,6 +63,11 @@ void EagerTensorInitializer(EagerTensorObject* self,
     dense_tensor->set_meta(pten::DenseTensorMeta(
         pten::TransToPtenDataType(dtype), paddle::framework::make_ddim(dims)));
     self->eager_tensor.set_impl(dense_tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "We only support LoDTensor to be constructed by this initializer, "
+        "please check your var type first and make sure you are going to "
+        "construct LoDTensor."));
   }
 }
 
