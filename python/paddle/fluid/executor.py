@@ -1965,7 +1965,8 @@ class Executor(object):
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
         trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        fleet_exe_desc.cur_rank = cur_rank
         nrank = len(trainer_endpoints)
         for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
@@ -1982,6 +1983,11 @@ class Executor(object):
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
         tasks = fleet_opt.get("tasks", [])
+        if len(tasks) == 0:
+            tasks, task_id_to_rank = one_f_one_b(
+                program, cur_rank,
+                fleet_opt.get('num_micro_batches', 1),
+                fleet_opt.get('dist_strategy', {}), nrank)
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)

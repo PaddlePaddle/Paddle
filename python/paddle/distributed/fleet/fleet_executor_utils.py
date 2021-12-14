@@ -14,6 +14,7 @@
 
 from .meta_optimizers.common import OpRole, OP_ROLE_KEY
 from paddle.fluid import core
+import warnings
 
 
 class CoordSys:
@@ -52,7 +53,23 @@ class CoordSys:
         }
 
 
-def one_f_one_b(program, cur_rank, max_run_times, dist_opt):
+def is_optimizer(op_role):
+    return True
+
+
+def is_lr_sched(op_role):
+    return True
+
+
+def is_forward(op_role):
+    return True
+
+
+def is_backward(op_role):
+    return True
+
+
+def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     coord_sys = CoordSys(dist_opt)
     coord = coord_sys.rank_to_coord(cur_rank)
     max_slot_times = max_run_times - coord['pp_idx']
@@ -93,6 +110,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt):
     opt_task_node.set_type("Amplifier")
     opt_task_node.set_run_pre_steps(max_run_times)
     opt_task_node.set_run_at_offset(max_run_times - 1)
+    task_nodes = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
 
     # lr(1:m) -> forward -> backward -> (m:1)optimize
     #               ↑          ↓
@@ -106,9 +124,8 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt):
     pp_downstream = coord_sys.coord_to_rank(downstream_coord)
     first_stage = (pp_upstream == -1)
     last_stage = (pp_downstream == -1)
-    tmp = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
     for i in range(4):
-        cur_task_node = tmp[i]
+        task_node = task_nodes[i]
         cur_id = cur_rank * num_of_functionality + i
         prev_id = cur_id - 1
         next_id = cur_id + 1
@@ -134,7 +151,11 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt):
             if not first_stage:
                 downs.append((upstream_id, 2))
         for up in ups:
-            cur_task_node.add_upstream_task(up[0], up[1])
+            task_node.add_upstream_task(up[0], up[1])
         for down in downs:
-            cur_task_node.add_downstream_task(down[0], down[1])
-    return tmp
+            task_node.add_downstream_task(down[0], down[1])
+    task_id_to_rank = {}
+    for i in range(nrank):
+        for j in range(num_of_functionality):
+            task_id_to_rank[i * num_of_functionality + j] = i
+    return task_nodes, task_id_to_rank
