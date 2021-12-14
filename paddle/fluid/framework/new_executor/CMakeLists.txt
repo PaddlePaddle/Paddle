@@ -20,6 +20,7 @@ if (WITH_TESTING AND NOT WIN32)
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program 
     )
     
+    # all operators used in the program
     set(OPS  
         fill_constant_op
         uniform_random_op
@@ -44,7 +45,10 @@ if (WITH_TESTING AND NOT WIN32)
         memcpy_h2d_op
         memcpy_d2h_op)
     
-
+    # All deps of operator, same as GLOB_OPERATOR_DEPS.
+    # WHY list here manually?
+    # Directory framework is processed before operators in fluid/CMakeLists.txt,
+    # So the variable GLOB_OPERATOR_DEPS is not defined at here.
     set(OP_DEPS 
         nccl_common
         xxhash
