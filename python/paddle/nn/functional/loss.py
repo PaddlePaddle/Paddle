@@ -2053,7 +2053,7 @@ def sigmoid_focal_loss(logit,
     return loss
 
 
-def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
+def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     r"""
     This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
@@ -2082,9 +2082,9 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
         label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        margin (float, optional): Specifies the hyperparameter margin to be used.
             The value determines how large the input need to be to calculate in
-            hinge_embedding_loss. When label is -1, Input smaller than delta are minimized with hinge_embedding_loss.
+            hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
             Default = 1.0
         reduction (str, optional): Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -2116,13 +2116,13 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
             # label elements in {1., -1.}
             label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
 
-            loss = F.hinge_embedding_loss(input, label, delta=1.0, reduction='none')
+            loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='none')
             print(loss)
             # Tensor([[0., -2., 0.],
             #         [0., -1., 2.],
             #         [1., 1., 1.]])
 
-            loss = F.hinge_embedding_loss(input, label, delta=1.0, reduction='mean')
+            loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='mean')
             print(loss)
             # Tensor([0.22222222])
     """
@@ -2140,7 +2140,7 @@ def hinge_embedding_loss(input, label, delta=1.0, reduction='mean', name=None):
 
     zero_ = paddle.zeros([1], dtype=input.dtype)
     loss = paddle.where(label == 1., input, zero_) + \
-           paddle.where(label == -1., paddle.nn.functional.relu(delta - input), zero_)
+           paddle.where(label == -1., paddle.nn.functional.relu(margin - input), zero_)
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)

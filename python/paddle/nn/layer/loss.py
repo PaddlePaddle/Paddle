@@ -1231,9 +1231,9 @@ class HingeEmbeddingLoss(Layer):
 
     Parameters:
 
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        margin (float, optional): Specifies the hyperparameter margin to be used.
             The value determines how large the input need to be to calculate in
-            hinge_embedding_loss. When label is -1, Input smaller than delta are minimized with hinge_embedding_loss.
+            hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
             Default = 1.0
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -1272,22 +1272,22 @@ class HingeEmbeddingLoss(Layer):
             # label elements in {1., -1.}
             label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
 
-            hinge_embedding_loss = nn.HingeEmbeddingLoss(delta=1.0, reduction='none')
+            hinge_embedding_loss = nn.HingeEmbeddingLoss(margin=1.0, reduction='none')
             loss = hinge_embedding_loss(input, label)
             print(loss)
             # Tensor([[0., -2., 0.],
             #         [0., -1., 2.],
             #         [1., 1., 1.]])
 
-            hinge_embedding_loss = nn.HingeEmbeddingLoss(delta=1.0, reduction='mean')
+            hinge_embedding_loss = nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
             loss = hinge_embedding_loss(input, label)
             print(loss)
             # Tensor([0.22222222])
     """
 
-    def __init__(self, delta=1.0, reduction="mean", name=None):
+    def __init__(self, margin=1.0, reduction="mean", name=None):
         super(HingeEmbeddingLoss, self).__init__()
-        self.delta = delta
+        self.margin = margin
         self.reduction = reduction
         self.name = name
 
@@ -1296,5 +1296,5 @@ class HingeEmbeddingLoss(Layer):
             input,
             label,
             reduction=self.reduction,
-            delta=self.delta,
+            margin=self.margin,
             name=self.name)

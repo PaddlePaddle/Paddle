@@ -22,8 +22,8 @@ from paddle.static import Program, program_guard
 np.random.seed(42)
 
 
-def calc_hinge_embedding_loss(input, label, delta=1.0, reduction='mean'):
-    result = np.where(label == -1., np.maximum(0., delta - input), 0.) + \
+def calc_hinge_embedding_loss(input, label, margin=1.0, reduction='mean'):
+    result = np.where(label == -1., np.maximum(0., margin - input), 0.) + \
              np.where(label == 1., input, 0.)
     if reduction == 'none':
         return result
@@ -35,7 +35,7 @@ def calc_hinge_embedding_loss(input, label, delta=1.0, reduction='mean'):
 
 class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
     def setUp(self):
-        self.delta = 1.0
+        self.margin = 1.0
         self.shape = (10, 10, 5)
         self.input_np = np.random.random(size=self.shape).astype(np.float64)
         # get label elem in {1., -1.}
@@ -105,7 +105,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
 
 class TestClassHingeEmbeddingLoss(unittest.TestCase):
     def setUp(self):
-        self.delta = 1.0
+        self.margin = 1.0
         self.shape = (10, 10, 5)
         self.input_np = np.random.random(size=self.shape).astype(np.float64)
         # get label elem in {1., -1.}
