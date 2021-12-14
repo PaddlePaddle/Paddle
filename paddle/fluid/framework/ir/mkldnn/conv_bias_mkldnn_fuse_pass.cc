@@ -115,7 +115,7 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -129,7 +129,7 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({1, 3})
+      .IsIntIn({1})
       .End();
 }
 
