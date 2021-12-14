@@ -213,6 +213,7 @@ from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
 from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
+from .random import poisson  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
