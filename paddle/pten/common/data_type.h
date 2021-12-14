@@ -30,8 +30,6 @@ using bfloat16 = ::paddle::platform::bfloat16;
 
 enum class DataType {
   UNDEFINED = 0,
-  // See Note [ Why we need ALL in baisc kernel key member? ]
-  ALL_DTYPE = UNDEFINED,
   BOOL,
   INT8,   // Char
   UINT8,  // BYte
@@ -47,7 +45,9 @@ enum class DataType {
   FLOAT64,
   COMPLEX64,
   COMPLEX128,
-  NUM_DATA_TYPES
+  NUM_DATA_TYPES,
+  // See Note [ Why we need ALL in baisc kernel key member? ]
+  ALL_DTYPE = UNDEFINED,
 };
 
 inline size_t SizeOf(DataType data_type) {

@@ -20,14 +20,14 @@ namespace experimental {
 
 enum class DataLayout {
   UNDEFINED = 0,
-  // See Note [ Why we need ALL in baisc kernel key member? ]
-  ALL_LAYOUT = UNDEFINED,
   // TODO(chenweihang): keep ANY for compatibility, remove it later
   ANY = UNDEFINED,
   NHWC,
   NCHW,
   MKLDNN,
   NUM_DATA_LAYOUTS,
+  // See Note [ Why we need ALL in baisc kernel key member? ]
+  ALL_LAYOUT = UNDEFINED,
 };
 
 inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {

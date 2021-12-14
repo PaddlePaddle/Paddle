@@ -209,7 +209,7 @@ struct KernelRegistrar {
  * pointer of the corresponding data type is automatically instantiated
  * during registration.
  *
- * Note: If needed, add more marco to support 2 template arguments deduce
+ * Note: `1TA` means `1 template argument`
  */
 #define PT_REGISTER_KERNEL(                                                \
     kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, ...)          \
