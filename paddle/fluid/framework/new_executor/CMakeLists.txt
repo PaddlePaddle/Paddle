@@ -102,7 +102,7 @@ if (WITH_TESTING AND NOT WIN32)
         tensor_formatter
         op_version_registry)
 
-    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${OPS} ${GLOB_OPERATOR_DEPS})
+    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${OPS} ${OP_DEPS})
     set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
 
     add_dependencies(standalone_executor_test download_program)
