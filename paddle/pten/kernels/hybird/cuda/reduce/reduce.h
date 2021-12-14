@@ -65,7 +65,10 @@ void Reduce(const CUDAContext& dev_ctx,
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED) {
-    PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
+    // In order to make libpaddle_inference.so not too large
+    // use less Integral types dispatch then
+    // PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES
+    PD_DISPATCH_FLOATING_AND_INT_INT64_AND_COMPLEX_TYPES(
         out_dtype, "TensorReduceFunctorImpl", ([&] {
           pten::detail::TensorReduceFunctorImpl<T, data_t, ReduceFunctor>(
               x, out, reduce_dims, stream);
