@@ -116,7 +116,7 @@ def eager_guard(place=None):
 
 
 def in_eager_mode():
-    return _eager_mode_
+    return _eager_mode_ and in_dygraph_mode()
 
 
 def require_version(min_version, max_version=None):
@@ -3285,7 +3285,48 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
-        if in_dygraph_mode():
+        if in_eager_mode():
+            attrs = kwargs.get("attrs", {})
+            type = kwargs.get("type", None)
+            inputs = kwargs.get("inputs", {})
+            outs = kwargs.get("outputs", {})
+
+            function_name = "core.eager.ops." + type
+
+            core_ops_args_info = _C_ops.get_core_ops_args_info()
+            core_ops_returns_info = _C_ops.get_core_ops_returns_info()
+
+            op_args = core_ops_args_info[type]
+            op_returns = core_ops_returns_info[type]
+
+            arg_list = []
+            for arg in op_args:
+                if arg in inputs.keys():
+                    arg_list.append(f"inputs[\"{arg}\"]")
+                elif arg in outs.keys():
+                    arg_list.append(f"outs[\"{arg}\"]")
+                else:
+                    if "Num" in arg:
+                        # Remove "Num" suffix to get out_name
+                        out_name = arg[:-3]
+                        assert out_name in outs.keys()
+                        num_outs = len(outs[out_name])
+                        arg_list.append(f"{num_outs}")
+                    else:
+                        arg_list.append("None")
+            arg_list.append("**attrs")
+            function = function_name + "(" + ",".join(arg_list) + ")"
+            exec(function)
+
+            op = Operator(
+                block=self,
+                desc=None,
+                type=type,
+                inputs=None,
+                outputs=None,
+                attrs=attrs)
+
+        elif in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
             type = kwargs.get("type", None)
             op = Operator(
