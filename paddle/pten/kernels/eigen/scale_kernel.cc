@@ -65,7 +65,7 @@ using float16 = paddle::platform::float16;
 
 PT_REGISTER_CTX_KERNEL(scale,
                        CPU,
-                       ANY,
+                       ALL_LAYOUT,
                        pten::Scale,
                        float,
                        double,
@@ -79,7 +79,7 @@ PT_REGISTER_CTX_KERNEL(scale,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_CTX_KERNEL(scale,
                        CUDA,
-                       ANY,
+                       ALL_LAYOUT,
                        pten::Scale,
                        float,
                        double,
