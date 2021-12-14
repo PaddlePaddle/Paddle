@@ -25,14 +25,14 @@ limitations under the License. */
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
 
-PT_DECLARE_KERNEL(copy, CPU);
+PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(copy, CUDA);
+PT_DECLARE_KERNEL(copy, CUDA, ALL_LAYOUT);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(copy, XPU);
+PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
