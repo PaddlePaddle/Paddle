@@ -2392,6 +2392,24 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
   return next_op;
 }
 
+PDNode *patterns::UnsupportedBfloat16::operator()() {
+  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
+  /*  op_in->assert_is_var();
+      op_in->assert_more([&](Node *node) {
+      return node->Var()->GetDataType() != proto::VarType::FP32;
+    });*/
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+
+  op->LinksFrom({op_in});
+  return op;
+
+  return op;
+}
+
 PDNode *patterns::LastBfloat16Ops::operator()() {
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
