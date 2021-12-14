@@ -44,6 +44,14 @@ class RuntimeGraph final {
   const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank() const {
     return intercepter_id_to_rank_;
   }
+  void SetInterceptorIdToRank(
+      const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank) {
+    intercepter_id_to_rank_ = intercepter_id_to_rank;
+  }
+  void SetInterceptorIdToNode(
+      const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node) {
+    intercepter_id_to_node_ = intercepter_id_to_node;
+  }
   std::string DebugString() const;
 
  private:
