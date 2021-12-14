@@ -1142,10 +1142,6 @@ void BindImperative(py::module *m_ptr) {
               SetTensorFromPyArray(self_tensor, self_numpy,
                                    self_tensor->place(), false);
             }
-            // NOTE(liym27):
-            // Increase the version of VarBase self because __setitem__ is an
-            // inplace operator for the VarBase self.
-            // self->BumpInplaceVersion();
           })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
