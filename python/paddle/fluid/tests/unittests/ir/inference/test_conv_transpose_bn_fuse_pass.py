@@ -40,19 +40,23 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
     '''
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["conv_transpose_bn_fuse_pass"])
+        self.run_and_statis(
+            quant=False,
+            max_examples=150,
+            max_duration=250,
+            passes=["conv_transpose_bn_fuse_pass"])
 
     def sample_program_config(self, draw):
         # generate random number
-        random_batch_size = draw(st.integers(min_value=1, max_value=4))
-        random_channel = draw(st.integers(min_value=2, max_value=64))
-        random_input_dim1 = draw(st.integers(min_value=50, max_value=512))
-        random_input_dim2 = draw(st.integers(min_value=50, max_value=512))
-        random_groups = draw(st.sampled_from([1]))
+        random_batch_size = draw(st.integers(min_value=1, max_value=3))
+        random_channel = draw(st.integers(min_value=2, max_value=10))
+        random_input_dim1 = draw(st.integers(min_value=20, max_value=50))
+        random_input_dim2 = draw(st.integers(min_value=20, max_value=50))
+        random_groups = draw(st.integers(min_value=1, max_value=2))
         random_dilations = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=1), min_size=2, max_size=2))
+                    min_value=1, max_value=3), min_size=2, max_size=2))
         random_strides = draw(
             st.lists(
                 st.integers(
@@ -70,7 +74,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             st.lists(
                 st.integers(
                     min_value=1, max_value=4), min_size=2, max_size=2))
-        random_out_channel = draw(st.integers(min_value=20, max_value=256))
+        random_out_channel = draw(st.integers(min_value=10, max_value=25))
         random_epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
         def generate_conv2d_Input():
@@ -198,7 +202,15 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 return True
             return False
 
+        def teller2(program_config, predictor_config):
+            if program_config.ops[0].attrs['groups'] != 1:
+                return True
+            return False
+
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d_transpose is wrong when data_format attribute is NHWC"
         )
+
+        self.add_ignore_check_case(teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
+                                   "there is diff when group >1 in this pass")
