@@ -6421,8 +6421,7 @@ def _dygraph_place_guard(place):
     _global_expected_place_ = place
     if in_eager_mode():
         core.eager._set_expected_place(place)
-    else:
-        _set_dygraph_tracer_expected_place(place)
+    _set_dygraph_tracer_expected_place(place)
 
     try:
         yield
@@ -6430,8 +6429,7 @@ def _dygraph_place_guard(place):
         _global_expected_place_ = tmp_place
         if in_eager_mode():
             core.eager._set_expected_place(_global_expected_place_)
-        else:
-            _set_dygraph_tracer_expected_place(_global_expected_place_)
+        _set_dygraph_tracer_expected_place(_global_expected_place_)
 
 
 def switch_device(device):

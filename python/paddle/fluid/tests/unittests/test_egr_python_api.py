@@ -170,6 +170,18 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             self.assertTrue(core._in_eager_mode())
         self.assertFalse(core._in_eager_mode())
 
+    def test_place_guard(self):
+        core._enable_eager_mode()
+        if core.is_compiled_with_cuda():
+            paddle.set_device("gpu:0")
+            with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
+                self.assertTrue(core.eager._get_expected_place().is_cpu_place())
+        else:
+            paddle.set_device("cpu")
+            with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
+                self.assertTrue(core.eager._get_expected_place().is_cpu_place())
+        core._disable_eager_mode()
+
 
 if __name__ == "__main__":
     unittest.main()
