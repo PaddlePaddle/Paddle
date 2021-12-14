@@ -64,7 +64,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
 
     // expected auto = const int64_t
     auto* x2_data = x2->data<int64_t>();
-
     // e.g get [0, 1, 2, 3, ...]
     size_t x2_lods_size = x2->dims()[0];
     size_t instag_num_per_ins = x2->dims()[1];
