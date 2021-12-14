@@ -17,7 +17,6 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/kernels/hybird/cpu/elementwise.h"
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
-#include "paddle/pten/kernels/hybird/eigen/scale.h"
 #include "paddle/pten/kernels/hybird/eigen/sign.h"
 #include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
@@ -45,17 +44,6 @@ void Mean(const CPUContext& dev_ctx,
           DenseTensor* out) {
   pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
-template <typename T>
-void Scale(const CPUContext& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
-  eigen::Scale<CPUContext, T>(
-      dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
 }
 
 template <typename T>
@@ -113,18 +101,6 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 PT_REGISTER_KERNEL(sign, CPU, ANY, pten::Sign, float, double) {}
 PT_REGISTER_KERNEL(mean, CPU, ANY, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL(scale,
-                   CPU,
-                   ANY,
-                   pten::Scale,
-                   float,
-                   double,
-                   paddle::platform::bfloat16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
 PT_REGISTER_KERNEL(add,
                    CPU,
                    ANY,
