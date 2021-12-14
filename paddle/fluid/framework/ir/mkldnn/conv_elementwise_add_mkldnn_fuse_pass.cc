@@ -117,7 +117,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -131,7 +131,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({1, 3})
+      .IsIntIn({1})
       .End();
 }
 
