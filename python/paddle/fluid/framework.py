@@ -93,10 +93,6 @@ def test_eager_guard():
         _C_ops.switch_to_core_ops()
 
 
-def in_eager_mode():
-    return core._in_eager_mode()
-
-
 def require_version(min_version, max_version=None):
     """
         Check if the installed version of PaddlePaddle is in [min_version, max_version],
@@ -231,10 +227,11 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    if in_eager_mode():
-        return in_eager_mode()
-    else:
-        return _dygraph_tracer_ is not None
+    return _dygraph_tracer_ is not None
+
+
+def in_eager_mode():
+    return core._in_eager_mode() and in_dygraph_mode()
 
 
 def _dygraph_not_support_(func):
