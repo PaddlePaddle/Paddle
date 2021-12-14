@@ -14,15 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+// Note: Some scenarios need to include all types of Context declarations.
+// In order to avoid including the header files of each backend in turn,
+// add this header file
+// Note: Limit the entry of DeviceContext to backends to avoid multiple include
+// path replacement after implementing pten DeviceContext
+
 #include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
 
 namespace pten {
-
-void Copy(const CPUContext& dev_ctx,
-          const DenseTensor& src,
-          bool blocking,
-          DenseTensor* dst);
-
+using DeviceContext = paddle::platform::DeviceContext;
+using DeviceContextPool = paddle::platform::DeviceContextPool;
 }  // namespace pten

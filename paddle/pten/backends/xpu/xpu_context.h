@@ -14,15 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
+#ifdef PADDLE_WITH_XPU
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
-
-void Copy(const CPUContext& dev_ctx,
-          const DenseTensor& src,
-          bool blocking,
-          DenseTensor* dst);
-
+using XPUContext = paddle::platform::XPUDeviceContext;
 }  // namespace pten
+
+#endif  // PADDLE_WITH_XPU

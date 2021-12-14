@@ -12,17 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/backends/all_context.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
-
-namespace pten {
-
-void Copy(const CPUContext& dev_ctx,
-          const DenseTensor& src,
-          bool blocking,
-          DenseTensor* dst);
-
-}  // namespace pten
+namespace pten {}  // namespace pten

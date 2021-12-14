@@ -27,25 +27,19 @@ limitations under the License. */
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+namespace pten {
+class DeviceContext;
+}  // namespace pten
 
 namespace paddle {
 namespace experimental {
-
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
 
 namespace detail {
 BackendSet GetTensorBackendSet(const Tensor& t);
 std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(
-    pten::Backend backend);
+pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend);
 
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {

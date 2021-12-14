@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/convert_utils.h"
 
 namespace paddle {
@@ -51,8 +52,7 @@ std::size_t CountLeadingZeros(uint64_t val) {
 
 }  // namespace detail
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(
-    pten::Backend backend) {
+pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   return pool.Get(pten::TransToFluidPlace(backend));
 }
