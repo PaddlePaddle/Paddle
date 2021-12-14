@@ -139,6 +139,8 @@ void AnalysisConfig::EnableNpu(int device_id) {
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
+
+  Update();
 }
 void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
                                int ipu_batches_per_step, int ipu_batch_size,
