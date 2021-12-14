@@ -13,7 +13,7 @@ cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
 
-if (WITH_TESTING)
+if (WITH_TESTING AND NOT WIN32)
     add_custom_target(
         download_program
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
