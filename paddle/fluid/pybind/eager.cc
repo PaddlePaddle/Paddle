@@ -37,18 +37,100 @@ namespace py = ::pybind11;
 
 PyTypeObject* p_eager_tensor_type;
 
-PyObject* eagertensor_new(PyTypeObject* type, PyObject* args,
-                          PyObject* kwargs) {
+PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
-    new (&(v->eagertensor)) egr::EagerTensor();
+    new (&(v->eager_tensor)) egr::EagerTensor();
   }
   return obj;
 }
 
+// TODO(jiabin): Overload this once we need more constructor in Python
+void EagerTensorInitializer(EagerTensorObject* self,
+                            framework::proto::VarType::Type dtype,
+                            const std::vector<int>& dims,
+                            const std::string& name,
+                            framework::proto::VarType::Type var_type,
+                            bool persistable) {
+  self->eager_tensor.set_name(name);
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))
+      ->SetPersistable(persistable);
+  if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
+    // TODO(jiabin): Maybe support LOD later
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>();
+    dense_tensor->set_meta(pten::DenseTensorMeta(
+        pten::TransToPtenDataType(dtype), paddle::framework::make_ddim(dims)));
+    self->eager_tensor.set_impl(dense_tensor);
+  }
+}
+
+// We have to do some ugly work, since python c api doesn't support
+int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
+  /** We should have init function with signature:
+   * 1.
+   * def __init__ ()
+   * 2.
+   * def __init__ (
+   * ** dtype: paddle::framework::proto::VarType::Type,
+   * ** dims: vector<int>,
+   * ** name: std::string,
+   * ** type: paddle::framework::proto::VarType::Type,
+   * ** persistable: bool)
+   * 3. (multi-place)
+   * def __init__ (
+   * ** value: ndarray,
+   * ** place: paddle::platform::Place,
+   * ** persistable: bool,
+   * ** zero_copy: bool,
+   * ** name: std::string,
+   * ** stop_gradient: bool)
+   * 4.
+   * def __init__ (
+   * ** value: ndarray)
+   * 5.
+   * def __init__ (
+   * ** tensor: EagerTensor)
+   * 6. (multi-place)
+   * def __init__ (
+   * ** tensor: EagerTensor,
+   * ** place: paddle::platform::Place)
+   *  **/
+  PADDLE_ENFORCE_NOT_NULL(
+      self, paddle::platform::errors::Fatal(
+                "Calling __init__ of Eager Tensor without __new__ is "
+                "forbidden. Please check your code and make sure you new a "
+                "eager tensor before init it."));
+
+  auto py_tensor_ptr = reinterpret_cast<EagerTensorObject*>(self);
+
+  // TODO(jiabin): Only support case 2 for now
+  if (PyTuple_Size(args) == (Py_ssize_t)5) {
+    paddle::framework::proto::VarType::Type dtype =
+        CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
+    std::vector<int> dims = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
+    std::string act_name = "";
+    PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
+    if (name_obj == Py_None) {
+      act_name =
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    } else {
+      act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 2), 2);
+    }
+    paddle::framework::proto::VarType::Type var_type =
+        CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 3), 3);
+    bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+    EagerTensorInitializer(py_tensor_ptr, dtype, dims, act_name, var_type,
+                           persistable);
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
 static void eagertensor_dealloc(EagerTensorObject* self) {
-  self->eagertensor.~EagerTensor();
+  self->eager_tensor.~EagerTensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
@@ -92,9 +174,9 @@ PyTypeObject eager_tensor_type = {
     0,                       /* tp_descr_get */
     0,                       /* tp_descr_set */
     0,                       /* tp_dictoffset */
-    0,                       /* tp_init */
+    EagerTensorInit,         /* tp_init */
     0,                       /* tp_alloc */
-    eagertensor_new,         /* tp_new */
+    EagerTensorNew,          /* tp_new */
     0,                       /* tp_free */
     0,                       /* tp_is_gc */
     0,                       /* tp_bases */
