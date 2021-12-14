@@ -85,7 +85,7 @@ void Cast(const CPUContext& dev_ctx,
 
 PT_REGISTER_KERNEL(flatten,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Flatten,
                    float,
                    double,
@@ -95,7 +95,7 @@ PT_REGISTER_KERNEL(flatten,
                    int64_t) {}
 PT_REGISTER_KERNEL(flatten_with_xshape,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
                    double,
@@ -106,7 +106,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
 
 PT_REGISTER_KERNEL(cast,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Cast,
                    float,
                    double,
@@ -122,8 +122,7 @@ PT_REGISTER_KERNEL(cast,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape, CPU, ANY, pten::Reshape) {}
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_with_xshape,
-                             CPU,
-                             ANY,
-                             pten::ReshapeWithXShape) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape, CPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape_with_xshape, CPU, ALL_LAYOUT, pten::ReshapeWithXShape, ALL_DTYPE) {}

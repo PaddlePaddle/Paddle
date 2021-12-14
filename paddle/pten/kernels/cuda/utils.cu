@@ -234,4 +234,4 @@ void Copy(const CUDAContext& dev_ctx,
 }
 }  // namespace pten
 
-PT_REGISTER_KERNEL_ALL_DTYPE(copy, CUDA, ANY, pten::Copy) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, CUDA, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}
