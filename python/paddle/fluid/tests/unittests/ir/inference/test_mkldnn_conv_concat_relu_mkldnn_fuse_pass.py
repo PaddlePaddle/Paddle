@@ -27,13 +27,22 @@ import hypothesis.strategies as st
 
 class TestConvConcatReluMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+        # If the problem has been fixed, the judgment 
+        # needs to be deleted!!!
+        if attrs[0]['data_format'] == "NHWC":
+            return False
+
         return True
 
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
-        groups = draw(st.sampled_from([1]))
+        groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         axis = draw(st.sampled_from([0]))
@@ -42,13 +51,14 @@ class TestConvConcatReluMkldnnFusePass(PassAutoScanTest):
         def generate_input(attrs):
             if attrs[0]['data_format'] == "NCHW":
                 return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 64]).astype(np.float32)
+                    [attrs[2]['batch_size'], 48, 64, 64]).astype(np.float32)
             else:
                 return np.random.random(
-                    [attrs[2]['batch_size'], 64, 64, 16]).astype(np.float32)
+                    [attrs[2]['batch_size'], 64, 64, 48]).astype(np.float32)
 
         def generate_weight():
-            return np.random.random([16, 16, 3, 3]).astype(np.float32)
+            return np.random.random(
+                [16, int(48 / groups), 3, 3]).astype(np.float32)
 
         attrs = [{
             "data_format": data_format,
@@ -139,17 +149,6 @@ class TestConvConcatReluMkldnnFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ["conv2d", "conv2d", "concat"], (1e-5, 1e-5)
-
-    def add_ignore_pass_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['data_format'] == "NHWC":
-                return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1, SkipReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d is wrong when data_format attribute is NHWC"
-        )
 
     def test(self):
         self.run_and_statis(
