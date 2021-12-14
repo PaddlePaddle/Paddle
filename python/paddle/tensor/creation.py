@@ -215,9 +215,7 @@ def full_like(x, fill_value, dtype=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
-        out.stop_gradient = True
-        return out
+        return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
