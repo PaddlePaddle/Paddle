@@ -37,6 +37,7 @@ from ..fluid.compiler import BuildStrategy  # noqa: F401
 from ..fluid.compiler import CompiledProgram  # noqa: F401
 from ..fluid.compiler import IpuCompiledProgram  # noqa: F401
 from ..fluid.compiler import ExecutionStrategy  # noqa: F401
+from ..fluid.compiler import IpuStrategy
 from ..fluid.framework import default_main_program  # noqa: F401
 from ..fluid.framework import default_startup_program  # noqa: F401
 from ..fluid.framework import device_guard  # noqa: F401
@@ -66,10 +67,6 @@ from ..fluid.layers import create_parameter  # noqa: F401
 from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.layers.metric_op import auc  # noqa: F401
 from ..fluid.layers.metric_op import accuracy  # noqa: F401
-
-from ..fluid import core
-if core.is_compiled_with_ipu():
-    from ..fluid.compiler import IpuStrategy
 
 __all__ = [     #noqa
            'append_backward',

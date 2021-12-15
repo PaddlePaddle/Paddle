@@ -24,7 +24,7 @@ from . import core
 
 __all__ = [
     'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
-    'IpuCompiledProgram'
+    'IpuCompiledProgram', 'IpuStrategy'
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
@@ -35,6 +35,8 @@ DeviceType = core.DeviceType
 
 if core.is_compiled_with_ipu():
     IpuStrategy = core.IpuStrategy
+else:
+    IpuStrategy = None
 
 
 def _place_obj(place):
@@ -499,7 +501,7 @@ class IpuCompiledProgram(object):
             to be executed. If this parameter is not provided, that parameter is None,
             the program will be set to :code:`paddle.static.default_main_program()`.
             The default is None.
-        scope: the scope used to run this program, you can switch
+        scope(Scope): the scope used to run this program, you can switch
             it to different scope. Default is :code:`paddle.static.global_scope()`
         ipu_strategy(IpuStrategy): This argument is used to build the program with the
             specified options, such as training or inference mode, batch size in popart,
