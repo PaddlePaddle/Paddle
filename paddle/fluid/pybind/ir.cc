@@ -193,6 +193,13 @@ void BindNode(py::module *m) {
       .value("Operation", Node::Type::kOperation)
       .value("Variable", Node::Type::kVariable)
       .export_values();
+
+  py::enum_<Node::Dep>(node, "Dep")
+      .value("Same", Node::Dep::kSame)
+      .value("Before", Node::Dep::kBefore)
+      .value("After", Node::Dep::kAfter)
+      .value("NoDep", Node::Dep::kNoDep)
+      .export_values();
 }
 
 class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {

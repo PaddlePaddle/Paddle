@@ -1832,3 +1832,9 @@ class OpTestTool:
             not (isinstance(_current_expected_place(), core.CPUPlace) and
                  core.supports_bfloat16()),
             "Place does not support BF16 evaluation")
+
+    @classmethod
+    def skip_if_not_cpu(cls):
+        return OpTestTool.skip_if(
+            not isinstance(_current_expected_place(), core.CPUPlace),
+            "OneDNN supports only CPU for now")

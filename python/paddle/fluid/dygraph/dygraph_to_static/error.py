@@ -208,10 +208,10 @@ class ErrorData(object):
         message_lines.append("")
 
         # Add paddle traceback after user code traceback
-        paddle_traceback_start_idnex = user_code_traceback_index[
+        paddle_traceback_start_index = user_code_traceback_index[
             -1] + 1 if user_code_traceback_index else 0
         for filepath, lineno, funcname, code in self.origin_traceback[
-                paddle_traceback_start_idnex:]:
+                paddle_traceback_start_index:]:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code)
             message_lines.append(traceback_frame.formated_message())
@@ -305,10 +305,10 @@ class ErrorData(object):
         error_frame.append("")
 
         # Add paddle traceback after user code traceback
-        paddle_traceback_start_idnex = user_code_traceback_index[
+        paddle_traceback_start_index = user_code_traceback_index[
             -1] + 1 if user_code_traceback_index else 0
         for filepath, lineno, funcname, code in error_traceback[
-                paddle_traceback_start_idnex:]:
+                paddle_traceback_start_index:]:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code)
             error_frame.append(traceback_frame.formated_message())

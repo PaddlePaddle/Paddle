@@ -823,7 +823,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // XPU related.
   bool use_xpu_{false};
   int xpu_device_id_{0};
-  int xpu_l3_workspace_size_;
+  int xpu_l3_workspace_size_{0};
   bool xpu_locked_;
   bool xpu_autotune_;
   std::string xpu_autotune_file_;

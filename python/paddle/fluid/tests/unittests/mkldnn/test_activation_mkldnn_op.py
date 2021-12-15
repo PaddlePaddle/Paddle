@@ -326,6 +326,29 @@ class TestMKLDNNSigmoidDim4(TestSigmoid):
         self.attrs = {"use_mkldnn": True}
 
 
+class TestMKLDNNEluDefaultAlpha(TestActivation):
+    def setUp(self):
+        self.op_type = "elu"
+        self.set_alpha()
+
+        x = np.random.random((5, 5, 4)).astype("float32")
+
+        self.inputs = {'X': x}
+        self.attrs = {'use_mkldnn': True, 'alpha': self.alpha}
+        self.outputs = {
+            'Out':
+            np.maximum(0, x) + np.minimum(0, self.alpha * (np.exp(x) - 1))
+        }
+
+    def set_alpha(self):
+        self.alpha = 1.0
+
+
+class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
+    def set_alpha(self):
+        self.alpha = 2.5
+
+
 # Check if primitives already exist in backward
 class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):

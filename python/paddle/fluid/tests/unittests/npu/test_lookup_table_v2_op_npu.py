@@ -38,7 +38,7 @@ class TestLookupTableV2(OpTest):
         np.random.seed(SEED)
         w = np.random.random([self.vocab, self.dim]).astype(self.dtype)
         x = np.random.randint(
-            0, self.vocab, size=(self.bsz, self.seqlen)).astype(np.int32)
+            0, self.vocab, size=(self.bsz, self.seqlen)).astype(self.ids_dtype)
         out = w[x]
         if self.padding_idx != -1:
             out[np.squeeze(x == self.padding_idx)] = np.zeros(self.dim)
@@ -60,6 +60,7 @@ class TestLookupTableV2(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+        self.ids_dtype = np.int32
 
     def init_dims(self):
         self.bsz = 6
@@ -85,6 +86,7 @@ class TestLookupTableV2FP16(TestLookupTableV2):
 
     def init_dtype(self):
         self.dtype = np.float16
+        self.ids_dtype = np.int32
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -105,6 +107,7 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
 
     def init_dtype(self):
         self.dtype = np.float16
+        self.ids_dtype = np.int64
 
     def init_dims(self):
         self.bsz = 6
@@ -120,6 +123,15 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
 class TestLookupTableV2WithPadding(TestLookupTableV2):
     def init_padding_idx(self):
         self.padding_idx = np.random.randint(0, self.vocab)
+
+
+class TestLookupTableV2WithPadding1(TestLookupTableV2):
+    def init_padding_idx(self):
+        self.padding_idx = np.random.randint(0, self.vocab)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.ids_dtype = np.int64
 
 
 if __name__ == '__main__':

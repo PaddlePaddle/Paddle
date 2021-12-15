@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/eigen_ext.h"
+
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
@@ -82,6 +84,20 @@ struct DivideFunctor {
 
  private:
   Tx n_inv;
+};
+
+/**
+ * @brief Default inverse functor
+ */
+template <typename Tx, typename Ty = Tx>
+struct InverseFunctor {
+  HOSTDEVICE inline InverseFunctor() {}
+
+  HOSTDEVICE explicit inline InverseFunctor(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(-x);
+  }
 };
 
 /**

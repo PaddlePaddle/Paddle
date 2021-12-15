@@ -30,7 +30,7 @@ def sparse_attention(query,
     This operator sparsify the Attention matrix in Transformer module
     to achieve the effect of reducing memory consumption and computation. 
     The sparse layout is expressed in CSR format and contains two parameters, 
-    ``offset`` and ``columns``.
+    ``offset`` and ``columns``. The equation is: 
 
     .. math::
 
@@ -40,40 +40,42 @@ def sparse_attention(query,
     The dimensions of the three parameters are the same. 
     ``d`` represents the size of the last dimension of the three parameters.
 
-    Parameters:
+    Warning:    
+        This API is only used in ``CUDA 11.3`` and above versions.
+
+    Args:
         query(Tensor): The query tensor in the Attention module. 
-                        It's a 4-D tensor with a shape of  
-                        :math:`[batch\_size, num\_heads, seq\_len, head\_dim]`. 
-                        The dtype can be ``float32`` and ``float64``.
+                        4-D tensor with shape: 
+                        [batch_size, num_heads, seq_len, head_dim]. 
+                        The dtype can be float32 and float64.
         key(Tensor): The key tensor in the Attention module. 
-                        It's a 4-D tensor with a shape of  
-                        :math:`[batch\_size, num\_heads, seq\_len, head\_dim]`. 
-                        The dtype can be ``float32`` and ``float64``.
+                        4-D tensor with shape: 
+                        [batch_size, num_heads, seq_len, head_dim]. 
+                        The dtype can be float32 and float64.
         value(Tensor): The value tensor in the Attention module. 
-                        It's a 4-D tensor with a shape of  
-                        :math:`[batch\_size, num\_heads, seq\_len, head\_dim]`. 
-                        The dtype can be ``float32`` and ``float64``.
+                        4-D tensor with shape:  
+                        [batch_size, num_heads, seq_len, head_dim]. 
+                        The dtype can be float32 and float64.
         sparse_csr_offset(Tensor): The sparsity feature in the Attention module 
                         is expressed in the CSR format, and the offset represents 
                         the number of non-zero elements in each row of the matrix.
-                        It's a 3-D tensor with a shape of  
-                        :math:`[batch\_size, num\_heads, seq\_len + 1]`. 
-                        The dtype should be ``int32``.
+                        3-D tensor with shape:   
+                        [batch_size, num_heads, seq_len + 1]. 
+                        The dtype should be int32.
         sparse_csr_columns(Tensor): The sparsity feature in the Attention module 
                         is expressed in the CSR format, and the columns represent 
                         the column index values of non-zero elements in the matrix.
-                        It's a 3-D tensor with a shape of  
-                        :math:`[batch\_size, num\_heads, sparse\_nnz]`. 
-                        The dtype should be ``int32``.
+                        3-D tensor with shape:  
+                        [batch_size, num_heads, sparse_nnz]. 
+                        The dtype should be int32.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor which refers to the result in the Attention module. 
-        It's a 4-D tensor with a shape of  
-        :math:`[batch\_size, num\_heads, seq\_len, head\_dim]`. 
-        The dtype can be ``float32`` and ``float64``.
+        4-D tensor with shape:
+        [batch_size, num_heads, seq_len, head_dim]. 
+        The dtype can be float32 or float64.
 
     Examples:
         .. code-block:: python

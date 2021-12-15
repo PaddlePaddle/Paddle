@@ -11,9 +11,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/fused/attn_bias_add.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
+
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 
 namespace paddle {
 namespace operators {
@@ -36,8 +39,10 @@ class AttnMatMul {
 
   ~AttnMatMul() {}
 
-  void ComputeForward(const T* weight_data, const T* input_data,
-                      const T* bias_data, T* output_data, T* bias_out_data) {
+  void ComputeForward(const framework::Tensor* weight,
+                      const framework::Tensor* input,
+                      const framework::Tensor* bias, framework::Tensor* output,
+                      framework::Tensor* bias_out) {
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = CblasNoTrans;
@@ -54,16 +59,25 @@ class AttnMatMul {
     // here: (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
-              input_data, weight_data, beta, output_data);
+              input->data<T>(), weight->data<T>(), beta, output->data<T>());
     if (compute_bias_) {
       // compute output + bias
-      LaunchBiasAddFwKernel(dev_ctx_, bsz_seq_, output_size_, output_data,
-                            bias_data, bias_out_data);
+      std::vector<const Tensor*> ins;
+      std::vector<Tensor*> outs;
+      ins.emplace_back(output);
+      ins.emplace_back(bias);
+      outs.emplace_back(bias_out);
+      int elewise_add_axis = -1;
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
     }
   }
 
-  void ComputeBackward(const T* input, const T* weight, const T* d_output,
-                       T* d_input, T* d_weight, T* d_bias) {
+  void ComputeBackward(const framework::Tensor* input,
+                       const framework::Tensor* weight,
+                       const framework::Tensor* d_output,
+                       framework::Tensor* d_input, framework::Tensor* d_weight,
+                       framework::Tensor* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
@@ -81,11 +95,11 @@ class AttnMatMul {
 
     T* dB_input_1_ptr = nullptr;
     T* dB_input_2_ptr = nullptr;
-    T* dB_output_ptr = d_weight;
+    T* dB_output_ptr = d_weight->data<T>();
 
     T* dA_input_1_ptr = nullptr;
     T* dA_input_2_ptr = nullptr;
-    T* dA_output_ptr = d_input;
+    T* dA_output_ptr = d_input->data<T>();
 
     if (!transA_) {
       // fw: gemm-nt
@@ -104,10 +118,10 @@ class AttnMatMul {
         dA_n = input_size_;
         dA_k = output_size_;
 
-        blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha, d_output,
-                  input, beta, dB_output_ptr);
-        blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha, d_output,
-                  weight, beta, dA_output_ptr);
+        blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha,
+                  d_output->data<T>(), input->data<T>(), beta, dB_output_ptr);
+        blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha,
+                  d_output->data<T>(), weight->data<T>(), beta, dA_output_ptr);
       } else {  // fw: gemm-nn
         // bw: gemm-tn, dB = A^t * dC
         dB_transA = CblasTrans;
@@ -123,10 +137,10 @@ class AttnMatMul {
         dA_n = input_size_;
         dA_k = output_size_;
 
-        blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha, input,
-                  d_output, beta, dB_output_ptr);
-        blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha, d_output,
-                  weight, beta, dA_output_ptr);
+        blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha,
+                  input->data<T>(), d_output->data<T>(), beta, dB_output_ptr);
+        blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha,
+                  d_output->data<T>(), weight->data<T>(), beta, dA_output_ptr);
       }
     } else if (transB_) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -138,7 +152,27 @@ class AttnMatMul {
           "parameters."));
     }
     if (compute_bias_) {
-      LaunchBiasAddBwKernel(dev_ctx_, bsz_seq_, output_size_, d_output, d_bias);
+      // reduce: {0, 1, 2, 3, 4} -> {2, 3, 4} or {0, 1, 2} -> {2}
+      const auto input_dims = d_output->dims();
+      const auto output_dims = d_bias->dims();
+      bool support_case_1 =
+          (input_dims.size() == 5 && output_dims.size() == 3 &&
+           (input_dims[2] == output_dims[0]) &&
+           (input_dims[3] == output_dims[1]) &&
+           (input_dims[4] == output_dims[2]));
+      bool support_case_2 =
+          (input_dims.size() == 3 && output_dims.size() == 1 &&
+           (input_dims[2] == output_dims[0]));
+      if (support_case_1 || support_case_2) {
+        gpuStream_t stream = dev_ctx_.stream();
+        TensorReduceFunctorImpl<T, T, CustomSum>(*d_output, d_bias, {0, 1},
+                                                 stream);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support reduce when the input dims are [0,1,2,3,4] and "
+            "output is [2,3,4]"
+            "or input is [0,1,2] and output is [2]."));
+      }
     }
   }
 

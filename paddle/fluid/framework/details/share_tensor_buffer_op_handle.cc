@@ -64,10 +64,10 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
     ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, bool share_dims)
+    const std::vector<std::string> &out_var_names, bool share_dims_and_dtype)
     : OpHandleBase(node),
       functor_(scope, scope_idx, op_type, in_var_infos, out_var_names,
-               is_variant_scope_, share_dims) {}
+               is_variant_scope_, share_dims_and_dtype) {}
 
 std::unordered_map<std::string, std::string>
 ShareTensorBufferOpHandle::ReusedVars() const {
@@ -79,8 +79,9 @@ void ShareTensorBufferOpHandle::AddReuseVarPair(
   functor_.AddReuseVarPair(in_var_info, out_var_name);
 }
 
-void ShareTensorBufferOpHandle::SetShareDims(bool share_dims) {
-  functor_.SetShareDims(share_dims);
+void ShareTensorBufferOpHandle::SetShareDimsAndDtype(
+    bool share_dims_and_dtype) {
+  functor_.SetShareDimsAndDtype(share_dims_and_dtype);
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {
