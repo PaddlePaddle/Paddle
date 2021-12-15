@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -24,7 +25,7 @@ class SoftplusMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusMKLDNNHandler(const framework::ExecutionContext& ctx, const Tensor* x,
-                        const float beta, const mkldnn::engine engine)
+                        const float beta, const dnnl::engine engine)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine,
                                                            ctx.GetPlace()) {
     auto x_tz = framework::vectorize(x->dims());
@@ -43,7 +44,7 @@ class SoftplusMKLDNNHandler
                               1.0f / beta, 0.0f);
     }
 
-    AppendFusedActivationIfExists(ctx, post_ops);
+    AppendFusedActivationIfExists(ctx, &post_ops);
 
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
@@ -52,23 +53,23 @@ class SoftplusMKLDNNHandler
                                             x_md, beta_md, x_md);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireBetaMemory(const float* beta) {
+  std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src1_desc(), platform::to_void_cast<float>(beta));
   }
 
  private:
   void AppendFusedActivationIfExists(const framework::ExecutionContext& ctx,
-                                     dnnl::post_ops& post_ops) {
+                                     dnnl::post_ops* post_ops) {
     const auto& fused_activation_type =
         algo_map.find(ctx.Attr<std::string>("fuse_activation_type"));
 
     if (fused_activation_type != algo_map.end()) {
       auto scale_out =
           ctx.Attr<float>("fuse_activation_scale");  // for future int8 support
-      post_ops.append_eltwise(scale_out, fused_activation_type->second,
-                              ctx.Attr<float>("fuse_activation_alpha"),
-                              ctx.Attr<float>("fuse_activation_beta"));
+      post_ops->append_eltwise(scale_out, fused_activation_type->second,
+                               ctx.Attr<float>("fuse_activation_alpha"),
+                               ctx.Attr<float>("fuse_activation_beta"));
     }
   }
 
@@ -109,8 +110,13 @@ void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {
   auto src_memory_p = handler.AcquireSrcMemory(x);
 
   auto beta_memory_p = handler.AcquireBetaMemory(&beta);
-  auto dst_memory_p =
-      is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
+  std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
+  if (is_inplaced) {
+    dst_memory_p = src_memory_p;
+    out->mutable_data<T>(ctx.GetPlace());
+  } else {
+    dst_memory_p = handler.AcquireDstMemory(out);
+  }
   auto binary_p = handler.AcquireForwardPrimitive();
 
   auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();

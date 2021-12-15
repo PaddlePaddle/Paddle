@@ -21,6 +21,7 @@ namespace pten {
 
 void Copy(const XPUDeviceContext& dev_ctx,
           const DenseTensor& src,
+          bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   auto* dst_ptr = dst->mutable_data();
@@ -38,8 +39,8 @@ void Copy(const XPUDeviceContext& dev_ctx,
           << dst_place;
   dst->Resize(src.dims());
   CHECK(dst->layout() == src.layout());
-  auto size = src.numel() * paddle::framework::SizeOfType(
-                                TransToProtoVarType(src.data_type()));
+  auto size = src.numel() *
+              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
       paddle::platform::is_cpu_place(dst_place)) {
@@ -75,7 +76,4 @@ void Copy(const XPUDeviceContext& dev_ctx,
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(UtilsXPU);
-
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", XPU, ANY, pten::Copy) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, XPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}

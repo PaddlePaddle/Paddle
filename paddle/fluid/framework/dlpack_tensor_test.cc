@@ -115,7 +115,7 @@ void TestMainLoop() {
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CUDAPlace(0),
                                       platform::CUDAPinnedPlace()};
-  if (platform::GetCUDADeviceCount() > 1) {
+  if (platform::GetGPUDeviceCount() > 1) {
     places.emplace_back(platform::CUDAPlace(1));
   }
 #else

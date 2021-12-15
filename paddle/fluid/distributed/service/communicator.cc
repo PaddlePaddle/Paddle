@@ -368,20 +368,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       VLOG(1) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
-    BarrierWithTable(1);
-  } else {
-    BarrierWithTable(1);
-    for (auto &iter : recv_varname_to_ctx) {
-      auto &table_id = iter.first;
-      auto &varnames = iter.second;
-      RpcRecvDense(varnames, table_id, recv_scope_);
-      VLOG(1) << "pull dense param to table " << table_id
-              << " from 0' trainer done";
-    }
   }
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(100 + trainer_id_ * 10));
-  BarrierWithTable(1);
   return;
 }
 
@@ -962,6 +949,10 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
     auto *old_var = old_scope_->Var(t);
     old_var->GetMutable<framework::LoDTensor>();
     framework::CopyVariable(*global_var, old_var);
+    // init pserver_scope_
+    auto *pserver_var = pserver_scope_->Var(t);
+    pserver_var->GetMutable<framework::LoDTensor>();
+    framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
 }

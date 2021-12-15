@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
@@ -30,6 +31,7 @@ void FillAnyLike(const CPUContext& dev_ctx,
 
 template <typename T>
 void FillConstant(const CPUContext& dev_ctx,
+                  const ScalarArray& shape,
                   const Scalar& val,
                   DenseTensor* out);
 

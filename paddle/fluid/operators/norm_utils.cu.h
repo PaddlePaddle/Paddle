@@ -26,11 +26,7 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)

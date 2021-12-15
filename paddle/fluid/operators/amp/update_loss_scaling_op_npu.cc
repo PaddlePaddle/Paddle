@@ -17,7 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 DECLARE_int32(min_loss_scaling);
 

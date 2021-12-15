@@ -14,6 +14,9 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/pten/api/ext/exception.h"
 
+namespace paddle {
+namespace tests {
+
 TEST(PD_THROW, empty) {
   bool caught_exception = false;
   try {
@@ -23,12 +26,11 @@ TEST(PD_THROW, empty) {
     std::string err_msg = e.what();
     EXPECT_TRUE(err_msg.find("An error occurred.") != std::string::npos);
 #if _WIN32
-    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc:20") !=
+    EXPECT_TRUE(err_msg.find("tests\\api\\test_pten_exception.cc") !=
                 std::string::npos);
 #else
-    EXPECT_TRUE(
-        err_msg.find("paddle/pten/tests/api/test_pten_exception.cc:20") !=
-        std::string::npos);
+    EXPECT_TRUE(err_msg.find("paddle/pten/tests/api/test_pten_exception.cc") !=
+                std::string::npos);
 #endif
   }
   EXPECT_TRUE(caught_exception);
@@ -156,3 +158,6 @@ TEST(PD_CHECK, FAILED) {
   }
   EXPECT_TRUE(caught_exception);
 }
+
+}  // namespace tests
+}  // namespace paddle

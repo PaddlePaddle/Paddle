@@ -180,52 +180,83 @@ enum TableType {
 
 message TableParameter {
   optional uint64 table_id = 1;
-  optional string table_class = 2;
-  optional uint64 shard_num = 3;
-  optional TableType type = 4;
-  optional TableAccessorParameter accessor = 5;
+  optional string table_name = 2;
+  optional string table_class = 3;
+  optional uint64 shard_num = 4 [ default = 1000 ];
+  optional TableType type = 5;
+  optional TableAccessorParameter accessor = 6;
 }
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
   optional SGDParameter embed_sgd_param = 2;
   optional SGDParameter embedx_sgd_param = 3;
-  optional uint32 fea_dim = 4; // for sparse table, this means field size of one
-                               // value; for dense table, this means total value
-                               // num
-  optional uint32 embedx_dim = 5;       // embedx feature size
-  optional uint32 embedx_threshold = 6; // embedx feature create threshold
+  optional uint32 fea_dim = 4 [ default = 11 ];   // field size of one value
+  optional uint32 embedx_dim = 5 [ default = 8 ]; // embedx feature size
+  optional uint32 embedx_threshold = 6
+      [ default = 10 ]; // embedx feature create threshold
   optional CtrAccessorParameter ctr_accessor_param = 7;
+  repeated TableAccessorSaveParameter table_accessor_save_param = 8;
 }
 
-// TODO(guanqun): add NaiveSGD/Adam...
 message SGDParameter {
   optional string name = 1;
-  optional SGDRuleParameter adagrad = 2;
+  optional SparseNaiveSGDRuleParameter naive = 2;
+  optional SparseAdagradSGDRuleParameter adagrad = 3;
+  optional SparseAdamSGDParameter adam = 4;
 }
 
-message SGDRuleParameter {
-  optional double learning_rate = 1;
-  optional double initial_g2sum = 2;
-  optional double initial_range = 3 [ default = 0 ];
+message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  repeated float weight_bounds = 3;
+}
+
+message
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_g2sum = 2 [ default = 3.0 ];
+  optional double initial_range = 3 [ default = 0.0001 ];
   repeated float weight_bounds = 4;
 }
 
+message SparseAdamSGDParameter { // SparseAdamSGDRule
+  optional double learning_rate = 1 [ default = 0.001 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  optional double beta1_decay_rate = 3 [ default = 0.9 ];
+  optional double beta2_decay_rate = 4 [ default = 0.999 ];
+  optional double ada_epsilon = 5 [ default = 1e-08 ];
+  repeated float weight_bounds = 6;
+}
+
 message CtrAccessorParameter {
-  optional float nonclk_coeff = 1; // to calculate show_click_score
-  optional float click_coeff = 2;  // to calculate show_click_score
-  optional float base_threshold =
-      3; // show_click_score > base_threshold, this feature can be saved
-  optional float delta_threshold =
-      4; // delta_score > delta_threshold, this feature can be saved
-  optional float delta_keep_days =
-      5; // unseen_day < delta_keep_days, this feature can be saved
-  optional float show_click_decay_rate = 6; // show/click will update to
-                                            // show/click *
-                                            // show_click_decay_rate after a day
-  optional float delete_threshold = 7;      // threshold to shrink a feasign
-  optional float delete_after_unseen_days = 8;
-  optional int32 ssd_unseenday_threshold = 9;
+  optional float nonclk_coeff = 1
+      [ default = 0.1 ]; // to calculate show_click_score
+  optional float click_coeff = 2
+      [ default = 1 ]; // to calculate show_click_score
+  optional float base_threshold = 3 [
+    default = 1.5
+  ]; // show_click_score > base_threshold, this feature can be saved
+  optional float delta_threshold = 4
+      [ default =
+            0.25 ]; // delta_score > delta_threshold, this feature can be saved
+  optional float delta_keep_days = 5
+      [ default =
+            16 ]; // unseen_day < delta_keep_days, this feature can be saved
+  optional float show_click_decay_rate = 6
+      [ default = 0.98 ]; // show/click will update to
+                          // show/click *
+                          // show_click_decay_rate after a day
+  optional float delete_threshold = 7
+      [ default = 0.8 ]; // threshold to shrink a feasign
+  optional float delete_after_unseen_days = 8 [ default = 30 ];
+  optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
+}
+
+message TableAccessorSaveParameter {
+  optional uint32 param = 1;
+  optional string converter = 2;
+  optional string deconverter = 3;
 }
 
 message FsClientParameter {
@@ -273,6 +304,8 @@ message DistributedStrategy {
   optional bool fuse_grad_merge = 34 [ default = false ];
   optional bool semi_auto = 35 [ default = false ];
   optional bool adam_d2sum = 36 [ default = true ];
+  optional bool auto_search = 37 [ default = false ];
+  optional bool heter_ccl_mode = 38 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -288,7 +321,7 @@ message DistributedStrategy {
   optional HybridConfig hybrid_configs = 112;
   optional TensorParallelConfig tensor_parallel_configs = 113;
   optional TrainerDescConfig trainer_desc_configs = 114;
-  optional TableParameter downpour_table_param = 115;
+  repeated TableParameter downpour_table_param = 115;
   optional FsClientParameter fs_client_param = 116;
 
   optional BuildStrategy build_strategy = 201;

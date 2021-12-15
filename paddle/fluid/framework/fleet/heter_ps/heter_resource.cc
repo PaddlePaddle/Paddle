@@ -30,11 +30,11 @@ GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
   remote_streams_.resize(dev_ids_.size());
 
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamCreateWithFlags(&local_streams_[i], cudaStreamNonBlocking));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamCreateWithFlags(&comm_streams_[i], cudaStreamNonBlocking));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamCreateWithFlags(&remote_streams_[i], cudaStreamNonBlocking));
   }
 }
@@ -42,13 +42,13 @@ GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(local_streams_[i]));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
   }
   for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
   }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
 }
 
@@ -58,7 +58,7 @@ void HeterPsResource::enable_p2p() {
     for (size_t j = 0; j < dev_ids_.size(); ++j) {
       if (i != j) {
         int p2p_flag;
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             cudaDeviceCanAccessPeer(&p2p_flag, dev_ids_[i], dev_ids_[j]));
         if (p2p_flag == 1) {
           cudaError_t ret = cudaDeviceEnablePeerAccess(dev_ids_[j], 0);

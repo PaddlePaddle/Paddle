@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL)
@@ -29,11 +29,11 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -42,7 +42,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -386,7 +386,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

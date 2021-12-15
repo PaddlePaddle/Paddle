@@ -204,7 +204,8 @@ def replace_ellipsis(var, item):
 
     # Remove Variable to skip bug when counting Ellipsis
     item_remove_var = [
-        ele for ele in item if not isinstance(ele, (Variable, np.ndarray))
+        ele for ele in item
+        if not isinstance(ele, (Variable, np.ndarray)) and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
     if ell_count == 0:
@@ -218,7 +219,7 @@ def replace_ellipsis(var, item):
         return item[:-1]
     else:
         item[ell_idx:ell_idx + 1] = [slice(None)] * (
-            len(var.shape) - len(item) + 1)
+            len(var.shape) - len(item) + item.count(None) + 1)
 
     return item
 
@@ -298,8 +299,8 @@ def _getitem_impl_(var, item):
 
     use_strided_slice = False
     item = replace_ndarray(item)
-    item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
+    item, none_axes = replace_none(item)
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
@@ -517,8 +518,8 @@ def _setitem_impl_(var, item, value):
     steps = []
 
     item = replace_ndarray(item)
-    item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
+    item, none_axes = replace_none(item)
     slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
@@ -673,14 +674,6 @@ def _setitem_impl_(var, item, value):
 
 # the item is a tensor of bool 
 def set_value_for_bool_tensor(var, item, value):
-
-    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor, 
-    # so in the current version we also only support float32 and float64 tensor, 
-    # this problem will be fixed in the future.
-    if var.dtype != core.VarDesc.VarType.FP32 and var.dtype != core.VarDesc.VarType.FP64:
-        raise TypeError("Only support float and double tensor for bool index, "
-                        "but received {}.".format(var.dtype))
-
     if len(item.shape) > len(var.shape):
         raise IndexError("The dims of bool index doesn't match indexed array, "
                          "the dims of bool index except to be equal or less "
