@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 #include "paddle/pten/kernels/hybird/transpose.h"
@@ -129,9 +129,9 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  const auto alloc =
-      std::make_shared<paddle::experimental::DefaultAllocator>(input.place());
-  pten::DenseTensor shuffled_input = pten::DenseTensor(alloc, input.meta());
+  pten::DenseTensor shuffled_input = pten::DenseTensor(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(input.place()),
+      input.meta());
 
   GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
 
