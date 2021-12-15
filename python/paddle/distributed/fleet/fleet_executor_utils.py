@@ -77,9 +77,11 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     num_of_functionality = 4
 
     def create_task_node(role, ops, offset, node_type):
-        node = core.TaskNode(role, ops, cur_rank,
-                             cur_rank * num_of_functionality + offset,
-                             max_run_times, max_slot_times)
+        task_id = cur_rank * num_of_functionality + offset
+        print("Creating task node with role: ", role, ", and with id: ",
+              task_id)
+        node = core.TaskNode(role, ops, cur_rank, task_id, max_run_times,
+                             max_slot_times)
         node.set_type(node_type)
         return node
 
