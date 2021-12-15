@@ -62,8 +62,8 @@ void FleetExecutor::Init(
     }
     runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
     runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
-    for (auto& op : ops) {
-      op.release();
+    for (auto& unique_op : ops) {
+      unique_op.release();
     }
   }
   root_scope_ = scope;
