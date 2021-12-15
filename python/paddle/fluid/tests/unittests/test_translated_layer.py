@@ -48,6 +48,7 @@ class LinearNet(nn.Layer):
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+        self._dropout = paddle.nn.Dropout(p=0.5)
 
     @paddle.jit.to_static(input_spec=[
         paddle.static.InputSpec(
@@ -186,10 +187,10 @@ class TestTranslatedLayer(unittest.TestCase):
     def test_layer_state(self):
         # load
         translated_layer = paddle.jit.load(self.model_path)
-
         translated_layer.eval()
         self.assertEqual(translated_layer.training, False)
         for layer in translated_layer.sublayers():
+            print("123")
             self.assertEqual(layer.training, False)
 
         translated_layer.train()
