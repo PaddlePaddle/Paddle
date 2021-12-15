@@ -20,7 +20,7 @@ limitations under the License. */
 #endif  // PADDLE_WITH_MLU
 
 #ifdef PADDLE_WITH_MLU
-DECLARE_int64(mlu_allocator_retry_time);
+DECLARE_int64(gpu_allocator_retry_time);
 #endif
 
 namespace paddle {
@@ -127,7 +127,7 @@ inline void retry_sleep(unsigned milliseconds) {
         ::paddle::platform::details::MLUStatusType<                     \
             __MLU_STATUS_TYPE__>::kSuccess;                             \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      retry_sleep(FLAGS_mlu_allocator_retry_time);                      \
+      retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \

@@ -80,13 +80,6 @@ PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, false,
 
 DECLARE_string(allocator_strategy);
 
-#ifdef PADDLE_WITH_MLU
-PADDLE_DEFINE_EXPORTED_int64(
-    mlu_allocator_retry_time, 10000,
-    "The retry time (milliseconds) when allocator fails "
-    "to allocate memory. No retry if this value is not greater than 0");
-#endif
-
 namespace paddle {
 namespace memory {
 namespace allocation {
