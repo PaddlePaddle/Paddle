@@ -106,20 +106,16 @@ DEFINE_CPU_ELEMENTWISE_OP(Mul)
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(MathCPU);
-
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::paddle::platform::bfloat16;
-
-PT_REGISTER_KERNEL("sign", CPU, ANY, pten::Sign, float, double) {}
-PT_REGISTER_KERNEL("mean", CPU, ANY, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL("scale",
+PT_REGISTER_KERNEL(sign, CPU, ALL_LAYOUT, pten::Sign, float, double) {}
+PT_REGISTER_KERNEL(mean, CPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(scale,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Scale,
                    float,
                    double,
@@ -129,10 +125,9 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-
-PT_REGISTER_KERNEL("add",
+PT_REGISTER_KERNEL(add,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseAdd,
                    float,
                    double,
@@ -140,9 +135,9 @@ PT_REGISTER_KERNEL("add",
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("subtract",
+PT_REGISTER_KERNEL(subtract,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseSub,
                    float,
                    double,
@@ -150,9 +145,9 @@ PT_REGISTER_KERNEL("subtract",
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("divide",
+PT_REGISTER_KERNEL(divide,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseDiv,
                    float,
                    double,
@@ -160,9 +155,9 @@ PT_REGISTER_KERNEL("divide",
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("multiply",
+PT_REGISTER_KERNEL(multiply,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseMul,
                    float,
                    double,
@@ -171,10 +166,9 @@ PT_REGISTER_KERNEL("multiply",
                    bool,
                    complex64,
                    complex128) {}
-
-PT_REGISTER_KERNEL("sum",
+PT_REGISTER_KERNEL(sum,
                    CPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Sum,
                    bool,
                    float,

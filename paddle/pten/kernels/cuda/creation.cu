@@ -62,11 +62,9 @@ void FillConstant(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(CreationCUDA);
-
-PT_REGISTER_KERNEL("full_like",
+PT_REGISTER_KERNEL(full_like,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillAnyLike,
                    float,
                    double,
@@ -75,9 +73,9 @@ PT_REGISTER_KERNEL("full_like",
                    bool,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL("full",
+PT_REGISTER_KERNEL(full,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FillConstant,
                    float,
                    double,
