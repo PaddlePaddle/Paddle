@@ -53,10 +53,9 @@ void Reduce(const DeviceContext& dev_ctx,
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
   } else {
-    const auto alloc =
-        std::make_shared<paddle::experimental::DefaultAllocator>(x.place());
     pten::DenseTensor tmp_tensor = pten::DenseTensor(
-        alloc, pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
+        pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
+        pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
     // cast x tensor to out_dtype first
     PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {

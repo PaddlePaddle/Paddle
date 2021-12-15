@@ -53,6 +53,10 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         echo "========================================"
         exit 8;
     fi
+    if nvcc --version | grep 11.2; then
+        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+        exit 0;
+    fi
 fi
 set -e
 
