@@ -373,9 +373,7 @@ class Momentum(Optimizer):
         """
         self._create_accumulators(target_block, parameters)
         for param in parameters:
-            # velocity
             velocity_acc = self._get_accumulator(self._velocity_acc_str, param)
-            # regularization
             regularization_method = self._regularization_method
             regularization_coeff = self._regularization_coeff
             if hasattr(param, 'regularizer'):
@@ -383,33 +381,25 @@ class Momentum(Optimizer):
                 if isinstance(param.regularizer, L2DecayRegularizer):
                     regularization_method = "l2_decay"
                     regularization_coeff = param.regularizer._regularization_coeff
-                # the param's regularization has been done before, we avoid do l2decay in momentum.
                 else:
                     regularization_method = ""
                     regularization_coeff = 0.0
             if param.dtype == paddle.float32:
-                # param
                 self._param_dict['FP32_LODTensor'].append(param)
-                # velocity
                 self._velocity_dict['FP32_LODTensor'].append(velocity_acc)
                 # fp32 no master weight
-                # regularization
                 self._regularization_method_dict['FP32_LODTensor'].append(
                     regularization_method)
                 self._regularization_coeff_dict['FP32_LODTensor'].append(
                     regularization_coeff)
             elif param.dtype == paddle.float16:
-                # param
                 self._param_dict['FP16_LODTensor'].append(param)
-                # velocity
                 self._velocity_dict['FP16_LODTensor'].append(velocity_acc)
-                # master weight
                 if self._multi_precision:
                     self._master_weight_dict['FP16_LODTensor'].append(
                         self._master_weights[param.name])
                 else:
                     self._master_weight_dict['FP16_LODTensor'] = None
-                # regularization
                 self._regularization_method_dict['FP16_LODTensor'].append(
                     regularization_method)
                 self._regularization_coeff_dict['FP16_LODTensor'].append(
@@ -437,19 +427,14 @@ class Momentum(Optimizer):
                     if param_and_grad[
                             0].dtype == paddle.float32 and param_and_grad[
                                 1].type == core.VarDesc.VarType.LOD_TENSOR:
-                        # grad
                         grad_dict['FP32_LODTensor'].append(param_and_grad[1])
-                        # lr
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif param_and_grad[
                             0].dtype == paddle.float16 and param_and_grad[
                                 1].type == core.VarDesc.VarType.LOD_TENSOR:
-                        # grad
                         grad_dict['FP16_LODTensor'].append(param_and_grad[1])
-                        # lr
                         lr = self._create_param_lr(param_and_grad)
-                        # lr_FP16_LODTensor.append(lr)
                         lr_dict['FP16_LODTensor'].append(lr)
         else:
             for param_and_grad in parameters_and_grads['params']:
@@ -467,17 +452,13 @@ class Momentum(Optimizer):
                     if param_and_grad[
                             0].dtype == paddle.float32 and param_and_grad[
                                 1].type == core.VarDesc.VarType.LOD_TENSOR:
-                        # grad
                         grad_dict['FP32_LODTensor'].append(param_and_grad[1])
-                        # lr
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif param_and_grad[
                             0].dtype == paddle.float16 and param_and_grad[
                                 1].type == core.VarDesc.VarType.LOD_TENSOR:
-                        # grad
                         grad_dict['FP16_LODTensor'].append(param_and_grad[1])
-                        # lr
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP16_LODTensor'].append(lr)
 
@@ -499,7 +480,6 @@ class Momentum(Optimizer):
                         'regularization_coeff',
                         self._regularization_coeff_dict[key], 'multi_precision',
                         self._multi_precision)
-
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
@@ -507,12 +487,10 @@ class Momentum(Optimizer):
                         "Velocity": self._velocity_dict[key],
                         "LearningRate": lr_dict[key],
                     }
-
                     outputs = {
                         "ParamOut": self._param_dict[key],
                         "VelocityOut": self._velocity_dict[key],
                     }
-
                     attrs = {
                         "mu": self._momentum,
                         "use_nesterov": self._use_nesterov,
@@ -521,13 +499,11 @@ class Momentum(Optimizer):
                         "regularization_coeff":
                         self._regularization_coeff_dict[key],
                     }
-
                     if self._multi_precision:
                         inputs["MasterParam"] = self._master_weight_dict[key]
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key]
                         attrs["multi_precision"] = self._multi_precision
-
                     target_block.append_op(
                         type="merged_momentum",
                         inputs=inputs,

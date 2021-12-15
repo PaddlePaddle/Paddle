@@ -816,9 +816,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         paddle.disable_static()
         paddle.seed(10)
         paddle.set_device(place)
-
         input = paddle.randn((5, 5))
-
         weight_attr = paddle.ParamAttr(
             learning_rate=0.5,
             regularizer=paddle.regularizer.L2Decay(1.0),
@@ -827,7 +825,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             model = paddle.nn.Linear(5, 5, weight_attr)
         else:
             model = paddle.nn.Linear(5, 5)
-
         if not use_param_group:
             optimizer = paddle.optimizer.Momentum(
                 parameters=model.parameters(),
@@ -843,12 +840,10 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 }],
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp)
-
         for idx in range(5):
             if place == 'gpu' and use_amp == True:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-
             if place == 'gpu' and use_amp == True:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
@@ -864,7 +859,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 loss.backward()
                 optimizer.step()
                 optimizer.clear_grad(set_to_zero=False)
-
         return output, model.parameters()
 
     def _get_places(self):
@@ -895,7 +889,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             use_amp=use_amp,
             use_param_attr=True,
             use_multi_tensor=False)
-
         self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
         for idx in range(len(params1)):
             self.assertEqual(
@@ -913,7 +906,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             use_amp=use_amp,
             use_param_group=True,
             use_multi_tensor=False)
-
         self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
         for idx in range(len(params1)):
             self.assertEqual(
@@ -937,14 +929,11 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(10)
         np.random.seed(10)
-
         if place == 'cpu':
             use_amp = False
-
         exe = paddle.static.Executor(place=place)
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-
         optimizer = paddle.optimizer.Momentum(
             multi_precision=use_amp, use_multi_tensor=use_multi_tensor)
         if use_amp:
@@ -954,7 +943,6 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
                 use_dynamic_loss_scaling=True,
                 use_pure_fp16=True,
                 use_fp16_guard=False)
-
         with paddle.static.program_guard(train_program, startup_program):
             if use_amp:
                 data = paddle.static.data(
@@ -965,12 +953,9 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
             hidden = paddle.static.nn.fc(x=data, size=10)
             loss = paddle.fluid.layers.mean(hidden)
             optimizer.minimize(loss)
-
         exe.run(startup_program)
         if use_amp:
             optimizer.amp_init(place=place, scope=paddle.static.global_scope())
-
-        if use_amp:
             x = numpy.random.random(size=(2, 2)).astype('float16')
         else:
             x = numpy.random.random(size=(2, 2)).astype('float32')
@@ -980,7 +965,6 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
                                  feed={"X": x},
                                  fetch_list=[loss.name])
             out.append(loss_data)
-
         return out
 
     def _get_places(self):
