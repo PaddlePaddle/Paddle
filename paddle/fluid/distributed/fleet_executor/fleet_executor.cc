@@ -38,8 +38,10 @@ void FleetExecutor::Init(
     const platform::Place& place, const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
   if (task_nodes.size() == 0) {
+    LOG(INFO) << "fleet executor will use c++ side scheduler construction.";
     runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
   } else {
+    LOG(INFO) << "fleet executor has been set dependency on python side.";
     runtime_graph_ = std::make_shared<RuntimeGraph>();
     std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
     for (auto task_node : task_nodes) {

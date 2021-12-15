@@ -104,6 +104,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
         task_nodes (list): four task nodes for current rank
         task_id_to_rank (dict): task nodes' ids to it's corresponding rank
     """
+    print("fleet executor will use python side 1f1b scheduler.")
     coord_sys = CoordSys(dist_opt)
     coord = coord_sys.rank_to_coord(cur_rank)
     max_slot_times = int(max_run_times - coord['pp_idx'])
