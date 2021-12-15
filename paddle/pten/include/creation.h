@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/creation.h"
 #include "paddle/pten/kernels/cuda/creation.h"
@@ -32,11 +32,11 @@ DenseTensor FullLike(
     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
     DataLayout layout = DataLayout::UNDEFINED) {
   auto out_meta = FullLikeInferMeta(x.meta(), dtype, layout);
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(allocator, out_meta);
-  FullLike<T>(dev_ctx, val, &dense_out);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  FillLike<T>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 
