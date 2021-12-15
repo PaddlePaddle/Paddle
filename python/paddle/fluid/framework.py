@@ -360,8 +360,7 @@ def _set_expected_place(place):
     _global_expected_place_ = place
     if _in_eager_mode():
         return core.eager._set_expected_place(place)
-    else:
-        _set_dygraph_tracer_expected_place(place)
+    _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
