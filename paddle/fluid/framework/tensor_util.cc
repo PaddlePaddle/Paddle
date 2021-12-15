@@ -22,9 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
 #endif
@@ -57,19 +55,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
           ? dst->mutable_data(dst_place, src.type(), src.memory_size())
           : dst->mutable_data(dst_place, src.type());
 #else
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto dst_ptr =
-      platform::is_gpu_place(dst_place)
-          ? dst->mutable_data(
-                BOOST_GET_CONST(platform::CUDAPlace, dst_place), src.type(),
-                reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-                    .stream())
-          : dst->mutable_data(dst_place, src.type());
-#else
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 #endif
-#endif
-
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
             << dst_place;

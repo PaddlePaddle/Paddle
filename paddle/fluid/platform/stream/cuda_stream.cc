@@ -63,7 +63,6 @@ void CUDAStream::Destroy() {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
 #endif
   }
-  VLOG(3) << "GPUStream Destroy stream: " << stream_;
   stream_ = nullptr;
 }
 
