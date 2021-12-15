@@ -53,6 +53,15 @@ static int GetMLUDeviceCountImpl() {
     return 0;
   }
 
+  const auto *mlu_visible_devices = std::getenv("MLU_VISIBLE_DEVICES");
+  if (std::all_of(mlu_visible_devices_str.begin(),
+                  mlu_visible_devices_str.end(),
+                  [](char ch) { return ch == ' '; })) {
+    VLOG(2) << "MLU_VISIBLE_DEVICES  is set to be "
+               "empty. No MLU detected.";
+    return 0;
+  }
+
   int count;
   PADDLE_ENFORCE_MLU_SUCCESS(cnDeviceGetCount(&count));
   return count;

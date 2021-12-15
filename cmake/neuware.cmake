@@ -4,6 +4,8 @@ endif()
 
 if(NOT ENV{NEUWARE_HOME})
     set(NEUWARE_HOME "/usr/local/neuware")
+else()
+    set(NEUWARE_HOME $ENV{NEUWARE_HOME})
 endif()
 message(STATUS "NEUWARE_HOME: " ${NEUWARE_HOME})
 
