@@ -784,17 +784,28 @@ class Optimizer(object):
             self._dtype = loss.dtype
 
         if framework.in_dygraph_mode():
-            parameter_list = parameters if parameters \
-                else self._parameter_list
-
-            params_grads = []
-            for param in parameter_list:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    # create gradient tensor
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+            param_groups = parameters if parameters else self._param_groups
+            if not isinstance(param_groups[0], dict):
+                params_grads = []
+                for param in param_groups:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
+            else:
+                for param_group in param_groups:
+                    params_grads = defaultdict(lambda: list())
+                    for param in param_group['params']:
+                        if param.stop_gradient:
+                            continue
+                        if param._grad_ivar() is not None:
+                            grad_var = param._grad_ivar()
+                            params_grads['params'].append((param, grad_var))
+                    params_grads.update({
+                        k: v
+                        for k, v in param_group.items() if k != 'params'
+                    })
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1082,13 +1093,13 @@ class Optimizer(object):
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
 
-        parameter_list = parameters if parameters \
-            else self._parameter_list
+        param_groups = parameters if parameters \
+            else self._param_groups
 
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
-            parameters=parameter_list,
+            parameters=param_groups,
             no_grad_set=no_grad_set)
 
         optimize_ops = self._apply_optimize(
