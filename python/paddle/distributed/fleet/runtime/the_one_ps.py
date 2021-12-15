@@ -590,6 +590,7 @@ class TheOnePSRuntime(RuntimeBase):
         if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
+            print("======DEBUG=======wait server ready done")
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_next_trainers(
             ) != []:
                 wait_server_ready(self.role_maker._get_next_trainers())
