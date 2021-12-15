@@ -47,8 +47,10 @@ void FleetExecutor::Init(
     LOG(INFO) << "fleet executor has been set dependency on python side.";
     // TODO(fleet_exe devs): the unused_vars should be got from run time graph
     std::vector<std::unique_ptr<framework::OperatorBase>> ops;
-    for (const auto& op_desc : program_desc.Block(0).AllOps()) {
-      ops.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+    for (auto task_node : task_nodes) {
+      for (auto op : task_node->ops()) {
+        ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
+      }
     }
     auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
     runtime_graph_ = std::make_shared<RuntimeGraph>();
@@ -60,6 +62,9 @@ void FleetExecutor::Init(
     }
     runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
     runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
+    for (auto& op : ops) {
+      op.release();
+    }
   }
   root_scope_ = scope;
   place_ = place;
