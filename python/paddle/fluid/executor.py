@@ -1979,10 +1979,12 @@ class Executor(object):
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
         num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
+        task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
+        tasks = fleet_opt.get("tasks", [])
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program.desc, scope, place)
+        fleet_exe.init(program.desc, scope, place, tasks, task_id_to_rank)
         return fleet_exe
 
     def _run_using_fleet_executor(self,

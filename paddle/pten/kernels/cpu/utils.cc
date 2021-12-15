@@ -57,4 +57,4 @@ void Copy(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL_ALL_DTYPE(copy, CPU, ANY, pten::Copy) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, CPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}

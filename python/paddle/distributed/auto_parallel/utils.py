@@ -13,6 +13,7 @@
 # limitations under the License
 
 import os
+import copy
 import paddle
 import threading
 import numpy as np
@@ -1005,11 +1006,11 @@ def set_grad_var_shape(program, dist_context):
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
                     "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad"
+                    "dropout_grad", "unsqueeze2_grad"
                 ]
                 forward_list = [
                     "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout"
+                    "softmax", "cross_entropy2", "dropout", "unsqueeze2"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
@@ -1172,3 +1173,88 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
             changed = True
 
     return changed
+
+
+def get_all_distributed_main_program(serial_program_info, dist_context):
+    "Get all distributed main programs by dist_context."
+    from .dist_context import DistributedOperatorContext
+    cluster = serial_program_info.cluster
+    all_dist_main_program = []
+    ranks = paddle.distributed.get_world_size() if cluster is None else len(
+        cluster.get_all_devices("GPU"))
+    for rank_id in range(ranks):
+        used_dist_context = copy.deepcopy(dist_context)
+        used_dist_context._dist_op_context = DistributedOperatorContext()
+        dist_main_program, dist_startup_program = get_specified_distributed_main_program(
+            serial_program_info, used_dist_context, rank_id)
+        all_dist_main_program.append(dist_main_program)
+
+    return all_dist_main_program
+
+
+def get_specified_distributed_main_program(serial_program_info, dist_context,
+                                           rank_id):
+    "Get distributed main program by the given dist_context and rank_id."
+    from .partitioner import Partitioner
+    from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
+    from .process_group import _g_process_group_map, ProcessGroup
+
+    dist_strategy = paddle.distributed.fleet.DistributedStrategy()
+    train_program = serial_program_info.train_program
+    startup_program = serial_program_info.startup_program
+    loss = serial_program_info.loss
+    optimizer = serial_program_info.optimizer
+
+    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    dist_main_program, dist_startup_program = partitioner.transpile_forward(
+        train_program, startup_program)
+    dist_params_grads = partitioner.apply_backward(
+        loss, train_program, startup_program, dist_main_program,
+        dist_startup_program)
+    opt_ops = partitioner.apply_optimize(
+        copy.deepcopy(optimizer), dist_params_grads, dist_main_program,
+        dist_startup_program)
+    set_grad_var_shape(dist_main_program, dist_context)
+    make_data_unshard(dist_main_program, dist_startup_program, dist_context)
+    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
+    HAS_SENT.clear()
+    HAS_RECV.clear()
+    HAS_ALLGATHER.clear()
+
+    _g_process_group_map.clear()
+    _g_process_group_map[0] = ProcessGroup(0, [])
+    return dist_main_program, dist_startup_program
+
+
+class SerialProgramInfo:
+    def __init__(self,
+                 train_program,
+                 satrtup_program,
+                 loss,
+                 optimizer,
+                 cluster=None):
+        self._train_program = train_program
+        self._startup_program = satrtup_program
+        self._loss = loss
+        self._optimizer = optimizer
+        self._cluster = cluster
+
+    @property
+    def train_program(self):
+        return self._train_program
+
+    @property
+    def startup_program(self):
+        return self._startup_program
+
+    @property
+    def loss(self):
+        return self._loss
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @property
+    def cluster(self):
+        return self._cluster
