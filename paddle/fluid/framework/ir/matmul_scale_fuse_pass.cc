@@ -153,24 +153,15 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       scale = *(scale_tensor->data<float>());
     }
 
-    OpDesc desc;
-    desc.SetType("matmul");
-    desc.SetInput("X", {matmul_in_x->Name()});
-    desc.SetInput("Y", {matmul_in_y->Name()});
-    desc.SetOutput("Out", {scale_out->Name()});
-    desc.SetAttr("transpose_X", matmul_op->Op()->GetAttr("transpose_X"));
-    desc.SetAttr("transpose_Y", matmul_op->Op()->GetAttr("transpose_Y"));
-    desc.SetAttr("alpha", scale * matmul_alpha);
-    auto mul_node = g->CreateOpNode(&desc);
-    IR_NODE_LINK_TO(matmul_in_x, mul_node);
-    IR_NODE_LINK_TO(matmul_in_y, mul_node);
-    IR_NODE_LINK_TO(mul_node, scale_out);
-
-    if (!IsCompat(desc)) {
+    OpDesc* matmul_desc = matmul_op->Op();
+    matmul_desc->SetAttr("alpha", scale * matmul_alpha);
+    matmul_desc->SetOutput("Out", {scale_out->Name()});
+    if (!IsCompat(*matmul_desc)) {
       LOG(WARNING) << "matmul_scale_fuse_pass in out mul op compat failed.";
       return;
     }
-    GraphSafeRemoveNodes(graph, {matmul_op, scale_in_x, scale_op});
+    IR_NODE_LINK_TO(matmul_op, scale_out);
+    GraphSafeRemoveNodes(graph, {scale_in_x, scale_op});
     ++found_count;
   };
 
@@ -231,23 +222,14 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       y_data[i] *= scale;
     }
 
-    OpDesc desc;
-    desc.SetType("matmul_v2");
-    desc.SetInput("X", {matmul_v2_in_x->Name()});
-    desc.SetInput("Y", {matmul_v2_in_y->Name()});
-    desc.SetOutput("Out", {scale_out->Name()});
-    desc.SetAttr("trans_x", matmul_v2_op->Op()->GetAttr("trans_x"));
-    desc.SetAttr("trans_y", matmul_v2_op->Op()->GetAttr("trans_y"));
-    auto mul_node = g->CreateOpNode(&desc);
-    IR_NODE_LINK_TO(matmul_v2_in_x, mul_node);
-    IR_NODE_LINK_TO(matmul_v2_in_y, mul_node);
-    IR_NODE_LINK_TO(mul_node, scale_out);
-
-    if (!IsCompat(desc)) {
+    OpDesc* matmul_v2_desc = matmul_v2_op->Op();
+    matmul_v2_desc->SetOutput("Out", {scale_out->Name()});
+    if (!IsCompat(*matmul_v2_desc)) {
       LOG(WARNING) << "matmul_v2_scale_fuse_pass in out mul op compat failed.";
       return;
     }
-    GraphSafeRemoveNodes(graph, {matmul_v2_op, scale_in_x, scale_op});
+    IR_NODE_LINK_TO(matmul_v2_op, scale_out);
+    GraphSafeRemoveNodes(graph, {scale_in_x, scale_op});
     ++found_count;
   };
 

@@ -27,17 +27,19 @@ import hypothesis.strategies as st
 
 class TestMatmulV2ScaleFusePass(PassAutoScanTest):
     """
-     x_var    y_var(persistable)
-       \       /
-        matmul_v2
-           |
-         scale  
+     x_var    y_var(persistable)        x_var    y_var*scale(persistable)
+       \       /                           \       /
+        matmul_v2                          matmul_v2
+           |                   =>              |
+         scale                             scale_out
+           ｜
+        scale_out 
     """
 
     def sample_predictor_configs(self, program_config):
         # for cpu
-        config = self.create_inference_config(use_gpu=False)
-        yield config, ["matmul_v2", ], (1e-5, 1e-5)
+        # config = self.create_inference_config(use_gpu=False)
+        # yield config, ["matmul_v2", ], (1e-5, 1e-5)
 
         # mkldnn
         config = self.create_inference_config(use_mkldnn=True)
@@ -49,11 +51,13 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
             st.lists(
                 st.integers(
                     min_value=1, max_value=8), min_size=2, max_size=5))
+        x_shape_rank = len(x_shape)
         y_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=5))
-        x_shape_rank = len(x_shape)
+                    min_value=1, max_value=8),
+                min_size=x_shape_rank,
+                max_size=x_shape_rank))
         y_shape_rank = len(y_shape)
         y_shape[-2] = x_shape[-1]
         for i in range(y_shape_rank - 3, -1, -1):
@@ -67,9 +71,6 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
         # scale tensor
         scale_shape = [1]
         scale_value = draw(st.floats(min_value=-5.0, max_value=5.0, width=32))
-
-        def gen_bias():
-            return 0.0
 
         matmul_v2_op = OpConfig(
             "matmul_v2",
@@ -114,7 +115,7 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=100,
             passes=["matmul_v2_scale_fuse_pass"], )
 
 

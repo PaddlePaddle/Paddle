@@ -71,9 +71,6 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
         scale_shape = [1]
         scale_value = draw(st.floats(min_value=-5.0, max_value=5.0, width=32))
 
-        def gen_bias():
-            return 0.0
-
         matmul_op = OpConfig(
             "matmul",
             inputs={"X": ["matmul_x"],
@@ -133,7 +130,7 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=100,
             passes=["matmul_scale_fuse_pass"], )
 
 
