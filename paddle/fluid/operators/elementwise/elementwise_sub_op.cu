@@ -90,8 +90,8 @@ default_elementwise_sub_grad(const framework::ExecutionContext& ctx,
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, kps::SubFunctor, kps::IdentityFunctor<T>>(
-          *dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+          *dout, dx, kps::InverseFunctor<T>(), reduce_dims, stream);
     }
   }
 }
