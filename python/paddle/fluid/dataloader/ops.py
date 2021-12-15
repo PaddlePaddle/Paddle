@@ -44,6 +44,22 @@ class MapGuard(object):
         return exc_type is None
 
 
+class _StreamIDGenerator(object):
+    def __init__(self):
+        self.stream_id = 0
+
+    def get_stream_id(self):
+        self.stream_id += 1
+        return self.stream_id - 1
+
+
+_stream_id_generator = _StreamIDGenerator()
+
+
+def _generate_stream_id():
+    return _stream_id_generator.get_stream_id()
+
+
 def map(map_func, inputs):
     assert not in_dygraph_mode(), \
             "paddle.io.map can only be used in static mode"
@@ -79,6 +95,12 @@ def map(map_func, inputs):
         "output_var_names": output_var_names
     }
     print("attr: ", attrs)
+
+    stream_id = _generate_stream_id()
+    for idx in range(map_block.desc.op_size()):
+        map_block.desc.op(idx)._set_attr('stream_id', stream_id)
+        print("map_block", map_block.desc.op(idx).attr_names())
+
     import sys
     sys.stdout.flush()
 

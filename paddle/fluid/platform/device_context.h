@@ -855,5 +855,34 @@ class DeviceContextPool {
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 
+/*! \brief async device context pool singleton */
+class AsyncDeviceContextPool {
+ public:
+  explicit AsyncDeviceContextPool(const std::vector<platform::Place>& places);
+
+  static AsyncDeviceContextPool& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(pool,
+                            platform::errors::PreconditionNotMet(
+                                "Need to Create DeviceContextPool firstly!"));
+    return *pool;
+  }
+
+  /*! \brief  Create should only called by Init function */
+  static AsyncDeviceContextPool& Init(const std::vector<platform::Place>& places) {
+    if (pool == nullptr) {
+      pool = new AsyncDeviceContextPool(places);
+    }
+    return *pool;
+  }
+
+  /*! \brief  Return handle of single device context. */
+  platform::DeviceContext* Get(const platform::Place& place, const int64_t stream_id);
+
+ private:
+  static AsyncDeviceContextPool* pool;
+  std::map<Place, std::map<int64_t, std::unique_ptr<DeviceContext>>> device_contexts_;
+  DISABLE_COPY_AND_ASSIGN(AsyncDeviceContextPool);
+};
+
 }  // namespace platform
 }  // namespace paddle

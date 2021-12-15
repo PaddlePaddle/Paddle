@@ -189,6 +189,7 @@ void InitDevices(const std::vector<int> devices) {
   places.emplace_back(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
+  platform::AsyncDeviceContextPool::Init(places);
 #endif
   platform::DeviceContextPool::Init(places);
 

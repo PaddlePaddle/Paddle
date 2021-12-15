@@ -181,6 +181,61 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
+AsyncDeviceContextPool* AsyncDeviceContextPool::pool = nullptr;
+
+platform::DeviceContext* AsyncDeviceContextPool::Get(const platform::Place& place, const int64_t stream_id) {
+  VLOG(6) << "AsyncDeviceContextPool Get: " << place << ", " << stream_id;
+  if (!platform::is_gpu_place(place)) return nullptr;
+
+  auto place_it = device_contexts_.find(place);
+  if (place_it == device_contexts_.end()) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Place %s is not supported. Please check that your paddle compiles "
+        "with WITH_GPU, WITH_XPU or WITH_ASCEND_CL option or check that "
+        "your train process set the correct device id if you use Executor.",
+        place));
+  }
+
+  if (device_contexts_[place].count(stream_id) > 0) {
+    return device_contexts_[place][stream_id].get();
+  } else {
+    auto* dev_ctx = new CUDADeviceContext(BOOST_GET_CONST(CUDAPlace, place));
+    LOG(ERROR) << "craete dev_ctx " << dev_ctx << " with stream " << dev_ctx->stream();
+    device_contexts_[place].emplace(stream_id, std::unique_ptr<DeviceContext>(dev_ctx));
+    return dev_ctx;
+  }
+  // auto stream_map = place_it->second;
+  // auto stream_it = stream_map.find(stream_id);
+  // if (stream_it == stream_map.end()) {
+  //   // auto dev_ctx = std::unique_ptr<DeviceContext>(new CUDADeviceContext(BOOST_GET_CONST(CUDAPlace, place)));
+  //   // stream_map.emplace(stream_id, dev_ctx);
+  //   // return dev_ctx.get();
+  // } else {
+  //   // return stream_it->second.get();
+  // }
+  // return nullptr;
+}
+
+AsyncDeviceContextPool::AsyncDeviceContextPool(
+    const std::vector<platform::Place>& places) {
+  PADDLE_ENFORCE_GT(
+      places.size(), 0,
+      platform::errors::InvalidArgument("The number of platform places should "
+                                        "be larger than 0. But received %d.",
+                                        places.size()));
+  std::set<Place> set;
+  for (auto& p : places) {
+    set.insert(p);
+  }
+  for (auto& p : set) {
+    if (platform::is_gpu_place(p)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      device_contexts_.emplace(p, std::map<int64_t, std::unique_ptr<DeviceContext>>());
+#endif
+    }
+  }
+}
+
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }

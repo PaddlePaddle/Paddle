@@ -1110,7 +1110,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
+  auto* dev_ctx = HasAttr("stream_id") ? 
+            platform::AsyncDeviceContextPool::Instance().Get(
+                place, Attr<int>("stream_id")) : nullptr;
+  if (dev_ctx == nullptr) {
+    dev_ctx = pool.Get(place);
+  }
+  LOG(ERROR) << "Op RunImpl " << DebugString() << " dev_ctx " << dev_ctx;
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
