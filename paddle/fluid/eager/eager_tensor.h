@@ -168,8 +168,10 @@ class EagerTensor final {
  * @return Tensor
  */
   // TODO(chenweihang): replace Backend by new Place
-  EagerTensor copy_to(pten::Backend backend, bool blocking) {
-    SyncToTensor();
+  EagerTensor copy_to(pten::Backend backend, bool blocking) const {
+    if (Var().IsInitialized()) {
+      const_cast<EagerTensor*>(this)->SyncToTensor();
+    }
     return EagerTensor(tensor_->copy_to(backend, blocking));
   }
 
@@ -181,8 +183,12 @@ class EagerTensor final {
  * @return void
  */
   void copy_(const EagerTensor& src, const bool blocking) {
-    const_cast<EagerTensor*>(&src)->SyncToTensor();
-    SyncToTensor();
+    if (src.Var().IsInitialized()) {
+      const_cast<EagerTensor*>(&src)->SyncToTensor();
+    }
+    if (Var().IsInitialized()) {
+      SyncToTensor();
+    }
     tensor_->copy_(*(src.tensor_.get()), blocking);
   }
 
