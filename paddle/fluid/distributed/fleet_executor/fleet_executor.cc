@@ -17,6 +17,9 @@
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -42,9 +45,16 @@ void FleetExecutor::Init(
     runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
   } else {
     LOG(INFO) << "fleet executor has been set dependency on python side.";
+    // TODO(fleet_exe devs): the unused_vars should be got from run time graph
+    std::vector<std::unique_ptr<framework::OperatorBase>> ops;
+    for (const auto& op_desc : program_desc.Block(0).AllOps()) {
+      ops.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+    }
+    auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
     runtime_graph_ = std::make_shared<RuntimeGraph>();
     std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
     for (auto task_node : task_nodes) {
+      task_node->SetUnusedVars(unused_vars);
       int64_t interceptor_id = task_node->task_id();
       interceptor_id_to_task.emplace(interceptor_id, task_node);
     }
