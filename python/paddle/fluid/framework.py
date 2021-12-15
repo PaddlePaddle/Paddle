@@ -108,8 +108,10 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
     Set model sharding id and pipeline stage.
 
     Args:
-        ipu_index: set device index of subgraph
-        ipu_stage: set pipeline stage of subgraph
+        ipu_index(int): Specify which ipu the Tensor is computed on, (such as ‘0, 1’).
+            The default value is None.
+        ipu_stage(int): Specify the computation order of the sharded model(such as ‘0, 1’).
+            The sharded model will be computed from small to large. The default value is None.
 
     Examples:
 
@@ -120,7 +122,7 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
         import paddle
         paddle.enable_static()
         a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-        with paddle.fluid.ipu_shard(ipu_index=1):
+        with paddle.static.ipu_shard(ipu_index=1):
             b = a + 1
     """
     if not core.is_compiled_with_ipu():
