@@ -50,7 +50,7 @@ void Scale(const ContextT& dev_ctx,
       dev,
       eigen_out,
       eigen_x,
-      static_cast<T>(scale.to<float>()),
+      scale.to<T>(),
       static_cast<T>(bias),
       bias_after_scale);
 }
