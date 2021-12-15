@@ -447,6 +447,132 @@ class ReduceGradKernel : public framework::OpKernel<T> {
   }
 };
 
+
+
+
+template <typename DeviceContext, typename T, typename Functor,
+          bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
+class ReduceAGradKernel : public framework::OpKernel<T> {
+ public:
+  void ComputeFromInput(const Tensor* input2,
+                        const framework::ExecutionContext& context) const {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    auto dims = context.Attr<std::vector<int>>("dim");
+    auto* input0 = context.Input<Tensor>("X");
+    auto* input1 = context.Input<Tensor>("Out");
+
+    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
+    output->mutable_data<T>(context.GetPlace());
+
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
+    // NOTE: EigenTensor::From() uses tensor->data()
+    // if op has NoNeedBufferVarsInferer, the corresponding kNoNeedBufferX or
+    // kNoNeedBufferY should set true
+    // and use fake var that has same dims.
+    if (kNoNeedBufferX) {
+      input0 = output;
+    }
+    if (kNoNeedBufferY) {
+      input1 = input2;
+    }
+
+    // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
+    // not be set as Input in grad Maker, use Out_grad to replace here
+    if (!input1) input1 = input2;
+
+    if (reduce_all) {
+      auto x = EigenVector<T>::Flatten(*input0);
+      auto x_reduce = EigenVector<T>::Flatten(*input1);
+      auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
+      auto x_grad = EigenVector<T>::Flatten(*output);
+      std::array<int, 1> d_dims;
+      std::copy(dims.begin(), dims.end(), d_dims.begin());
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      auto broadcast_dim =
+          Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
+      Functor functors;
+      functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+              broadcast_dim[0], d_dims);
+    } else {
+      int rank = input0->dims().size();
+      switch (rank) {
+        case 1:
+          ReduceAGradFunctor<DeviceContext, T, 1, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 2:
+          ReduceAGradFunctor<DeviceContext, T, 2, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 3:
+          ReduceAGradFunctor<DeviceContext, T, 3, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 4:
+          ReduceAGradFunctor<DeviceContext, T, 4, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 5:
+          ReduceAGradFunctor<DeviceContext, T, 5, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        case 6:
+          ReduceAGradFunctor<DeviceContext, T, 6, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
+          break;
+        // default:
+        //   HandleLargeDimGrad<DeviceContext, T, Functor>(context, input0, input1,
+        //                                                 input2, output, dims);
+        //   break;
+      }
+    }
+  }
+
+  void Compute(const framework::ExecutionContext& context) const override {
+    int in_dtype = context.Attr<int>("in_dtype");
+    if (in_dtype >= 0) {
+      Tensor tmp_tensor;
+      auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto in_kernel_type =
+          framework::OpKernelType(pre_input->type(), context.GetPlace());
+      auto out_kernel_type = framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          context.GetPlace());
+      framework::TransDataType(in_kernel_type, out_kernel_type, *pre_input,
+                               &tmp_tensor);
+      ComputeFromInput(&tmp_tensor, context);
+
+    } else {
+      auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+      ComputeFromInput(input2, context);
+    }
+  }
+};
+
+
+
+
+
+
+
+
 class ReduceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

@@ -105,5 +105,54 @@ void ReduceGradFunctor(const DeviceContext& context,
           broad_cats_times);
 }
 
+
+
+
+
+
+
+
+template <typename DeviceContext, typename T, size_t D, typename Functor>
+void ReduceAGradFunctor(const DeviceContext& context,
+                       const framework::Tensor& input0,
+                       const framework::Tensor& input1,
+                       const framework::Tensor& input2,
+                       framework::Tensor* output,
+                       const std::vector<int>& dims) {
+  auto x = EigenTensor<T, D>::From(input0);
+  auto x_grad = EigenTensor<T, D>::From(*output);
+  auto x_rank = static_cast<int>(x.dimensions().size());
+  auto x_dims = input0.dims();
+  auto reduced_dims_v = framework::vectorize(x_dims);
+  std::vector<int> dims_ref = dims;
+  Eigen::array<int, D> broadcast_dim;
+  std::array<int, D> d_dims;
+  std::copy(dims.begin(), dims.end(), d_dims.begin());
+  for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
+
+  int broad_cats_times = 1;
+  for (size_t i = 0; i < dims_ref.size(); ++i) {
+    if (dims_ref[i] < 0) {
+      dims_ref[i] = x_rank + dims_ref[i];
+    }
+    reduced_dims_v[dims_ref[i]] = 1;
+    broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
+    broad_cats_times *= x_dims[dims_ref[i]];
+  }
+  auto reduced_dims = framework::make_ddim(reduced_dims_v);
+  auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
+  auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
+
+  auto& place = *context.eigen_device();
+
+  Functor functors;
+  functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+          broad_cats_times, d_dims);
+}
+
+
+
+
+
 }  // namespace operators
 }  // namespace paddle
