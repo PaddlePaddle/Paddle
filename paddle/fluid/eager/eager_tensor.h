@@ -152,6 +152,10 @@ class EagerTensor final {
    */
   bool initialized() const { return tensor_->initialized(); }
 
+  bool safe_initialized() const {
+    return initialized() || var_.IsInitialized();
+  }
+
   /**
    * @description: Reset the Tensor implementation
    * @param None
