@@ -42,13 +42,14 @@ class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
         def generate_input1(attrs):
             if attrs[0]['data_format'] == "NCDHW":
                 return np.random.random(
-                    [attrs[2]['batch_size'], 16, 64, 32, 64]).astype(np.float32)
+                    [attrs[2]['batch_size'], 48, 64, 32, 64]).astype(np.float32)
             else:
                 return np.random.random(
-                    [attrs[2]['batch_size'], 64, 32, 64, 16]).astype(np.float32)
+                    [attrs[2]['batch_size'], 64, 32, 64, 48]).astype(np.float32)
 
         def generate_weight1():
-            return np.random.random([16, 16, 3, 3, 3]).astype(np.float32)
+            return np.random.random(
+                [16, int(48 / groups), 3, 3, 3]).astype(np.float32)
 
         def generate_weight2():
             return np.random.random([16]).astype(np.float32)
