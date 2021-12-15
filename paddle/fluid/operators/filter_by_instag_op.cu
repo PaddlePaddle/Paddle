@@ -143,14 +143,14 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
-    Vector<int> flag(N, 0);
+    Vector<int> flag(x2_lods_size, 0);
     int* flag_data = flag.CUDAMutableData(context.GetPlace());
 
     // check configuration
     // int block_size = 512;
     int block_size = THREADS;
     dim3 block_dim(block_size);
-    dim3 grid_dim((N + block_size - 1) / block_size);
+    dim3 grid_dim((x2_lods_size + block_size - 1) / block_size);
 
     // fileter_logic
     filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
