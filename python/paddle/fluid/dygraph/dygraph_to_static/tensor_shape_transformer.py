@@ -282,6 +282,10 @@ class TensorShapeTransformer(gast.NodeTransformer):
             return False
 
         if isinstance(node, gast.Attribute):
+            # If node is `paddle.shape`, return False
+            if (node.attr == 'shape' and isinstance(node.value, gast.Name) and
+                    node.value.id == 'paddle'):
+                return False
             if node.attr != 'shape':
                 return False
             return True
