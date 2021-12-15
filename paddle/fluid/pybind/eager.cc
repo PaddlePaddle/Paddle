@@ -351,6 +351,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
         paddle::framework::proto::VarType::Type dtype =
             CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
         std::vector<int> dims =
+
             CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
         std::string act_name = "";
         PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
