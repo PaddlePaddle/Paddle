@@ -176,17 +176,17 @@ class Momentum(Optimizer):
         }
         self._use_multi_tensor = use_multi_tensor
         if self._use_multi_tensor:
-            self.param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
-            self.velocity_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
-            self.master_weight_dict = {
+            self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
+            self._velocity_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
+            self._master_weight_dict = {
                 'FP32_LODTensor': None,
                 'FP16_LODTensor': []
             }
-            self.regularization_method_dict = {
+            self._regularization_method_dict = {
                 'FP32_LODTensor': [],
                 'FP16_LODTensor': []
             }
-            self.regularization_coeff_dict = {
+            self._regularization_coeff_dict = {
                 'FP32_LODTensor': [],
                 'FP16_LODTensor': []
             }
@@ -386,33 +386,33 @@ class Momentum(Optimizer):
                 # the param's regularization has been done before, we avoid do l2decay in momentum.
                 else:
                     regularization_method = ""
-                    regularization_coeff = 0
+                    regularization_coeff = 0.0
             if param.dtype == paddle.float32:
                 # param
-                self.param_dict['FP32_LODTensor'].append(param)
+                self._param_dict['FP32_LODTensor'].append(param)
                 # velocity
-                self.velocity_dict['FP32_LODTensor'].append(velocity_acc)
+                self._velocity_dict['FP32_LODTensor'].append(velocity_acc)
                 # fp32 no master weight
                 # regularization
-                self.regularization_method_dict['FP32_LODTensor'].append(
+                self._regularization_method_dict['FP32_LODTensor'].append(
                     regularization_method)
-                self.regularization_coeff_dict['FP32_LODTensor'].append(
+                self._regularization_coeff_dict['FP32_LODTensor'].append(
                     regularization_coeff)
             elif param.dtype == paddle.float16:
                 # param
-                self.param_dict['FP16_LODTensor'].append(param)
+                self._param_dict['FP16_LODTensor'].append(param)
                 # velocity
-                self.velocity_dict['FP16_LODTensor'].append(velocity_acc)
+                self._velocity_dict['FP16_LODTensor'].append(velocity_acc)
                 # master weight
                 if self._multi_precision:
-                    self.master_weight_dict['FP16_LODTensor'].append(
+                    self._master_weight_dict['FP16_LODTensor'].append(
                         self._master_weights[param.name])
                 else:
-                    self.master_weight_dict['FP16_LODTensor'] = None
+                    self._master_weight_dict['FP16_LODTensor'] = None
                 # regularization
-                self.regularization_method_dict['FP16_LODTensor'].append(
+                self._regularization_method_dict['FP16_LODTensor'].append(
                     regularization_method)
-                self.regularization_coeff_dict['FP16_LODTensor'].append(
+                self._regularization_coeff_dict['FP16_LODTensor'].append(
                     regularization_coeff)
             else:
                 raise ValueError(
@@ -483,19 +483,57 @@ class Momentum(Optimizer):
 
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
-            if len(self.param_dict[key]) > 0:
+            if len(self._param_dict[key]) > 0:
                 if key == 'FP32_LODTensor':
                     self._multi_precision = False
-                _, _, _ = _C_ops.merged_momentum(
-                    self.param_dict[key], grad_dict[key],
-                    self.velocity_dict[key], lr_dict[key],
-                    self.master_weight_dict[key], self.param_dict[key],
-                    self.velocity_dict[key], self.master_weight_dict[key], 'mu',
-                    self._momentum, 'use_nesterov', self._use_nesterov,
-                    'regularization_method',
-                    self.regularization_method_dict[key],
-                    'regularization_coeff', self.regularization_coeff_dict[key],
-                    'multi_precision', self._multi_precision)
+
+                if framework.in_dygraph_mode():
+                    _, _, _ = _C_ops.merged_momentum(
+                        self._param_dict[key], grad_dict[key],
+                        self._velocity_dict[key], lr_dict[key],
+                        self._master_weight_dict[key], self._param_dict[key],
+                        self._velocity_dict[key], self._master_weight_dict[key],
+                        'mu', self._momentum, 'use_nesterov',
+                        self._use_nesterov, 'regularization_method',
+                        self._regularization_method_dict[key],
+                        'regularization_coeff',
+                        self._regularization_coeff_dict[key], 'multi_precision',
+                        self._multi_precision)
+
+                else:
+                    inputs = {
+                        "Param": self._param_dict[key],
+                        "Grad": grad_dict[key],
+                        "Velocity": self._velocity_dict[key],
+                        "LearningRate": lr_dict[key],
+                    }
+
+                    outputs = {
+                        "ParamOut": self._param_dict[key],
+                        "VelocityOut": self._velocity_dict[key],
+                    }
+
+                    attrs = {
+                        "mu": self._momentum,
+                        "use_nesterov": self._use_nesterov,
+                        "regularization_method":
+                        self._regularization_method_dict[key],
+                        "regularization_coeff":
+                        self._regularization_coeff_dict[key],
+                    }
+
+                    if self._multi_precision:
+                        inputs["MasterParam"] = self._master_weight_dict[key]
+                        outputs["MasterParamOut"] = self._master_weight_dict[
+                            key]
+                        attrs["multi_precision"] = self._multi_precision
+
+                    target_block.append_op(
+                        type="merged_momentum",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
         return None
 
     def _update_param_group(self, parameters):

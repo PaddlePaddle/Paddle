@@ -220,7 +220,7 @@ class Optimizer(object):
         # NOTE: Multi Tensor: Pass in all parameters and gradients to the op kernel of the Optimizer at one time for updating for dygraph mode.
         # Optimizer support list: [ paddle.optimizer.Momentum ].
         self._use_multi_tensor = None
-        self.param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
+        self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
     @framework.dygraph_only
     def state_dict(self):
@@ -677,10 +677,9 @@ class Optimizer(object):
         self._create_global_learning_rate()
 
         # NOTE: Multi Tensor support [ Momentum ] for dygraph mode
-        if self._use_multi_tensor and framework.in_dygraph_mode(
-        ) and self.__class__.__name__ in ['Momentum']:
-            if len(self.param_dict['FP32_LODTensor']) == 0 and len(
-                    self.param_dict['FP16_LODTensor']) == 0:
+        if self._use_multi_tensor and self.__class__.__name__ in ['Momentum']:
+            if len(self._param_dict['FP32_LODTensor']) == 0 and len(
+                    self._param_dict['FP16_LODTensor']) == 0:
                 if isinstance(parameters_and_grads, list):
                     self._multi_tensor_init(target_block, [
                         p[0] for p in parameters_and_grads
@@ -692,8 +691,26 @@ class Optimizer(object):
                         p[0] for p in parameters_and_grads['params']
                         if not p[0].stop_gradient
                     ])
-            self._append_optimize_multi_tensor_op(target_block,
-                                                  parameters_and_grads)
+            if framework.in_dygraph_mode():
+                self._append_optimize_multi_tensor_op(target_block,
+                                                      parameters_and_grads)
+            else:
+                self._update_param_device_map(parameters_and_grads,
+                                              target_block)
+                # NOTE: Multi Tensor requires all parameters to be in the same device and program.
+                # param_grad_list = [p_0,g_0,p_1,g_1,....]
+                param_grad_list = []
+                for param_and_grad in parameters_and_grads:
+                    if not param_and_grad[0].stop_gradient and param_and_grad[
+                            1] is not None:
+                        param_grad_list.append(param_and_grad[0])
+                        param_grad_list.append(param_and_grad[1])
+                with param_grad_list[0].block.program._optimized_guard(
+                        param_grad_list), name_scope("optimizer"):
+                    device = self._get_device_for_param(param_grad_list[0].name)
+                    with device_guard(device):
+                        self._append_optimize_multi_tensor_op(
+                            target_block, parameters_and_grads)
         else:
             if isinstance(parameters_and_grads, list):
                 self._create_accumulators(target_block, [
@@ -1058,20 +1075,13 @@ class Optimizer(object):
                 self._parameter_list[0], dict):
             for p in self._parameter_list:
                 if not p.stop_gradient:
-                    if set_to_zero:
-                        p.clear_gradient()
-                    else:
-                        param_list.append(p)
+                    param_list.append(p)
         else:
             for param_group in self._param_groups:
                 for p in param_group['params']:
                     if not p.stop_gradient:
-                        if set_to_zero:
-                            p.clear_gradient()
-                        else:
-                            param_list.append(p)
-        if not set_to_zero:
-            core.clear_gradients(param_list)
+                        param_list.append(p)
+        core.clear_gradients(param_list, set_to_zero)
 
     @imperative_base.no_grad
     def minimize(self,
