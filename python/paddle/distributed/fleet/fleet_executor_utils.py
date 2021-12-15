@@ -38,11 +38,11 @@ class CoordSys:
 
     def rank_to_coord(self, rank):
         mp_idx = rank % self.mp_degree
-        rank /= self.mp_degree
+        rank //= self.mp_degree
         sharding_idx = rank % self.sharding_degree
-        rank /= self.sharding_degree
+        rank //= self.sharding_degree
         pp_idx = rank % self.pp_degree
-        rank /= self.pp_degree
+        rank //= self.pp_degree
         dp_idx = rank % self.dp_degree
         return {
             'mp_idx': mp_idx,
