@@ -1991,8 +1991,8 @@ class Executor(object):
                     fleet_opt.get('num_micro_batches', 1),
                     fleet_opt.get('dist_strategy', {}), nrank)
                 # NOTE: have to hold these vars, otherwise will be destructed
-                self.tasks = tasks
-                self.task_id_to_rank = task_id_to_rank
+                fleet_opt['tasks'] = tasks
+                fleet_opt['task_id_to_rank'] = task_id_to_rank
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)

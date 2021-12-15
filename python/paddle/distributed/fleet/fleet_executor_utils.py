@@ -17,6 +17,10 @@ from paddle.fluid import core
 
 
 class CoordSys:
+    """
+    This class is used to mapping rank to (mp rank, sharding rank, pp rank, dp rank).
+    """
+
     def __init__(self, dist_opt):
         self.dp_degree = dist_opt.get('dp_degree', 1)
         self.pp_degree = dist_opt.get('pp_degree', 1)
@@ -24,12 +28,22 @@ class CoordSys:
         self.mp_degree = dist_opt.get('mp_degree', 1)
 
     def _invalide_coord(self, coord):
+        """
+        Test the input coord is valid or not.
+        :param coord: The coord to be tested
+        :return: False if valid, True if invalid.
+        """
         return coord['mp_idx'] < 0 or coord['mp_idx'] >= self.mp_degree or \
                coord['sharding_idx'] < 0 or coord['sharding_idx'] >= self.sharding_degree or \
                coord['pp_idx'] < 0 or coord['pp_idx'] >= self.pp_degree or \
                coord['dp_idx'] < 0 or coord['dp_idx'] >= self.dp_degree
 
     def coord_to_rank(self, coord):
+        """
+        Map the input coord to it's corresponding rank.
+        :param coord:  The coord to be converted
+        :return: The rank corresponding with the coord
+        """
         if self._invalide_coord(coord):
             return -1
         return int(coord['dp_idx'] * self.pp_degree * self.sharding_degree * self.mp_degree + \
@@ -37,6 +51,11 @@ class CoordSys:
                    coord['sharding_idx'] * self.mp_degree + coord['mp_idx'])
 
     def rank_to_coord(self, rank):
+        """
+        Map the input rank to it's corresponding coord
+        :param rank: The rank to be converted
+        :return: The coord corresponding with the rank
+        """
         mp_idx = rank % self.mp_degree
         rank //= self.mp_degree
         sharding_idx = rank % self.sharding_degree
@@ -71,6 +90,20 @@ def is_backward_op(op_role):
 
 
 def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
+    """
+    Split the program to support 1f1b pipeline scheduler.
+    This funct will split the program based on the op_role.
+    The program will be split into four parts: lr_sched, fwd, bwd, opt.
+    And will create task nodes based on the four parts of the program.
+    :param program: The origin program.
+    :param cur_rank: Current rank (can be got from fleet.worker_index()).
+    :param max_run_times: Max run times for a micro batch. AKA number of micro steps.
+    :param dist_opt: The fleet_opt configured by user.
+    :param nrank: Number of workers (can be got from fleet.worker_num()).
+    :return:
+        task_nodes (list): four task nodes for current rank
+        task_id_to_rank (dict): task nodes' ids to it's corresponding rank
+    """
     coord_sys = CoordSys(dist_opt)
     coord = coord_sys.rank_to_coord(cur_rank)
     max_slot_times = int(max_run_times - coord['pp_idx'])
@@ -87,6 +120,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
 
     lr_ops, fwd_ops, bwd_ops, opt_ops = [], [], [], []
     for op in program.block(0).ops:
+        # split the program based on the op_role
         op_role = int(op.all_attrs()[OP_ROLE_KEY])
         if is_lr_sched_op(op_role):
             lr_ops.append(op.desc)
@@ -100,6 +134,10 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
             raise "The op role: " + str(
                 op_role
             ) + " isn't one of LRSched, Forward, Backward or Optimizer."
+
+    # Create task nodes.
+    # The lr_sched and opt should be 'amplifier interceptor.
+    # The fwd and bwd should be 'compute interceptor'.
     lr_task_node = create_task_node(
         int(OpRole.Optimize.LRSched), lr_ops, 0, "Amplifier")
     lr_task_node.set_run_pre_steps(max_run_times)
@@ -112,6 +150,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     opt_task_node.set_run_at_offset(max_run_times - 1)
     task_nodes = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
 
+    # Generated the dependency based on this graph:
     # lr(1:m) -> forward -> backward -> (m:1)optimize
     #               ↑          ↓
     # lr(1:m) -> forward -> backward -> (m:1)optimize
