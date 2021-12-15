@@ -49,6 +49,9 @@ TaskNode::TaskNode(int32_t role,
       task_id_(task_id),
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {
+  if (op_descs.empty()) {
+    return;
+  }
   for (const auto& desc : op_descs) {
     ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*desc));
   }

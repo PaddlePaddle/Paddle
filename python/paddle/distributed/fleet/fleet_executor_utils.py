@@ -89,13 +89,13 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     for op in program.block(0).ops:
         op_role = int(op.all_attrs()[OP_ROLE_KEY])
         if is_lr_sched_op(op_role):
-            lr_ops.append(op)
+            lr_ops.append(op.desc)
         elif is_optimizer_op(op_role):
-            opt_ops.append(op)
+            opt_ops.append(op.desc)
         elif is_forward_op(op_role):
-            fwd_ops.append(op)
+            fwd_ops.append(op.desc)
         elif is_backward_op(op_role):
-            bwd_ops.append(op)
+            bwd_ops.append(op.desc)
         else:
             raise "The op role: " + str(
                 op_role
@@ -130,9 +130,9 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
         cur_id = cur_rank * num_of_functionality + i
         prev_id = cur_id - 1
         next_id = cur_id + 1
-        upstream_id = pp_upstream * num_of_functionality + i
-        downstream_id = pp_downstream * num_of_functionality + i
-        pp_buff_size = dist_opt['pp_degree'] - coord['pp_idx']
+        upstream_id = int(pp_upstream * num_of_functionality + i)
+        downstream_id = int(pp_downstream * num_of_functionality + i)
+        pp_buff_size = int(dist_opt['pp_degree'] - coord['pp_idx'])
         ups = []
         downs = []
         if not is_lr_sched_op(task_role):
