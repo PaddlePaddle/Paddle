@@ -1983,11 +1983,13 @@ class Executor(object):
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
         tasks = fleet_opt.get("tasks", [])
-        if len(tasks) == 0:
-            tasks, task_id_to_rank = one_f_one_b(
-                program, cur_rank,
-                fleet_opt.get('num_micro_batches', 1),
-                fleet_opt.get('dist_strategy', {}), nrank)
+        if 'python_side' in fleet_opt == 0:
+            strategy = fleet_opt['python_side']
+            if strategy == '1F1B':
+                tasks, task_id_to_rank = one_f_one_b(
+                    program, cur_rank,
+                    fleet_opt.get('num_micro_batches', 1),
+                    fleet_opt.get('dist_strategy', {}), nrank)
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)

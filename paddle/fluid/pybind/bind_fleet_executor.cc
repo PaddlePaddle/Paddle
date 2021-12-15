@@ -45,7 +45,8 @@ void BindFleetExecutor(py::module* m) {
       .def("add_downstream_task", &TaskNode::AddDownstreamTask)
       .def("set_run_pre_steps", &TaskNode::SetRunPerSteps)
       .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
-      .def("set_type", &TaskNode::SetType);
+      .def("set_type", &TaskNode::SetType)
+      .def("role", &TaskNode::role);
 }
 }  // namespace pybind
 }  // namespace paddle

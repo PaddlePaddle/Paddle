@@ -14,7 +14,6 @@
 
 from .meta_optimizers.common import OpRole, OP_ROLE_KEY
 from paddle.fluid import core
-import warnings
 
 
 class CoordSys:
@@ -53,61 +52,60 @@ class CoordSys:
         }
 
 
-def is_optimizer(op_role):
-    return True
+def is_optimizer_op(op_role):
+    return op_role == int(OpRole.Optimize)
 
 
-def is_lr_sched(op_role):
-    return True
+def is_lr_sched_op(op_role):
+    return op_role == int(OpRole.Optimize.LRSched)
 
 
-def is_forward(op_role):
-    return True
+def is_forward_op(op_role):
+    return (op_role == int(OpRole.Forward)) or \
+           (op_role == (int(OpRole.Forward) ^ int(OpRole.Loss)))
 
 
-def is_backward(op_role):
-    return True
+def is_backward_op(op_role):
+    return (op_role == int(OpRole.Backward)) or \
+           (op_role == (int(OpRole.Backward) ^ int(OpRole.Loss)))
 
 
 def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     coord_sys = CoordSys(dist_opt)
     coord = coord_sys.rank_to_coord(cur_rank)
     max_slot_times = max_run_times - coord['pp_idx']
-    lr_ops, fwd_ops, bwd_ops, opt_ops = [], [], [], []
     num_of_functionality = 4
+
+    def create_task_node(role, ops, offset, node_type):
+        node = core.TaskNode(role, ops, cur_rank,
+                             cur_rank * num_of_functionality + offset,
+                             max_run_times, max_slot_times)
+        node.set_type(node_type)
+        return node
+
+    lr_ops, fwd_ops, bwd_ops, opt_ops = [], [], [], []
     for op in program.block(0).ops:
         op_role = int(op.all_attrs()[OP_ROLE_KEY])
-        if op_role == int(OpRole.Optimize.LRSched):
+        if is_lr_sched_op(op_role):
             lr_ops.append(op)
-        elif op_role == int(OpRole.Optimize):
+        elif is_optimizer_op(op_role):
             opt_ops.append(op)
-        elif op_role == int(OpRole.Forward) or op_role == (int(OpRole.Forward) ^
-                                                           int(OpRole.Loss)):
+        elif is_forward_op(op_role):
             fwd_ops.append(op)
-        elif op_role == int(OpRole.Backward) or op_role == (int(OpRole.Backward)
-                                                            ^ int(OpRole.Loss)):
+        elif is_backward_op(op_role):
             bwd_ops.append(op)
         else:
             raise "The op role: " + str(
                 op_role
-            ) + " isn't one of LRSched, forward, backward or optimizer."
-    lr_task_node = core.TaskNode(
-        int(OpRole.Optimize.LRSched), lr_ops, cur_rank,
-        cur_rank * num_of_functionality, max_run_times, max_slot_times)
-    lr_task_node.set_type("Amplifier")
+            ) + " isn't one of LRSched, Forward, Backward or Optimizer."
+    lr_task_node = create_task_node(
+        int(OpRole.Optimize.LRSched), lr_ops, 0, "Amplifier")
     lr_task_node.set_run_pre_steps(max_run_times)
-    fwd_task_node = core.TaskNode(
-        int(OpRole.Forward), fwd_ops, cur_rank,
-        cur_rank * num_of_functionality + 1, max_run_times, max_slot_times)
-    fwd_task_node.set_type("Compute")
-    bwd_task_node = core.TaskNode(
-        int(OpRole.Backward), bwd_ops, cur_rank,
-        cur_rank * num_of_functionality + 2, max_run_times, max_slot_times)
-    bwd_task_node.set_type("Compute")
-    opt_task_node = core.TaskNode(
-        int(OpRole.Optimize), opt_ops, cur_rank,
-        cur_rank * num_of_functionality + 3, max_run_times, max_slot_times)
-    opt_task_node.set_type("Amplifier")
+    fwd_task_node = create_task_node(int(OpRole.Forward), fwd_ops, 1, "Compute")
+    bwd_task_node = create_task_node(
+        int(OpRole.Backward), bwd_ops, 2, "Compute")
+    opt_task_node = create_task_node(
+        int(OpRole.Optimize), opt_ops, 3, "Amplifier")
     opt_task_node.set_run_pre_steps(max_run_times)
     opt_task_node.set_run_at_offset(max_run_times - 1)
     task_nodes = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
