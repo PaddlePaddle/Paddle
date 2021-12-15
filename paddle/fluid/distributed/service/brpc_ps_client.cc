@@ -281,8 +281,8 @@ std::future<int32_t> BrpcPsClient::print_table_stat(uint32_t table_id) {
 }
 std::future<int32_t> BrpcPsClient::send_cmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string> &params) {
-  //size_t request_call_num = _server_channels.size();
-  size_t request_call_num = 1;
+  size_t request_call_num = _server_channels.size();
+  //size_t request_call_num = 1;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, cmd_id](void *done) {
         int ret = 0;
