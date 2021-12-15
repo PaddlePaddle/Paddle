@@ -14,14 +14,18 @@ cc_library(interpretercore_event_garbage_collector SRCS interpretercore_event_ga
 cc_library(interpretercore_util SRCS interpretercore_util.cc DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer)
 cc_library(event_manager SRCS event_manager.cc DEPS ${DEVICE_EVENT_LIBS} glog new_executor_defs)
 cc_library(stream_analyzer SRCS stream_analyzer.cc DEPS ${DEVICE_EVENT_LIBS} glog device_context new_executor_defs)
-cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_garbage_collector stream_analyzer event_manager)
+cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_event_garbage_collector stream_analyzer event_manager)
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
 
-if(WITH_GPU)
-nv_library(interpretercore_fast_garbage_collector SRCS interpretercore_fast_garbage_collector.cc DEPS interpretercore_garbage_collector)
-elseif(WITH_ROCM)
-hip_library(interpretercore_fast_garbage_collector SRCS interpretercore_fast_garbage_collector.cc DEPS interpretercore_garbage_collector)
+if(WITH_GPU OR WITH_ROCM)
+    if(WITH_GPU)
+        nv_library(interpretercore_fast_garbage_collector SRCS interpretercore_fast_garbage_collector.cc DEPS interpretercore_garbage_collector)
+    elseif(WITH_ROCM)
+        hip_library(interpretercore_fast_garbage_collector SRCS interpretercore_fast_garbage_collector.cc DEPS interpretercore_garbage_collector)
+    endif()
+    
+    target_link_libraries(interpretercore interpretercore_fast_garbage_collector)
 endif()
 
 # cc_binary(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
