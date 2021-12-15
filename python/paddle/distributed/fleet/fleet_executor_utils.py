@@ -32,9 +32,9 @@ class CoordSys:
     def coord_to_rank(self, coord):
         if self._invalide_coord(coord):
             return -1
-        return coord['dp_idx'] * self.pp_degree * self.sharding_degree * self.mp_degree + \
-               coord['pp_idx'] * self.sharding_degree * self.mp_degree + \
-               coord['sharding_idx'] * self.mp_degree + coord['mp_idx']
+        return int(coord['dp_idx'] * self.pp_degree * self.sharding_degree * self.mp_degree + \
+                   coord['pp_idx'] * self.sharding_degree * self.mp_degree + \
+                   coord['sharding_idx'] * self.mp_degree + coord['mp_idx'])
 
     def rank_to_coord(self, rank):
         mp_idx = rank % self.mp_degree
@@ -45,10 +45,10 @@ class CoordSys:
         rank //= self.pp_degree
         dp_idx = rank % self.dp_degree
         return {
-            'mp_idx': mp_idx,
-            'sharding_idx': sharding_idx,
-            'pp_idx': pp_idx,
-            'dp_idx': dp_idx
+            'mp_idx': int(mp_idx),
+            'sharding_idx': int(sharding_idx),
+            'pp_idx': int(pp_idx),
+            'dp_idx': int(dp_idx)
         }
 
 
@@ -77,7 +77,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     num_of_functionality = 4
 
     def create_task_node(role, ops, offset, node_type):
-        task_id = cur_rank * num_of_functionality + offset
+        task_id = int(cur_rank * num_of_functionality + offset)
         print("Creating task node with role: ", role, ", and with id: ",
               task_id)
         node = core.TaskNode(role, ops, cur_rank, task_id, max_run_times,
@@ -127,7 +127,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     for i in range(num_of_functionality):
         task_node = task_nodes[i]
         task_role = task_node.role()
-        cur_id = cur_rank * num_of_functionality + i
+        cur_id = int(cur_rank * num_of_functionality + i)
         prev_id = cur_id - 1
         next_id = cur_id + 1
         upstream_id = int(pp_upstream * num_of_functionality + i)
@@ -152,11 +152,13 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
             if not first_stage:
                 downs.append((upstream_id, 2))
         for up in ups:
+            print("Task: ", cur_id, "'s upstream includes: ", up[0], ".")
             task_node.add_upstream_task(up[0], up[1])
         for down in downs:
+            print("Task: ", cur_id, "'s downstream includes: ", down[0], ".")
             task_node.add_downstream_task(down[0], down[1])
     task_id_to_rank = {}
     for i in range(nrank):
         for j in range(num_of_functionality):
-            task_id_to_rank[i * num_of_functionality + j] = i
+            task_id_to_rank[int(i * num_of_functionality + j)] = i
     return task_nodes, task_id_to_rank
