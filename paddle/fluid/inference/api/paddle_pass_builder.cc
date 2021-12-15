@@ -250,6 +250,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_swish_mkldnn_fuse_pass",         //
              "conv_hard_swish_mkldnn_fuse_pass",    //
              "conv_hard_sigmoid_mkldnn_fuse_pass",  //
+             // TODO(baoachun) fix int8 accuracy
              "conv_gelu_mkldnn_fuse_pass",
              "scale_matmul_fuse_pass",                        //
              "reshape_transpose_matmul_mkldnn_fuse_pass",     //
