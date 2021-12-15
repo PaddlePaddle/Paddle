@@ -66,6 +66,8 @@ import paddle.vision  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 
+from .tensor.attribute import is_complex  # noqa: F401
+from .tensor.attribute import is_integer  # noqa: F401
 from .tensor.attribute import rank  # noqa: F401
 from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401

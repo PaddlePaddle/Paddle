@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .attribute import is_complex  # noqa: F401
+from .attribute import is_integer  # noqa: F401
 from .attribute import rank  # noqa: F401
 from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
@@ -399,6 +401,8 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'is_complex',
+           'is_integer',
            'rank',
            'shape',
            'real',
