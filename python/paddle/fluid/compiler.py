@@ -22,13 +22,19 @@ from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
-__all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = [
+    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
+    'IpuCompiledProgram'
+]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 DeviceType = core.DeviceType
+
+if core.is_compiled_with_ipu():
+    IpuStrategy = core.IpuStrategy
 
 
 def _place_obj(place):
@@ -482,18 +488,21 @@ class CompiledProgram(object):
         return place_list
 
 
-class IPUCompiledProgram(object):
+class IpuCompiledProgram(object):
     """
-    The IPUCompiledProgram is used to transform a program to a ipu-target program.
+    :api_attr: Static Graph
+
+    The IpuCompiledProgram is used to transform a program to a ipu-target program.
 
     Args:
-      program(framework.Program): This argument is the Program being executed.
-      scope: This argument is the scope which contains model parameters.
-      ipu_strategy: This argument is used to build the program with the
-          specified options, such as operators' replacement, dtype, etc.
+        program(framework.Program): This argument is the Program being executed.
+        scope: This argument is the scope which contains model parameters.
+        ipu_strategy: This argument is used to build the program with the
+            specified options, such as training or inference mode, batch size in
+	    popart, dtype, etc.
 
     Returns:
-      framework.Program
+        IpuCompiledProgram
 
     Example:
         .. code-block:: python
@@ -501,6 +510,7 @@ class IPUCompiledProgram(object):
         # required: ipu
 
         import paddle
+        import paddle.static as static
         import paddle.fluid.compiler as compiler
 
         paddle.enable_static()
@@ -508,10 +518,10 @@ class IPUCompiledProgram(object):
         a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
         b = a + 1
         main_prog = paddle.static.default_main_program()
-        ipu_strategy = compiler.get_ipu_strategy()
-        program = compiler.IPUCompiledProgram(
+        ipu_strategy = static.IpuStrategy()
+        ipu_compiled_program = compiler.IpuCompiledProgram(
             main_prog,
-            ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+            ipu_strategy=ipu_strategy)
     """
 
     def __init__(self, program, scope=None, ipu_strategy=None):
@@ -552,6 +562,39 @@ class IPUCompiledProgram(object):
         ipu_compiler_ref = self
 
     def compile(self, feed_list, fetch_list):
+        """
+        This interface is used to compile the input Program to a program
+        to run the model on the ipu.
+        
+        Args:
+            feed_list(lsit): This parameter represents the input Tensors of the model.
+
+            fetch_list(list): This parameter represents the Tensors that need to be returned
+                after the model.
+
+        Returns:
+            Program
+
+        Example:
+            .. code-block:: python
+    	
+            # required: ipu
+    
+            import paddle
+            import paddle.static as static
+            import paddle.fluid.compiler as compiler
+    
+            paddle.enable_static()
+    
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 1
+            main_prog = paddle.static.default_main_program()
+
+            ipu_strategy = static.IpuStrategy()
+            program = compiler.IpuCompiledProgram(
+                main_prog,
+                ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+        """
         # feed and fetch doesn't have corresponding popart op, so we rm both here
         global_block = self._program.global_block()
         need_to_remove_op_index = []
@@ -626,19 +669,3 @@ class IPUCompiledProgram(object):
 
     def __del__(self):
         self.clean()
-
-
-def get_ipu_strategy():
-    """
-    Create and return IpuStrategy instance. We get IpuStrategy from
-    python side, and the set by IpuBackend.set_ipu_strategy.
-    """
-    if not core.is_compiled_with_ipu():
-        raise ValueError(
-            "Can't get ipu_strategy, since PaddlePaddle is not compiled" \
-            " with IPU"
-        )
-
-    ipu_strategy = core.IpuStrategy()
-
-    return ipu_strategy

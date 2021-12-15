@@ -3536,8 +3536,34 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy);
 
-  py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
-      .def(py::init())
+  py::class_<platform::ipu::IpuStrategy> ipu_strategy(m, "IpuStrategy", R"DOC(
+	IpuStrategy allows the user to more preciously control how to
+        build the Program by setting the property.
+
+        Returns:
+            IpuStrategy: An IpuStrategy object.
+
+        Examples:
+            .. code-block:: python
+    
+            # required: ipu
+    
+            import paddle
+            import paddle.static as static
+            import paddle.fluid.compiler as compiler
+    
+            paddle.enable_static()
+    
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 1
+            main_prog = paddle.static.default_main_program()
+            ipu_strategy = static.IpuStrategy()
+            program = compiler.IPUCompiledProgram(
+                main_prog,
+                ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+)DOC");
+
+  ipu_strategy.def(py::init())
       .def_property(
           "num_ipus",
           [](const platform::ipu::IpuStrategy &self) { return self.num_ipus; },
