@@ -131,7 +131,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({1})
+      .IsIntIn({-1, 0, 1})
       .End();
 }
 

@@ -33,7 +33,7 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         ]
         # If the problem has been fixed, the judgment 
         # needs to be deleted!!!
-        if attrs[0]['data_format'] == "NHWC":
+        if attrs[1]['data_format'] == "NHWC":
             return False
 
         return True
@@ -43,9 +43,9 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
         groups = draw(st.sampled_from([1, 2, 4]))
-        paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
+        paddings = draw(st.sampled_from([[0, 3], [1, 1], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        axis = draw(st.sampled_from([1]))
+        axis = draw(st.sampled_from([-1, 0, 1]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input1():
@@ -58,15 +58,42 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         def generate_weight1():
             return np.random.random(
-                [16, int(48 / groups), 3, 3]).astype(np.float32)
+                [48, int(48 / groups), 3, 3]).astype(np.float32)
+
+        def compute_out_shape(padding_alg):
+            import paddle
+            import paddle.nn as nn
+
+            x_var = paddle.uniform(
+                (batch_size, 48, 64, 64), dtype='float32', min=-1., max=1.)
+            if padding_alg == "EXPLICIT":
+                conv = nn.Conv2D(48, 48, (3, 3), strides, paddings, dilations,
+                                 1)
+            else:
+                conv = nn.Conv2D(48, 48, (3, 3), strides, padding_alg,
+                                 dilations, 1)
+            y_var = conv(x_var)
+            return y_var.shape
 
         def generate_weight2():
-            return np.random.random([16]).astype(np.float32)
+            return np.random.random([48]).astype(np.float32)
+
+        if compute_out_shape(padding_algorithm) != (batch_size, 48, 64, 64):
+            axis = 1
 
         ops_config = [{
+            "op_type": "relu",
+            "op_inputs": {
+                "X": ["input_data1"],
+            },
+            "op_outputs": {
+                "Out": ["sigmoid_out"]
+            },
+            "op_attrs": {}
+        }, {
             "op_type": "conv2d",
             "op_inputs": {
-                "Input": ["input_data1"],
+                "Input": ["sigmoid_out"],
                 "Filter": ["conv_weight"]
             },
             "op_outputs": {
@@ -94,25 +121,44 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
             },
         }]
 
+        if axis == -1 or axis == 0 or axis == 2:
+            ops_config[2]["op_inputs"]["X"] = ["input_data1"]
+            ops_config[2]["op_inputs"]["Y"] = ["conv_output"]
+
         ops = self.generate_op_config(ops_config)
 
-        program_config = ProgramConfig(
-            ops=ops,
-            weights={
-                "conv_weight": TensorConfig(data_gen=partial(generate_weight1)),
-                "elementwise_weight":
-                TensorConfig(data_gen=partial(generate_weight2))
-            },
-            inputs={
-                "input_data1": TensorConfig(data_gen=partial(generate_input1))
-            },
-            outputs=["elementwise_output"])
+        if axis == 1:
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv_weight":
+                    TensorConfig(data_gen=partial(generate_weight1)),
+                    "elementwise_weight":
+                    TensorConfig(data_gen=partial(generate_weight2))
+                },
+                inputs={
+                    "input_data1":
+                    TensorConfig(data_gen=partial(generate_input1))
+                },
+                outputs=["elementwise_output"])
+        else:
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv_weight":
+                    TensorConfig(data_gen=partial(generate_weight1))
+                },
+                inputs={
+                    "input_data1":
+                    TensorConfig(data_gen=partial(generate_input1))
+                },
+                outputs=["elementwise_output"])
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["conv2d"], (1e-5, 1e-5)
+        yield config, ["relu", "conv2d"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
