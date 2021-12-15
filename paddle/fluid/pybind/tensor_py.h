@@ -307,8 +307,9 @@ void SetTensorFromPyArrayT(
     platform::XPUDeviceGuard guard(
         BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
-    xpu_memcpy(dst, array.data(), array.nbytes(),
-               XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, tmp_place),
+                 static_cast<void *>(dst), platform::CPUPlace(),
+                 static_cast<const void *>(array.data()), array.nbytes());
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "

@@ -259,7 +259,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
              "in format (height, width, scale)");
     AddInput("Anchors",
              "(Tensor) Bounding box anchors from anchor_generator_op "
-             "is in shape (A, H, W, 4).");
+             "is in shape (H, W, A, 4).");
     AddInput("Variances",
              "(Tensor) Bounding box variances with same shape as `Anchors`.");
 

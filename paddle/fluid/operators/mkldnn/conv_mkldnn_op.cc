@@ -510,6 +510,12 @@ class ConvMKLDNNHandlerT
                                      fuse_alpha, fuse_beta);
       post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_clip, 0.0f,
                                      1.0f);
+    } else if (fuse_activation == "gelu_tanh") {
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_tanh,
+                                     0.0f, 0.0f);
+    } else if (fuse_activation == "gelu_erf") {
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_erf,
+                                     0.0f, 0.0f);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;

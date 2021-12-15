@@ -393,7 +393,7 @@ endif (WIN32)
 
 if (WITH_INFRT)
     include(external/llvm)
-    list(APPEND third_party_deps external_llvm)
+    list(APPEND third_party_deps ${llvm_libs})
 endif()
 
 if (WITH_IPU)
