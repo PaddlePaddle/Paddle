@@ -200,7 +200,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) override {
+      const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(arg_names.size());
@@ -212,7 +212,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) override {
+      const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(arg_names.size());

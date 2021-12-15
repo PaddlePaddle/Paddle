@@ -309,7 +309,7 @@ bool InterpretercoreInferShapeContext::IsRuntime() const { return true; }
 
 // TODO(paddle-dev): Can this be template?
 std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
-    const std::string& name) {
+    const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());
@@ -318,7 +318,8 @@ std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
 }
 
 std::vector<InferShapeVarPtr>
-InterpretercoreInferShapeContext::GetOutputVarPtrs(const std::string& name) {
+InterpretercoreInferShapeContext::GetOutputVarPtrs(
+    const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());

@@ -616,6 +616,11 @@ def assign(input, output=None):
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
+        # Not support [var, var, ...] currently.
+        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+            raise TypeError(
+                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+            )
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP64:
             # Setting FP64 numpy data is not supported in Paddle, so we
