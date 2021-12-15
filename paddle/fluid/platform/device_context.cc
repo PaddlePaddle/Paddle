@@ -200,7 +200,7 @@ platform::DeviceContext* AsyncDeviceContextPool::Get(const platform::Place& plac
     return device_contexts_[place][stream_id].get();
   } else {
     auto* dev_ctx = new CUDADeviceContext(BOOST_GET_CONST(CUDAPlace, place));
-    LOG(ERROR) << "craete dev_ctx " << dev_ctx << " with stream " << dev_ctx->stream();
+    // LOG(ERROR) << "craete dev_ctx " << dev_ctx << " with stream " << dev_ctx->stream();
     device_contexts_[place].emplace(stream_id, std::unique_ptr<DeviceContext>(dev_ctx));
     return dev_ctx;
   }

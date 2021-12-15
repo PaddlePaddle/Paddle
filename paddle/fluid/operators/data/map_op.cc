@@ -42,7 +42,7 @@ class MapOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
       const platform::Place& dev_place) const override {
-    LOG(ERROR) << "MapOpKernel RunImpl enter";
+    // LOG(ERROR) << "MapOpKernel RunImpl enter";
     // Step1: get output vars and attrs
     // FIXME(dkp): multi input support
     auto input_var = scope.FindVar(Input("In"));
@@ -68,7 +68,7 @@ class MapOp : public framework::OperatorBase {
                     map_block, program_id, &scope, dev_place,
                     input_var_names, output_var_names,
                     input_queues, output_queues);
-    LOG(ERROR) << "MapOpKernel RunImpl finish";
+    // LOG(ERROR) << "MapOpKernel RunImpl finish";
   }
 };
 

@@ -1116,7 +1116,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (dev_ctx == nullptr) {
     dev_ctx = pool.Get(place);
   }
-  LOG(ERROR) << "Op RunImpl " << DebugString() << " dev_ctx " << dev_ctx;
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
