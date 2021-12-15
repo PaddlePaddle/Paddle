@@ -219,6 +219,7 @@ int32_t CommonSparseTable::initialize_value() {
 
     shard_values_.emplace_back(shard);
   }
+
   return 0;
 }
 
