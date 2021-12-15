@@ -1,4 +1,5 @@
 # Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +44,8 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load', 'not_to_static'
+    'set_verbosity', 'save', 'load', 'not_to_static', 'hang_a_pre_save_hook',
+    'delete_a_pre_save_hook', 'clear_pre_save_hooks'
 ]
 
 

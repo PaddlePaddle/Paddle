@@ -18,9 +18,9 @@ from __future__ import print_function
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.jit import hang_a_pre_save_hook
-from paddle.fluid.dygraph.jit import delete_a_pre_save_hook
-from paddle.fluid.dygraph.jit import clear_pre_save_hooks
+from paddle.jit import hang_a_pre_save_hook
+from paddle.jit import delete_a_pre_save_hook
+from paddle.jit import clear_pre_save_hooks
 from paddle.fluid.dygraph.jit import run_pre_save_hooks
 
 _counter = 0
