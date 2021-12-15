@@ -3554,14 +3554,14 @@ class LambOptimizer(AdamOptimizer):
         else:
             weight_decay = self._weight_decay
         lr = self._create_param_lr(param_and_grad)
-
+        master_weight = None
         if framework.in_dygraph_mode():
-            _C_ops.lamb(
-                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
-                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
-                weight_decay)
+            _C_ops.lamb(param_and_grad[0], param_and_grad[1], lr, moment1,
+                        moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                        param_and_grad[0], moment1, moment2, beta1_pow_acc,
+                        beta2_pow_acc, master_weight, 'beta1', self._beta1,
+                        'beta2', self._beta2, 'epsilon', self._epsilon,
+                        'weight_decay', weight_decay)
             return None
 
         # create the lamb optimize op
