@@ -90,13 +90,20 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_get_expected_place(PyObject* self, PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(egr::Controller::Instance().GetExpectedPlace());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
   EAGER_TRY
   // TODO(jiabin): Sync Tensor and Variable here when we support
   egr::EagerTensor ret =
       egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
-                     ->eagertensor,
+                     ->eager_tensor,
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2),
                  CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3),
@@ -128,10 +135,10 @@ static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   PyObject* obj = p_eager_tensor_type->tp_alloc(p_eager_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
-    new (&(v->eagertensor)) egr::EagerTensor();
-    v->eagertensor.set_impl(densetensor);
-    v->eagertensor.set_name(egr::Controller::Instance().GenerateUniqueName());
-    auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
+    new (&(v->eager_tensor)) egr::EagerTensor();
+    v->eager_tensor.set_impl(densetensor);
+    v->eager_tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    auto meta = egr::EagerUtils::autograd_meta(&(v->eager_tensor));
     meta->SetStopGradient(stop_gradient);
 
     // Created tensor will be leaf tensor
@@ -203,6 +210,9 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_expected_place",
      (PyCFunction)(void (*)(void))eager_api_set_expected_place,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_get_expected_place",
+     (PyCFunction)(void (*)(void))eager_api_get_expected_place,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grad_for_tensor",
      (PyCFunction)(void (*)(void))eager_api_retain_grad_for_tensor,
