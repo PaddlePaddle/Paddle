@@ -126,6 +126,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     last_stage = (pp_downstream == -1)
     for i in range(4):
         task_node = task_nodes[i]
+        task_role = task_node.role()
         cur_id = cur_rank * num_of_functionality + i
         prev_id = cur_id - 1
         next_id = cur_id + 1
@@ -134,18 +135,18 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
         pp_buff_size = dist_opt['pp_degree'] - coord['pp_idx']
         ups = []
         downs = []
-        if i != 0:
-            buf_size = pp_buff_size if i == 2 else 2
+        if not is_lr_sched_op(task_role):
+            buf_size = pp_buff_size if is_backward_op(task_role) else 2
             ups.append((prev_id, buf_size))
-        if i != 3:
-            buf_size = pp_buff_size if i == 1 else 2
+        if not is_optimizer_op(task_role):
+            buf_size = pp_buff_size if is_forward_op(task_role) else 2
             downs.append((next_id, buf_size))
-        if i == 1:
+        if is_forward_op(task_role):
             if not first_stage:
                 ups.append((upstream_id, 2))
             if not last_stage:
                 downs.append((downstream_id, 2))
-        elif i == 2:
+        elif is_backward_op(task_role):
             if not last_stage:
                 ups.append((downstream_id, 2))
             if not first_stage:
