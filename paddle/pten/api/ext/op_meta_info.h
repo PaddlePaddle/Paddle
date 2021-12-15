@@ -36,7 +36,7 @@ namespace framework {
 class PADDLE_API OpMetaInfoHelper;
 }  // namespace framework
 
-using Tensor = paddle::Tensor;
+using Tensor = paddle::experimental::Tensor;
 
 ///////////////// Util Marco Define ////////////////
 
