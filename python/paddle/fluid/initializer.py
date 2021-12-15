@@ -153,11 +153,11 @@ class ConstantInitializer(Initializer):
 
         if framework.in_dygraph_mode():
             out_var = framework._varbase_creator(dtype=out_dtype)
-            _C_ops.fill_constant(out_var, 'value',
-                                 float(self._value), 'force_cpu',
-                                 self._force_cpu, 'dtype',
-                                 int(out_dtype), 'str_value',
-                                 str(float(self._value)), 'shape', var.shape)
+            out_var = _C_ops.fill_constant(
+                out_var, 'value',
+                float(self._value), 'force_cpu', self._force_cpu, 'dtype',
+                int(out_dtype), 'str_value',
+                str(float(self._value)), 'shape', var.shape)
             var = _C_ops.cast(out_var, 'in_dtype', out_var.dtype, 'out_dtype',
                               var.dtype)
             return None
