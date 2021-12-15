@@ -16,14 +16,14 @@ import paddle.fluid.core as core
 import paddle.fluid.eager.eager_tensor_patch_methods as eager_tensor_patch_methods
 import paddle
 import numpy as np
-from paddle.fluid import test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
 
 
 class EagerScaleTestCase(unittest.TestCase):
     def test_scale_base(self):
-        with test_eager_guard():
+        with _test_eager_guard():
             paddle.set_device("cpu")
             arr = np.ones([4, 16, 16, 32]).astype('float32')
             tensor = paddle.to_tensor(arr, 'float32', core.CPUPlace())
@@ -36,7 +36,7 @@ class EagerScaleTestCase(unittest.TestCase):
             self.assertEqual(tensor.stop_gradient, True)
 
     def test_retain_grad_and_run_backward(self):
-        with test_eager_guard():
+        with _test_eager_guard():
             paddle.set_device("cpu")
 
             input_data = np.ones([4, 16, 16, 32]).astype('float32')
@@ -57,7 +57,7 @@ class EagerScaleTestCase(unittest.TestCase):
 
 class EagerDtypeTestCase(unittest.TestCase):
     def check_to_tesnsor_and_numpy(self, dtype, proto_dtype):
-        with test_eager_guard():
+        with _test_eager_guard():
             arr = np.random.random([4, 16, 16, 32]).astype(dtype)
             tensor = paddle.to_tensor(arr, dtype)
             self.assertEqual(tensor.dtype, proto_dtype)
@@ -199,13 +199,13 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         place_list = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             place_list.append(core.CUDAPlace(0))
-        with test_eager_guard():
+        with _test_eager_guard():
             for p in place_list:
                 self.constructor(p)
 
     def test_copy_and_copy_to(self):
         print("Test_copy_and_copy_to")
-        with test_eager_guard():
+        with _test_eager_guard():
             paddle.set_device("cpu")
             arr = np.ones([4, 16, 16, 32]).astype('float32')
             arr1 = np.zeros([4, 16]).astype('float32')
@@ -244,7 +244,7 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
 
     def test_properties(self):
         print("Test_properties")
-        with test_eager_guard():
+        with _test_eager_guard():
             paddle.set_device("cpu")
             arr = np.ones([4, 16, 16, 32]).astype('float32')
             tensor = paddle.to_tensor(arr, core.VarDesc.VarType.FP32,
@@ -268,9 +268,21 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
     def test_global_properties(self):
         print("Test_global_properties")
         self.assertFalse(core._in_eager_mode())
-        with test_eager_guard():
+        with _test_eager_guard():
             self.assertTrue(core._in_eager_mode())
         self.assertFalse(core._in_eager_mode())
+
+    def test_place_guard(self):
+        core._enable_eager_mode()
+        if core.is_compiled_with_cuda():
+            paddle.set_device("gpu:0")
+            with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
+                self.assertTrue(core.eager._get_expected_place().is_cpu_place())
+        else:
+            paddle.set_device("cpu")
+            with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
+                self.assertTrue(core.eager._get_expected_place().is_cpu_place())
+        core._disable_eager_mode()
 
 
 if __name__ == "__main__":

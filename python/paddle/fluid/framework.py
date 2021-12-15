@@ -46,8 +46,6 @@ __all__ = [
     'Program',
     'default_startup_program',
     'default_main_program',
-    'test_eager_guard',
-    'in_eager_mode',
     'program_guard',
     'name_scope',
     'cuda_places',
@@ -83,7 +81,7 @@ core._disable_eager_mode()
 
 
 @signature_safe_contextmanager
-def test_eager_guard():
+def _test_eager_guard():
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
     try:
@@ -230,7 +228,7 @@ def in_dygraph_mode():
     return _dygraph_tracer_ is not None
 
 
-def in_eager_mode():
+def _in_eager_mode():
     return core._in_eager_mode() and in_dygraph_mode()
 
 
@@ -360,7 +358,7 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
-    if in_eager_mode():
+    if _in_eager_mode():
         return core.eager._set_expected_place(place)
     else:
         _set_dygraph_tracer_expected_place(place)
@@ -6419,19 +6417,17 @@ def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
-    if in_eager_mode():
+    if _in_eager_mode():
         core.eager._set_expected_place(place)
-    else:
-        _set_dygraph_tracer_expected_place(place)
+    _set_dygraph_tracer_expected_place(place)
 
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
-        if in_eager_mode():
+        if _in_eager_mode():
             core.eager._set_expected_place(_global_expected_place_)
-        else:
-            _set_dygraph_tracer_expected_place(_global_expected_place_)
+        _set_dygraph_tracer_expected_place(_global_expected_place_)
 
 
 def switch_device(device):
