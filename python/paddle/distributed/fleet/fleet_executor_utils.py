@@ -112,8 +112,7 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
 
     def create_task_node(role, ops, offset, node_type):
         task_id = int(cur_rank * num_of_functionality + offset)
-        print("Creating task node with role: ", role, ", and with id: ",
-              task_id)
+        print("Creating task node with role:", role, "and with id:", task_id)
         node = core.TaskNode(role, ops, cur_rank, task_id, max_run_times,
                              max_slot_times)
         node.set_type(node_type)
@@ -192,10 +191,10 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
             if not first_stage:
                 downs.append((upstream_id, 2))
         for up in ups:
-            print("Task: ", cur_id, "'s upstream includes: ", up[0], ".")
+            print("Task:", cur_id, "'s upstream includes:", up[0])
             task_node.add_upstream_task(up[0], up[1])
         for down in downs:
-            print("Task: ", cur_id, "'s downstream includes: ", down[0], ".")
+            print("Task:", cur_id, "'s downstream includes:", down[0])
             task_node.add_downstream_task(down[0], down[1])
     task_id_to_rank = {}
     for i in range(nrank):
