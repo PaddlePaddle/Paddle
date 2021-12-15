@@ -55,17 +55,12 @@ struct offsets_and_ratios {
 
 template <typename T>
 std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
-    std::size_t width,
-    std::size_t height,
-    const T roi_width,
-    const T roi_height,
-    const T roi_xmin,
-    const T roi_ymin,
-    std::size_t pooled_width,
-    std::size_t roi_bin_grid_w,
-    std::size_t pooled_height,
-    std::size_t roi_bin_grid_h) {
-  const auto ind_num = pooled_width * roi_bin_grid_w * pooled_height * roi_bin_grid_h;
+    std::size_t width, std::size_t height, const T roi_width,
+    const T roi_height, const T roi_xmin, const T roi_ymin,
+    std::size_t pooled_width, std::size_t roi_bin_grid_w,
+    std::size_t pooled_height, std::size_t roi_bin_grid_h) {
+  const auto ind_num =
+      pooled_width * roi_bin_grid_w * pooled_height * roi_bin_grid_h;
 
   std::vector<offsets_and_ratios<T>> interpolation_cords;
   interpolation_cords.reserve(ind_num);
@@ -77,13 +72,16 @@ std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
     for (std::size_t px = 0; px < pooled_width; px++) {
       for (std::size_t iy = 0; iy < roi_bin_grid_h; iy++) {
         // calculate x of sample points
-        auto y = roi_ymin +
-                 bin_h * (py + static_cast<T>(iy + .5f) / static_cast<T>(roi_bin_grid_h));
+        auto y =
+            roi_ymin +
+            bin_h * (py +
+                     static_cast<T>(iy + .5f) / static_cast<T>(roi_bin_grid_h));
         for (std::size_t ix = 0; ix < roi_bin_grid_w; ix++) {
           // calculate x of sample points
-          auto x =
-              roi_xmin +
-              bin_w * (px + static_cast<T>(ix + .5f) / static_cast<T>(roi_bin_grid_w));
+          auto x = roi_xmin +
+                   bin_w * (px +
+                            static_cast<T>(ix + .5f) /
+                                static_cast<T>(roi_bin_grid_w));
 
           // deal with elements out of map
           if (y < -1.0 || y > height || x < -1.0 || x > width) {
@@ -92,7 +90,6 @@ std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
           }
           y = y <= 0 ? 0 : y;
           x = x <= 0 ? 0 : x;
-
 
           std::size_t x_low_index = static_cast<std::size_t>(x);
           std::size_t x_high_index;
