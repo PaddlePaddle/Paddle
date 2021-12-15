@@ -29,6 +29,7 @@ from types import MethodType
 import paddle
 from paddle import nn
 import paddle.distributed as dist
+from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import GradStorage
 from ...meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
@@ -58,7 +59,7 @@ class ShardingStage2(nn.Layer):
             self,
             layer,
             sharding_optimizer,
-            group,
+            group=None,
             sync_buffers=False,
             pertrain_sync_models=True,
             buffer_max_size=2**23,  #8MB
@@ -84,13 +85,12 @@ class ShardingStage2(nn.Layer):
         self._accumulate_grads = accumulate_grads
 
         # Communication related attributes
-        assert group is not None, "Distributed communication group is must be gived"
         self._group = group
-        self._world_size_scaling = 1.0 / self._group.nranks
-        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
-        self._rank = self._group.rank
+        group = _get_global_group() if group is None else group
+        self._world_size_scaling = 1.0 / group.nranks
+        assert group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
+        self._rank = group.rank
         self._global_root_rank = 0  # picking rank 0 as the reference
-        self._global_ranks = self._group.ranks
         self._default_device = device
 
         # Global statistical parameters
@@ -113,7 +113,7 @@ class ShardingStage2(nn.Layer):
         self._has_grad_storage = []
         self._grad_storage_list = []
 
-        # offload
+        # Offload
         # TODO(haohongxiang): Now it's not be supported for multi-optimizers using Offload strategy
         self._offload_optims = list(
             filter(lambda optim: optim.offload, self._sharding_optimizers))

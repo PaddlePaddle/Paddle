@@ -28,6 +28,7 @@ from paddle.fluid import core
 import paddle.distributed as dist
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import ParamStorage
 from ...meta_parallel.sharding.sharding_utils import Type, device_guard, ShardingClipGrad
@@ -63,7 +64,7 @@ class ShardingOptimizerStage2(Optimizer):
     def __init__(self,
                  params,
                  optim,
-                 group,
+                 group=None,
                  broadcast_fp16=False,
                  offload=False,
                  device="gpu",
@@ -82,8 +83,8 @@ class ShardingOptimizerStage2(Optimizer):
         # Default information
         self._optim_defaults = kw
         self._optim = optim
-        self._ori_parameter_list = copy.deepcopy(self._optim._parameter_list)
-        self._ori_param_groups = copy.deepcopy(self._optim._param_groups)
+        self._ori_parameter_list = self._optim._parameter_list
+        self._ori_param_groups = self._optim._param_groups
 
         assert hasattr(self._optim, "_master_weights"
                        ), "Must use optimizer with _master_weights attribute"
@@ -94,8 +95,8 @@ class ShardingOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        assert group is not None, "Distributed communication group is must be given"
         self.group = group
+        group = _get_global_group() if group is None else group
         self.world_size = group.nranks
         self.rank = group.rank
 
@@ -313,7 +314,7 @@ class ShardingOptimizerStage2(Optimizer):
         self._optim._parameter_list = self._ori_parameter_list
         self._optim._param_groups = self._ori_param_groups
 
-    def clear_cache(self):
+    def _clear_cache(self):
         self.__segment_params.clear()
         self._dtype_rank_params.clear()
         self._param2rank.clear()
