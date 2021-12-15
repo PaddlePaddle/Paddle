@@ -13,7 +13,9 @@ cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
 
-if (WITH_TESTING AND NOT WIN32)
+# skip win32 since wget is not installed by default on windows machine.
+# skip COVERAGE_CI since the test runs slowly because of instrumentation.
+if (WITH_TESTING AND NOT WIN32 AND NOT WITH_COVERAGE)
     add_custom_target(
         download_program
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
