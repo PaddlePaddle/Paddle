@@ -158,7 +158,7 @@ from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
-
+from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -170,6 +170,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
+from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
@@ -367,6 +368,7 @@ __all__ = [  # noqa
            'eye',
            'cumsum',
            'cumprod',
+           'logit',
            'sign',
            'is_empty',
            'equal',
@@ -570,4 +572,5 @@ __all__ = [  # noqa
            'angle',
            'fmax',
            'fmin',
+           'moveaxis',
 ]
