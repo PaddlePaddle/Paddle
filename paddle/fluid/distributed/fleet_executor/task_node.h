@@ -90,12 +90,12 @@ class TaskNode final {
   DISABLE_COPY_AND_ASSIGN(TaskNode);
   TaskNode() = default;
   // ops_ will be removed in the future
-  std::vector<OperatorBase*> ops_{};
+  std::vector<OperatorBase*> ops_;
   // task_id-->buff_size
   std::unordered_map<int64_t, int64_t> upstream_;
   std::unordered_map<int64_t, int64_t> downstream_;
   framework::ProgramDesc program_;
-  std::vector<std::unique_ptr<OperatorBase>> ops_vec_{};
+  std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
 
