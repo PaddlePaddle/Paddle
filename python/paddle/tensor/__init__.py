@@ -113,7 +113,7 @@ from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
 from .manipulation import as_complex  # noqa: F401
 from .manipulation import as_real  # noqa: F401
-
+from .manipulation import moveaxis  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -426,6 +426,7 @@ tensor_method_func  = [ #noqa
            'lerp',
            'lerp_',
            'angle',
+           'moveaxis'
 ]
 
 #this list used in math_op_patch.py for magic_method bind
