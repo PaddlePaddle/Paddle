@@ -17,12 +17,15 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
+#include "paddle/fluid/platform/device_context.h"
+
 namespace pten {
+
+using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void FillAnyLike(const CUDAContext& dev_ctx,

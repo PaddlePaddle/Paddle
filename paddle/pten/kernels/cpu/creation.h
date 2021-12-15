@@ -14,12 +14,15 @@
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
+#include "paddle/fluid/platform/device_context.h"
+
 namespace pten {
+
+using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
 void FillAnyLike(const CPUContext& dev_ctx,

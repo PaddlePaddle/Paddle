@@ -15,13 +15,13 @@
 #pragma once
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 namespace pten {
 namespace detail {
+using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename InT, typename OutT, int VecSize>
 __global__ void VecCastCUDAKernel(const InT* in, const int64_t N, OutT* out) {

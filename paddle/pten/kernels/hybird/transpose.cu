@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/hybird/math/cast_func.h"
 #include "paddle/pten/kernels/hybird/transpose.h"
@@ -22,11 +21,13 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace pten {
 
 namespace math {
+using CUDAContext = paddle::platform::CUDADeviceContext;
 
 #define REINTERPRET(T, DST_PTR, SRC_PTR) \
   T* DST_PTR = reinterpret_cast<T*>(SRC_PTR)

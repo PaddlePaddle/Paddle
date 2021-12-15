@@ -14,12 +14,16 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
+
 namespace pten {
+
+using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
 void Flatten(const CPUContext& dev_ctx,
