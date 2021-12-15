@@ -35,7 +35,6 @@ import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
 from .compiler import _prune_feed_ops
-from ..distributed.fleet.fleet_executor_utils import *
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1983,9 +1982,10 @@ class Executor(object):
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
         task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
         tasks = fleet_opt.get("tasks", [])
-        if 'python_side' in fleet_opt == 0:
+        if 'python_side' in fleet_opt:
             strategy = fleet_opt['python_side']
             if strategy == '1F1B':
+                from paddle.distributed.fleet.fleet_executor_utils import one_f_one_b
                 tasks, task_id_to_rank = one_f_one_b(
                     program, cur_rank,
                     fleet_opt.get('num_micro_batches', 1),

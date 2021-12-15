@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .meta_optimizers.common import OpRole, OP_ROLE_KEY
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY
 from paddle.fluid import core
 
 
@@ -73,7 +73,7 @@ def is_backward_op(op_role):
 def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     coord_sys = CoordSys(dist_opt)
     coord = coord_sys.rank_to_coord(cur_rank)
-    max_slot_times = max_run_times - coord['pp_idx']
+    max_slot_times = int(max_run_times - coord['pp_idx'])
     num_of_functionality = 4
 
     def create_task_node(role, ops, offset, node_type):

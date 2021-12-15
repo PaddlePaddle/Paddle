@@ -28,7 +28,7 @@ namespace pybind {
 
 using paddle::distributed::FleetExecutor;
 using paddle::distributed::TaskNode;
-using paddle::framework::OperatorBase;
+using paddle::framework::OpDesc;
 
 void BindFleetExecutor(py::module* m) {
   py::class_<FleetExecutor>(*m, "FleetExecutor")
@@ -39,7 +39,7 @@ void BindFleetExecutor(py::module* m) {
 
   py::class_<TaskNode>(*m, "TaskNode")
       .def(py::init<const framework::ProgramDesc&, int64_t, int64_t, int64_t>())
-      .def(py::init<int32_t, const std::vector<OperatorBase*>&, int64_t,
+      .def(py::init<int32_t, const std::vector<framework::OpDesc*>&, int64_t,
                     int64_t, int64_t, int64_t>())
       .def("task_id", &TaskNode::task_id)
       .def("add_upstream_task", &TaskNode::AddUpstreamTask)

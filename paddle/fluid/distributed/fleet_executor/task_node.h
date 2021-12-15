@@ -25,6 +25,7 @@
 namespace paddle {
 namespace framework {
 class OperatorBase;
+class OpDesc;
 }
 namespace distributed {
 
@@ -33,8 +34,12 @@ class TaskNode final {
   using OperatorBase = paddle::framework::OperatorBase;
   TaskNode(int32_t role, int64_t rank, int64_t task_id, int64_t max_run_times,
            int64_t max_slot_nums);
-  TaskNode(int32_t role, const std::vector<OperatorBase*>& ops, int64_t rank,
-           int64_t task_id, int64_t max_run_times, int64_t max_slot_nums);
+  TaskNode(int32_t role, const std::vector<framework::OpDesc*>& op_descs,
+           int64_t rank, int64_t task_id, int64_t max_run_times,
+           int64_t max_slot_nums);
+  TaskNode(int32_t role, const std::vector<framework::OperatorBase*>& ops,
+           int64_t rank, int64_t task_id, int64_t max_run_times,
+           int64_t max_slot_nums);
   TaskNode(const paddle::framework::ProgramDesc& program, int64_t rank,
            int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
