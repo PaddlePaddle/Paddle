@@ -1416,6 +1416,16 @@ struct OrphanedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+struct UnsupportedBfloat16 : public PatternBase {
+  UnsupportedBfloat16(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "unsupported_bfloat16") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(op);
+};
+
 struct LastBfloat16Ops : public PatternBase {
   LastBfloat16Ops(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "last_bfloat16_ops") {}

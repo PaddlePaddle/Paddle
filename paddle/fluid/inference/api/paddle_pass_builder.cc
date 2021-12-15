@@ -300,4 +300,8 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 #endif
 }
 
+IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
+  passes_.assign({"inference_process_pass"});
+}
+
 }  // namespace paddle
