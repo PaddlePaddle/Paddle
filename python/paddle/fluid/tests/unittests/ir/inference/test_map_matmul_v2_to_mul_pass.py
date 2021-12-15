@@ -89,7 +89,11 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             trans_x=transpose_X,
             trans_y=transpose_Y,
             fused_reshape_Out=[],
-            fused_transpose_Out=[], )
+            fused_transpose_Out=[],
+            fused_reshape_X=[],
+            fused_reshape_Y=[],
+            fused_transpose_X=[],
+            fused_transpose_Y=[], )
 
         ops = [matmul_op, ]
         weights = {"matmul_y": TensorConfig(shape=y_shape), }
