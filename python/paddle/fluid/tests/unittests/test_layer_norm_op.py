@@ -24,6 +24,7 @@ import paddle.nn.functional as F
 from functools import reduce
 from op_test import _set_use_system_allocator
 from paddle.fluid import Program, program_guard
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
 np.random.random(123)
 
@@ -328,9 +329,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
 
 class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
     def check_main(self, x_np, weight_np, bias_np, dtype):
-        in_dygraph_mode = paddle.in_dynamic_mode()
-        if not in_dygraph_mode:
-            paddle.disable_static()
+        paddle.disable_static()
 
         weight_np = weight_np.astype(dtype)
         bias_np = bias_np.astype(dtype)
@@ -348,8 +347,7 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
         w_g_np = w_g.numpy().astype('float16')
         b_g_np = b_g.numpy().astype('float32')
 
-        if not in_dygraph_mode:
-            paddle.enable_static()
+        paddle.enable_static()
         return y_np, x_g_np, w_g_np, b_g_np
 
     def test_main(self):
@@ -369,6 +367,15 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
         assert_equal(x_g_np_1, x_g_np_2)
         assert_equal(w_g_np_1, w_g_np_2)
         assert_equal(b_g_np_1, b_g_np_2)
+
+
+class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
+    def test_main(self):
+        self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
+        _keep_layer_norm_scale_bias_to_fp32(False)
+        self.assertFalse(_keep_layer_norm_scale_bias_to_fp32())
+        _keep_layer_norm_scale_bias_to_fp32(True)
+        self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
 
 
 if __name__ == '__main__':
