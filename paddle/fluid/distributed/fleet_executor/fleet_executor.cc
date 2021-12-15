@@ -33,10 +33,22 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
 
 FleetExecutor::~FleetExecutor() { root_scope_->DropKids(); }
 
-void FleetExecutor::Init(const framework::ProgramDesc& program_desc,
-                         framework::Scope* scope,
-                         const platform::Place& place) {
-  runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
+void FleetExecutor::Init(
+    const framework::ProgramDesc& program_desc, framework::Scope* scope,
+    const platform::Place& place, const std::vector<TaskNode*>& task_nodes,
+    const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
+  if (task_nodes.size() == 0) {
+    runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
+  } else {
+    runtime_graph_ = std::make_shared<RuntimeGraph>();
+    std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
+    for (auto task_node : task_nodes) {
+      int64_t interceptor_id = task_node->task_id();
+      interceptor_id_to_task.emplace(interceptor_id, task_node);
+    }
+    runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
+    runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
+  }
   root_scope_ = scope;
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(

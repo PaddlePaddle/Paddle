@@ -227,6 +227,11 @@ DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
+DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
+                                 const ScalarArray& shape) {
+  return InferMetaFromVecValue(x_meta, shape.GetData());
+}
+
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
                                 bool keep_dim,

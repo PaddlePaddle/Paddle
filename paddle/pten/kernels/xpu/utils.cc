@@ -76,4 +76,4 @@ void Copy(const XPUDeviceContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL_ALL_DTYPE(copy, XPU, ANY, pten::Copy) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, XPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}

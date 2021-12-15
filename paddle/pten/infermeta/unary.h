@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
@@ -49,6 +50,9 @@ DenseTensorMeta FullLikeInferMeta(const DenseTensorMeta& x_meta,
 
 DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
                                       const std::vector<int64_t>& shape);
+
+DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
+                                 const ScalarArray& shape);
 
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,

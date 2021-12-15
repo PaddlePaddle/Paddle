@@ -113,11 +113,12 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(sign, CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL(mean, CUDA, ANY, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(sign, CUDA, ALL_LAYOUT, pten::Sign, float, double, float16) {
+}
+PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL(scale,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Scale,
                    float,
                    double,
@@ -129,7 +130,7 @@ PT_REGISTER_KERNEL(scale,
                    int64_t) {}
 PT_REGISTER_KERNEL(add,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseAdd,
                    float,
                    double,
@@ -140,7 +141,7 @@ PT_REGISTER_KERNEL(add,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseSub,
                    float,
                    double,
@@ -151,7 +152,7 @@ PT_REGISTER_KERNEL(subtract,
                    complex128) {}
 PT_REGISTER_KERNEL(divide,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseDiv,
                    float,
                    double,
@@ -162,7 +163,7 @@ PT_REGISTER_KERNEL(divide,
                    complex128) {}
 PT_REGISTER_KERNEL(multiply,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::ElementwiseMul,
                    float,
                    double,
@@ -174,7 +175,7 @@ PT_REGISTER_KERNEL(multiply,
                    complex128) {}
 PT_REGISTER_KERNEL(sum,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Sum,
                    bool,
                    float,
