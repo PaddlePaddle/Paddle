@@ -25,12 +25,6 @@ limitations under the License. */
 
 namespace pten {
 
-// TODO(chenweihang): replaced by include public context header
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
-
 template <typename T, typename ContextT>
 void Scale(const ContextT& dev_ctx,
            const DenseTensor& x,
@@ -57,8 +51,6 @@ void Scale(const ContextT& dev_ctx,
 
 }  // namespace pten
 
-using float16 = paddle::platform::float16;
-
 // TODO(chenweihang): Use EigenContext to specialize the ContextT parameter,
 // and only register the backend as Eigen's kernel during registration,
 // instead of using macros to register the CPU and CUDA kernels separately
@@ -83,7 +75,7 @@ PT_REGISTER_CTX_KERNEL(scale,
                        pten::Scale,
                        float,
                        double,
-                       float16,
+                       paddle::platform::float16,
                        uint8_t,
                        int8_t,
                        int16_t,
