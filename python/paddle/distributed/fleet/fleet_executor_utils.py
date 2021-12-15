@@ -117,14 +117,14 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
     # lr(1:m) -> forward -> backward -> (m:1)optimize
     #               ↑          ↓
     # lr(1:m) -> forward -> backward -> (m:1)optimize
-    upstream_coord, downstream_coord = coord, coord
-    upstream_coord['pp_idx'] -= 1
-    downstream_coord['pp_idx'] += 1
+    upstream_coord, downstream_coord = coord.copy(), coord.copy()
+    upstream_coord['pp_idx'] = upstream_coord['pp_idx'] - 1
+    downstream_coord['pp_idx'] = downstream_coord['pp_idx'] + 1
     pp_upstream = coord_sys.coord_to_rank(upstream_coord)
     pp_downstream = coord_sys.coord_to_rank(downstream_coord)
     first_stage = (pp_upstream == -1)
     last_stage = (pp_downstream == -1)
-    for i in range(4):
+    for i in range(num_of_functionality):
         task_node = task_nodes[i]
         task_role = task_node.role()
         cur_id = cur_rank * num_of_functionality + i

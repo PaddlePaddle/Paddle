@@ -1994,7 +1994,7 @@ class Executor(object):
         place = core.Place()
         place.set_place(self.place)
         fleet_exe.init(program.desc, scope, place, tasks, task_id_to_rank)
-        return fleet_exe
+        return fleet_exe, tasks, task_id_to_rank
 
     def _run_using_fleet_executor(self,
                                   program=None,
@@ -2031,9 +2031,11 @@ class Executor(object):
             self._add_program_cache(cache_key, cached_program)
         if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
-            cached_ctx = self._prepare_fleet_executor(
+            cached_ctx, tasks, task_node_to_id = self._prepare_fleet_executor(
                 program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
             self._add_ctx_cache(cache_key, cached_ctx)
+            self.tasks = tasks
+            self.task_node_to_id = task_node_to_id
         if feed:
             self._feed_data(cached_program, feed, feed_var_name, cached_scope)
 
