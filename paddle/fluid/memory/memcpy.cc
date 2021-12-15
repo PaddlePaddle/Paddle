@@ -140,6 +140,11 @@ void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
             "Baidu Kunlun Card is properly installed.",
             ret));
   }
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetByPlace(src_place);
+  dev_ctx->Wait();
+
   ret = xpu_memcpy(dst, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
@@ -186,6 +191,11 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
             "Baidu Kunlun Card is properly installed.",
             ret));
     void* tmp = malloc(num);
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.GetByPlace(src_place);
+    dev_ctx->Wait();
+
     ret = xpu_memcpy(tmp, src, num, XPUMemcpyKind::XPU_DEVICE_TO_HOST);
     PADDLE_ENFORCE_EQ(
         ret, XPU_SUCCESS,
@@ -218,8 +228,8 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
   } else {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx = pool.GetByPlace(src_place);
-    dev_ctx->Wait();
-    int ret = xpu::memcpy_device(dev_ctx->x_context(), dst, src, num);
+    int ret = xpu::copy(dev_ctx->x_context(), static_cast<const int8_t*>(src),
+                        static_cast<int8_t*>(dst), num);
     PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS, platform::errors::External(
                                             "XPU API return wrong value[%d %s]",
                                             ret, XPUAPIErrorMsg[ret]));

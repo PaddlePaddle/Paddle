@@ -35,8 +35,8 @@ namespace paddle {
 namespace operators {
 namespace details {
 class CinnLaunchContext;
-}
-}
+}  // namespace details
+}  // namespace operators
 
 namespace framework {
 namespace paddle2cinn {

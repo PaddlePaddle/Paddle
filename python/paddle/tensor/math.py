@@ -2614,6 +2614,62 @@ def atan2(x, y, name=None):
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
 
+def logit(x, eps=None, name=None):
+    r"""
+    This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
+
+    .. math::
+ 
+        logit(x) = ln(\frac{x}{1 - x})
+
+    where
+
+    .. math::
+
+        x_i=
+            \left\{\begin{array}{rcl}
+                x_i & &\text{if } eps == Default \\
+                eps & &\text{if } x_i < eps \\
+                x_i & &\text{if } eps <= x_i <= 1-eps \\
+                1-eps & &\text{if } x_i > 1-eps
+            \end{array}\right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        eps (float, optional):  the epsilon for input clamp bound. Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
+            out1 = paddle.logit(x)
+            print(out1)
+            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
+
+    """
+
+    if eps == None:
+        eps = 0.0
+    if in_dygraph_mode():
+        return _C_ops.logit(x, 'eps', eps)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
+    helper = LayerHelper("logit", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='logit',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'eps': eps})
+    return out
+
 def lerp(x, y, weight, name=None):
     r"""
     Does a linear interpolation between x and y based on weight.
@@ -2788,6 +2844,141 @@ def deg2rad(x, name=None):
             type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
         return out
 
+def gcd(x, y, name=None):
+    """
+    Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
+    Both x and y must have integer types.
+    
+    Note:
+        gcd(0,0)=0, gcd(0, y)=|y|
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x1 = paddle.to_tensor(12)
+            x2 = paddle.to_tensor(20)
+            paddle.gcd(x1, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [4])
+
+            x3 = paddle.arange(6)
+            paddle.gcd(x3, x2)
+            # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [20, 1 , 2 , 1 , 4 , 5])
+
+            x4 = paddle.to_tensor(0)
+            paddle.gcd(x4, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [20])
+
+            paddle.gcd(x4, x4)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+            
+            x5 = paddle.to_tensor(-20)
+            paddle.gcd(x1, x5)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [4])
+    """
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    x = paddle.broadcast_to(x, shape)
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs(x)
+    y = paddle.abs(y)
+
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
+
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
+        # that, we change those zeros to ones. Their values don't matter because
+        # they won't be used.
+        y_not_equal_0 = (y != 0)
+        y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
+        x, y = (paddle.where(y_not_equal_0, y, x),
+                  paddle.where(y_not_equal_0, paddle.mod(x, y_safe),paddle.zeros(y.shape, y.dtype)))
+        return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
+
+    if in_dygraph_mode():
+        while _gcd_cond_fn(x, y):
+            x, y = _gcd_body_fn(x, y)
+
+        return x
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
+        return out
+
+def lcm(x, y, name=None):
+    """
+    Computes the element-wise least common multiple (LCM) of input |x| and |y|.
+    Both x and y must have integer types.
+    
+    Note:
+        lcm(0,0)=0, lcm(0, y)=0
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x1 = paddle.to_tensor(12)
+            x2 = paddle.to_tensor(20)
+            paddle.lcm(x1, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [60])
+
+            x3 = paddle.arange(6)
+            paddle.lcm(x3, x2)
+            # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0, 20, 20, 60, 20, 20])
+
+            x4 = paddle.to_tensor(0)
+            paddle.lcm(x4, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+
+            paddle.lcm(x4, x4)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+            
+            x5 = paddle.to_tensor(-20)
+            paddle.lcm(x1, x5)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [60])
+    """
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
+    # that, we change those zeros to ones. Their values don't matter because
+    # they won't be used.
+    d_equal_0 = paddle.equal(d, 0)
+    d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
+    out = paddle.where(d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe)
+    return out
+
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.
@@ -2949,7 +3140,6 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
 
         return out
 
-
 def angle(x, name=None):
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
@@ -2965,7 +3155,7 @@ def angle(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
 
     Examples:
         .. code-block:: python

@@ -374,13 +374,14 @@ class AllocatorFacadePrivate {
 
   const AllocatorMap& GetAllocatorMap() {
 #ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+    if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
       auto id = platform::CUDAGraph::CapturingID();
       auto iter = cuda_graph_allocator_map_.find(id);
       PADDLE_ENFORCE_NE(
           iter, cuda_graph_allocator_map_.end(),
           platform::errors::PermissionDenied(
               "No memory pool is prepared for CUDA Graph capturing."));
+      VLOG(10) << "Choose CUDA Graph memory pool to allocate memory";
       return iter->second->allocators_;
     } else {
       return allocators_;
@@ -431,7 +432,7 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
     cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk_);
+        cuda_allocator, platform::GpuMinChunkSize(), 0, allow_free_idle_chunk_);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)

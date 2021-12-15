@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 #include "paddle/pten/kernels/hybird/transpose.h"
@@ -82,10 +82,18 @@ inline void GetShuffledDim(const DDim& src_dims,
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
   size_t reduce_size = reduced_dims.size();
+  std::vector<int64_t> regular_reduced_dims = reduced_dims;
+  for (size_t i = 0; i < regular_reduced_dims.size(); i++) {
+    if (regular_reduced_dims[i] < 0) {
+      regular_reduced_dims[i] = src_size + regular_reduced_dims[i];
+    }
+  }
+
   for (size_t i = 0; i < reduce_size; ++i) {
-    dst_dims->at(src_size - reduce_size + i) = src_dims[reduced_dims[i]];
-    (*perm_axis)[src_size - reduce_size + i] = reduced_dims[i];
-    src_dims_check[reduced_dims[i]] = true;
+    dst_dims->at(src_size - reduce_size + i) =
+        src_dims[regular_reduced_dims[i]];
+    (*perm_axis)[src_size - reduce_size + i] = regular_reduced_dims[i];
+    src_dims_check[regular_reduced_dims[i]] = true;
   }
 
   size_t offset = 0;
@@ -121,9 +129,9 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  const auto alloc =
-      std::make_shared<paddle::experimental::DefaultAllocator>(input.place());
-  pten::DenseTensor shuffled_input = pten::DenseTensor(alloc, input.meta());
+  pten::DenseTensor shuffled_input = pten::DenseTensor(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(input.place()),
+      input.meta());
 
   GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
 
