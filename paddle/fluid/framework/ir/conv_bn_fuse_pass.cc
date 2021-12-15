@@ -608,7 +608,7 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .IsOptional()
       .End()
       .AddAttr("groups")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("dilations")
       .IsType<std::vector<int>>()
@@ -624,7 +624,7 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 }
 
@@ -652,7 +652,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .IsOptional()
       .End()
       .AddAttr("groups")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("dilations")
       .IsType<std::vector<int>>()
@@ -668,7 +668,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 }
 
