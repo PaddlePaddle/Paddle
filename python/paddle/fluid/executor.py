@@ -1992,8 +1992,8 @@ class Executor(object):
                 fleet_opt['tasks'] = tasks
                 fleet_opt['task_id_to_rank'] = task_id_to_rank
             else:
-                raise "Fleet_executor only supports 1F1B scheduler if you choose python side split, but received " + str(
-                    strategy) + "."
+                raise "Fleet_executor only supports 1F1B scheduler if you choose python side split, " \
+                      "but received " + str(strategy) + "."
         else:
             task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
             tasks = fleet_opt.get("tasks", [])
