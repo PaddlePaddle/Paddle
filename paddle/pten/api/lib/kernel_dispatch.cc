@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 
-#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/convert_utils.h"
 
 namespace paddle {

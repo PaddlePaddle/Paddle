@@ -21,15 +21,12 @@ limitations under the License. */
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/backend_set.h"
 #include "paddle/pten/api/lib/data_type_set.h"
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
-
-namespace pten {
-class DeviceContext;
-}  // namespace pten
 
 namespace paddle {
 namespace experimental {
