@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_NPU
+#ifdef PADDLE_WITH_ASCEND_CL
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -23,4 +23,4 @@ namespace pten {
 using NPUContext = paddle::platform::NPUDeviceContext;
 }  // namespace pten
 
-#endif  // PADDLE_WITH_NPU
+#endif  // PADDLE_WITH_ASCEND_CL
