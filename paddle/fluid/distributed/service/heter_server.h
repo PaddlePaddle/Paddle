@@ -239,7 +239,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     PADDLE_ENFORCE_NE(var, nullptr,
                       platform::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
-    auto* tensor = var->GetMutable<framework::LoDTensor>();
+    auto* tensor = var->GetMutable<framework::Tensor>();
     auto data = reinterpret_cast<const float*>(tensor->data<void>());
     auto micro_id = static_cast<int>(data[0]);
 

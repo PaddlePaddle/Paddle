@@ -28,14 +28,14 @@ template <typename DeviceContext, typename T>
 class LookupTableV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");      // int tensor
-    auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
-    auto *table_t = ctx.Input<framework::LoDTensor>("W");
+    auto *ids_t = ctx.Input<framework::Tensor>("Ids");      // int tensor
+    auto *output_t = ctx.Output<framework::Tensor>("Out");  // float tensor
+    auto *table_t = ctx.Input<framework::Tensor>("W");
 
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
-        table_var->IsType<framework::LoDTensor>(), true,
-        platform::errors::InvalidArgument("npu only accept LoDTensor"));
+        table_var->IsType<framework::Tensor>(), true,
+        platform::errors::InvalidArgument("npu only accept Tensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
     int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
@@ -91,11 +91,11 @@ template <typename T>
 class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
+    auto *ids_t = ctx.Input<framework::Tensor>("Ids");
     auto *output_grad_t =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("W"));
     table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =

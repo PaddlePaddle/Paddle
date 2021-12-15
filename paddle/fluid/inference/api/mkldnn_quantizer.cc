@@ -34,7 +34,7 @@
 namespace paddle {
 
 using platform::CPUPlace;
-using framework::LoDTensor;
+using framework::Tensor;
 using framework::Variable;
 using framework::ir::Graph;
 using ConstEigenVectorArrayMap =
@@ -46,17 +46,17 @@ using EigenMatrixArray =
 using ConstEigenMatrixArrayMap = Eigen::Map<const EigenMatrixArray>;
 using string::PrettyLogH1;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
-static LoDTensor CreateScaleTensor(int64_t channels_num = 1);
+static Tensor CreateScaleTensor(int64_t channels_num = 1);
 
 static void check_var(const Variable* var, const std::string& var_name) {
   PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
                                    "%s is not in the scope", var_name));
   PADDLE_ENFORCE_EQ(
-      var->IsType<LoDTensor>(), true,
+      var->IsType<Tensor>(), true,
       platform::errors::PreconditionNotMet("Only support lod tensor now."));
 }
 
-static void check_tensor(const LoDTensor& tensor) {
+static void check_tensor(const Tensor& tensor) {
   PADDLE_ENFORCE_GT(tensor.dims().size(), 0, platform::errors::InvalidArgument(
                                                  "Tensor dimension is empty."));
 }
@@ -72,8 +72,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
     auto* wh_var = predictor_.sub_scope_->FindVar(wh_name);
     check_var(wx_var, wx_name);
     check_var(wh_var, wh_name);
-    LoDTensor* wx_tensor = wx_var->GetMutable<LoDTensor>();
-    LoDTensor* wh_tensor = wh_var->GetMutable<LoDTensor>();
+    Tensor* wx_tensor = wx_var->GetMutable<Tensor>();
+    Tensor* wh_tensor = wh_var->GetMutable<Tensor>();
     if (gru) {
       scales_[wx_name] = GetMaxChGRUScalingFactor(*wx_tensor, *wh_tensor);
     } else {
@@ -95,7 +95,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpInputs(
       if (scales_.find(var_name) != scales_.end()) continue;
       auto* var = predictor_.sub_scope_->FindVar(var_name);
       check_var(var, var_name);
-      LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+      Tensor* var_tensor = var->GetMutable<Tensor>();
       // force unsigned type if already know it
       bool is_unsigned = false;
       CalculateSingleScale(op->Type(), input.first, var_name, *var_tensor,
@@ -112,7 +112,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
       if (scales_.find(var_name) != scales_.end()) continue;
       auto* var = predictor_.sub_scope_->FindVar(var_name);
       check_var(var, var_name);
-      LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+      Tensor* var_tensor = var->GetMutable<Tensor>();
       // force unsigned type if already know it
       bool is_unsigned = false;
       bool compute_scale = true;
@@ -173,7 +173,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
 
 bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   PrettyLogH1("--- Calculating scales for quantization");
-  std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
+  std::map<std::string, std::map<std::string, Tensor>> gathered_data;
   for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
     if (platform::HasOpINT8DataType(op)) {
       // handle inputs first to let is_unsigned be inferred for the outputs
@@ -186,15 +186,14 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
 
 void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
     const std::string& op_type_name, const std::string& conn_name,
-    const std::string& var_name, const LoDTensor& var_tensor,
-    bool is_unsigned) {
+    const std::string& var_name, const Tensor& var_tensor, bool is_unsigned) {
   auto rule = qconfig_->scale_algo(op_type_name, conn_name);
   if (rule == ScaleAlgo::NONE) return;
 
   PADDLE_ENFORCE_GT(
       var_tensor.numel(), 0,
       platform::errors::InvalidArgument(
-          "MkldnnQuantizer: LoDTensor of variable %s for quantization of op "
+          "MkldnnQuantizer: Tensor of variable %s for quantization of op "
           "%s of connection %s should not be empty.",
           var_name, op_type_name, conn_name));
 
@@ -219,8 +218,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
   }
 }
 
-static LoDTensor CreateScaleTensor(int64_t channels_num) {
-  LoDTensor scale_tensor;
+static Tensor CreateScaleTensor(int64_t channels_num) {
+  Tensor scale_tensor;
   scale_tensor.Resize({channels_num});
   scale_tensor.mutable_data<double>(CPUPlace());
   return scale_tensor;
@@ -255,9 +254,8 @@ std::vector<int> AnalysisPredictor::MkldnnQuantizer::ExpandQuantizedBins(
   return expanded_quantized_bins;
 }
 
-std::pair<bool, LoDTensor>
-AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned) const {
+std::pair<bool, Tensor> AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
+    const Tensor& var_tensor, bool is_unsigned) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
   int precision_hist_num_bins = 2048;
@@ -363,15 +361,14 @@ AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     min_kl_index = starting_iter;
   }
 
-  LoDTensor scale_tensor = CreateScaleTensor();
+  Tensor scale_tensor = CreateScaleTensor();
   scale_tensor.data<double>()[0] = 1.0 / ((min_kl_index + 0.5) * bin_width);
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
-AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned) const {
+std::pair<bool, Tensor> AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
+    const Tensor& var_tensor, bool is_unsigned) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
   float max_abs = eigen_tensor.abs().maxCoeff();
@@ -383,15 +380,15 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
 
-  LoDTensor scale_tensor = CreateScaleTensor();
+  Tensor scale_tensor = CreateScaleTensor();
   scale_tensor.data<double>()[0] = 1.0 / max_abs;
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, Tensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned, bool is_transposed) const {
+    const Tensor& var_tensor, bool is_unsigned, bool is_transposed) const {
   check_tensor(var_tensor);
 
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
@@ -418,16 +415,16 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
   }
   int output_channel_axis = is_transposed;
   int channels = dims[output_channel_axis];
-  LoDTensor scale_tensor = CreateScaleTensor(channels);
+  Tensor scale_tensor = CreateScaleTensor(channels);
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scales.data(), scales.data() + scales.size(), scale_ptr);
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, Tensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
-    const LoDTensor& wx_tensor, const LoDTensor& wh_tensor) const {
+    const Tensor& wx_tensor, const Tensor& wh_tensor) const {
   check_tensor(wx_tensor);
   check_tensor(wh_tensor);
 
@@ -473,16 +470,16 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
   scale_ur.insert(scale_ur.end(), scale_o.begin(), scale_o.end());
   transform(scale_ur.begin(), scale_ur.end(), scale_ur.begin(),
             [](float& c) { return 1 / c; });
-  LoDTensor scale_tensor = CreateScaleTensor(scale_ur.size());
+  Tensor scale_tensor = CreateScaleTensor(scale_ur.size());
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scale_ur.begin(), scale_ur.end(), scale_ptr);
   bool is_unsigned = false;
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, Tensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
-    const LoDTensor& wx_tensor, const LoDTensor& wh_tensor) const {
+    const Tensor& wx_tensor, const Tensor& wh_tensor) const {
   check_tensor(wx_tensor);
   check_tensor(wh_tensor);
 
@@ -508,7 +505,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
   }
   transform(scale.begin(), scale.end(), scale.begin(),
             [](float& c) { return 1 / c; });
-  LoDTensor scale_tensor = CreateScaleTensor(scale.size());
+  Tensor scale_tensor = CreateScaleTensor(scale.size());
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scale.begin(), scale.end(), scale_ptr);
   bool is_unsigned = false;
@@ -517,7 +514,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
 
 std::pair<std::vector<int>, float>
 AnalysisPredictor::MkldnnQuantizer::Histogram(
-    const framework::LoDTensor& var_tensor, float min_val, float max_val,
+    const framework::Tensor& var_tensor, float min_val, float max_val,
     size_t num_bins) const {
   PADDLE_ENFORCE_GT(num_bins, 0,
                     platform::errors::InvalidArgument(

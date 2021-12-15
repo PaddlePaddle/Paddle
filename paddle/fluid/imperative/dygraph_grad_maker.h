@@ -184,9 +184,9 @@ class GradOpBaseMakerBase {
 
           if (!is_input) {
             auto* tensor = grad_var_base_tmp->MutableVar()
-                               ->GetMutable<framework::LoDTensor>();
+                               ->GetMutable<framework::Tensor>();
             tensor->Resize(
-                var_base_temp->Var().Get<framework::LoDTensor>().dims());
+                var_base_temp->Var().Get<framework::Tensor>().dims());
           }
           vec_temp.emplace_back(grad_var_base_tmp);
         } else {
@@ -358,11 +358,11 @@ class TracedGradOp {
     } else if (var_wrapper->InplaceVersionSnapshot() ==
                var_wrapper->MutableVar()->CurrentInplaceVersion()) {
       return var_wrapper;
-    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+    } else if (var_wrapper->MutableVar()->IsType<framework::Tensor>() ||
                var_wrapper->MutableVar()->IsType<framework::SelectedRows>()) {
       auto* tensor =
-          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
-              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+          var_wrapper->MutableVar()->IsType<framework::Tensor>()
+              ? var_wrapper->MutableVar()->GetMutable<framework::Tensor>()
               : var_wrapper->MutableVar()
                     ->GetMutable<framework::SelectedRows>()
                     ->mutable_value();

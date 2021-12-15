@@ -69,18 +69,18 @@ static void CheckDims(const framework::DDim &tensor_dims,
 void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   if (return_merged_) {
     if (data_is_lod_tensor(tensors_[0])) {
-      const auto &tensor_dims = BOOST_GET_CONST(LoDTensor, tensors_[0]).dims();
+      const auto &tensor_dims = BOOST_GET_CONST(Tensor, tensors_[0]).dims();
       for (size_t i = 1; i < tensors_.size(); i++) {
-        const auto &ele_dims = BOOST_GET_CONST(LoDTensor, tensors_[i]).dims();
+        const auto &ele_dims = BOOST_GET_CONST(Tensor, tensors_[i]).dims();
         CheckDims(tensor_dims, ele_dims, offset_);
       }
-      std::vector<const LoDTensor *> tensors_ptr;
+      std::vector<const Tensor *> tensors_ptr;
       tensors_ptr.reserve(tensors_.size());
       for (auto &t : tensors_) {
-        tensors_ptr.emplace_back(&BOOST_GET_CONST(LoDTensor, t));
+        tensors_ptr.emplace_back(&BOOST_GET_CONST(Tensor, t));
       }
       auto &val = BOOST_GET(FetchList, *data_);
-      LoDTensor var;
+      Tensor var;
       var.MergeLoDTensor(tensors_ptr, platform::CPUPlace());
       val.at(offset_) = std::move(var);
     } else {
@@ -89,7 +89,7 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
       tmp_array.reserve(array.size());
       for (size_t i = 0; i < array.size(); ++i) {
         const auto &tensor_dims = array[i].dims();
-        std::vector<const LoDTensor *> tensors_ptr;
+        std::vector<const Tensor *> tensors_ptr;
         tensors_ptr.reserve(tensors_.size());
         tensors_ptr.push_back(&array[i]);
         for (size_t j = 1; j < tensors_.size(); ++j) {
@@ -110,8 +110,8 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   }
 }
 
-static void TransData(const framework::LoDTensor &src_item,
-                      framework::LoDTensor *dst_item) {
+static void TransData(const framework::Tensor &src_item,
+                      framework::Tensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -143,9 +143,9 @@ void FetchOpHandle::RunImpl() {
         platform::errors::NotFound(
             "Cannot find variable %s in execution scope.", var_handle->name()));
 
-    if (var->IsType<LoDTensor>()) {
-      auto &t = var->Get<framework::LoDTensor>();
-      auto &item = BOOST_GET(LoDTensor, tensors_[i]);
+    if (var->IsType<Tensor>()) {
+      auto &t = var->Get<framework::Tensor>();
+      auto &item = BOOST_GET(Tensor, tensors_[i]);
       TransData(t, &item);
     } else {
       auto &t = var->Get<framework::LoDTensorArray>();

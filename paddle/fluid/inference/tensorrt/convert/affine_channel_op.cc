@@ -48,11 +48,11 @@ class AffineChannelOpConverter : public OpConverter {
     auto idim = input_tensor->getDimensions();
 
     auto* scale_v = scope.FindVar(scale_name);
-    auto* scale_t = scale_v->GetMutable<framework::LoDTensor>();
+    auto* scale_t = scale_v->GetMutable<framework::Tensor>();
     float* scale_ptr = engine_->GetWeightCPUData(scale_name, scale_t, false);
 
     auto* bias_v = scope.FindVar(bias_name);
-    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
+    auto* bias_t = bias_v->GetMutable<framework::Tensor>();
     float* bias_ptr = engine_->GetWeightCPUData(bias_name, bias_t, false);
 
     // tensorrt scalend layer only support spatial dims >= 2,

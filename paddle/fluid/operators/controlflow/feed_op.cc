@@ -28,16 +28,15 @@ namespace paddle {
 namespace operators {
 
 // FeedVariableVisitor is to feed the variable data
-// according to data type (LoDTensor or  Strings).
+// according to data type (Tensor or  Strings).
 class FeedVariableVisitor : public boost::static_visitor<void> {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
                                const platform::Place &place)
       : out_var_(out_var), place_(place) {}
 
-  void operator()(const framework::LoDTensor &in_tensor) const {
-    framework::LoDTensor *out_tensor =
-        out_var_->GetMutable<framework::LoDTensor>();
+  void operator()(const framework::Tensor &in_tensor) const {
+    framework::Tensor *out_tensor = out_var_->GetMutable<framework::Tensor>();
     if (platform::is_same_place(in_tensor.place(), place_)) {
       out_tensor->ShareDataWith(in_tensor);
     } else {
@@ -119,11 +118,11 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) "
-             "A feeding list of LoDTensor, which may have "
+             "(vector<Tensor>) "
+             "A feeding list of Tensor, which may have "
              "different dimension and data type.");
     AddOutput("Out",
-              "(LoDTensor) The LoDTensor which is a copy "
+              "(Tensor) The Tensor which is a copy "
               "of the col-th feeding "
               "object.");
     AddAttr<int>("col", "(int) The column index of current feeding object.");

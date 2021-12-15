@@ -39,7 +39,7 @@ class WriteToArrayOp : public ArrayOp {
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
-    auto &x_tensor = x->Get<framework::LoDTensor>();
+    auto &x_tensor = x->Get<framework::Tensor>();
     size_t offset = GetOffset(scope, place);
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
@@ -67,7 +67,7 @@ class WriteToArrayOp : public ArrayOp {
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
+    AddInput("X", "(Tensor) the tensor will be written to tensor array");
     AddInput(
         "I",
         "(Tensor) the subscript index in tensor array. The number of element "
@@ -76,9 +76,9 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 WriteToArray Operator.
 
-This operator writes a LoDTensor to a LoDTensor array.
+This operator writes a Tensor to a Tensor array.
 
-Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+Assume $T$ is Tensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
 $$A[i] = T$$
@@ -155,7 +155,7 @@ class ReadFromArrayOp : public ArrayOp {
                  "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      auto *out_tensor = out->GetMutable<framework::Tensor>();
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
@@ -166,7 +166,7 @@ class ReadFromArrayOp : public ArrayOp {
       // set grad of the writed tensor to 0 when used as write_to_array_grad
       auto *fw_var = scope.FindVar(Input("X_W"));
       if (fw_var == nullptr) return;
-      auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
+      auto &fw_var_tensor = fw_var->Get<framework::Tensor>();
 
       framework::AttributeMap attrs;
       attrs["dtype"] = fw_var_tensor.type();
@@ -176,7 +176,7 @@ class ReadFromArrayOp : public ArrayOp {
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
       zero_op->Run(scope, place);
-      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      auto *out_tensor = out->GetMutable<framework::Tensor>();
       out_tensor->set_lod(fw_var_tensor.lod());
     }
   }
@@ -193,13 +193,13 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the writed tensor when used as the grad op of "
              "write_to_array. We use this to fill zero gradient.")
         .AsDispensable();
-    AddOutput("Out", "(LoDTensor) the tensor will be read from.");
+    AddOutput("Out", "(Tensor) the tensor will be read from.");
     AddComment(R"DOC(
 ReadFromArray Operator.
 
-Read a LoDTensor from a LoDTensor Array.
+Read a Tensor from a Tensor Array.
 
-Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+Assume $T$ is Tensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
 $$T = A[i]$$

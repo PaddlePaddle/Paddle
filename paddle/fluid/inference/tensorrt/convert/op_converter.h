@@ -198,7 +198,7 @@ class OpConverter {
       PADDLE_ENFORCE_EQ(
           var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
           platform::errors::InvalidArgument("TensorRT engine only takes "
-                                            "LoDTensor as input"));
+                                            "Tensor as input"));
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)

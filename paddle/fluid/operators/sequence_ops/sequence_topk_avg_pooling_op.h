@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 static constexpr int TopKPosPaddingId = -1;
 
 namespace details {
@@ -69,10 +69,10 @@ template <typename DeviceContext, typename T>
 class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* row = context.Input<LoDTensor>("ROW");
-    auto* col = context.Input<LoDTensor>("COLUMN");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* row = context.Input<Tensor>("ROW");
+    auto* col = context.Input<Tensor>("COLUMN");
+    auto* out = context.Output<Tensor>("Out");
     auto* pos = context.Output<Tensor>("pos");
 
     PADDLE_ENFORCE_EQ(
@@ -174,12 +174,12 @@ template <typename DeviceContext, typename T>
 class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* d_in = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
     auto* pos_input = context.Input<Tensor>("pos");
-    auto* row_input = context.Input<LoDTensor>("ROW");
-    auto* col_input = context.Input<LoDTensor>("COLUMN");
-    auto* forward_input = context.Input<LoDTensor>("X");
+    auto* row_input = context.Input<Tensor>("ROW");
+    auto* col_input = context.Input<Tensor>("COLUMN");
+    auto* forward_input = context.Input<Tensor>("X");
 
     int batch_size = row_input->lod()[0].size() - 1;
     auto channel_num = context.Attr<int>("channel_num");

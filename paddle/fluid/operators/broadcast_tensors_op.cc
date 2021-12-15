@@ -107,7 +107,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "A Varaible list. The shape and data type of the list elements"
              "should be consistent. Variable can be multi-dimensional Tensor"
-             "or LoDTensor, and data types can be: bool, float16, float32, "
+             "or Tensor, and data types can be: bool, float16, float32, "
              "float64, int32, "
              "int64.")
         .AsDuplicable();
@@ -117,7 +117,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddComment(
         R"DOC(This OP is used to broadcast a vector of inputs 
-                     with Tensor or LoDTensor type, following broadcast semantics.)DOC");
+                     with Tensor or Tensor type, following broadcast semantics.)DOC");
   }
 };
 

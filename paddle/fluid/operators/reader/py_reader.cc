@@ -30,7 +30,7 @@ PyReader::PyReader(
   queue_ = queue;
 }
 
-void PyReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void PyReader::ReadNext(std::vector<framework::Tensor>* out) {
   bool success;
   *out = queue_->Pop(&success);
   if (!success) out->clear();

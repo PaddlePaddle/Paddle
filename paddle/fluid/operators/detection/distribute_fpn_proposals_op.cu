@@ -33,7 +33,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -71,9 +71,9 @@ template <typename DeviceContext, typename T>
 class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* fpn_rois = ctx.Input<paddle::framework::LoDTensor>("FpnRois");
+    auto* fpn_rois = ctx.Input<paddle::framework::Tensor>("FpnRois");
 
-    auto multi_fpn_rois = ctx.MultiOutput<LoDTensor>("MultiFpnRois");
+    auto multi_fpn_rois = ctx.MultiOutput<Tensor>("MultiFpnRois");
     auto* restore_index = ctx.Output<Tensor>("RestoreIndex");
 
     const int min_level = ctx.Attr<int>("min_level");

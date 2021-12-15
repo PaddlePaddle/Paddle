@@ -24,8 +24,8 @@ template <typename DeviceContext, typename T>
 class ArgMaxXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     auto dtype = ctx.Attr<int>("dtype");
     PADDLE_ENFORCE_EQ(
         (dtype < 0 || dtype == 3), true,

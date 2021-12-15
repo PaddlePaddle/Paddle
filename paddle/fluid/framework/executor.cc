@@ -189,7 +189,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 // Return true if the block has feed operators and holder of matching info.
 static bool has_feed_operators(
     const BlockDesc& block,
-    const std::map<std::string, const LoDTensor*>& feed_targets,
+    const std::map<std::string, const Tensor*>& feed_targets,
     const std::string& feed_holder_name) {
   size_t feed_count = 0;
   for (auto* op : block.AllOps()) {
@@ -294,7 +294,7 @@ static bool has_fetch_operators(
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, const LoDTensor*>* feed_targets,
+                   std::map<std::string, const Tensor*>* feed_targets,
                    std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope, bool create_vars,
                    const std::string& feed_holder_name,
@@ -545,7 +545,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
-    std::map<std::string, const LoDTensor*>* feed_targets,
+    std::map<std::string, const Tensor*>* feed_targets,
     std::map<std::string, FetchType*>* fetch_targets, bool create_local_scope,
     bool create_vars, const std::string& feed_holder_name,
     const std::string& fetch_holder_name) {

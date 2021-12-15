@@ -60,13 +60,13 @@ class EditDistanceOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           hyp_dims.size() == 2 && hyp_dims[1] == 1, true,
           platform::errors::InvalidArgument(
-              "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+              "Input(Hyps) must be a 2-D Tensor with the 2nd dimension "
               "equal to 1. But received: input rank %u, input shape [%s].",
               hyp_dims.size(), hyp_dims));
       PADDLE_ENFORCE_EQ(
           ref_dims.size() == 2 && ref_dims[1] == 1, true,
           platform::errors::InvalidArgument(
-              "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+              "Input(Refs) must be a 2-D Tensor with the 2nd dimension "
               "equal to 1. But received: input rank %u, input shape [%s].",
               ref_dims.size(), ref_dims));
     }
@@ -87,11 +87,11 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Hyps",
-             "2-D Tensor<int64_t>, or 2-D LoDTensor<int64_t> with last "
+             "2-D Tensor<int64_t>, or 2-D Tensor<int64_t> with last "
              "dimension being 1. "
              "The indices for hypothesis strings.");
     AddInput("Refs",
-             "2-D Tensor<int64_t>, or 2-D LoDTensor<int64_t> with last "
+             "2-D Tensor<int64_t>, or 2-D Tensor<int64_t> with last "
              "dimension being 1. "
              "The indices for reference strings.");
     AddInput("HypsLength",
@@ -127,7 +127,7 @@ insertion:
 
 So the edit distance between A and B is 3.
 
-Input(Hyps) is a 2-D Tensor or a 2-D LoDTensor consisting of all the hypothesis strings.
+Input(Hyps) is a 2-D Tensor or a 2-D Tensor consisting of all the hypothesis strings.
 And the `batch_size` reference strings are arranged in order in the same way in the
 Input(Refs).
 

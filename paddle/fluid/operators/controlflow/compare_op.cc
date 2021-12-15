@@ -92,9 +92,9 @@ class CompareOp : public framework::OperatorWithKernel {
     if (force_cpu) {
       kt.place_ = platform::CPUPlace();
     } else {
-      if (ctx.Input<framework::LoDTensor>("X")->place().type() !=
+      if (ctx.Input<framework::Tensor>("X")->place().type() !=
           typeid(platform::CUDAPinnedPlace)) {
-        kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+        kt.place_ = ctx.Input<framework::Tensor>("X")->place();
       } else {
         kt.place_ = ctx.GetPlace();
       }

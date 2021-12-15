@@ -34,7 +34,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 #ifdef PADDLE_WITH_XPU
@@ -70,8 +70,8 @@ static DDim GetDimsDebug(const ScopeBase& scope, const std::string& name,
     return DDim({-1});
   }
 
-  if (var->IsType<LoDTensor>()) {
-    const LoDTensor& tensor = var->Get<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    const Tensor& tensor = var->Get<Tensor>();
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
@@ -98,8 +98,8 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
     return "";
   }
 
-  if (var->IsType<LoDTensor>()) {
-    const LoDTensor& tensor = var->Get<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    const Tensor& tensor = var->Get<Tensor>();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
@@ -129,8 +129,8 @@ static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
     return sstream.str();
   };
 
-  if (var->IsType<LoDTensor>()) {
-    const LoDTensor& tensor = var->Get<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    const Tensor& tensor = var->Get<Tensor>();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
@@ -168,8 +168,8 @@ static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
     return default_lod;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    const LoDTensor& tensor = var->Get<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    const Tensor& tensor = var->Get<Tensor>();
     return tensor.lod();
   } else {
     return default_lod;
@@ -481,25 +481,25 @@ void OperatorBase::GenerateTemporaryNames() {
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
-  if (var.IsType<LoDTensor>()) {
-    return static_cast<const Tensor*>(&(var.Get<LoDTensor>()));
+  if (var.IsType<Tensor>()) {
+    return static_cast<const Tensor*>(&(var.Get<Tensor>()));
   } else if (var.IsType<SelectedRows>()) {
     return &(var.Get<SelectedRows>().value());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        "Variable type is %s, expect Tensor or SelectedRows.",
         ToTypeName(var.Type())));
   }
 }
 
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
+  if (var->IsType<Tensor>()) {
+    return var->GetMutable<Tensor>();
   } else if (var->IsType<SelectedRows>()) {
     return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        "Variable type is %s, expect Tensor or SelectedRows.",
         ToTypeName(var->Type())));
   }
 }
@@ -542,7 +542,7 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
-  return Input<LoDTensor>(name);
+  return Input<Tensor>(name);
 }
 
 template <>
@@ -559,19 +559,19 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
                  [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true,
+                   PADDLE_ENFORCE_EQ(var->IsType<Tensor>(), true,
                                      platform::errors::InvalidArgument(
-                                         "Input variable should be LoDTensor, "
+                                         "Input variable should be Tensor, "
                                          "but the received type is %s.",
                                          ToTypeName(var->Type())));
-                   return &(var->Get<LoDTensor>());
+                   return &(var->Get<Tensor>());
                  });
   return res;
 }
 
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
-  return Output<LoDTensor>(name);
+  return Output<Tensor>(name);
 }
 
 template <>
@@ -586,8 +586,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
                  [&](Variable* var) -> Tensor* {
-                   return var == nullptr ? nullptr
-                                         : var->GetMutable<LoDTensor>();
+                   return var == nullptr ? nullptr : var->GetMutable<Tensor>();
                  });
   return res;
 }
@@ -743,13 +742,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
-    } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (in_var->IsType<framework::Tensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::Tensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::Tensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Currently, the input type of ShareDim only can be LoDTensor "
+          "Currently, the input type of ShareDim only can be Tensor "
           "or SelectedRows."));
     }
   }
@@ -783,14 +782,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
       }
 
       Variable* in_var = in_var_list[i];
-      if (!in_var->IsType<LoDTensor>()) return;
+      if (!in_var->IsType<Tensor>()) return;
       Variable* out_var = out_var_list[i];
-      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+      PADDLE_ENFORCE_EQ(out_var->IsType<Tensor>(), true,
                         platform::errors::PreconditionNotMet(
-                            "The %d-th output of Output(%s) must be LoDTensor.",
-                            i, out_var_names[i]));
-      auto& in_tensor = in_var->Get<LoDTensor>();
-      auto* out_tensor = out_var->GetMutable<LoDTensor>();
+                            "The %d-th output of Output(%s) must be Tensor.", i,
+                            out_var_names[i]));
+      auto& in_tensor = in_var->Get<Tensor>();
+      auto* out_tensor = out_var->GetMutable<Tensor>();
       out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
       if (in_tensor.layout() != DataLayout::kMKLDNN)
@@ -821,14 +820,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
                           out_it->second.size(), j));
 
     Variable* in_var = in_it->second.at(i);
-    if (!in_var->IsType<LoDTensor>()) return;
+    if (!in_var->IsType<Tensor>()) return;
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE_EQ(
-        out_var->IsType<LoDTensor>(), true,
+        out_var->IsType<Tensor>(), true,
         platform::errors::InvalidArgument(
-            "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+            "The %zu-th output of Output(%s) must be Tensor.", j, out));
+    auto& in_tensor = in_var->Get<Tensor>();
+    auto* out_tensor = out_var->GetMutable<Tensor>();
     out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
@@ -933,13 +932,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
   DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input variable is nullptr."));
-    if (var->IsType<LoDTensor>()) {
-      return var->Get<LoDTensor>().dims();
+    if (var->IsType<Tensor>()) {
+      return var->Get<Tensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only LoDTensor or SelectedRows support 'GetDim', but input "
+          "Only Tensor or SelectedRows support 'GetDim', but input "
           "Variable's type is %s.",
           ToTypeName(var->Type())));
     }
@@ -959,13 +958,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   void SetDim(Variable* var, const DDim& dim) {
-    if (var->IsType<LoDTensor>()) {
-      var->GetMutable<LoDTensor>()->Resize(dim);
+    if (var->IsType<Tensor>()) {
+      var->GetMutable<Tensor>()->Resize(dim);
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Variable type error, expect LoDTensor or SelectedRows, but received "
+          "Variable type error, expect Tensor or SelectedRows, but received "
           "(%s).",
           ToTypeName(var->Type())));
     }
@@ -1487,7 +1486,7 @@ Scope* OperatorWithKernel::PrepareData(
         // In such situation corressponding resized Var
         // has to be created and registered
         if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
-            (var->IsType<LoDTensor>() == true) &&
+            (var->IsType<Tensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
             (paddle::platform::MKLDNNDeviceContext::tls()
                  .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
@@ -1497,7 +1496,7 @@ Scope* OperatorWithKernel::PrepareData(
           }
           auto* trans_var = new_scope->Var(var_name);
           input_vars[i] = trans_var;
-          auto out = trans_var->GetMutable<LoDTensor>();
+          auto out = trans_var->GetMutable<Tensor>();
           out->Resize(tensor_in->dims());
           platform::MatchShapeToLayout(out, tensor_in->layout(),
                                        DataLayout::kNHWC);
@@ -1620,8 +1619,8 @@ void OperatorWithKernel::ParseInputDataType(
       const Tensor* t = nullptr;
       if (var->IsType<Tensor>()) {
         t = &var->Get<Tensor>();
-      } else if (var->IsType<LoDTensor>()) {
-        t = &var->Get<LoDTensor>();
+      } else if (var->IsType<Tensor>()) {
+        t = &var->Get<Tensor>();
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
@@ -1680,7 +1679,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
       data_type, dafault_data_type,
       platform::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
-          "data type is empty or not LoDTensor or SelectedRows or "
+          "data type is empty or not Tensor or SelectedRows or "
           "LoDTensorArray.",
           name, Type()));
   return data_type;
@@ -1702,8 +1701,8 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
   Tensor* t = nullptr;
   if (var->IsType<Tensor>()) {
     t = var->GetMutable<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
   } else if (var->IsType<SelectedRows>()) {
     t = var->GetMutable<SelectedRows>()->mutable_value();
   } else {

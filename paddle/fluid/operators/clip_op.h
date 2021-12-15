@@ -98,9 +98,9 @@ class ClipKernel : public framework::OpKernel<T> {
                           min, max));
 
     auto* x_var = context.InputVar("X");
-    if (x_var->IsType<framework::LoDTensor>()) {
-      auto* x = context.Input<framework::LoDTensor>("X");
-      auto* out = context.Output<framework::LoDTensor>("Out");
+    if (x_var->IsType<framework::Tensor>()) {
+      auto* x = context.Input<framework::Tensor>("X");
+      auto* out = context.Output<framework::Tensor>("Out");
       T* out_data = out->mutable_data<T>(context.GetPlace());
       const T* x_data = x->data<T>();
       int64_t numel = x->numel();
@@ -134,7 +134,7 @@ class ClipKernel : public framework::OpKernel<T> {
             out_data + numel, out_data, ClipFunctor<T>(min, max));
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "ClipOp only supports LoDTensor and SelectedRows."));
+          "ClipOp only supports Tensor and SelectedRows."));
     }
   }
 };
@@ -170,11 +170,10 @@ class ClipGradKernel : public framework::OpKernel<T> {
     min = static_cast<T>(min);
 
     auto* d_out =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* d_x =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
     if (d_x != nullptr) {
-      auto* x = context.Input<framework::LoDTensor>("X");
+      auto* x = context.Input<framework::Tensor>("X");
       int64_t numel = d_out->numel();
       auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
       const T* d_out_data = d_out->data<T>();

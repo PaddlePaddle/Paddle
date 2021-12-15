@@ -23,7 +23,7 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
-using framework::LoDTensor;
+using framework::Tensor;
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::concat;
@@ -163,9 +163,9 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
 
-    const auto x = ctx.MultiInput<LoDTensor>("X");
+    const auto x = ctx.MultiInput<Tensor>("X");
     const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto dx = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+    auto dx = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
 
     for (size_t i = 0; i < dx.size(); ++i) {
       if (dx[i] != nullptr) {

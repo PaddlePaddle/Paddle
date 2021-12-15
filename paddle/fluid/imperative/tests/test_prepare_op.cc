@@ -75,7 +75,7 @@ TEST(test_prepare_op, test_prepare_op) {
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
   platform::CPUPlace place;
-  vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
+  vin->MutableVar()->GetMutable<framework::Tensor>()->mutable_data<float>(
       place);
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -120,7 +120,7 @@ TEST(test_prepare_op, test_prepare_data) {
   std::vector<int64_t> dims = {2, 5};
 
   // prepare an cpu only input
-  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::Tensor>();
   vin_tensor->Resize(framework::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
@@ -151,7 +151,7 @@ TEST(test_prepare_op, test_prepare_data) {
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<framework::LoDTensor>().place(), gpu_place));
+          vb->Var().Get<framework::Tensor>().place(), gpu_place));
     }
   }
 }
@@ -169,7 +169,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   std::vector<int64_t> dims = {2, 5};
 
   // prepare an cpu only input
-  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::Tensor>();
   vin_tensor->Resize(framework::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
@@ -200,7 +200,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<framework::LoDTensor>().place(), cpu_place));
+          vb->Var().Get<framework::Tensor>().place(), cpu_place));
     }
   }
 }

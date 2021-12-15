@@ -32,7 +32,7 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                                   comment.type));
     AddOutput("Out", string::Sprintf("n-dim bool Variable"));
     AddComment(string::Sprintf(R"DOC(%s Operator
-It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim LoDTensor or Tensor.
+It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim Tensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
                                comment.type, comment.equation));
@@ -46,12 +46,12 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     OpComment comment;
     AddInput("X",
              string::Sprintf("Operand of %s operator. Must be "
-                             "a LoDTensor or Tensor of type being one of bool, "
+                             "a Tensor or Tensor of type being one of bool, "
                              "int8, int16, int32, int64, float32, float64.",
                              comment.type));
-    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor."));
+    AddOutput("Out", string::Sprintf("n-dim bool Tensor or Tensor."));
     AddComment(string::Sprintf(R"DOC(%s Operator
-It operates element-wise on X, and returns the Out. X and Out are N-dim LoDTensor or Tensor.
+It operates element-wise on X, and returns the Out. X and Out are N-dim Tensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
                                comment.type, comment.equation));
@@ -67,7 +67,7 @@ class LogicalOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // LogicalOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<framework::Tensor>("X")->place();
     return kt;
   }
 };

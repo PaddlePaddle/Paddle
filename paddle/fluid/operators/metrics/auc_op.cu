@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos, int64_t *neg,
                                         const int bucket_length,

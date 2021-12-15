@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
@@ -82,7 +82,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
         BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
-    const auto& x_lod = x_var->Get<LoDTensor>().lod();
+    const auto& x_lod = x_var->Get<Tensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(), false,
                       platform::errors::InvalidArgument(
                           "The Input(X) should hold LoD information, but "
@@ -103,7 +103,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 
     framework::Variable* y_var =
         BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
-    const auto& y_lod = y_var->Get<LoDTensor>().lod();
+    const auto& y_lod = y_var->Get<Tensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(), false,
                       platform::errors::InvalidArgument(
                           "The Input(Y) should hold LoD information, but "
@@ -189,18 +189,18 @@ void MatchMatrixTensorOpGrad::InferShape(
 
 void MatchMatrixTensorOpMaker::Make() {
   AddInput("X",
-           "X (LoDTensor, default LoDTensor<float>) Input variable which "
+           "X (Tensor, default Tensor<float>) Input variable which "
            "should contain lod information.");
   AddInput("Y",
-           "Y (LoDTensor, default LoDTensor<float>) Input variable which "
+           "Y (Tensor, default Tensor<float>) Input variable which "
            "should contain lod information.");
   AddInput("W", "W (Tensor), The weight of X and Y.");
   AddAttr<int>("dim_t", "the dim of W").SetDefault(1);
   AddOutput("Out",
-            "(LoDTensor, default LoDTensor<float>) Output variable which "
+            "(Tensor, default Tensor<float>) Output variable which "
             "is X * W * Y");
   AddOutput("Tmp",
-            "(LoDTensor, default LoDTensor<float>) tmp variable which is "
+            "(Tensor, default Tensor<float>) tmp variable which is "
             "used for X * W");
   AddComment(R"DOC(
       Match Matrix Tensor Operator
@@ -218,11 +218,11 @@ template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* y = ctx.Input<LoDTensor>("Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* w = ctx.Input<Tensor>("W");
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* tmp = ctx.Output<LoDTensor>("Tmp");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto* tmp = ctx.Output<Tensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
     int64_t dim_in = x->dims()[1];
@@ -280,10 +280,10 @@ template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* y = ctx.Input<LoDTensor>("Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* w = ctx.Input<Tensor>("W");
-    auto* tmp = ctx.Input<LoDTensor>("Tmp");
+    auto* tmp = ctx.Input<Tensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
     int64_t dim_in = x->dims()[1];
@@ -304,9 +304,9 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* bottom_r_data = y->data<T>();
     auto* bottom_l_trans_data = tmp->data<T>();
 
-    auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* d_y = ctx.Output<LoDTensor>(framework::GradVarName("Y"));
+    auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_y = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
     Tensor tmp_grad;
     tmp_grad.Resize(tmp->dims());

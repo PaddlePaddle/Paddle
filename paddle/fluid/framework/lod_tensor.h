@@ -29,7 +29,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 namespace platform {
 class DeviceContext;
@@ -40,6 +40,8 @@ namespace paddle {
 namespace framework {
 
 using LoD = std::vector<Vector<size_t>>;
+
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
 
 /*
  * LoD is short for Level of Details.
@@ -56,9 +58,6 @@ using LoD = std::vector<Vector<size_t>>;
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 std::string LoDToString(const LoD& lod);
 
@@ -104,40 +103,24 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
 bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
 
 /*
- * LoDTensor (Level of details Tensor)
- * see https://en.wikipedia.org/wiki/Level_of_details for reference.
- */
-class LoDTensor : public Tensor {
- public:
-  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
-                      platform::Place place) {
-    std::vector<const Tensor*> tmp;
-    for (const LoDTensor* lod_tensor : lod_tensors) {
-      tmp.push_back(lod_tensor);
-    }
-    Tensor::MergeLoDTensor(tmp, place);
-  }
-};
-
-/*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
- * LoDTensor is
+ * Tensor is
  *  - LoD: [0, 2]
  *  - tensor: [a0, a1]
  * a `lod` is
  *  - LoD: [0 3 5]
- * returns a new LoDTensor
+ * returns a new Tensor
  *  - [a0 a0 a0 a1 a1]
  */
 template <typename T>
-LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
-                    const platform::Place& place) {
+Tensor LodExpand(const Tensor& source, const LoD& lod, size_t level,
+                 const platform::Place& place) {
   LoD abs_lod = ToAbsOffset(lod);
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];
 
   // new tensor
-  LoDTensor tensor;
+  Tensor tensor;
   tensor.set_lod(lod);
   auto dims = source.dims();
   dims[0] = lod_level.back();
@@ -147,7 +130,7 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   PADDLE_ENFORCE_EQ(
       num_instances, lod_level.size() - 1,
       platform::errors::InvalidArgument(
-          "The input LoDTensor instance number should be equal to the LoD "
+          "The input Tensor instance number should be equal to the LoD "
           "level size minus 1."
           "The input instance number is %zu, LoD level size is %zu.",
           num_instances, lod_level.size()));
@@ -164,22 +147,22 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 void AppendLoD(LoD* lod, const LoD& lod_length);
 
 /*
- * Serialize/Desiralize LoDTensor to std::ostream
+ * Serialize/Desiralize Tensor to std::ostream
  * You can pass ofstream or ostringstream to serilize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
-void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
+void SerializeToStream(std::ostream& os, const Tensor& tensor,
                        const platform::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
+void DeserializeFromStream(std::istream& is, Tensor* tensor,
                            const platform::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
+void DeserializeFromStream(std::istream& is, Tensor* tensor,
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
 
 /*
  * Convert between length-based LoD and offset-based LoD.
- * The implementation of LoDTensor class use offset-based LoD.
+ * The implementation of Tensor class use offset-based LoD.
  * However, we want to expose the more user-friendly length-based
  * LoD to the Python side instead.
  *
@@ -191,9 +174,9 @@ LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 
 LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 
-void SerializeToStream(std::ostream& os, const LoDTensor& tensor);
+void SerializeToStream(std::ostream& os, const Tensor& tensor);
 
-void DeserializeFromStream(std::istream& os, LoDTensor* tensor);
+void DeserializeFromStream(std::istream& os, Tensor* tensor);
 
 }  // namespace framework
 }  // namespace paddle

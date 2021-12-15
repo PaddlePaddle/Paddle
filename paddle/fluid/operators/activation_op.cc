@@ -406,11 +406,10 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "A LoDTensor or Tensor representing preactivation values. Must be "
+             "A Tensor or Tensor representing preactivation values. Must be "
              "one of the following types: float32, float64.");
-    AddOutput(
-        "Out",
-        "A LoDTensor or Tensor with the same type and size as that of x.");
+    AddOutput("Out",
+              "A Tensor or Tensor with the same type and size as that of x.");
     AddAttr<float>("alpha", "Slope of the activation function at x < 0.")
         .SetDefault(0.02f);
     AddAttr<bool>("use_mkldnn",

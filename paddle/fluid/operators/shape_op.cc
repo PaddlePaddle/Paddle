@@ -48,11 +48,10 @@ class ShapeOp : public framework::OperatorWithKernel {
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(LoDTensor), The input tensor.");
-    AddOutput(
-        "Out",
-        "(LoDTensor), The shape of input tensor, the data type of the shape"
-        " is int32_t, will be on the same device with the input Tensor.");
+    AddInput("Input", "(Tensor), The input tensor.");
+    AddOutput("Out",
+              "(Tensor), The shape of input tensor, the data type of the shape"
+              " is int32_t, will be on the same device with the input Tensor.");
     AddComment(R"DOC(
 Shape Operator.
 

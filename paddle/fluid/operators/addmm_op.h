@@ -119,14 +119,14 @@ template <typename DeviceContext, typename T>
 class AddMMGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto in_dims = ctx.Input<framework::LoDTensor>("Input")->dims();
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto in_dims = ctx.Input<framework::Tensor>("Input")->dims();
     auto* dinput =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
-    auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("Input"));
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
     float alpha = ctx.Attr<float>("Alpha");
     float beta = ctx.Attr<float>("Beta");

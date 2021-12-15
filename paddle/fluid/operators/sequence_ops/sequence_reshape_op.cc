@@ -55,13 +55,13 @@ class SequenceReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor with shape "
+             "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "being [N, M].");
     AddOutput("Out",
-              "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor with "
+              "(Tensor, default Tensor<float>) A 2-D Tensor with "
               "shape [T, new_dim] where T is calculated based on X.lod, M and "
               "new_dim.");
-    AddAttr<int>("new_dim", "Sequence dimension of the output LoDTensor.");
+    AddAttr<int>("new_dim", "Sequence dimension of the output Tensor.");
     AddComment(R"DOC(
 Sequence Reshape Operator.
 
@@ -70,7 +70,7 @@ attribute and length of each sequence may change longer or shorter which is
 decided by original length, original dimension and new dimension. The following
 example will help to illustrate the function of this operator:
 
-x is a LoDTensor:
+x is a Tensor:
     x.lod  = [[0, 2, 6]]
     x.data = [[1, 2], [3, 4],
               [5, 6], [7, 8], [9, 10], [11, 12]]
@@ -78,13 +78,13 @@ x is a LoDTensor:
 
 set new_dim = 4
 
-then out is a LoDTensor:
+then out is a Tensor:
     out.lod  = [[0, 1, 3]]
     out.data = [[1, 2, 3, 4],
                 [5, 6, 7, 8], [9, 10, 11, 12]]
     out.dims = [3, 4]
 
-Currently, only 1-level LoDTensor is supported and please make sure (original
+Currently, only 1-level Tensor is supported and please make sure (original
 length * original dimension) can be divided by new_dim with no remainder for
 each sequence.
 

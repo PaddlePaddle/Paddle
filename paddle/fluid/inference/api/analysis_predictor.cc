@@ -82,7 +82,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 }  // namespace
 
-bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
+bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::Tensor *t,
                              const platform::Place &place) {
   framework::DDim ddim = framework::make_ddim(pt.shape);
   void *input_ptr;
@@ -100,14 +100,14 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
   PADDLE_ENFORCE_NOT_NULL(
       input_ptr,
       paddle::platform::errors::Fatal(
-          "Cannot convert to LoDTensor because LoDTensor creation failed."));
+          "Cannot convert to Tensor because Tensor creation failed."));
   PADDLE_ENFORCE_NOT_NULL(
       pt.data.data(),
       paddle::platform::errors::InvalidArgument(
           "The data contained in the input PaddleTensor is illegal."));
 
   if (platform::is_cpu_place(place)) {
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+    // TODO(panyx0718): Init Tensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
                 pt.data.length());
   } else if (platform::is_gpu_place(place)) {
@@ -477,7 +477,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   feed_tensors_.resize(inputs.size());
 
   for (size_t i = 0; i < inputs.size(); ++i) {
-    framework::LoDTensor *input = &feed_tensors_[i];
+    framework::Tensor *input = &feed_tensors_[i];
     if (!PaddleTensorToLoDTensor(inputs[i], input, place_)) {
       return false;
     }
@@ -498,7 +498,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 }
 
 template <typename T>
-void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
+void AnalysisPredictor::GetFetchOne(const framework::Tensor &fetch,
                                     PaddleTensor *output) {
   // set shape.
   auto shape = framework::vectorize(fetch.dims());
@@ -530,7 +530,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = BOOST_GET(framework::Tensor, fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -1032,10 +1032,10 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
   std::vector<std::string> var_names = sub_scope_->LocalVarNames();
   for (const auto &name : var_names) {
     auto *var = sub_scope_->GetVar(name);
-    if (!var->IsType<framework::LoDTensor>()) {
+    if (!var->IsType<framework::Tensor>()) {
       continue;
     }
-    framework::DDim dim = var->Get<framework::LoDTensor>().dims();
+    framework::DDim dim = var->Get<framework::Tensor>().dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
     shape_info_[name].emplace_back(shape);
@@ -1203,10 +1203,10 @@ void AnalysisPredictor::ClearIntermediateTensor() {
     if (!IsPersistable(var)) {
       const std::string name = var->Name();
       auto *variable = executor_->scope()->FindVar(name);
-      if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
+      if (variable != nullptr && variable->IsType<framework::Tensor>() &&
           name != "feed" && name != "fetch") {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
-        auto *t = variable->GetMutable<framework::LoDTensor>();
+        auto *t = variable->GetMutable<framework::Tensor>();
         t->clear();
       }
     }

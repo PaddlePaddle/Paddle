@@ -75,9 +75,9 @@ template <typename T>
 class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *table_t = context.Input<LoDTensor>("W");
-    auto *ids_t = context.Input<LoDTensor>("Ids");
-    auto *output_t = context.Output<LoDTensor>("Out");
+    auto *table_t = context.Input<Tensor>("W");
+    auto *ids_t = context.Input<Tensor>("Ids");
+    auto *output_t = context.Output<Tensor>("Out");
 
     const auto &dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
@@ -119,9 +119,9 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     const auto &dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     const int64_t start_idx = context.Attr<int64_t>("start_index");
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<Tensor>("Ids");
+    auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
 
     int N = d_table_t->dims()[0];
     int D = d_table_t->dims()[1];

@@ -162,16 +162,16 @@ inline void MergeVars(const std::string &var_name,
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
 
-  if (var0->IsType<framework::LoDTensor>()) {
-    auto dims = var0->Get<framework::LoDTensor>().dims();
-    VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims
+  if (var0->IsType<framework::Tensor>()) {
+    auto dims = var0->Get<framework::Tensor>().dims();
+    VLOG(3) << "merge " << var_name << " Tensor dims " << dims
             << "; merge add: " << merge_add;
     // init output tensor
-    auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+    auto *out_t = out_var->GetMutable<framework::Tensor>();
     out_t->mutable_data<T>(dims, cpu_place);
     // check the input dims
     for (auto &var : vars) {
-      auto &var_t = var->Get<framework::LoDTensor>();
+      auto &var_t = var->Get<framework::Tensor>();
       PADDLE_ENFORCE_EQ(
           var_t.dims(), dims,
           platform::errors::InvalidArgument("vars should have the same dims."));
@@ -185,7 +185,7 @@ inline void MergeVars(const std::string &var_name,
     // sum all vars to out
     auto result = EigenVector<T>::Flatten(*out_t);
     for (auto &var : vars) {
-      auto &in_t = var->Get<framework::LoDTensor>();
+      auto &in_t = var->Get<framework::Tensor>();
       auto in = EigenVector<T>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }

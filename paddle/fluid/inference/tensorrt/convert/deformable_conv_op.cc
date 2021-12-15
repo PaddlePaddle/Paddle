@@ -45,7 +45,7 @@ class DeformableConvOpConverter : public OpConverter {
     auto* offset_tensor = engine_->GetITensor(offset_name);
     auto* mask_tensor = engine_->GetITensor(mask_name);
     auto* filter_var = scope.FindVar(filter_name);
-    auto* filter_tensor = filter_var->GetMutable<framework::LoDTensor>();
+    auto* filter_tensor = filter_var->GetMutable<framework::Tensor>();
 
     float* filter_data =
         engine_->GetWeightCPUData(filter_name, filter_tensor, false);

@@ -81,7 +81,7 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), This input is a 3D LoDTensor with shape [M, P, K]. "
+             "(Tensor), This input is a 3D Tensor with shape [M, P, K]. "
              "Some elements in X will be assigned to Out based on the "
              "MatchIndices and NegIndices.");
     AddInput("MatchIndices",
@@ -89,7 +89,7 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "with shape [N, P], If MatchIndices[i][j] is -1, the j-th entity "
              "of column is not matched to any entity of row in i-th instance.");
     AddInput("NegIndices",
-             "(LoDTensor, default LoDTensor<int>), The input negative example "
+             "(Tensor, default Tensor<int>), The input negative example "
              "indices are an optional input with shape [Neg, 1], where Neg is "
              "the total number of negative example indices.")
         .AsDispensable();

@@ -190,9 +190,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                       platform::errors::PreconditionNotMet(
                           "The type of %s and %s is not the same.", in, out));
 
-    if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    if (in_var->IsType<framework::Tensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::Tensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::Tensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
@@ -344,13 +344,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
                                      "Input variable should not be null"));
-    if (var->IsType<framework::LoDTensor>()) {
-      return var->Get<framework::LoDTensor>().dims();
+    if (var->IsType<framework::Tensor>()) {
+      return var->Get<framework::Tensor>().dims();
     } else if (var->IsType<framework::SelectedRows>()) {
       return var->Get<framework::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
+          "Only Tensor/SelectedRows support 'GetDim', but Variables "
           "type_id is xx."));
     }
   }
@@ -361,13 +361,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   void SetDim(framework::Variable* var, const DDim& dim) {
-    if (var->IsType<framework::LoDTensor>()) {
-      var->GetMutable<framework::LoDTensor>()->Resize(dim);
+    if (var->IsType<framework::Tensor>()) {
+      var->GetMutable<framework::Tensor>()->Resize(dim);
     } else if (var->IsType<framework::SelectedRows>()) {
       var->GetMutable<framework::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
-          "Variable type_id %s, expect LoDTensor/SelectedRows."));
+          "Variable type_id %s, expect Tensor/SelectedRows."));
     }
   }
 

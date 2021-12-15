@@ -245,9 +245,8 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
 void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
   // TODO(jiabin): Support other tensor type later
-  auto* dst_tensor =
-      dst->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
-  auto& src_tensor = src.Var().Get<paddle::framework::LoDTensor>();
+  auto* dst_tensor = dst->MutableVar()->GetMutable<paddle::framework::Tensor>();
+  auto& src_tensor = src.Var().Get<paddle::framework::Tensor>();
 
   auto numel = src_tensor.numel();
 

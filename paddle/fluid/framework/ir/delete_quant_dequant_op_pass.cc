@@ -18,7 +18,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -71,8 +71,8 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument(
                    "Scope in DeleteQuantDequantOpPass should not be null."));
-    const LoDTensor& input_scale_tensor =
-        scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
+    const Tensor& input_scale_tensor =
+        scope->FindVar(input_scale_var_name)->Get<Tensor>();
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
         platform::errors::InvalidArgument(

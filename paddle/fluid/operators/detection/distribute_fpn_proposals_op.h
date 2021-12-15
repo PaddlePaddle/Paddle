@@ -65,10 +65,10 @@ template <typename T>
 class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* fpn_rois = context.Input<paddle::framework::LoDTensor>("FpnRois");
+    auto* fpn_rois = context.Input<paddle::framework::Tensor>("FpnRois");
 
     auto multi_fpn_rois =
-        context.MultiOutput<paddle::framework::LoDTensor>("MultiFpnRois");
+        context.MultiOutput<paddle::framework::Tensor>("MultiFpnRois");
 
     auto* restore_index =
         context.Output<paddle::framework::Tensor>("RestoreIndex");
@@ -174,7 +174,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         }
       }
     }
-    // merge lod information into LoDTensor
+    // merge lod information into Tensor
     for (int i = 0; i < num_level; ++i) {
       framework::LoD lod;
       lod.emplace_back(multi_fpn_rois_lod0[i]);

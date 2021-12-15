@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using LoD = framework::LoD;
 
 class VarConv2dOP : public framework::OperatorWithKernel {

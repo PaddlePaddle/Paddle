@@ -36,8 +36,8 @@ namespace paddle {
 namespace imperative {
 
 static const platform::Place &GetVarPlace(const framework::Variable &src) {
-  if (src.IsType<framework::LoDTensor>()) {
-    return src.Get<framework::LoDTensor>().place();
+  if (src.IsType<framework::Tensor>()) {
+    return src.Get<framework::Tensor>().place();
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     return src.Get<framework::SelectedRows>().value().place();
@@ -46,7 +46,7 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Cannot get unsupported variable type %s for imperative allreduce, "
         "only "
-        "LoDTensor and SelectedRows are supported.",
+        "Tensor and SelectedRows are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
   }
 }
@@ -184,12 +184,12 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<framework::Tensor>()) {
+    if (!dst->IsType<framework::Tensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), stream, comm);
+    AllReduce(src.Get<framework::Tensor>(),
+              dst->GetMutable<framework::Tensor>(), stream, comm);
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     if (&src != dst) {
@@ -213,7 +213,7 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor and SelectedRows are supported.",
+        "Tensor and SelectedRows are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
   }
 }

@@ -52,7 +52,7 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SaveCombine operator
 
-This operator will serialize and write a list of input LoDTensor variables
+This operator will serialize and write a list of input Tensor variables
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
@@ -68,7 +68,7 @@ to a file on disk.
     AddAttr<std::string>(
         "file_path",
         "(string)"
-        "The \"file_path\" where the LoDTensor variables will be saved.")
+        "The \"file_path\" where the Tensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string& path) { return !path.empty(); });
     AddAttr<bool>("save_to_memory",

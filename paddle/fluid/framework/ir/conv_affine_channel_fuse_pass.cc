@@ -20,7 +20,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
@@ -47,8 +47,8 @@ class Node;
 
 void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
                                 const ir::Node& ac_scale,
-                                const LoDTensor& ac_bias_tensor,
-                                LoDTensor* eltwise_y_in_tensor) {
+                                const Tensor& ac_bias_tensor,
+                                Tensor* eltwise_y_in_tensor) {
   using EigenVectorArrayMap =
       Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
   using ConstEigenVectorArrayMap =
@@ -64,7 +64,7 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
           "dimension.",
           eltwise_y_in_tensor->dims().size(), ac_bias_tensor.dims().size()));
 
-  auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<LoDTensor>();
+  auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<Tensor>();
 
   ConstEigenVectorArrayMap scale_array(scale_tensor->data<float>(),
                                        scale_tensor->numel(), 1);
@@ -78,7 +78,7 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   eltwise_y_in_array = (eltwise_y_in_array * scale_array) + ac_bias_array;
 
   // Re-compute weight of conv2d from AffineChannel
-  auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+  auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<Tensor>();
   auto weights_shape = weights->dims();
   auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
@@ -199,7 +199,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
-        scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(ac_bias->Name())->GetMutable<Tensor>();
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
@@ -213,7 +213,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     // Initialize eltwise_y
     auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
     auto* eltwise_y_in_tensor =
-        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<Tensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
     std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
                 eltwise_y_in_tensor->numel(), 0.0f);
@@ -356,11 +356,11 @@ void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get eltwise_y (conv bias) variable
     auto* eltwise_y_in_tensor =
-        scope->FindVar(eltwise_y_in->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltwise_y_in->Name())->GetMutable<Tensor>();
 
     // Get batch norm bias
     auto* ac_bias_tensor =
-        scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(ac_bias->Name())->GetMutable<Tensor>();
 
     recompute_bias_and_weights(scope, conv_weight, *ac_scale, *ac_bias_tensor,
                                eltwise_y_in_tensor);

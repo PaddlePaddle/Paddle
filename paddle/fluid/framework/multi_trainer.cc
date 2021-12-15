@@ -139,10 +139,10 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (root_var->IsType<SelectedRows>()) {
           continue;
         }
-        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        Tensor* root_tensor = root_var->GetMutable<Tensor>();
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+        Tensor* thread_tensor = ptr->GetMutable<Tensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
@@ -200,9 +200,9 @@ void MultiTrainer::MergeDenseParam() {
     auto& varnames = iter.second;
     for (auto& name : varnames) {
       Variable* root_var = root_scope_->FindVar(name);
-      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      Tensor* root_tensor = root_var->GetMutable<Tensor>();
       Variable* var = thread_scope->FindVar(name);
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      Tensor* tensor = var->GetMutable<Tensor>();
       TensorCopy((*tensor), root_tensor->place(), root_tensor);
     }
   }
@@ -211,11 +211,11 @@ void MultiTrainer::MergeDenseParam() {
 #endif
 
 template <typename T>
-void MultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
-  LoDTensor tmp_root;
+void MultiTrainer::MergeToRootScope(Tensor* root_tensor, Tensor* tensor) {
+  Tensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  LoDTensor tmp_tensor;
+  Tensor tmp_tensor;
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -234,7 +234,7 @@ void MultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    Tensor* root_tensor = root_var->GetMutable<Tensor>();
 
 #ifdef PADDLE_WITH_HETERPS
     for (size_t j = 0; j < places_.size(); j++) {
@@ -247,7 +247,7 @@ void MultiTrainer::Finalize() {
       if (thread_var == nullptr) {
         continue;
       }
-      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      Tensor* thread_tensor = thread_var->GetMutable<Tensor>();
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (root_tensor->type() == proto_type) {                                   \

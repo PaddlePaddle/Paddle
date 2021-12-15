@@ -66,7 +66,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
     auto* ptr = scope->Var(var_desc->Name());
     paddle::framework::InitializeVariable(ptr, var_desc->GetType());
 
-    auto tensor = ptr->GetMutable<paddle::framework::LoDTensor>();
+    auto tensor = ptr->GetMutable<paddle::framework::Tensor>();
     tensor->Resize(paddle::framework::make_ddim(var_desc->GetShape()));
   }
 
@@ -82,7 +82,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       for (int i = 0; i < it->second.size(); i++) {
         auto output_name = op_desc->Output(it->first)[i];
         auto dim =
-            it->second[i]->GetMutable<paddle::framework::LoDTensor>()->dims();
+            it->second[i]->GetMutable<paddle::framework::Tensor>()->dims();
         auto new_shape = paddle::framework::vectorize(dim);
         for (auto output_node : node->outputs) {
           if (output_node->Name() == output_name) {

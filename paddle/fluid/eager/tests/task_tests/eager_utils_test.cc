@@ -169,7 +169,7 @@ TEST(EagerUtils, SyncToVarsSingle) {
       egr::EagerUtils::SyncToVars(tensor);
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
-  const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+  const auto& framework_tensor = var->Get<paddle::framework::Tensor>();
 
   const float* ptr = framework_tensor.data<float>();
   VLOG(6) << "Check Value for SyncToVarsSingle";
@@ -190,7 +190,7 @@ TEST(EagerUtils, SyncToVarsMultiple) {
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<paddle::framework::Tensor>();
 
     const float* ptr = framework_tensor.data<float>();
     CHECK_EQ(framework_tensor.numel(), tensors[0].numel());
@@ -202,7 +202,7 @@ TEST(EagerUtils, SyncToVarsMultiple) {
 
   {
     paddle::framework::Variable* var = var_bases[1]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<paddle::framework::Tensor>();
 
     const float* ptr = framework_tensor.data<float>();
     VLOG(6) << "Check Value for SyncToVarsMultiple";
@@ -220,7 +220,7 @@ TEST(EagerUtils, SyncToTensorSingle) {
   std::vector<int64_t> dims = {2, 4, 4, 4};
   paddle::platform::CPUPlace place;
 
-  auto* x_tensor = X->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+  auto* x_tensor = X->MutableVar()->GetMutable<paddle::framework::Tensor>();
   x_tensor->Resize(paddle::framework::make_ddim(dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -241,7 +241,7 @@ TEST(EagerUtils, SyncToTensorMultiple) {
     auto egr_tensor = egr::EagerTensor();
     std::vector<float> src_data(128, 1.0);
     auto* x_tensor =
-        egr_tensor.MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        egr_tensor.MutableVar()->GetMutable<paddle::framework::Tensor>();
     x_tensor->Resize(paddle::framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, place, src_data.data(),
@@ -252,7 +252,7 @@ TEST(EagerUtils, SyncToTensorMultiple) {
     auto egr_tensor = egr::EagerTensor();
     std::vector<float> src_data(128, 2.0);
     auto* x_tensor =
-        egr_tensor.MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        egr_tensor.MutableVar()->GetMutable<paddle::framework::Tensor>();
     x_tensor->Resize(paddle::framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, place, src_data.data(),

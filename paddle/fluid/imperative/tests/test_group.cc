@@ -63,7 +63,7 @@ void GroupConcatSplit(Place place, size_t size) {
   vars.resize(size);
   for (size_t i = 0; i < size; ++i) {
     auto len = i + 1;
-    auto* tensor = vars[i].GetMutable<framework::LoDTensor>();
+    auto* tensor = vars[i].GetMutable<framework::Tensor>();
     tensor->Resize({static_cast<int64_t>(len)});
     auto* data = tensor->mutable_data<T>(place);
 
@@ -94,7 +94,7 @@ void GroupConcatSplit(Place place, size_t size) {
   auto* dev_ctx = pool.Get(place);
 
   {  // concat
-    auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+    auto* tensor = group.dense_contents_.GetMutable<framework::Tensor>();
     tensor->Resize(framework::make_ddim({group.all_length_}))
         .mutable_data(place, group.dtype_);
     group.ConcatTensors(*dev_ctx);

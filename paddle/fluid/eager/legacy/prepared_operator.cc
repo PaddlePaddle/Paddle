@@ -30,8 +30,8 @@ namespace legacy {
 
 const paddle::framework::Tensor* GetTensorFromVar(
     const paddle::framework::Variable& var) {
-  if (var.IsType<paddle::framework::LoDTensor>()) {
-    return &(var.Get<paddle::framework::LoDTensor>());
+  if (var.IsType<paddle::framework::Tensor>()) {
+    return &(var.Get<paddle::framework::Tensor>());
   } else if (var.IsType<paddle::framework::SelectedRows>()) {
     return &(var.Get<paddle::framework::SelectedRows>().value());
   } else {

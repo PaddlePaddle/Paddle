@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Tensor;
 }  // namespace framework
 namespace platform {
@@ -32,12 +32,11 @@ template <typename T>
 class BeamSearchFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext &context,
-                  const framework::LoDTensor *pre_ids,
-                  const framework::LoDTensor *pre_scores,
-                  const framework::LoDTensor *ids,
-                  const framework::LoDTensor *scores,
-                  framework::LoDTensor *selected_ids,
-                  framework::LoDTensor *selected_scores,
+                  const framework::Tensor *pre_ids,
+                  const framework::Tensor *pre_scores,
+                  const framework::Tensor *ids, const framework::Tensor *scores,
+                  framework::Tensor *selected_ids,
+                  framework::Tensor *selected_scores,
                   framework::Tensor *parent_idx, size_t level, size_t beam_size,
                   int end_id, bool is_accumulated) {
     auto abs_lod = framework::ToAbsOffset(scores->lod());
@@ -148,7 +147,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    * Pruning must one step later than finishing (thus pre_ids is needed here),
    * since the end tokens must be writed out.
    */
-  void PruneEndBeams(const framework::LoDTensor *pre_ids,
+  void PruneEndBeams(const framework::Tensor *pre_ids,
                      const framework::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items, size_t lod_level,
                      int end_id) {
@@ -223,10 +222,9 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    * For each source, select top beam_size records.
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
-      const framework::LoDTensor *pre_ids,
-      const framework::LoDTensor *pre_scores, const framework::LoDTensor *ids,
-      const framework::LoDTensor *scores, size_t lod_level, size_t beam_size,
-      int end_id, bool is_accumulated) {
+      const framework::Tensor *pre_ids, const framework::Tensor *pre_scores,
+      const framework::Tensor *ids, const framework::Tensor *scores,
+      size_t lod_level, size_t beam_size, int end_id, bool is_accumulated) {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates

@@ -22,10 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
+class Tensor;
 class Variable;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
+void SetFeedVariable(Scope* scope, const Tensor& input,
                      const std::string& var_name, size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
@@ -36,7 +36,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  auto& val = BOOST_GET(LoDTensor, feed_inputs[index]);
+  auto& val = BOOST_GET(Tensor, feed_inputs[index]);
   val.ShareDataWith(input);
   // set lod
   val.set_lod(input.lod());
@@ -77,15 +77,15 @@ FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
   return tensor;
 }
 
-LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
+Tensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
   Variable* var = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found in scope.",
                                       var_name));
-  PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<Tensor>(), true,
                     platform::errors::InvalidArgument(
                         "Only support lod tensor in GetVariableTensor now."));
-  return *var->GetMutable<LoDTensor>();
+  return *var->GetMutable<Tensor>();
 }
 
 }  // namespace framework

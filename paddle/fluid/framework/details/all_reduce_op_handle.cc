@@ -116,7 +116,7 @@ void AllReduceOpHandle::AllReduceImpl(
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
                                      "Variable %s is not found in local scope.",
                                      in_var_handles[i]->name()));
-    auto &lod_tensor = var->Get<LoDTensor>();
+    auto &lod_tensor = var->Get<Tensor>();
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
@@ -220,9 +220,8 @@ void AllReduceOpHandle::AllReduceFunc(
         platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
   } else {  // Special handle CPU only Operator's gradient. Like CRF
-    auto &trg = *local_exec_scopes_[0]
-                     ->FindVar(out_var_names[0])
-                     ->GetMutable<LoDTensor>();
+    auto &trg =
+        *local_exec_scopes_[0]->FindVar(out_var_names[0])->GetMutable<Tensor>();
 
     // Reduce All Tensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data<void>(), numel);
@@ -235,7 +234,7 @@ void AllReduceOpHandle::AllReduceFunc(
 
       size_t size = numel * SizeOfType(trg.type());
       RunAndRecordEvent(p, [&trg, var, p, size] {
-        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
+        auto dst_ptr = var->GetMutable<framework::Tensor>()->data<void>();
         platform::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data<void>(), size);
       });

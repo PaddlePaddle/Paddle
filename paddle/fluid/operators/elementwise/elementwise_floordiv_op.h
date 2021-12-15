@@ -42,9 +42,9 @@ template <typename DeviceContext, typename T>
 class ElementwiseFloorDivKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
-    auto *y = ctx.Input<framework::LoDTensor>("Y");
-    auto *z = ctx.Output<framework::LoDTensor>("Out");
+    auto *x = ctx.Input<framework::Tensor>("X");
+    auto *y = ctx.Input<framework::Tensor>("Y");
+    auto *z = ctx.Output<framework::Tensor>("Out");
 
     z->mutable_data<T>(ctx.GetPlace());
 

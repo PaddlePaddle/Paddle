@@ -54,7 +54,7 @@ TEST(OpConverter, ConvertBlock) {
   framework::Scope scope;
   std::vector<int> dim_vec = {3, 2, 3, 3};
   auto* x = scope.Var("conv2d-Y");
-  auto* x_tensor = x->GetMutable<framework::LoDTensor>();
+  auto* x_tensor = x->GetMutable<framework::Tensor>();
   x_tensor->Resize(framework::make_ddim(dim_vec));
   x_tensor->mutable_data<float>(platform::CUDAPlace(0));
 

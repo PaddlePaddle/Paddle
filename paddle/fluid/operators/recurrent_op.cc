@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 }  // namespace framework
 }  // namespace paddle
@@ -142,12 +142,12 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::InvalidArgument(
                                 "RecurrentOp finds var %s is NULL", iname));
-    PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "RecurrentOp only accepts LoDTensor as input but "
-                          "input var %s is not LoDTensor",
+                          "RecurrentOp only accepts Tensor as input but "
+                          "input var %s is not Tensor",
                           iname));
-    auto &dim = var->Get<framework::LoDTensor>().dims();
+    auto &dim = var->Get<framework::Tensor>().dims();
     if (seq_len == -1) {
       seq_len = dim[0];
     } else {
@@ -258,8 +258,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     if (i == 0) {
       LinkTensorWithCallback(
           cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
-          [&](const framework::LoDTensor &src_tensor,
-              framework::LoDTensor *dst_tensor) {
+          [&](const framework::Tensor &src_tensor,
+              framework::Tensor *dst_tensor) {
             // create output tensor at begin
             dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
             dst_tensor->mutable_data(place, src_tensor.type());
@@ -272,8 +272,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     } else {
       LinkTensorWithCallback(
           cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
-          [&](const framework::LoDTensor &src_tensor,
-              framework::LoDTensor *dst_tensor) {
+          [&](const framework::Tensor &src_tensor,
+              framework::Tensor *dst_tensor) {
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
@@ -369,12 +369,12 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           auto &cur_grad = cur_state_grads[i];
           auto &ex_grad = ex_state_grads[i];
           auto &ex_grad_tensor =
-              ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
+              ex_scope.FindVar(ex_grad)->Get<framework::Tensor>();
 
           VLOG(10) << " RNN link " << cur_grad << " from " << ex_grad;
           auto *cur_grad_var = cur_scope.Var(cur_grad);
-          framework::LoDTensor *cur_grad_tensor =
-              cur_grad_var->GetMutable<framework::LoDTensor>();
+          framework::Tensor *cur_grad_tensor =
+              cur_grad_var->GetMutable<framework::Tensor>();
           cur_grad_tensor->ShareDataWith(ex_grad_tensor);
         }
       }
@@ -386,8 +386,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     if (step_id > 0) {
       LinkTensorWithCallback(scope, Outputs(kInputGrads), cur_scope,
                              GradVarLists(Inputs(kInputs)),
-                             [&](const framework::LoDTensor &src_tensor,
-                                 framework::LoDTensor *dst_tensor) {
+                             [&](const framework::Tensor &src_tensor,
+                                 framework::Tensor *dst_tensor) {
                                if (src_tensor.memory_size() ==
                                    0) {  // Inside Gradient is not created.
                                  return;
@@ -433,7 +433,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         // zero gradient variable in step 0
         if (step_id == 0) {
           auto &inside_tensor =
-              cur_scope.FindVar(inside_grad_name)->Get<framework::LoDTensor>();
+              cur_scope.FindVar(inside_grad_name)->Get<framework::Tensor>();
           framework::AttributeMap attrs;
           attrs["dtype"] = inside_tensor.type();
           attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
@@ -464,8 +464,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     if (step_id == 0) {
       LinkTensorWithCallback(
           cur_scope, GradVarLists(Inputs(kInputs)), scope, Outputs(kInputGrads),
-          [&](const framework::LoDTensor &inside,
-              framework::LoDTensor *outside) {
+          [&](const framework::Tensor &inside, framework::Tensor *outside) {
             if (inside.memory_size() == 0) {  // IG is not created.
               return;
             }
@@ -486,8 +485,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         LinkTensorWithCallback(
             cur_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
             scope, Outputs(kInitStateGrads),
-            [&](const framework::LoDTensor &inside,
-                framework::LoDTensor *outside) {
+            [&](const framework::Tensor &inside, framework::Tensor *outside) {
               outside->Resize(inside.dims());
               outside->mutable_data(place, inside.type());
               framework::TensorCopy(inside, place, dev_ctx, outside);

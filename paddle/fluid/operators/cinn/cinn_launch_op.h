@@ -35,7 +35,7 @@ constexpr char kX[] = "X";
 constexpr char kOutputs[] = "Out";
 constexpr char kCompilationKey[] = "compilation_key";
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using CinnScope = ::cinn::hlir::framework::Scope;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
@@ -88,12 +88,12 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
     auto input_variable_names = ctx.InputNames(kX);
-    const auto& input_tensors = ctx.MultiInput<LoDTensor>(kX);
-    std::map<std::string, const LoDTensor*> inputs_name2tensor;
+    const auto& input_tensors = ctx.MultiInput<Tensor>(kX);
+    std::map<std::string, const Tensor*> inputs_name2tensor;
     std::transform(input_variable_names.begin(), input_variable_names.end(),
                    input_tensors.begin(),
                    std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
-                   [](const std::string& name, const LoDTensor* tensor) {
+                   [](const std::string& name, const Tensor* tensor) {
                      return std::make_pair(name, tensor);
                    });
 

@@ -43,7 +43,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class ProgramDesc;
 class Scope;
 class Tensor;
@@ -61,8 +61,8 @@ namespace paddle {
 namespace framework {
 
 std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end);
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+std::pair<int64_t, int64_t> GetTensorBound(Tensor* tensor, int index);
+bool CheckValidOutput(Tensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
@@ -258,7 +258,7 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
   template <typename T>
-  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
+  void SetZero(Tensor* tensor, Tensor* root_tensor, int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);

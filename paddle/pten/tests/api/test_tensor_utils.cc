@@ -41,7 +41,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   data[0] = 1.0f;
   data[1] = 2.1f;
 
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
   experimental::MovesStorage(&dense_tensor, &lod_tensor);
 
   CHECK(dense_tensor.lod().size() == lod_tensor.lod().size());

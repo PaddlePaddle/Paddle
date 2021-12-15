@@ -57,7 +57,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors,
+    const std::vector<framework::Tensor>& feed_tensors,
     const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names, true);
 
@@ -74,7 +74,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<framework::Tensor>& feed_tensors) {
   auto core = GetInterpreterCore(feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);

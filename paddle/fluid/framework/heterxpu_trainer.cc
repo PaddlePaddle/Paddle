@@ -130,10 +130,10 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
     if (var->Persistable()) {
       auto name = var->Name();
       Variable* root_var = root_scope_->FindVar(name);
-      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      Tensor* root_tensor = root_var->GetMutable<Tensor>();
       auto* ptr = scope->Var(name);
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-      LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+      Tensor* thread_tensor = ptr->GetMutable<Tensor>();
 
 #define HeterMemcpyFunc(cpp_type, proto_type)                           \
   do {                                                                  \
@@ -164,8 +164,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
-                                  LoDTensor* root_tensor,
+void HeterXpuTrainer::HeterMemCpy(Tensor* thread_tensor, Tensor* root_tensor,
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
   T* thread_ptr =
@@ -185,8 +184,7 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
-                                  LoDTensor* root_tensor,
+void HeterXpuTrainer::HeterMemCpy(Tensor* thread_tensor, Tensor* root_tensor,
                                   const paddle::platform::Place& thread_place) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
@@ -306,7 +304,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    Tensor* root_tensor = root_var->GetMutable<Tensor>();
 
     for (size_t j = 0; j < place_scopes_.size(); j++) {
       Scope* cur_thread_scope = place_scopes_[j];
@@ -315,7 +313,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       if (thread_var == nullptr) {
         continue;
       }
-      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      Tensor* thread_tensor = thread_var->GetMutable<Tensor>();
 //      if (root_tensor->numel() != thread_tensor->numel()) {
 //        continue;
 //      }
@@ -388,12 +386,11 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 }
 
 template <typename T>
-void HeterXpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
-                                       LoDTensor* tensor) {
-  LoDTensor tmp_root;
+void HeterXpuTrainer::MergeToRootScope(Tensor* root_tensor, Tensor* tensor) {
+  Tensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  LoDTensor tmp_tensor;
+  Tensor tmp_tensor;
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {

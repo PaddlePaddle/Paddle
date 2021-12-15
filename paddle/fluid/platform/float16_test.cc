@@ -109,7 +109,7 @@ TEST(float16, comparison_cpu) {
 }
 
 TEST(float16, lod_tensor_cpu) {
-  framework::LoDTensor lod_tensor;
+  framework::Tensor lod_tensor;
 
   std::vector<float16> input_data = {float16(1.0f), float16(0.5f),
                                      float16(0.33333f), float16(0.0f)};

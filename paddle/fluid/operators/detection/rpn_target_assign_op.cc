@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -87,7 +87,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-void AppendRpns(LoDTensor* out, int64_t offset, Tensor* to_add) {
+void AppendRpns(Tensor* out, int64_t offset, Tensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -350,15 +350,15 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<Tensor>("Anchor");  // (H*W*A) * 4
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* gt_boxes = context.Input<Tensor>("GtBoxes");
+    auto* is_crowd = context.Input<Tensor>("IsCrowd");
+    auto* im_info = context.Input<Tensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
-    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
+    auto* loc_index = context.Output<Tensor>("LocationIndex");
+    auto* score_index = context.Output<Tensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<Tensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<Tensor>("TargetLabel");
+    auto* bbox_inside_weight = context.Output<Tensor>("BBoxInsideWeight");
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                       platform::errors::InvalidArgument(
@@ -524,12 +524,11 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
-    AddInput("GtBoxes",
-             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+    AddInput("GtBoxes", "(Tensor) input ground-truth bbox with shape [K, 4].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates ground-truth is crowd.");
+             "(Tensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
-             "(LoDTensor) input image information with shape [N, 3]. "
+             "(Tensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
              "width and scale.");
     AddAttr<int>("rpn_batch_size_per_im",
@@ -611,14 +610,13 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
-    AddInput("GtBoxes",
-             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+    AddInput("GtBoxes", "(Tensor) input ground-truth bbox with shape [K, 4].");
     AddInput("GtLabels",
-             "(LoDTensor) input ground-truth label with shape [K, 1].");
+             "(Tensor) input ground-truth label with shape [K, 1].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates ground-truth is crowd.");
+             "(Tensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
-             "(LoDTensor) input image information with shape [N, 3]. "
+             "(Tensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
              "width and scale.");
     AddAttr<float>(
@@ -876,17 +874,17 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<Tensor>("Anchor");  // (H*W*A) * 4
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* gt_labels = context.Input<LoDTensor>("GtLabels");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* gt_boxes = context.Input<Tensor>("GtBoxes");
+    auto* gt_labels = context.Input<Tensor>("GtLabels");
+    auto* is_crowd = context.Input<Tensor>("IsCrowd");
+    auto* im_info = context.Input<Tensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
-    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
-    auto* fg_num = context.Output<LoDTensor>("ForegroundNumber");
+    auto* loc_index = context.Output<Tensor>("LocationIndex");
+    auto* score_index = context.Output<Tensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<Tensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<Tensor>("TargetLabel");
+    auto* bbox_inside_weight = context.Output<Tensor>("BBoxInsideWeight");
+    auto* fg_num = context.Output<Tensor>("ForegroundNumber");
 
     PADDLE_ENFORCE_EQ(
         gt_boxes->lod().size(), 1UL,

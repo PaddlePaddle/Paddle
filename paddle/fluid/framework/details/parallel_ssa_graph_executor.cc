@@ -255,7 +255,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
     FetchList ret;
     ret.reserve(fetch_tensors.size());
     for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
-      std::vector<const LoDTensor *> lodtensor_ptrs;
+      std::vector<const Tensor *> lodtensor_ptrs;
       lodtensor_ptrs.reserve(place_num);
       std::vector<const LoDTensorArray *> lodtensorarray_ptrs;
       lodtensorarray_ptrs.reserve(place_num);
@@ -267,21 +267,21 @@ FetchResultType ParallelSSAGraphExecutor::Run(
             BOOST_GET_CONST(FetchList, fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
-              &(BOOST_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
+              &(BOOST_GET_CONST(Tensor, fetch_list[fetch_idx])));
         } else {
           lodtensorarray_ptrs.push_back(
               &(BOOST_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
       if (lodtensor_ptrs.size() != 0) {
-        LoDTensor var;
+        Tensor var;
         var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
         ret.emplace_back(var);
       } else {
         LoDTensorArray var_array(lodtensorarray_ptrs[0]->size());
         for (size_t i = 0; i < lodtensorarray_ptrs[0]->size(); ++i) {
-          LoDTensor var;
-          std::vector<const LoDTensor *> ptrs;
+          Tensor var;
+          std::vector<const Tensor *> ptrs;
           for (size_t j = 0; j < lodtensorarray_ptrs.size(); ++j) {
             ptrs.push_back(&(lodtensorarray_ptrs[j]->at(i)));
           }
@@ -307,7 +307,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         PADDLE_ENFORCE_EQ(
             fetch_list[fetch_idx].size(), 1,
             platform::errors::Fatal("Each place must have only one fetched "
-                                    "LoDTensor/LoDTensorArray!"));
+                                    "Tensor/LoDTensorArray!"));
         ret.back().emplace_back(fetch_list[fetch_idx][0]);
       }
     }

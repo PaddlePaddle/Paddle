@@ -62,7 +62,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LoadCombine Operator.
 
-LoadCombine operator loads LoDTensor variables from a file, which could be
+LoadCombine operator loads Tensor variables from a file, which could be
 loaded in memory already. The file should contain one or more LoDTensors
 serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load

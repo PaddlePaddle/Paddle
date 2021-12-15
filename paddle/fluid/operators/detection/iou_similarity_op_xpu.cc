@@ -23,10 +23,10 @@ template <typename DeviceContext, typename T>
 class XPUIOUSimilarityKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::LoDTensor* in_x = ctx.Input<framework::LoDTensor>("X");
+    const framework::Tensor* in_x = ctx.Input<framework::Tensor>("X");
     const framework::Tensor* in_y = ctx.Input<framework::Tensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
 
     int x_n = in_x->dims()[0];
     int y_n = in_y->dims()[0];

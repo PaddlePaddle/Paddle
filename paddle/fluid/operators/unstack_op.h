@@ -82,7 +82,7 @@ static inline void StackGradFunctorForRange(const DeviceContext &ctx,
 
 template <typename DeviceContext, typename T>
 class UnStackGradKernel : public framework::OpKernel<T> {
-  using Tensor = framework::LoDTensor;
+  using Tensor = framework::Tensor;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -134,7 +134,7 @@ class UnStackGradKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class UnStackKernel : public framework::OpKernel<T> {
-  using Tensor = framework::LoDTensor;
+  using Tensor = framework::Tensor;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

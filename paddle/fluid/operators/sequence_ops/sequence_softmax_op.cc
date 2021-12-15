@@ -61,10 +61,10 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) 1-D or 2-D input LoDTensor with the 2-nd dimension "
+             "(Tensor) 1-D or 2-D input Tensor with the 2-nd dimension "
              "of length 1.");
     AddOutput("Out",
-              "(LoDTensor) 1-D or 2-D output LoDTensor with the 2-nd dimension "
+              "(Tensor) 1-D or 2-D output Tensor with the 2-nd dimension "
               "of length 1.");
     AddAttr<bool>(
         "use_cudnn",

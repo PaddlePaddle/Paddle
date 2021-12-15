@@ -18,14 +18,14 @@
 
 namespace paddle {
 namespace operators {
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SequenceEnumerateKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     int win_size = context.Attr<int>("win_size");
     auto pad_value = static_cast<T>(context.Attr<int>("pad_value"));
 

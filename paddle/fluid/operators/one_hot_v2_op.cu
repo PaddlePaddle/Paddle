@@ -31,14 +31,13 @@ __global__ void FillOutputKernel(const InT* p_in_data, OutT* p_out_data,
 
 template <typename DeviceContext, typename InT>
 struct OneHotV2OpCUDAFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
+  const framework::Tensor* in_;
+  framework::Tensor* out_;
   const DeviceContext& ctx_;
   int depth_;
 
-  OneHotV2OpCUDAFunctor(const framework::LoDTensor* in,
-                        framework::LoDTensor* out, int depth,
-                        const DeviceContext& ctx)
+  OneHotV2OpCUDAFunctor(const framework::Tensor* in, framework::Tensor* out,
+                        int depth, const DeviceContext& ctx)
       : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
 
   template <typename OutT>
@@ -56,13 +55,13 @@ struct OneHotV2OpCUDAFunctor {
   }
 };
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class OneHotV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
 
     int depth = -1;
     if (context.HasInput("depth_tensor")) {

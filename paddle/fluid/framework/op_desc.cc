@@ -125,7 +125,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       auto *out_var = block_.FindVarRecursive(out_var_names[i]);
       if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
           in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-        VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+        VLOG(3) << "input " << in << " is not Tensor or LoDTensorArray.";
         return;
       }
       out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -154,7 +154,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
         in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-      VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+      VLOG(3) << "input " << in << " is not Tensor or LoDTensorArray.";
       return;
     }
     out_var->SetLoDLevel(in_var->GetLoDLevel());

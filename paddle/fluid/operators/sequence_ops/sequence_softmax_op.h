@@ -20,29 +20,29 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
   void operator()(
-      const DeviceContext &ctx, const LoDTensor &x,
+      const DeviceContext &ctx, const Tensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      LoDTensor *out);
+      Tensor *out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxGradFunctor {
-  void operator()(const DeviceContext &ctx, const LoDTensor &dout,
-                  const LoDTensor &out,
+  void operator()(const DeviceContext &ctx, const Tensor &dout,
+                  const Tensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *dx);
+                  Tensor *dx);
 };
 
 template <typename T>
 struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx, const LoDTensor &x,
+  void operator()(const platform::CPUDeviceContext &ctx, const Tensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *out) {
+                  Tensor *out) {
     size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -61,10 +61,10 @@ struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
 
 template <typename T>
 struct SequenceSoftmaxGradFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx, const LoDTensor &dout,
-                  const LoDTensor &out,
+  void operator()(const platform::CPUDeviceContext &ctx, const Tensor &dout,
+                  const Tensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *dx) {
+                  Tensor *dx) {
     size_t height = ref_lod.size() - 1;
 
     const T *softmax_grad_data = dout.data<T>();
@@ -90,8 +90,8 @@ template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<LoDTensor>("X");
-    auto *out = ctx.Output<LoDTensor>("Out");
+    auto *x = ctx.Input<Tensor>("X");
+    auto *out = ctx.Output<Tensor>("Out");
 
     auto lod = x->lod();
     auto dims = x->dims();
@@ -129,10 +129,10 @@ template <typename DeviceContext, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out = ctx.Input<LoDTensor>("Out");
-    auto *out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *x = ctx.Input<LoDTensor>("X");
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *out = ctx.Input<Tensor>("Out");
+    auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *x = ctx.Input<Tensor>("X");
+    auto *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (!x_grad) {
       return;
     }

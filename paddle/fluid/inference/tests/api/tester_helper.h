@@ -940,7 +940,7 @@ void SaveOptimModel(AnalysisConfig *cfg, const std::string &dstPath) {
 }
 
 template <typename T>
-std::string LoDTensorSummary(const framework::LoDTensor &tensor) {
+std::string LoDTensorSummary(const framework::Tensor &tensor) {
   std::stringstream ss;
   ss << "\n---- tensor ---" << '\n';
   ss << "lod: [";
@@ -1006,8 +1006,8 @@ static bool CompareShape(const std::vector<int64_t> &a,
   return true;
 }
 
-static bool CompareTensorData(const framework::LoDTensor &a,
-                              const framework::LoDTensor &b) {
+static bool CompareTensorData(const framework::Tensor &a,
+                              const framework::Tensor &b) {
   auto a_shape = framework::vectorize(a.dims());
   auto b_shape = framework::vectorize(b.dims());
   size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), size_t{1},
@@ -1044,8 +1044,8 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   return true;
 }
 
-static bool CompareTensor(const framework::LoDTensor &a,
-                          const framework::LoDTensor &b) {
+static bool CompareTensor(const framework::Tensor &a,
+                          const framework::Tensor &b) {
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }

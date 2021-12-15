@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
@@ -45,15 +45,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
-    auto* batch_gate = context.Input<LoDTensor>("BatchGate");
+    auto* batch_gate = context.Input<Tensor>("BatchGate");
     auto* batch_reset_hidden_prev =
-        context.Input<LoDTensor>("BatchResetHiddenPrev");
-    auto* batch_hidden = context.Input<LoDTensor>("BatchHidden");
-    auto* hidden = context.Input<LoDTensor>("Hidden");
-    auto* hidden_grad =
-        context.Input<LoDTensor>(framework::GradVarName("Hidden"));
-    auto* input_grad =
-        context.Output<LoDTensor>(framework::GradVarName("Input"));
+        context.Input<Tensor>("BatchResetHiddenPrev");
+    auto* batch_hidden = context.Input<Tensor>("BatchHidden");
+    auto* hidden = context.Input<Tensor>("Hidden");
+    auto* hidden_grad = context.Input<Tensor>(framework::GradVarName("Hidden"));
+    auto* input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
     auto* h0_grad = context.Output<Tensor>(framework::GradVarName("H0"));
     auto* weight_grad =
         context.Output<Tensor>(framework::GradVarName("Weight"));
@@ -64,7 +62,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     int frame_size = hidden_dims[1];
 
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
-    LoDTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
+    Tensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
     batch_hidden_grad.mutable_data<T>(hidden_dims, context.GetPlace());
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
     batch_reset_hidden_prev_grad.mutable_data<T>(hidden_dims,

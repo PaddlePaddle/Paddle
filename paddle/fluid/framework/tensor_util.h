@@ -465,5 +465,6 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Tensor& t);
+
 }  // namespace framework
 }  // namespace paddle

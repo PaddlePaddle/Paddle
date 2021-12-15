@@ -194,8 +194,7 @@ class EagerTensor final {
       // TODO(jiabin): Support selected rows later.
       if (this->initialized()) {
         if (type == paddle::framework::proto::VarType::LOD_TENSOR) {
-          auto* framework_tensor =
-              var_.GetMutable<paddle::framework::LoDTensor>();
+          auto* framework_tensor = var_.GetMutable<paddle::framework::Tensor>();
           framework_tensor->Resize(tensor_->dims());
           framework_tensor->set_layout(
               pten::TransToFluidDataLayout(tensor_->layout()));
@@ -225,8 +224,8 @@ class EagerTensor final {
     if (!this->defined() || !this->initialized()) {
       // TODO(jiabin): Support selected rows later.
       if (var_.IsInitialized()) {
-        if (var_.IsType<paddle::framework::LoDTensor>()) {
-          SetImplWithLegacyTensor<paddle::framework::LoDTensor,
+        if (var_.IsType<paddle::framework::Tensor>()) {
+          SetImplWithLegacyTensor<paddle::framework::Tensor,
                                   pten::DenseTensor>();
         } else if (var_.IsType<paddle::framework::Tensor>()) {
           SetImplWithLegacyTensor<paddle::framework::Tensor,
@@ -234,7 +233,7 @@ class EagerTensor final {
         } else {
           PADDLE_THROW(paddle::platform::errors::Fatal(
               "Unable to fetch underlying tensor "
-              "from VarBase, only LoDTensor and "
+              "from VarBase, only Tensor and "
               "Tensor are supported for now"));
         }
       } else {

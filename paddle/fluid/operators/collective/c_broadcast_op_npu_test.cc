@@ -123,7 +123,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
 void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<f::Tensor>();
   int num = 2;
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
@@ -139,7 +139,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<f::Tensor>();
   tensor_out->Resize({num, num});
   tensor_out->mutable_data<float>(place);  // allocate
   ctx.Wait();

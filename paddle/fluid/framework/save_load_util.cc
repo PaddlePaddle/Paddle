@@ -123,7 +123,7 @@ bool SaveStaticNameListToDisk(
                                             "that exe.run(startup_program) has "
                                             "been executed.",
                                             vec_tensor_name_list[i]));
-    Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    Tensor* tensor = var_ptr->GetMutable<Tensor>();
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
                       platform::errors::PreconditionNotMet(
                           "Paramter [%s] is not initialzed, please make sure "
@@ -144,7 +144,7 @@ bool SaveDygraphVarBaseListToDisk(
   for (size_t i = 0; i < vec_var_base_list.size(); ++i) {
     auto var_ptr = vec_var_base_list[i]->MutableVar();
 
-    Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    Tensor* tensor = var_ptr->GetMutable<Tensor>();
 
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
                       platform::errors::PreconditionNotMet(
@@ -169,7 +169,7 @@ LoadDygraphVarBaseListFromDisk(const std::string& file_name) {
     std::shared_ptr<imperative::VarBase> var(
         new imperative::VarBase(load_tensor.first));
 
-    auto* tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* tensor = var->MutableVar()->GetMutable<framework::Tensor>();
 
     TensorCopySync(*(load_tensor.second.get()), load_tensor.second->place(),
                    tensor);
@@ -201,7 +201,7 @@ bool LoadStaticNameListFromDisk(
             "please make sure that exe.run(startup_program) has been executed.",
             vec_tensor_name_list[i]));
 
-    Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    Tensor* tensor = var_ptr->GetMutable<Tensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         platform::errors::PreconditionNotMet(

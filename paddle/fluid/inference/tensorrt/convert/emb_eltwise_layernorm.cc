@@ -74,7 +74,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     auto get_persistable_data = [&](const std::string& var_name,
                                     framework::DDim* dims) -> float* {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<framework::Tensor>();
       (*dims) = temp_tensor->dims();
 
       auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor, false);

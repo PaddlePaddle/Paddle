@@ -488,7 +488,7 @@ static void inline CreateVariableIfNotExit(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        auto *tensor_temp = var->GetMutable<framework::Tensor>();
         tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
       }
@@ -833,12 +833,12 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
-        Set the data of LoDTensor on place with given numpy array.
+        Set the data of Tensor on place with given numpy array.
         
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
-          LoDTensor is to be set.
+          Tensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
 
@@ -851,17 +851,17 @@ PYBIND11_MODULE(core_noavx, m) {
                 import paddle.fluid as fluid
                 import numpy as np
 
-                t = fluid.LoDTensor()
+                t = fluid.Tensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
 
       .def("shape",
            [](framework::Tensor &self) { return vectorize(self.dims()); },
            R"DOC(
-           Return the shape of LoDTensor.
+           Return the shape of Tensor.
 
            Returns:
-               list[int]: The shape of LoDTensor.
+               list[int]: The shape of Tensor.
 
 
            Examples:
@@ -870,7 +870,7 @@ PYBIND11_MODULE(core_noavx, m) {
                   import paddle.fluid as fluid
                   import numpy as np
 
-                  t = fluid.LoDTensor()
+                  t = fluid.Tensor()
                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                   print(t.shape())  # [5, 30]
            )DOC")
@@ -914,28 +914,28 @@ PYBIND11_MODULE(core_noavx, m) {
       });
 
   // TODO(cql): add reference: en_user_guide_lod_tensor
-  py::class_<LoDTensor, framework::Tensor>(m, "LoDTensor", R"DOC(
-    LoDTensor is a Tensor with optional LoD (Level of Details) information, 
+  py::class_<Tensor, framework::Tensor>(m, "Tensor", R"DOC(
+    Tensor is a Tensor with optional LoD (Level of Details) information, 
     it can be used for variable-length sequences, 
     see :ref:`user_guide_lod_tensor` for details.
 
-    LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
+    Tensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
 
     You can skip the following explanation if you don't need to know details 
-    of LoDTensor.
+    of Tensor.
 
     The following two examples show how to use LODtensor to represent 
     variable-length sequences.
     
     Example 1:
     
-    Suppose x is a LoDTensor representing a variable-length sequence. 
+    Suppose x is a Tensor representing a variable-length sequence. 
     It contains two logical subsequences, the length of first logical sequence 
     is 2 (e.g., number of samples is 2), the length of second logical sequence 
     is 3, and the total length is 5. The data of the first logical sequence is 
     [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], 
     [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final 
-    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is 
+    shape of the Tensor is [5, 2], of which 5 is the total length and 2 is 
     the dimension of each sample.
     
     Logically, we can represent the variable-length sequence in two ways: one 
@@ -943,7 +943,7 @@ PYBIND11_MODULE(core_noavx, m) {
     x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets, 
     that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and 
     you can set and retrieve recursive_sequence_lengths or LoD through the 
-    corresponding interfaces of LoDTensor introduced later.
+    corresponding interfaces of Tensor introduced later.
 
     Actually, in order to access sequence faster, Paddle uses offset to store 
     different lengths of sequences. 
@@ -966,7 +966,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
     LoD may have more than one level (for example, a paragraph may have more 
     than one sentence and a sentence may have more than one word). Suppose y 
-    is a LoDTensor and its lod_level is 2. 
+    is a Tensor and its lod_level is 2. 
     From level = 0, there are two logical sequences, the length of which is 
     2 and 1, respectively, indicating that the first logical sequence contains 
     two sub-sequences and the second logical sequence contains one sub-sequence. 
@@ -974,7 +974,7 @@ PYBIND11_MODULE(core_noavx, m) {
     logical sequence is 2 and 2, and the length of sub-sequence contained by 
     the second logical sequence is 3.
       
-    Therefore, the LoDTensor is represented in the form of recursive sequence 
+    Therefore, the Tensor is represented in the form of recursive sequence 
     lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
     the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7]].
 
@@ -995,14 +995,14 @@ PYBIND11_MODULE(core_noavx, m) {
 
           import paddle.fluid as fluid
 
-          t = fluid.LoDTensor()
+          t = fluid.Tensor()
 
         )DOC")
       .def("__array__",
            [](framework::Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
-           [](LoDTensor &instance, const std::vector<std::vector<size_t>>
-                                       &recursive_sequence_lengths) {
+           [](Tensor &instance, const std::vector<std::vector<size_t>>
+                                    &recursive_sequence_lengths) {
              LoD new_lod;
              new_lod.reserve(recursive_sequence_lengths.size());
              std::copy(recursive_sequence_lengths.begin(),
@@ -1015,9 +1015,9 @@ PYBIND11_MODULE(core_noavx, m) {
                      "The provided recursive_sequence_lengths info is invalid, "
                      "the LoD converted by recursive_sequence_lengths is %s",
                      new_lod));
-             new (&instance) LoDTensor(new_offset_lod);
+             new (&instance) Tensor(new_offset_lod);
            })
-      .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
+      .def("__init__", [](Tensor &instance) { new (&instance) Tensor(); })
       // We implement offset based LOD in C++ while we use length based with
       // Python API. So we changed set_lod to set_recursive_sequence_lengths
       // to
@@ -1025,7 +1025,7 @@ PYBIND11_MODULE(core_noavx, m) {
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def("set_lod",
-           [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+           [](Tensor &self, const std::vector<std::vector<size_t>> &lod) {
              // the input lod is offset-based level-of-detail info
              LoD new_lod;
              new_lod.reserve(lod.size());
@@ -1037,7 +1037,7 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_lod(new_lod);
            },
            py::arg("lod"), R"DOC(
-           Set LoD of the LoDTensor.
+           Set LoD of the Tensor.
 
            Args:
                lod (list[list[int]]): The lod to set.
@@ -1051,14 +1051,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
       .def("set_recursive_sequence_lengths",
-           [](LoDTensor &self, const std::vector<std::vector<size_t>>
-                                   &recursive_sequence_lengths) {
+           [](Tensor &self, const std::vector<std::vector<size_t>>
+                                &recursive_sequence_lengths) {
              // the input recursive_sequence_lengths is length-based
              // level-of-detail info
              LoD new_lod;
@@ -1077,7 +1077,7 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_lod(new_offset_lod);
            },
            py::arg("recursive_sequence_lengths"), R"DOC(
-           Set LoD of the LoDTensor according to recursive sequence lengths.
+           Set LoD of the Tensor according to recursive sequence lengths.
 
            For example, if recursive_sequence_lengths=[[2, 3]], which means
            there are two sequences with length 2 and 3 respectively, the
@@ -1095,14 +1095,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.recursive_sequence_length())  # [[2, 3]]
                  print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
-           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+           [](Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the offset-based lod info
              LoD lod = self.lod();
              std::vector<std::vector<size_t>> new_lod;
@@ -1111,10 +1111,10 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the LoD of the LoDTensor.
+           Return the LoD of the Tensor.
 
            Returns:
-               list[list[int]]: The lod of the LoDTensor.
+               list[list[int]]: The lod of the Tensor.
            
            Examples:
                .. code-block:: python
@@ -1122,14 +1122,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
-           [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+           [](Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
              LoD lod = ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
@@ -1139,7 +1139,7 @@ PYBIND11_MODULE(core_noavx, m) {
            },
            R"DOC(
            Return the recursive sequence lengths corresponding to of the LodD 
-           of the LoDTensor.
+           of the Tensor.
 
            Returns:
                 list[list[int]]: The recursive sequence lengths.
@@ -1150,19 +1150,19 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
       .def("has_valid_recursive_sequence_lengths",
-           [](LoDTensor &self) -> bool {
+           [](Tensor &self) -> bool {
              // Check that the lod info is valid and match the outermost
-             // dimension of the LoDTensor data
+             // dimension of the Tensor data
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
            },
            R"DOC(
-           Check whether the LoD of the LoDTensor is valid.
+           Check whether the LoD of the Tensor is valid.
 
            Returns:
                bool: Whether the LoD is valid.
@@ -1173,7 +1173,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  import paddle.fluid as fluid
                  import numpy as np
 
-                 t = fluid.LoDTensor()
+                 t = fluid.Tensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.has_valid_recursive_sequence_lengths()) # True
@@ -1183,26 +1183,26 @@ PYBIND11_MODULE(core_noavx, m) {
            Slice the original Tensor, and remove the LoD information.
 
            Returns:
-               out (Tensor): new Tensor(NOT LoDTensor).
+               out (Tensor): new Tensor(NOT Tensor).
            )DOC")
       .def("__str__",
-           [](const LoDTensor &self) {
+           [](const Tensor &self) {
              std::stringstream ostr;
              ostr << self;
              return ostr.str();
            })
-      .def("_as_type",
-           [](const LoDTensor &self,
-              paddle::framework::proto::VarType::Type type) {
-             LoDTensor dst;
-             if (self.IsInitialized() && self.numel() > 0) {
-               TransDataType(self, type, &dst);
-             }
-             return dst;
-           })
-      .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
+      .def(
+          "_as_type",
+          [](const Tensor &self, paddle::framework::proto::VarType::Type type) {
+            Tensor dst;
+            if (self.IsInitialized() && self.numel() > 0) {
+              TransDataType(self, type, &dst);
+            }
+            return dst;
+          })
+      .def("_copy", [](const Tensor &self, const platform::Place &place) {
         // follow fetch_op's inplementation
-        LoDTensor dst;
+        Tensor dst;
         if (self.IsInitialized() && self.numel() > 0) {
           TensorCopySync(self, place, &dst);
         } else {
@@ -1217,20 +1217,20 @@ PYBIND11_MODULE(core_noavx, m) {
 #else
            })
       .def(py::pickle(
-          [](const LoDTensor &t) {  // __getstate__
+          [](const Tensor &t) {  // __getstate__
             auto holder = t.Holder();
             PADDLE_ENFORCE_EQ(
               platform::is_cpu_place(holder->place()), true,
               platform::errors::PreconditionNotMet(
-                  "LoDTensor is not on CPU."
-                  "Now only LoDTensor on CPU can be serialized."));
+                  "Tensor is not on CPU."
+                  "Now only Tensor on CPU can be serialized."));
             auto* mmap_writer_allocation =
               dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
                 holder.get());
             PADDLE_ENFORCE_NOT_NULL(mmap_writer_allocation,
               platform::errors::PreconditionNotMet(
-                "LoDTensor is not in shared memory."
-                "Now only LoDTensor on shared memory can be serialized."));
+                "Tensor is not in shared memory."
+                "Now only Tensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
 
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
@@ -1239,10 +1239,10 @@ PYBIND11_MODULE(core_noavx, m) {
           },
           [](py::tuple t) {  // __setstate__
             if (t.size() != 5)
-              throw std::runtime_error("Invalid LoDTensor state!");
+              throw std::runtime_error("Invalid Tensor state!");
 
             // 1. Create a new C++ instance
-            LoDTensor tensor;
+            Tensor tensor;
 
             // 2. Rebuild Allocation
             const std::string &ipc_name = t[0].cast<std::string>();
@@ -1252,10 +1252,10 @@ PYBIND11_MODULE(core_noavx, m) {
                 ipc_name, size);
 
             // 3. Maintain global fd set
-            VLOG(3) << "LoDTensor ipc name: " << ipc_name;
+            VLOG(3) << "Tensor ipc name: " << ipc_name;
             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
 
-            // 4. Rebuild LoDTensor
+            // 4. Rebuild Tensor
             tensor.ResetHolderWithType(shared_reader_holder,
               static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
@@ -1315,9 +1315,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_float",
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def("get_tensor",
-           [](Variable &self) -> LoDTensor * {
-             return self.GetMutable<LoDTensor>();
-           },
+           [](Variable &self) -> Tensor * { return self.GetMutable<Tensor>(); },
            py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
@@ -1651,7 +1649,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
-    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    It represents a GPU device allocated or to be allocated with Tensor or Tensor.
     Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
     staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
@@ -2159,7 +2157,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
-              std::map<std::string, const LoDTensor *> *feed_targets,
+              std::map<std::string, const Tensor *> *feed_targets,
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true, bool create_vars = true,
               const std::string &feed_holder_name = "feed",
@@ -2210,11 +2208,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<framework::Tensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
-               framework::LoDTensor t;
+               framework::Tensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
@@ -2230,10 +2228,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](StandaloneExecutor &self,
-              const std::unordered_map<std::string, framework::LoDTensor>
+              const std::unordered_map<std::string, framework::Tensor>
                   &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<framework::Tensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
@@ -2261,11 +2259,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<framework::Tensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
-               framework::LoDTensor t;
+               framework::Tensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
@@ -2348,7 +2346,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("set_feed_variable",
-        static_cast<void (*)(Scope *, const LoDTensor &, const std::string &,
+        static_cast<void (*)(Scope *, const Tensor &, const std::string &,
                              size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
         static_cast<void (*)(Scope *, const Strings &, const std::string &,
@@ -2358,7 +2356,7 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(BOOST_GET(LoDTensor, var));
+            return py::cast(BOOST_GET(Tensor, var));
           } else {
             return py::cast(BOOST_GET(LoDTensorArray, var));
           }
@@ -2387,7 +2385,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
-    LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
+    LoDTensorArray is array of Tensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
         .. code-block:: python
@@ -2403,7 +2401,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+           [](LoDTensorArray &self, size_t i, const Tensor &t) {
              PADDLE_ENFORCE_LT(i, self.size(),
                                platform::errors::InvalidArgument(
                                    "The index to set is larger than the size "
@@ -2412,7 +2410,7 @@ All parameter, weight, gradient are variables in Paddle.
              self[i].set_lod(t.lod());
            })
       .def("append",
-           [](LoDTensorArray &self, const LoDTensor &t) {
+           [](LoDTensorArray &self, const Tensor &t) {
              self.emplace_back();
              self.back().ShareDataWith(t);
              self.back().set_lod(t.lod());
@@ -2421,7 +2419,7 @@ All parameter, weight, gradient are variables in Paddle.
              Append a LoDensor to LoDTensorArray.
               
              Args:
-                   tensor (LoDTensor): The LoDTensor to be appended.
+                   tensor (Tensor): The Tensor to be appended.
 
              Returns:
                    None.
@@ -2433,7 +2431,7 @@ All parameter, weight, gradient are variables in Paddle.
                    import numpy as np
 
                    arr = fluid.LoDTensorArray()
-                   t = fluid.LoDTensor()
+                   t = fluid.Tensor()
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
@@ -2449,14 +2447,14 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::take_ownership);
 
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
-        vector of boost::variant<LoDTensor, LoDTensorArray>.
+        vector of boost::variant<Tensor, LoDTensorArray>.
         )DOC")
       .def("_move_to_list",
            [](FetchList &self) -> py::list {
              py::list res(self.size());
              for (size_t i = 0; i < self.size(); ++i) {
                if (data_is_lod_tensor(self[i])) {
-                 auto &data = BOOST_GET(LoDTensor, self[i]);
+                 auto &data = BOOST_GET(Tensor, self[i]);
                  res[i] = py::cast(std::move(data));
                } else {
                  auto &data = BOOST_GET(LoDTensorArray, self[i]);
@@ -2473,9 +2471,9 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::take_ownership)
 
       .def("append",
-           [](FetchList &self, const LoDTensor &t) {
+           [](FetchList &self, const Tensor &t) {
              self.emplace_back();
-             auto &lod_tensor = BOOST_GET(LoDTensor, self.back());
+             auto &lod_tensor = BOOST_GET(Tensor, self.back());
              lod_tensor.ShareDataWith(t);
              lod_tensor.set_lod(t.lod());
            },
@@ -2493,7 +2491,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
-        FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
+        FetchUnmergedList is 2-D array of FetchType(boost::variant(Tensor, LoDTensorArray)).
         )DOC")
       .def("_move_to_list",
            [](FetchUnmergedList &self) -> py::list {
@@ -2502,7 +2500,7 @@ All parameter, weight, gradient are variables in Paddle.
                py::list tmp(self[i].size());
                for (size_t j = 0; j < self[i].size(); ++j) {
                  if (data_is_lod_tensor(self[i][j])) {
-                   auto &var = BOOST_GET(LoDTensor, self[i][j]);
+                   auto &var = BOOST_GET(Tensor, self[i][j]);
                    tmp[j] = py::cast(std::move(var));
                  } else {
                    auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
@@ -2673,7 +2671,7 @@ All parameter, weight, gradient are variables in Paddle.
         []() { framework::ExecutorInfoCache::Instance().Finalize(); });
 
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+      std::unordered_map<std::string, std::pair<bool, Tensor>>;
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())

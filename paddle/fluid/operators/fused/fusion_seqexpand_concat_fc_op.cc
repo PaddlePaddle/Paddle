@@ -94,12 +94,12 @@ framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
 
 void FusionSeqExpandConcatFCOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) input LodDTensors, the first one must be have ref lod "
+           "(Tensor) input LodDTensors, the first one must be have ref lod "
            "for sequence expand, and the rest input should have same lod.")
       .AsDuplicable();
   AddInput("FCWeight", "(Tensor) the weights of fc.");
   AddInput("FCBias", "(Tensor, optional) the bias of fc.").AsDispensable();
-  AddOutput("Out", "(LoDTensor) Output LodTensor.");
+  AddOutput("Out", "(Tensor) Output LodTensor.");
   AddOutput(
       "FCOut",
       "(Tensor) the intermediate tensor to keep the result of fc."
@@ -134,10 +134,10 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = paddle::platform::CPUDeviceContext;
-    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto ins = ctx.MultiInput<Tensor>("X");
     auto* w = ctx.Input<Tensor>("FCWeight");
     auto* b = ctx.Input<Tensor>("FCBias");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* out = ctx.Output<Tensor>("Out");
     auto* fc_out = ctx.Output<Tensor>("FCOut");
 
     auto* ref_in = ins[0];

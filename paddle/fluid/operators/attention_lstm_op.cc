@@ -166,9 +166,9 @@ framework::OpKernelType AttentionLSTMOp::GetExpectedKernelType(
 
 void AttentionLSTMOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
+           "(Tensor) the input is a LodTensor, which support "
            "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "this Tensor is a matrix with shape (T X M), where T is the "
            "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("C0",
            "(Tensor) LSTM C0"
@@ -208,10 +208,10 @@ void AttentionLSTMOpMaker::Make() {
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
   AddOutput("Hidden",
-            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+            "(Tensor) (same as LSTMOp) the hidden state of LSTM operator. "
             "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("Cell",
-            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
+            "(Tensor) (same as LSTMOp) the cell state of LSTM operator. "
             "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("AttentionedX",
             "(Tensor) shape is (T x 1), the result after X * AttentionWeight,"
@@ -299,7 +299,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = paddle::platform::CPUDeviceContext;
 
-    auto* x = ctx.Input<LoDTensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
     auto* h0 = ctx.Input<Tensor>("H0");
     auto* c0 = ctx.Input<Tensor>("C0");
     auto* atten_w = ctx.Input<Tensor>("AttentionWeight");
@@ -309,8 +309,8 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto* lstm_w = ctx.Input<Tensor>("LSTMWeight");
     auto* lstm_b = ctx.Input<Tensor>("LSTMBias");
 
-    auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
+    auto* hidden_out = ctx.Output<Tensor>("Hidden");
+    auto* cell_out = ctx.Output<Tensor>("Cell");
     auto* atted_x = ctx.Output<Tensor>("AttentionedX");
     auto* fc_out = ctx.Output<Tensor>("AttentionFCOut");
     auto* lstm_x = ctx.Output<Tensor>("LSTMX");

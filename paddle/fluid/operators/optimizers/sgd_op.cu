@@ -57,9 +57,9 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::Tensor>(), true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be Tensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           paddle::framework::ToTypeName(param_var->Type())));
@@ -69,8 +69,8 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
     auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
     auto* grad_var = ctx.InputVar("Grad");
-    // Actually, all tensors are LoDTensor except SelectedRows.
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    // Actually, all tensors are Tensor except SelectedRows.
+    if (grad_var->IsType<framework::Tensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
       // LOG(ERROR) << "grad";

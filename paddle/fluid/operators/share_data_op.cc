@@ -32,7 +32,7 @@ class ShareDataOp : public framework::OperatorWithKernel {
         in_type == framework::proto::VarType::LOD_TENSOR ||
             in_type == framework::proto::VarType::SELECTED_ROWS,
         true, platform::errors::InvalidArgument(
-                  "Type of Variable[X] must be LoDTensor or SelectedRows!"));
+                  "Type of Variable[X] must be Tensor or SelectedRows!"));
     PADDLE_ENFORCE_EQ(
         in_type, out_type,
         platform::errors::InvalidArgument(

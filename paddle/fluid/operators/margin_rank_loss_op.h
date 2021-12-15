@@ -66,10 +66,8 @@ template <typename DeviceContext, typename T>
 class MarginRankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* d_x1_t =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X1"));
-    auto* d_x2_t =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X2"));
+    auto* d_x1_t = ctx.Output<framework::Tensor>(framework::GradVarName("X1"));
+    auto* d_x2_t = ctx.Output<framework::Tensor>(framework::GradVarName("X2"));
 
     auto* act_t = ctx.Input<framework::Tensor>("Activated");
     auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));

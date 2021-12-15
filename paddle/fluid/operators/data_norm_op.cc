@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
@@ -473,8 +473,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(

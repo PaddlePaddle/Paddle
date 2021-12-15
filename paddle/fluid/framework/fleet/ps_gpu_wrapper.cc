@@ -601,7 +601,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
-    LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+    Tensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
 
@@ -670,7 +670,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   } else if (platform::is_gpu_place(place)) {
     int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
-    LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
+    Tensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
     VLOG(3) << "Begin copy grad tensor to gpups struct";

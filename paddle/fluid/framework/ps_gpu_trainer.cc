@@ -119,10 +119,10 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (!root_var) {
           continue;
         }
-        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        Tensor* root_tensor = root_var->GetMutable<Tensor>();
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+        Tensor* thread_tensor = ptr->GetMutable<Tensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
@@ -181,11 +181,11 @@ void PSGPUTrainer::Run() {
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
 template <typename T>
-void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
-  LoDTensor tmp_root;
+void PSGPUTrainer::MergeToRootScope(Tensor* root_tensor, Tensor* tensor) {
+  Tensor tmp_root;
   TensorCopySync(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  LoDTensor tmp_tensor;
+  Tensor tmp_tensor;
   TensorCopySync(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -199,9 +199,9 @@ void PSGPUTrainer::MergeDenseParam() {
   for (auto& name : trainable_param_) {
     VLOG(2) << "merge var " << name << " to root scope";
     Variable* root_var = root_scope_->FindVar(name);
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    Tensor* root_tensor = root_var->GetMutable<Tensor>();
     Variable* var = thread_scope->FindVar(name);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    Tensor* tensor = var->GetMutable<Tensor>();
     TensorCopySync((*tensor), root_tensor->place(), root_tensor);
   }
 }
@@ -215,7 +215,7 @@ void PSGPUTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    Tensor* root_tensor = root_var->GetMutable<Tensor>();
 
     for (size_t j = 0; j < places_.size(); j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
@@ -224,7 +224,7 @@ void PSGPUTrainer::Finalize() {
       if (thread_var == nullptr) {
         continue;
       }
-      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      Tensor* thread_tensor = thread_var->GetMutable<Tensor>();
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (root_tensor->type() == proto_type) {                                   \

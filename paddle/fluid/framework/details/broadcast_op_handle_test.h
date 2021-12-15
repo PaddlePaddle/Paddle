@@ -212,7 +212,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
-    auto lod_tensor = var->GetMutable<f::LoDTensor>();
+    auto lod_tensor = var->GetMutable<f::Tensor>();
     std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + val_scalar;
@@ -291,7 +291,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
-    auto tensor = var->Get<f::LoDTensor>();
+    auto tensor = var->Get<f::Tensor>();
     PADDLE_ENFORCE_EQ(tensor.lod(), lod,
                       platform::errors::InvalidArgument(
                           "The LoD of tensor is not equal to "

@@ -20,14 +20,14 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto& lod = x->lod();
     auto& dims = x->dims();
@@ -69,10 +69,10 @@ template <typename T>
 class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<LoDTensor>("Out");
-    auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (x_grad) {
       x_grad->set_lod(x->lod());
     }

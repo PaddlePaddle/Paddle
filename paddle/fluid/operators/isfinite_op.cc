@@ -54,8 +54,8 @@ class OverflowOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
-    if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = x_var->Get<framework::LoDTensor>().type();
+    if (x_var->IsType<framework::Tensor>()) {
+      dtype = x_var->Get<framework::Tensor>().type();
     } else if (x_var->IsType<framework::SelectedRows>()) {
       dtype = x_var->Get<framework::SelectedRows>().value().type();
     } else {

@@ -19,7 +19,7 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
-using framework::LoDTensor;
+using framework::Tensor;
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::concat;

@@ -130,7 +130,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
     auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<framework::Tensor>()) {
       auto grad = ctx.Input<Tensor>("Grad");
       auto g = EigenVector<T>::Flatten(*grad);
 

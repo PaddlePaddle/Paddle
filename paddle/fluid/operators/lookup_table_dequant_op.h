@@ -28,7 +28,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
@@ -48,8 +48,8 @@ template <typename T>
 class LookupTableDequantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
-    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
+    auto *ids_t = context.Input<Tensor>("Ids");      // int tensor
+    auto *output_t = context.Output<Tensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");
 
     auto id_name = context.InputNames("Ids").front();
@@ -61,9 +61,9 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     int64_t ids_numel = ids_t->numel();
 
     PADDLE_ENFORCE_GE(
-        table_var->Type(), framework::VarTypeTrait<LoDTensor>::kId,
+        table_var->Type(), framework::VarTypeTrait<Tensor>::kId,
         platform::errors::InvalidArgument("lookup table must be LodTensor"));
-    auto *table_t = context.Input<LoDTensor>("W");
+    auto *table_t = context.Input<Tensor>("W");
     int64_t row_number = table_t->dims()[0];
     int64_t quant_number = table_t->dims()[1];
     int64_t row_width = (quant_number - 2) * 4;

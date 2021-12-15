@@ -34,14 +34,13 @@ void XPUElementwise(
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NE(x_var, nullptr, platform::errors::InvalidArgument(
                                         "Cannot get input Variable X"));
-  PADDLE_ENFORCE_EQ(
-      x_var->IsType<framework::LoDTensor>(), true,
-      platform::errors::InvalidArgument(
-          "XPU only support LoDTensor, Input(X) is not LoDTensor"));
+  PADDLE_ENFORCE_EQ(x_var->IsType<framework::Tensor>(), true,
+                    platform::errors::InvalidArgument(
+                        "XPU only support Tensor, Input(X) is not Tensor"));
 
-  auto x = x_var->Get<framework::LoDTensor>();
-  auto* y = ctx.Input<framework::LoDTensor>("Y");
-  auto* z = ctx.Output<framework::LoDTensor>("Out");
+  auto x = x_var->Get<framework::Tensor>();
+  auto* y = ctx.Input<framework::Tensor>("Y");
+  auto* z = ctx.Output<framework::Tensor>("Out");
   z->mutable_data<T>(ctx.GetPlace());
   auto x_dims = x.dims();
   auto y_dims = y->dims();

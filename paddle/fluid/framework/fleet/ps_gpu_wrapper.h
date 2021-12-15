@@ -270,7 +270,7 @@ class PSGPUWrapper {
       uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
   HeterPsBase* HeterPs_;
-  std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
+  std::vector<Tensor> keys_tensor;  // Cache for pull_sparse
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;

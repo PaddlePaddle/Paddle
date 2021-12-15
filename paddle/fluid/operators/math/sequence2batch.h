@@ -59,15 +59,14 @@ class LoDTensor2BatchFunctor {
 
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& lod_tensor,
-                  framework::LoDTensor* batch, bool is_cal_batch_lod,
-                  bool is_reverse = false) const {
+                  const framework::Tensor& lod_tensor, framework::Tensor* batch,
+                  bool is_cal_batch_lod, bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
       auto lods = batch->lod();
       PADDLE_ENFORCE_GT(
           lods.size(), 2UL,
           platform::errors::InvalidArgument(
-              "The LoD of LoDTensor should inlcude at least 2-level "
+              "The LoD of Tensor should inlcude at least 2-level "
               "sequence information, but got the LoD level is %lu. Please "
               "check the input value.",
               lods.size()));
@@ -128,12 +127,12 @@ class LoDTensor2BatchFunctor {
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
 
-    // batch_lods[0] is the start positions for batch LoDTensor
+    // batch_lods[0] is the start positions for batch Tensor
     size_t max_seqlen = seq_info[0].length;
     batch_lods[0].resize(max_seqlen + 1);
-    // batch_lods[1] is the raw index in the input LoDTensor
+    // batch_lods[1] is the raw index in the input Tensor
     batch_lods[1].resize(static_cast<size_t>(lod_tensor.dims()[0]));
-    // batch_lods[2] is the sort order for the input LoDTensor.
+    // batch_lods[2] is the sort order for the input Tensor.
     batch_lods[2].resize(seq_info.size());
 
     size_t* batch_starts = batch_lods[0].data();
@@ -168,14 +167,13 @@ class LoDTensor2BatchFunctor {
 template <typename DeviceContext, typename T>
 class Batch2LoDTensorFunctor {
  public:
-  void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& batch,
-                  framework::LoDTensor* lod_tensor) const {
+  void operator()(const DeviceContext& context, const framework::Tensor& batch,
+                  framework::Tensor* lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(
         in_lod.size(), 2UL,
         platform::errors::InvalidArgument(
-            "The LoD of LoDTensor should inlcude at least 2-level "
+            "The LoD of Tensor should inlcude at least 2-level "
             "sequence information, but got the LoD level is %lu. Please check "
             "the input value.",
             in_lod.size()));

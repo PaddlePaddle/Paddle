@@ -39,11 +39,11 @@ class GPURandintKernel : public framework::OpKernel<T> {
     platform::CPUPlace cpu;
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    auto* out = context.Output<framework::LoDTensor>("Out");
+    auto* out = context.Output<framework::Tensor>("Out");
     if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
     T low = static_cast<T>(context.Attr<int>("low"));
     T high = static_cast<T>(context.Attr<int>("high")) - 1;
-    framework::LoDTensor tensor;
+    framework::Tensor tensor;
     tensor.Resize(out->dims());
     tensor.mutable_data(cpu, dtype);
     T* data = tensor.mutable_data<T>(cpu);

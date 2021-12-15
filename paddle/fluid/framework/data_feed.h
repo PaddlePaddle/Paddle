@@ -50,7 +50,7 @@ DECLARE_bool(enable_slotrecord_reset_shrink);
 namespace paddle {
 namespace framework {
 class DataFeedDesc;
-class LoDTensor;
+class Tensor;
 class Scope;
 class Variable;
 }  // namespace framework
@@ -624,9 +624,9 @@ class DataFeed {
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
   // The data read by DataFeed will be stored here
-  std::vector<LoDTensor*> feed_vec_;
+  std::vector<Tensor*> feed_vec_;
 
-  LoDTensor* rank_offset_;
+  Tensor* rank_offset_;
 
   // the batch size defined by user
   int default_batch_size_;
@@ -779,7 +779,7 @@ class MultiSlotType {
       offset_.reserve(max_batch_size + 1);
     }
     offset_.resize(1);
-    // LoDTensor' lod is counted from 0, the size of lod
+    // Tensor' lod is counted from 0, the size of lod
     // is one size larger than the size of data.
     offset_[0] = 0;
   }

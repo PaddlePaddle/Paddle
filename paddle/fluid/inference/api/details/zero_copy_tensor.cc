@@ -39,7 +39,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_NOT_NULL(
       var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
-  auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  auto *tensor = var->GetMutable<paddle::framework::Tensor>();
   tensor->Resize(paddle::framework::make_ddim(shape));
 }
 
@@ -69,7 +69,7 @@ void Tensor::ReshapeStrings(const size_t &shape) {
 
 template <typename T>
 T *Tensor::mutable_data(PlaceType place) {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
       paddle::platform::errors::PreconditionNotMet(
@@ -101,7 +101,7 @@ T *Tensor::mutable_data(PlaceType place) {
 
 template <typename T>
 T *Tensor::data(PlaceType *place, int *size) const {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   auto *res = tensor->data<T>();
 
   if (paddle::platform::is_cpu_place(tensor->place())) {
@@ -121,7 +121,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 }
 
 DataType Tensor::type() const {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   auto type = tensor->type();
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
@@ -143,7 +143,7 @@ PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "
@@ -217,7 +217,7 @@ void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
 template <typename T>
 void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
                            void *cb_params) const {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
@@ -416,7 +416,7 @@ void *Tensor::FindTensor() const {
 }
 
 std::vector<int> Tensor::shape() const {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
@@ -424,7 +424,7 @@ std::vector<int> Tensor::shape() const {
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   paddle::framework::LoD lod;
   for (auto &level : x) {
     lod.emplace_back(level);
@@ -433,7 +433,7 @@ void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
 }
 
 std::vector<std::vector<size_t>> Tensor::lod() const {
-  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+  EAGER_GET_TENSOR(paddle::framework::Tensor);
   std::vector<std::vector<size_t>> res;
   for (auto &level : tensor->lod()) {
     res.emplace_back(level);

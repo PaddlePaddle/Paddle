@@ -33,8 +33,7 @@ void LodTensorArray2LodTensorVector(const framework::Scope &scope,
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input =
-        *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<paddle::framework::Tensor>());
     feed_input.ShareDataWith(inx[i]);
     res_names->push_back(var_name);
   }
@@ -50,8 +49,7 @@ void LodTensorVectorResizeFromLodTensorArray(
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input =
-        *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<paddle::framework::Tensor>());
     auto dims = inx[i].dims();
     feed_input.Resize(dims);
     res_names->push_back(var_name);
@@ -71,8 +69,7 @@ void LodTensorArrayCreateFromLodTensorArray(
     std::string var_name = output_lod_tensor_array_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input =
-        *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<paddle::framework::Tensor>());
     grad_inx.push_back(feed_input);
   }
 }
@@ -90,10 +87,9 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     attrs["axis"] = axis;
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &out = *scope.FindVar(Output("Out"))->GetMutable<framework::Tensor>();
     auto &out_inx =
-        *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
+        *scope.FindVar(Output("OutIndex"))->GetMutable<framework::Tensor>();
 
     const size_t n = inx.size();
     PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
@@ -276,7 +272,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < grad_names.size(); i++) {
       std::string var_name = grad_names[i];
-      auto &feed_input = scope.FindVar(var_name)->Get<framework::LoDTensor>();
+      auto &feed_input = scope.FindVar(var_name)->Get<framework::Tensor>();
       grad_inx[i].ShareDataWith(feed_input);
     }
   }

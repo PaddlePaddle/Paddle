@@ -752,11 +752,11 @@ void ParallelExecutor::BCastParamsToDevices(
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
-    if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
+    if (main_var == nullptr || !main_var->IsType<Tensor>()) {
       continue;
     }
 
-    auto &main_tensor = main_var->Get<LoDTensor>();
+    auto &main_tensor = main_var->Get<Tensor>();
     if (!main_tensor.IsInitialized()) {
       VLOG(3) << "one in var not inited, return!";
       continue;
@@ -776,7 +776,7 @@ void ParallelExecutor::BCastParamsToDevices(
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
-          auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
+          auto *t = local_scope->Var(var)->GetMutable<Tensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.type());
         }
@@ -819,7 +819,7 @@ void ParallelExecutor::BCastParamsToDevices(
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
-          auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
+          auto *t = local_scope->Var(var)->GetMutable<Tensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.type());
         }
@@ -861,7 +861,7 @@ void ParallelExecutor::BCastParamsToDevices(
       platform::CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
-        auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
+        auto *t = local_scope->Var(var)->GetMutable<Tensor>();
 
         auto copy_memory = [&] {
           t->Resize(dims);
@@ -955,7 +955,7 @@ void ParallelExecutor::SkipMemoryReuse(
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
-    const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
+    const std::vector<std::unordered_map<std::string, Tensor>> &tensors) {
   if (platform::IsCUDAGraphCapturing()) {
     for (auto &tensor : tensors) {
       PADDLE_ENFORCE_EQ(
@@ -1000,7 +1000,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
                                         : member_->local_exec_scopes_[i];
       auto *feed_var = feed_scope->Var(pair.first);
 
-      auto *trg = feed_var->GetMutable<LoDTensor>();
+      auto *trg = feed_var->GetMutable<Tensor>();
       trg->ShareDataWith(pair.second);
       trg->set_lod(pair.second.lod());
     }
@@ -1020,7 +1020,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 }
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
-    const std::unordered_map<std::string, LoDTensor> &tensors) {
+    const std::unordered_map<std::string, Tensor> &tensors) {
   if (platform::IsCUDAGraphCapturing()) {
     PADDLE_ENFORCE_EQ(
         tensors.empty(), true,
@@ -1114,7 +1114,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
                                         : member_->local_exec_scopes_[j];
       auto *feed_var = feed_scope->Var(pair.first);
 
-      auto t = feed_var->GetMutable<LoDTensor>();
+      auto t = feed_var->GetMutable<Tensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
     }

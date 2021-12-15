@@ -43,7 +43,7 @@ class RmspropOp : public framework::OperatorWithKernel {
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
                           "The input var's type in RmspropOp should be "
-                          "LoDTensor, but the received is %s",
+                          "Tensor, but the received is %s",
                           ctx->GetInputsVarType("Param").front()));
 
     PADDLE_ENFORCE_EQ(

@@ -122,8 +122,8 @@ class SliceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *in_var = ctx.InputVar("Input");
-    if (in_var->IsType<framework::LoDTensor>()) {
-      auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    if (in_var->IsType<framework::Tensor>()) {
+      auto &in_tensor = in_var->Get<framework::Tensor>();
       PADDLE_ENFORCE_EQ(
           in_tensor.IsInitialized(), true,
           platform::errors::InvalidArgument(
@@ -180,9 +180,9 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto decrease_axis = ctx->GetAttr("decrease_axis");
     auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
-      // The default type of out is LoDTensor.
+      // The default type of out is Tensor.
       // However, if no axis is decreased and the type of input is not
-      // LoDTensor, the type of out should be the same as input.
+      // Tensor, the type of out should be the same as input.
       // For example, input is a LoDTensorArray and no axis is decreased, the
       // output should be a LoDTensorArray.
       ctx->SetOutputType(out_name, ctx->GetInputType(x_name));
@@ -355,8 +355,8 @@ class SliceOpGradVarTypeInference : public framework::VarTypeInference {
     auto d_out = framework::GradVarName("Out");
     auto out = framework::GradVarName("Input");
     // The types of grad_input and input should always be the same.
-    // The default type of out is LoDTensor, but the type of input can be
-    // LoDTensor or LoDTensorArray,
+    // The default type of out is Tensor, but the type of input can be
+    // Tensor or LoDTensorArray,
     // so set the type of both to be the same.
     ctx->SetOutputType(out, ctx->GetInputType(x));
     ctx->SetOutputDataType(out, ctx->GetInputDataType(d_out));

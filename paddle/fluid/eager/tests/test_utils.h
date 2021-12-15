@@ -100,7 +100,7 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
 template <typename T>
 bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
   // TODO(jiabin): Support Selected Rows later
-  auto lod_tensor = target.Var().Get<paddle::framework::LoDTensor>();
+  auto lod_tensor = target.Var().Get<paddle::framework::Tensor>();
   T* ptr = lod_tensor.data<T>();
 
   std::vector<T> host_data(lod_tensor.numel());
@@ -134,7 +134,7 @@ template <typename T>
 bool CompareGradVariableWithValue(const egr::EagerTensor& target, T value) {
   // TODO(jiabin): Support Selected Rows later
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
-  auto lod_tensor = meta->Grad().Var().Get<paddle::framework::LoDTensor>();
+  auto lod_tensor = meta->Grad().Var().Get<paddle::framework::Tensor>();
   T* ptr = lod_tensor.data<T>();
 
   std::vector<T> host_data(lod_tensor.numel());

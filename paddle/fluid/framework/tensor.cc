@@ -237,7 +237,7 @@ void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
 void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
 /* ---------------------------------------- */
-/* -------------- LoDTensor --------------- */
+/* -------------- Tensor --------------- */
 /* ---------------------------------------- */
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD& lod, size_t start_idx,
@@ -362,20 +362,20 @@ void Tensor::MergeLoDTensor(const std::vector<const Tensor*>& lod_tensors,
       PADDLE_ENFORCE_EQ(
           new_type, t->type(),
           platform::errors::InvalidArgument(
-              "LoDTensor data type does not match, expected type is %s, actual "
+              "Tensor data type does not match, expected type is %s, actual "
               "type is %s.",
               DataTypeToString(new_type), DataTypeToString(t->type())));
       PADDLE_ENFORCE_EQ(
           new_layout, t->layout(),
           platform::errors::InvalidArgument(
-              "LoDTensor layout does not match, expected layout is %s, "
+              "Tensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
               DataLayoutToString(new_layout), DataLayoutToString(t->layout())));
       PADDLE_ENFORCE_EQ(
           framework::product(new_dim) / new_dim[0],
           framework::product(t->dims()) / t->dims()[0],
           platform::errors::InvalidArgument(
-              "LoDTensor dimension does not match, all dimensions except the "
+              "Tensor dimension does not match, all dimensions except the "
               "first dimension need to be equal,"
               "but expected dimension is %s, actual dimension is %s.",
               new_dim, t->dims()));
@@ -385,7 +385,7 @@ void Tensor::MergeLoDTensor(const std::vector<const Tensor*>& lod_tensors,
     auto& lod = t->lod();
     PADDLE_ENFORCE_EQ(new_lod.size(), lod.size(),
                       platform::errors::InvalidArgument(
-                          "The LoD information of LoDTensor does not match"));
+                          "The LoD information of Tensor does not match"));
 
     for (size_t j = 0; j < lod.size(); ++j) {
       auto& sub_lod = new_lod[j];

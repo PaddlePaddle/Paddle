@@ -124,7 +124,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<Tensor>();
   tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
@@ -141,7 +141,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
   for (auto& v : variable_names) {
     if (v.compare(var_without_scale) == 0) continue;
     InitTensorHolder(&scope, place, v.c_str());
-    LoDTensor tensor;
+    Tensor tensor;
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = 2.0;

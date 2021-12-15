@@ -47,14 +47,6 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  if (t.lod().size() > 0) {
-    os << "  - lod: " << t.lod() << "\n";
-  }
-  os << static_cast<Tensor>(t);
-  return os;
-}
-
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
   stream << lod;
@@ -65,7 +57,7 @@ LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
   PADDLE_ENFORCE_LT(level, in.size(),
                     platform::errors::InvalidArgument(
-                        "The input LoDTensor's lod level should be less than "
+                        "The input Tensor's lod level should be less than "
                         "the LoD size, but received level is %d, LoD is %s.",
                         level, in));
   PADDLE_ENFORCE_LT(
@@ -213,9 +205,9 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
   }
 }
 
-void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
+void SerializeToStream(std::ostream &os, const Tensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
-  {  // the 1st field, uint32_t version for LoDTensor
+  {  // the 1st field, uint32_t version for Tensor
     os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
              sizeof(kCurTensorVersion));
   }
@@ -240,7 +232,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
   TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
-void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
+void SerializeToStream(std::ostream &os, const Tensor &tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx;
   auto place = tensor.place();
@@ -248,19 +240,19 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
   SerializeToStream(os, tensor, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream &os, LoDTensor *tensor) {
+void DeserializeFromStream(std::istream &os, Tensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx;
   dev_ctx = pool.Get(platform::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+void DeserializeFromStream(std::istream &is, Tensor *tensor,
                            const platform::DeviceContext &dev_ctx,
                            const size_t &seek,
                            const std::vector<int64_t> &shape) {
   {
-    // the 1st field, unit32_t version for LoDTensor
+    // the 1st field, unit32_t version for Tensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
@@ -284,10 +276,10 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx, seek, shape);
 }
 
-void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+void DeserializeFromStream(std::istream &is, Tensor *tensor,
                            const platform::DeviceContext &dev_ctx) {
   {
-    // the 1st field, unit32_t version for LoDTensor
+    // the 1st field, unit32_t version for Tensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,

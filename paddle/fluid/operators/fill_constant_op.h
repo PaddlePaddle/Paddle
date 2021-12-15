@@ -88,8 +88,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
     }
     auto shape = GetShape(ctx);
 
-    if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
+    if (out_var->IsType<framework::Tensor>()) {
+      tensor = out_var->GetMutable<framework::Tensor>();
       tensor->Resize(shape);
     } else if (out_var->IsType<framework::SelectedRows>()) {
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
@@ -97,7 +97,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "In fill constant Op, the output only supports SelectedRows and "
-          "LoDTensor."));
+          "Tensor."));
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

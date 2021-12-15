@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 using Vector = framework::Vector<T>;
@@ -45,12 +45,12 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     // X1 is global FC output
     // Dim [batch size, embedding size]
-    auto* x1 = context.Input<LoDTensor>("Ins");
+    auto* x1 = context.Input<Tensor>("Ins");
     bool is_x1_lod = context.Attr<bool>("is_lod");
     int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
-    auto* x2 = context.Input<LoDTensor>("Ins_tag");
+    auto* x2 = context.Input<Tensor>("Ins_tag");
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
     auto* x3 = context.Input<Tensor>("Filter_tag");
@@ -97,9 +97,9 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
     // Dim [local fc count, batch size, embedding size]
-    LoDTensor* out = context.Output<LoDTensor>("Out");
-    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
-    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
+    Tensor* out = context.Output<Tensor>("Out");
+    Tensor* map = context.Output<Tensor>("IndexMap");
+    Tensor* loss_weight = context.Output<Tensor>("LossWeight");
     // expected auto = const T
     auto* x1_data = x1->data<T>();
     // expected auto = T
@@ -183,12 +183,12 @@ template <typename T>
 class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
-    auto* loss_weight = context.Input<LoDTensor>("LossWeight");
-    auto* mmap = context.Input<LoDTensor>("IndexMap");
-    auto* x1 = context.Input<LoDTensor>("Ins");
-    x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
+    auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x1_grad = context.Output<Tensor>(framework::GradVarName("Ins"));
+    auto* loss_weight = context.Input<Tensor>("LossWeight");
+    auto* mmap = context.Input<Tensor>("IndexMap");
+    auto* x1 = context.Input<Tensor>("Ins");
+    x1_grad->set_lod(context.Input<Tensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());
     auto mmap_data = mmap->data<int64_t>();
     // expected auto = T

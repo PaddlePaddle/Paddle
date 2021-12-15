@@ -69,7 +69,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       }
       return;
     }
-    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto x = ctx.Input<framework::Tensor>("X");
     int numel = x->numel();
 
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());

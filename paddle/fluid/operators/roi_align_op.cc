@@ -17,7 +17,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class ROIAlignOp : public framework::OperatorWithKernel {
  public:
@@ -140,9 +140,9 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(Tensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "should be a 2-D Tensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");

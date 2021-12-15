@@ -26,11 +26,11 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    if (param_var->IsType<framework::LoDTensor>() &&
-        grad_var->IsType<framework::LoDTensor>()) {
+    if (param_var->IsType<framework::Tensor>() &&
+        grad_var->IsType<framework::Tensor>()) {
       const auto *param = ctx.Input<framework::Tensor>("Param");
       auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-      // Actually, all tensors are LoDTensor except SelectedRows.
+      // Actually, all tensors are Tensor except SelectedRows.
       const auto *grad = ctx.Input<framework::Tensor>("Grad");
       auto sz = param_out->numel();
       PADDLE_ENFORCE_EQ(param->numel(), sz,

@@ -159,7 +159,7 @@ struct MulInvVarFunctor {
 };
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

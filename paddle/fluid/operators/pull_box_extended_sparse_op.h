@@ -56,7 +56,7 @@ static void PullBoxExtendedSparseFunctor(
 template <typename T>
 static void PushBoxExtendedSparseFunctor(
     const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto d_output =
       ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
   auto d_output_extend =
@@ -98,7 +98,7 @@ static void PushBoxExtendedSparseFunctor(
 #endif
 }
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename T>
 class PullBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:

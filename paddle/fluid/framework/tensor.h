@@ -329,7 +329,7 @@ class Tensor {
   std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 
   /* ---------------------------------------------------------- */
-  /* --------------- Reserved for LoDTensor ------------------- */
+  /* --------------- Reserved for Tensor ------------------- */
   /* ---------------------------------------------------------- */
  public:
   explicit Tensor(const LoD& lod) : lod_(lod) {}
@@ -370,7 +370,7 @@ class Tensor {
     return (lod_)[level].size() - 1;
   }
 
-  // Split LoDTensor and copy to each place specified in places.
+  // Split Tensor and copy to each place specified in places.
   std::vector<Tensor> SplitLoDTensor(
       const std::vector<platform::Place> places) const;
 
@@ -398,5 +398,23 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
 
 }  // namespace framework
 }  // namespace paddle
+
+namespace paddle {
+namespace operators {
+using Tensor = paddle::framework::Tensor;
+}
+namespace imperative {
+using Tensor = paddle::framework::Tensor;
+}
+namespace test {
+using Tensor = paddle::framework::Tensor;
+}
+namespace platform {
+using Tensor = paddle::framework::Tensor;
+}
+namespace pybind {
+using Tensor = paddle::framework::Tensor;
+}
+}
 
 #include "paddle/fluid/framework/tensor_impl.h"

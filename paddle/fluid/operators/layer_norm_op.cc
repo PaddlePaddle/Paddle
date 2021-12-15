@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
@@ -242,8 +242,8 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));

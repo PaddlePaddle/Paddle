@@ -103,43 +103,40 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, required) The input tensor with shape [N, D], "
+             "(Tensor, required) The input tensor with shape [N, D], "
              "where N is the size of mini-batch, and D is the feature size.");
     AddInput("W",
-             "(LoDTensor, required), The parameters of hierarchical "
+             "(Tensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is a 2-D tensor, the shape is"
              "[K, D]. Which K is the num of non-leaf node in Path Tree");
     AddInput("Label",
-             "(LoDTensor, required), The labels of training data. It's a"
+             "(Tensor, required), The labels of training data. It's a"
              "tensor with shape [N, 1].");
     AddInput("PathTable",
-             "(LoDTensor, optional), The Path Table from root to current word"
+             "(Tensor, optional), The Path Table from root to current word"
              "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
-    AddInput(
-        "PathCode",
-        "(LoDTensor, optional), The Code on each Node of the Path from root "
-        "to current word"
-        "it should have shape like [N, L], L is the length of the Path")
+    AddInput("PathCode",
+             "(Tensor, optional), The Code on each Node of the Path from root "
+             "to current word"
+             "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
     AddInput("Bias",
-             "(LoDTensor, optional), The bias is a tensor with shape or "
+             "(Tensor, optional), The bias is a tensor with shape or "
              "[num_classes, 1]"
              "[num_classes - 1, 1].")
         .AsDispensable();
-    AddOutput(
-        "Out",
-        "(LoDTensor, required) The output of hierarchical sigmoid operator."
-        "The shape is [N, 1].");
+    AddOutput("Out",
+              "(Tensor, required) The output of hierarchical sigmoid operator."
+              "The shape is [N, 1].");
     AddOutput("PreOut",
-              "(LoDTensor, required) A intermedia 2-D tensor with shape "
+              "(Tensor, required) A intermedia 2-D tensor with shape "
               "[batch_size, code_length], where code_length represents the "
               "maximum path length from root to leaf nodes.")
         .AsIntermediate();
-    AddOutput(
-        "W_Out",
-        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
-        "When we are using prefetch")
+    AddOutput("W_Out",
+              "(Tensor, optional) using input 'W' as Output to make it mutable"
+              "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);
@@ -242,7 +239,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
     auto bias_grad_var_name = framework::GradVarName("Bias");
     if (ctx->HasOutput(bias_grad_var_name)) {
       VLOG(3) << "hierarchical_sigmoid_grad op "
-              << framework::GradVarName("Bias") << " is set to LoDTensor";
+              << framework::GradVarName("Bias") << " is set to Tensor";
       ctx->SetOutputType(bias_grad_var_name,
                          framework::proto::VarType::LOD_TENSOR);
     }
@@ -256,7 +253,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
                          framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+              << " is set to Tensor";
       ctx->SetOutputType(w_grad_var_name,
                          framework::proto::VarType::LOD_TENSOR);
     }

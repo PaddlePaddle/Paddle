@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 inline int Im2SeqOutputSize(int input_size, int filter_size, int padding_0,
                             int padding_1, int stride) {
@@ -40,7 +40,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* in = ctx.Input<Tensor>("X");
-    LoDTensor* out = ctx.Output<LoDTensor>("Out");
+    Tensor* out = ctx.Output<Tensor>("Out");
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];

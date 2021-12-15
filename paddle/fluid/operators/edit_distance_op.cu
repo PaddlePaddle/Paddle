@@ -73,8 +73,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::Tensor>("Out");
 
-    auto* x1_t = ctx.Input<framework::LoDTensor>("Hyps");
-    auto* x2_t = ctx.Input<framework::LoDTensor>("Refs");
+    auto* x1_t = ctx.Input<framework::Tensor>("Hyps");
+    auto* x2_t = ctx.Input<framework::Tensor>("Refs");
     auto* sequence_num = ctx.Output<framework::Tensor>("SequenceNum");
     sequence_num->mutable_data<int64_t>(ctx.GetPlace());
     auto batch_size = x1_t->dims()[0];

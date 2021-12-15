@@ -135,7 +135,7 @@ class TensorRuntimeInferVarTypeContext
                      paddle::framework::proto::VarType::Type type) {
     switch (type) {
       case paddle::framework::proto::VarType::LOD_TENSOR: {
-        out->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+        out->MutableVar()->GetMutable<paddle::framework::Tensor>();
         break;
       }
       default: {
@@ -160,7 +160,7 @@ class TensorRuntimeInferVarTypeContext
       const std::string& name, const int& index = 0) const override {
     return inputs_.at(name)[index]
         ->Var()
-        .Get<paddle::framework::LoDTensor>()
+        .Get<paddle::framework::Tensor>()
         .type();
   }
 

@@ -42,10 +42,10 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<f::Tensor>();
 
   auto y = scope->Var("Y");
-  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  auto tensor_y = y->GetMutable<f::Tensor>();
 
   std::vector<T> init_x;
   for (int64_t i = 0; i < 10 * 10; ++i) {
@@ -64,7 +64,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<f::Tensor>();
 
   // run
   f::AttributeMap attrs;
@@ -94,22 +94,22 @@ void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
                  std::string op_type) {
   // init
   auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<f::LoDTensor>();
+  auto tensor_dout = dout->GetMutable<f::Tensor>();
   tensor_dout->Resize({2, 3, 5});
 
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<f::Tensor>();
   tensor_x->Resize({2, 3, 5});
 
   auto y = scope->Var("Y");
-  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  auto tensor_y = y->GetMutable<f::Tensor>();
   tensor_y->Resize({1, 5});
 
   auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<f::LoDTensor>();
+  auto tensor_dx = dx->GetMutable<f::Tensor>();
 
   auto dy = scope->Var("DY");
-  auto tensor_dy = dy->GetMutable<f::LoDTensor>();
+  auto tensor_dy = dy->GetMutable<f::Tensor>();
 
   std::vector<T> init_dout;
   for (int64_t i = 0; i < tensor_dout->numel(); ++i) {

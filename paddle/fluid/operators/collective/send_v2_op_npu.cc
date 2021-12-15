@@ -27,7 +27,7 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto x = ctx.Input<framework::Tensor>("X");
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     HcclDataType dtype = platform::ToHCCLDataType(x->type());

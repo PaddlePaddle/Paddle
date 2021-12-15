@@ -47,10 +47,10 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
           PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           cuda_ctx, ins, &outs, axis, MulFunctor<T>());
-    } else if (x_var->IsType<framework::LoDTensor>()) {
-      auto* x_lod = ctx.Input<framework::LoDTensor>("X");
-      auto* y_lod = ctx.Input<framework::LoDTensor>("Y");
-      auto* z_lod = ctx.Output<framework::LoDTensor>("Out");
+    } else if (x_var->IsType<framework::Tensor>()) {
+      auto* x_lod = ctx.Input<framework::Tensor>("X");
+      auto* y_lod = ctx.Input<framework::Tensor>("Y");
+      auto* z_lod = ctx.Output<framework::Tensor>("Out");
       z_lod->mutable_data<T>(ctx.GetPlace());
 
       int axis = ctx.Attr<int>("axis");
@@ -62,7 +62,7 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "
-          "LoDTensor or SelectedRows.",
+          "Tensor or SelectedRows.",
           framework::ToTypeName(x_var->Type())));
     }
   }

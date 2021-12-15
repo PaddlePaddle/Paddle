@@ -174,10 +174,10 @@ class RecurrentBase : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(
         src_var, platform::errors::NotFound("Source variable %s is not found.",
                                             src_var_name));
-    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+    auto &src_tensor = src_var->Get<framework::Tensor>();
 
     auto *dst_var = dst_scope->Var(dst_var_name);
-    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    auto *dst_tensor = dst_var->GetMutable<framework::Tensor>();
     callback(src_tensor, dst_tensor);
   }
 
@@ -195,11 +195,11 @@ class RecurrentBase : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(
         src_var, platform::errors::NotFound("Source variable %s is not found.",
                                             src_var_name));
-    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+    auto &src_tensor = src_var->Get<framework::Tensor>();
     PADDLE_ENFORCE_NOT_NULL(
         dst_var, platform::errors::NotFound(
                      "Destination variable %s is not found.", src_var_name));
-    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    auto *dst_tensor = dst_var->GetMutable<framework::Tensor>();
     callback(src_tensor, dst_tensor);
   }
 };

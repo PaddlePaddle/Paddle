@@ -19,10 +19,10 @@ template <typename DeviceContext, typename T>
 void TestSequencePoolingSum(const DeviceContext &context,
                             const paddle::framework::LoD &lod,
                             const int64_t second_dim) {
-  paddle::framework::LoDTensor cpu_out_grad;
-  paddle::framework::LoDTensor cpu_in_grad;
-  paddle::framework::LoDTensor out_grad;
-  paddle::framework::LoDTensor in_grad;
+  paddle::framework::Tensor cpu_out_grad;
+  paddle::framework::Tensor cpu_in_grad;
+  paddle::framework::Tensor out_grad;
+  paddle::framework::Tensor in_grad;
 
   // construct out_grad's tensor in cpu
   const size_t out_first_dim = lod[0].size() - 1;

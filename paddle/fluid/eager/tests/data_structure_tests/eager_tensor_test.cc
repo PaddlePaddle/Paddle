@@ -113,10 +113,8 @@ TEST(EagerTensor, MemberFunction) {
   CHECK_EQ(tmp_autograd_meta_test->val_, 2);
   VLOG(6) << "SyncToVar";
   et3.SyncToVar();
-  CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[0],
-           5.0f);
-  CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[1],
-           10.0f);
+  CHECK_EQ(et3.Var().Get<paddle::framework::Tensor>().data<float>()[0], 5.0f);
+  CHECK_EQ(et3.Var().Get<paddle::framework::Tensor>().data<float>()[1], 10.0f);
   VLOG(6) << "SyncToTensor";
   CHECK(et3.initialized() == false);
   et3.SyncToTensor();

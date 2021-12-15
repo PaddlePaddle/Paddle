@@ -19,12 +19,14 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-using LoDTensor = paddle::framework::LoDTensor;
+using Tensor = paddle::framework::Tensor;
 using LoDTensorBlockingQueueHolder =
     paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
 namespace paddle {
 namespace operators {
+
+using Tensor = paddle::framework::Tensor;
 
 class DequeueOp : public framework::OperatorBase {
  public:
@@ -55,13 +57,13 @@ class DequeueOp : public framework::OperatorBase {
       PADDLE_ENFORCE_NOT_NULL(
           out_var, platform::errors::NotFound("No variable with name %s found",
                                               out_names[i]));
-      auto* out_tensor = out_var->GetMutable<LoDTensor>();
+      auto* out_tensor = out_var->GetMutable<Tensor>();
       PADDLE_ENFORCE_NOT_NULL(
           out_tensor,
           platform::errors::InvalidArgument(
               "Variable with name %s has not been initialized.", out_names[i]));
 
-      std::vector<LoDTensor> lod_tensor_vec;
+      std::vector<Tensor> lod_tensor_vec;
       bool success = false;
       lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
       PADDLE_ENFORCE_EQ(lod_tensor_vec.size(), 1,

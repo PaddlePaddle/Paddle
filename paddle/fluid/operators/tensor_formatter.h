@@ -20,7 +20,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -31,11 +31,11 @@ class TensorFormatter {
  public:
   TensorFormatter() {}
 
-  std::string Format(const framework::LoDTensor& print_tensor,
+  std::string Format(const framework::Tensor& print_tensor,
                      const std::string& tensor_name = "",
                      const std::string& message = "");
 
-  void Print(const framework::LoDTensor& print_tensor,
+  void Print(const framework::Tensor& print_tensor,
              const std::string& tensor_name = "",
              const std::string& message = "");
 
@@ -47,7 +47,7 @@ class TensorFormatter {
 
  private:
   template <typename T>
-  void FormatData(const framework::LoDTensor& print_tensor,
+  void FormatData(const framework::Tensor& print_tensor,
                   std::stringstream& log_stream);
 
   int64_t summarize_ = -1;

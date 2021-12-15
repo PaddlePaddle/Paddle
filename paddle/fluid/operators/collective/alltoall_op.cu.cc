@@ -28,8 +28,8 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
 #if NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto x = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
     int send_numel = x->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 

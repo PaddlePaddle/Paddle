@@ -694,7 +694,7 @@ static bool CollectGradInformationFromOpInfo(
     ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
         new paddle::imperative::VarBase("auto_" + in_name))};
     ins[in_name][0]->SetOverridedStopGradient(false);
-    ins[in_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+    ins[in_name][0]->MutableVar()->GetMutable<framework::Tensor>();
   }
   VLOG(6) << "Prepared Forward Ins Map, size = " << ins.size();
 
@@ -711,7 +711,7 @@ static bool CollectGradInformationFromOpInfo(
     outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
         new paddle::imperative::VarBase("auto_" + out_name))};
     outs[out_name][0]->SetOverridedStopGradient(false);
-    outs[out_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+    outs[out_name][0]->MutableVar()->GetMutable<framework::Tensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
 

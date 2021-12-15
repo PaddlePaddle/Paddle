@@ -145,7 +145,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput(
         "TargetBox",
-        "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
+        "(Tensor or Tensor) This input can be a 2-D Tensor with shape "
         "[N, 4] when code_type is 'encode_center_size'. This input also can "
         "be a 3-D Tensor with shape [N, M, 4] when code_type is "
         "'decode_center_size'. [N, 4], each box is represented as "
@@ -180,7 +180,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "not be provided at the same time.")
         .SetDefault(std::vector<float>{});
     AddOutput("OutputBox",
-              "(LoDTensor or Tensor) "
+              "(Tensor or Tensor) "
               "When code_type is 'encode_center_size', the output tensor of "
               "box_coder_op with shape [N, M, 4] representing the result of N "
               "target boxes encoded with M Prior boxes and variances. When "

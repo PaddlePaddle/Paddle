@@ -26,7 +26,7 @@ class FillOpMaker : public framework::OpProtoAndCheckerMaker {
 Fill an tensor with `value` and `shape`. The type of the tensor is specify by
 `dtype`.
 )DOC");
-    AddOutput("Out", "(LoDTensor) The output tensor.");
+    AddOutput("Out", "(Tensor) The output tensor.");
     AddAttr<std::vector<float>>(
         "value", "The float values of tensor, which are flatten in row major");
     AddAttr<std::vector<int>>("shape", "The shape of output tensor");

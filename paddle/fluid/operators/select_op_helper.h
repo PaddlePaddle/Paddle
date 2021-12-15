@@ -25,7 +25,7 @@ namespace operators {
 
 // Returns the integer in mask whose numel must be 1. The integer means the
 // selected branch number.
-inline int GetBranchNumber(const framework::LoDTensor &mask) {
+inline int GetBranchNumber(const framework::Tensor &mask) {
   PADDLE_ENFORCE_EQ(mask.numel(), 1,
                     platform::errors::InvalidArgument(
                         "The numel of Input(Mask) in SelectInputOp or "
@@ -36,7 +36,7 @@ inline int GetBranchNumber(const framework::LoDTensor &mask) {
     return mask.data<int>()[0];
   }
   // when platform::is_gpu_place(mask.place()) is ture
-  std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+  std::unique_ptr<framework::Tensor> cpu_mask{new framework::Tensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else

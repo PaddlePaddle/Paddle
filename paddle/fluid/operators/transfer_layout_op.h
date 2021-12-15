@@ -29,7 +29,7 @@ class DeviceContext;
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -47,7 +47,7 @@ class TransferLayoutFunctor {
 
   void operator()() const {
     auto &in_tensor = *framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_);
-    framework::LoDTensor out_tensor;
+    framework::Tensor out_tensor;
 
     auto out_layout = static_cast<DataLayout>(dst_layout_);
     out_tensor.set_layout(out_layout);

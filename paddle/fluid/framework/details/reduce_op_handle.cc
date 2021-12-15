@@ -135,8 +135,8 @@ void ReduceOpHandle::RunImpl() {
       }
     });
   } else {
-    std::vector<const LoDTensor *> lod_tensors =
-        GetInputValues<LoDTensor>(in_var_handles, var_scopes);
+    std::vector<const Tensor *> lod_tensors =
+        GetInputValues<Tensor>(in_var_handles, var_scopes);
 
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
       WaitInputVarGenerated();
@@ -147,18 +147,18 @@ void ReduceOpHandle::RunImpl() {
         // with the result of `c+a+b+d`, so the summing order should be fixed.
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
-                               out_var->GetMutable<framework::LoDTensor>());
+                               out_var->GetMutable<framework::Tensor>());
           VisitDataType(lod_tensors[0]->type(), func);
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
           auto &reduce_sum_trg = *this->local_exec_scopes_[0]
                                       ->FindVar(out_var_handle->name())
-                                      ->GetMutable<framework::LoDTensor>();
+                                      ->GetMutable<framework::Tensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
           VisitDataType(lod_tensors[0]->type(), func);
 
-          auto trg = out_var->GetMutable<framework::LoDTensor>();
+          auto trg = out_var->GetMutable<framework::Tensor>();
           if (reduce_sum_trg.data<void>() != trg->data<void>()) {
             TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
           }
@@ -166,7 +166,7 @@ void ReduceOpHandle::RunImpl() {
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      auto pre_in = pre_in_var->Get<framework::LoDTensor>();
+      auto pre_in = pre_in_var->Get<framework::Tensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
           out_var_handle->place(), pre_in.type());
@@ -184,9 +184,8 @@ void ReduceOpHandle::RunImpl() {
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
-          recvbuffer =
-              out_var->GetMutable<framework::LoDTensor>()->mutable_data(
-                  out_var_handle->place());
+          recvbuffer = out_var->GetMutable<framework::Tensor>()->mutable_data(
+              out_var_handle->place());
         }
 
         int type = platform::ToNCCLDataType(lod_tensor.type());
@@ -212,7 +211,7 @@ void ReduceOpHandle::RunImpl() {
 #endif
     } else if (paddle::platform::is_xpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_XPU_BKCL)
-      auto pre_in = pre_in_var->Get<framework::LoDTensor>();
+      auto pre_in = pre_in_var->Get<framework::Tensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
           out_var_handle->place(), pre_in.type());
@@ -230,9 +229,8 @@ void ReduceOpHandle::RunImpl() {
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
-          recvbuffer =
-              out_var->GetMutable<framework::LoDTensor>()->mutable_data(
-                  out_var_handle->place());
+          recvbuffer = out_var->GetMutable<framework::Tensor>()->mutable_data(
+              out_var_handle->place());
         }
 
         int type = platform::ToBKCLDataType(lod_tensor.type());

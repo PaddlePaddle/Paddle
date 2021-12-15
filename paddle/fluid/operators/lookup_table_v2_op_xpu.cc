@@ -25,8 +25,8 @@ template <typename DeviceContext, typename T>
 class LookupTableV2XPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");      // int
-    auto *output_t = context.Output<LoDTensor>("Out");  // float
+    auto *ids_t = context.Input<Tensor>("Ids");      // int
+    auto *output_t = context.Output<Tensor>("Out");  // float
     auto *table_var = context.InputVar("W");
     PADDLE_ENFORCE_EQ(
         (std::is_same<DeviceContext, platform::XPUDeviceContext>::value), true,
@@ -34,15 +34,15 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
                                              "xpu place , please check your "
                                              "place."));
 
-    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(table_var->IsType<Tensor>(), true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type , idx in "
-                          "LookupTableV2XPUKernel should be LoDTensor."));
+                          "LookupTableV2XPUKernel should be Tensor."));
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
     int64_t ids_numel = ids_t->numel();
 
-    auto *table_t = context.Input<LoDTensor>("W");
+    auto *table_t = context.Input<Tensor>("W");
     auto &dev_ctx = context.template device_context<DeviceContext>();
     // size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
@@ -73,11 +73,11 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
-    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(table_var->IsType<Tensor>(), true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type , idx in "
-                          "LookupTableV2GradXPUKernel should be LoDTensor."));
-    table_dim = context.Input<LoDTensor>("W")->dims();
+                          "LookupTableV2GradXPUKernel should be Tensor."));
+    table_dim = context.Input<Tensor>("W")->dims();
 
     bool is_sparse = context.Attr<bool>("is_sparse");
     PADDLE_ENFORCE_EQ(
@@ -85,9 +85,9 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "LookupTableV2GradXPUKernel dose NOT support is_sparse = True."));
 
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<Tensor>("Ids");
+    auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
 
     int64_t ids_numel = ids_t->numel();
     PADDLE_ENFORCE_EQ(

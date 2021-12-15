@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
@@ -362,15 +362,15 @@ class NCEGradKernel : public framework::OpKernel<T> {
 
       auto *table_var = context.InputVar("Weight");
       DDim table_dim;
-      if (table_var->IsType<LoDTensor>()) {
-        table_dim = context.Input<LoDTensor>("Weight")->dims();
+      if (table_var->IsType<Tensor>()) {
+        table_dim = context.Input<Tensor>("Weight")->dims();
       } else if (table_var->IsType<SelectedRows>()) {
         auto *table_t = context.Input<SelectedRows>("Weight");
         table_dim = table_t->value().dims();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The parameter Weight of a NCE_OP "
-            "must be either LoDTensor or SelectedRows"));
+            "must be either Tensor or SelectedRows"));
       }
 
       auto d_w = context.Output<SelectedRows>(framework::GradVarName("Weight"));

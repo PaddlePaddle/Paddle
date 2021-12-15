@@ -27,9 +27,9 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
 #if NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto local_count = ctx.Input<framework::LoDTensor>("local_count");
-    auto global_count = ctx.Input<framework::LoDTensor>("global_count");
+    auto x = ctx.Input<framework::Tensor>("X");
+    auto local_count = ctx.Input<framework::Tensor>("local_count");
+    auto global_count = ctx.Input<framework::Tensor>("global_count");
     auto local_count_type = local_count->type();
     auto global_count_type = global_count->type();
     if (local_count_type != framework::proto::VarType::INT64) {
@@ -40,7 +40,7 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<framework::Tensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     framework::Tensor cpu_local_count;

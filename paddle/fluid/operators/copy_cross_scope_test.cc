@@ -41,18 +41,18 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
               std::string op_type) {
   // init
   auto var_x = scope->Var("tmp");
-  auto x = var_x->GetMutable<f::LoDTensor>();
+  auto x = var_x->GetMutable<f::Tensor>();
   std::vector<T> main_x = {1.0};
   TensorFromVector(main_x, ctx, x);
 
   auto var_id = scope->Var("Id");
-  auto id = var_id->GetMutable<f::LoDTensor>();
+  auto id = var_id->GetMutable<f::Tensor>();
   std::vector<int64_t> main_id = {1};
   TensorFromVector(main_id, ctx, id);
   for (int i = 0; i < 3; i++) {
     auto& child_scope = scope->NewScope();
     auto child_var = child_scope.Var("tmp");
-    auto tensor_x = child_var->GetMutable<f::LoDTensor>();
+    auto tensor_x = child_var->GetMutable<f::Tensor>();
     std::vector<T> init_x = {static_cast<T>(i)};
     TensorFromVector(init_x, ctx, tensor_x);
   }
@@ -75,7 +75,7 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto* kid_scope = *iter;
   auto* dst_var = kid_scope->FindVar("tmp");
-  auto* tensor_out = dst_var->GetMutable<f::LoDTensor>();
+  auto* tensor_out = dst_var->GetMutable<f::Tensor>();
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -89,18 +89,18 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
               std::string op_type) {
   // init
   auto var_x = scope->Var("tmp");
-  auto x = var_x->GetMutable<f::LoDTensor>();
+  auto x = var_x->GetMutable<f::Tensor>();
   std::vector<T> main_x = {1.0};
   TensorFromVector(main_x, ctx, x);
 
   auto var_id = scope->Var("Id");
-  auto id = var_id->GetMutable<f::LoDTensor>();
+  auto id = var_id->GetMutable<f::Tensor>();
   std::vector<int64_t> main_id = {0};
   TensorFromVector(main_id, ctx, id);
   for (int i = 0; i < 3; i++) {
     auto& child_scope = scope->NewScope();
     auto child_var = child_scope.Var("tmp");
-    auto tensor_x = child_var->GetMutable<f::LoDTensor>();
+    auto tensor_x = child_var->GetMutable<f::Tensor>();
     std::vector<T> init_x = {static_cast<T>(i)};
     TensorFromVector(init_x, ctx, tensor_x);
   }
@@ -118,7 +118,7 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
   ctx.Wait();
 
   auto* dst_var = scope->FindVar("tmp");
-  auto* tensor_out = dst_var->GetMutable<f::LoDTensor>();
+  auto* tensor_out = dst_var->GetMutable<f::Tensor>();
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);

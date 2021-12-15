@@ -34,10 +34,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto bias_name = op_desc.Input("Bias").front();
 
     auto* weight_v = scope.FindVar(weight_name);
-    auto* weight_t = weight_v->GetMutable<framework::LoDTensor>();
+    auto* weight_t = weight_v->GetMutable<framework::Tensor>();
 
     auto* bias_v = scope.FindVar(bias_name);
-    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
+    auto* bias_t = bias_v->GetMutable<framework::Tensor>();
 
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");

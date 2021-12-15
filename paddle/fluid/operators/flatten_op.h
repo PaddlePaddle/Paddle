@@ -30,8 +30,8 @@ template <typename DeviceContext, typename T>
 class FlattenKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<framework::Tensor>("X");
+    auto *out = context.Output<framework::Tensor>("Out");
 
     auto &axes = context.Attr<int>("axis");
     auto x_dims = in->dims();
@@ -65,10 +65,9 @@ template <typename DeviceContext, typename T>
 class FlattenGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto in_dims = ctx.Input<framework::Tensor>("X")->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
@@ -84,10 +83,10 @@ class Flatten2Kernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &axes = context.Attr<int>("axis");
 
-    auto *in = context.Input<framework::LoDTensor>("X");
+    auto *in = context.Input<framework::Tensor>("X");
     auto x_dims = in->dims();
 
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *out = context.Output<framework::Tensor>("Out");
 
     auto out_dims = framework::make_ddim(
         FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
@@ -104,11 +103,10 @@ template <typename DeviceContext, typename T>
 class Flatten2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<framework::Tensor>("XShape")->dims();
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
@@ -123,8 +121,8 @@ template <typename DeviceContext, typename T>
 class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<framework::Tensor>("X");
+    auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data(context.GetPlace(), in->type());
     auto &start_axis = context.Attr<int>("start_axis");
     auto &stop_axis = context.Attr<int>("stop_axis");
@@ -142,11 +140,10 @@ template <typename DeviceContext, typename T>
 class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<framework::Tensor>("XShape")->dims();
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());

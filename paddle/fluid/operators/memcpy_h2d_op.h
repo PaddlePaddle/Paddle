@@ -24,7 +24,7 @@ class DeviceContext;
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 class SelectedRows;
 }  // namespace framework
@@ -39,8 +39,8 @@ class MemcpyH2DFunctor {
                    const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+  void operator()(const framework::Tensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<framework::Tensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     out_tensor.mutable_data(
         BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_.GetPlace()),

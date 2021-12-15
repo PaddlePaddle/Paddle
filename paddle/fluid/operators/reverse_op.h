@@ -22,8 +22,8 @@ namespace paddle {
 namespace operators {
 template <typename DeviceContext, typename T, int Rank>
 struct ReverseFunctor {
-  void operator()(const DeviceContext& context, const framework::LoDTensor& in,
-                  framework::LoDTensor* out, const std::vector<int>& axis) {
+  void operator()(const DeviceContext& context, const framework::Tensor& in,
+                  framework::Tensor* out, const std::vector<int>& axis) {
     Eigen::DSizes<bool, Rank> reverse_axis;
     for (int i = 0; i < Rank; ++i) {
       reverse_axis[i] = false;
@@ -70,8 +70,8 @@ class ReverseKernel : public framework::OpKernel<T> {
       }
       return;
     }
-    auto* x = context.Input<framework::LoDTensor>("X");
-    auto* out = context.Output<framework::LoDTensor>("Out");
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
     int rank = x->dims().size();
     auto& dev_ctx = context.template device_context<DeviceContext>();

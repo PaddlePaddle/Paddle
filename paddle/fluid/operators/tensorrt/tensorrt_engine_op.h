@@ -272,8 +272,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
       for (auto name : runtime_input_names_) {
-        auto &t = inference::analysis::GetFromScope<framework::LoDTensor>(scope,
-                                                                          name);
+        auto &t =
+            inference::analysis::GetFromScope<framework::Tensor>(scope, name);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
         auto t_shape = framework::vectorize<int32_t>(t.dims());
@@ -361,7 +361,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
         auto &t =
-            inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+            inference::analysis::GetFromScope<framework::Tensor>(scope, x);
         calib_buffers[x] = t.memory_size();
         auto t_shape = framework::vectorize(t.dims());
         runtime_batch = t_shape[0];
@@ -386,8 +386,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     for (auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<framework::Tensor>(scope, x);
       calib_data.emplace(x, t.data<void>());
     }
     temp_calibrator->setBatch(calib_data);
@@ -420,8 +419,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
       // convert input and copy to TRT engine's buffer
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<framework::Tensor>(scope, x);
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
         framework::Tensor out;
@@ -528,7 +526,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           fluid_v,
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
-      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      auto *fluid_t = fluid_v->GetMutable<framework::Tensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index, num_bindings,

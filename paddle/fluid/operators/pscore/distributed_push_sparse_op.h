@@ -34,10 +34,10 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     VLOG(1) << "push_sparse.h::emb_dim: " << emb_dim;
     bool is_test = context.Attr<bool>("is_test");
 
-    auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
-    auto shows = context.Input<framework::LoDTensor>("Shows");
-    auto clks = context.Input<framework::LoDTensor>("Clicks");
-    auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
+    auto inputs = context.MultiInput<framework::Tensor>("Ids");
+    auto shows = context.Input<framework::Tensor>("Shows");
+    auto clks = context.Input<framework::Tensor>("Clicks");
+    auto outputs = context.MultiOutput<framework::Tensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
 
@@ -55,17 +55,17 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       auto cpu_place = platform::CPUPlace();
       framework::Scope *tmp_scope = scope.NewTmpScope().release();
 
-      std::vector<const framework::LoDTensor *> tmp_input_vec;
+      std::vector<const framework::Tensor *> tmp_input_vec;
       auto input_var_size = inputs_variable.size();
-      std::vector<framework::LoDTensor *> tmp_output_vec;
+      std::vector<framework::Tensor *> tmp_output_vec;
       auto output_var_size = outputs_variable.size();
 
       // create temp input
       for (size_t idx = 0; idx < input_var_size; ++idx) {
         framework::Variable *tmp_input_var = tmp_scope->Var(inputs_name[idx]);
-        framework::LoDTensor *tmp_input_tensor =
-            tmp_input_var->GetMutable<framework::LoDTensor>();
-        framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
+        framework::Tensor *tmp_input_tensor =
+            tmp_input_var->GetMutable<framework::Tensor>();
+        framework::TensorCopy(inputs_variable[idx]->Get<framework::Tensor>(),
                               cpu_place, context.device_context(),
                               tmp_input_tensor);
         tmp_input_vec.push_back(tmp_input_tensor);
@@ -74,8 +74,8 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       // create temp output
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
-        framework::LoDTensor *tmp_output_tensor =
-            tmp_output_var->GetMutable<framework::LoDTensor>();
+        framework::Tensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<framework::Tensor>();
         tmp_output_tensor->Resize(outputs[idx]->dims());
         tmp_output_vec.push_back(tmp_output_tensor);
       }
@@ -89,11 +89,11 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
-        framework::LoDTensor *tmp_output_tensor =
-            tmp_output_var->GetMutable<framework::LoDTensor>();
+        framework::Tensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<framework::Tensor>();
         framework::TensorCopy(
             *tmp_output_tensor, context.GetPlace(), context.device_context(),
-            outputs_variable[idx]->GetMutable<framework::LoDTensor>());
+            outputs_variable[idx]->GetMutable<framework::Tensor>());
       }
       delete tmp_scope;
     }

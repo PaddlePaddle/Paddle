@@ -16,7 +16,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 class CollectFpnProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -72,8 +72,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
             BOOST_GET(framework::Variable *, roi_inputs[i]);
         framework::Variable *score_var =
             BOOST_GET(framework::Variable *, score_inputs[i]);
-        auto &roi_lod = roi_var->Get<LoDTensor>().lod();
-        auto &score_lod = score_var->Get<LoDTensor>().lod();
+        auto &roi_lod = roi_var->Get<Tensor>().lod();
+        auto &score_lod = score_var->Get<Tensor>().lod();
         PADDLE_ENFORCE_EQ(
             roi_lod, score_lod,
             platform::errors::InvalidArgument(
@@ -96,11 +96,11 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("MultiLevelRois",
-             "(LoDTensor) Multiple roi LoDTensors from each level in shape "
+             "(Tensor) Multiple roi LoDTensors from each level in shape "
              "(N, 4), N is the number of RoIs")
         .AsDuplicable();
     AddInput("MultiLevelScores",
-             "(LoDTensor) Multiple score LoDTensors from each level in shape"
+             "(Tensor) Multiple score LoDTensors from each level in shape"
              " (N, 1), N is the number of RoIs.")
         .AsDuplicable();
     AddInput(
@@ -110,7 +110,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
         "images.")
         .AsDuplicable()
         .AsDispensable();
-    AddOutput("FpnRois", "(LoDTensor) All selected RoIs with highest scores");
+    AddOutput("FpnRois", "(Tensor) All selected RoIs with highest scores");
     AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
         .AsDispensable();
     AddAttr<int>("post_nms_topN",

@@ -14,7 +14,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
  public:
@@ -139,12 +139,12 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "default.")
         .AsDispensable();
     AddInput("TargetBox",
-             "(LoDTensor or Tensor) "
-             "This input can be a 2-D LoDTensor with shape "
+             "(Tensor or Tensor) "
+             "This input can be a 2-D Tensor with shape "
              "[N, classnum*4]. It holds N targets for N boxes.");
     AddInput("BoxScore",
-             "(LoDTensor or Tensor) "
-             "This input can be a 2-D LoDTensor with shape "
+             "(Tensor or Tensor) "
+             "This input can be a 2-D Tensor with shape "
              "[N, classnum], each box is represented as [classnum] which is "
              "the classification probabilities.");
     AddAttr<float>("box_clip",
@@ -152,12 +152,12 @@ class BoxDecoderAndAssignOpMaker : public framework::OpProtoAndCheckerMaker {
                    "clip box to prevent overflowing")
         .SetDefault(4.135f);
     AddOutput("DecodeBox",
-              "(LoDTensor or Tensor) "
+              "(Tensor or Tensor) "
               "the output tensor of op with shape [N, classnum * 4] "
               "representing the result of N target boxes decoded with "
               "M Prior boxes and variances for each class.");
     AddOutput("OutputAssignBox",
-              "(LoDTensor or Tensor) "
+              "(Tensor or Tensor) "
               "the output tensor of op with shape [N, 4] "
               "representing the result of N target boxes decoded with "
               "M Prior boxes and variances with the best non-background class "

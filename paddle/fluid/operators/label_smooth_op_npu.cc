@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 void LabelSmoothMuls(const platform::Place& place, const aclrtStream& stream,
@@ -50,8 +50,8 @@ template <typename T>
 class LabelSmoothNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_t = ctx.Output<LoDTensor>("Out");
-    auto* in_t = ctx.Input<LoDTensor>("X");
+    auto* out_t = ctx.Output<Tensor>("Out");
+    auto* in_t = ctx.Input<Tensor>("X");
     auto* dist_t = ctx.Input<Tensor>("PriorDist");
     auto epsilon = ctx.Attr<float>("epsilon");
 

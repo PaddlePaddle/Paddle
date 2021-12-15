@@ -37,7 +37,7 @@ class SkipLayerNormOpConverter : public OpConverter {
                                     framework::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<framework::Tensor>();
       (*dims) = temp_tensor->dims();
 
       auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor, false);

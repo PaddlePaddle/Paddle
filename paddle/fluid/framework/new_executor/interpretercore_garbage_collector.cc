@@ -64,8 +64,8 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
     return;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
+  if (var->IsType<Tensor>()) {
+    Add(var->GetMutable<Tensor>()->MoveMemoryHolder(), event, ctx);
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {

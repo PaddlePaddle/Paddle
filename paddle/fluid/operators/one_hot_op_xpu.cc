@@ -21,15 +21,15 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class OneHotXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     int depth = context.Attr<int>("depth");
     if (context.HasInput("depth_tensor")) {
       auto* depth_tensor = context.Input<Tensor>("depth_tensor");

@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -90,7 +90,7 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
 }
 
 void CheckOutput(const std::vector<OperationExpression>& expressions,
-                 const std::vector<LoDTensor> cpu_tensors,
+                 const std::vector<Tensor> cpu_tensors,
                  const std::vector<int> input_ids_of_subgraph,
                  const std::vector<int> output_ids_of_subgraph, int i,
                  float eps) {
@@ -152,7 +152,7 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
 }
 
 template <typename T>
-void SetupRandomCPUTensor(LoDTensor* tensor) {
+void SetupRandomCPUTensor(Tensor* tensor) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -173,7 +173,7 @@ namespace fusion_group = paddle::framework::ir::fusion_group;
 
 template <typename T>
 void TestMainImpl(std::string func_name, std::string code_str,
-                  std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
+                  std::vector<paddle::framework::Tensor> cpu_tensors, int n,
                   std::vector<int> input_ids, std::vector<int> output_ids) {
   bool is_float16 = std::type_index(typeid(T)) ==
                     std::type_index(typeid(paddle::platform::float16));
@@ -186,8 +186,8 @@ void TestMainImpl(std::string func_name, std::string code_str,
   device_code.Compile(is_float16);
 #endif
 
-  std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
-  std::vector<paddle::framework::LoDTensor> tmp_cpu_tensors(cpu_tensors.size());
+  std::vector<paddle::framework::Tensor> gpu_tensors(cpu_tensors.size());
+  std::vector<paddle::framework::Tensor> tmp_cpu_tensors(cpu_tensors.size());
 
   std::vector<T*> gpu_ptrs(gpu_tensors.size());
   std::vector<void*> args;
@@ -263,7 +263,7 @@ void TestElementwiseMain(
   }
 
   // Prepare CPU tensors which always hold float.
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
+  std::vector<paddle::framework::Tensor> cpu_tensors(ids.size());
   auto dims = paddle::framework::make_ddim(
       {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (size_t i = 0; i < cpu_tensors.size(); ++i) {

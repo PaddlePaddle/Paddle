@@ -55,8 +55,7 @@ class LeakyReluOpConverter : public OpConverter {
     }
 #else
     platform::CPUPlace place;
-    std::unique_ptr<framework::LoDTensor> alpha_tensor(
-        new framework::LoDTensor());
+    std::unique_ptr<framework::Tensor> alpha_tensor(new framework::Tensor());
     alpha_tensor->Resize(framework::make_ddim({2}));
     float* alpha_data = alpha_tensor->mutable_data<float>(place);
     alpha_data[0] = alpha;

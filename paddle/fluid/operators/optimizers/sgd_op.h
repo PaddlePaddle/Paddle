@@ -33,10 +33,10 @@ struct sgd_dense_param_kernel {
 
 // LodTensor
 template <typename T>
-struct sgd_dense_param_kernel<
-    T, framework::VarTypeTrait<framework::LoDTensor>::kId> {
+struct sgd_dense_param_kernel<T,
+                              framework::VarTypeTrait<framework::Tensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, Tensor>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *param = ctx.Input<framework::Tensor>("Param");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -92,10 +92,10 @@ struct sgd_dense_param_kernel<
 
 // LodTensor
 template <>
-struct sgd_dense_param_kernel<
-    platform::bfloat16, framework::VarTypeTrait<framework::LoDTensor>::kId> {
+struct sgd_dense_param_kernel<platform::bfloat16,
+                              framework::VarTypeTrait<framework::Tensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, Tensor>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *param = ctx.Input<framework::Tensor>("Param");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -161,7 +161,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
 
-    if (param_var->IsType<framework::LoDTensor>()) {
+    if (param_var->IsType<framework::Tensor>()) {
       invoke_dense_param_kernel(ctx);
     } else if (param_var->IsType<framework::SelectedRows>()) {
       sparse_param_and_grad_kernel(ctx);
@@ -181,7 +181,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<framework::Tensor>()) {
       const auto *grad = ctx.Input<framework::Tensor>("Grad");
       const auto sz = param_out->numel();
       PADDLE_ENFORCE_EQ(param->numel(), sz,
@@ -303,7 +303,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
   virtual void dense_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
+        T, framework::VarTypeTrait<framework::Tensor>::kId>()(ctx);
   }
 
   virtual void dense_param_sparse_grad_kernel(

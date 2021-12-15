@@ -84,7 +84,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "(LoDTensor) Ids's type should be LoDTensor"
+             "(Tensor) Ids's type should be Tensor"
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
@@ -93,7 +93,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "which is a learnable parameter.");
 
     AddOutput("Outputs",
-              "(LoDTensor) The lookup results, which have the same type as W.")
+              "(Tensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
     AddAttr<int>("table_id", "sparse table id").SetDefault(0);

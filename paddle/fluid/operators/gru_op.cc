@@ -100,7 +100,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(LoDTensor) The first input is a LodTensor, which supports "
+             "(Tensor) The first input is a LodTensor, which supports "
              "variable-time length input sequence. The underlying tensor in "
              "this LoDTenosr is a matrix with shape (T X 3D), where, T is the "
              "total time steps in this mini-batch, D is the hidden size.");
@@ -121,34 +121,31 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
              "bias of the update gate, reset gate and output candidate.")
         .AsDispensable();
     AddOutput("BatchGate",
-              "(LoDTensor) To compute with batches, sequence data will be "
+              "(Tensor) To compute with batches, sequence data will be "
               "reorganized into several successive batches each containing "
-              "data from the same time step. The LoDTensor BatchGate contains "
+              "data from the same time step. The Tensor BatchGate contains "
               "the update gate, reset gate and output candidate values "
               "organized in batches. The LoD size is 2. The first LoD contains "
               "the batch offsets and the second LoD contains the indexes in "
               "the raw sequence data.")
         .AsIntermediate()
         .AsExtra();
-    AddOutput(
-        "BatchResetHiddenPrev",
-        "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
-        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.")
+    AddOutput("BatchResetHiddenPrev",
+              "(Tensor) The reset hidden state Tensor organized in batches. "
+              "This Tensor is a matrix with shape (T X D) and has the same LoD "
+              "with `BatchGate`.")
         .AsIntermediate()
         .AsExtra();
-    AddOutput(
-        "BatchHidden",
-        "(LoDTensor) The hidden state LoDTensor organized in batches.  "
-        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.")
+    AddOutput("BatchHidden",
+              "(Tensor) The hidden state Tensor organized in batches.  "
+              "This Tensor is a matrix with shape (T X D) and has the same LoD "
+              "with `BatchGate`.")
         .AsIntermediate()
         .AsExtra();
-    AddOutput(
-        "Hidden",
-        "(LoDTensor) the hidden state LoDTensor organized in sequences. "
-        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
-        "with `BatchGate`.");
+    AddOutput("Hidden",
+              "(Tensor) the hidden state Tensor organized in sequences. "
+              "This Tensor is a matrix with shape (T X D) and has the same LoD "
+              "with `BatchGate`.");
     AddAttr<std::string>("activation",
                          "(string, default tanh) "
                          "The activation type used for output candidate {h}_t.")
@@ -279,23 +276,23 @@ class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
-    using LodTensorPtr = LoDTensor*;
+    using LodTensorPtr = Tensor*;
     bool is_test = context.Attr<bool>("is_test");
 
     bool origin_mode = context.Attr<bool>("origin_mode");
-    auto* input = context.Input<LoDTensor>("Input");
+    auto* input = context.Input<Tensor>("Input");
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<Tensor>("Bias");
-    auto* hidden = context.Output<LoDTensor>("Hidden");
+    auto* hidden = context.Output<Tensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
     auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
     LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
-    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+    Tensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
     if (is_test) {
       batch_gate = &batch_gate_tmp;
       batch_gate->Resize(input_dims);
@@ -306,10 +303,9 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       batch_hidden = &batch_hidden_tmp;
       batch_hidden->Resize(hidden_dims);
     } else {
-      batch_gate = context.Output<LoDTensor>("BatchGate");
-      batch_hidden = context.Output<LoDTensor>("BatchHidden");
-      batch_reset_hidden_prev =
-          context.Output<LoDTensor>("BatchResetHiddenPrev");
+      batch_gate = context.Output<Tensor>("BatchGate");
+      batch_hidden = context.Output<Tensor>("BatchHidden");
+      batch_reset_hidden_prev = context.Output<Tensor>("BatchResetHiddenPrev");
     }
     batch_gate->mutable_data<T>(context.GetPlace());
     batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());

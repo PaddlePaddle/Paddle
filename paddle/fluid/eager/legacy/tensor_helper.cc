@@ -30,7 +30,7 @@ namespace legacy {
 void InitializeVariable(paddle::framework::Variable *var,
                         paddle::framework::proto::VarType::Type var_type) {
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
-    var->GetMutable<paddle::framework::LoDTensor>();
+    var->GetMutable<paddle::framework::Tensor>();
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
     var->GetMutable<paddle::framework::SelectedRows>();
   } else if (var_type == paddle::framework::proto::VarType::FEED_MINIBATCH) {
@@ -67,9 +67,9 @@ void CopyVariable(const paddle::framework::Variable &src_var,
   // only support cpu now
   auto cpu_place = paddle::platform::CPUPlace();
 
-  if (src_var.IsType<paddle::framework::LoDTensor>()) {
-    auto *tmp_grad_tensor = dst_var->GetMutable<paddle::framework::LoDTensor>();
-    auto &src_tensor = src_var.Get<paddle::framework::LoDTensor>();
+  if (src_var.IsType<paddle::framework::Tensor>()) {
+    auto *tmp_grad_tensor = dst_var->GetMutable<paddle::framework::Tensor>();
+    auto &src_tensor = src_var.Get<paddle::framework::Tensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
     paddle::framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
   } else if (src_var.IsType<paddle::framework::SelectedRows>()) {
@@ -87,25 +87,25 @@ void CopyVariable(const paddle::framework::Variable &src_var,
 }
 paddle::framework::proto::VarType::Type GetDtypeFromVar(
     const paddle::framework::Variable &var) {
-  if (var.IsType<paddle::framework::LoDTensor>()) {
-    return var.Get<paddle::framework::LoDTensor>().type();
+  if (var.IsType<paddle::framework::Tensor>()) {
+    return var.Get<paddle::framework::Tensor>().type();
   } else if (var.IsType<paddle::framework::SelectedRows>()) {
     return var.Get<paddle::framework::SelectedRows>().value().type();
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        "Variable type is %s, expect Tensor or SelectedRows.",
         paddle::framework::ToTypeName(var.Type())));
   }
 }
 const paddle::platform::Place &GetPlaceFromVar(
     const paddle::framework::Variable &var) {
-  if (var.IsType<paddle::framework::LoDTensor>()) {
-    return var.Get<paddle::framework::LoDTensor>().place();
+  if (var.IsType<paddle::framework::Tensor>()) {
+    return var.Get<paddle::framework::Tensor>().place();
   } else if (var.IsType<paddle::framework::SelectedRows>()) {
     return var.Get<paddle::framework::SelectedRows>().place();
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        "Variable type is %s, expect Tensor or SelectedRows.",
         paddle::framework::ToTypeName(var.Type())));
   }
 }

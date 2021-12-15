@@ -29,7 +29,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T, int BlockDim>
 using BlockReduce = cub::BlockReduce<T, BlockDim>;
@@ -120,10 +120,9 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
 
 template <typename T>
 struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &x,
+  void operator()(const platform::CUDADeviceContext &context, const Tensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *out) {
+                  Tensor *out) {
     int height = ref_lod.size() - 1;
 
     const int kThreadsPerBlock = 32;
@@ -143,9 +142,9 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &dout, const LoDTensor &out,
+                  const Tensor &dout, const Tensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
-                  LoDTensor *dx) {
+                  Tensor *dx) {
     size_t height = ref_lod.size() - 1;
 
     const int kThreadsPerBlock = 32;

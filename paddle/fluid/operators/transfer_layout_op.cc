@@ -103,8 +103,8 @@ class TransferLayoutKernel {
 class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input Tensor");
-    AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
+    AddInput("X", "(Tensor) The input Tensor");
+    AddOutput("Out", "(Tensor) The Output Tensor with desired layout");
     AddAttr<int>("dst_layout",
                  "kNHWC = 0, kNCHW = 1, kAnyLayout = 2, kMKLDNN = 3");
     AddComment(R"DOC(

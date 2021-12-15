@@ -50,7 +50,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
+    AddInput("X", "(Tensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
               "(Tensor) The output of SequencePoolOp does not contain LoD "
               "information.");
@@ -89,7 +89,7 @@ The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
 containing 2, 3, and 2 time-steps:
 
-Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
+Assume X is a [7,M,N] Tensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 

@@ -32,7 +32,7 @@ class IsEmptyOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
+    auto *x = ctx.Input<framework::Tensor>("X");
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), x->place());
   }
@@ -41,9 +41,8 @@ class IsEmptyOp : public framework::OperatorWithKernel {
 class IsEmptyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) Tensor which is to be checked.");
-    AddOutput("Out",
-              "(LoDTensor) a boolean Tensor that indicate empty or not.");
+    AddInput("X", "(Tensor) Tensor which is to be checked.");
+    AddOutput("Out", "(Tensor) a boolean Tensor that indicate empty or not.");
     AddComment(R"DOC(
 IsEmpty Operator which checks whether a tensor is empty.
 

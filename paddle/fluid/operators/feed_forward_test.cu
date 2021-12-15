@@ -37,11 +37,11 @@ void GetLinearOp(const std::vector<T> &x, const std::vector<T> &y,
                  bool transpose_b, float alpha, std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<framework::Tensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<framework::Tensor>();
   auto var_out = scope.Var("Out");
-  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  auto tensor_out = var_out->GetMutable<framework::Tensor>();
 
   tensor_x->Resize(x_dim);
   tensor_y->Resize(y_dim);
@@ -77,11 +77,11 @@ void GetElementwiseAddOp(const std::vector<T> &x, const std::vector<T> &y,
                          std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<framework::Tensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<framework::Tensor>();
   auto var_out = scope.Var("Out");
-  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  auto tensor_out = var_out->GetMutable<framework::Tensor>();
 
   tensor_x->Resize({bsz_seq, output_size});
   tensor_y->Resize({output_size});
@@ -116,19 +116,19 @@ void GetLinearOpGrad(const std::vector<T> &x_vec, const std::vector<T> &y_vec,
                      std::vector<T> *dweight_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<framework::Tensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<framework::Tensor>();
   auto var_dout = scope.Var("DOut");
-  auto tensor_dout = var_dout->GetMutable<framework::LoDTensor>();
+  auto tensor_dout = var_dout->GetMutable<framework::Tensor>();
   tensor_x->Resize(x_dim);
   tensor_y->Resize(y_dim);
   tensor_dout->Resize(out_dim);
 
   auto var_dx = scope.Var("DX");
-  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto tensor_dx = var_dx->GetMutable<framework::Tensor>();
   auto var_dy = scope.Var("DY");
-  auto tensor_dy = var_dy->GetMutable<framework::LoDTensor>();
+  auto tensor_dy = var_dy->GetMutable<framework::Tensor>();
   tensor_dx->Resize(x_dim);
   tensor_dy->Resize(y_dim);
 
@@ -195,19 +195,19 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec, const int bsz_seq,
                              std::vector<T> *dy_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<framework::Tensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<framework::Tensor>();
   auto var_dout = scope.Var("DOut");
-  auto tensor_dout = var_dout->GetMutable<framework::LoDTensor>();
+  auto tensor_dout = var_dout->GetMutable<framework::Tensor>();
   tensor_x->Resize({bsz_seq, output_size});
   tensor_y->Resize({output_size});
   tensor_dout->Resize({bsz_seq, output_size});
 
   auto var_dx = scope.Var("DX");
-  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto tensor_dx = var_dx->GetMutable<framework::Tensor>();
   auto var_dy = scope.Var("DY");
-  auto tensor_dy = var_dy->GetMutable<framework::LoDTensor>();
+  auto tensor_dy = var_dy->GetMutable<framework::Tensor>();
   tensor_dx->Resize({bsz_seq, output_size});
   tensor_dy->Resize({output_size});
 

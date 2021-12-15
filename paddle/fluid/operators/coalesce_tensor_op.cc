@@ -29,9 +29,8 @@ namespace operators {
 
 template <typename DeviceContext>
 struct FillConstantVisitor {
-  FillConstantVisitor(const DeviceContext &dev_ctx,
-                      framework::LoDTensor *tensor, const float value,
-                      framework::proto::VarType::Type dtype,
+  FillConstantVisitor(const DeviceContext &dev_ctx, framework::Tensor *tensor,
+                      const float value, framework::proto::VarType::Type dtype,
                       const framework::ExecutionContext &context)
       : dev_ctx_(dev_ctx),
         tensor_(tensor),
@@ -75,7 +74,7 @@ struct FillConstantVisitor {
   }
 
   const DeviceContext &dev_ctx_;
-  framework::LoDTensor *tensor_;
+  framework::Tensor *tensor_;
   float value_;
   framework::proto::VarType::Type dtype_;
   const framework::ExecutionContext &context_;
@@ -87,8 +86,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_var_names = context.InputNames("Input");
     auto out_var_names = context.OutputNames("Output");
-    const auto &in_tensors = context.MultiInput<framework::LoDTensor>("Input");
-    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
+    const auto &in_tensors = context.MultiInput<framework::Tensor>("Input");
+    auto out_tensors = context.MultiOutput<framework::Tensor>("Output");
 
     PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0),
                       platform::errors::InvalidArgument(
@@ -100,7 +99,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                           "input number is %u, output number is %u.",
                           in_var_names.size(), out_var_names.size()));
 
-    // Input & Output check: only support LoDTensor
+    // Input & Output check: only support Tensor
     bool has_not_init_in_vars = false;
     for (size_t i = 0; i < in_tensors.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -189,7 +188,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                        context.GetPlace(), use_align, align_size);
 
     // Alloc the continuous space
-    auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
+    auto fused_tensor = context.Output<framework::Tensor>("FusedOutput");
     void *fused_tensor_ptr =
         fused_tensor
             ->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
@@ -275,7 +274,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
 
  private:
   void GetMemSizeAndDtype(
-      const std::vector<const framework::LoDTensor *> &lod_tensors,
+      const std::vector<const framework::Tensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
       const size_t &size_of_dtype, const platform::Place &place,
       const bool use_align = true, const int align_size = -1) const {
@@ -378,17 +377,17 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(vector<LoDTensor>) The input tensors of"
+             "(vector<Tensor>) The input tensors of"
              " coalesce_tensor operator.")
         .AsDuplicable();
     AddOutput("Output",
-              "(vector<LoDTensor>) The output "
+              "(vector<Tensor>) The output "
               "tensors of coalesce_tensor operator. And the address "
               "of output tensors are continuous, they are sliced from the "
               "tensor of FusedOutput.")
         .AsDuplicable();
     AddOutput("FusedOutput",
-              "(LoDTensor) The output tensor "
+              "(Tensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
     AddAttr<int>("dtype", "The output data type.");

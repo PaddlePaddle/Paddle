@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleForward(const IndexT* index, const T* in_data,
@@ -65,9 +65,9 @@ class IndexSampleKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<LoDTensor>("X");
-    auto* index = ctx.Input<LoDTensor>("Index");
-    auto* output = ctx.Output<LoDTensor>("Out");
+    auto* input = ctx.Input<Tensor>("X");
+    auto* index = ctx.Input<Tensor>("Index");
+    auto* output = ctx.Output<Tensor>("Out");
 
     const auto& index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
@@ -119,9 +119,9 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* output_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* input_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* index = ctx.Input<LoDTensor>("Index");
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* index = ctx.Input<Tensor>("Index");
 
     const auto* output_grad_data = output_grad->data<T>();
     auto* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());

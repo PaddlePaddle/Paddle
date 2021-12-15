@@ -21,7 +21,7 @@ namespace operators {
 
 using framework::Tensor;
 using platform::Communicator;
-using framework::LoDTensor;
+using framework::Tensor;
 
 template <typename Type>
 class NCCLTypeWrapper;
@@ -60,8 +60,8 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       platform::errors::PreconditionNotMet(
                           "This kernel only runs on GPU device."));
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
@@ -91,8 +91,8 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       platform::errors::InvalidArgument(
                           "This kernel only runs on GPU device."));
-    auto x = ctx.Input<LoDTensor>("X");  // x0, x1, x2
-    auto out = ctx.Output<LoDTensor>("Out");
+    auto x = ctx.Input<Tensor>("X");  // x0, x1, x2
+    auto out = ctx.Output<Tensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
     int root = ctx.Attr<int>("root");
     std::string reduction = ctx.Attr<std::string>("reduction");
@@ -134,7 +134,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
         BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
-      auto* x = ctx.Input<LoDTensor>("X");
+      auto* x = ctx.Input<Tensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), x->numel(),
@@ -142,7 +142,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
           ctx.cuda_device_context().stream()));
       VLOG(3) << "gpu : " << gpu_id << " finished Bcast.";
     } else {
-      auto* out = ctx.Output<LoDTensor>("Out");
+      auto* out = ctx.Output<Tensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
               << framework::product(out->dims());
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(

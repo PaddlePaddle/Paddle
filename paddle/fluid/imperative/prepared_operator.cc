@@ -44,8 +44,8 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
-  if (var.IsType<framework::LoDTensor>()) {
-    return &(var.Get<framework::LoDTensor>());
+  if (var.IsType<framework::Tensor>()) {
+    return &(var.Get<framework::Tensor>());
   } else if (var.IsType<framework::SelectedRows>()) {
     return &(var.Get<framework::SelectedRows>().value());
   } else {

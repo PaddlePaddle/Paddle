@@ -355,9 +355,9 @@ class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* d_out =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
-    auto* d_x = context.Output<framework::LoDTensor>(x_grad_name);
+    auto* d_x = context.Output<framework::Tensor>(x_grad_name);
     PADDLE_ENFORCE_NOT_NULL(d_x, platform::errors::PreconditionNotMet(
                                      "StrightThroughEstimatorGradKernel "
                                      "doesn't have the output named %s.",

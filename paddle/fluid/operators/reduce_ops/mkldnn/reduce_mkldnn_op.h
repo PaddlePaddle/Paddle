@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
+using paddle::framework::Tensor;
 using paddle::framework::Tensor;
 using platform::to_void_cast;
 
@@ -51,7 +51,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    const auto* input = ctx.Input<LoDTensor>("X");
+    const auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
 
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");

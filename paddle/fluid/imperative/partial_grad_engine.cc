@@ -303,8 +303,8 @@ static std::string GradPendingOpTypes(const GradOpNode &node) {
 static void FillConstantLike(const VariableWrapper &ref_var,
                              VariableWrapper *dst_var,
                              const platform::Place &place, float value) {
-  auto &ref_tensor = ref_var.Var().Get<framework::LoDTensor>();
-  auto *dst_tensor = dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto &ref_tensor = ref_var.Var().Get<framework::Tensor>();
+  auto *dst_tensor = dst_var->MutableVar()->GetMutable<framework::Tensor>();
   auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
   // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
@@ -731,9 +731,8 @@ PartialGradTask::PartialGradTask(
       VLOG(10) << "Use user provided grad var for "
                << output_targets[i]->Name();
       const auto &out_tensor =
-          output_targets[i]->Var().Get<framework::LoDTensor>();
-      const auto &grad_tensor =
-          output_grads[i]->Var().Get<framework::LoDTensor>();
+          output_targets[i]->Var().Get<framework::Tensor>();
+      const auto &grad_tensor = output_grads[i]->Var().Get<framework::Tensor>();
       PADDLE_ENFORCE_EQ(
           grad_tensor.dims(), out_tensor.dims(),
           platform::errors::InvalidArgument(

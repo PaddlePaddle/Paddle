@@ -49,7 +49,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Y").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the "
+            "The input var's type should be Tensor, but the "
             "received is %s [%s].",
             ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front()));
 
@@ -143,24 +143,24 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     if (Type() == "elementwise_add") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+      if (ctx.InputVar("X")->IsType<framework::Tensor>()) {
         return framework::KernelSignature("add", {"X", "Y"}, {"axis"}, {"Out"});
       }
     }
     if (Type() == "elementwise_sub") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+      if (ctx.InputVar("X")->IsType<framework::Tensor>()) {
         return framework::KernelSignature("subtract", {"X", "Y"}, {"axis"},
                                           {"Out"});
       }
     }
     if (Type() == "elementwise_div") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+      if (ctx.InputVar("X")->IsType<framework::Tensor>()) {
         return framework::KernelSignature("divide", {"X", "Y"}, {"axis"},
                                           {"Out"});
       }
     }
     if (Type() == "elementwise_mul") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+      if (ctx.InputVar("X")->IsType<framework::Tensor>()) {
         return framework::KernelSignature("multiply", {"X", "Y"}, {"axis"},
                                           {"Out"});
       }
@@ -515,11 +515,10 @@ template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *dx =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
     if (dx != nullptr) {
       auto &dout =
-          *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+          *context.Input<framework::Tensor>(framework::GradVarName("Out"));
       dx->set_lod(dout.lod());
     }
   }

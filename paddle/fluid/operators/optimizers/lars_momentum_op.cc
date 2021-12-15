@@ -37,7 +37,7 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
+            "The input var's type should be Tensor, but the received is %s",
             ctx->GetInputsVarType("Param").front()));
 
     auto lr_dims = ctx->GetInputsDim("LearningRate");
@@ -87,7 +87,7 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad")[i],
                         framework::proto::VarType::LOD_TENSOR,
                         platform::errors::InvalidArgument(
-                            "The Var(%s)'s type should be LoDTensor, "
+                            "The Var(%s)'s type should be Tensor, "
                             "but the received is %s",
                             ctx->Inputs("Grad")[i].front(),
                             ctx->GetInputsVarType("Grad")[i]));
@@ -126,31 +126,31 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input parameter that has to be updated")
         .AsDuplicable();
     AddInput("Grad",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input gradient of the parameter")
         .AsDuplicable();
     AddInput("Velocity",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input velocity (corresponding to the parameter) "
              "that has to be updated")
         .AsDuplicable();
     AddInput("LearningRate",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input learning rate")
         .AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("ParamOut",
-              "(LoDTensor) This output is updated parameter. "
+              "(Tensor) This output is updated parameter. "
               "It shared memory with Input(Param).")
         .AsDuplicable();
     AddOutput("VelocityOut",
-              "(LoDTensor) This output is updated velocity. "
+              "(Tensor) This output is updated velocity. "
               "It shared memory with Input(Velocity).")
         .AsDuplicable();
     AddOutput("MasterParamOut",

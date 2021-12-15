@@ -24,11 +24,11 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
+void AppendRois(Tensor* out, int64_t offset, Tensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -449,19 +449,18 @@ template <typename T>
 class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* rpn_rois = context.Input<LoDTensor>("RpnRois");
-    auto* gt_classes = context.Input<LoDTensor>("GtClasses");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* rpn_rois = context.Input<Tensor>("RpnRois");
+    auto* gt_classes = context.Input<Tensor>("GtClasses");
+    auto* is_crowd = context.Input<Tensor>("IsCrowd");
+    auto* gt_boxes = context.Input<Tensor>("GtBoxes");
+    auto* im_info = context.Input<Tensor>("ImInfo");
 
-    auto* rois = context.Output<LoDTensor>("Rois");
-    auto* labels_int32 = context.Output<LoDTensor>("LabelsInt32");
-    auto* bbox_targets = context.Output<LoDTensor>("BboxTargets");
-    auto* bbox_inside_weights = context.Output<LoDTensor>("BboxInsideWeights");
-    auto* bbox_outside_weights =
-        context.Output<LoDTensor>("BboxOutsideWeights");
-    auto* max_overlap_with_gt = context.Output<LoDTensor>("MaxOverlapWithGT");
+    auto* rois = context.Output<Tensor>("Rois");
+    auto* labels_int32 = context.Output<Tensor>("LabelsInt32");
+    auto* bbox_targets = context.Output<Tensor>("BboxTargets");
+    auto* bbox_inside_weights = context.Output<Tensor>("BboxInsideWeights");
+    auto* bbox_outside_weights = context.Output<Tensor>("BboxOutsideWeights");
+    auto* max_overlap_with_gt = context.Output<Tensor>("MaxOverlapWithGT");
 
     int batch_size_per_im = context.Attr<int>("batch_size_per_im");
     float fg_fraction = context.Attr<float>("fg_fraction");
@@ -600,21 +599,21 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "RpnRois",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [N, 4]. "
+        "(Tensor), This input is a 2D Tensor with shape [N, 4]. "
         "N is the number of the GenerateProposalOp's output, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddInput("GtClasses",
-             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "(Tensor), This input is a 2D Tensor with shape [M, 1]. "
              "M is the number of groundtruth, "
              "each element is a class label of groundtruth.");
     AddInput(
         "IsCrowd",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "(Tensor), This input is a 2D Tensor with shape [M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
     AddInput(
         "GtBoxes",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 4]. "
+        "(Tensor), This input is a 2D Tensor with shape [M, 4]. "
         "M is the number of groundtruth, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddInput("ImInfo",
@@ -622,7 +621,7 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
     AddInput("MaxOverlap",
-             "(LoDTensor), This input is a 1D LoDTensor with shape [N]."
+             "(Tensor), This input is a 1D Tensor with shape [N]."
              "N is the number of Input(RpnRois), "
              "each element is the maximum overlap between "
              "the proposal RoI and ground-truth.")
@@ -630,28 +629,28 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput(
         "Rois",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "(Tensor), This output is a 2D Tensor with shape [P, 4]. "
         "P usuall equal to  batch_size_per_im * batch_size, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("LabelsInt32",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
+              "(Tensor), This output is a 2D Tensor with shape [P, 1], "
               "each element represents a class label of a roi");
     AddOutput("BboxTargets",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+              "(Tensor), This output is a 2D Tensor with shape [P, 4 * "
               "class_nums], "
               "each element represents a box label of a roi");
     AddOutput(
         "BboxInsideWeights",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "(Tensor), This output is a 2D Tensor with shape [P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
     AddOutput(
         "BboxOutsideWeights",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "(Tensor), This output is a 2D Tensor with shape [P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
     AddOutput("MaxOverlapWithGT",
-              "(LoDTensor), This output is a 1D LoDTensor with shape [P], "
+              "(Tensor), This output is a 1D Tensor with shape [P], "
               "each element indicates the maxoverlap "
               "between output RoIs and ground-truth. "
               "The output RoIs may include ground-truth "

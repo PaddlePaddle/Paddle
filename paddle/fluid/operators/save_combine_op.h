@@ -68,16 +68,16 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>() ||
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::Tensor>() ||
                             inp_vars[i]->IsType<framework::Vocab>(),
                         true,
                         platform::errors::InvalidArgument(
                             "SaveCombine operator only supports saving "
-                            "LoDTensor or Vocab variable, %s has wrong type.",
+                            "Tensor or Vocab variable, %s has wrong type.",
                             inp_var_names[i]));
 
-      if (inp_vars[i]->IsType<framework::LoDTensor>()) {
-        auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+      if (inp_vars[i]->IsType<framework::Tensor>()) {
+        auto &tensor = inp_vars[i]->Get<framework::Tensor>();
         PADDLE_ENFORCE_EQ(
             tensor.IsInitialized(), true,
             platform::errors::InvalidArgument(
@@ -92,7 +92,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         if (in_dtype != out_dtype) {
           auto in_kernel_type = framework::OpKernelType(in_dtype, place);
           auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-          framework::LoDTensor out;
+          framework::Tensor out;
           // copy LoD info to the new tensor
           out.set_lod(tensor.lod());
           framework::TransDataType(in_kernel_type, out_kernel_type, tensor,

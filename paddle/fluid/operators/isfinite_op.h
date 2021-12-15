@@ -57,7 +57,7 @@ class OverflowKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     Functor functor;
-    if (x->IsType<framework::LoDTensor>()) {
+    if (x->IsType<framework::Tensor>()) {
       auto* in = ctx.Input<framework::Tensor>("X");
       functor(*in, out);
     } else if (x->IsType<framework::SelectedRows>()) {

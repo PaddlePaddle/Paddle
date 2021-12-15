@@ -125,7 +125,7 @@ template <typename DeviceContext, typename T>
 class SetValueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    const int rank = ctx.Input<framework::LoDTensor>("Input")->dims().size();
+    const int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
 
     // TODO(liym27): A more elegent code to do this. C++ has to make template
     //  integer as constant, but we had better have alternative writing in the
@@ -158,9 +158,9 @@ class SetValueKernel : public framework::OpKernel<T> {
  private:
   template <size_t D>
   void SetValueCompute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<framework::LoDTensor>("Input");
-    auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* in = ctx.Input<framework::Tensor>("Input");
+    auto* value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto starts_tensor_list =
         ctx.MultiInput<framework::Tensor>("StartsTensorList");

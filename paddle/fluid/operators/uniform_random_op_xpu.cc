@@ -48,8 +48,8 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(framework::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
-    } else if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (out_var->IsType<framework::Tensor>()) {
+      tensor = out_var->GetMutable<framework::Tensor>();
       if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

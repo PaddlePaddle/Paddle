@@ -26,9 +26,9 @@ template <typename DeviceContext, typename T>
 class LoDResetKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* lod_t = ctx.Input<framework::Tensor>("Y");
     bool append = ctx.Attr<bool>("append");
 
     framework::TensorCopy(*in, in->place(), out);

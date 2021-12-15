@@ -177,13 +177,13 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<framework::LoDTensor>()) {
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+  } else if (in_var->IsType<framework::Tensor>()) {
+    auto& in_lod_tensor = in_var->Get<framework::Tensor>();
+    auto* out_lod_tensor = out_var->GetMutable<framework::Tensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Currently, the input type of ShareDim only can be LoDTensor "
+        "Currently, the input type of ShareDim only can be Tensor "
         "or SelectedRows."));
   }
 }
@@ -216,14 +216,14 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     }
 
     Variable* in_var = in_var_list[i];
-    if (!in_var->IsType<LoDTensor>()) return;
+    if (!in_var->IsType<Tensor>()) return;
     Variable* out_var = out_var_list[i];
-    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(out_var->IsType<Tensor>(), true,
                       platform::errors::PreconditionNotMet(
-                          "The %d-th output of Output(%s) must be LoDTensor.",
-                          i, out_var_names[i]));
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+                          "The %d-th output of Output(%s) must be Tensor.", i,
+                          out_var_names[i]));
+    auto& in_tensor = in_var->Get<Tensor>();
+    auto* out_tensor = out_var->GetMutable<Tensor>();
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
     if (in_tensor.layout() != DataLayout::kMKLDNN)
@@ -257,14 +257,14 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
                         out_it->second.size(), j));
 
   Variable* in_var = in_it->second.at(i);
-  if (!in_var->IsType<LoDTensor>()) return;
+  if (!in_var->IsType<Tensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
-      out_var->IsType<LoDTensor>(), true,
+      out_var->IsType<Tensor>(), true,
       platform::errors::InvalidArgument(
-          "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-  auto& in_tensor = in_var->Get<LoDTensor>();
-  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+          "The %zu-th output of Output(%s) must be Tensor.", j, out));
+  auto& in_tensor = in_var->Get<Tensor>();
+  auto* out_tensor = out_var->GetMutable<Tensor>();
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
@@ -378,13 +378,13 @@ void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
 DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+  if (var->IsType<Tensor>()) {
+    return var->Get<Tensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
     return var->Get<SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Only LoDTensor or SelectedRows support 'GetDim', but input "
+        "Only Tensor or SelectedRows support 'GetDim', but input "
         "Variable's type is %s.",
         ToTypeName(var->Type())));
   }
@@ -406,13 +406,13 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 }
 
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
-  if (var->IsType<LoDTensor>()) {
-    var->GetMutable<LoDTensor>()->Resize(dim);
+  if (var->IsType<Tensor>()) {
+    var->GetMutable<Tensor>()->Resize(dim);
   } else if (var->IsType<SelectedRows>()) {
     var->GetMutable<SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Variable type error, expect LoDTensor or SelectedRows, but received "
+        "Variable type error, expect Tensor or SelectedRows, but received "
         "(%s).",
         ToTypeName(var->Type())));
   }
@@ -565,7 +565,7 @@ void VariableScope::AddVar(const std::string& name,
                            bool local_scope) {  // NOLINT
   auto v = local_scope ? local_scope_->Var(name) : scope_->Var(name);
   if (nullptr == var_desc) {
-    v->GetMutable<LoDTensor>();
+    v->GetMutable<Tensor>();
   } else {
     InitializeVariable(
         v,

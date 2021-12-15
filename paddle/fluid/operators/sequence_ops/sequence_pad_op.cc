@@ -63,7 +63,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
       // run time
       framework::Variable* x_var =
           BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
-      const auto& x_lod = x_var->Get<LoDTensor>().lod();
+      const auto& x_lod = x_var->Get<Tensor>().lod();
       PADDLE_ENFORCE_EQ(x_lod.empty(), false,
                         platform::errors::NotFound(
                             "The SequencePadOp Input(X) must hold lod info."));
@@ -131,19 +131,18 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) Input variable which "
+             "(Tensor, default Tensor<float>) Input variable which "
              "should contain lod information.");
     AddInput("PadValue",
-             "(LoDTensor), this Tensor holds values that will be fill into "
+             "(Tensor), this Tensor holds values that will be fill into "
              "padded steps. It can be a scalar or a tensor whose shape equals "
              "to time steps in sequences. If it's a scalar, it will be "
              "automatically broadcasted to the shape of time step.");
-    AddOutput(
-        "Out",
-        "(LoDTensor) The output vairable, which contains padded sequences.");
+    AddOutput("Out",
+              "(Tensor) The output vairable, which contains padded sequences.");
     AddOutput(
         "Length",
-        "(LoDTensor) The output vairable, which contains the actual length of "
+        "(Tensor) The output vairable, which contains the actual length of "
         "sequences before padding.");
     AddAttr<int>(
         "padded_length",
@@ -165,41 +164,41 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
 
       Case 1:
 
-      Given a 1-level LoDTensor input(X):
+      Given a 1-level Tensor input(X):
           X.lod = [[0, 2,       5]]
           X.data = [a, b, c, d, e]
       and Input(PadValue):
           PadValue.data = [0]
       and attribite 'padded_length' = 4,
-      then we get LoDTensor:
+      then we get Tensor:
           Out.data = [[a, b, 0, 0], 
                       [c, d, e, 0]]
           Length.data = [2, 3]
       
       Case 2:
 
-      Given a 1-level LoDTensor input(X):
+      Given a 1-level Tensor input(X):
           X.lod = [[0,               2,                           5]]
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [0]
       and attribite 'padded_length' = -1, which mean using the length 
       of longest input sequence(3 in this case),
-      then we get LoDTensor:
+      then we get Tensor:
           Out.data = [[[a1, a2], [b1, b2], [0, 0]], 
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]
  
       Case 3:
 
-      Given a 1-level LoDTensor input(X):
+      Given a 1-level Tensor input(X):
           X.lod = [[0,               2,                           5]]
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [p1, p2]
       and attribite 'padded_length' = -1, which mean using the length 
       of longest input sequence(3 in this case),
-      then we get LoDTensor:
+      then we get Tensor:
           Out.data = [[[a1, a2], [b1, b2], [p1, p2]], 
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]

@@ -142,10 +142,10 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input parameter that has to be updated.");
     AddInput("Grad",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(Tensor, default Tensor<float>) "
              "Input gradient of the parameter.");
     AddInput("LearningRate", "(Tensor) Learning rate.");
     AddInput("Moment1", "(Tensor) Input first moment.");

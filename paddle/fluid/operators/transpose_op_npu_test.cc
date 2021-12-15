@@ -41,9 +41,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto x = scope->Var("X");
   auto out = scope->Var("Out");
   auto xshape = scope->Var("XShape");
-  auto* x_t = x->GetMutable<f::LoDTensor>();
-  auto* out_t = out->GetMutable<f::LoDTensor>();
-  auto* xshape_t = xshape->GetMutable<f::LoDTensor>();
+  auto* x_t = x->GetMutable<f::Tensor>();
+  auto* out_t = out->GetMutable<f::Tensor>();
+  auto* xshape_t = xshape->GetMutable<f::Tensor>();
   auto place = ctx.GetPlace();
 
   int dim0 = 2;
@@ -85,9 +85,9 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   auto x_grad = scope->Var("X@GRAD");
   auto out_grad = scope->Var("Out@GRAD");
 
-  auto* x_grad_t = x_grad->GetMutable<f::LoDTensor>();
-  auto* xshape_t = xshape->GetMutable<f::LoDTensor>();
-  auto* out_grad_t = out_grad->GetMutable<f::LoDTensor>();
+  auto* x_grad_t = x_grad->GetMutable<f::Tensor>();
+  auto* xshape_t = xshape->GetMutable<f::Tensor>();
+  auto* out_grad_t = out_grad->GetMutable<f::Tensor>();
 
   int dim0 = 2;
   int dim1 = 3;

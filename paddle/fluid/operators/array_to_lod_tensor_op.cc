@@ -90,8 +90,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<framework::Tensor>();
 
     // Check dims, place and data type of input's elements and infer output's
     // dim
@@ -146,7 +145,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                 return table_items[a].index < table_items[b].index;
               });
 
-    // Build LoDTensor `out`
+    // Build Tensor `out`
     framework::LoD *out_lod = out->mutable_lod();
     out_lod->clear();
     auto prefix_lod = rank_table.coarse_lod();
@@ -200,16 +199,16 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(std::vector<LodTensor>) A vector of tensors that is going to "
-             "be casted to a big LoDTensor.");
+             "be casted to a big Tensor.");
     AddInput("RankTable",
              "(LoDRankTable) RankTable provides the coarse lod information to "
-             "build the output LoDTensor. See "
+             "build the output Tensor. See "
              "'paddle/framework/lod_rank_table.h' for more details.");
-    AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
+    AddOutput("Out", "(Tensor) The Tensor formed by input tensor array.");
     AddComment(
-        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor> 
+        R"DOC(This Op build a big Tensor from a std::vector<Tensor> 
           and a LoDRankTable. It is supposed to be used in getting dynamic RNN's
-          outputs back to a normal LoDTensor. The std::vector<LoDTensor> 
+          outputs back to a normal Tensor. The std::vector<Tensor> 
           would be the output of RNN Op and the LoDRankTable would be build 
           with RNN's input.)DOC");
   }
@@ -230,9 +229,9 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
     // detail kernel implementation.
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
-    // The output LoDTensor's lod_level should be input X's lod_level + 1.
+    // The output Tensor's lod_level should be input X's lod_level + 1.
     // For compile-time, we call SetLoDLevel to set output's lod_level.
-    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // For runtime, output Tensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.

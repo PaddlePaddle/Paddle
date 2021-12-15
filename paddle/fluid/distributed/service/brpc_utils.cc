@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Variable;
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -71,7 +71,7 @@ void SerializeToMultiVarMsgAndIOBuf(
 
     framework::Variable* var = scope->FindVar(send_var_name);
 
-    if (var->IsType<framework::LoDTensor>()) {
+    if (var->IsType<framework::Tensor>()) {
       SerializeLodTensor(var, ctx, send_var_msg, &temp_iobuf);
     } else if (var->IsType<framework::SelectedRows>()) {
       SerializeSelectedRows(var, ctx, send_var_msg, &temp_iobuf);
@@ -83,7 +83,7 @@ void SerializeToMultiVarMsgAndIOBuf(
 void SerializeLodTensor(framework::Variable* var,
                         const platform::DeviceContext& ctx, VarMsg* var_msg,
                         butil::IOBuf* iobuf) {
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<framework::Tensor>();
   var_msg->set_type(::paddle::distributed::LOD_TENSOR);
   const framework::LoD lod = tensor->lod();
   if (lod.size() > 0) {
@@ -211,7 +211,7 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
                           butil::IOBufBytesIterator& io_buffer_itr,
                           const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
-  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+  framework::Tensor* tensor = var->GetMutable<framework::Tensor>();
   std::vector<int> vec_dim;
   for (auto& x : msg.dims()) {
     vec_dim.push_back(x);

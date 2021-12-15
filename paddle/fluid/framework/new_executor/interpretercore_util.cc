@@ -436,9 +436,8 @@ void build_op_func_list(const platform::Place& place,
       }
 
       VLOG(6) << "Erase variable " << var_name;
-      if (var->IsType<LoDTensor>()) {
-        garbages->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+      if (var->IsType<Tensor>()) {
+        garbages->emplace_back(var->GetMutable<Tensor>()->MoveMemoryHolder());
       } else if (var->IsType<SelectedRows>()) {
         garbages->emplace_back(var->GetMutable<SelectedRows>()
                                    ->mutable_value()

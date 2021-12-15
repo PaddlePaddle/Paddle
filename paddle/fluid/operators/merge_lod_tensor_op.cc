@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -46,13 +46,11 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
-    auto &in_true = scope.FindVar(Input("InTrue"))->Get<framework::LoDTensor>();
-    auto &in_false =
-        scope.FindVar(Input("InFalse"))->Get<framework::LoDTensor>();
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &x = scope.FindVar(Input("X"))->Get<framework::Tensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::Tensor>();
+    auto &in_true = scope.FindVar(Input("InTrue"))->Get<framework::Tensor>();
+    auto &in_false = scope.FindVar(Input("InFalse"))->Get<framework::Tensor>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<framework::Tensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
 
     PADDLE_ENFORCE_EQ(
@@ -61,7 +59,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
             "Input(InTrue) or Input(InFalse) should be initialized."));
 
     auto &mask_dim = mask.dims();
-    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+    std::unique_ptr<framework::Tensor> cpu_mask{new framework::Tensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
@@ -101,12 +99,12 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     out_lod->clear();
     size_t out_offset = 0;
 
-    // Build LoDTensor `out`
+    // Build Tensor `out`
 
     size_t in_true_idx = 0;
     size_t in_false_idx = 0;
     for (size_t i = 0; i < static_cast<size_t>(mask_dim[0]); i++) {
-      const framework::LoDTensor *input = nullptr;
+      const framework::Tensor *input = nullptr;
       size_t *in_idx = nullptr;
       if (static_cast<int>(mask_data[i]) == 0) {
         input = &in_false;
@@ -168,8 +166,8 @@ class MergeLoDTensorInferOp : public MergeLoDTensorOp {
     framework::Variable *in_false_var = scope.FindVar(Input("InFalse"));
     in_true_var->Clear();
     in_false_var->Clear();
-    in_true_var->GetMutable<framework::LoDTensor>();
-    in_false_var->GetMutable<framework::LoDTensor>();
+    in_true_var->GetMutable<framework::Tensor>();
+    in_false_var->GetMutable<framework::Tensor>();
   }
 };
 
@@ -177,18 +175,18 @@ class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input LoDTensor, contains complete lod information to "
+             "The input Tensor, contains complete lod information to "
              "construct the output");
     AddInput("Mask", "A bool column vector which mask the input");
     AddInput("InTrue", "The True branch to be merged");
     AddInput("InFalse", "The False branch to be merged");
-    AddOutput("Out", "The merged output LoDTensor");
+    AddOutput("Out", "The merged output Tensor");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
         R"DOC(
-        Merge True and False branches of LoDTensor into a single Output,
+        Merge True and False branches of Tensor into a single Output,
         with a mask at certain lod level. X is used to obtain complete
         lod information. Please refer to SplitLoDTensorOp.)DOC");
   }

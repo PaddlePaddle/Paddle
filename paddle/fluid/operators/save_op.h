@@ -54,13 +54,13 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     MkDirRecursively(DirName(filename).c_str());
 
-    if (input_var->IsType<framework::LoDTensor>()) {
+    if (input_var->IsType<framework::Tensor>()) {
       SaveLodTensor(ctx, place, input_var, filename);
     } else if (input_var->IsType<framework::SelectedRows>()) {
       SaveSelectedRows(ctx, place, input_var, filename);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Save operator only supports saving LoDTensor and SelectedRows "
+          "Save operator only supports saving Tensor and SelectedRows "
           "variable, %s has wrong type",
           iname));
     }
@@ -70,7 +70,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
                      const platform::Place &place,
                      const framework::Variable *var,
                      const std::string &filename) const {
-    auto &tensor = var->Get<framework::LoDTensor>();
+    auto &tensor = var->Get<framework::Tensor>();
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -90,7 +90,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     if (in_dtype != out_dtype) {
       auto in_kernel_type = framework::OpKernelType(in_dtype, place);
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-      framework::LoDTensor out;
+      framework::Tensor out;
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());

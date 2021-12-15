@@ -37,7 +37,7 @@ namespace operators {
 
 struct InputVars {
   std::string name;
-  framework::LoDTensor *tensor;
+  framework::Tensor *tensor;
 };
 
 template <typename T>
@@ -46,20 +46,16 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
   framework::Scope scope;
 
   std::vector<InputVars> input_names = {
-      {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
-      {"x1", num_inputs > 1
-                 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x2", num_inputs > 2
-                 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x3", num_inputs > 3
-                 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x4", num_inputs > 4
-                 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
-                 : nullptr}};
-  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
+      {"x", scope.Var("x")->GetMutable<framework::Tensor>()},
+      {"x1", num_inputs > 1 ? scope.Var("x1")->GetMutable<framework::Tensor>()
+                            : nullptr},
+      {"x2", num_inputs > 2 ? scope.Var("x2")->GetMutable<framework::Tensor>()
+                            : nullptr},
+      {"x3", num_inputs > 3 ? scope.Var("x3")->GetMutable<framework::Tensor>()
+                            : nullptr},
+      {"x4", num_inputs > 4 ? scope.Var("x4")->GetMutable<framework::Tensor>()
+                            : nullptr}};
+  auto *y = scope.Var("y")->GetMutable<framework::Tensor>();
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
@@ -95,7 +91,7 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
   pool.Get(place)->Wait();
 
   // Get reference (out of place) result
-  auto &ref_tensor = scope.FindVar("y")->Get<framework::LoDTensor>();
+  auto &ref_tensor = scope.FindVar("y")->Get<framework::Tensor>();
 
   // In-place (to be tested) computation
   auto op = num_inputs > 1 ? framework::OpRegistry::CreateOp(
@@ -109,7 +105,7 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
   // Get in-place result
-  auto &out_tensor = scope.FindVar("x")->Get<framework::LoDTensor>();
+  auto &out_tensor = scope.FindVar("x")->Get<framework::Tensor>();
   PADDLE_ENFORCE_EQ(
       &out_tensor, input_names[0].tensor,
       platform::errors::InvalidArgument(

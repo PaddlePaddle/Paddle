@@ -164,7 +164,7 @@ static void InitVarBaseAndTensor(
     const platform::Place &place, const std::string &name,
     bool persistable = false, bool zero_copy = false, int stop_gradient = -1) {
   InitVarBaseOnly(self, name, persistable, stop_gradient);
-  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto *tensor = self->MutableVar()->GetMutable<framework::Tensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
@@ -236,7 +236,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
           << " / stop_gradient: " << stop_gradient << " / at " << place;
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
-  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto *tensor = self->MutableVar()->GetMutable<framework::Tensor>();
   if (stop_gradient != -1) {
     self->SetOverridedStopGradient(stop_gradient);
   }
@@ -265,7 +265,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
-  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::Tensor>();
   // Same place，share data directly
   if (place == tensor.place()) {
     new_tensor->ShareDataWith(tensor);
@@ -290,7 +290,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
-  auto *new_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto *new_tensor = self->MutableVar()->GetMutable<framework::Tensor>();
   // Same place，share data directly
   if (platform::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
@@ -431,7 +431,7 @@ static bool PyCheckInteger(PyObject *obj) {
 
 static Py_ssize_t GetSliceIndexFromTensor(
     const std::shared_ptr<imperative::VarBase> &tensor_index) {
-  const auto &tensor = tensor_index->Var().Get<framework::LoDTensor>();
+  const auto &tensor = tensor_index->Var().Get<framework::Tensor>();
   if (tensor.numel() == 1) {
     if (tensor.type() == framework::proto::VarType::INT32) {
       return static_cast<Py_ssize_t>(operators::GetValue<int32_t>(&tensor));
@@ -519,12 +519,11 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
 }
 
 static void ParseIndexingSlice(
-    framework::LoDTensor *tensor, PyObject *_index,
-    std::vector<int> *slice_axes, std::vector<int> *slice_starts,
-    std::vector<int> *slice_ends, std::vector<int> *slice_strides,
-    std::vector<int> *decrease_axis, std::vector<int> *none_axes,
-    std::vector<int> *infer_flags, std::vector<int> *list_select_idxs,
-    bool *list_select_flag) {
+    framework::Tensor *tensor, PyObject *_index, std::vector<int> *slice_axes,
+    std::vector<int> *slice_starts, std::vector<int> *slice_ends,
+    std::vector<int> *slice_strides, std::vector<int> *decrease_axis,
+    std::vector<int> *none_axes, std::vector<int> *infer_flags,
+    std::vector<int> *list_select_idxs, bool *list_select_flag) {
   // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
   // types, and list of Bool and Integers.
   // wrap to tuple
@@ -685,9 +684,9 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     dst.SetType(src->Type());
     dst.SetOverridedStopGradient(src->OverridedStopGradient());
     if (!src->SharedVar()->IsEmpty()) {
-      if (src->Var().IsType<framework::LoDTensor>()) {
-        auto &src_tensor = src->Var().Get<framework::LoDTensor>();
-        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+      if (src->Var().IsType<framework::Tensor>()) {
+        auto &src_tensor = src->Var().Get<framework::Tensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::Tensor>();
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
         if (blocking) {
@@ -782,8 +781,8 @@ void BindImperative(py::module *m_ptr) {
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
-          // 2. construcct LoDTensor
-          framework::LoDTensor t;
+          // 2. construcct Tensor
+          framework::Tensor t;
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
@@ -817,8 +816,8 @@ void BindImperative(py::module *m_ptr) {
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
-          // 2. construcct LoDTensor
-          framework::LoDTensor t;
+          // 2. construcct Tensor
+          framework::Tensor t;
           SetTensorFromPyArray<platform::CPUPlace>(&t, array,
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
@@ -840,13 +839,13 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
     for (size_t i = 0; i < tensor_list.size(); ++i) {
-      auto t = tensor_list[i].cast<framework::LoDTensor>();
+      auto t = tensor_list[i].cast<framework::Tensor>();
       auto *mmap_writer_allocation =
           dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
               t.Holder().get());
       PADDLE_ENFORCE_NOT_NULL(
           mmap_writer_allocation,
-          platform::errors::NotFound("The shared memory of LoDTensor in "
+          platform::errors::NotFound("The shared memory of Tensor in "
                                      "DataLoader's child process has been "
                                      "released."));
       memory::allocation::MemoryMapFdSet::Instance().Remove(
@@ -900,7 +899,7 @@ void BindImperative(py::module *m_ptr) {
              self.SetDataType(dtype);
              if (type == framework::proto::VarType::LOD_TENSOR) {
                auto *tensor =
-                   self.MutableVar()->GetMutable<framework::LoDTensor>();
+                   self.MutableVar()->GetMutable<framework::Tensor>();
                tensor->Resize(framework::make_ddim(dims));
              }
            })
@@ -945,7 +944,7 @@ void BindImperative(py::module *m_ptr) {
             VLOG(4) << "Call __setitem_varbase__";
 
             auto self_tensor =
-                self->MutableVar()->GetMutable<framework::LoDTensor>();
+                self->MutableVar()->GetMutable<framework::Tensor>();
             // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
             // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
@@ -1066,9 +1065,9 @@ void BindImperative(py::module *m_ptr) {
                       "please check the type of tensor."));
                 }
 
-                SetTensorFromPyArray(value_tensor->MutableVar()
-                                         ->GetMutable<framework::LoDTensor>(),
-                                     value, self->Place(), false);
+                SetTensorFromPyArray(
+                    value_tensor->MutableVar()->GetMutable<framework::Tensor>(),
+                    value, self->Place(), false);
                 ins.insert({"ValueTensor", {value_tensor}});
 
               } else {
@@ -1127,7 +1126,7 @@ void BindImperative(py::module *m_ptr) {
                 auto index_var =
                     py::cast<std::shared_ptr<imperative::VarBase>>(_index);
                 auto index_tensor =
-                    index_var->MutableVar()->GetMutable<framework::LoDTensor>();
+                    index_var->MutableVar()->GetMutable<framework::Tensor>();
                 auto index_numpy = TensorToPyArray(*index_tensor);
                 self_numpy[index_numpy] = value_obj;
               } else {
@@ -1150,8 +1149,7 @@ void BindImperative(py::module *m_ptr) {
                  list_select_idxs;
              // if index is a list, list_select_flag will be true
              bool list_select_flag = false;
-             auto tensor =
-                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto tensor = self->MutableVar()->GetMutable<framework::Tensor>();
              ParseIndexingSlice(tensor, _index.ptr(), &slice_axes,
                                 &slice_starts, &slice_ends, &slice_strides,
                                 &decrease_axis, &none_axes, &infer_flags,
@@ -1232,8 +1230,8 @@ void BindImperative(py::module *m_ptr) {
              if (list_select_flag) {
                auto select_index = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
-               auto *idx_tensor = select_index->MutableVar()
-                                      ->GetMutable<framework::LoDTensor>();
+               auto *idx_tensor =
+                   select_index->MutableVar()->GetMutable<framework::Tensor>();
                auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
                    tracer->ExpectedPlace());
                TensorFromVector(list_select_idxs, *dev_ctx, idx_tensor);
@@ -1249,7 +1247,7 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_getitem_from_offset",
           [](std::shared_ptr<imperative::VarBase> &self, const py::args &args) {
-            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+            const auto &tensor = self->Var().Get<framework::Tensor>();
             PADDLE_ENFORCE_EQ(
                 tensor.IsInitialized(), true,
                 platform::errors::InvalidArgument(
@@ -1335,8 +1333,7 @@ void BindImperative(py::module *m_ptr) {
       .def("numpy",
 
            [](imperative::VarBase &self) -> py::array {
-             const auto &tensor =
-                 self.MutableVar()->Get<framework::LoDTensor>();
+             const auto &tensor = self.MutableVar()->Get<framework::Tensor>();
              PADDLE_ENFORCE_EQ(
                  tensor.IsInitialized(), true,
                  platform::errors::InvalidArgument(
@@ -1373,12 +1370,11 @@ void BindImperative(py::module *m_ptr) {
                      "Tensor %s has not been initialized!", self.Name()));
 
              PADDLE_ENFORCE_EQ(
-                 self.Var().IsType<framework::LoDTensor>() ||
+                 self.Var().IsType<framework::Tensor>() ||
                      self.Var().IsType<framework::SelectedRows>(),
-                 true,
-                 platform::errors::InvalidArgument(
-                     "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
-                     self.Name()));
+                 true, platform::errors::InvalidArgument(
+                           "Type of Tensor[%s] must be Tensor or SelectedRows!",
+                           self.Name()));
 
              auto detach_var = std::make_shared<imperative::VarBase>(
                  true, "detach_" + self.Name());
@@ -1387,16 +1383,15 @@ void BindImperative(py::module *m_ptr) {
              detach_var->SetType(self.Type());
              detach_var->SetDataType(self.DataType());
 
-             if (self.Var().IsType<framework::LoDTensor>()) {
-               const auto &origin_tensor =
-                   self.Var().Get<framework::LoDTensor>();
+             if (self.Var().IsType<framework::Tensor>()) {
+               const auto &origin_tensor = self.Var().Get<framework::Tensor>();
                PADDLE_ENFORCE_EQ(
                    origin_tensor.IsInitialized(), true,
                    platform::errors::InvalidArgument(
                        "Tensor %s has not been initialized!", self.Name()));
 
                auto *detach_tensor =
-                   detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
+                   detach_var->MutableVar()->GetMutable<framework::Tensor>();
                detach_tensor->ShareDataWith(origin_tensor);
                // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
                // same TensorInplaceVersion, which is used to check whether
@@ -1490,7 +1485,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_is_gradient_set_empty", &imperative::VarBase::_IsGradientSetEmpty)
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
-             const auto &tensor = self->Var().Get<framework::LoDTensor>();
+             const auto &tensor = self->Var().Get<framework::Tensor>();
              PADDLE_ENFORCE_EQ(
                  tensor.IsInitialized(), true,
                  platform::errors::InvalidArgument(
@@ -1539,7 +1534,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",
            [](imperative::VarBase &self) {
-             return self.MutableGradVar()->Get<framework::LoDTensor>();
+             return self.MutableGradVar()->Get<framework::Tensor>();
            },
            py::return_value_policy::reference)
       .def("_set_grad_type",
@@ -1575,9 +1570,8 @@ void BindImperative(py::module *m_ptr) {
 
              if (grad_var && grad_var->Var().IsInitialized()) {
                auto *tensor =
-                   grad_var->MutableVar()->IsType<framework::LoDTensor>()
-                       ? grad_var->MutableVar()
-                             ->GetMutable<framework::LoDTensor>()
+                   grad_var->MutableVar()->IsType<framework::Tensor>()
+                       ? grad_var->MutableVar()->GetMutable<framework::Tensor>()
                        : grad_var->MutableVar()
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
@@ -1831,8 +1825,8 @@ void BindImperative(py::module *m_ptr) {
                  platform::is_cpu_place(self->Place()), true,
                  platform::errors::InvalidArgument(
                      "Sharing memory only support CPU Tensor currently"));
-             // 1. get LoDTensor
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             // 1. get Tensor
+             auto *t = self->MutableVar()->GetMutable<framework::Tensor>();
              // 2. allocate shared memory
              void *data_ptr = t->data<void>();
              size_t data_size = t->numel() * framework::SizeOfType(t->type());
@@ -1926,7 +1920,7 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_clear",
            [](const std::shared_ptr<imperative::VarBase> &self) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t = self->MutableVar()->GetMutable<framework::Tensor>();
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(), true,
                  platform::errors::InvalidArgument(
@@ -1935,7 +1929,7 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_offset",
            [](const std::shared_ptr<imperative::VarBase> &self) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t = self->MutableVar()->GetMutable<framework::Tensor>();
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(), true,
                  platform::errors::InvalidArgument(
@@ -1945,8 +1939,8 @@ void BindImperative(py::module *m_ptr) {
       .def("_share_buffer_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
-             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *src = self->MutableVar()->GetMutable<framework::Tensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::Tensor>();
              PADDLE_ENFORCE_EQ(
                  src->IsInitialized(), true,
                  platform::errors::InvalidArgument(
@@ -1956,8 +1950,8 @@ void BindImperative(py::module *m_ptr) {
       .def("_is_shared_buffer_with",
            [](const std::shared_ptr<imperative::VarBase> &self,
               std::shared_ptr<imperative::VarBase> &dst) {
-             auto *src = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto *dst_ = dst->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *src = self->MutableVar()->GetMutable<framework::Tensor>();
+             auto *dst_ = dst->MutableVar()->GetMutable<framework::Tensor>();
              if (!src->IsInitialized() || !dst_->IsInitialized()) {
                return false;
              }
@@ -1966,7 +1960,7 @@ void BindImperative(py::module *m_ptr) {
       .def("_slice",
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx, int64_t end_idx) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t = self->MutableVar()->GetMutable<framework::Tensor>();
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(), true,
                  platform::errors::InvalidArgument(
@@ -1978,7 +1972,7 @@ void BindImperative(py::module *m_ptr) {
               const imperative::VarBase &src) { self->_CopyGradientFrom(src); })
       .def("_numel",
            [](std::shared_ptr<imperative::VarBase> &self) {
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto *t = self->MutableVar()->GetMutable<framework::Tensor>();
              return t->numel();
            })
       .def_property("name", &imperative::VarBase::Name,
@@ -1991,9 +1985,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "shape",
           [](imperative::VarBase &self) {
-            if (self.Var().IsType<framework::LoDTensor>()) {
+            if (self.Var().IsType<framework::Tensor>()) {
               return framework::vectorize<int>(
-                  self.Var().Get<framework::LoDTensor>().dims());
+                  self.Var().Get<framework::Tensor>().dims());
             } else if (self.Var().IsType<framework::SelectedRows>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
@@ -2416,10 +2410,10 @@ void BindImperative(py::module *m_ptr) {
 
         // TODO(daisiming): In future, add index as arguments following
         // async_read.
-        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
-        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
-        auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
-        auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+        auto &src_tensor = src.Var().Get<framework::Tensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::Tensor>();
+        auto &offset_tensor = offset.Var().Get<framework::Tensor>();
+        auto &count_tensor = count.Var().Get<framework::Tensor>();
         const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
         PADDLE_ENFORCE_EQ(offset_tensor.dims().size(), 1,
@@ -2555,13 +2549,13 @@ void BindImperative(py::module *m_ptr) {
                 "Required `count` device should be CPUPlace, but received %d.",
                 count.Place()));
 
-        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
-        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
-        auto &index_tensor = index.Var().Get<framework::LoDTensor>();
+        auto &src_tensor = src.Var().Get<framework::Tensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::Tensor>();
+        auto &index_tensor = index.Var().Get<framework::Tensor>();
         auto *buffer_tensor =
-            buffer.MutableVar()->GetMutable<framework::LoDTensor>();
-        auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
-        auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+            buffer.MutableVar()->GetMutable<framework::Tensor>();
+        auto &offset_tensor = offset.Var().Get<framework::Tensor>();
+        auto &count_tensor = count.Var().Get<framework::Tensor>();
         auto *dst_data = dst_tensor->mutable_data<float>(dst.Place());
         const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 

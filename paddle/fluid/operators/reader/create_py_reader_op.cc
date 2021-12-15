@@ -109,7 +109,7 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
         .SetDefault(1);
 
     AddComment(R"DOC(
-      Create PyReader to support LoDTensor data feeding in Python side.
+      Create PyReader to support Tensor data feeding in Python side.
       )DOC");
   }
 };

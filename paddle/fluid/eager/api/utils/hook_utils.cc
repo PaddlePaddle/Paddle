@@ -67,8 +67,8 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
                   "please check tensor initialization status.",
                   t.name()));
           grad_tensor->MutableVar()
-              ->GetMutable<paddle::framework::LoDTensor>()
-              ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
+              ->GetMutable<paddle::framework::Tensor>()
+              ->ShareDataWith(t.Var().Get<paddle::framework::Tensor>());
           return *grad_tensor;
         }
       };

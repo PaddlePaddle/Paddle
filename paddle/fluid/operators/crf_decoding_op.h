@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
+using framework::Tensor;
 using framework::LoD;
 using framework::Tensor;
 
@@ -30,9 +30,9 @@ template <typename DeviceContext, typename T>
 class CRFDecodingOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* emission_weights = ctx.Input<LoDTensor>("Emission");
+    auto* emission_weights = ctx.Input<Tensor>("Emission");
     auto* transition_weights = ctx.Input<Tensor>("Transition");
-    auto* label = ctx.Input<LoDTensor>("Label");
+    auto* label = ctx.Input<Tensor>("Label");
     auto* decoded_path = ctx.Output<Tensor>("ViterbiPath");
 
     int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());

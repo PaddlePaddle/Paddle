@@ -36,7 +36,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Scope;
 class SelectedRows;
 class Variable;
@@ -48,7 +48,7 @@ namespace distributed {
 
 class PSCore;
 
-using framework::LoDTensor;
+using framework::Tensor;
 using framework::Scope;
 using framework::SelectedRows;
 using framework::Variable;
@@ -101,8 +101,8 @@ class FleetWrapper {
   void PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                               uint64_t padding_id, platform::Place place,
                               bool is_training,
-                              std::vector<const LoDTensor*>* inputs,  // NOLINT
-                              std::vector<LoDTensor*>* outputs);      // NOLINT
+                              std::vector<const Tensor*>* inputs,  // NOLINT
+                              std::vector<Tensor*>* outputs);      // NOLINT
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -155,14 +155,13 @@ class FleetWrapper {
       uint64_t padding_id, bool scale_sparse, const std::string& accesor,
       const std::string& click_name, platform::Place place,
       const std::vector<std::string>& input_names,
-      std::vector<const LoDTensor*>* inputs,    // NOLINT
-      std::vector<const LoDTensor*>* outputs);  // NOLINT
+      std::vector<const Tensor*>* inputs,    // NOLINT
+      std::vector<const Tensor*>* outputs);  // NOLINT
   void PushSparseFromTensorAsync(const uint64_t table_id, int fea_dim,
                                  uint64_t padding_id, platform::Place place,
-                                 std::vector<const LoDTensor*>* inputs,
-                                 const LoDTensor* shows,
-                                 const LoDTensor* clicks,
-                                 std::vector<LoDTensor*>* outputs);
+                                 std::vector<const Tensor*>* inputs,
+                                 const Tensor* shows, const Tensor* clicks,
+                                 std::vector<Tensor*>* outputs);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status

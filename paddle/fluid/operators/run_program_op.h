@@ -45,23 +45,23 @@ using BlockDesc = framework::BlockDesc;
 using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 
 namespace details {
 
-// all input vars should be LoDTensor & is initialized
+// all input vars should be Tensor & is initialized
 static void CheckInputVarStatus(const Variable &var,
                                 const std::string &var_name) {
   PADDLE_ENFORCE_EQ(
-      var.IsType<LoDTensor>(), true,
+      var.IsType<Tensor>(), true,
       platform::errors::InvalidArgument(
           "The input variable %s of "
           "RunProgram(Grad)Op holds "
-          "wrong type. Expect type is LoDTensor, but receive type is %s.",
+          "wrong type. Expect type is Tensor, but receive type is %s.",
           var_name, platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
-      var.Get<LoDTensor>().IsInitialized(), true,
+      var.Get<Tensor>().IsInitialized(), true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
                                         "RunProgram(Grad)Op "
                                         "is not initialized.",
@@ -71,16 +71,16 @@ static void CheckInputVarStatus(const Variable &var,
 static void CheckOutputVarStatus(const Variable &src_var,
                                  const Variable &dst_var,
                                  const std::string &var_name) {
-  if (dst_var.IsType<LoDTensor>()) {
+  if (dst_var.IsType<Tensor>()) {
     PADDLE_ENFORCE_EQ(
-        src_var.IsType<LoDTensor>(), true,
+        src_var.IsType<Tensor>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
-            "wrong type. Expect type is LoDTensor, but receive type is %s.",
+            "wrong type. Expect type is Tensor, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
-    PADDLE_ENFORCE_EQ(src_var.Get<LoDTensor>().IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(src_var.Get<Tensor>().IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
                           "RunProgram(Grad)Op's internal "
@@ -105,19 +105,19 @@ static void CheckOutputVarStatus(const Variable &src_var,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
-        "variable of type LoDTensor or SelectedRows, "
+        "variable of type Tensor or SelectedRows, "
         "but received variable %s's type is %s",
         var_name, platform::demangle(framework::ToTypeName(dst_var.Type()))));
   }
 }
 
 static void VariableShare(const Variable &src_var, Variable *dst_var) {
-  // The previous check ensures that the variable type can only be LoDTensor or
+  // The previous check ensures that the variable type can only be Tensor or
   // SelectedRows.
-  if (src_var.IsType<LoDTensor>()) {
-    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
-    lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
-    lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
+  if (src_var.IsType<Tensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<Tensor>();
+    lod_tensor->ShareDataWith(src_var.Get<Tensor>());
+    lod_tensor->set_lod(src_var.Get<Tensor>().lod());
   } else if (src_var.IsType<SelectedRows>()) {
     auto *selected_rows = dst_var->GetMutable<SelectedRows>();
     selected_rows->mutable_value()->ShareDataWith(

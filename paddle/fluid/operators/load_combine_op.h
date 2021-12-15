@@ -103,7 +103,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           tensor->emplace(token, it->second);
         }
       } else {
-        auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
+        auto *tensor = out_vars[i]->GetMutable<framework::Tensor>();
 
         // Get data from fin to tensor
         DeserializeFromStream(*buffer, tensor, dev_ctx);
@@ -116,7 +116,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           // convert to float16 tensor
           auto in_kernel_type = framework::OpKernelType(in_dtype, place);
           auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-          framework::LoDTensor fp16_tensor;
+          framework::Tensor fp16_tensor;
           // copy LoD info to the new tensor
           fp16_tensor.set_lod(tensor->lod());
           framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
@@ -124,7 +124,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
           // reset output tensor
           out_vars[i]->Clear();
-          tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
+          tensor = out_vars[i]->GetMutable<framework::Tensor>();
           tensor->set_lod(fp16_tensor.lod());
           tensor->ShareDataWith(fp16_tensor);
         }

@@ -68,17 +68,17 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
 class ShuffleBatchOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input tensor of shuffle_batch op.");
-    AddInput("Seed", "(LoDTensor) The input seed tensor.");
+    AddInput("X", "(Tensor) The input tensor of shuffle_batch op.");
+    AddInput("Seed", "(Tensor) The input seed tensor.");
     AddAttr<int>(
         "startup_seed",
         "If input tensor 'Seed' is not initialized, the 'startup_seed' "
         "will be used to replace it. The seed after shuffle batch will "
         "be saved in 'SeedOut'. ")
         .SetDefault(0);
-    AddOutput("Out", "(LoDTensor) The output tensor of shuffle_batch op.");
+    AddOutput("Out", "(Tensor) The output tensor of shuffle_batch op.");
     AddOutput("ShuffleIdx", "(Tensor) Record forword shuffle order");
-    AddOutput("SeedOut", "(LoDTensor) Saved new generated seed.");
+    AddOutput("SeedOut", "(Tensor) Saved new generated seed.");
     AddComment(R"DOC(
 Shuffle Batch Operator.
 

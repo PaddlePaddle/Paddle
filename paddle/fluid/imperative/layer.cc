@@ -94,9 +94,9 @@ static std::string DebugString(
     const framework::Variable& var = vars[i]->Var();
     if (!var.IsInitialized()) {
       ss << "NOT_INITED_VAR";
-    } else if (var.IsType<framework::LoDTensor>()) {
-      auto& tensor = var.Get<framework::LoDTensor>();
-      ss << "LoDTensor<";
+    } else if (var.IsType<framework::Tensor>()) {
+      auto& tensor = var.Get<framework::Tensor>();
+      ss << "Tensor<";
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(tensor.type()) << ", ";
         ss << tensor.place() << ", ";
@@ -200,8 +200,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
       }
     } else {
       platform::RecordEvent record_event("ClearGradient");
-      auto* grad_t =
-          grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::Tensor>();
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
@@ -247,20 +246,19 @@ bool VarBase::_IsGradientSetEmpty() {
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
-      Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
+      Var().IsInitialized() && (Var().IsType<framework::Tensor>() ||
                                 Var().IsType<framework::SelectedRows>()),
       true, platform::errors::InvalidArgument(
                 "Variable is not initialized or Variable's type is not "
-                "LoDTensor or SelectedRows when getting numpy tensor"));
+                "Tensor or SelectedRows when getting numpy tensor"));
 
-  if (Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = Var().Get<framework::LoDTensor>();
+  if (Var().IsType<framework::Tensor>()) {
+    auto& src_tensor = Var().Get<framework::Tensor>();
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
 
-    auto* dst_tensor =
-        new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* dst_tensor = new_var->MutableVar()->GetMutable<framework::Tensor>();
     dst_tensor->set_lod(src_tensor.lod());
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
@@ -326,9 +324,9 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   }
 
   platform::Place place = src.Place();
-  if (src.Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
-    auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+  if (src.Var().IsType<framework::Tensor>()) {
+    auto& src_tensor = src.Var().Get<framework::Tensor>();
+    auto* dst_tensor = MutableVar()->GetMutable<framework::Tensor>();
     if (dst_tensor && dst_tensor->IsInitialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
@@ -398,12 +396,12 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
-    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    auto& src_tensor = src.Var().Get<framework::Tensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
                       platform::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
-    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
-    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::Tensor>();
+    auto* var_ = MutableVar()->GetMutable<framework::Tensor>();
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());
   }
@@ -533,13 +531,12 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
-      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+      PADDLE_ENFORCE_EQ(var.IsType<framework::Tensor>(), true,
                         platform::errors::PermissionDenied(
-                            "NoNeedBufferVars only support LoDTensor"));
+                            "NoNeedBufferVars only support Tensor"));
       auto new_var = new VariableWrapper(each_var->Name());
-      auto* new_tensor =
-          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-      auto& old_tensor = var.Get<framework::LoDTensor>();
+      auto* new_tensor = new_var->MutableVar()->GetMutable<framework::Tensor>();
+      auto& old_tensor = var.Get<framework::Tensor>();
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
       each_var.reset(new_var);

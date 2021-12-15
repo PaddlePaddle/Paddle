@@ -127,7 +127,7 @@ inline void ExtractActivationGradTensor(
     *dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
 
     if (out_var) {
-      *Out = &(out_var->Get<framework::LoDTensor>());
+      *Out = &(out_var->Get<framework::Tensor>());
     } else {
       *Out = *dOut;  // fake out
     }
@@ -2602,10 +2602,9 @@ class PowGradKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     // get FactorTensor
-    auto* factor_tensor =
-        context.HasInput("FactorTensor")
-            ? context.Input<framework::LoDTensor>("FactorTensor")
-            : nullptr;
+    auto* factor_tensor = context.HasInput("FactorTensor")
+                              ? context.Input<framework::Tensor>("FactorTensor")
+                              : nullptr;
     if (factor_tensor) {
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;

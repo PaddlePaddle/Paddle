@@ -55,7 +55,7 @@ class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, LoDTensor<int|int64>) Input variable. Each value "
+             "(Tensor, Tensor<int|int64>) Input variable. Each value "
              "of X is an index.");
     AddOutput(
         "Out",

@@ -162,9 +162,9 @@ framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
 
 void FusionLSTMOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
+           "(Tensor) the input is a LodTensor, which support "
            "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "this Tensor is a matrix with shape (T X M), where T is the "
            "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("WeightX",
            "(Tensor) the learnable weights of X."
@@ -199,22 +199,22 @@ void FusionLSTMOpMaker::Make() {
            "batch size. `H0` and `C0` can be NULL but only at the same time.")
       .AsDispensable();
   AddOutput("Hidden",
-            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+            "(Tensor) (same as LSTMOp) the hidden state of LSTM operator. "
             "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("Cell",
-            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
+            "(Tensor) (same as LSTMOp) the cell state of LSTM operator. "
             "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("XX",
-            "(LoDTensor) the result after X * WeightX (size is T x 4D)"
+            "(Tensor) the result after X * WeightX (size is T x 4D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
-  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).").AsIntermediate();
-  AddOutput("BatchedHidden", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
+  AddOutput("BatchedInput", "(Tensor) (T x 4D).").AsIntermediate();
+  AddOutput("BatchedHidden", "(Tensor) (T x D).").AsIntermediate();
+  AddOutput("BatchedCell", "(Tensor) (T x D).").AsIntermediate();
+  AddOutput("ReorderedH0", "(Tensor) (N x D).").AsIntermediate();
+  AddOutput("ReorderedC0", "(Tensor) (N x D).").AsIntermediate();
   AddOutput("CheckedCell", "(Tensor) (2 x D) only for peephole.")
       .AsIntermediate();
   AddAttr<bool>("use_peepholes",
@@ -281,15 +281,15 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_BASE_DEFINES                                   \
   using DeviceContext = paddle::platform::CPUDeviceContext; \
-  auto* x = ctx.Input<LoDTensor>("X");                      \
+  auto* x = ctx.Input<Tensor>("X");                         \
   auto* h0 = ctx.Input<Tensor>("H0");                       \
   auto* c0 = ctx.Input<Tensor>("C0");                       \
   auto* wx = ctx.Input<Tensor>("WeightX");                  \
   auto* wh = ctx.Input<Tensor>("WeightH");                  \
   auto* bias = ctx.Input<Tensor>("Bias");                   \
-  auto* xx = ctx.Output<LoDTensor>("XX");                   \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");       \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");           \
+  auto* xx = ctx.Output<Tensor>("XX");                      \
+  auto* hidden_out = ctx.Output<Tensor>("Hidden");          \
+  auto* cell_out = ctx.Output<Tensor>("Cell");              \
   bool is_reverse = ctx.Attr<bool>("is_reverse");           \
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");     \
   auto x_dims = x->dims();   /* T x M*/                     \
@@ -411,9 +411,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
-    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
-    auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
-    auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
+    auto* batched_input = ctx.Output<Tensor>("BatchedInput");
+    auto* batched_c_out = ctx.Output<Tensor>("BatchedCell");
+    auto* batched_h_out = ctx.Output<Tensor>("BatchedHidden");
     T* xx_data = xx->mutable_data<T>(place);
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_c_out_data = batched_c_out->mutable_data<T>(place);

@@ -283,12 +283,12 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  scope.Var("x0")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("x1")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("x2")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("k0")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("y0")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("y1")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("x0")->GetMutable<paddle::framework::Tensor>();
+  scope.Var("x1")->GetMutable<paddle::framework::Tensor>();
+  scope.Var("x2")->GetMutable<paddle::framework::Tensor>();
+  scope.Var("k0")->GetMutable<paddle::framework::Tensor>();
+  scope.Var("y0")->GetMutable<paddle::framework::Tensor>();
+  scope.Var("y1")->GetMutable<paddle::framework::Tensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
@@ -332,7 +332,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "LoDTensor");
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Tensor");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -340,7 +340,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("LoDTensor", "Input of Tensor type Variable.");
+    AddInput("Tensor", "Input of Tensor type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
@@ -422,14 +422,14 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
   paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("indicate_lod_tensor_data_type_test");
-  BuildVar("LoDTensor", {"lodtensor_1"}, op_desc.add_inputs());
+  BuildVar("Tensor", {"lodtensor_1"}, op_desc.add_inputs());
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("lodtensor_1");
-  var->GetMutable<paddle::framework::LoDTensor>();
+  var->GetMutable<paddle::framework::Tensor>();
 
   bool caught = false;
   try {
@@ -440,7 +440,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
     EXPECT_TRUE(
         ex_msg.find(
             "The indicate_lod_tensor_data_type_test Op's Input Variable "
-            "`LoDTensor` contains uninitialized Tensor.") != std::string::npos);
+            "`Tensor` contains uninitialized Tensor.") != std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -496,7 +496,7 @@ TEST(IndicateVarDataTypeTest, other) {
             "The Input Variable(Other) of "
             "(indicate_other_data_type_test) Operator used to "
             "determine kernel data type "
-            "is empty or not LoDTensor or SelectedRows or LoDTensorArray.") !=
+            "is empty or not Tensor or SelectedRows or LoDTensorArray.") !=
         std::string::npos);
   }
   ASSERT_TRUE(caught);
@@ -571,8 +571,8 @@ class SetLoDLevelTest : public OperatorWithKernel {
 class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(LoDTensor) Input Variable.");
-    AddOutput("Out", "(LoDTensor) Output Variable.");
+    AddInput("X", "(Tensor) Input Variable.");
+    AddOutput("Out", "(Tensor) Output Variable.");
     AddComment("This Op is only for Get/SetLoDLevel interface test.");
   }
 };
@@ -606,10 +606,10 @@ void SetGetLoDLevelTestMain(std::string op_type) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* x_var = scope.Var("x.0");
-  auto* x = x_var->GetMutable<paddle::framework::LoDTensor>();
+  auto* x = x_var->GetMutable<paddle::framework::Tensor>();
   x->mutable_data<float>(paddle::framework::make_ddim({64}), place);
   auto* out_var = scope.Var("out.0");
-  out_var->GetMutable<paddle::framework::LoDTensor>();
+  out_var->GetMutable<paddle::framework::Tensor>();
 
   bool caught = false;
   std::string err_str =
@@ -708,8 +708,8 @@ TEST(OpWithUnusedVar, all) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
-  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  auto* x = scope.Var("X")->GetMutable<paddle::framework::Tensor>();
+  auto* y = scope.Var("Y")->GetMutable<paddle::framework::Tensor>();
   x->Resize({32, 64});
   y->Resize({32, 64});
   x->mutable_data<float>(cpu_place);
@@ -733,8 +733,8 @@ TEST(OpWithoutUnusedVar, all) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
-  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  auto* x = scope.Var("X")->GetMutable<paddle::framework::Tensor>();
+  auto* y = scope.Var("Y")->GetMutable<paddle::framework::Tensor>();
   x->Resize({32, 64});
   y->Resize({32, 64});
   x->mutable_data<float>(cpu_place);

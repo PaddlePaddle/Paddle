@@ -43,7 +43,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   PADDLE_ENFORCE_NOT_NULL(
       Y_v, platform::errors::NotFound(
                "Can not find %s presistale var in scope.", filter_var_name));
-  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  auto* Y_t = Y_v->GetMutable<framework::Tensor>();
   float* weight_data = nullptr;
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -108,7 +108,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   size_t bias_size = 0;
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
-    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
+    auto* bias_tensor_data = bias_tensor->GetMutable<framework::Tensor>();
     bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
                                          bias_tensor_data, false);
     bias_size = static_cast<size_t>(bias_tensor_data->numel());

@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -240,7 +240,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* out = ctx.Output<Tensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
@@ -339,7 +339,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<Tensor>("ROIs");
 
     auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<Tensor>(framework::GradVarName("X"));

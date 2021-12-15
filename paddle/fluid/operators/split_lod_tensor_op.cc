@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -48,12 +48,12 @@ class SplitLoDTensorOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+    auto &x = scope.FindVar(Input("X"))->Get<framework::Tensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::Tensor>();
     auto *out_true =
-        scope.FindVar(Output("OutTrue"))->GetMutable<framework::LoDTensor>();
+        scope.FindVar(Output("OutTrue"))->GetMutable<framework::Tensor>();
     auto *out_false =
-        scope.FindVar(Output("OutFalse"))->GetMutable<framework::LoDTensor>();
+        scope.FindVar(Output("OutFalse"))->GetMutable<framework::Tensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
@@ -61,7 +61,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+    std::unique_ptr<framework::Tensor> cpu_mask{new framework::Tensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
@@ -103,7 +103,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
 
     for (size_t t = 0; t < 2; ++t) {
-      framework::LoDTensor *out;
+      framework::Tensor *out;
       if (t == 0) {
         out = out_false;
       } else {
@@ -138,20 +138,20 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input LoDTensor");
+    AddInput("X", "The input Tensor");
     AddInput("Mask", "A bool column vector which mask the input");
-    AddOutput("OutTrue", "True branch of input LoDTensor");
-    AddOutput("OutFalse", "False branch of input LoDTensor");
+    AddOutput("OutTrue", "True branch of input Tensor");
+    AddOutput("OutFalse", "False branch of input Tensor");
     AddAttr<int>("level", "(int) the specific lod level to split.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
         R"DOC(
-        Split a LoDTensor with a Mask at certain level. The input LoDTensor
+        Split a Tensor with a Mask at certain level. The input Tensor
         has 3 sequence at certain lod level. The Mask is a bool column vector,
         such as [0, 1, 0] at the same level. The first and third sequence will
-        be send to False Output LoDTensor; whereas the second sequence will
-        be send to True Output LoDTensor. Please refer to MergeLoDTensorOp.)DOC");
+        be send to False Output Tensor; whereas the second sequence will
+        be send to True Output Tensor. Please refer to MergeLoDTensorOp.)DOC");
   }
 };
 

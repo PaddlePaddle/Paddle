@@ -28,7 +28,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto x = ctx.Input<framework::Tensor>("X");
     int numel = x->numel();
     int rid = ctx.Attr<int>("ring_id");
     int peer = ctx.Attr<int>("peer");

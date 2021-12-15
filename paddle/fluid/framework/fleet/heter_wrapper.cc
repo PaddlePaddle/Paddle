@@ -87,7 +87,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
   if (var == nullptr) {
     return;
   }
-  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  Tensor* tensor = var->GetMutable<Tensor>();
   req_var->set_varname(varname);
   req_var->set_type(LOD_TENSOR);
   req_var->set_data_type(static_cast<VariableMessage::Type>(tensor->type()));
@@ -137,7 +137,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        gpuStream_t stream) {
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
-  auto* tensor = var->GetMutable<LoDTensor>();
+  auto* tensor = var->GetMutable<Tensor>();
 
   std::vector<int> vec_dim;
   for (auto& x : req_var.dims()) {
@@ -176,7 +176,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        platform::Place place) {
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
-  auto* tensor = var->GetMutable<LoDTensor>();
+  auto* tensor = var->GetMutable<Tensor>();
 
   std::vector<int> vec_dim;
   for (auto& x : req_var.dims()) {

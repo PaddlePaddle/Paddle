@@ -36,9 +36,9 @@ struct float16;
 namespace paddle {
 namespace operators {
 
-static void DeepCopy(const framework::LoDTensor &src_item,
+static void DeepCopy(const framework::Tensor &src_item,
                      const std::string &fetch_var_name,
-                     framework::LoDTensor *dst_item) {
+                     framework::Tensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
@@ -92,8 +92,8 @@ class FetchV2Op : public framework::OperatorWithKernel {
                                      platform::CPUPlace());
     }
 
-    if (fetch_var->IsType<framework::LoDTensor>()) {
-      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+    if (fetch_var->IsType<framework::Tensor>()) {
+      auto &src_item = fetch_var->Get<framework::Tensor>();
       if (!src_item.IsInitialized()) {
         return framework::OpKernelType(framework::proto::VarType::FP32,
                                        platform::CPUPlace());
@@ -141,12 +141,12 @@ class FetchV2Kernel {
 
     bool deepcopy = ctx.Attr<bool>("deepcopy");
 
-    if (fetch_var->IsType<framework::LoDTensor>()) {
-      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+    if (fetch_var->IsType<framework::Tensor>()) {
+      auto &src_item = fetch_var->Get<framework::Tensor>();
       if (!src_item.IsInitialized()) {
         return;
       }
-      auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
+      auto *dst_item = &(BOOST_GET(framework::Tensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
                          platform::is_cuda_pinned_place(src_item.place());
       PADDLE_ENFORCE_EQ(
@@ -184,10 +184,10 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(Tensor) The resulted Tensor which is expected to return "
              "to users.");
     AddOutput("Out",
-              "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
+              "(vector<Tensor>) A fetching list of Tensor which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddAttr<bool>("deepcopy", "(bool) Whether deep copy is required.")

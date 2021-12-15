@@ -26,20 +26,20 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     // inputs and outputs stored in proto
     AddInput("pre_ids",
-             "(LoDTensor) The LoDTensor containing the selected ids at the "
+             "(Tensor) The Tensor containing the selected ids at the "
              "previous step. It should be a tensor with shape (batch_size, 1) "
              "and lod `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at "
              "the first step.");
     AddInput("pre_scores",
-             "(LoDTensor) The LoDTensor containing the accumulated "
+             "(Tensor) The Tensor containing the accumulated "
              "scores corresponding to the selected ids at the previous step.");
     AddInput("ids",
-             "(LoDTensor) The LoDTensor containing the candidates ids. Its "
+             "(Tensor) The Tensor containing the candidates ids. Its "
              "shape should be (batch_size * beam_size, W). If not set, it will "
              "be calculated out according to Input(scores) in this operator.")
         .AsDispensable();
     AddInput("scores",
-             "(LoDTensor) The LoDTensor containing the current scores "
+             "(Tensor) The Tensor containing the current scores "
              "corresponding to Input(ids). If Input(ids) is not nullptr, its "
              "shape is the same as that of Input(ids)."
              "If is_accumulated is true, Input(scores) is accumulated scores "
@@ -49,14 +49,14 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("selected_ids",
               "A LodTensor that stores the IDs selected by beam search.");
     AddOutput("selected_scores",
-              "A LoDTensor containing the accumulated scores corresponding to "
+              "A Tensor containing the accumulated scores corresponding to "
               "Output(selected_ids).");
     AddOutput("parent_idx",
               "A Tensor preserving the selected_ids' parent index in pre_ids.")
         .AsDispensable();
 
     // Attributes stored in AttributeMap
-    AddAttr<int>("level", "the level of LoDTensor");
+    AddAttr<int>("level", "the level of Tensor");
     AddAttr<int>("beam_size", "beam size for beam search");
     AddAttr<int>("end_id",
                  "the token id which indicates the end of a sequence");
@@ -104,7 +104,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *scores = ctx.Input<framework::LoDTensor>("scores");
+    auto *scores = ctx.Input<framework::Tensor>("scores");
     size_t level = ctx.Attr<int>("level");
     size_t batch_size = scores->lod()[level].size() - 1;
     // The current CUDA kernel only support cases with batch_size < 4.

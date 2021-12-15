@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 const int kDefaultDim = framework::DDim::kMaxRank;
 
@@ -44,9 +44,9 @@ class CrossKernel : public framework::OpKernel<T> {
     auto* input_y_var = context.InputVar("Y");
     auto* output_var = context.OutputVar("Out");
 
-    auto& input_x = input_x_var->Get<LoDTensor>();
-    auto& input_y = input_y_var->Get<LoDTensor>();
-    auto* output = output_var->GetMutable<LoDTensor>();
+    auto& input_x = input_x_var->Get<Tensor>();
+    auto& input_y = input_y_var->Get<Tensor>();
+    auto* output = output_var->GetMutable<Tensor>();
     int dim = context.Attr<int>("dim");
 
     auto input_x_dims = input_x.dims();
@@ -135,11 +135,11 @@ class CrossGradKernel : public framework::OpKernel<T> {
     auto* output_x_grad_var = context.OutputVar(framework::GradVarName("X"));
     auto* output_y_grad_var = context.OutputVar(framework::GradVarName("Y"));
 
-    auto& input_x = input_x_var->Get<LoDTensor>();
-    auto& input_y = input_y_var->Get<LoDTensor>();
-    auto& input_out_grad = input_out_grad_var->Get<LoDTensor>();
-    auto* output_x_grad = output_x_grad_var->GetMutable<LoDTensor>();
-    auto* output_y_grad = output_y_grad_var->GetMutable<LoDTensor>();
+    auto& input_x = input_x_var->Get<Tensor>();
+    auto& input_y = input_y_var->Get<Tensor>();
+    auto& input_out_grad = input_out_grad_var->Get<Tensor>();
+    auto* output_x_grad = output_x_grad_var->GetMutable<Tensor>();
+    auto* output_y_grad = output_y_grad_var->GetMutable<Tensor>();
 
     int dim = context.Attr<int>("dim");
     auto input_x_dims = input_x.dims();

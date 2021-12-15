@@ -73,7 +73,7 @@ class ScaleOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
-    if (ctx.InputVar("X")->IsType<framework::LoDTensor>() ||
+    if (ctx.InputVar("X")->IsType<framework::Tensor>() ||
         ctx.InputVar("X")->IsType<framework::Tensor>()) {
       std::string scale_attr;
       if (ctx.HasInput("ScaleTensor")) {

@@ -36,17 +36,6 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
   pten::DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
                              src.dims(),
                              pten::TransToPtenDataLayout(src.layout())};
-  auto shared_storage =
-      pten::make_intrusive<SharedStorage>(src.Holder(), src.offset());
-  return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
-                                             std::move(meta));
-}
-
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
-    const paddle::framework::LoDTensor& src) {
-  pten::DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
-                             src.dims(),
-                             pten::TransToPtenDataLayout(src.layout())};
   SetLoD(&meta.lod, src.lod());
   auto shared_storage =
       pten::make_intrusive<SharedStorage>(src.Holder(), src.offset());
@@ -57,27 +46,6 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& tensor,
-    const pten::TensorArgDef& arg_def) {
-  pten::DenseTensorMeta meta{arg_def.dtype,
-                             tensor.dims(),
-                             pten::TransToPtenDataLayout(tensor.layout())};
-
-  if (tensor.IsInitialized() &&
-      tensor.place() == pten::TransToFluidPlace(arg_def.backend)) {
-    auto shared_storage =
-        pten::make_intrusive<SharedStorage>(tensor.Holder(), tensor.offset());
-    return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
-                                               std::move(meta));
-  } else {
-    return std::make_unique<pten::DenseTensor>(
-        std::move(pten::make_intrusive<SharedStorage>(
-            pten::TransToFluidPlace(arg_def.backend))),
-        std::move(meta));
-  }
-}
-
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
-    const paddle::framework::LoDTensor& tensor,
     const pten::TensorArgDef& arg_def) {
   pten::DenseTensorMeta meta{arg_def.dtype,
                              tensor.dims(),
@@ -98,7 +66,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
   }
 }
 
-pten::Scalar MakePtenScalar(const paddle::framework::LoDTensor& src) {
+pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src) {
   PADDLE_ENFORCE_EQ(src.numel(),
                     1,
                     paddle::platform::errors::InvalidArgument(
@@ -132,17 +100,17 @@ pten::Scalar MakePtenScalar(const paddle::framework::LoDTensor& src) {
       return {src.template data<complex128>()[0]};
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Data type error. Don't support casting a %d LoDTensor to Scalar.",
+          "Data type error. Don't support casting a %d Tensor to Scalar.",
           src.type()));
   }
 }
 
 pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
-  if (variable.IsType<framework::LoDTensor>()) {
-    const auto& tensor = variable.Get<framework::LoDTensor>();
+  if (variable.IsType<framework::Tensor>()) {
+    const auto& tensor = variable.Get<framework::Tensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
-      framework::LoDTensor tmp_tensor;
+      framework::Tensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return MakePtenScalar(tmp_tensor);
     } else {
@@ -156,15 +124,15 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-pten::ScalarArray MakePtenScalarArray(const paddle::framework::LoDTensor& src) {
+pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
   if (src.type() == paddle::framework::proto::VarType::INT64) {
     return {src.data<int64_t>(), src.numel()};
   } else if (src.type() == paddle::framework::proto::VarType::INT32) {
     return {src.data<int32_t>(), src.numel()};
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Data type error. When cast a LoDTensor to ScalarArray, "
-        "the data type of LoDTensor must be int32 or int64, "
+        "Data type error. When cast a Tensor to ScalarArray, "
+        "the data type of Tensor must be int32 or int64, "
         "but now data type is %s.",
         src.type()));
   }
@@ -173,10 +141,10 @@ pten::ScalarArray MakePtenScalarArray(const paddle::framework::LoDTensor& src) {
 pten::ScalarArray MakePtenScalarArrayFromVar(
     const framework::Variable& variable) {
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
-  if (variable.IsType<framework::LoDTensor>()) {
-    const auto& tensor = variable.Get<framework::LoDTensor>();
+  if (variable.IsType<framework::Tensor>()) {
+    const auto& tensor = variable.Get<framework::Tensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
-      framework::LoDTensor tmp_tensor;
+      framework::Tensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return MakePtenScalarArray(tmp_tensor);
     } else {
@@ -199,8 +167,8 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
 
   paddle::framework::proto::VarType::Type data_type;
   auto* first_var = variable_list.front();
-  if (first_var->IsType<framework::LoDTensor>()) {
-    const auto& tensor = first_var->Get<framework::LoDTensor>();
+  if (first_var->IsType<framework::Tensor>()) {
+    const auto& tensor = first_var->Get<framework::Tensor>();
     data_type = tensor.type();
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -214,10 +182,10 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
 
   if (data_type == paddle::framework::proto::VarType::INT64) {
     for (auto* var : variable_list) {
-      if (var->IsType<framework::LoDTensor>()) {
-        const auto& tensor = var->Get<framework::LoDTensor>();
+      if (var->IsType<framework::Tensor>()) {
+        const auto& tensor = var->Get<framework::Tensor>();
         if (!platform::is_same_place(tensor.place(), expected_place)) {
-          framework::LoDTensor tmp_tensor;
+          framework::Tensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
         } else {
@@ -233,10 +201,10 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
 
   } else if (data_type == paddle::framework::proto::VarType::INT32) {
     for (auto* var : variable_list) {
-      if (var->IsType<framework::LoDTensor>()) {
-        const auto& tensor = var->Get<framework::LoDTensor>();
+      if (var->IsType<framework::Tensor>()) {
+        const auto& tensor = var->Get<framework::Tensor>();
         if (!platform::is_same_place(tensor.place(), expected_place)) {
-          framework::LoDTensor tmp_tensor;
+          framework::Tensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
         } else {
@@ -251,8 +219,8 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
     }
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Data type error. When cast a LoDTensor to VectorTensor, "
-        "the data type of LoDTensor must be int32 or int64, "
+        "Data type error. When cast a Tensor to VectorTensor, "
+        "the data type of Tensor must be int32 or int64, "
         "but now data type is %s.",
         data_type));
   }
@@ -264,10 +232,10 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);
 
-  if (variable.IsType<framework::LoDTensor>()) {
-    const auto& tensor = variable.Get<framework::LoDTensor>();
+  if (variable.IsType<framework::Tensor>()) {
+    const auto& tensor = variable.Get<framework::Tensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
-      framework::LoDTensor tmp_tensor;
+      framework::Tensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return MakePtenDenseTensor(tmp_tensor);
     } else {
@@ -297,8 +265,8 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     framework::Variable* variable, const pten::TensorArgDef& arg_def) {
   // mutable_data before run kernel, to avoid share output form
   // KernelContext to original tensor
-  if (variable->template IsType<framework::LoDTensor>()) {
-    auto* tensor = variable->template GetMutable<framework::LoDTensor>();
+  if (variable->template IsType<framework::Tensor>()) {
+    auto* tensor = variable->template GetMutable<framework::Tensor>();
     return MakePtenDenseTensor(*tensor, arg_def);
   } else if (variable->template IsType<framework::SelectedRows>()) {
     auto* tensor = variable->template GetMutable<framework::SelectedRows>();
@@ -313,7 +281,7 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
   return {};
 }
 
-void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
+void MovesStorageNoLoD(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   PADDLE_ENFORCE_NOT_NULL(
       src,
       platform::errors::InvalidArgument(
@@ -330,7 +298,7 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->dtype()));
 }
 
-void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
+void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   PADDLE_ENFORCE_NOT_NULL(
       src,
       platform::errors::InvalidArgument(
@@ -338,13 +306,13 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
   PADDLE_ENFORCE_NOT_NULL(
       dst,
       platform::errors::InvalidArgument(
-          "The destination LoDTensor is nullptr when move storage."));
+          "The destination Tensor is nullptr when move storage."));
   SetLoD(dst->mutable_lod(), src->lod());
-  MovesStorage(src, static_cast<paddle::framework::Tensor*>(dst));
+  MovesStorageNoLoD(src, static_cast<paddle::framework::Tensor*>(dst));
 }
 
-void MovesSharedStorage(pten::DenseTensor* src,
-                        paddle::framework::Tensor* dst) {
+void MovesSharedStorageNoLoD(pten::DenseTensor* src,
+                             paddle::framework::Tensor* dst) {
   PADDLE_ENFORCE_NOT_NULL(
       src,
       platform::errors::InvalidArgument(
@@ -361,35 +329,12 @@ void MovesSharedStorage(pten::DenseTensor* src,
 }
 
 void MovesSharedStorage(pten::DenseTensor* src,
-                        paddle::framework::LoDTensor* dst) {
-  MovesSharedStorage(src, static_cast<paddle::framework::Tensor*>(dst));
+                        paddle::framework::Tensor* dst) {
+  MovesSharedStorageNoLoD(src, static_cast<paddle::framework::Tensor*>(dst));
   SetLoD(dst->mutable_lod(), src->lod());
 }
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
-                           const pten::TensorArgDef& arg_def,
-                           pten::DenseTensor* dst) {
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
-  meta->dims = src.dims();
-  // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataType&>(meta->dtype) = arg_def.dtype;
-  // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataLayout&>(meta->layout) =
-      pten::TransToPtenDataLayout(src.layout());
-
-  auto* shared_storage = static_cast<SharedStorage*>(
-      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
-  PADDLE_ENFORCE_NOT_NULL(
-      shared_storage,
-      platform::errors::NotFound(
-          "Target DenseTensor's shared storage is nullptr."));
-
-  if (src.IsInitialized()) {
-    shared_storage->ResetAllocation(src.Holder(), src.offset());
-  }
-}
-
-void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
                            const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
@@ -420,8 +365,8 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
                                   const pten::TensorArgDef& arg_def,
                                   pten::DenseTensor* dst) {
   auto expected_place = pten::TransToFluidPlace(arg_def.backend);
-  if (variable.IsType<framework::LoDTensor>()) {
-    const auto& tensor = variable.Get<framework::LoDTensor>();
+  if (variable.IsType<framework::Tensor>()) {
+    const auto& tensor = variable.Get<framework::Tensor>();
     // check input dtype before ReMakePtenDenseTensor
     PADDLE_ENFORCE(
         (arg_def.dtype == pten::TransToPtenDataType(tensor.type())),
@@ -429,7 +374,7 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
             "The type of input data is diffrent from the type of the "
             "argument's definition in kernel."));
     if (!platform::is_same_place(tensor.place(), expected_place)) {
-      framework::LoDTensor tmp_tensor;
+      framework::Tensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       ReMakePtenDenseTensor(tmp_tensor, arg_def, dst);
     } else {
@@ -464,8 +409,8 @@ void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
                                   pten::DenseTensor* dst) {
   // mutable_data before run kernel, to avoid share output form
   // KernelContext to original tensor
-  if (variable->template IsType<framework::LoDTensor>()) {
-    auto* tensor = variable->template GetMutable<framework::LoDTensor>();
+  if (variable->template IsType<framework::Tensor>()) {
+    auto* tensor = variable->template GetMutable<framework::Tensor>();
     ReMakePtenDenseTensor(*tensor, arg_def, dst);
   } else if (variable->template IsType<framework::SelectedRows>()) {
     auto* tensor = variable->template GetMutable<framework::SelectedRows>();
@@ -487,8 +432,8 @@ static bool IsSameAllocation(const std::shared_ptr<memory::Allocation>& a,
 
 void MakeVariableFromPtenTensor(pten::DenseTensor* src,
                                 framework::Variable* variable) {
-  if (variable->IsType<framework::LoDTensor>()) {
-    auto* tensor = variable->GetMutable<framework::LoDTensor>();
+  if (variable->IsType<framework::Tensor>()) {
+    auto* tensor = variable->GetMutable<framework::Tensor>();
 
     auto dtype = pten::TransToProtoVarType(src->dtype());
     tensor->Resize(src->dims());

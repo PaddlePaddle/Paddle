@@ -129,9 +129,9 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(LoDTensor) the input(X) is a LodTensor, which supports "
+        "(Tensor) the input(X) is a LodTensor, which supports "
         "variable-time length input sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, N), where T is the "
+        "this Tensor is a matrix with shape (T, N), where T is the "
         "total time steps in this mini-batch and N is the input_hidden_size.");
     AddInput("PaddingData",
              "(Tensor, optional) the input(PaddingData) is an optional "
@@ -150,9 +150,9 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "context_length * input_hidden_size, M is the output feature size.");
     AddOutput(
         "Out",
-        "(LoDTensor) the output(Out) is a LodTensor, which support "
+        "(Tensor) the output(Out) is a LodTensor, which support "
         "variable-time length output sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, M), where, T is the "
+        "this Tensor is a matrix with shape (T, M), where, T is the "
         "total time steps in this mini-batch, M is the output feature size.");
 
     AddAttr<bool>("paddingTrainable",

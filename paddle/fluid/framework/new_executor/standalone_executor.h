@@ -28,7 +28,7 @@ class ExecutorBase {
   virtual ~ExecutorBase() {}
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors,
+      const std::vector<framework::Tensor>& feed_tensors,
       const std::vector<std::string>& fetch_names) = 0;
 };
 
@@ -42,7 +42,7 @@ class StandaloneExecutor : public ExecutorBase {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors,
+      const std::vector<framework::Tensor>& feed_tensors,
       const std::vector<std::string>& fetch_names);
 
   // NOTE(zhiqiu): feed_names are only used for caching interpretercore.
@@ -53,7 +53,7 @@ class StandaloneExecutor : public ExecutorBase {
 
   framework::interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+      const std::vector<framework::Tensor>& feed_tensors);
 
  private:
   void BuildVariableScope(const framework::ProgramDesc& pdesc,

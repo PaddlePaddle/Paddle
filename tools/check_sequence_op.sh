@@ -44,8 +44,8 @@ function_grep="self.get_sequence_batch_size_1_input("
 INVALID_SEQUENCE_OP_UNITTEST=$(check_sequnece_op_unitests ${check_white_list_file} ${function_grep})
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
     echo "************************************"
-    echo -e "It is required to include batch size 1 LoDTensor input in sequence OP test, please use self.get_sequence_batch_size_1_input() method."
-    echo -e "For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-batch_size=1-in-sequence-OP-test]."
+    echo -e "It is required to include batch size 1 Tensor input in sequence OP test, please use self.get_sequence_batch_size_1_input() method."
+    echo -e "For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-Tensor-input-with-batch_size=1-in-sequence-OP-test]."
     echo -e "Please check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
     echo "************************************"
     exit 1
@@ -56,8 +56,8 @@ function_grep="self.get_sequence_instance_size_0_input("
 INVALID_SEQUENCE_OP_UNITTEST=$(check_sequnece_op_unitests ${check_white_list_file} ${function_grep})
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
     echo "************************************"
-    echo -e "It is required to include instance size 0 LoDTensor input in sequence OP test, please use self.get_sequence_instance_size_0_input() method."
-    echo -e "For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. "
+    echo -e "It is required to include instance size 0 Tensor input in sequence OP test, please use self.get_sequence_instance_size_0_input() method."
+    echo -e "For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-Tensor-input-with-instance_size=0-in-sequence-OP-test]. "
     echo -e "Please check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
     echo "************************************"
     exit 1

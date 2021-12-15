@@ -48,13 +48,13 @@ class LoadOpKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The variable %s to be loaded cannot be found.", out_var_name));
 
-    if (out_var->IsType<framework::LoDTensor>()) {
+    if (out_var->IsType<framework::Tensor>()) {
       LoadLodTensor(fin, place, out_var, ctx);
     } else if (out_var->IsType<framework::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Load operator only supports loading LoDTensor and SelectedRows "
+          "Load operator only supports loading Tensor and SelectedRows "
           "variable, %s has wrong type",
           out_var_name));
     }
@@ -66,7 +66,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    auto *tensor = var->GetMutable<framework::Tensor>();
 
     auto seek = ctx.Attr<int64_t>("seek");
 
@@ -88,7 +88,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
       // convert to float16 tensor
       auto in_kernel_type = framework::OpKernelType(in_dtype, place);
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-      framework::LoDTensor fp16_tensor;
+      framework::Tensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
       framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
@@ -96,7 +96,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
       // reset output tensor
       var->Clear();
-      tensor = var->GetMutable<framework::LoDTensor>();
+      tensor = var->GetMutable<framework::Tensor>();
       tensor->set_lod(fp16_tensor.lod());
       tensor->ShareDataWith(fp16_tensor);
     }

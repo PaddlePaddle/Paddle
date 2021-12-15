@@ -22,14 +22,14 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SequenceConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     auto filter = *context.Input<Tensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
@@ -82,12 +82,12 @@ template <typename DeviceContext, typename T>
 class SequenceConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* in_g = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* out_g = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* filter_g = context.Output<Tensor>(framework::GradVarName("Filter"));
     auto* padding_data_g =
         context.Output<Tensor>(framework::GradVarName("PaddingData"));
-    auto* in = context.Input<LoDTensor>("X");
+    auto* in = context.Input<Tensor>("X");
     auto* filter = context.Input<Tensor>("Filter");
 
     int context_start = context.Attr<int>("contextStart");
@@ -138,7 +138,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       padding_data_g->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, padding_data_g, static_cast<T>(0));
 
-      LoDTensor* input = const_cast<LoDTensor*>(in);
+      Tensor* input = const_cast<Tensor*>(in);
       seq_project_grad_functor(
           dev_ctx, *input, padding_trainable, context_start, context_length,
           context_stride, up_pad, down_pad, true, false, padding_data_g, &col);
@@ -149,7 +149,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
       Tensor filter_grad = *filter_g;
-      LoDTensor out_grad = *out_g;
+      Tensor out_grad = *out_g;
 
       const Tensor* padding_data = nullptr;
       if (padding_trainable) {

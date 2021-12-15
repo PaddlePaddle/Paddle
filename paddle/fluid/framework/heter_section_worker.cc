@@ -29,10 +29,10 @@ void SetMicroId(paddle::framework::Scope* scope,
   auto* ptr = scope->Var("microbatch_id");
   InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), 1,
+  PADDLE_ENFORCE_EQ(var->IsType<framework::Tensor>(), 1,
                     platform::errors::InvalidArgument(
-                        "the type of microbatch_id  should be LoDTensor"));
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+                        "the type of microbatch_id  should be Tensor"));
+  auto* tensor = var->GetMutable<framework::Tensor>();
   std::vector<int> dims{1};
   tensor->Resize(framework::make_ddim(dims));
   void* tensor_data =

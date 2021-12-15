@@ -151,9 +151,9 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
   if (inter_parallel_ctx_ != nullptr) {
     // copy src to cpu
     // dst is now the src
-    auto src_tensor = dst->Get<framework::LoDTensor>();
+    auto src_tensor = dst->Get<framework::Tensor>();
     framework::Variable src_cpu;
-    auto src_cpu_tensor = src_cpu.GetMutable<framework::LoDTensor>();
+    auto src_cpu_tensor = src_cpu.GetMutable<framework::Tensor>();
     framework::TensorCopySync(src_tensor, platform::CPUPlace(), src_cpu_tensor);
 
     // allreduce src/cpu to dst/cpu
@@ -162,8 +162,8 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
     inter_parallel_ctx_->WaitComm(ring_id);
 
     // copy dst/cpu to dst
-    auto dst_cpu_tensor = dst_cpu.Get<framework::LoDTensor>();
-    auto dst_tensor = dst->GetMutable<framework::LoDTensor>();
+    auto dst_cpu_tensor = dst_cpu.Get<framework::Tensor>();
+    auto dst_tensor = dst->GetMutable<framework::Tensor>();
     framework::TensorCopySync(dst_cpu_tensor, dst_tensor->place(), dst_tensor);
 
     inter_parallel_ctx_->WaitComm(ring_id);

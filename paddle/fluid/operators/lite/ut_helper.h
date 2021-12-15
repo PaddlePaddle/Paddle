@@ -66,7 +66,7 @@ void serialize_params(std::string* str, framework::Scope* scope,
         scope->FindVar(param),
         platform::errors::NotFound("Block should already have a '%s' variable",
                                    param));
-    auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+    auto* tensor = scope->FindVar(param)->GetMutable<framework::Tensor>();
     framework::SerializeToStream(os, *tensor, ctx);
   }
   *str = os.str();
@@ -80,8 +80,7 @@ float random(float low, float high) {
   std::uniform_real_distribution<double> dist(low, high);
   return dist(mt);
 }
-void RandomizeTensor(framework::LoDTensor* tensor,
-                     const platform::Place& place) {
+void RandomizeTensor(framework::Tensor* tensor, const platform::Place& place) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements, 0,
@@ -89,7 +88,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
                         "The input tensor dimension of the randomized tensor "
                         "function should be greater than zero."));
   platform::CPUPlace cpu_place;
-  framework::LoDTensor temp_tensor;
+  framework::Tensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
   for (size_t i = 0; i < num_elements; i++) {
@@ -101,7 +100,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
 void CreateTensor(framework::Scope* scope, const std::string& name,
                   const std::vector<int64_t>& shape, bool in_cuda = true) {
   auto* var = scope->Var(name);
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<framework::Tensor>();
   auto dims = framework::make_ddim(shape);
   tensor->Resize(dims);
   platform::Place place;

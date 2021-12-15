@@ -58,7 +58,7 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
         nranks_var, platform::errors::NotFound(
                         "Variable %s is not found in scope.", nranks_name));
 
-    float *dgc_nranks = nranks_var->GetMutable<LoDTensor>()->data<float>();
+    float *dgc_nranks = nranks_var->GetMutable<Tensor>()->data<float>();
     *dgc_nranks = nranks;
     VLOG(10) << "dgc_nranks=" << *dgc_nranks;
   }
@@ -84,9 +84,9 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
           "the the number of output variables is %zu.",
           in_var_handles.size(), out_var_handles.size()));
 
-  std::vector<const LoDTensor *> ins;
-  std::vector<LoDTensor *> gathers;
-  std::vector<LoDTensor *> outs;
+  std::vector<const Tensor *> ins;
+  std::vector<Tensor *> gathers;
+  std::vector<Tensor *> outs;
   int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto *local_scope = local_exec_scopes_[i];
@@ -98,7 +98,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     PADDLE_ENFORCE_NOT_NULL(
         in_var, platform::errors::NotFound("Variable %s is not found in scope.",
                                            encode_var_name));
-    auto &in = in_var->Get<LoDTensor>();
+    auto &in = in_var->Get<Tensor>();
     ins.emplace_back(&in);
 
     auto gather_var_name = original_name + g_dgc_gather;
@@ -106,11 +106,11 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     PADDLE_ENFORCE_NOT_NULL(
         gather_var, platform::errors::NotFound(
                         "Variable %s is not found in scope.", gather_var));
-    auto *gather = gather_var->GetMutable<LoDTensor>();
+    auto *gather = gather_var->GetMutable<Tensor>();
     gathers.emplace_back(gather);
 
-    auto *out = local_scope->FindVar(out_var_handles[i]->name())
-                    ->GetMutable<LoDTensor>();
+    auto *out =
+        local_scope->FindVar(out_var_handles[i]->name())->GetMutable<Tensor>();
     outs.emplace_back(out);
 
     if (k < 0) {
@@ -236,7 +236,7 @@ int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found in scope.",
                                       var_name));
-  auto tensor = var->Get<LoDTensor>().data<float>();
+  auto tensor = var->Get<Tensor>().data<float>();
   return *tensor;
 }
 
@@ -263,8 +263,8 @@ bool SparseAllReduceOpHandle::IsEncoded() {
       step_var, platform::errors::NotFound("Variable %s is not found in scope.",
                                            step_var));
 
-  float count = *count_var->Get<LoDTensor>().data<float>();
-  float step = *step_var->Get<LoDTensor>().data<float>();
+  float count = *count_var->Get<Tensor>().data<float>();
+  float step = *step_var->Get<Tensor>().data<float>();
   if (static_cast<int>(count) < static_cast<int>(step)) {
     VLOG(10) << "in all_reduce currentstep:" << count
              << " < rampup_begin_step:" << step

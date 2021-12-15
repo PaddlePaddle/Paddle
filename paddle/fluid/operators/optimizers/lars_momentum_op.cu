@@ -348,15 +348,15 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
-    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
-    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
-    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
-    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
-    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
-    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
-    auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
+    auto grad = ctx.MultiInput<framework::Tensor>("Grad");
+    auto param = ctx.MultiInput<framework::Tensor>("Param");
+    auto velocity = ctx.MultiInput<framework::Tensor>("Velocity");
+    auto param_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
+    auto learning_rate = ctx.MultiInput<framework::Tensor>("LearningRate");
+    auto master_param = ctx.MultiInput<framework::Tensor>("MasterParam");
     auto master_param_out =
-        ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
+        ctx.MultiOutput<framework::Tensor>("MasterParamOut");
 
     int op_num = grad.size();
 #if CUDA_VERSION >= 11000

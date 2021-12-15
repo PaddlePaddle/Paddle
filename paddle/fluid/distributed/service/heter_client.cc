@@ -28,11 +28,11 @@ bool HeterClient::is_initialized_ = false;
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<framework::Tensor>(), true,
                     platform::errors::InvalidArgument(
-                        "the type of micro id shoulde be LoDTensor."));
+                        "the type of micro id shoulde be Tensor."));
   auto micro_id = -1;
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<framework::Tensor>();
   if (platform::is_cpu_place(tensor->place())) {
     auto data = reinterpret_cast<const float*>(tensor->data<void>());
     micro_id = static_cast<int>(data[0]);

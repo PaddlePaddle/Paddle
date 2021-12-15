@@ -63,7 +63,7 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     MiningType mining_type =
         GetMiningType(ctx.Attr<std::string>("mining_type"));
 
-    auto out_neg_indices = ctx.Output<framework::LoDTensor>("NegIndices");
+    auto out_neg_indices = ctx.Output<framework::Tensor>("NegIndices");
     auto out_match_indices =
         ctx.Output<framework::Tensor>("UpdatedMatchIndices");
 
@@ -332,15 +332,14 @@ class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("max_negative")
         .InEnum({"hard_example", "max_negative"});
 
-    AddOutput(
-        "NegIndices",
-        "(LoDTensor<int>) The output of negative example indices. a LoDTensor "
-        "with shape [Neg, 1]. The size of lod[0] minus 1 is batch size, "
-        "and each element is the prior box index. "
-        "For example, the batch size is 2, the lod is [[0, 1, 2]], "
-        "the sample 0's box 1(MatchIndices[0][1]) is selected, "
-        "and sample 1's box 0 is selected. The output NegIndices is "
-        "[[1], [0]].");
+    AddOutput("NegIndices",
+              "(Tensor<int>) The output of negative example indices. a Tensor "
+              "with shape [Neg, 1]. The size of lod[0] minus 1 is batch size, "
+              "and each element is the prior box index. "
+              "For example, the batch size is 2, the lod is [[0, 1, 2]], "
+              "the sample 0's box 1(MatchIndices[0][1]) is selected, "
+              "and sample 1's box 0 is selected. The output NegIndices is "
+              "[[1], [0]].");
 
     AddOutput("UpdatedMatchIndices",
               "(Tensor<int>) The output of updated MatchIndices, a tensor with "

@@ -19,7 +19,7 @@
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
+class Tensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -59,9 +59,8 @@ class PrintOp : public framework::OperatorBase {
         out_var, platform::errors::NotFound("The output:%s not found in scope",
                                             Output("Out")));
 
-    auto &in_tensor = in_var->Get<framework::LoDTensor>();
-    framework::LoDTensor *out_tensor =
-        out_var->GetMutable<framework::LoDTensor>();
+    auto &in_tensor = in_var->Get<framework::Tensor>();
+    framework::Tensor *out_tensor = out_var->GetMutable<framework::Tensor>();
 
     PrintValue(place, Inputs("In").front(), in_tensor);
     framework::TensorCopy(in_tensor, place, out_tensor);
@@ -70,7 +69,7 @@ class PrintOp : public framework::OperatorBase {
 
   void PrintValue(const platform::Place &place,
                   const std::string &printed_var_name,
-                  const framework::LoDTensor &in_tensor) const {
+                  const framework::Tensor &in_tensor) const {
     std::string print_phase = Attr<std::string>("print_phase");
     bool is_forward = Attr<bool>("is_forward");
 

@@ -57,8 +57,7 @@ class DropoutOpConverter : public OpConverter {
     }
 
     platform::CPUPlace cpu_place;
-    std::unique_ptr<framework::LoDTensor> weight_tensor(
-        new framework::LoDTensor());
+    std::unique_ptr<framework::Tensor> weight_tensor(new framework::Tensor());
     weight_tensor->Resize(framework::make_ddim({1}));
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());

@@ -89,14 +89,13 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) Input tensor which "
+             "(Tensor, default Tensor<float>) Input tensor which "
              "contains the padded sequences with equal length.");
     AddInput("Length",
-             "(LoDTensor) The input tensor which specifies the actual ength of "
+             "(Tensor) The input tensor which specifies the actual ength of "
              "sequences after unpadding.");
-    AddOutput(
-        "Out",
-        "(LoDTensor) The output tensor which contains unpadded sequences.");
+    AddOutput("Out",
+              "(Tensor) The output tensor which contains unpadded sequences.");
     AddComment(R"DOC(
       Sequence Unpad Operator
 

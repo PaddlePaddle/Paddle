@@ -66,12 +66,12 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
                                             int ring_id, bool use_calc_stream) {
   // AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<framework::Tensor>()) {
+    if (!dst->IsType<framework::Tensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>());
+    AllReduce(src.Get<framework::Tensor>(),
+              dst->GetMutable<framework::Tensor>());
   } else if (src.IsType<framework::SelectedRows>()) {
     if (&src != dst) {
       if (!dst->IsType<framework::SelectedRows>()) {
@@ -89,7 +89,7 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor and SelectedRows are supported.",
+        "Tensor and SelectedRows are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
   }
 }

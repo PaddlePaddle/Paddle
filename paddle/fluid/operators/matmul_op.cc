@@ -454,13 +454,13 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto x = *context.Input<framework::Tensor>("X");
     auto y = *context.Input<framework::Tensor>("Y");
-    auto dout = *context.Input<framework::LoDTensor>("DOut");
-    auto *ddx = context.Input<framework::LoDTensor>("DDX");
-    auto *ddy = context.Input<framework::LoDTensor>("DDY");
+    auto dout = *context.Input<framework::Tensor>("DOut");
+    auto *ddx = context.Input<framework::Tensor>("DDX");
+    auto *ddy = context.Input<framework::Tensor>("DDY");
 
-    auto *dx = context.Output<framework::LoDTensor>("DX");
-    auto *dy = context.Output<framework::LoDTensor>("DY");
-    auto *ddout = context.Output<framework::LoDTensor>("DDOut");
+    auto *dx = context.Output<framework::Tensor>("DX");
+    auto *dy = context.Output<framework::Tensor>("DY");
+    auto *ddout = context.Output<framework::Tensor>("DDOut");
 
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");

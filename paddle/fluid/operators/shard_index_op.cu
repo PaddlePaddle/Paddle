@@ -38,14 +38,14 @@ __global__ void ShardIndexInner(const T* in_data, T* out_data,
   }
 }
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename T>
 class ShardIndexCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
     int index_num = context.Attr<int>("index_num");
     int nshards = context.Attr<int>("nshards");
     int shard_id = context.Attr<int>("shard_id");

@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
 template <typename T>
@@ -84,8 +84,8 @@ class RollKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input_var = context.InputVar("X");
     auto* output_var = context.OutputVar("Out");
-    auto& input = input_var->Get<LoDTensor>();
-    auto* output = output_var->GetMutable<LoDTensor>();
+    auto& input = input_var->Get<Tensor>();
+    auto* output = output_var->GetMutable<Tensor>();
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     if (context.HasInput("ShiftsTensor")) {
       const auto* shifts_tensor =
@@ -132,8 +132,8 @@ class RollGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input_var = context.InputVar(framework::GradVarName("Out"));
     auto* output_var = context.OutputVar(framework::GradVarName("X"));
-    auto& input = input_var->Get<LoDTensor>();
-    auto* output = output_var->GetMutable<LoDTensor>();
+    auto& input = input_var->Get<Tensor>();
+    auto* output = output_var->GetMutable<Tensor>();
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     if (context.HasInput("ShiftsTensor")) {
       const auto* shifts_tensor =

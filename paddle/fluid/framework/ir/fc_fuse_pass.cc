@@ -194,7 +194,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* w_node = g->CreateVarNode(&w_key);
     if (!use_gpu && use_fc_padding) {
       auto* scope = param_scope();
-      auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<Tensor>();
       auto* weight_data = weight->data<float>();
       auto weight_dims = weight->dims();
       int weight_num = product(weight_dims);
@@ -202,7 +202,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       int w_w = weight_dims[1];
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* w_var = scope->Var(w_name);
-        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+        auto* w_tensor = w_var->GetMutable<framework::Tensor>();
 
         auto* weight_data_tmp = new float[weight_num];
         for (int i = 0; i < w_h; i++) {

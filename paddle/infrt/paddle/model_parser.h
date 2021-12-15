@@ -44,7 +44,7 @@ void LoadParam(const std::string& path,
                _Variable* out,
                const common::Target& target);
 
-// LoDTensor to ostream
+// Tensor to ostream
 void TensorToStream(std::ostream& os, const _Tensor_& tensor);
 void TensorFromStream(
     std::istream& is,

@@ -125,8 +125,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     const Tensor* t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(

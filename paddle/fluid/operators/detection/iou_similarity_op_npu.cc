@@ -80,10 +80,10 @@ template <typename T>
 class IouSimilarityNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* x = ctx.Input<framework::Tensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto _type = x->type();
     auto place = ctx.GetPlace();

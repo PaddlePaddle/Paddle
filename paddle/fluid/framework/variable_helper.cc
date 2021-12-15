@@ -29,7 +29,7 @@ namespace framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
+    var->GetMutable<Tensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
@@ -65,9 +65,9 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
   auto cpu_place = platform::CPUPlace();
 
-  if (src_var.IsType<framework::LoDTensor>()) {
-    auto *tmp_grad_tensor = dst_var->GetMutable<framework::LoDTensor>();
-    auto &src_tensor = src_var.Get<framework::LoDTensor>();
+  if (src_var.IsType<framework::Tensor>()) {
+    auto *tmp_grad_tensor = dst_var->GetMutable<framework::Tensor>();
+    auto &src_tensor = src_var.Get<framework::Tensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
     framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
   } else if (src_var.IsType<framework::SelectedRows>()) {

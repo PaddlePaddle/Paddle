@@ -96,9 +96,9 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_input, const Tensor &cpu_filter,
                           Tensor *cpu_output, int stride, int padding) {
   framework::Scope scope;
-  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *output = scope.Var("Output")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<framework::Tensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<framework::Tensor>();
+  auto *output = scope.Var("Output")->GetMutable<framework::Tensor>();
 
   auto place = ctx.GetPlace();
   TensorCopySync(cpu_input, place, input);
@@ -130,14 +130,11 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
                            framework::Tensor *cpu_filter_grad, int stride,
                            int padding, int dilation) {
   framework::Scope scope;
-  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *output_grad =
-      scope.Var("Output@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *input_grad =
-      scope.Var("Input@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *filter_grad =
-      scope.Var("Filter@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<framework::Tensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<framework::Tensor>();
+  auto *output_grad = scope.Var("Output@GRAD")->GetMutable<framework::Tensor>();
+  auto *input_grad = scope.Var("Input@GRAD")->GetMutable<framework::Tensor>();
+  auto *filter_grad = scope.Var("Filter@GRAD")->GetMutable<framework::Tensor>();
 
   auto place = ctx.GetPlace();
   TensorCopySync(cpu_input, place, input);

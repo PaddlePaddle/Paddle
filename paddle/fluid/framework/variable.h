@@ -116,9 +116,9 @@ class Variable {
 
 inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
   framework::TensorInplaceVersion* version_counter_ptr(nullptr);
-  if (IsType<framework::LoDTensor>()) {
+  if (IsType<framework::Tensor>()) {
     version_counter_ptr =
-        &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
   } else if (IsType<framework::Tensor>()) {
     version_counter_ptr =
         &GetMutable<framework::Tensor>()->InplaceVersionCounter();
@@ -128,7 +128,7 @@ inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
                                ->mutable_value()
                                ->InplaceVersionCounter();
   } else {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+    VLOG(4) << "Only supports Tensor, Tensor, SelectedRows to have "
                "TensorInplaceVersion, but received type "
             << platform::demangle(framework::ToTypeName(Type()));
   }
@@ -155,7 +155,7 @@ inline void Variable::BumpInplaceVersion() {
   if (version_counter_ptr) {
     return version_counter_ptr->Bump();
   } else {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+    VLOG(4) << "Only supports Tensor, Tensor, SelectedRows to have "
                "TensorInplaceVersion, but received type "
             << platform::demangle(framework::ToTypeName(Type()));
   }

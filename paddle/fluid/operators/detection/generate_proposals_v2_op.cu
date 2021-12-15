@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 namespace {
 template <typename T>
@@ -123,8 +123,8 @@ class CUDAGenerateProposalsV2Kernel : public framework::OpKernel<T> {
     auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
                                      "Input", "Variances", "GenerateProposals");
 
-    auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
-    auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+    auto *rpn_rois = context.Output<Tensor>("RpnRois");
+    auto *rpn_roi_probs = context.Output<Tensor>("RpnRoiProbs");
 
     int pre_nms_top_n = context.Attr<int>("pre_nms_topN");
     int post_nms_top_n = context.Attr<int>("post_nms_topN");

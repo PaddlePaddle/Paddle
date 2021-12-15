@@ -35,7 +35,7 @@ limitations under the License. */
 namespace paddle {
 
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Scope;
 }  // namespace framework
 
@@ -63,8 +63,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
   template <typename T>
-  void GetFetchOne(const framework::LoDTensor &fetchs,
-                   PaddleTensor *output_data);
+  void GetFetchOne(const framework::Tensor &fetchs, PaddleTensor *output_data);
   void PrepareFeedFetch();
 
   NativeConfig config_;
@@ -76,9 +75,9 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   std::vector<framework::OpDesc *> fetchs_;
-  // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
+  // Memory buffer for feed inputs. The temporary Tensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<framework::Tensor> feed_tensors_;
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;

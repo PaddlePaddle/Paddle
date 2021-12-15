@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -41,7 +41,7 @@ namespace math {
 
  *
  * \param context       Device context of this functor.
- * \param seq           LoDTensor which is stored in sequence format, the shape
+ * \param seq           Tensor which is stored in sequence format, the shape
  *                      is [total_sequence_length, sequence_width] where
  *                      total_sequence_length is the sum of all sequences'
  *                      length.
@@ -54,7 +54,7 @@ template <typename DeviceContext, typename T>
 class ScaleLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context, const T* scales,
-                  framework::LoDTensor* seq);
+                  framework::Tensor* seq);
 };
 
 }  // namespace math

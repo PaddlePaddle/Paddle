@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 using platform::PADDLE_CUDA_NUM_THREADS;
 

@@ -79,10 +79,10 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     // W.dim = slot_pairs_num * in_dim * out_dim
     // b.dim = slot_pairs_num * out_dim
     // output.dim = slot_pairs_num * ins_num * out_dim
-    auto* input = ctx.Input<framework::LoDTensor>("Input");
+    auto* input = ctx.Input<framework::Tensor>("Input");
     auto* w = ctx.Input<Tensor>("W");
     auto* bias = ctx.Input<Tensor>("Bias");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* output = ctx.Output<framework::Tensor>("Out");
     auto input_dims = input->dims();
     auto w_dims = w->dims();
     auto slot_pairs_num = input_dims[0];

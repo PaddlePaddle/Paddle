@@ -24,7 +24,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 
 namespace ir {
 class Node;
@@ -59,9 +59,8 @@ struct FetchAsyncOpHandle : public OpHandleBase {
 
   std::vector<Scope *> GetLocalScopes() override { return *local_scopes_; }
 
-  void FetchMergedLodTensor(
-      const std::vector<const LoDTensor *> &src_lodtensors,
-      LoDTensor *dst_lodtensor);
+  void FetchMergedLodTensor(const std::vector<const Tensor *> &src_lodtensors,
+                            Tensor *dst_lodtensor);
 
  private:
   FetchResultType *data_;

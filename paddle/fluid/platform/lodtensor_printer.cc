@@ -18,7 +18,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -33,7 +33,7 @@ void PrintVar(framework::Scope* scope, const std::string& var_name,
     VLOG(0) << "Variable Name " << var_name << " does not exist in your scope";
     return;
   }
-  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+  framework::Tensor* tensor = var->GetMutable<framework::Tensor>();
   if (tensor == nullptr) {
     VLOG(0) << "tensor of variable " << var_name
             << " does not exist in your scope";

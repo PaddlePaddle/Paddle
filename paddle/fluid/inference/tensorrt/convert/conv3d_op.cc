@@ -43,7 +43,7 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   PADDLE_ENFORCE_NOT_NULL(
       Y_v, platform::errors::NotFound(
                "Can not find %s presistale var in scope.", filter_var_name));
-  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  auto* Y_t = Y_v->GetMutable<framework::Tensor>();
   float* weight_data = nullptr;
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 

@@ -41,7 +41,7 @@ namespace paddle {
  * type.
  */
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, framework::Tensor>>;
 
 class AnalysisPredictor::MkldnnQuantizer {
  public:
@@ -65,10 +65,10 @@ class AnalysisPredictor::MkldnnQuantizer {
   void CalculateSingleScale(const std::string& op_name,
                             const std::string& conn_name,
                             const std::string& var_name,
-                            const framework::LoDTensor& var_tensor,
+                            const framework::Tensor& var_tensor,
                             bool is_unsigned);
   void CalculateSingleGRUWeightsScale(const std::string& var_name,
-                                      const framework::LoDTensor& var_tensor);
+                                      const framework::Tensor& var_tensor);
   void CalculateScalesForRNNWeights(const paddle::framework::OpDesc* op,
                                     bool gru);
   void CalculateScalesForOpOutputs(const paddle::framework::OpDesc* op);
@@ -81,27 +81,27 @@ class AnalysisPredictor::MkldnnQuantizer {
                                        std::vector<int> reference_bins) const;
 
   // Using the KL-divergence method get the most precise scaling factor.
-  std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const;
+  std::pair<bool, framework::Tensor> GetKLScalingFactor(
+      const framework::Tensor& var_tensor, bool is_unsigned) const;
 
-  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned,
+  std::pair<bool, framework::Tensor> GetMaxChScalingFactor(
+      const framework::Tensor& var_tensor, bool is_unsigned,
       bool is_transposed) const;
 
-  std::pair<bool, framework::LoDTensor> GetMaxChGRUScalingFactor(
-      const framework::LoDTensor& wx_tensor,
-      const framework::LoDTensor& wh_tensor) const;
+  std::pair<bool, framework::Tensor> GetMaxChGRUScalingFactor(
+      const framework::Tensor& wx_tensor,
+      const framework::Tensor& wh_tensor) const;
 
-  std::pair<bool, framework::LoDTensor> GetMaxChLSTMScalingFactor(
-      const framework::LoDTensor& wx_tensor,
-      const framework::LoDTensor& wh_tensor) const;
+  std::pair<bool, framework::Tensor> GetMaxChLSTMScalingFactor(
+      const framework::Tensor& wx_tensor,
+      const framework::Tensor& wh_tensor) const;
 
-  std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const;
+  std::pair<bool, framework::Tensor> GetMaxScalingFactor(
+      const framework::Tensor& var_tensor, bool is_unsigned) const;
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      const framework::Tensor& var_tensor, float min_val, float max_val,
       size_t num_bins = 2048) const;
 
   // Calculate the entropy.

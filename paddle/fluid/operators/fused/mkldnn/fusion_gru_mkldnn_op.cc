@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
+using paddle::framework::Tensor;
 using paddle::framework::Tensor;
 using paddle::platform::CPUDeviceContext;
 using paddle::platform::MKLDNNGetDataType;
@@ -31,7 +31,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
   GRUMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
                    const dnnl::engine mkldnn_engine, platform::Place cpu_place,
-                   const LoDTensor* input, const Tensor* weight_h,
+                   const Tensor* input, const Tensor* weight_h,
                    const Tensor* h0, const bool is_reverse, const int64_t N,
                    const int64_t Ti, const int64_t IC, const int64_t OC,
                    const std::string& unique_name)
@@ -233,12 +233,12 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
-    const auto* input = ctx.Input<LoDTensor>("X");
+    const auto* input = ctx.Input<Tensor>("X");
     const auto* h0 = ctx.Input<Tensor>("H0");
     const auto* weight_x = ctx.Input<Tensor>("WeightX");
     const auto* weight_h = ctx.Input<Tensor>("WeightH");
     const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* hidden = ctx.Output<LoDTensor>("Hidden");
+    auto* hidden = ctx.Output<Tensor>("Hidden");
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                           ? framework::flatten_to_2d(x_dims, 1)

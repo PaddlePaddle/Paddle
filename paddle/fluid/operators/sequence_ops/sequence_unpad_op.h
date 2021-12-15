@@ -23,16 +23,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
 class SequenceUnpadOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x_t = ctx.Input<LoDTensor>("X");
-    auto* len_t = ctx.Input<LoDTensor>("Length");
-    auto* out_t = ctx.Output<LoDTensor>("Out");
+    auto* x_t = ctx.Input<Tensor>("X");
+    auto* len_t = ctx.Input<Tensor>("Length");
+    auto* out_t = ctx.Output<Tensor>("Out");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     framework::Tensor seq_len_cpu =
@@ -77,14 +77,14 @@ template <typename DeviceContext, typename T>
 class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     if (d_x) {
-      const auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+      const auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
       d_x->mutable_data<T>(ctx.GetPlace());
 
       int padded_length = d_x->dims()[1];
 
-      LoDTensor zero_pads;
+      Tensor zero_pads;
       zero_pads.Resize({1, 1});
       zero_pads.mutable_data<T>(ctx.GetPlace());
       math::SetConstant<DeviceContext, T> set_zero;
