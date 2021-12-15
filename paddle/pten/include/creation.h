@@ -36,7 +36,7 @@ DenseTensor FullLike(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  FillLike<T>(dev_ctx, val, &dense_out);
+  FullLike<T>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 
