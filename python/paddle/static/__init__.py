@@ -35,7 +35,6 @@ from ..fluid.backward import append_backward  # noqa: F401
 from ..fluid.backward import gradients  # noqa: F401
 from ..fluid.compiler import BuildStrategy  # noqa: F401
 from ..fluid.compiler import CompiledProgram  # noqa: F401
-from ..fluid.compiler import get_ipu_strategy  # noqa: F401
 from ..fluid.compiler import IpuCompiledProgram  # noqa: F401
 from ..fluid.compiler import ExecutionStrategy  # noqa: F401
 from ..fluid.framework import default_main_program  # noqa: F401

@@ -3550,15 +3550,14 @@ All parameter, weight, gradient are variables in Paddle.
     
             import paddle
             import paddle.static as static
-            import paddle.fluid.compiler as compiler
     
             paddle.enable_static()
     
-            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            a = static.data(name='data', shape=[None, 1], dtype='int32')
             b = a + 1
-            main_prog = paddle.static.default_main_program()
+            main_prog = static.default_main_program()
             ipu_strategy = static.IpuStrategy()
-            program = compiler.IPUCompiledProgram(
+            program = static.IpuCompiledProgram(
                 main_prog,
                 ipu_strategy=ipu_strategy).compile([a.name], [b.name])
 )DOC");

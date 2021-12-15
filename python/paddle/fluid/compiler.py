@@ -495,11 +495,15 @@ class IpuCompiledProgram(object):
     The IpuCompiledProgram is used to transform a program to a ipu-target program.
 
     Args:
-        program(framework.Program): This argument is the Program being executed.
-        scope: This argument is the scope which contains model parameters.
-        ipu_strategy: This argument is used to build the program with the
-            specified options, such as training or inference mode, batch size in
-	    popart, dtype, etc.
+        program(Program): This parameter represents the :code:`Program`
+            to be executed. If this parameter is not provided, that parameter is None,
+            the program will be set to :code:`paddle.static.default_main_program()`.
+            The default is None.
+        scope: the scope used to run this program, you can switch
+            it to different scope. Default is :code:`paddle.static.global_scope()`
+        ipu_strategy(IpuStrategy): This argument is used to build the program with the
+            specified options, such as training or inference mode, batch size in popart,
+            dtype, etc. For more details, please refer to :`code:paddle.static.IpuStrategy`.
 
     Returns:
         IpuCompiledProgram
@@ -529,6 +533,9 @@ class IpuCompiledProgram(object):
                 "Can not use this function since PaddlePaddle is not compiled with IPU"
             )
 
+        if program is None:
+            program = default_main_program()
+
         if not isinstance(program, framework.Program):
             raise TypeError(
                 "The type of program is wrong, expected Program, but got %s" %
@@ -547,7 +554,7 @@ class IpuCompiledProgram(object):
         if ipu_strategy is not None:
             self._ipu_strategy = ipu_strategy
         else:
-            self._ipu_strategy = get_ipu_strategy()
+            self._ipu_strategy = IpuStrategy()
 
         self._backend = core.IpuBackend()
         self._backend.set_scope(self._scope)
