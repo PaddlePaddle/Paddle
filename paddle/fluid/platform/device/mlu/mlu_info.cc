@@ -54,12 +54,15 @@ static int GetMLUDeviceCountImpl() {
   }
 
   const auto *mlu_visible_devices = std::getenv("MLU_VISIBLE_DEVICES");
-  if (std::all_of(mlu_visible_devices_str.begin(),
-                  mlu_visible_devices_str.end(),
-                  [](char ch) { return ch == ' '; })) {
-    VLOG(2) << "MLU_VISIBLE_DEVICES  is set to be "
-               "empty. No MLU detected.";
-    return 0;
+  if (mlu_visible_devices != nullptr) {
+    std::string mlu_visible_devices_str(mlu_visible_devices);
+    if (std::all_of(mlu_visible_devices_str.begin(),
+                    mlu_visible_devices_str.end(),
+                    [](char ch) { return ch == ' '; })) {
+      VLOG(2) << "MLU_VISIBLE_DEVICES  is set to be "
+                 "empty. No MLU detected.";
+      return 0;
+    }
   }
 
   int count;
