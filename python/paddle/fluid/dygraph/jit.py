@@ -20,6 +20,7 @@ import warnings
 import functools
 from collections import OrderedDict
 import inspect
+import threading
 
 import six
 import paddle
@@ -525,6 +526,47 @@ def _build_load_path_and_config(path, config):
     return model_path, config
 
 
+_pre_save_hooks_lock = threading.Lock()
+_pre_save_hooks = []
+
+
+def hang_a_pre_save_hook(hook):
+    global _pre_save_hooks_lock
+    global _pre_save_hooks
+    _pre_save_hooks_lock.acquire()
+    if hook not in _pre_save_hooks:
+        _pre_save_hooks.append(hook)
+    _pre_save_hooks_lock.release()
+
+
+def delete_a_pre_save_hook(hook):
+    global _pre_save_hooks_lock
+    global _pre_save_hooks
+    _pre_save_hooks_lock.acquire()
+    if hook in _pre_save_hooks:
+        _pre_save_hooks.remove(hook)
+    _pre_save_hooks_lock.release()
+
+
+def clear_pre_save_hooks():
+    global _pre_save_hooks_lock
+    global _pre_save_hooks
+    _pre_save_hooks_lock.acquire()
+    _pre_save_hooks.clear()
+    _pre_save_hooks_lock.release()
+
+
+def run_pre_save_hooks(func):
+    def wrapper(layer, path, input_spec=None, **configs):
+        global _pre_save_hooks
+        for hook in _pre_save_hooks:
+            hook(layer, input_spec, configs)
+        func(layer, path, input_spec=None, **configs)
+
+    return wrapper
+
+
+@run_pre_save_hooks
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
