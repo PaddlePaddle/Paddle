@@ -17,7 +17,7 @@
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace details {
 
 TEST(test_reduce_rank_check, all) {
   using EnforceNotMet = paddle::platform::EnforceNotMet;
@@ -39,15 +39,15 @@ TEST(test_reduce_rank_check, all) {
       }
 
       if (is_valid) {
-        CheckReduceRankIsValid(reduce_rank, rank);
+        CheckReduceRank(reduce_rank, rank);
       } else {
-        ASSERT_THROW(CheckReduceRankIsValid(reduce_rank, rank),
+        ASSERT_THROW(CheckReduceRank(reduce_rank, rank),
                      paddle::platform::EnforceNotMet);
       }
     }
   }
 }
 
-}  // namespace detail
+}  // namespace details
 }  // namespace operators
 }  // namespace paddle
