@@ -546,6 +546,11 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 }
 
 void Mark(const std::string &name) {
+  if (FLAGS_enable_host_event_recorder_hook) {
+    HostEventRecorder::GetInstance().RecordEvent(name, 0, 0,
+                                                 EventRole::kOrdinary);
+    return;
+  }
   GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
@@ -748,21 +753,39 @@ static void EmulateEventPushAndPop(const HostEventSection &host_sec,
     uint64_t tid = thr_sec.thread_id;
     auto cur_thr_list = std::make_shared<EventList<Event>>();
     g_all_event_lists.emplace_front(cur_thr_list);
+    // for nesting events
+    std::stack<size_t> evt_stk;
+    std::stack<std::string> prefix_stk;
+    std::map<uint64_t, size_t> start2evt;
     for (size_t i = 0; i < thr_sec.events.size(); ++i) {
       const auto &evt = thr_sec.events[i];
-      std::string name = evt.name;
-      if (evt.role == EventRole::kInnerOp) {
-        for (size_t j = i + 1; j < thr_sec.events.size(); ++j) {
-          const auto &ancestor_evt = thr_sec.events[j];
-          if (ancestor_evt.start_ns <= evt.start_ns &&
-              ancestor_evt.end_ns >= evt.end_ns) {
-            name = std::string(ancestor_evt.name) + "/" + name;
-            if (ancestor_evt.role == EventRole::kOrdinary) {
-              break;
-            }
-          }
-        }
+      start2evt[evt.start_ns] = i;
+    }
+    auto iter = start2evt.begin();
+    // loop events
+    for (size_t i = 0; i < thr_sec.events.size(); ++i) {
+      const auto &thr_evts = thr_sec.events;
+      const auto &evt = thr_evts[i];
+      // For nesting events
+      while (!evt_stk.empty() && thr_evts[evt_stk.top()].end_ns <= evt.end_ns) {
+        evt_stk.pop();
+        prefix_stk.pop();
       }
+      while (iter != start2evt.end() &&
+             thr_evts[iter->second].start_ns < evt.start_ns) {
+        if (thr_evts[iter->second].end_ns > evt.start_ns) {
+          evt_stk.push(iter->second);
+          std::string prefix = thr_evts[iter->second].name;
+          if (!prefix_stk.empty()) {
+            prefix = prefix_stk.top() + "/" + prefix;
+          }
+          prefix_stk.push(prefix);
+        }
+        ++iter;
+      }
+      // Record orig event pair
+      std::string name =
+          prefix_stk.empty() ? evt.name : prefix_stk.top() + "/" + evt.name;
       const char *attr = (evt.attr == nullptr ? "none" : evt.attr);
       Event *orig_evt = cur_thr_list->Record(EventType::kPushRange, name, tid,
                                              evt.role, attr);
