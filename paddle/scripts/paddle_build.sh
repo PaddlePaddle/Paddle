@@ -216,6 +216,7 @@ function cmake_base() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_INFRT=${WITH_INFRT:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
@@ -262,6 +263,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_INFRT=${WITH_INFRT:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
@@ -312,20 +314,25 @@ function check_style() {
     fi
 
 
-    pip install cpplint pylint pytest astroid isort
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
+
+    # pre-commit use python3.8.0 
+    OLD_PATH=$PATH
+    export PATH=export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
 
     pre-commit install
     clang-format --version
 
     commit_files=on
-    for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
+    for file_name in `git diff --numstat ${BRANCH} |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
     done 
+
+    export PATH=${OLD_PATH}
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
@@ -953,13 +960,13 @@ function assert_api_spec_approvals() {
     fi
 }
 
+
 function assert_file_diff_approvals() {
     /bin/bash ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
     if [ "$file_approval_error" != 0 ];then
        exit 6
     fi
 }
-
 
 function check_coverage() {
     if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
@@ -972,11 +979,11 @@ function check_coverage() {
 function cp_coverage_message_to_cfs() {
     cast_type=$1
     cd ${PADDLE_ROOT}/build
-    cp coverage-full.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-full-$cast_type.info
-    cp coverage-diff.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-diff-$cast_type.info
-    cp python-coverage-full.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-full-$cast_type.info
-    cp python-coverage-diff.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-diff-$cast_type.info
-    cp failed_case.txt /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/failed_case_$cast_type.txt
+    /bin/cp -rf coverage-full.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-full-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf coverage-diff.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-diff-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf python-coverage-full.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-full-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf python-coverage-diff.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-diff-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf failed_case.txt /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/failed_case_$cast_type.txt 2>/dev/null || :
 }
 
 function single_test() {
@@ -1513,11 +1520,13 @@ set +x
         
         multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
         multiple_card_tests_non_parallel='^job$'            # cases list which would run 3 job each time with multiple GPUs, most cases would be two GPUs
-        
+        multiple_card_tests='^job$' 
+
         exclusive_tests_high_parallel='^job$'               # cases list which would run 7 job exclusively(with all GPUs)
         exclusive_tests_medium_parallel='^job$'             # cases list which would run 4 job exclusively(with all GPUs)
         exclusive_tests_non_parallel='^job$'                # cases list which would run 2 job exclusively(with all GPUs)
-        
+        exclusive_tests='^job$' 
+
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
@@ -1580,12 +1589,14 @@ set +x
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
+                    exclusive_tests="$exclusive_tests|^$testcase$"
                 elif [[ "$is_multicard" != "" ]]; then
                     if [[ $(echo $high_parallel_job$fourth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         multiple_card_tests_medium_parallel="$multiple_card_tests_medium_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
+                    multiple_card_tests="$multiple_card_tests|^$testcase$"
                 else
                     if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
@@ -1611,20 +1622,25 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        echo "single_card_tests_high_parallel=$single_card_tests_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
 
+        echo "single_card_tests_high_parallel=$single_card_tests_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
         echo "single_card_tests_secondary_high_parallel=$single_card_tests_secondary_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
         echo "single_card_tests_third_high_parallel=$single_card_tests_third_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
         echo "single_card_tests_forth_high_parallel=$single_card_tests_forth_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
         echo "single_card_tests_fifth_high_parallel=$single_card_tests_fifth_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
         echo "single_card_tests_lowest_parallel=$single_card_tests_lowest_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
         echo "single_card_tests_non_parallel=$single_card_tests_non_parallel" >> ${PADDLE_ROOT}/build/single_case.txt 
+        echo "$single_card_tests" > ${PADDLE_ROOT}/build/single_card_tests.txt 
 
         echo "multiple_card_tests_medium_parallel=$multiple_card_tests_medium_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
         echo "multiple_card_tests_non_parallel=$multiple_card_tests_non_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "$multiple_card_tests" > ${PADDLE_ROOT}/build/multiple_card_tests.txt 
+        
         echo "exclusive_tests_high_parallel=$exclusive_tests_high_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
         echo "exclusive_tests_medium_parallel=$exclusive_tests_medium_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
         echo "exclusive_tests_non_parallel=$exclusive_tests_non_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "$exclusive_tests" > ${PADDLE_ROOT}/build/exclusive_tests.txt
+
         echo "collect case finish!!"
     fi 
 }
@@ -1715,6 +1731,11 @@ set +x
             caseValue=`echo $line | awk -F "=" '{print $2}'`
             parallel_num=${case_card_num_dic[$caseKey]}
             card_test $caseValue 2 $parallel_num
+            if [[ "$caseKey" =~ ^exclusive* ]];then
+                card_test $caseValue -1 $parallel_num
+            else
+                card_test $caseValue 2 $parallel_num
+            fi
         done < ${PADDLE_ROOT}/build/multi_case.txt
         retry_ut_coverage
         ut_actual_total_endTime_s=`date +%s`
@@ -1737,6 +1758,9 @@ function retry_ut_coverage() {
     exec_retry_threshold=30
     is_retry_execuate=0
     rerun_ut_startTime_s=`date +%s`
+    single_card_tests=$(cat ${PADDLE_ROOT}/build/single_card_tests.txt)
+    multiple_card_tests=$(cat ${PADDLE_ROOT}/build/multiple_card_tests.txt)
+    exclusive_tests=$(cat ${PADDLE_ROOT}/build/exclusive_tests.txt)
     if [ -n "$failed_test_lists" ];then
         if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
             bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
@@ -2667,8 +2691,7 @@ EOF
     demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
-             ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+             ${TENSORRT_ROOT_DIR:-/usr}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     demo_ci_endTime_s=`date +%s`

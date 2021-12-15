@@ -50,7 +50,7 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("fill_any_like", {}, {"value"}, {"Out"});
+    return framework::KernelSignature("full_like", {}, {"value"}, {"Out"});
   }
 };
 

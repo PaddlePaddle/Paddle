@@ -107,7 +107,6 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_emb_eltwise_layernorm$|\
 ^test_trt_convert_pool2d$|\
 ^test_trt_conv3d_op$|\
-^test_trt_matmul_quant_dequant$|\
 ^test_trt_subgraph_pass$|\
 ^test_trt_convert_dropout$|\
 ^test_trt_convert_hard_sigmoid$|\
@@ -120,6 +119,16 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_elementwise$|\
 ^test_trt_convert_matmul$|\
 ^test_trt_convert_scale$"
+
+# /*==================Fixed Disabled Windows GPU inference_api_test unittests==============================*/
+disable_win_inference_api_test="^test_analyzer_capi_exp_pd_config$|\
+^trt_quant_int8_yolov3_r50_test$|\
+^test_trt_dynamic_shape_ernie$|\
+^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
+^lite_resnet50_test$|\
+^test_trt_dynamic_shape_transformer_prune$|\
+^lite_mul_model_test$|\
+^paddle_infer_api_copy_tensor_tester$"
 
 # /*============================================================================*/
 
@@ -156,17 +165,12 @@ long_time_test="^test_gru_op$|\
 ^test_activation_op$|\
 ^test_bicubic_interp_v2_op$|\
 ^test_bilinear_interp_v2_op$|\
-^test_conv_nn_grad$|\
 ^test_crop_tensor_op$|\
 ^test_cross_entropy2_op$|\
 ^test_cross_op$|\
-^test_elementwise_div_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_group_norm_op$|\
-^test_gru_unit_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
-^test_imperative_optimizer$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_multiclass_nms_op$|\
@@ -175,8 +179,6 @@ long_time_test="^test_gru_op$|\
 ^test_norm_nn_grad$|\
 ^test_normal$|\
 ^test_pool3d_op$|\
-^test_pool2d_op$|\
-^test_softmax_with_cross_entropy_op$|\
 ^test_static_save_load$|\
 ^test_trilinear_interp_op$|\
 ^test_trilinear_interp_v2_op$|\
@@ -185,10 +187,9 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
-^test_lstmp_op$|\
-^test_conv2d_transpose_op$|\
 ^test_imperative_auto_mixed_precision$|\
 ^test_imperative_optimizer_v2$|\
+^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
@@ -340,6 +341,24 @@ function show_ut_retry_result() {
 set +e
 
 export FLAGS_call_stack_level=2
+
+if nvcc --version | grep 11.2; then
+    echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
+    export CUDA_VISIBLE_DEVICES=0
+    tmpfile=$tmp_dir/$RANDOM
+    inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
+    (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
+    wait;
+    collect_failed_tests
+    set -e
+    rm -f $tmp_dir/*
+    if [[ "$failed_test_lists" != "" ]]; then
+        unittests_retry
+        show_ut_retry_result
+    fi
+    exit 0;
+fi
+
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
     run_unittest_gpu $cpu_parallel_job 10
     run_unittest_gpu $tetrad_parallel_job 4

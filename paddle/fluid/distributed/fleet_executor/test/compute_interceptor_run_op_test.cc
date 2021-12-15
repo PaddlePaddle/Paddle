@@ -61,15 +61,15 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
+  Carrier& carrier = Carrier::Instance();
+
   MessageBus& msg_bus = MessageBus::Instance();
   msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
-  Carrier& carrier = Carrier::Instance();
-
   // FIXME: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a =
-      new TaskNode(0, ops, 0, 0, 2, 2);  // role, ops, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 0, 0);
+      new TaskNode(0, ops, 0, 0, 2, 0);  // role, ops, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 2, 0);
 
   // a->b
   node_a->AddDownstreamTask(1);
@@ -90,13 +90,6 @@ TEST(ComputeInterceptor, Compute) {
   msg.set_src_id(-1);
   msg.set_dst_id(0);
   carrier.EnqueueInterceptorMessage(msg);
-
-  // stop
-  InterceptorMessage stop;
-  stop.set_message_type(STOP);
-  stop.set_src_id(-1);
-  stop.set_dst_id(0);
-  carrier.EnqueueInterceptorMessage(stop);
 }
 
 }  // namespace distributed

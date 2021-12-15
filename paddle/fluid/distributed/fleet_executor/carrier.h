@@ -17,6 +17,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -38,6 +39,7 @@ namespace distributed {
 
 class TaskNode;
 class InterceptorMessageServiceImpl;
+class RuntimeGraph;
 
 // A singleton MessageBus
 class Carrier final {
@@ -47,13 +49,13 @@ class Carrier final {
     return carrier;
   }
 
-  void Init(
-      const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-      framework::Scope* root_scope, framework::Scope* minibatch_scope,
-      const std::vector<framework::Scope*>& microbatch_scopes,
-      const platform::Place& place);
+  void Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+            framework::Scope* root_scope, framework::Scope* minibatch_scope,
+            const std::vector<framework::Scope*>& microbatch_scopes,
+            const platform::Place& place);
 
   ~Carrier();
+  void Release();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
@@ -73,6 +75,11 @@ class Carrier final {
 
   bool IsInit() const;
 
+  // NOTE: This mutex will be used in interceptor's RunOps function.
+  // This mutex is used for avoiding forward ops and backward ops run
+  // simultaneously, which will lead to a random hang for some sync ops.
+  std::mutex run;
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:
@@ -83,12 +90,11 @@ class Carrier final {
 
   void HandleTmpMessages();
 
-  // interceptor logic id to the Nodes info
-  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
-
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
+
+  std::vector<int64_t> source_interceptor_ids_;
 
   std::vector<InterceptorMessage> message_tmp_{};
   std::mutex tmp_message_mutex_;
@@ -102,7 +108,8 @@ class Carrier final {
   framework::Scope* root_scope_;
   framework::Scope* minibatch_scope_;
   paddle::platform::Place place_;
-  paddle::platform::DeviceContext* dev_ctx_ = nullptr;
+  paddle::platform::DeviceContext* dev_ctx_{nullptr};
+  std::shared_ptr<RuntimeGraph> runtime_graph_;
 };
 
 }  // namespace distributed

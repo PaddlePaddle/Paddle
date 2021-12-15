@@ -401,7 +401,17 @@ def _is_enable_standalone_executor():
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key. 
+    def _get_varname_from_block(block):
+        block_str = []
+        for var_name in list(block.vars.keys()):
+            block_str.append(var_name)
+        return "\n".join(block_str)
+
+    inner_program = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    return _get_varname_from_block(inner_program.blocks[0]) + str(id(
+        program)) + _get_program_cache_key(feed, fetch_list)
 
 
 def _get_program_cache_key(feed, fetch_list):
@@ -1272,9 +1282,7 @@ class Executor(object):
         if isinstance(program, Program) and program._pipeline_opt:
             if "fleet_opt" in program._pipeline_opt:
                 return self._run_using_fleet_executor(
-                    program,
-                    fetch_list=fetch_list,
-                    use_program_cache=use_program_cache)
+                    program=program, feed=feed, fetch_list=fetch_list)
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
@@ -1948,46 +1956,21 @@ class Executor(object):
 
         return ctx
 
-    def _run_using_fleet_executor(self,
-                                  program=None,
-                                  dataset=None,
-                                  scope=None,
-                                  thread=0,
-                                  is_infer=False,
-                                  debug=False,
-                                  fetch_list=None,
-                                  fetch_info=None,
-                                  print_period=100,
-                                  fetch_handler=None,
-                                  use_program_cache=False):
-        scope, real_fetch_list, trainer_instance = \
-            self._prepare_pipeline_ctx(program, dataset, scope, thread,
-                                       is_infer, debug, fetch_list, fetch_info,
-                                       print_period, fetch_handler,
-                                       use_program_cache)
+    def _prepare_fleet_executor(self, program=None, scope=None, fleet_opt=None):
         from ..distributed.fleet.proto import fleet_executor_desc_pb2
         from google.protobuf import text_format
-        cur_rank = os.getenv("PADDLE_TRAINER_ID")
-        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        assert program, "Program for fleet executor should not be None"
+        assert fleet_opt, "Configurations for fleet executor should not be None"
+        trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+        trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        nrank = 1
-        if cur_rank and trainer_endpoints_str:
-            fleet_exe_desc.cur_rank = int(cur_rank)
-            trainer_endpoints = trainer_endpoints_str.split(',')
-            for rank, endpoint in enumerate(trainer_endpoints):
-                rank_info = fleet_executor_desc_pb2.RankInfo()
-                rank_info.rank = rank
-                rank_info.ip_port = endpoint
-                fleet_exe_desc.cluster_info.append(rank_info)
-            nrank = len(trainer_endpoints)
-        else:
-            fleet_exe_desc.cur_rank = 0
+        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        nrank = len(trainer_endpoints)
+        for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
-            rank_info.rank = 0
-            rank_info.ip_port = ''
+            rank_info.rank = rank
+            rank_info.ip_port = endpoint
             fleet_exe_desc.cluster_info.append(rank_info)
-            logging.warning("Fleet Executor will run on single device only.")
-        fleet_opt = program._pipeline_opt["fleet_opt"]
         if "dist_strategy" in fleet_opt:
             fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
             fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
@@ -1996,13 +1979,71 @@ class Executor(object):
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
         num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
+        task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
+        tasks = fleet_opt.get("tasks", [])
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program._pipeline_opt["section_program"].desc, scope,
-                       place)
-        fleet_exe.run()
-        fleet_exe.release()
+        fleet_exe.init(program.desc, scope, place, tasks, task_id_to_rank)
+        return fleet_exe
+
+    def _run_using_fleet_executor(self,
+                                  program=None,
+                                  feed=None,
+                                  feed_var_name="feed",
+                                  fetch_var_name="fetch",
+                                  fetch_list=None):
+        cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
+        cached_ctx = self._get_ctx_cache(cache_key)
+        cached_scope = self._get_scope_cache(cache_key)
+        cached_program = self._get_program_cache(cache_key)
+        if cached_scope is None:
+            cached_scope = global_scope()
+            self._add_scope_cache(cache_key, cached_scope)
+        if cached_program is None:
+            real_feed = [] if feed is None else feed
+            real_program = program
+            if "section_program" in program._pipeline_opt:
+                real_program = program._pipeline_opt["section_program"]
+            cached_program = self._add_feed_fetch_ops(
+                program=real_program,
+                feed=real_feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name)
+            main_block = cached_program.block(0)
+            for op in main_block.ops:
+                # set the op_role of fetch op to Optimize to avoid
+                # erase the fetched vars by gc for pipeline
+                if op.type == 'fetch':
+                    op._set_attr(
+                        'op_role',
+                        core.op_proto_and_checker_maker.OpRole.Optimize)
+            self._add_program_cache(cache_key, cached_program)
+        if cached_ctx is None:
+            fleet_opt = program._pipeline_opt["fleet_opt"]
+            cached_ctx = self._prepare_fleet_executor(
+                program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
+            self._add_ctx_cache(cache_key, cached_ctx)
+        if feed:
+            self._feed_data(cached_program, feed, feed_var_name, cached_scope)
+
+        from paddle.optimizer.lr import LRScheduler
+        if hasattr(program, 'lr_sheduler'):
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(cached_scope,
+                                              lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
+        cached_ctx.run()
+        if fetch_list:
+            arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
+            tensors = arr._move_to_list()
+            return as_numpy(tensors)
         return None
 
     def _run_pipeline(self,

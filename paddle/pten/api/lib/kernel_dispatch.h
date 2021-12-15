@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
-// TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
+// TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -128,6 +128,26 @@ template <typename... Args>
 KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
 }
+
+DataType ParseDataType(DataType dtype);
+DataType ParseDataType(const Tensor& tensor);
+DataType ParseDataType(const std::vector<Tensor>& tensors);
+DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
+
+Backend ParseBackend(Backend backend);
+Backend ParseBackend(const Tensor& tensor);
+template <typename T, typename... Args>
+Backend ParseBackend(T t, Args... args) {
+  auto backend_set =
+      BackendSet(ParseBackend(t)) | BackendSet(ParseBackend(args...));
+  return static_cast<Backend>(64 -
+                              detail::CountLeadingZeros(backend_set.bitset()));
+}
+Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor);
+
+DataLayout ParseLayout(DataLayout layout);
+DataLayout ParseLayout(const Tensor& tensor);
+DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
 }  // namespace experimental
 }  // namespace paddle

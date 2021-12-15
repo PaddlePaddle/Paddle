@@ -66,11 +66,11 @@ inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
 
 //   inline HCCLGroupGuard() {
 //     HCCLMutex().lock();
-//     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
+//     PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
 //   }
 
 //   inline ~HCCLGroupGuard() PADDLE_MAY_THROW {
-//     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
+//     PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
 //     HCCLMutex().unlock();
 //   }
 // };

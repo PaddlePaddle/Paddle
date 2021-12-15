@@ -52,6 +52,9 @@ from paddle.distributed.auto_parallel.mapper import mapping
 from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
 from paddle.distributed.auto_parallel.mapper import get_comm_volume
 
+if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
