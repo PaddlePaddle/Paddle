@@ -28,6 +28,7 @@ namespace pybind {
 
 using paddle::distributed::FleetExecutor;
 using paddle::distributed::TaskNode;
+using paddle::framework::OperatorBase;
 
 void BindFleetExecutor(py::module* m) {
   py::class_<FleetExecutor>(*m, "FleetExecutor")
