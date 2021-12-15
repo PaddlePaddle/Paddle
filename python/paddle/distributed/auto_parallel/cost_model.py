@@ -11,12 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
+
 import json
 import queue
 import copy
 from enum import Enum
+from functools import reduce
+
+import numpy as np
+
 import paddle
+from paddle.fluid import core
+from paddle.cost_model import CostModel as CostData
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 SUCC = 0  # successor
 PRED = 1  # predecessor
@@ -121,8 +128,12 @@ class TensorCostNode(CostNode):
                  batch_size=None,
                  shared_node_id=None):
         super(TensorCostNode, self).__init__(node, node_type, id)
-        self.shape = node.shape
-        self.dtype = node.dtype
+        if node.name == "create_py_reader_0" or node.name == "double_buffer_0":
+            self.shape = [2, 2]
+            self.dtype = paddle.float32
+        else:
+            self.shape = node.shape
+            self.dtype = node.dtype
         self.dtype_factor = 1
         self.persistable = None
         self.shared_node_id = shared_node_id
@@ -132,7 +143,6 @@ class TensorCostNode(CostNode):
             self.dtype_factor *= 8
         else:
             raise NotImplementedError("{} not counted".format(node.dtype))
-
         self.batch_size = None
         if batch_size is not None:
             self.batch_size = batch_size
@@ -155,9 +165,9 @@ class CompOpCostNode(CostNode):
 
     def init_comp_cost(self, cost_data):
         # TODO: improve fluid.CostModel for more specific cost_data
-        op_name = self.node.type
-        if op_name in cost_data.keys():
-            self.cost = cost_data[op_name]
+        op_id = self.node.desc.id()
+        if op_id in cost_data.keys():
+            self.cost = cost_data[op_id]
         else:
             self.cost = 0.0
 
@@ -215,8 +225,17 @@ class CostModel(object):
             program.blocks) == 1, "Program more than 1 block not supported."
         block = program.blocks[0]
 
+        var_id = "lod_tensor_blocking_queue_0"
+        new_var = program.global_block().create_var(
+            name=var_id,
+            dtype=paddle.float32,
+            type=core.VarDesc.VarType.LOD_TENSOR)
+        nodes[var_id] = TensorCostNode(new_var, CostNodeType.VARIABLE,
+                                       "lod_tensor_blocking_queue_0")
         for var in block.vars.values():
             var_id = var.name
+            # if var.name == "create_py_reader_0" or var.name == "double_buffer_0":
+            #     continue
             nodes[var_id] = TensorCostNode(var, CostNodeType.VARIABLE, var_id)
             graph[var_id] = [[], []]
 
@@ -225,7 +244,10 @@ class CostModel(object):
             if op.type.startswith('c_') or op.type.startswith(
                     'send') or op.type.startswith('recv'):
                 is_bwd = False
-                if op.type.startswith('c_'):
+                if op.type.startswith(
+                        'c_'
+                ) and op.type != "c_sync_calc_stream" and not op.type.startswith(
+                        'c_embedding'):
                     ring_id = op.attr('ring_id')
                     if ring_id not in self.ring2rank:
                         self.ring2rank[ring_id] = set()
@@ -238,7 +260,8 @@ class CostModel(object):
                 op_node = CommOpCostNode(op, CostNodeType.COMMUNICATION, op_id,
                                          is_bwd)
             else:
-                is_bwd = '_grad' in op.type
+                is_bwd = (int(op.attr('op_role')) == int(OpRole.Backward)
+                          ) or "@GRAD" in op.input_arg_names
                 is_optim = 'LearningRate' in op.input_names
                 op_node = CompOpCostNode(op, CostNodeType.COMPUTATION, op_id,
                                          is_bwd, is_optim)
@@ -258,6 +281,7 @@ class CostModel(object):
                     comm_input_shape = var_node.shape
                 except:
                     continue
+
             for i in range(len(op.output_names)):
                 try:
                     var_id = op.output(op.output_names[i])[0]
@@ -361,7 +385,9 @@ class CostModel(object):
         for sub_idx in range(self.total_rank):
             for node_id, edges in self.op_graph[sub_idx].items():
                 node = self.nodes[sub_idx][node_id]
-                if node_id.startswith('c_'):
+                if node_id.startswith('c_') and not node.id.startswith(
+                        "c_sync_calc_stream") and not node.id.startswith(
+                            'c_embedding'):
                     ring_id = node.node.attr('ring_id')
                     node.set_ranks(list(self.ring2rank[ring_id]))
                     node.init_comm_cost(self.cluster)
@@ -454,31 +480,52 @@ class CostModel(object):
 
                 # delete edges and add new edges
                 succ = None
-                runtime_graph[merged_node_id][SUCC] = copy.deepcopy(edges[SUCC])
-                if len(runtime_graph[pred_id][SUCC]) > 1:
-                    # predecessor has more than 1 successor
-                    # the merged_node is to inherit the rest of its successors
-                    succ = runtime_graph[pred_id][SUCC]
-                    succ.remove(node_id)
-                    runtime_graph[merged_node_id][SUCC] += succ
-                runtime_graph[merged_node_id][PRED] = runtime_graph[pred_id][
-                    PRED]
-                for i in runtime_graph[pred_id][PRED]:
-                    runtime_graph[i][SUCC].remove(pred_id)
-                    runtime_graph[i][SUCC].append(merged_node_id)
+                try:
+                    runtime_graph[merged_node_id][SUCC] = copy.deepcopy(edges[
+                        SUCC])
 
-                for i in edges[SUCC]:
-                    runtime_graph[i][PRED].remove(node_id)
-                    runtime_graph[i][PRED].append(merged_node_id)
+                    if len(runtime_graph[pred_id][SUCC]) > 1:
+                        # predecessor has more than 1 successor
+                        # the merged_node is to inherit the rest of its successors
+                        succ = runtime_graph[pred_id][SUCC]
+                        succ.remove(node_id)
+                        runtime_graph[merged_node_id][SUCC] += succ
+                    runtime_graph[merged_node_id][PRED] = runtime_graph[
+                        pred_id][PRED]
+                except:
+                    pass
+                try:
+                    for i in runtime_graph[pred_id][PRED]:
+                        try:
+                            runtime_graph[i][SUCC].remove(pred_id)
+                        except:
+                            continue
+                        runtime_graph[i][SUCC].append(merged_node_id)
+                except:
+                    pass
+
+                try:
+                    for i in edges[SUCC]:
+                        runtime_graph[i][PRED].remove(node_id)
+                        runtime_graph[i][PRED].append(merged_node_id)
+                except:
+                    pass
                 if succ is not None:
                     for i in succ:
-                        runtime_graph[i][PRED].remove(pred_id)
+                        try:
+                            runtime_graph[i][PRED].remove(pred_id)
+                        except:
+                            continue
                         runtime_graph[i][PRED].append(merged_node_id)
 
                 runtime_graph.pop(node_id)
-                runtime_graph.pop(pred_id)
+                try:
+                    runtime_graph.pop(pred_id)
+                except:
+                    continue
                 reduct_cnt += 1
-        self.eliminate_multi_edges(runtime_graph)
+                self.eliminate_multi_edges(runtime_graph)
+                break
         return reduct_cnt  # the number of nodes that have been reduced
 
     def _merge_branch(self, nodes, runtime_graph, is_bwd=False):
@@ -496,7 +543,10 @@ class CostModel(object):
                 succ_to_elim = []
                 for succ_id in succ_nodes_id:
                     for succ_2_id in succ_nodes_id:
-                        tmp = runtime_graph[succ_2_id][SUCC]
+                        try:
+                            tmp = runtime_graph[succ_2_id][SUCC]
+                        except:
+                            continue
                         if succ_id in tmp:
                             succ_to_elim.append(succ_id)
                             break
@@ -506,16 +556,22 @@ class CostModel(object):
                     reduct_cnt += 1
 
                 to_merge = True
-                if len(edges[SUCC]) < 1 or len(runtime_graph[edges[SUCC][0]][
-                        SUCC]) < 1:
+                try:
+                    if len(edges[SUCC]) < 1 or len(runtime_graph[edges[SUCC][0]]
+                                                   [SUCC]) < 1:
+                        continue
+                except:
                     continue
                 end_node_id = runtime_graph[edges[SUCC][0]][SUCC][0]
                 for i in succ_nodes_id:
-                    if len(runtime_graph[i][SUCC]) != 1 or \
-                        runtime_graph[i][SUCC][0] != end_node_id:
-                        to_merge = False  # if branches has different end node, we don't merge them
-                        break
-                if to_merge:
+                    try:
+                        if len(runtime_graph[i][SUCC]) != 1 or \
+                            runtime_graph[i][SUCC][0] != end_node_id:
+                            to_merge = False  # if branches has different end node, we don't merge them
+                            break
+                    except:
+                        continue
+                if to_merge and len(succ_nodes_id) > 1:
                     to_merge_node_list = [nodes[i] for i in succ_nodes_id]
                     merged_node_id, merged_node = self._merge_node(
                         to_merge_node_list, merge_type='branch', nodes=nodes)
@@ -529,9 +585,13 @@ class CostModel(object):
                     runtime_graph[end_node_id][PRED] = [merged_node_id]
                     runtime_graph[node_id][SUCC] = [merged_node_id]
 
-                    for i in succ_nodes_id:
-                        runtime_graph.pop(i)
-                    reduct_cnt += len(to_merge_node_list) - 1
+                    try:
+                        for i in succ_nodes_id:
+                            runtime_graph.pop(i)
+                        reduct_cnt += len(to_merge_node_list) - 1
+                        break
+                    except:
+                        pass
         return reduct_cnt
 
     def get_runtime_cost(self):
@@ -615,7 +675,7 @@ class CostModel(object):
         return static_mem, cur_mem, top_mem
 
     def get_pipeline_time(self):
-        if self.total_rank <= 1:
+        if self.pp2rank is None:
             return self.fwd_time[0] + self.bwd_time[0] + self.optim_time[0]
         else:
             return self._simulate_pipeline()
@@ -739,3 +799,95 @@ def estimate_cost(distributed_program, cluster, pipeline_config,
     cm_ctx.init(distributed_program)
     cost = cm_ctx.get_cost()
     return cost
+
+
+def get_standalone_cost_data(distributed_programs):
+    def _compute_runtime(op_cost, op, vars):
+        runtime = 0
+        try:
+            runtime = float(op_cost["op_time"])
+        except:
+            return runtime
+        op_config = op_cost["config"]
+        total_static_input_size = 0
+        total_actual_input_size = 0
+        parsed_info = op_config.split("\n")
+        variable = "(Variable)"
+        for info in parsed_info:
+            variable = "(Variable)" if "(Variable)" in info else "(list<Variable>"
+            if variable in info:
+                arg_name_lower = info[:info.find(variable) - 1]
+                shape_left_boundary = info.find("[")
+                shape_right_boundary = info.find("]")
+                assert shape_left_boundary > 0 and shape_right_boundary > 0 and shape_right_boundary > shape_left_boundary, "Get shape failed."
+                shape = info[shape_left_boundary + 1:
+                             shape_right_boundary].split(",")
+                shape = list(map(lambda x: int(x.strip()), shape))
+                dtype_factor = 1
+                total_static_input_size += reduce(lambda x, y: x * y, shape)
+                # print(arg_name_lower)
+                if op.type == "c_embedding":
+                    arg_name_lower = "w" if arg_name_lower == "weight" else "ids"
+                for arg_name in op.input_names:
+                    if arg_name.lower() == arg_name_lower:
+                        for var_name in op.input(arg_name):
+                            var = vars[var_name]
+                            total_actual_input_size += reduce(
+                                lambda x, y: x * y, var.shape)
+                        break
+        assert total_static_input_size > 0 and total_actual_input_size > 0, "Get input size failed."
+
+        actual_runtime = total_actual_input_size / total_static_input_size * runtime
+        return actual_runtime
+
+    cost_model = CostData()
+    cost_model.static_cost_data()
+    DEFAULT_MULTIPLE = 2
+    OP_NAME_MAPPING = {
+        "c_embedding": "embedding",
+        "matmul_v2": "matmul",
+        "transpose2": "transpose",
+        "reshape2": "reshape",
+        "unsqueeze2": "unsqueeze",
+        "reduce_sum": "sum",
+        "elementwise_div": "divide"
+    }
+
+    standalone_cost_data = []
+    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    for distributed_program in distributed_programs:
+        cost_data = {}
+        vars = distributed_program.global_block().vars
+        for op in distributed_program.global_block().ops:
+            runtime = 0
+            if op.type in not_enum_ops:
+                cost_data[op.desc.id()] = runtime
+                continue
+            dtype = str(vars[op.input_arg_names[0]]
+                        .dtype) if op.input_arg_names else "float32"
+            if int(op.attr('op_role')) == int(OpRole.Backward):
+                if "_grad" in op.type:
+                    forward_op_name = op.type[:-5]
+                    if forward_op_name in OP_NAME_MAPPING.keys():
+                        forward_op_name = OP_NAME_MAPPING[forward_op_name]
+                    op_cost = cost_model.get_static_op_time(
+                        forward_op_name, forward=False, dtype=dtype)
+                    if op_cost:
+                        runtime = _compute_runtime(op_cost, op, vars)
+                    else:
+                        op_cost = cost_model.get_static_op_time(
+                            forward_op_name, dtype=dtype)
+                        if op_cost:
+                            runtime = 2 * _compute_runtime(op_cost, op, vars)
+            elif int(op.attr('op_role')) == int(OpRole.Forward):
+                op_name = OP_NAME_MAPPING[
+                    op.type] if op.type in OP_NAME_MAPPING.keys() else op.type
+                op_cost = cost_model.get_static_op_time(op_name)
+                if op_cost:
+                    runtime = _compute_runtime(op_cost, op, vars)
+
+            cost_data[op.desc.id()] = runtime
+
+        standalone_cost_data.append(cost_data)
+
+    return standalone_cost_data
