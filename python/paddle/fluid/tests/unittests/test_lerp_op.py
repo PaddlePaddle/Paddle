@@ -94,13 +94,11 @@ class TestLerpAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.fluid.data('x', [1, 4], dtype=self.dtype)
                 y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
-                w = paddle.fluid.data('w', [1], dtype=self.dtype)
-                out = paddle.lerp(x, y, w)
+                out = paddle.lerp(x, y, 0.5)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
                     'x': self.x.reshape([1, 4]),
                     'y': self.y.reshape([1, 4]),
-                    'w': self.w
                 })
             for r in res:
                 self.assertEqual(np.allclose(self.res_ref, r), True)
