@@ -106,40 +106,39 @@ class AutoParallelizer:
             auto_parallel_amp_pass.apply([main_program], [startup_program],
                                          self._pass_context)
 
-        # apply recompute forward pass
-        if self._dist_strategy.recompute:
-            config = copy.deepcopy(self._dist_strategy.recompute_configs)
-            config["dist_context"] = self._dist_context
-            auto_parallel_recompute_pass = new_pass(
-                "auto_parallel_recompute_forward", config)
-            auto_parallel_recompute_pass.apply(
-                [main_program], [startup_program], self._pass_context)
+        # # apply recompute forward pass
+        # if self._dist_strategy.recompute:
+        #     config = copy.deepcopy(self._dist_strategy.recompute_configs)
+        #     config["dist_context"] = self._dist_context
+        #     auto_parallel_recompute_pass = new_pass(
+        #         "auto_parallel_recompute_forward", config)
+        #     auto_parallel_recompute_pass.apply(
+        #         [main_program], [startup_program], self._pass_context)
 
     def _generate_backward(self, main_program, startup_program, loss,
                            parameter_list, no_grad_set, callbacks):
 
+        from paddle.fluid.backward import append_backward
+        with program_guard(main_program, startup_program):
+            params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                callbacks,
+                distop_context=self._dist_context.dist_op_context)
+        complete_backward_annotation(
+            main_program, dist_context=self._dist_context)
         # apply recompute backward pass
         if self._dist_strategy.recompute:
-            assert auto_parallel_recompute_pass
+            # assert auto_parallel_recompute_pass
             config = copy.deepcopy(self._dist_strategy.recompute_configs)
             config["dist_context"] = self._dist_context
             config["parameter_list"] = copy.deepcopy(parameter_list)
             config["no_grad_set"] = copy.deepcopy(no_grad_set)
-            auto_parallel_recompute_pass = new_pass(
-                "auto_parallel_recompute_backward", config)
+            auto_parallel_recompute_pass = new_pass("auto_parallel_recompute",
+                                                    config)
             auto_parallel_recompute_pass.apply(
                 [main_program], [startup_program], self._pass_context)
-        else:
-            from paddle.fluid.backward import append_backward
-            with program_guard(main_program, startup_program):
-                params_grads = append_backward(
-                    loss,
-                    parameter_list,
-                    no_grad_set,
-                    callbacks,
-                    distop_context=self._dist_context.dist_op_context)
-            complete_backward_annotation(
-                main_program, dist_context=self._dist_context)
 
         # apply amp forward pass
         if self._dist_strategy.amp:
