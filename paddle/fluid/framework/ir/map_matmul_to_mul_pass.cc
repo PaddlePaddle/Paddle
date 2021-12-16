@@ -47,9 +47,8 @@ MapMatmul2MulPass::MapMatmul2MulPass() {
       .IsBoolEQ(false)
       .End()
       .AddAttr("transpose_Y")
-      .IsBoolEQ(false)
+      .IsType<bool>()
       .End();
-
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")
       .IsTensor()
@@ -83,7 +82,7 @@ MapMatmulV2ToMulPass::MapMatmulV2ToMulPass() {
       .IsBoolEQ(false)
       .End()
       .AddAttr("trans_y")
-      .IsBoolEQ(false)
+      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("mul"))
@@ -276,10 +275,8 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
-    bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
     float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
-    flag = flag && !transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5;
+    flag = flag && !transpose_X && std::abs(alpha - 1.0) < 1e-5;
 
     std::vector<int64_t> x_shape = matmul_in_x->Var()->GetShape();
     std::vector<int64_t> y_shape = matmul_in_y->Var()->GetShape();
@@ -299,6 +296,7 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetOutput("Out", {matmul_out->Name()});
       desc.SetAttr("x_num_col_dims", static_cast<int>(x_rank - 1));
       desc.SetAttr("y_num_col_dims", 1);
+      desc.SetAttr("transpose_Y", matmul_op->Op()->GetAttr("transpose_Y"));
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
@@ -351,9 +349,7 @@ void MapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
     bool flag = true;
     bool trans_x =
         BOOST_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_x"));
-    bool trans_y =
-        BOOST_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_y"));
-    flag = flag && !trans_x && !trans_y;
+    flag = flag && !trans_x;
 
     std::vector<int64_t> x_shape = matmul_v2_in_x->Var()->GetShape();
     std::vector<int64_t> y_shape = matmul_v2_in_y->Var()->GetShape();
@@ -373,6 +369,7 @@ void MapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetOutput("Out", {matmul_v2_out->Name()});
       desc.SetAttr("x_num_col_dims", static_cast<int>(x_rank - 1));
       desc.SetAttr("y_num_col_dims", 1);
+      desc.SetAttr("transpose_Y", matmul_v2_op->Op()->GetAttr("trans_y"));
       if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
