@@ -220,7 +220,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False, max_examples=1000, passes=self.passes)
+        self.run_and_statis(quant=False, max_examples=300, passes=self.passes)
 
 
 if __name__ == "__main__":
