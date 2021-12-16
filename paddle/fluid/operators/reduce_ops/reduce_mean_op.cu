@@ -17,6 +17,7 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
+    reduce_mean,
     ops::ReduceCudaKernel<bool, kps::AddFunctor, kps::DivideFunctor>,
     ops::ReduceCudaKernel<paddle::platform::float16, kps::AddFunctor,
                           kps::DivideFunctor>,
