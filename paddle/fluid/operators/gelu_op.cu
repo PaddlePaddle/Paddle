@@ -12,18 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/gelu_op.h"
-#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-struct GeluXFunctor {
+struct GeluWithApproximateFunctor {
   using MT = typename details::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T x) {
+    // this function is tanh approximation of gelu
+    MT mx = static_cast<MT>(x);
+    MT out = mx * static_cast<MT>(0.5) *
+             (static_cast<MT>(1.0) +
+              tanh(static_cast<MT>(0.79788456) * mx *
+                   (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx)));
+    return static_cast<T>(out);
+  }
+};
+
+template <typename T>
+struct GeluNoApproximateFunctor {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T x) {
+    // actual gelu with approximation=false
+    // x * 0.5 * (1.0 + erf(x * 0.70710678))
     MT mx = static_cast<MT>(x);
     MT temp = erf(mx * static_cast<MT>(M_SQRT1_2));
     MT out = mx * static_cast<MT>(0.5) * (static_cast<MT>(1) + temp);
@@ -37,18 +53,16 @@ typename std::enable_if<
 default_gelu_fw(const framework::ExecutionContext& ctx,
                 const framework::Tensor* in, const bool approximate,
                 framework::Tensor* out) {
-  std::vector<const framework::Tensor*> ins;
-  std::vector<framework::Tensor*> outs;
-  ins = {in};
-  outs = {out};
+  std::vector<const framework::Tensor*> ins = {in};
+  std::vector<framework::Tensor*> outs = {out};
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
   if (approximate) {
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, paddle::operators::math::GeluFunctor<T>());
+        dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
   } else {
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluXFunctor<T>());
+        dev_ctx, ins, &outs, 0, GeluNoApproximateFunctor<T>());
   }
 }
 
