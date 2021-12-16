@@ -56,7 +56,9 @@ class FleetExecutor final {
   framework::Scope* minibatch_scope_;
   platform::Place place_;
   std::vector<framework::Scope*> microbatch_scopes_;
-  std::unique_ptr<MessageBus> msg_bus_;
+  // The carriers under FleetExecutor will share message bus,
+  // using shared_ptr to manage lifetime and condition race.
+  std::shared_ptr<MessageBus> msg_bus_;
 };
 
 }  // namespace distributed

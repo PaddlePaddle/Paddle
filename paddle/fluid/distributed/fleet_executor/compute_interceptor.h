@@ -23,7 +23,7 @@ namespace distributed {
 
 class ComputeInterceptor : public Interceptor {
  public:
-  ComputeInterceptor(int64_t interceptor_id, TaskNode* node, Carrier* carrier);
+  ComputeInterceptor(int64_t interceptor_id, TaskNode* node);
 
  protected:
   virtual void RunOps();

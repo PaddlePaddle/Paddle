@@ -29,7 +29,6 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
   PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
                                  "Error occurs while parsing string to proto"));
-  msg_bus_ = std::make_unique<MessageBus>();
 }
 
 FleetExecutor::~FleetExecutor() {
@@ -70,6 +69,7 @@ void FleetExecutor::Init(
     CopyParameters(i, program_desc);
   }
   VLOG(5) << runtime_graph_->DebugString();
+  msg_bus_ = std::make_shared<MessageBus>();
   InitCarrier();
   InitMessageBus();
 }
@@ -77,7 +77,8 @@ void FleetExecutor::Init(
 void FleetExecutor::InitCarrier() {
   Carrier& carrier = GetCarrier();
   if (!carrier.IsInit()) {
-    carrier.Init(runtime_graph_, msg_bus_.get(), root_scope_, minibatch_scope_,
+    carrier.SetMsgBus(msg_bus_);
+    carrier.Init(runtime_graph_, root_scope_, minibatch_scope_,
                  microbatch_scopes_, place_);
   }
 }

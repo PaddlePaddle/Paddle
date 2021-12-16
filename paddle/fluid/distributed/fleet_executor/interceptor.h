@@ -45,7 +45,7 @@ class Interceptor {
  public:
   Interceptor() = delete;
 
-  Interceptor(int64_t interceptor_id, TaskNode* node, Carrier* carrier);
+  Interceptor(int64_t interceptor_id, TaskNode* node);
 
   virtual ~Interceptor();
 
@@ -78,6 +78,7 @@ class Interceptor {
   void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
     gc_ = gc;
   }
+  void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
 
   TaskNode* GetTaskNode() const { return node_; }
 
@@ -139,22 +140,19 @@ class Interceptor {
 class InterceptorFactory {
  public:
   using CreateInterceptorFunc = std::unique_ptr<Interceptor> (*)(int64_t,
-                                                                 TaskNode*,
-                                                                 Carrier*);
+                                                                 TaskNode*);
   using CreateInterceptorMap =
       std::unordered_map<std::string, CreateInterceptorFunc>;
 
   static void Register(const std::string& type, CreateInterceptorFunc func);
 
   static std::unique_ptr<Interceptor> Create(const std::string& type,
-                                             int64_t id, TaskNode* node,
-                                             Carrier*);
+                                             int64_t id, TaskNode* node);
 };
 
 template <typename InterceptorClass>
-std::unique_ptr<Interceptor> CreatorInterceptor(int64_t id, TaskNode* node,
-                                                Carrier* carrier) {
-  return std::make_unique<InterceptorClass>(id, node, carrier);
+std::unique_ptr<Interceptor> CreatorInterceptor(int64_t id, TaskNode* node) {
+  return std::make_unique<InterceptorClass>(id, node);
 }
 
 #define REGISTER_INTERCEPTOR(interceptor_type, interceptor_class)          \

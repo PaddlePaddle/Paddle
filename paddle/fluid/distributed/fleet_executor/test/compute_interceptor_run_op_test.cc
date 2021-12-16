@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -61,10 +62,12 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  Carrier carrier;
+  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
+  Carrier& carrier = FleetExecutor::GetCarrier();
 
-  MessageBus msg_bus;
-  msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  auto msg_bus = std::make_shared<MessageBus>();
+  msg_bus->Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "");
+  carrier.SetMsgBus(msg_bus);
 
   // FIXME: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a =
@@ -76,9 +79,8 @@ TEST(ComputeInterceptor, Compute) {
   node_b->AddUpstreamTask(0);
 
   auto* a = carrier.SetInterceptor(
-      0, InterceptorFactory::Create("Compute", 0, node_a, &carrier));
-  carrier.SetInterceptor(
-      1, InterceptorFactory::Create("Compute", 1, node_b, &carrier));
+      0, InterceptorFactory::Create("Compute", 0, node_a));
+  carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
 
   a->SetPlace(place);
   a->SetMicroBatchScope(scopes);
@@ -91,6 +93,9 @@ TEST(ComputeInterceptor, Compute) {
   msg.set_src_id(-1);
   msg.set_dst_id(0);
   carrier.EnqueueInterceptorMessage(msg);
+
+  carrier.Wait();
+  carrier.Release();
 }
 
 }  // namespace distributed

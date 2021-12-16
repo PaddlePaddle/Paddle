@@ -19,9 +19,8 @@
 namespace paddle {
 namespace distributed {
 
-Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node,
-                         Carrier* carrier)
-    : interceptor_id_(interceptor_id), node_(node), carrier_(carrier) {
+Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
+    : interceptor_id_(interceptor_id), node_(node) {
   interceptor_thread_ = std::thread([this]() {
     VLOG(3) << "Interceptor " << interceptor_id_
             << " starts the thread pooling it's local mailbox.";
@@ -46,6 +45,8 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
 }
 
 void Interceptor::StopCarrier() {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
   std::condition_variable& cond_var = carrier_->GetCondVar();
   // probably double notify, but ok for ut
   cond_var.notify_all();
@@ -72,6 +73,8 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
 }
 
 bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
   msg.set_src_id(interceptor_id_);
   msg.set_dst_id(dst_id);
   return carrier_->Send(msg);
@@ -128,14 +131,13 @@ static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {
 
 std::unique_ptr<Interceptor> InterceptorFactory::Create(const std::string& type,
                                                         int64_t id,
-                                                        TaskNode* node,
-                                                        Carrier* carrier) {
+                                                        TaskNode* node) {
   auto& interceptor_map = GetInterceptorMap();
   auto iter = interceptor_map.find(type);
   PADDLE_ENFORCE_NE(
       iter, interceptor_map.end(),
       platform::errors::NotFound("interceptor %s is not register", type));
-  return iter->second(id, node, carrier);
+  return iter->second(id, node);
 }
 
 void InterceptorFactory::Register(

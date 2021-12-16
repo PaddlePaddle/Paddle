@@ -20,6 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -28,14 +29,15 @@ namespace distributed {
 
 class PingPongInterceptor : public Interceptor {
  public:
-  PingPongInterceptor(int64_t interceptor_id, TaskNode* node, Carrier* carrier)
-      : Interceptor(interceptor_id, node, carrier) {
+  PingPongInterceptor(int64_t interceptor_id, TaskNode* node)
+      : Interceptor(interceptor_id, node) {
     RegisterMsgHandle([this](const InterceptorMessage& msg) { PingPong(msg); });
   }
 
   void PingPong(const InterceptorMessage& msg) {
     if (msg.message_type() == STOP) {
       stop_ = true;
+      StopCarrier();
       return;
     }
     std::cout << GetInterceptorId() << " recv msg, count=" << count_
@@ -105,26 +107,32 @@ TEST(InterceptorTest, PingPong) {
 
   int pid = fork();
   if (pid == 0) {
-    MessageBus msg_bus;
-    msg_bus.Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip0);
+    auto msg_bus = std::make_shared<MessageBus>();
+    msg_bus->Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip0);
 
-    Carrier carrier;
+    // TODO(liyurui): Remove singleton when move SendIntra into Carrier
+    Carrier& carrier = FleetExecutor::GetCarrier();
+    carrier.SetMsgBus(msg_bus);
 
     Interceptor* a = carrier.SetInterceptor(
-        0, InterceptorFactory::Create("PingPong", 0, nullptr, &carrier));
+        0, InterceptorFactory::Create("PingPong", 0, nullptr));
     carrier.SetCreatingFlag(false);
 
     InterceptorMessage msg;
     a->Send(1, msg);
+    carrier.Wait();
   } else {
-    MessageBus msg_bus;
-    msg_bus.Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip1);
+    auto msg_bus = std::make_shared<MessageBus>();
+    msg_bus->Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip1);
 
-    Carrier carrier;
+    // TODO(liyurui): Remove singleton when move SendIntra into Carrier
+    Carrier& carrier = FleetExecutor::GetCarrier();
+    carrier.SetMsgBus(msg_bus);
 
-    carrier.SetInterceptor(
-        1, InterceptorFactory::Create("PingPong", 1, nullptr, &carrier));
+    carrier.SetInterceptor(1,
+                           InterceptorFactory::Create("PingPong", 1, nullptr));
     carrier.SetCreatingFlag(false);
+    carrier.Wait();
   }
 }
 

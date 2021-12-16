@@ -21,8 +21,8 @@ namespace paddle {
 namespace distributed {
 
 AmplifierInterceptor::AmplifierInterceptor(int64_t interceptor_id,
-                                           TaskNode* node, Carrier* carrier)
-    : ComputeInterceptor(interceptor_id, node, carrier) {
+                                           TaskNode* node)
+    : ComputeInterceptor(interceptor_id, node) {
   run_per_steps_ = node->run_per_steps();
   run_at_offset_ = node->run_at_offset();
   reply_up_per_steps_ = node->reply_up_per_steps();

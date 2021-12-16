@@ -22,9 +22,8 @@
 namespace paddle {
 namespace distributed {
 
-ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node,
-                                       Carrier* carrier)
-    : Interceptor(interceptor_id, node, carrier) {
+ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
+    : Interceptor(interceptor_id, node) {
   PrepareDeps();
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Compute(msg); });
 }

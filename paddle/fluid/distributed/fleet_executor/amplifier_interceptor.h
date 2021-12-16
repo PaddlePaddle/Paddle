@@ -23,8 +23,7 @@ namespace distributed {
 
 class AmplifierInterceptor : public ComputeInterceptor {
  public:
-  AmplifierInterceptor(int64_t interceptor_id, TaskNode* node,
-                       Carrier* carrier);
+  AmplifierInterceptor(int64_t interceptor_id, TaskNode* node);
 
  private:
   void RunOps() override;
