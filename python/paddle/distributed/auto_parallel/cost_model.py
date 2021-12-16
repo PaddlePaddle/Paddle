@@ -16,13 +16,11 @@ import json
 import queue
 import copy
 from enum import Enum
-from functools import reduce
 
 import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.cost_model import CostModel as CostData
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 SUCC = 0  # successor
@@ -801,95 +799,3 @@ def estimate_cost(distributed_program, cluster, pipeline_config,
     cm_ctx.init(distributed_program)
     cost = cm_ctx.get_cost()
     return cost
-
-
-def get_standalone_cost_data(distributed_programs):
-    def _compute_runtime(op_cost, op, vars):
-        runtime = 0
-        try:
-            runtime = float(op_cost["op_time"])
-        except:
-            return runtime
-        op_config = op_cost["config"]
-        total_static_input_size = 0
-        total_actual_input_size = 0
-        parsed_info = op_config.split("\n")
-        variable = "(Variable)"
-        for info in parsed_info:
-            variable = "(Variable)" if "(Variable)" in info else "(list<Variable>"
-            if variable in info:
-                arg_name_lower = info[:info.find(variable) - 1]
-                shape_left_boundary = info.find("[")
-                shape_right_boundary = info.find("]")
-                assert shape_left_boundary > 0 and shape_right_boundary > 0 and shape_right_boundary > shape_left_boundary, "Get shape failed."
-                shape = info[shape_left_boundary + 1:
-                             shape_right_boundary].split(",")
-                shape = list(map(lambda x: int(x.strip()), shape))
-                dtype_factor = 1
-                total_static_input_size += reduce(lambda x, y: x * y, shape)
-                # print(arg_name_lower)
-                if op.type == "c_embedding":
-                    arg_name_lower = "w" if arg_name_lower == "weight" else "ids"
-                for arg_name in op.input_names:
-                    if arg_name.lower() == arg_name_lower:
-                        for var_name in op.input(arg_name):
-                            var = vars[var_name]
-                            total_actual_input_size += reduce(
-                                lambda x, y: x * y, var.shape)
-                        break
-        assert total_static_input_size > 0 and total_actual_input_size > 0, "Get input size failed."
-
-        actual_runtime = total_actual_input_size / total_static_input_size * runtime
-        return actual_runtime
-
-    cost_model = CostData()
-    cost_model.static_cost_data()
-    DEFAULT_MULTIPLE = 2
-    OP_NAME_MAPPING = {
-        "c_embedding": "embedding",
-        "matmul_v2": "matmul",
-        "transpose2": "transpose",
-        "reshape2": "reshape",
-        "unsqueeze2": "unsqueeze",
-        "reduce_sum": "sum",
-        "elementwise_div": "divide"
-    }
-
-    standalone_cost_data = []
-    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
-    for distributed_program in distributed_programs:
-        cost_data = {}
-        vars = distributed_program.global_block().vars
-        for op in distributed_program.global_block().ops:
-            runtime = 0
-            if op.type in not_enum_ops:
-                cost_data[op.desc.id()] = runtime
-                continue
-            dtype = str(vars[op.input_arg_names[0]]
-                        .dtype) if op.input_arg_names else "float32"
-            if int(op.attr('op_role')) == int(OpRole.Backward):
-                if "_grad" in op.type:
-                    forward_op_name = op.type[:-5]
-                    if forward_op_name in OP_NAME_MAPPING.keys():
-                        forward_op_name = OP_NAME_MAPPING[forward_op_name]
-                    op_cost = cost_model.get_static_op_time(
-                        forward_op_name, forward=False, dtype=dtype)
-                    if op_cost:
-                        runtime = _compute_runtime(op_cost, op, vars)
-                    else:
-                        op_cost = cost_model.get_static_op_time(
-                            forward_op_name, dtype=dtype)
-                        if op_cost:
-                            runtime = 2 * _compute_runtime(op_cost, op, vars)
-            elif int(op.attr('op_role')) == int(OpRole.Forward):
-                op_name = OP_NAME_MAPPING[
-                    op.type] if op.type in OP_NAME_MAPPING.keys() else op.type
-                op_cost = cost_model.get_static_op_time(op_name)
-                if op_cost:
-                    runtime = _compute_runtime(op_cost, op, vars)
-
-            cost_data[op.desc.id()] = runtime
-
-        standalone_cost_data.append(cost_data)
-
-    return standalone_cost_data

@@ -497,7 +497,8 @@ class MCMC(SearchAlgorithm):
                     break
             if searched_batch_size:
                 break
-        from .cost_model import get_standalone_cost_data
+
+        from .utils import get_standalone_cost_data
         standalone_cost_data = get_standalone_cost_data(all_dist_main_program)
 
         # cost model does not support cluster argument
