@@ -15,7 +15,7 @@ cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
 
 # skip win32 since wget is not installed by default on windows machine.
 # skip COVERAGE_CI since the test runs slowly because of instrumentation.
-if (WITH_TESTING AND NOT WIN32 AND NOT WITH_COVERAGE NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+if (WITH_TESTING AND NOT WIN32 AND NOT WITH_COVERAGE AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     add_custom_target(
         download_program
         COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
