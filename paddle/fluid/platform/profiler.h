@@ -139,17 +139,20 @@ struct RecordEvent {
 
   ~RecordEvent();
 
+  void OriginalConstruct(const std::string& name, const EventRole role,
+                         const std::string& attr);
+
   bool is_enabled_{false};
   bool is_pushed_{false};
   // Event name
-  const std::string* name_{nullptr};
+  std::string* name_{nullptr};
   const char* shallow_copy_name_{nullptr};
   uint64_t start_ns_;
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
-  const std::string* attr_{nullptr};
+  std::string* attr_{nullptr};
 };
 
 /*class RecordRPCEvent {

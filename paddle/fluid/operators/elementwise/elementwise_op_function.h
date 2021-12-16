@@ -31,8 +31,8 @@ limitations under the License. */
 
 // only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/functions/cpu/elementwise.h"
-#include "paddle/pten/kernels/functions/general/elementwise_base.h"
+#include "paddle/pten/kernels/hybird/cpu/elementwise.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -1566,7 +1566,7 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
 // of broadcast, supporting both CPU and GPU.
 // - CPU implementation cannot support the case when x needs broadcast, thus
 //   this function need to be called with XxxFunctor and XxxInverseFunctor,
-//   like paddle/fluid/operators/elementwise/elementwise_add_op.h#L49 - L55.
+//   like AddFunctor and InverseAddFunctor.
 // - GPU implementation supports all the broadcast cases, thus there is no need
 //   to define and call with XxxInverseFunctor.
 // TODO(liuyiqun): optimize the CPU implementation to support all broadcast
