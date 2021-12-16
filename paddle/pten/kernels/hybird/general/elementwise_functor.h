@@ -72,7 +72,7 @@ struct InverseAddFunctor {
 
 // Subtract
 template <typename DevCtx, typename T, class Enable = void>
-struct SameDimsSubFunctor {
+struct SameDimsSubtractFunctor {
   void operator()(const DevCtx& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -80,7 +80,7 @@ struct SameDimsSubFunctor {
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsSubFunctor<
+struct SameDimsSubtractFunctor<
     DevCtx,
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
@@ -93,7 +93,7 @@ struct SameDimsSubFunctor<
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsSubFunctor<
+struct SameDimsSubtractFunctor<
     DevCtx,
     T,
     typename std::enable_if<!std::is_floating_point<T>::value>::type> {
@@ -106,17 +106,17 @@ struct SameDimsSubFunctor<
 };
 
 template <typename T>
-struct SubFunctor {
+struct SubtractFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
 };
 template <typename T>
-struct InverseSubFunctor {
+struct InverseSubtractFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b - a; }
 };
 
 // Divide
 template <typename DevCtx, typename T, class Enable = void>
-struct SameDimsDivFunctor {
+struct SameDimsDivideFunctor {
   void operator()(const DevCtx& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -124,7 +124,7 @@ struct SameDimsDivFunctor {
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsDivFunctor<
+struct SameDimsDivideFunctor<
     DevCtx,
     T,
     typename std::enable_if<!std::is_floating_point<T>::value>::type> {
@@ -133,12 +133,13 @@ struct SameDimsDivFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     paddle::platform::errors::InvalidArgument(
-        "If use SameDimsDivFunctor, template args(T) must be floating point. ");
+        "If use SameDimsDivideFunctor, template args(T) must be floating "
+        "point. ");
   }
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsDivFunctor<
+struct SameDimsDivideFunctor<
     DevCtx,
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
@@ -155,13 +156,14 @@ struct SameDimsDivFunctor<
   "(floor) divide. Please check the input value."
 
 template <typename T, typename Enable = void>
-struct DivFunctor {
+struct DivideFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
 };
 
 template <typename T>
-struct DivFunctor<T,
-                  typename std::enable_if<std::is_integral<T>::value>::type> {
+struct DivideFunctor<
+    T,
+    typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     // For int32/int64, need to check whether the divison is zero.
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
@@ -170,13 +172,13 @@ struct DivFunctor<T,
 };
 
 template <typename T, typename Enable = void>
-struct InverseDivFunctor {
+struct InverseDivideFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
 };
 
 // Multiply
 template <typename DevCtx, typename T, class Enable = void>
-struct SameDimsMulFunctor {
+struct SameDimsMultiplyFunctor {
   void operator()(const DevCtx& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -184,7 +186,7 @@ struct SameDimsMulFunctor {
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsMulFunctor<
+struct SameDimsMultiplyFunctor<
     DevCtx,
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
@@ -197,7 +199,7 @@ struct SameDimsMulFunctor<
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsMulFunctor<
+struct SameDimsMultiplyFunctor<
     DevCtx,
     T,
     typename std::enable_if<!std::is_floating_point<T>::value>::type> {
@@ -209,11 +211,11 @@ struct SameDimsMulFunctor<
   }
 };
 template <typename T>
-struct MulFunctor {
+struct MultiplyFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
 };
 template <typename T>
-struct InverseMulFunctor {
+struct InverseMultiplyFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b * a; }
 };
 

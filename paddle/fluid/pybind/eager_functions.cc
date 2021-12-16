@@ -79,13 +79,6 @@ class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
   PyObject* arr_;
 };
 
-static PyObject* eager_api_get_expected_place(PyObject* self, PyObject* args,
-                                              PyObject* kwargs) {
-  EAGER_TRY
-  return ToPyObject(egr::Controller::Instance().GetExpectedPlace());
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
                                               PyObject* kwargs) {
   EAGER_TRY
@@ -94,6 +87,13 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
 
   Py_INCREF(Py_None);
   return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_get_expected_place(PyObject* self, PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(egr::Controller::Instance().GetExpectedPlace());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
