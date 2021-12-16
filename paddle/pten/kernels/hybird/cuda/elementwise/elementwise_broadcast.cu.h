@@ -131,7 +131,7 @@ struct DimensionsTransform {
                                     int i,
                                     int num) {
       for (int j = 1; j < num; ++j) {
-        equal = (in_dims[0][i] == in_dims[j][i]) ? true : false;
+        equal &= (in_dims[0][i] == in_dims[j][i]) ? true : false;
       }
     };
     auto merge_sequential_one_dims = [](bool &equal,
@@ -142,7 +142,7 @@ struct DimensionsTransform {
       equal = in_dims[0][i] == 1;
       if (equal) {
         for (int j = 1; j < num; ++j) {
-          equal = in_dims[j][i] == out[i];
+          equal &= in_dims[j][i] == out[i];
         }
       }
     };
@@ -432,8 +432,8 @@ void LaunchBroadcastElementwiseCudaKernel(
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));
-  PADDLE_ENFORCE_EQ(kArity,
-                    2,
+  PADDLE_ENFORCE_LE(kArity,
+                    3,
                     paddle::platform::errors::InvalidArgument(
                         "Currently only broadcast of binary is supported and "
                         "verified, but received %d.",

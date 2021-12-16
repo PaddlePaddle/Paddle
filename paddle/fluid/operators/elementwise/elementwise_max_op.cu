@@ -39,14 +39,14 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
 
 template <typename T>
 struct GreaterThanFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    return a > b ? static_cast<T>(1) : static_cast<T>(0);
+  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+    return a > b ? c : static_cast<T>(0);
   }
 };
 template <typename T>
 struct LessEqualThanFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    return (a < b || a == b) ? static_cast<T>(1) : static_cast<T>(0);
+  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+    return (a < b || a == b) ? c : static_cast<T>(0);
   }
 };
 
@@ -60,59 +60,53 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
   int axis = ctx.Attr<int>("axis");
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
-  // dx
-  if (dx != nullptr) {
-    // For inplace strategy, dx will be stored in addr of dout, which makes
-    // the result of dy wrong.
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), ctx.GetPlace());
-    }
 
-    framework::Tensor compare_xy;
-    compare_xy.mutable_data<T>(dout->dims(), ctx.GetPlace());
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {&compare_xy};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+  if (dx != nullptr) {
+    // dx = dout * (x > y)
+    framework::Tensor dx_result;
+    dx_result.mutable_data<T>(dout->dims(), ctx.GetPlace());
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    std::vector<framework::Tensor*> outs = {&dx_result};
+    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
         dev_ctx, ins, &outs, axis, GreaterThanFunctor<T>());
 
     if (dx->dims() == dout->dims()) {
-      // dx = dout * (x > y)
-      default_elementwise_mul<DeviceContext, T>(ctx, dout, &compare_xy, dx);
+      framework::TensorCopy(
+          dx_result, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), dx);
     } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(*dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+      }
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      framework::Tensor dx_tmp;
-      dx_tmp.Resize(dout->dims());
-
-      default_elementwise_mul<DeviceContext, T>(ctx, dout, &compare_xy,
-                                                &dx_tmp);
-      TensorReduceFunctorImpl<T, T, CustomSum>(dx_tmp, dx, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, CustomSum>(dx_result, dx, reduce_dims,
+                                               stream);
     }
   }
+
   // dy
   if (dy != nullptr) {
-    framework::Tensor compare_xy;
-    compare_xy.mutable_data<T>(dout->dims(), ctx.GetPlace());
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {&compare_xy};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    // dy = dout * (x <= y)
+    framework::Tensor dy_result;
+    dy_result.mutable_data<T>(dout->dims(), ctx.GetPlace());
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    std::vector<framework::Tensor*> outs = {&dy_result};
+    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
         dev_ctx, ins, &outs, axis, LessEqualThanFunctor<T>());
 
     if (dy->dims() == dout->dims()) {
-      // dy = dout * (x <= y)
-      default_elementwise_mul<DeviceContext, T>(ctx, dout, &compare_xy, dy);
+      framework::TensorCopy(
+          dy_result, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), dy);
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-
-      framework::Tensor dy_tmp;
-      dy_tmp.Resize(dout->dims());
-
-      // dy(dy_tmp)=dout * x(compare_xy)
-      default_elementwise_mul<DeviceContext, T>(ctx, dout, &compare_xy,
-                                                &dy_tmp);
-      TensorReduceFunctorImpl<T, T, CustomSum>(dy_tmp, dy, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, CustomSum>(dy_result, dy, reduce_dims,
+                                               stream);
     }
   }
 }

@@ -29,7 +29,9 @@ void LaunchElementwiseCudaKernel(
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
-    no_broadcast_flag = ins[0]->dims() == in->dims();
+    if (ins[0]->dims() != in->dims()) {
+      no_broadcast_flag = false;
+    }
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
