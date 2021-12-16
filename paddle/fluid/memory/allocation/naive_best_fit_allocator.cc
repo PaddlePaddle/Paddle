@@ -61,9 +61,6 @@ template <typename Place>
 uint64_t Release(const Place &place);
 
 template <typename Place>
-void *BasePtr(const Place &place, void *p);
-
-template <typename Place>
 size_t Used(const Place &place);
 
 struct Usage : public boost::static_visitor<size_t> {
@@ -115,11 +112,6 @@ uint64_t Release<platform::CPUPlace>(const platform::CPUPlace &place) {
 }
 
 template <>
-void *BasePtr<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
-  return GetCPUBuddyAllocator()->BasePtr(p);
-}
-
-template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
@@ -137,24 +129,16 @@ void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
   VLOG(10) << "  pointer=" << p;
   return p;
 }
-
 template <>
 void Free<platform::IPUPlace>(const platform::IPUPlace &place, void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
-
 template <>
 uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Release();
 }
-
-template <>
-void *BasePtr<platform::IPUPlace>(const platform::IPUPlace &place, void *p) {
-  return GetCPUBuddyAllocator()->BasePtr(p);
-}
-
 template <>
 size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
@@ -257,11 +241,6 @@ uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
   return -1;
-}
-
-template <>
-void *BasePtr<platform::XPUPlace>(const platform::XPUPlace &place, void *p) {
-  return p;
 }
 
 template <>
@@ -421,16 +400,6 @@ uint64_t Release<platform::NPUPlace>(const platform::NPUPlace &place) {
 }
 
 template <>
-void *BasePtr<platform::NPUPlace>(const platform::NPUPlace &place, void *p) {
-#ifdef PADDLE_WITH_ASCEND_CL
-  return GetNPUBuddyAllocator(place.device)->BasePtr(p);
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'NPUPlace' is not supported in CPU only device."));
-#endif
-}
-
-template <>
 size_t Used<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place) {
 #ifdef PADDLE_WITH_ASCEND_CL
   return GetNPUPinnedBuddyAllocator()->Used();
@@ -479,17 +448,6 @@ uint64_t Release<platform::NPUPinnedPlace>(
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'NPUPinnedPlace' is not supported in CPU only device."));
-#endif
-}
-
-template <>
-void *BasePtr<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
-                                        void *p) {
-#ifdef PADDLE_WITH_ASCEND_CL
-  return GetNPUPinnedBuddyAllocator()->BasePtr(p);
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'NPUPPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -624,16 +582,6 @@ uint64_t Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 #endif
 }
 
-template <>
-void *BasePtr<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  return GetGPUBuddyAllocator(place.device)->BasePtr(p);
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'CUDAPlace' is not supported in CPU only device."));
-#endif
-}
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
   static std::once_flag init_flag;
@@ -703,17 +651,6 @@ uint64_t Release<platform::CUDAPinnedPlace>(
 #endif
 }
 
-template <>
-void *BasePtr<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
-                                         void *p) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  return GetCUDAPinnedBuddyAllocator()->BasePtr(p);
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'CUDAPinnedPlace' is not supported in CPU only device."));
-#endif
-}
-
 struct AllocVisitor : public boost::static_visitor<void *> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
@@ -747,18 +684,6 @@ struct ReleaseVisitor : public boost::static_visitor<uint64_t> {
   }
 };
 
-struct BasePtrVisitor : public boost::static_visitor<void *> {
-  inline explicit BasePtrVisitor(void *ptr) : ptr_(ptr) {}
-
-  template <typename Place>
-  inline void *operator()(const Place &place) const {
-    return BasePtr<Place>(place, ptr_);
-  }
-
- private:
-  void *ptr_;
-};
-
 size_t Usage::operator()(const platform::CPUPlace &cpu) const {
   return Used(cpu);
 }
@@ -786,8 +711,7 @@ namespace allocation {
 
 Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  void *base_ptr = boost::apply_visitor(legacy::BasePtrVisitor(ptr), place_);
-  auto *tmp_alloc = new Allocation(ptr, base_ptr, size, place_);
+  auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;

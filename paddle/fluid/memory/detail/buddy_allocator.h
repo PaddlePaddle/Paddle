@@ -45,7 +45,6 @@ class BuddyAllocator {
   void Free(void* ptr);
   // Release the unused memory pool, a real free operation for the OS.
   uint64_t Release();
-  void* BasePtr(void* ptr);
   size_t Used();
   size_t GetMinChunkSize();
   size_t GetMaxChunkSize();

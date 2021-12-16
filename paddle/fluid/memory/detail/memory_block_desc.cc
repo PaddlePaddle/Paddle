@@ -22,12 +22,11 @@ namespace memory {
 namespace detail {
 
 MemoryBlock::Desc::Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
-                        void* bp, MemoryBlock* l, MemoryBlock* r)
+                        MemoryBlock* l, MemoryBlock* r)
     : type(t),
       index(i),
       size(s),
       total_size(ts),
-      base_ptr(bp),
       left_buddy(l),
       right_buddy(r) {}
 
@@ -36,7 +35,6 @@ MemoryBlock::Desc::Desc()
       index(0),
       size(0),
       total_size(0),
-      base_ptr(nullptr),
       left_buddy(nullptr),
       right_buddy(nullptr) {}
 

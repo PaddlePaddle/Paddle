@@ -23,6 +23,8 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
+DECLARE_string(allocator_strategy);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -101,7 +103,14 @@ class Allocation {
   // method like `defragmentation` to change `ptr_`.
   inline void* ptr() const { return ptr_; }
 
-  inline void* base_ptr() const { return base_ptr_; }
+  inline void* base_ptr() const {
+    PADDLE_ENFORCE_EQ(FLAGS_allocator_strategy, "auto_growth",
+                      paddle::platform::errors::Unimplemented(
+                          "base_ptr() is only implemented for auto_growth "
+                          "strategy, not support %s strategy",
+                          FLAGS_allocator_strategy));
+    return base_ptr_;
+  }
 
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.

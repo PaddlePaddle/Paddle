@@ -39,7 +39,7 @@ struct MemoryBlock {
   // block, the MetadataCache writes the Meatadata to a std::map in
   // the CPU.
   void Init(MetadataCache* cache, Type t, size_t index, size_t size,
-            void* base_ptr, void* left_buddy, void* right_buddy);
+            void* left_buddy, void* right_buddy);
 
   MemoryBlock* GetLeftBuddy(MetadataCache* cache);
   MemoryBlock* GetRightBuddy(MetadataCache* cache);
@@ -53,15 +53,13 @@ struct MemoryBlock {
   // Mark the allocation as free.
   void MarkAsFree(MetadataCache* cache);
 
-  void* BasePtr(MetadataCache* cache);
-
   void* Data() const;
   MemoryBlock* Metadata() const;
 
   // MemoryBlock::Desc describes a MemoryBlock.
   struct Desc {
-    Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts, void* bp,
-         MemoryBlock* l, MemoryBlock* r);
+    Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts, MemoryBlock* l,
+         MemoryBlock* r);
     Desc();
 
     // mutator for type
@@ -82,9 +80,6 @@ struct MemoryBlock {
     // accessor for total_size
     inline const size_t& get_total_size() const { return this->total_size; }
 
-    // accessor for bast_ptr
-    inline const void* get_base_ptr() const { return this->base_ptr; }
-
     // Updates guard_begin and guard_end by hashes of the Metadata object.
     void UpdateGuards();
 
@@ -97,13 +92,10 @@ struct MemoryBlock {
     size_t index = 0;
     size_t size = 0;
     size_t total_size = 0;
-    void* base_ptr = nullptr;
     MemoryBlock* left_buddy = nullptr;
     MemoryBlock* right_buddy = nullptr;
     size_t guard_end = 0;
   };
-
-  static size_t aligned_desc_size;
 };
 
 // A cache for accessing memory block meta-data that may be expensive

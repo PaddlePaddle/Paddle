@@ -61,8 +61,7 @@ ThreadLocalCUDAAllocatorPool::ThreadLocalCUDAAllocatorPool()
 ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
   VLOG(10) << "ThreadLocalAllocatorImpl::AllocateImpl " << size;
   void* ptr = buddy_allocator_->Alloc(size);
-  void* base_ptr = buddy_allocator_->BasePtr(ptr);
-  auto* tl_allocation = new ThreadLocalAllocation(ptr, base_ptr, size, place_);
+  auto* tl_allocation = new ThreadLocalAllocation(ptr, size, place_);
   tl_allocation->SetThreadLocalAllocatorImpl(shared_from_this());
   return tl_allocation;
 }

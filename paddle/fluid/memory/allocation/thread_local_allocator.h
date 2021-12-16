@@ -30,9 +30,8 @@ class ThreadLocalAllocatorImpl;
 
 class ThreadLocalAllocation : public Allocation {
  public:
-  ThreadLocalAllocation(void* ptr, void* base_ptr, size_t size,
-                        platform::Place place)
-      : Allocation(ptr, base_ptr, size, place) {}
+  ThreadLocalAllocation(void* ptr, size_t size, platform::Place place)
+      : Allocation(ptr, size, place) {}
 
   void SetThreadLocalAllocatorImpl(
       std::shared_ptr<ThreadLocalAllocatorImpl> allocator) {
