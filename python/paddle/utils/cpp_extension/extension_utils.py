@@ -464,6 +464,9 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     """
     assert isinstance(kwargs, dict)
     include_dirs = []
+    # NOTE: the "_compile_dir" argument is not public to users. It is only
+    # reserved for internal usage. We do not guarantee that this argument
+    # is always valid in the future release versions.
     compile_dir = kwargs.get("_compile_dir", None)
     if compile_dir:
         include_dirs = _get_include_dirs_when_compiling(compile_dir)
