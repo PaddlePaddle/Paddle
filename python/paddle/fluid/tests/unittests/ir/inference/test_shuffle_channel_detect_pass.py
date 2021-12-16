@@ -54,7 +54,7 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
                 "Out": ["reshape2_output1"],
                 "XShape": ["reshape2_xshape1"]
             },
-            shape=x_shape,
+            shape=shape,
             input_shape=x_shape)
         transpose2_op = OpConfig(
             "transpose2",
