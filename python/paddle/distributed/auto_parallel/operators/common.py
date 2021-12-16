@@ -120,6 +120,7 @@ def find_best_compatible_distributed_operator_impl(name, dist_op, fwd=True):
 def is_parameter_related(varname, block):
     if ".cast_fp" in varname:
         varname = varname[:varname.index(".cast_fp")]
+    assert block.has_var(varname)
     var = block.var(varname)
     return var.is_parameter
 

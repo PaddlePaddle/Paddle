@@ -45,6 +45,7 @@ message ShardingConfig {
   optional bool optimize_cast = 12 [ default = false ];
   // Optimizer sharding. Temporary plans and may be deprecated
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
+  optional int32 stage = 14 [ default = 1 ];
 }
 
 message HybridConfig {

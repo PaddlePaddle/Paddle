@@ -156,29 +156,33 @@ class AutoParallelizer:
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
 
-        if self._dist_strategy.sharding:
-            auto_parallel_sharding_pass = new_pass(
-                "auto_parallel_sharding_pass", self._dist_strategy)
-            params_grads = auto_parallel_sharding_pass.apply(
-                main_program, startup_program, params_grads, self._pass_context)
-
-        if self._dist_strategy.gradient_merge:
-            auto_parallel_gradient_merge_pass = new_pass(
-                "auto_parallel_gradient_merge_pass",
-                self._dist_strategy.gradient_merge_configs)
-            auto_parallel_gradient_merge_pass.apply(
-                main_program, startup_program, params_grads, self._pass_context)
-
-        else:
-            with program_guard(main_program, startup_program):
-                optimize_ops = copy.deepcopy(self._optimizer).apply_gradients(
-                    params_grads)
+        with program_guard(main_program, startup_program):
+            optimize_ops = copy.deepcopy(self._optimizer).apply_gradients(
+                params_grads)
 
         # update completion 
         complete_update_annotation(
             main_program, dist_context=self._dist_context)
 
         return optimize_ops
+
+    def _apply_post_optimization_passed(self, main_program, startup_program,
+                                        rank, params_grads):
+
+        # apply amp forward pass
+        if self._dist_strategy.sharding:
+            config = copy.deepcopy(self._dist_strategy.sharding_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["global_rank"] = rank
+            auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
+                                                   config)
+            auto_parallel_sharding_pass.apply(
+                [main_program], [startup_program], self._pass_context)
+
+        # apply recompute forward pass
+        if self._dist_strategy.gradient_merge:
+            pass
 
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
         serial_main_program = self._main_program.clone()
@@ -221,6 +225,8 @@ class AutoParallelizer:
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 
         reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
+        self._apply_post_optimization_passed(dist_main_prog, dist_startup_prog,
+                                             rank, dist_params_grads)
 
         g_process_group_map = None
         if not relaunch_phase:
