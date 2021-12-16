@@ -24,18 +24,6 @@ namespace tests {
 
 // TODO(chenweihang): add more unittests later
 
-TEST(KernelName, ConstructAndOStream) {
-  std::ostringstream oss;
-  oss << pten::KernelName("scale", "host");
-  EXPECT_EQ(oss.str(), "scale.host");
-  pten::KernelName kernel_name1("scale.host");
-  EXPECT_EQ(kernel_name1.name(), "scale");
-  EXPECT_EQ(kernel_name1.overload_name(), "host");
-  pten::KernelName kernel_name2("scale.host");
-  EXPECT_EQ(kernel_name2.name(), "scale");
-  EXPECT_EQ(kernel_name2.overload_name(), "host");
-}
-
 TEST(KernelKey, ConstructAndOStream) {
   pten::KernelKey key(
       pten::Backend::CPU, pten::DataLayout::NCHW, pten::DataType::FLOAT32);

@@ -301,7 +301,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_layer_norm_mkldnn_op',
     'test_layer_norm_bf16_mkldnn_op',
     'test_layer_norm_op_v2',
-    'test_layer_norm_fuse_pass',
     'test_learning_rate_scheduler',
     'test_linear_interp_op',
     'test_linear_interp_v2_op',

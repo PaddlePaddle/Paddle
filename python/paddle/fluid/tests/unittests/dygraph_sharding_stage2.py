@@ -30,6 +30,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import Shar
 seed = 2021
 epoch = 2
 batch_size = 32
+linear_size = 10000
 
 strategy = fleet.DistributedStrategy()
 strategy.hybrid_configs = {
@@ -45,12 +46,12 @@ paddle.seed(seed)
 
 
 class MLP(fluid.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
+    def __init__(self, linear_size=10000, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
-        self._linear1 = Linear(10000, 10000)
-        self._linear2 = Linear(10000, 10000)
-        self._linear3 = Linear(10000, 10)
+        self._linear1 = Linear(linear_size, linear_size)
+        self._linear2 = Linear(linear_size, linear_size)
+        self._linear3 = Linear(linear_size, 10)
 
     def forward(self, inputs):
         y = self._linear1(inputs)
@@ -59,10 +60,10 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator():
+def reader_decorator(linear_size=10000):
     def __reader__():
         for _ in range(100):
-            img = np.random.rand(10000).astype('float32')
+            img = np.random.rand(linear_size).astype('float32')
             label = np.ones(1).astype('int64')
             yield img, label
 
@@ -120,6 +121,9 @@ def train_mlp(model,
         use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
 
+    if sharding_stage == 2:
+        model.to(device="gpu")
+
     for eop in range(epoch):
         model.train()
 
@@ -152,9 +156,6 @@ def train_mlp(model,
 
             if all_test and batch_id == 2:
                 return model.parameters()
-
-    if sharding_stage == 2:
-        model.to(device="gpu")
 
     return model.parameters()
 

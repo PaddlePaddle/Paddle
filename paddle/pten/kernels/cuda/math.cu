@@ -87,14 +87,14 @@ void Scale(const CUDAContext& dev_ctx,
       dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
 }
 
-// Create the definition of ElementwiseAdd
+// Create the definition of Add
 DEFINE_CUDA_ELEMENTWISE_OP(Add)
-// Create the definition of ElementwiseSub
-DEFINE_CUDA_ELEMENTWISE_OP(Sub)
-// Create the definition of ElementwiseMul
-DEFINE_CUDA_ELEMENTWISE_OP(Mul)
-// Create the definition of ElementwiseDiv
-DEFINE_CUDA_ELEMENTWISE_OP(Div)
+// Create the definition of Subtract
+DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
+// Create the definition of Multiply
+DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+// Create the definition of Divide
+DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 template <typename T>
 void Sum(const CUDAContext& dev_ctx,
@@ -111,18 +111,16 @@ void Sum(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(MathCUDA);
-
 using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL("scale",
+PT_REGISTER_KERNEL(sign, CUDA, ALL_LAYOUT, pten::Sign, float, double, float16) {
+}
+PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(scale,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Scale,
                    float,
                    double,
@@ -132,10 +130,10 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("add",
+PT_REGISTER_KERNEL(add,
                    CUDA,
-                   ANY,
-                   pten::ElementwiseAdd,
+                   ALL_LAYOUT,
+                   pten::Add,
                    float,
                    double,
                    int,
@@ -143,10 +141,10 @@ PT_REGISTER_KERNEL("add",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("subtract",
+PT_REGISTER_KERNEL(subtract,
                    CUDA,
-                   ANY,
-                   pten::ElementwiseSub,
+                   ALL_LAYOUT,
+                   pten::Subtract,
                    float,
                    double,
                    int,
@@ -154,10 +152,10 @@ PT_REGISTER_KERNEL("subtract",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("divide",
+PT_REGISTER_KERNEL(divide,
                    CUDA,
-                   ANY,
-                   pten::ElementwiseDiv,
+                   ALL_LAYOUT,
+                   pten::Divide,
                    float,
                    double,
                    int,
@@ -165,10 +163,10 @@ PT_REGISTER_KERNEL("divide",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("multiply",
+PT_REGISTER_KERNEL(multiply,
                    CUDA,
-                   ANY,
-                   pten::ElementwiseMul,
+                   ALL_LAYOUT,
+                   pten::Multiply,
                    float,
                    double,
                    int,
@@ -177,9 +175,9 @@ PT_REGISTER_KERNEL("multiply",
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL("sum",
+PT_REGISTER_KERNEL(sum,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Sum,
                    bool,
                    float,
