@@ -32,8 +32,6 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-std::set<std::string> gen_list = {};
-
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -313,9 +311,6 @@ GenerateOpFunctions() {
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
-    if (!gen_list.count(op_type)) {
-      continue;
-    }
     std::string func_name = "eager_api_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 
@@ -329,27 +324,11 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
-  std::string line;
-  std::ifstream op_list_file(op_list_path);
-  if (op_list_file.is_open()) {
-    while (getline(op_list_file, line)) {
-      gen_list.insert(line);
-    }
-    op_list_file.close();
-  } else {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
-  }
-}
-
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "argc must be 3" << std::endl;
+  if (argc != 2) {
+    std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
-
-  CollectOperatorsToCodeGen(argv[2]);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
