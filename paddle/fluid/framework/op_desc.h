@@ -53,6 +53,8 @@ class OpDesc {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
+  const bool HasInput(const std::string &name) const;
+
   std::vector<std::string> InputArgumentNames() const;
 
   void SetInput(const std::string &param_name,

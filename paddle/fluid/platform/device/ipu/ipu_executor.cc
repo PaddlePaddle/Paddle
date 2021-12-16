@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/ipu/ipu_executor.h"
+#include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
 namespace paddle {
 namespace platform {
@@ -90,9 +90,7 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = inputs_id[i];
-    framework::Tensor *tensor = nullptr;
-    tensor->ShareDataWith(*inputs[i]);
-    input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    input_wrappers.emplace(tensor_id, PaddleIArray(inputs[i]));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
   // anchors
@@ -100,8 +98,7 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = outputs_id[i];
-    framework::Tensor *tensor = nullptr;
-    tensor->ShareDataWith(*outputs[i]);
+    framework::Tensor *tensor = outputs[i];
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
     auto output_shape = fetch_info.shape();

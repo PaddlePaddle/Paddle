@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #endif
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"

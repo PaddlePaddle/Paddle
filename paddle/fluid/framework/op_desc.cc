@@ -414,6 +414,10 @@ const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   return it->second;
 }
 
+const bool OpDesc::HasInput(const std::string &name) const {
+  return inputs_.find(name) != inputs_.end();
+}
+
 std::vector<std::string> OpDesc::InputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->inputs_) {

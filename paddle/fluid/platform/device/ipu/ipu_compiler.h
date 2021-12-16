@@ -18,8 +18,8 @@
 #include <popart/graphtransformer.hpp>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/ipu/common.h"
-#include "paddle/fluid/platform/ipu/ipu_strategy.h"
+#include "paddle/fluid/platform/device/ipu/common.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 
 namespace paddle {
 namespace platform {

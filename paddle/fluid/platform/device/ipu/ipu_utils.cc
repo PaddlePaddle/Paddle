@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-void* PaddleIArray::data() { return tensor_->data<void>(); }
+void* PaddleIArray::data() { return const_cast<void*>(tensor_->data<void>()); }
 
 popart::DataType PaddleIArray::dataType() const {
   return VarType2PopartType(tensor_->type());

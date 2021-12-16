@@ -20,10 +20,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/ipu/common.h"
-#include "paddle/fluid/platform/ipu/ipu_optimizer.h"
-#include "paddle/fluid/platform/ipu/ipu_strategy.h"
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/common.h"
+#include "paddle/fluid/platform/device/ipu/ipu_optimizer.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace platform {

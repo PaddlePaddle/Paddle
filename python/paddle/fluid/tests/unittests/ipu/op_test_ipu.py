@@ -22,7 +22,7 @@ import paddle.fluid.compiler as compiler
 
 SEED = 2021
 
-ipu_compiler_ref: Optional[compiler.IPUCompiledProgram] = None
+ipu_compiler_ref: Optional[compiler.IpuCompiledProgram] = None
 
 map_np_dtype_to_fluid_dtype = {
     'bool': "bool",

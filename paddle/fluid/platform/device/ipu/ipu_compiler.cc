@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace platform {
@@ -79,7 +79,7 @@ void Compiler::RegisterOpFunc() {
      SetIpuIndexStage(output_ids, op_desc);                   \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
-#include "paddle/fluid/platform/ipu/supported_ops_autogen.h"
+#include "paddle/fluid/platform/device/ipu/supported_ops_autogen.h"
   };
 
 #undef OP_DECL

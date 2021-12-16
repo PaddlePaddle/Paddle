@@ -22,11 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/ipu/device.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_executor.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/ipu/device.h"
-#include "paddle/fluid/platform/ipu/ipu_compiler.h"
-#include "paddle/fluid/platform/ipu/ipu_executor.h"
-#include "paddle/fluid/platform/ipu/ipu_strategy.h"
 
 namespace paddle {
 namespace platform {

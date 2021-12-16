@@ -18,8 +18,8 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #endif
 
 namespace paddle {
@@ -30,7 +30,7 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_IPU
-    auto ipu_backend = framework::ipu::IpuBackend::GetInstance();
+    auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
     if (!ipu_backend->DeviceIsAttached()) {
       const platform::IPUDeviceContext& ipu_ctx =
           reinterpret_cast<const platform::IPUDeviceContext&>(

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/adam.hpp>
 #include <popart/names.hpp>
 #include <popart/optimizer.hpp>
+#include <popart/sgd.hpp>
 
 #include "paddle/fluid/platform/enforce.h"
 
