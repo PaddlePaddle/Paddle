@@ -243,6 +243,41 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   CheckMemLeak(place);
 }
 
+TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  size_t alloc_size = 256;
+
+  gpuStream_t default_stream =
+      dynamic_cast<platform::CUDADeviceContext *>(
+          paddle::platform::DeviceContextPool::Instance().Get(place))
+          ->stream();
+  std::shared_ptr<Allocation> allocation_implicit_stream =
+      AllocShared(place, alloc_size);
+  EXPECT_EQ(GetStream(allocation_implicit_stream), default_stream);
+
+  gpuStream_t new_stream;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&new_stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&new_stream));
+#endif
+
+  std::shared_ptr<Allocation> allocation_new_stream =
+      AllocShared(place, alloc_size, new_stream);
+  EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(new_stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(new_stream));
+#endif
+
+  allocation_implicit_stream.reset();
+  allocation_new_stream.reset();
+  Release(place);
+  CheckMemLeak(place);
+}
+
 #ifdef PADDLE_WITH_CUDA
 TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
