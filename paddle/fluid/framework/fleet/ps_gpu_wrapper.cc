@@ -454,9 +454,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
-    if (feature_keys_count[i] > 0) {
-      HeterPs_->show_one_table(i);
-    }
+    // if (feature_keys_count[i] > 0) {
+    //   HeterPs_->show_one_table(i);
+    // }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(build_func, i);

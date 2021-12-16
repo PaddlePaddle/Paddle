@@ -86,7 +86,7 @@ using float16 = paddle::platform::float16;
 
 PT_REGISTER_KERNEL(flatten,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Flatten,
                    float,
                    float16,
@@ -97,7 +97,7 @@ PT_REGISTER_KERNEL(flatten,
                    int64_t) {}
 PT_REGISTER_KERNEL(flatten_with_xshape,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
                    double,
@@ -109,7 +109,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
   PT_REGISTER_KERNEL(cast,                              \
                      CUDA,                              \
-                     ANY,                               \
+                     ALL_LAYOUT,                        \
                      pten::Cast,                        \
                      float,                             \
                      double,                            \
@@ -132,8 +132,6 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape, CUDA, ANY, pten::Reshape) {}
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape_with_xshape,
-                             CUDA,
-                             ANY,
-                             pten::ReshapeWithXShape) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, CUDA, ANY, pten::Reshape, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape_with_xshape, CUDA, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}
