@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/hybird/eigen/scale.h"
 #include "paddle/pten/kernels/hybird/eigen/sign.h"
 #include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
@@ -76,17 +75,6 @@ void Mean(const CUDAContext& dev_ctx,
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
-template <typename T>
-void Scale(const CUDAContext& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
-  eigen::Scale<CUDAContext, T>(
-      dev_ctx, x, scale.to<float>(), bias, bias_after_scale, out);
-}
-
 // Create the definition of Add
 DEFINE_CUDA_ELEMENTWISE_OP(Add)
 // Create the definition of Subtract
@@ -118,18 +106,6 @@ using complex128 = ::paddle::platform::complex<double>;
 PT_REGISTER_KERNEL(sign, CUDA, ALL_LAYOUT, pten::Sign, float, double, float16) {
 }
 PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL(scale,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::Scale,
-                   float,
-                   double,
-                   float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
 PT_REGISTER_KERNEL(add,
                    CUDA,
                    ALL_LAYOUT,
