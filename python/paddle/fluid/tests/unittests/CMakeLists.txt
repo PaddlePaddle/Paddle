@@ -1120,3 +1120,8 @@ if (WITH_GLOO)
     set_tests_properties(test_parallel_dygraph_sparse_embedding_gloo PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo PROPERTIES TIMEOUT 120)
 endif()
+
+if(WITH_CINN AND WITH_TESTING)
+    set_tests_properties(test_resnet50_with_cinn PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT "FLAGS_allow_cinn_ops=batch_norm;batch_norm_grad;conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum")
+    set_tests_properties(test_parallel_executor_run_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
+endif()
