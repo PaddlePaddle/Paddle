@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -81,55 +81,46 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         if compute_out_shape(padding_algorithm) != (batch_size, 48, 64, 64):
             axis = 1
 
-        ops_config = [{
-            "op_type": "relu",
-            "op_inputs": {
-                "X": ["input_data1"],
-            },
-            "op_outputs": {
-                "Out": ["sigmoid_out"]
-            },
-            "op_attrs": {}
-        }, {
-            "op_type": "conv2d",
-            "op_inputs": {
-                "Input": ["sigmoid_out"],
-                "Filter": ["conv_weight"]
-            },
-            "op_outputs": {
-                "Output": ["conv_output"]
-            },
-            "op_attrs": {
+        relu_op = OpConfig(
+            type="relu",
+            inputs={"X": ["input_data1"]},
+            outputs={"Out": ["sigmoid_out"]},
+            attrs={})
+
+        conv2d_op = OpConfig(
+            type="conv2d",
+            inputs={"Input": ["sigmoid_out"],
+                    "Filter": ["conv_weight"]},
+            outputs={"Output": ["conv_output"]},
+            attrs={
                 "data_format": data_format,
                 "dilations": dilations,
                 "padding_algorithm": padding_algorithm,
                 "groups": groups,
                 "paddings": paddings,
                 "strides": strides
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["conv_output"],
-                "Y": ["elementwise_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise_output"]
-            },
-            "op_attrs": {
-                'axis': axis
-            },
-        }]
+            })
 
-        if axis == -1 or axis == 0 or axis == 2:
-            ops_config[2]["op_inputs"]["X"] = ["input_data1"]
-            ops_config[2]["op_inputs"]["Y"] = ["conv_output"]
+        if axis == -1 or axis == 0:
+            elt_op = OpConfig(
+                type="elementwise_add",
+                inputs={"X": ["input_data1"],
+                        "Y": ["conv_output"]},
+                outputs={"Out": ["elementwise_output"]},
+                attrs={'axis': axis})
+        else:
+            elt_op = OpConfig(
+                type="elementwise_add",
+                inputs={"X": ["conv_output"],
+                        "Y": ["elementwise_weight"]},
+                outputs={"Out": ["elementwise_output"]},
+                attrs={'axis': axis})
 
-        ops = self.generate_op_config(ops_config)
+        model_net = [relu_op, conv2d_op, elt_op]
 
         if axis == 1:
             program_config = ProgramConfig(
-                ops=ops,
+                ops=model_net,
                 weights={
                     "conv_weight":
                     TensorConfig(data_gen=partial(generate_weight1)),
@@ -143,7 +134,7 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 outputs=["elementwise_output"])
         else:
             program_config = ProgramConfig(
-                ops=ops,
+                ops=model_net,
                 weights={
                     "conv_weight":
                     TensorConfig(data_gen=partial(generate_weight1))
