@@ -39,32 +39,32 @@ void Mean(const CPUContext& dev_ctx,
           DenseTensor* out);
 
 template <typename T>
-void ElementwiseAdd(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Add(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& y,
+         int axis,
+         DenseTensor* out);
 
 template <typename T>
-void ElementwiseSub(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Subtract(const CPUContext& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              int axis,
+              DenseTensor* out);
 
 template <typename T>
-void ElementwiseDiv(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Divide(const CPUContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            int axis,
+            DenseTensor* out);
 
 template <typename T>
-void ElementwiseMul(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Multiply(const CPUContext& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              int axis,
+              DenseTensor* out);
 template <typename T>
 void Sum(const CPUContext& dev_ctx,
          const DenseTensor& x,
@@ -79,11 +79,11 @@ void Sum(const CPUContext& dev_ctx,
 
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                      \
   template <typename T>                                                      \
-  void Elementwise##name(const CPUContext& dev_ctx,                          \
-                         const DenseTensor& x,                               \
-                         const DenseTensor& y,                               \
-                         int axis,                                           \
-                         DenseTensor* out) {                                 \
+  void name(const CPUContext& dev_ctx,                                       \
+            const DenseTensor& x,                                            \
+            const DenseTensor& y,                                            \
+            int axis,                                                        \
+            DenseTensor* out) {                                              \
     out->mutable_data<T>();                                                  \
     if (x.dims() == y.dims()) {                                              \
       SameDimsElementwiseCompute<                                            \

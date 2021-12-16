@@ -75,14 +75,14 @@ void Mean(const CUDAContext& dev_ctx,
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
-// Create the definition of ElementwiseAdd
+// Create the definition of Add
 DEFINE_CUDA_ELEMENTWISE_OP(Add)
-// Create the definition of ElementwiseSub
-DEFINE_CUDA_ELEMENTWISE_OP(Sub)
-// Create the definition of ElementwiseMul
-DEFINE_CUDA_ELEMENTWISE_OP(Mul)
-// Create the definition of ElementwiseDiv
-DEFINE_CUDA_ELEMENTWISE_OP(Div)
+// Create the definition of Subtract
+DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
+// Create the definition of Multiply
+DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+// Create the definition of Divide
+DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 template <typename T>
 void Sum(const CUDAContext& dev_ctx,
@@ -109,7 +109,7 @@ PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL(add,
                    CUDA,
                    ALL_LAYOUT,
-                   pten::ElementwiseAdd,
+                   pten::Add,
                    float,
                    double,
                    int,
@@ -120,7 +120,7 @@ PT_REGISTER_KERNEL(add,
 PT_REGISTER_KERNEL(subtract,
                    CUDA,
                    ALL_LAYOUT,
-                   pten::ElementwiseSub,
+                   pten::Subtract,
                    float,
                    double,
                    int,
@@ -131,7 +131,7 @@ PT_REGISTER_KERNEL(subtract,
 PT_REGISTER_KERNEL(divide,
                    CUDA,
                    ALL_LAYOUT,
-                   pten::ElementwiseDiv,
+                   pten::Divide,
                    float,
                    double,
                    int,
@@ -142,7 +142,7 @@ PT_REGISTER_KERNEL(divide,
 PT_REGISTER_KERNEL(multiply,
                    CUDA,
                    ALL_LAYOUT,
-                   pten::ElementwiseMul,
+                   pten::Multiply,
                    float,
                    double,
                    int,
