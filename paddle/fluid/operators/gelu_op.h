@@ -185,6 +185,31 @@ struct GeluGradFunctor {
 };
 
 template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+default_gelu_fw(const framework::ExecutionContext& ctx,
+                const framework::Tensor* in, const bool approximate,
+                framework::Tensor* out) {
+  auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+  auto eigen_in = framework::EigenVector<T>::Flatten(*in);
+
+  auto& place =
+      *ctx.template device_context<platform::CPUDeviceContext>().eigen_device();
+
+  GeluFunctor<T> functor;
+  functor(place, eigen_in, eigen_out, approximate);
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+default_gelu_fw(const framework::ExecutionContext& ctx,
+                const framework::Tensor* in, const bool approximate,
+                framework::Tensor* out);
+#endif
+
+template <typename DeviceContext, typename T>
 class GeluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -193,15 +218,39 @@ class GeluKernel : public framework::OpKernel<T> {
     auto approximate = context.Attr<bool>("approximate");
     out->mutable_data<T>(in->place());
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-
-    GeluFunctor<T> functor;
-    functor(place, eigen_in, eigen_out, approximate);
+    default_gelu_fw<DeviceContext, T>(context, in, approximate, out);
   }
 };
+
+// template <typename DeviceContext, typename T>
+// typename std::enable_if<
+//     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+// default_gelu_bw(const framework::ExecutionContext& ctx,
+//                              const framework::Tensor* in,
+//                              const framework::Tensor* dout,
+//                              const bool approximate,
+//                              framework::Tensor* dx
+//                              ){
+//     auto eigen_x = framework::EigenVector<T>::Flatten(*in);
+//     auto eigen_dout = framework::EigenVector<T>::Flatten(*dout);
+//     auto eigen_dx = framework::EigenVector<T>::Flatten(*dx);
+//     auto& place =
+//         *ctx.template device_context<DeviceContext>().eigen_device();
+
+//     GeluGradFunctor<T> functor;
+//     functor(place, eigen_x, eigen_dout, eigen_dx, approximate);
+// }
+
+// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// template <typename DeviceContext, typename T>
+// typename std::enable_if<
+//     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+// default_gelu_bw(const framework::ExecutionContext& ctx,
+//                              const framework::Tensor* in,
+//                              const framework::Tensor* dout,
+//                              const bool approximate,
+//                              framework::Tensor* dx);
+// #endif
 
 template <typename DeviceContext, typename T>
 class GeluGradKernel : public framework::OpKernel<T> {
