@@ -322,7 +322,7 @@ class TensorRTEngine {
             "generating serialization file and doing inference are "
             "consistent."));
 
-    getEngineInfo();
+    GetEngineInfo();
   }
 
   void SetRuntimeBatch(size_t batch_size);
@@ -540,11 +540,12 @@ class TensorRTEngine {
     }
   }
 
-  void getEngineInfo() {
+  void GetEngineInfo() {
 #if IS_TRT_VERSION_GE(8200)
-    auto infer_inspector_ = infer_engine_->createEngineInspector();
-    infer_inspector_->setExecutionContext(context());
-    VLOG(3) << infer_inspector_->getEngineInformation(
+    std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
+        infer_engine_->createEngineInspector());
+    infer_inspector->setExecutionContext(context());
+    VLOG(3) << infer_inspector->getEngineInformation(
         nvinfer1::LayerInformationFormat::kJSON);
 #else
     VLOG(3) << "Inspector needs TensorRT version 8.2 and after."
