@@ -44,7 +44,7 @@ TEST(API, to_sparse_csr) {
   std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
 
   paddle::experimental::Tensor x(dense_x);
-  auto out = paddle::experimental::to_sparse_csr(x);
+  auto out = paddle::experimental::to_sparse_csr(x, pten::Backend::CPU);
   auto sparse_out =
       std::dynamic_pointer_cast<pten::SparseCsrTensor>(out.impl());
   int64_t non_zero_num = sparse_out->nnz();

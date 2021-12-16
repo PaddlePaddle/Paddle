@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/kernels/cuda/utils.h"
-#include "paddle/pten/kernels/hybird/sparse/cuda/sparse_utils.h"
 #include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
 
 namespace pten {
@@ -45,8 +44,13 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
   std::unique_ptr<DenseTensor> cpu_nnz_ptr(
       new DenseTensor(cpu_alloc, nnz_meta));
 
+  auto sparse =
+      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
+                                         T>(dev_ctx);
   int* nnz = nnz_ptr->mutable_data<int32_t>();
-  get_non_zero_num<T>(dev_ctx, src, 2, nnz, nnz + 1);
+  const int M = static_cast<int>(src_dims[0]);
+  const int N = static_cast<int>(src_dims[1]);
+  sparse.nnz(M, N, src_data, nnz, nnz + 1);
   pten::Copy(dev_ctx, *nnz_ptr, true, cpu_nnz_ptr.get());
   const int64_t non_zero_num = cpu_nnz_ptr->data<int>()[0];
 
@@ -65,17 +69,12 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
   int64_t* cols_data = cols_ptr->mutable_data<int64_t>();
   T* values_data = values_ptr->mutable_data<T>();
 
-  auto sparse =
-      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
-                                         T>(dev_ctx);
-#if defined(PADDLE_WITH_CUDA)
   sparse.DenseToSparseCsr(static_cast<int>(src_dims[0]),
                           static_cast<int>(src_dims[1]),
                           src_data,
                           crows_data,
                           cols_data,
                           values_data);
-#endif
 
   dst->SetMemberTensor(std::move(crows_ptr),
                        std::move(cols_ptr),

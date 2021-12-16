@@ -34,9 +34,10 @@ PT_DECLARE_KERNEL(to_sparse_csr, CPU);
 namespace paddle {
 namespace experimental {
 
-PADDLE_API Tensor to_sparse_csr(const Tensor& x) {
+PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
       "to_sparse_csr", kernel_key);

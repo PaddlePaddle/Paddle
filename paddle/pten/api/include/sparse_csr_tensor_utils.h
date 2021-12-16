@@ -15,11 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/common/backend.h"
 
 namespace paddle {
 namespace experimental {
 
-PADDLE_API Tensor to_sparse_csr(const Tensor& x);
+PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend);
 
 }  // namespace experimental
 }  // namespace paddle

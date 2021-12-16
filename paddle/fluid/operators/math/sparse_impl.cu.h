@@ -34,6 +34,52 @@ cudaDataType_t GetGpuDataType() {
 
 template <>
 template <typename T>
+void Sparse<platform::CUDADeviceContext>::nnz(const int M, const int N,
+                                              const T* dense, int* nnz,
+                                              int* nnzPerRowColumn) const {}
+
+template <>
+template <>
+void Sparse<platform::CUDADeviceContext>::nnz(const int M, const int N,
+                                              const float* dense, int* nnz,
+                                              int* nnzPerRowColumn) const {
+  cusparseMatDescr_t descr = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      paddle::platform::dynload::cusparseCreateMatDescr(&descr));
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cusparseSetMatType(
+      descr, CUSPARSE_MATRIX_TYPE_GENERAL));
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cusparseSetMatIndexBase(
+      descr, CUSPARSE_INDEX_BASE_ZERO));
+
+  context_.CusparseCall([&](cusparseHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cusparseSnnz(
+        handle, CUSPARSE_DIRECTION_ROW, M, N, descr, dense, M, nnzPerRowColumn,
+        nnz));
+  });
+}
+
+template <>
+template <>
+void Sparse<platform::CUDADeviceContext>::nnz(const int M, const int N,
+                                              const double* dense, int* nnz,
+                                              int* nnzPerRowColumn) const {
+  cusparseMatDescr_t descr = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      paddle::platform::dynload::cusparseCreateMatDescr(&descr));
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cusparseSetMatType(
+      descr, CUSPARSE_MATRIX_TYPE_GENERAL));
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cusparseSetMatIndexBase(
+      descr, CUSPARSE_INDEX_BASE_ZERO));
+
+  context_.CusparseCall([&](cusparseHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cusparseDnnz(
+        handle, CUSPARSE_DIRECTION_ROW, M, N, descr, dense, M, nnzPerRowColumn,
+        nnz));
+  });
+}
+
+template <>
+template <typename T>
 void Sparse<platform::CUDADeviceContext>::DenseToSparseCoo(
     const int M, const int N, const T* dense, int64_t* rows, int64_t* cols,
     T* values) const {
