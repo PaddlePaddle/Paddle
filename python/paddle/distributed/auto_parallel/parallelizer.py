@@ -43,7 +43,7 @@ from .cluster import Cluster
 from .mapper import mapping
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
-from .Planner import Planner
+from .planner import Planner
 
 _logger = get_logger(logging.INFO)
 
