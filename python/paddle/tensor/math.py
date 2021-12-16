@@ -837,7 +837,6 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum')
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
-    helper = LayerHelper('nansum', **locals())
     zero_tensor = paddle.zeros_like(x)
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
     return sum(tmp_tensor, axis, dtype, keepdim, name)
