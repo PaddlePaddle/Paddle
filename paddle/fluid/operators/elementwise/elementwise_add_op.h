@@ -166,6 +166,9 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     // skip out
     auto *out = dout;
 
+    // dummy here
+    dout->data<T>();
+
     // Special case when dy is not needed and dx doesn't reduce
     if (dx != nullptr && dy == nullptr && dx->dims() == dout->dims()) {
       VLOG(4) << "Special case when dy is not needed and dx doesn't "
