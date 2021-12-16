@@ -39,8 +39,12 @@ paddle_includes = [
     os.path.join(site_packages_path, 'paddle', 'include'),
     os.path.join(site_packages_path, 'paddle', 'include', 'third_party'),
     os.path.join(site_packages_path, 'paddle', 'include', 'third_party',
-                 'eigen3', 'src', 'extern_eigen3'), os.path.join(paddle_path),
-    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'), eigen_path
+                 'eigen3', 'src', 'extern_eigen3'),
+    os.path.join(paddle_path),
+    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'), eigen_path,
+    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'), eigen_path,
+    "C:\\home\\workspace\\cache\\third_party\\cpu\\42f1341df65c796cf2b261c10cd2e4af\\eigen3\\src\\extern_eigen3",
+    "C:\\home\\workspace\\cache\\third_party\\eigen3\\src\\extern_eigen3"
 ]
 
 # Test for extra compile args
