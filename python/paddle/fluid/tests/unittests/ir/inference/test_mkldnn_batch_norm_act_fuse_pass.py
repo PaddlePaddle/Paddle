@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -45,92 +45,65 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
         input_dim1 = draw(st.integers(min_value=1, max_value=512))
         input_dim2 = draw(st.integers(min_value=1, max_value=512))
 
-        def generate_input(attrs):
-            shape = [attrs[2]['input_dim1'], attrs[2]['input_dim2']]
-            if attrs[0]['data_layout'] == "NCHW":
-                shape.insert(0, attrs[2]['channel'])
-                shape.insert(0, attrs[2]['batch_size'])
+        def generate_input():
+            shape = [input_dim1, input_dim2]
+            if data_layout == "NCHW":
+                shape.insert(0, channel)
+                shape.insert(0, batch_size)
             else:
-                shape.append(attrs[2]['channel'])
-                shape.insert(0, attrs[2]['batch_size'])
+                shape.append(channel)
+                shape.insert(0, batch_size)
             return np.random.random(shape).astype(np.float32)
 
-        def generate_weight(attrs):
-            return np.random.random([attrs[2]['channel']]).astype(np.float32)
+        def generate_weight():
+            return np.random.random(channel).astype(np.float32)
 
-        attrs = [{
-            "data_layout": data_layout,
-            "epsilon": epsilon,
-            "fuse_with_relu": fuse_with_relu,
-            "is_test": is_test,
-            "momentum": momentum,
-            "trainable_statistics": trainable_statistics,
-            "use_global_stats": use_global_stats,
-            "use_mkldnn": use_mkldnn1
-        }, {
-            "use_cudnn": use_cudnn,
-            "use_mkldnn": use_mkldnn2
-        }, {
-            'batch_size': batch_size,
-            'channel': channel,
-            'input_dim1': input_dim1,
-            'input_dim2': input_dim2
-        }]
-
-        ops_config = [{
-            "op_type": "batch_norm",
-            "op_inputs": {
+        batch_norm_op = OpConfig(
+            type="batch_norm",
+            inputs={
                 "X": ["input_data"],
                 "Bias": ["Bias"],
                 "Mean": ["Mean"],
                 "Scale": ["Scale"],
                 "Variance": ["Variance"]
             },
-            "op_outputs": {
+            outputs={
                 "Y": ["norm_output"],
                 "MeanOut": ["Mean"],
                 "VarianceOut": ["Variance"],
                 "SavedMean": ["SavedMean"],
                 "SavedVariance": ["SavedVariance"]
             },
-            "op_attrs": {
-                "data_layout": attrs[0]['data_layout'],
-                "epsilon": attrs[0]['epsilon'],
-                "fuse_with_relu": attrs[0]['fuse_with_relu'],
-                "is_test": attrs[0]['is_test'],
-                "momentum": attrs[0]['momentum'],
-                "trainable_statistics": attrs[0]['trainable_statistics'],
-                "use_global_stats": attrs[0]['use_global_stats'],
-                "use_mkldnn": attrs[0]['use_mkldnn']
-            },
-        }, {
-            "op_type": "relu",
-            "op_inputs": {
-                "X": ["norm_output"]
-            },
-            "op_outputs": {
-                "Out": ["relu_output"]
-            },
-            "op_attrs": {
-                "use_cudnn": attrs[1]['use_cudnn'],
-                "use_mkldnn": attrs[1]['use_mkldnn']
-            }
-        }]
+            attrs={
+                "data_layout": data_layout,
+                "epsilon": epsilon,
+                "fuse_with_relu": fuse_with_relu,
+                "is_test": is_test,
+                "momentum": momentum,
+                "trainable_statistics": trainable_statistics,
+                "use_global_stats": use_global_stats,
+                "use_mkldnn": use_mkldnn1
+            })
 
-        ops = self.generate_op_config(ops_config)
+        relu_op = OpConfig(
+            type="relu",
+            inputs={"X": ["norm_output"]},
+            outputs={"Out": ["relu_output"]},
+            attrs={"use_cudnn": use_cudnn,
+                   "use_mkldnn": use_mkldnn2})
+
+        model_net = [batch_norm_op, relu_op]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
-                "Bias": TensorConfig(data_gen=partial(generate_weight, attrs)),
-                "Mean": TensorConfig(data_gen=partial(generate_weight, attrs)),
-                "Scale": TensorConfig(data_gen=partial(generate_weight, attrs)),
-                "Variance": TensorConfig(data_gen=partial(generate_weight,
-                                                          attrs))
+                "Bias": TensorConfig(data_gen=partial(generate_weight)),
+                "Mean": TensorConfig(data_gen=partial(generate_weight)),
+                "Scale": TensorConfig(data_gen=partial(generate_weight)),
+                "Variance": TensorConfig(data_gen=partial(generate_weight))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs))
+                "input_data": TensorConfig(data_gen=partial(generate_input))
             },
             outputs=["relu_output"])
 
@@ -141,7 +114,8 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
         yield config, ["batch_norm"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["batch_norm_act_fuse_pass"])
+        self.run_and_statis(
+            max_examples=10, quant=False, passes=["batch_norm_act_fuse_pass"])
 
 
 if __name__ == "__main__":
