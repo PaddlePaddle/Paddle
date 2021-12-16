@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
-namespace math {
 
 static void GetBroadcastFromDims(const int x_ndim,
                                  const std::int64_t* x_dims,
@@ -485,5 +484,24 @@ void MatMulFunction(const DeviceContext& dev_ctx,
       dev_ctx, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
 }
 
-}  // namespace math
+template <typename T, typename DevCtx>
+void Matmul(const DevCtx& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out) {
+  PADDLE_ENFORCE_NE(paddle::framework::product(x.dims()),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The Input(X) dims size must not be equal 0,"
+                        " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_NE(paddle::framework::product(y.dims()),
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The Input(Y) dims size must not be equal 0,"
+                        " but reviced dims size is 0. "));
+  MatMulFunction<DevCtx, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
+}
+
 }  // namespace pten

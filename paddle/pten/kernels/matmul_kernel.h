@@ -14,24 +14,16 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 #include "paddle/pten/core/dense_tensor.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
 
-using CUDAContext = paddle::platform::CUDADeviceContext;
-
-template <typename T>
-void Dot(const CUDAContext& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out);
+template <typename T, typename DevCtx>
+void Matmul(const DevCtx& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            bool transpose_x,
+            bool transpose_y,
+            DenseTensor* out);
 
 }  // namespace pten
-
-#endif
