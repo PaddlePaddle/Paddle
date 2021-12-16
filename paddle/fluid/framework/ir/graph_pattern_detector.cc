@@ -807,6 +807,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
+                           ->assert_is_persistable_var()
                            ->AsInput();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
@@ -2410,6 +2411,23 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
   op->LinksFrom({prev_out}).LinksTo({op_out});
   next_op->LinksFrom({op_out});
   return next_op;
+}
+
+PDNode *patterns::UnsupportedBfloat16::operator()() {
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->HasAttr("mkldnn_data_type") == false;
+  });
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  prev_op->LinksTo({prev_out});
+  op->LinksFrom({prev_out});
+  return op;
 }
 
 PDNode *patterns::LastBfloat16Ops::operator()() {

@@ -12,4 +12,56 @@ cc_library(stream_analyzer SRCS stream_analyzer.cc DEPS ${DEVICE_EVENT_LIBS} glo
 cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_garbage_collector stream_analyzer event_manager)
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
-# cc_binary(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+
+# skip win32 since wget is not installed by default on windows machine.
+# skip COVERAGE_CI since the test runs slowly because of instrumentation.
+if (WITH_TESTING AND NOT WIN32 AND NOT WITH_COVERAGE)
+    add_custom_target(
+        download_program
+        COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program 
+        COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program 
+    )
+    
+    # all operators used in the program
+    set(OPS  
+        fill_constant_op
+        uniform_random_op
+        lookup_table_op
+        transpose_op
+        reshape_op
+        split_op
+        slice_op
+        concat_op
+        matmul_op
+        elementwise_add_op
+        elementwise_mul_op
+        softmax_with_cross_entropy_op
+        reduce_mean_op
+        reduce_sum_op
+        activation_op
+        sum_op
+        elementwise_max_op
+        elementwise_div_op
+        sgd_op
+        squared_l2_norm_op
+        memcpy_h2d_op
+        memcpy_d2h_op)
+    
+    # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
+    set(OP_DEPS 
+        generator
+        softmax
+        selected_rows_functor
+        jit_kernel_helper
+        concat_and_split
+        cross_entropy)
+
+    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${OPS} ${OP_DEPS})
+    set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
+
+    add_dependencies(standalone_executor_test download_program)
+    if (WITH_PROFILER)
+        target_link_libraries(standalone_executor_test profiler)
+        add_dependencies(standalone_executor_test profiler)
+    endif()
+endif()

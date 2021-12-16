@@ -41,10 +41,10 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # generate random number
         random_batch_size = draw(st.integers(min_value=1, max_value=4))
-        random_channel = draw(st.integers(min_value=2, max_value=64))
-        random_input_dim1 = draw(st.integers(min_value=50, max_value=512))
-        random_input_dim2 = draw(st.integers(min_value=50, max_value=512))
-        random_out_channel = draw(st.integers(min_value=20, max_value=256))
+        random_channel = draw(st.integers(min_value=2, max_value=10))
+        random_input_dim1 = draw(st.integers(min_value=20, max_value=50))
+        random_input_dim2 = draw(st.integers(min_value=20, max_value=50))
+        random_out_channel = draw(st.integers(min_value=20, max_value=25))
 
         random_groups = draw(st.integers(min_value=1, max_value=3))
         random_dilations = draw(
