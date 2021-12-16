@@ -141,6 +141,8 @@ class TensorCostNode(CostNode):
             self.dtype_factor *= 4
         elif node.dtype == paddle.int64:
             self.dtype_factor *= 8
+        elif node.dtype == paddle.uint8:
+            self.dtype_factor = 1
         else:
             raise NotImplementedError("{} not counted".format(node.dtype))
         self.batch_size = None

@@ -33,6 +33,7 @@ from .dist_context import set_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
+from .process_group import get_process_group
 from .process_group import get_world_process_groups
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard

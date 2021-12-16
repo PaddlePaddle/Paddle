@@ -32,6 +32,7 @@ from .completion import is_elementwise_like_op
 from .operators.common import get_distributed_operator_impl_container
 from .utils import update_op_dims_mapping_by_default_dist_impl
 from .utils import update_op_dims_mapping_by_elementwise_like_dist_impl
+from .utils import get_all_distributed_main_program
 from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 
@@ -749,7 +750,7 @@ class MCMC(SearchAlgorithm):
         ) if cluster is None else len(cluster.get_all_devices("GPU"))
         assert processes > 0, "Get process failed."
 
-        process_mesh_topology_list = Enumerater.enum_process_mesh_topology(
+        process_mesh_topology_list = PlanSpace.enum_process_mesh_topology(
             processes)
         searched_dist_context = None
         min_cost = None
@@ -760,7 +761,7 @@ class MCMC(SearchAlgorithm):
             logging.info(
                 "MCMC search: search process mesh {} with pipeline mode.".
                 format(process_mesh_topology))
-            valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = Enumerater.enum_valid_dist_attr_for_program(
+            valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, True)
             init_dist_context = self.init_program(
                 valid_dist_attr_dict, train_program, pipeline_process_meshes,
@@ -787,7 +788,7 @@ class MCMC(SearchAlgorithm):
             logging.info(
                 "MCMC search: search process mesh {} without pipeline mode.".
                 format(process_mesh_topology))
-            valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = Enumerater.enum_valid_dist_attr_for_program(
+            valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, False)
             init_dist_context = self.init_program(
                 valid_dist_attr_dict, train_program, pipeline_process_meshes,
