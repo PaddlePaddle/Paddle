@@ -321,6 +321,8 @@ class TensorRTEngine {
             "on the same GPU architecture;\n2. The Paddle Inference version of "
             "generating serialization file and doing inference are "
             "consistent."));
+
+    binding_num_ = infer_engine_->getNbBindings();
   }
 
   void SetRuntimeBatch(size_t batch_size);
@@ -538,7 +540,7 @@ class TensorRTEngine {
     }
   }
 
-  void SetProfileNum(int num) { profile_num_ = num; }
+  void SetProfileNum(int num) { max_profile_num_ = num; }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
@@ -559,7 +561,7 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   int device_id_;
-  int profile_num_{1};
+  int max_profile_num_{1};
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
@@ -603,8 +605,10 @@ class TensorRTEngine {
   // For dynamic shape
   bool with_dynamic_shape_{false};
 #if IS_TRT_VERSION_GE(6000)
+  int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  nvinfer1::IOptimizationProfile* optim_profile_;
+  // nvinfer1::IOptimizationProfile* optim_profile_;
+  std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
