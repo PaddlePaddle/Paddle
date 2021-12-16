@@ -15,8 +15,10 @@
 import itertools
 import re
 
+from ..fluid.framework import dygraph_only
 from ..fluid.dygraph.jit import declarative as to_static
 from ..fluid.dygraph.jit import not_to_static
+from ..fluid.dygraph.layers import Layer
 from ..fluid.layers import reshape, transpose
 from .linalg import matmul
 from .manipulation import squeeze, unsqueeze
@@ -804,6 +806,7 @@ def einsum_internal(eqn, ops):
     return result
 
 
+@dygraph_only
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
@@ -827,7 +830,7 @@ def einsum(equation, *operands):
             - broadcasting and elementwise multiply
             - matrix multiply
             - batched matrix multiply
-        - for many operads
+        - for many operands
             - broadcasting multiply
             - chained matrix multiply
     
@@ -961,7 +964,66 @@ def einsum(equation, *operands):
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
+    return einsum_internal(equation, operands)
 
-    f = to_static(einsum_internal)
+class Einsum(Layer):
+    r"""A wrapper class of `paddle.einsum` that facilitates the function to be
+    used in a training scenario.
 
-    return f(equation, operands)
+    User needs to understand the difference between this wrapper and 
+    `paddle.einsum` to decide which one to use in different occasions.
+
+    `paddle.einsum` is a dygraph only function. Each time it's called,
+    the declarative inputs will be translated into concrete tensor operations
+    and be executed one by one.
+
+    In contrast, an `Einsum` object is an instance of `paddle.nn.Layer`, meaning
+    it can be used within or without a training context, which is indicated by
+    an internal state variable.
+
+    With `Einsum`, the underlying einsum function is converted to a static
+    graph and cached. Further invocations on the same kind of inputs, ie., same
+    equation and same operand shapes, will be routed to the cached static 
+    graph, saving time on planning and more importantly leading to an optimized 
+    execution in graph mode. One thing to notice, graph conversion will incur 
+    significant overhead when worked on every new kind of inputs. It's 
+    advicable to avoid use `Einsum` if the input shapes are highly dynamic.
+
+    Using `einsum` in the static graph mode is currently not supported.
+
+    Examples:
+        .. code-block:: python
+    
+        import paddle
+
+        einsum = paddle.Einsum()
+
+        x = paddle.rand([2, 2])
+        y = paddle.rand([2])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        loss = einsum('ij, j', x, y).sum()
+        loss.backward()
+
+
+    """
+    def __init__(self):
+        super().__init__()
+        self.fn = to_static(einsum_internal)
+
+    def forward(self, equation, *operands):
+        self.fn._training = self.training
+        return self.fn(equation, operands)
+
+    def __call__(self, equation, *operands):
+        self.fn._training = self.training
+        return self.fn(equation, operands)
+
+if __name__ == '__main__':
+    import paddle
+    x = paddle.rand([2, 3])
+
+    ein = Einsum()
+    ein('ij->', x)
+    ein('ij,ij', x, x)
