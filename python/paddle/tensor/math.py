@@ -65,6 +65,9 @@ from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
 from ..fluid.layers import lgamma    # noqa: F401
+from ..fluid.layers import asinh    # noqa: F401
+from ..fluid.layers import acosh    # noqa: F401
+from ..fluid.layers import atanh    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -624,6 +627,128 @@ def minimum(x, y, name=None):
             #       [   1., -inf.,    5.]
     """
     op_type = 'elementwise_min'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def fmax(x, y, name=None):
+    """
+    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmax(x, y)
+
+    **Note**:
+    ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [[3, 4],
+            #     [7, 8]]
+
+            x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [[3, 2, 4],
+            #     [3, 2, 4]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [ 2., 3., 5.]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float32')
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [  5.,   3., inf.]
+    """
+    op_type = 'elementwise_fmax'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def fmin(x, y, name=None):
+    """
+    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmin(x, y)
+
+    **Note**:
+    ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [[1, 2],
+            #        [5, 6]]
+
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [[[1, 0, 3],
+            #         [1, 0, 3]]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [ 1., 3., 5.]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float64')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float64')
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [   1., -inf.,    5.]
+    """
+    op_type = 'elementwise_fmin'
     axis = -1
     act = None
     if in_dygraph_mode():
@@ -2705,6 +2830,9 @@ def lerp(x, y, weight, name=None):
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
         return _C_ops.lerp(x, y, weight)
+
+    if isinstance(weight, float):
+        weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
