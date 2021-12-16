@@ -73,9 +73,9 @@ class Momentum(Optimizer):
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
-        use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
             Often choose to be ``1.0/batch_size``.
+        use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
