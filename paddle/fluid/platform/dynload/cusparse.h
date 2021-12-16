@@ -44,15 +44,29 @@ extern void *cusparse_dso_handle;
 #if !defined(PADDLE_WITH_ARM) && !defined(_WIN32)
 // APIs available after CUDA 11.0
 #if CUDA_VERSION >= 11000
-#define CUSPARSE_ROUTINE_EACH(__macro) \
-  __macro(cusparseCreate);             \
-  __macro(cusparseCreateCsr);          \
-  __macro(cusparseCreateDnMat);        \
-  __macro(cusparseSpMM_bufferSize);    \
-  __macro(cusparseSpMM);               \
-  __macro(cusparseDestroySpMat);       \
-  __macro(cusparseDestroyDnMat);       \
-  __macro(cusparseDestroy);
+#define CUSPARSE_ROUTINE_EACH(__macro)       \
+  __macro(cusparseCreate);                   \
+  __macro(cusparseSetStream);                \
+  __macro(cusparseCreateCsr);                \
+  __macro(cusparseCreateCoo);                \
+  __macro(cusparseCreateDnMat);              \
+  __macro(cusparseCreateMatDescr);           \
+  __macro(cusparseSpMM_bufferSize);          \
+  __macro(cusparseSpMM);                     \
+  __macro(cusparseDestroySpMat);             \
+  __macro(cusparseDestroyDnMat);             \
+  __macro(cusparseDestroy);                  \
+  __macro(cusparseSnnz);                     \
+  __macro(cusparseDnnz);                     \
+  __macro(cusparseDenseToSparse_bufferSize); \
+  __macro(cusparseDenseToSparse_analysis);   \
+  __macro(cusparseDenseToSparse_convert);    \
+  __macro(cusparseSparseToDense_bufferSize); \
+  __macro(cusparseSparseToDense);            \
+  __macro(cusparseSetMatType);               \
+  __macro(cusparseCooSetPointers);           \
+  __macro(cusparseCsrSetPointers);           \
+  __macro(cusparseSetMatIndexBase);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
 

@@ -13,15 +13,25 @@
 // limitations under the License.
 
 #pragma once
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/rocm_helper.h"
-#else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_helper.h"
-#include "paddle/fluid/platform/device/gpu/cuda/cusparse_helper.h"
-#endif
+// CUDA and HIP use same api
+#if defined(PADDLE_WITH_CUDA)
 
-#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/sparse_csr_tensor.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
+
+namespace pten {
+
+using CUDAContext = paddle::platform::CUDADeviceContext;
+
+template <typename T>
+void ToSparseCsr(const CUDAContext& dev_ctx,
+                 const DenseTensor& src,
+                 SparseCsrTensor* dst);
+
+}  // namespace pten
 
 #endif

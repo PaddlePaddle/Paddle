@@ -12,16 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/sparse/cpu/sparse_csr_tensor_utils.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/sparse.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/kernels/hybird/sparse/cpu/sparse_utils.h"
+#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/hybird/sparse/cuda/sparse_utils.h"
+#include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
 
 namespace pten {
 
 template <typename T>
-void ToSparseCsr(const CPUContext& dev_ctx,
+void ToSparseCsr(const CUDAContext& dev_ctx,
                  const DenseTensor& src,
                  SparseCsrTensor* dst) {
   PADDLE_ENFORCE_EQ(src.dims().size(),
@@ -32,12 +34,24 @@ void ToSparseCsr(const CPUContext& dev_ctx,
   const T* src_data = src.data<T>();
   const auto& src_dims = src.dims();
 
-  int64_t non_zero_num = get_non_zero_num<T>(src, 2);
+  const auto cpu_alloc =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace());
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
+  auto nnz_dims = paddle::framework::make_ddim({src_dims[0] + 1});
+  DenseTensorMeta nnz_meta(DataType::INT32, nnz_dims, DataLayout::ANY);
+  std::unique_ptr<DenseTensor> nnz_ptr(new DenseTensor(allocator, nnz_meta));
+  std::unique_ptr<DenseTensor> cpu_nnz_ptr(
+      new DenseTensor(cpu_alloc, nnz_meta));
+
+  int* nnz = nnz_ptr->mutable_data<int32_t>();
+  get_non_zero_num<T>(dev_ctx, src, 2, nnz, nnz + 1);
+  pten::Copy(dev_ctx, *nnz_ptr, true, cpu_nnz_ptr.get());
+  const int64_t non_zero_num = cpu_nnz_ptr->data<int>()[0];
 
   auto non_zero_dims = paddle::framework::make_ddim({non_zero_num});
   auto crows_dims = paddle::framework::make_ddim({src_dims[0] + 1});
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
   DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::ANY);
   std::unique_ptr<DenseTensor> crows_ptr(
       new DenseTensor(allocator, crows_meta));
@@ -51,19 +65,18 @@ void ToSparseCsr(const CPUContext& dev_ctx,
   int64_t* cols_data = cols_ptr->mutable_data<int64_t>();
   T* values_data = values_ptr->mutable_data<T>();
 
-  int non_zero_count = 0;
-  for (int i = 0; i < src_dims[0]; i++) {
-    crows_data[i] = non_zero_count;
-    for (int j = 0; j < src_dims[1]; j++) {
-      const T data = src_data[i * src_dims[1] + j];
-      if (data != static_cast<T>(0)) {
-        cols_data[non_zero_count] = j;
-        values_data[non_zero_count] = data;
-        ++non_zero_count;
-      }
-    }
-  }
-  crows_data[src_dims[0]] = non_zero_count;
+  auto sparse =
+      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
+                                         T>(dev_ctx);
+#if defined(PADDLE_WITH_CUDA)
+  sparse.DenseToSparseCsr(static_cast<int>(src_dims[0]),
+                          static_cast<int>(src_dims[1]),
+                          src_data,
+                          crows_data,
+                          cols_data,
+                          values_data);
+#endif
+
   dst->SetMemberTensor(std::move(crows_ptr),
                        std::move(cols_ptr),
                        std::move(values_ptr),
@@ -72,6 +85,5 @@ void ToSparseCsr(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-// PT_REGISTER_MODULE(SparseCsrTensorUtilsCPU);
-
-PT_REGISTER_KERNEL(to_sparse_csr, CPU, ANY, pten::ToSparseCsr, float, double) {}
+PT_REGISTER_KERNEL(to_sparse_csr, CUDA, ANY, pten::ToSparseCsr, float, double) {
+}

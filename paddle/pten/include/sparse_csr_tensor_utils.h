@@ -16,6 +16,7 @@ limitations under the License. */
 
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/kernels/sparse/cpu/sparse_csr_tensor_utils.h"
+#include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
 
 namespace pten {
 
