@@ -632,3 +632,29 @@ class GradScaler(AmpScaler):
                 scaler.load_state_dict(scaler_state)
         """
         super(GradScaler, self).load_state_dict(state_dict)
+
+    def set_state_dict(self, state_dict):
+        """
+        Set the scaler state.
+        
+        Args:
+           state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
+                
+        Examples:
+
+            .. code-block:: python
+
+                # required: gpu,xpu
+                import paddle
+
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                scaler_state = scaler.state_dict()
+                scaler.set_state_dict(scaler_state)
+        """
+        super(GradScaler, self).load_state_dict(state_dict)

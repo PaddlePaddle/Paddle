@@ -497,7 +497,7 @@ class TestGradScalerStateDict(unittest.TestCase):
             if use_save_load and batch_id == 2:
                 paddle.save(scaler.state_dict(), 'ResNet_model.pdparams')
                 dict_load = paddle.load('ResNet_model.pdparams')
-                scaler.load_state_dict(dict_load)
+                scaler.set_state_dict(dict_load)
         if use_data_loader:
             train_reader._reset()
         return dy_out, dy_param_value, dy_grad_value
