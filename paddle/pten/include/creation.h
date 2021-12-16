@@ -16,8 +16,7 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/creation.h"
-#include "paddle/pten/kernels/cuda/creation.h"
+#include "paddle/pten/kernels/fill_kernel.h"
 
 namespace pten {
 
@@ -36,7 +35,7 @@ DenseTensor FullLike(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  FullLike<T>(dev_ctx, val, &dense_out);
+  FullLike<T, ContextT>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 
