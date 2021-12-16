@@ -92,6 +92,7 @@ struct Record {
   uint64_t search_id;
   uint32_t rank;
   uint32_t cmatch;
+  std::string uid_;
 };
 
 struct PvInstanceObject {
@@ -157,6 +158,7 @@ class DataFeed {
   virtual void SetThreadNum(int thread_num) {}
   // This function will do nothing at default
   virtual void SetParseInsId(bool parse_ins_id) {}
+  virtual void SetParseUid(bool parse_uid) {}
   virtual void SetParseContent(bool parse_content) {}
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
@@ -232,6 +234,7 @@ class DataFeed {
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
   platform::Place place_;
+  std::string uid_slot_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -293,6 +296,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
   virtual void SetParseInsId(bool parse_ins_id);
+  virtual void SetParseUid(bool parse_uid);
   virtual void SetParseContent(bool parse_content);
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvMerge(bool enable_pv_merge);
@@ -307,6 +311,7 @@ class InMemoryDataFeed : public DataFeed {
   int thread_id_;
   int thread_num_;
   bool parse_ins_id_;
+  bool parse_uid_;
   bool parse_content_;
   bool parse_logkey_;
   bool enable_pv_merge_;
@@ -471,7 +476,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   for (size_t& x : offset) {
     uint64_t t;
     ar >> t;
-    x = (size_t)t;
+    x = static_cast<size_t>(t);
   }
 #endif
   ar >> ins.MutableFloatData();

@@ -22,6 +22,7 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -31,6 +32,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#if defined(PADDLE_WITH_GLOO)
+#include <gloo/allreduce.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
+
 namespace paddle {
 
 namespace framework {
@@ -39,9 +45,12 @@ class BasicAucCalculator {
  public:
   BasicAucCalculator() {}
   void init(int table_size);
+  void init_wuauc(int table_size);
   void reset();
+  void reset_map();
   // add single data in CPU with LOCK, deprecated
   void add_unlock_data(double pred, int label);
+  void add_uid_unlock_data(double pred, int label, uint64_t uid);
   // add batch data
   void add_data(const float* d_pred, const int64_t* d_label, int batch_size,
                 const paddle::platform::Place& place);
@@ -49,15 +58,24 @@ class BasicAucCalculator {
   void add_mask_data(const float* d_pred, const int64_t* d_label,
                      const int64_t* d_mask, int batch_size,
                      const paddle::platform::Place& place);
+  // add uid data
+  void add_uid_data(const float* d_pred, const int64_t* d_label,
+                    const int64_t* d_uid, int batch_size,
+                    const paddle::platform::Place& place);
+
   void compute();
+  void computeWuAuc(uint64_t uid);
   int table_size() const { return _table_size; }
   double bucket_error() const { return _bucket_error; }
   double auc() const { return _auc; }
+  double uauc() const { return _uauc; }
+  double wuauc() const { return _wuauc; }
   double mae() const { return _mae; }
   double actual_ctr() const { return _actual_ctr; }
   double predicted_ctr() const { return _predicted_ctr; }
   double size() const { return _size; }
   double rmse() const { return _rmse; }
+  std::unordered_set<uint64_t> uid_keys() const { return _uid_keys; }
   // lock and unlock
   std::mutex& table_mutex(void) { return _table_mutex; }
 
@@ -69,23 +87,29 @@ class BasicAucCalculator {
   double _local_sqrerr = 0;
   double _local_pred = 0;
   double _auc = 0;
+  double _uauc = 0;
+  double _wuauc = 0;
   double _mae = 0;
   double _rmse = 0;
   double _actual_ctr = 0;
   double _predicted_ctr = 0;
   double _size;
   double _bucket_error = 0;
+  std::unordered_set<uint64_t> _uid_keys;
 
-  std::vector<std::shared_ptr<memory::Allocation>> _d_positive;
-  std::vector<std::shared_ptr<memory::Allocation>> _d_negative;
-  std::vector<std::shared_ptr<memory::Allocation>> _d_abserr;
-  std::vector<std::shared_ptr<memory::Allocation>> _d_sqrerr;
-  std::vector<std::shared_ptr<memory::Allocation>> _d_pred;
+  // std::vector<std::shared_ptr<memory::Allocation>> _d_positive;
+  // std::vector<std::shared_ptr<memory::Allocation>> _d_negative;
+  // std::vector<std::shared_ptr<memory::Allocation>> _d_abserr;
+  // std::vector<std::shared_ptr<memory::Allocation>> _d_sqrerr;
+  // std::vector<std::shared_ptr<memory::Allocation>> _d_pred;
 
  private:
   void set_table_size(int table_size) { _table_size = table_size; }
   int _table_size;
   std::vector<double> _table[2];
+  std::unordered_map<uint64_t,
+                     std::map<uint32_t, std::pair<uint64_t, uint64_t>>>
+      _uid_prob_cntmap;
   static constexpr double kRelativeErrorBound = 0.05;
   static constexpr double kMaxSpan = 0.01;
   std::mutex _table_mutex;
@@ -170,6 +194,45 @@ class Metric {
     std::string pred_varname_;
     int metric_phase_;
     BasicAucCalculator* calculator;
+  };
+
+  class WuAucMetricMsg : public MetricMsg {
+   public:
+    WuAucMetricMsg(const std::string& label_varname,
+                   const std::string& pred_varname,
+                   const std::string& uid_varname, int metric_phase,
+                   int bucket_size = 1000000) {
+      label_varname_ = label_varname;
+      pred_varname_ = pred_varname;
+      uid_varname_ = uid_varname;
+      metric_phase_ = metric_phase;
+      calculator = new BasicAucCalculator();
+      calculator->init_wuauc(bucket_size);
+    }
+    virtual ~WuAucMetricMsg() {}
+    void add_data(const Scope* exe_scope,
+                  const paddle::platform::Place& place) override {
+      int label_len = 0;
+      const int64_t* label_data = NULL;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
+
+      int pred_len = 0;
+      const float* pred_data = NULL;
+      get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
+
+      int uid_len = 0;
+      const int64_t* uid_data = NULL;
+      get_data<int64_t>(exe_scope, uid_varname_, &uid_data, &uid_len);
+      PADDLE_ENFORCE_EQ(label_len, uid_len,
+                        platform::errors::PreconditionNotMet(
+                            "the predict data length should be consistent with "
+                            "the label data length"));
+      auto cal = GetCalculator();
+      cal->add_uid_data(pred_data, label_data, uid_data, label_len, place);
+    }
+
+   protected:
+    std::string uid_varname_;
   };
 
   class MultiTaskMetricMsg : public MetricMsg {
@@ -508,7 +571,8 @@ class Metric {
                   const std::string& label_varname,
                   const std::string& pred_varname,
                   const std::string& cmatch_rank_varname,
-                  const std::string& mask_varname, int metric_phase,
+                  const std::string& mask_varname,
+                  const std::string& uid_varname, int metric_phase,
                   const std::string& cmatch_rank_group, bool ignore_rank,
                   int bucket_size = 1000000) {
     if (method == "AucCalculator") {
@@ -533,10 +597,14 @@ class Metric {
                                       label_varname, pred_varname, metric_phase,
                                       cmatch_rank_group, cmatch_rank_varname,
                                       ignore_rank, mask_varname, bucket_size));
+    } else if (method == "WuAucCalculator") {
+      metric_lists_.emplace(
+          name, new WuAucMetricMsg(label_varname, pred_varname, uid_varname,
+                                   metric_phase, bucket_size));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "PSLIB Metrics only support AucCalculator, MultiTaskAucCalculator, "
-          "CmatchRankAucCalculator, MaskAucCalculator and "
+          "CmatchRankAucCalculator, MaskAucCalculator, WuAucCalculator and "
           "CmatchRankMaskAucCalculator"));
     }
     metric_name_list_.emplace_back(name);
@@ -561,6 +629,33 @@ class Metric {
     metric_return_values_[7] = auc_cal_->size();
     auc_cal_->reset();
     return metric_return_values_;
+  }
+
+  const std::vector<float> GetWuAucMetricMsg(const std::string& name) {
+    const auto iter = metric_lists_.find(name);
+    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
+                      platform::errors::InvalidArgument(
+                          "The metric name you provided is not registered."));
+    std::vector<float> metric_return_values_(6, 0.0);
+    auto* auc_cal_ = iter->second->GetCalculator();
+    for (uint64_t uid : auc_cal_->uid_keys()) {
+      auc_cal_->computeWuAuc(uid);
+      if (auc_cal_->uauc() != 0) {  // uauc=0 means all nonclick or click
+        metric_return_values_[0] += 1;
+        metric_return_values_[1] += auc_cal_->size();
+        metric_return_values_[2] += auc_cal_->uauc();
+        metric_return_values_[3] += auc_cal_->wuauc();
+      }
+    }
+    auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
+    auto global_metric_return_values_ =
+        gloo_wrapper->AllReduce(metric_return_values_, "sum");
+    global_metric_return_values_[4] = global_metric_return_values_[2] /
+                                      (global_metric_return_values_[0] + 1e-10);
+    global_metric_return_values_[5] = global_metric_return_values_[3] /
+                                      (global_metric_return_values_[1] + 1e-10);
+    auc_cal_->reset_map();
+    return global_metric_return_values_;
   }
 
  private:

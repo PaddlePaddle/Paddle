@@ -19,11 +19,6 @@
 #include <numeric>
 #include "paddle/fluid/framework/lod_tensor.h"
 
-#if defined(PADDLE_WITH_GLOO)
-#include <gloo/allreduce.h>
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
-
 namespace paddle {
 namespace framework {
 
@@ -240,5 +235,136 @@ void BasicAucCalculator::calculate_bucket_error() {
   }
   _bucket_error = error_count > 0 ? error_sum / error_count : 0.0;
 }
+
+void BasicAucCalculator::init_wuauc(int table_size) {
+  set_table_size(table_size);
+
+  // // init CPU memory
+  // for (int i = 0; i < 2; i++) {
+  //   _table[i] = std::vector<double>();
+  // }
+
+  // // reset
+  // reset();
+}
+
+void BasicAucCalculator::reset_map() {
+  // reset CPU counter
+  _uid_prob_cntmap.erase(_uid_prob_cntmap.begin(), _uid_prob_cntmap.end());
+}
+
+// add uid data
+void BasicAucCalculator::add_uid_data(const float* d_pred,
+                                      const int64_t* d_label,
+                                      const int64_t* d_uid, int batch_size,
+                                      const paddle::platform::Place& place) {
+  thread_local std::vector<float> h_pred;
+  thread_local std::vector<int64_t> h_label;
+  thread_local std::vector<uint64_t> h_uid;
+  h_pred.resize(batch_size);
+  h_label.resize(batch_size);
+  h_uid.resize(batch_size);
+
+  memcpy(h_pred.data(), d_pred, sizeof(float) * batch_size);
+  memcpy(h_label.data(), d_label, sizeof(int64_t) * batch_size);
+  memcpy(h_uid.data(), d_uid, sizeof(int64_t) * batch_size);
+
+  std::lock_guard<std::mutex> lock(_table_mutex);
+  for (int i = 0; i < batch_size; ++i) {
+    add_uid_unlock_data(h_pred[i], h_label[i], static_cast<uint64_t>(h_uid[i]));
+  }
+}
+
+void BasicAucCalculator::add_uid_unlock_data(double pred, int label,
+                                             uint64_t uid) {
+  PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
+                                   "pred should be greater than 0"));
+  PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
+                                   "pred should be lower than 1"));
+  PADDLE_ENFORCE_EQ(
+      label * label, label,
+      platform::errors::PreconditionNotMet(
+          "label must be equal to 0 or 1, but its value is: %d", label));
+  uint32_t pos = std::min(static_cast<uint32_t>(pred * _table_size),
+                          static_cast<uint32_t>(_table_size - 1));
+  PADDLE_ENFORCE_GE(
+      pos, 0,
+      platform::errors::PreconditionNotMet(
+          "pos must be equal or greater than 0, but its value is: %d", pos));
+  PADDLE_ENFORCE_LT(
+      pos, _table_size,
+      platform::errors::PreconditionNotMet(
+          "pos must be less than table_size, but its value is: %d", pos));
+
+  auto it = _uid_prob_cntmap.find(uid);
+  if (it != _uid_prob_cntmap.end()) {
+    auto& probmap = it->second;
+    auto it2 = probmap.find(pos);
+    if (it2 != probmap.end()) {
+      if (label) {
+        it2->second.first++;
+      } else {
+        it2->second.second++;
+      }
+    } else {
+      if (label) {
+        probmap.insert(std::make_pair(pos, std::make_pair(0, 1)));
+      } else {
+        probmap.insert(std::make_pair(pos, std::make_pair(0, 1)));
+      }
+    }
+  } else {
+    std::map<uint32_t, std::pair<uint64_t, uint64_t>> _prob_cntmap;
+    if (label) {
+      std::pair<uint64_t, uint64_t> p = std::make_pair(1, 0);
+      _prob_cntmap.insert(std::make_pair(pos, p));
+      _uid_prob_cntmap.insert(std::make_pair(uid, _prob_cntmap));
+    } else {
+      std::pair<uint64_t, uint64_t> p = std::make_pair(0, 1);
+      _prob_cntmap.insert(std::make_pair(pos, p));
+      _uid_prob_cntmap.insert(std::make_pair(uid, _prob_cntmap));
+    }
+  }
+
+  for (auto it = _uid_prob_cntmap.begin(); it != _uid_prob_cntmap.end(); ++it) {
+    _uid_keys.insert(it->first);
+  }
+}
+
+void BasicAucCalculator::computeWuAuc(uint64_t uid) {
+  double area = 0;
+  double fp = 0;
+  double tp = 0;
+
+  auto it = _uid_prob_cntmap.find(uid);
+  // VLOG(0) << "computeWuAuc: find uid " << uid;
+  if (it != _uid_prob_cntmap.end()) {
+    for (auto rit = it->second.rbegin(); rit != it->second.rend(); rit++) {
+      double newfp = fp + rit->second.second;
+      double newtp = tp + rit->second.first;
+      area += (newfp - fp) * (tp + newtp) / 2;
+      fp = newfp;
+      tp = newtp;
+    }
+
+    if (fp < 1e-3 || tp < 1e-3) {
+      _uauc = 0;  // which means all nonclick or click
+    } else {
+      _uauc = area / (fp * tp + 1e-9);
+    }
+
+    _size = fp + tp;
+    _wuauc = _uauc * _size;
+
+    // VLOG(0) << "computeWuAuc: uauc " << _uauc;
+    // VLOG(0) << "computeWuAuc: size " << _size << "\n";
+  } else {
+    // VLOG(0) << "computeWuAuc: not find uid  " << uid;
+    _uauc = 0;
+    _size = 0;
+    _wuauc = 0;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

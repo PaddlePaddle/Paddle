@@ -21,6 +21,7 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,15 +38,16 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 void BindMetrics(py::module* m) {
-  py::class_<framework::Metric, std::shared_ptr<framework::Metric>>(*m, "Metric")
-      .def(py::init([](){
-           return framework::Metric::SetInstance();
-      }))
+  py::class_<framework::Metric, std::shared_ptr<framework::Metric>>(*m,
+                                                                    "Metric")
+      .def(py::init([]() { return framework::Metric::SetInstance(); }))
       .def("init_metric", &framework::Metric::InitMetric,
-      py::call_guard<py::gil_scoped_release>())
+           py::call_guard<py::gil_scoped_release>())
       .def("flip_phase", &framework::Metric::FlipPhase,
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_msg", &framework::Metric::GetMetricMsg,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_wuauc_metric_msg", &framework::Metric::GetWuAucMetricMsg,
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_name_list", &framework::Metric::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>());

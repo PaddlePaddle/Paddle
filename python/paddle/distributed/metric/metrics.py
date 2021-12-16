@@ -27,6 +27,7 @@ def init_metric(metric_ptr,
                 metric_yaml_path,
                 cmatch_rank_var="",
                 mask_var="",
+                uid_var="",
                 phase=-1,
                 cmatch_rank_group="",
                 ignore_rank=False,
@@ -52,34 +53,40 @@ def init_metric(metric_ptr,
             metric_ptr.init_metric(
                 metric_runner['method'], metric_runner['name'],
                 metric_runner['label'], metric_runner['target'],
-                cmatch_rank_var, mask_var, phase, cmatch_rank_group,
+                cmatch_rank_var, mask_var, uid_var, phase, cmatch_rank_group,
                 ignore_rank, bucket_size)
         elif metric_runner['method'] == 'MultiTaskAucCalculator':
             metric_ptr.init_metric(
                 metric_runner['method'], metric_runner['name'],
                 metric_runner['label'], metric_runner['target'],
-                metric_runner['cmatch_var'], mask_var, phase,
+                metric_runner['cmatch_var'], mask_var, uid_var, phase,
                 metric_runner['cmatch_group'], ignore_rank, bucket_size)
         elif metric_runner['method'] == 'CmatchRankAucCalculator':
             metric_ptr.init_metric(
                 metric_runner['method'], metric_runner['name'],
                 metric_runner['label'], metric_runner['target'],
-                metric_runner['cmatch_var'], mask_var, phase,
+                metric_runner['cmatch_var'], mask_var, uid_var, phase,
                 metric_runner['cmatch_group'], metric_runner['ignore_rank'],
                 bucket_size)
         elif metric_runner['method'] == 'MaskAucCalculator':
             metric_ptr.init_metric(
                 metric_runner['method'], metric_runner['name'],
                 metric_runner['label'], metric_runner['target'],
-                cmatch_rank_var, metric_runner['mask'], phase,
+                cmatch_rank_var, metric_runner['mask'], uid_var, phase,
                 cmatch_rank_group, ignore_rank, bucket_size)
         elif metric_runner['method'] == 'CmatchRankMaskAucCalculator':
             metric_ptr.init_metric(
                 metric_runner['method'], metric_runner['name'],
                 metric_runner['label'], metric_runner['target'],
-                metric_runner['cmatch_var'], metric_runner['mask'], phase,
-                metric_runner['cmatch_group'], metric_runner['ignore_rank'],
-                bucket_size)
+                metric_runner['cmatch_var'], metric_runner['mask'], uid_var,
+                phase, metric_runner['cmatch_group'],
+                metric_runner['ignore_rank'], bucket_size)
+        elif metric_runner['method'] == 'WuAucCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'], metric_runner['name'],
+                metric_runner['label'], metric_runner['target'],
+                cmatch_rank_var, mask_var, metric_runner['uid'], phase,
+                cmatch_rank_group, ignore_rank, bucket_size)
         else:
             metric_ptr.init_metric(
                 metric_runner['method'], metric_runner['name'],
@@ -92,8 +99,13 @@ def print_metric(metric_ptr, name):
     """
     print the metric value. Print directly in back-end
     """
-    metric = metric_ptr.get_metric_msg(name)
-    monitor_msg = "%s: AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f RMSE=%.6f "\
+    if name.find("wuauc") != -1:
+        metric = metric_ptr.get_wuauc_metric_msg(name)
+        monitor_msg = "%s: User Count=%.0f INS Count=%.0f UAUC=%.6f WUAUC=%.6f "\
+           % (name, metric[0], metric[1], metric[4], metric[5])
+    else:
+        metric = metric_ptr.get_metric_msg(name)
+        monitor_msg = "%s: AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f RMSE=%.6f "\
             "Actual CTR=%.6f Predicted CTR=%.6f COPC=%.6f INS Count=%.0f"\
             % (name, metric[0], metric[1], metric[2], metric[3], metric[4],
                     metric[5], metric[6], metric[7])
