@@ -14,16 +14,16 @@
 
 #include "paddle/pten/kernels/hybird/transpose.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+
 namespace pten {
 namespace math {
-using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
 struct TransposeNormal<CPUContext, T> {

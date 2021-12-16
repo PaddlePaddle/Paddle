@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/math.h"
 #include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
 
@@ -86,7 +87,7 @@ DenseTensor Scale(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Scale<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
+  Scale<T, ContextT>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
 

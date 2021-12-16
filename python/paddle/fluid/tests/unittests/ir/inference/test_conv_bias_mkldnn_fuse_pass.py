@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
@@ -25,27 +25,24 @@ from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
-class TestConvElementwiseAddActPass(PassAutoScanTest):
+class TestConvBiasMkldnnFusePass(PassAutoScanTest):
     """
     x_var   f_var(persistable)
       \       /
-         conv2d 
-           |
-        conv2d_var    y_var(persistable)
-            \          /
+        conv2d 
+          |
+      conv2d_var  bias_var(persistable)
+              \      /
            elementwise_add
                 |
          elementwise_add_var
-                |
-               act
-                |
-              act_var
     """
 
     def sample_predictor_configs(self, program_config):
-        # for gpu
-        config = self.create_inference_config(use_gpu=True)
-        yield config, ["conv2d_fusion"], (1e-4, 1e-5)
+        # MKLDNN
+        config = self.create_inference_config(use_gpu=False)
+        config.enable_mkldnn()
+        yield config, ["conv2d"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
@@ -123,36 +120,57 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
                 st.integers(
                     min_value=1, max_value=5), min_size=2, max_size=2))
 
-        # 9. Generate legal input:ResidualData of conv2d
-        res_shape = []
-        if draw(st.booleans()):
-            res_shape = draw(
-                st.lists(
-                    st.integers(
-                        min_value=1, max_value=100),
-                    min_size=4,
-                    max_size=4))
-
-        # 10. Generate legal shape of input:bias of elementwise_add
+        # 9. Generate legal shape of input:bias of elementwise_add
         bias_shape = [f_shape[0]]
 
-        # 11. Generate legal attr:axis of elementwise_add
+        # 10. Generate legal shape of attr:axis of elementwise_add
         axis = 1
+        if data_format == "NCHW":
+            axis = 1
+        else:
+            axis = 3
+
+        # 11. Generate legal shape of input:bias of conv2d
+        conv_bias_shape = []
+        inputs = dict()
+        weights = dict()
+        use_mkldnn = None
+        if draw(st.booleans()):
+            conv_bias_shape = [f_shape[0]]
+            inputs = {
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+                "Bias": ["conv_bias"],
+            }
+            weights = {
+                "filter": TensorConfig(shape=f_shape),
+                "bias": TensorConfig(shape=bias_shape),
+                "conv_bias": TensorConfig(shape=conv_bias_shape)
+            }
+            use_mkldnn = True
+        else:
+            inputs = {
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+            }
+            weights = {
+                "filter": TensorConfig(shape=f_shape),
+                "bias": TensorConfig(shape=bias_shape)
+            }
+            use_mkldnn = False
 
         conv2d_op = OpConfig(
             "conv2d",
-            inputs={
-                "Input": ["input_x"],
-                "Filter": ["filter"],
-                "ResidualData": ["residualdata"]
-            },
+            inputs=inputs,
             outputs={"Output": ["conv2d_out"]},
             strides=strides,
             padding_algorithm=padding_algorithm,
             paddings=padding,
             groups=groups,
             dilations=dilations,
-            data_format=data_format)
+            data_format=data_format,
+            use_mkldnn=use_mkldnn)
+
         add_op = OpConfig(
             "elementwise_add",
             inputs={"X": ["conv2d_out"],
@@ -160,29 +178,20 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
             outputs={"Out": ["add_out"]},
             axis=axis)
 
-        relu_op = OpConfig(
-            "relu", inputs={"X": ["add_out"]}, outputs={"Out": ["relu_out"]})
-
-        ops = [conv2d_op, add_op, relu_op]
+        ops = [conv2d_op, add_op]
 
         program_config = ProgramConfig(
             ops=ops,
-            weights={
-                "filter": TensorConfig(shape=f_shape),
-                "bias": TensorConfig(shape=bias_shape),
-            },
-            inputs={
-                "input_x": TensorConfig(shape=x_shape),
-                "residualdata": TensorConfig(shape=res_shape)
-            },
-            outputs=ops[-1].outputs["Out"], )
+            weights=weights,
+            inputs={"input_x": TensorConfig(shape=x_shape)},
+            outputs=ops[-1].outputs["Out"])
         return program_config
 
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=400,
-            passes=["conv_elementwise_add_act_fuse_pass"])
+            max_examples=350,
+            passes=["conv_bias_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
