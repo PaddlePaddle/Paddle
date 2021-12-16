@@ -145,6 +145,11 @@ class EagerUtils {
       const std::shared_ptr<GradNodeBase>& grad_node);
 
   // Intermidate needed remove this once we don't need legacy
+  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+      egr::EagerTensor* tensor);
+  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+      std::vector<egr::EagerTensor>* tensors);
+
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
       const egr::EagerTensor& tensor);
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(

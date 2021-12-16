@@ -33,8 +33,6 @@ namespace framework {
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
-static std::unordered_set<std::string> operators_to_codegen = {};
-
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
   std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
@@ -468,8 +466,6 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
 
   // Only handle matmul_v2 for now
   VLOG(1) << "------ Analyzing Op ------: " << op_type;
-
-  if (!operators_to_codegen.count(op_type)) return false;
 
   return true;
 }
@@ -1174,7 +1170,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
       } else {
         const char* FWD_INS_CONTENT_TEMPLATE =
-            "  if(%s.initialized()) "
+            "  if(%s.safe_initialized()) "
             "ins[\"%s\"] = egr::EagerUtils::SyncToVars(%s)\n;";
         generated_function_body += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
@@ -1196,25 +1192,21 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::vector<std::shared_ptr<egr::EagerTensor>>& %s";
+            ", std::vector<egr::EagerTensor>& %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
 
-        const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", %s },";
-        outs_contents_str += paddle::string::Sprintf(
-            FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
       } else {
-        const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::shared_ptr<egr::EagerTensor>& %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor& %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
-
-        const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", {%s} },";
-        outs_contents_str += paddle::string::Sprintf(
-            FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
       }
+      const char* FWD_OUTS_CONTENT_TEMPLATE =
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(&%s) },";
+      outs_contents_str += paddle::string::Sprintf(
+          FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
 
     } else {
       if (output.duplicable()) {
@@ -1557,22 +1549,11 @@ static std::string GenerateGradNodeCCContents(
                   "fwd_outputs_name_pos_map"));
 
           size_t grads_position = fwd_outputs_name_pos_map.at(fwd_name);
-          std::string grad_ptr_name = fwd_name + "_ptrs";
-          const char* GET_GRADS_PTR_TEMPLATE =
-              "  std::vector<std::shared_ptr<egr::EagerTensor>> %s;\n"
-              "  for(const auto& t : grads[%d]) {\n    "
-              "%s.emplace_back(std::move(std::make_shared<egr::EagerTensor>(t))"
-              ");"
-              "\n  }\n";
-          std::string grads_ptr_str =
-              paddle::string::Sprintf(GET_GRADS_PTR_TEMPLATE, grad_ptr_name,
-                                      grads_position, grad_ptr_name);
-          generated_grad_function_body += grads_ptr_str;
-          generated_grad_function_body += "\n";
 
-          const char* GRAD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", %s },";
+          const char* GRAD_OUTS_CONTENT_TEMPLATE =
+              "{ \"%s\", egr::EagerUtils::SyncToVars(grads[%d]) },";
           outs_contents_str += paddle::string::Sprintf(
-              GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grad_ptr_name);
+              GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grads_position);
 
         } else {
           size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
@@ -2020,33 +2001,17 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["c_split"]["nranks"] = 1;
 }
 
-static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
-  std::string line;
-  std::ifstream op_list_file(op_list_path);
-  if (op_list_file.is_open()) {
-    while (getline(op_list_file, line)) {
-      operators_to_codegen.insert(line);
-    }
-    op_list_file.close();
-  } else {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "argc must be 3" << std::endl;
+  if (argc != 2) {
+    std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
 
   std::string eager_root = argv[1];
-  std::string op_list_path = argv[2];
 
-  paddle::framework::CollectOperatorsToCodeGen(op_list_path);
   paddle::framework::PrepareAttrMapForOps();
 
   paddle::framework::DygraphCodeGeneration(eager_root);

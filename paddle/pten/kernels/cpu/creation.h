@@ -25,14 +25,12 @@ namespace pten {
 using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
-void FillAnyLike(const CPUContext& dev_ctx,
-                 const Scalar& val,
-                 DenseTensor* out);
+void FullLike(const CPUContext& dev_ctx, const Scalar& val, DenseTensor* out);
 
 template <typename T>
-void FillConstant(const CPUContext& dev_ctx,
-                  const ScalarArray& shape,
-                  const Scalar& val,
-                  DenseTensor* out);
+void Full(const CPUContext& dev_ctx,
+          const ScalarArray& shape,
+          const Scalar& val,
+          DenseTensor* out);
 
 }  // namespace pten
