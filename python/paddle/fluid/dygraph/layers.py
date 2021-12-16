@@ -914,16 +914,6 @@ class Layer(object):
         return outputs
 
     def __call__(self, *inputs, **kwargs):
-        # NOTE(Aurelius84): Why we still need param_guard here?
-        # In case of ControlFlow, true_fn and false_fn will contain
-        # parameters that may not trigger logic of `Operator` to create
-        # them. we add this to make sure all parameters is available.
-
-        # if in_declarative_mode() and not framework.in_dygraph_mode():
-        #     with param_guard(self._parameters), param_guard(self._buffers):
-        #         return self._dygraph_call_func(*inputs, **kwargs)
-        # else:
-        #     return self._dygraph_call_func(*inputs, **kwargs)
         return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
