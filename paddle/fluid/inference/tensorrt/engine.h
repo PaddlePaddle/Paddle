@@ -548,7 +548,7 @@ class TensorRTEngine {
     VLOG(3) << infer_inspector->getEngineInformation(
         nvinfer1::LayerInformationFormat::kJSON);
 #else
-    VLOG(3) << "Inspector needs TensorRT version 8.2 and after."
+    VLOG(3) << "Inspector needs TensorRT version 8.2 and after.";
 #endif
   }
 
