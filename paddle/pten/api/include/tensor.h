@@ -31,6 +31,7 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/place.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 
@@ -83,7 +84,7 @@ class AbstractAutogradMeta {
  * another simple Tensor design may be required for inference.
  */
 
-class PD_DLL_DECL Tensor final {
+class PADDLE_API Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
 
@@ -127,6 +128,14 @@ class PD_DLL_DECL Tensor final {
    */
   Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
+  /**
+   * @brief Construct a new Tensor object with name
+   *
+   * @note Used to adapt original execution mechanism and debug analysis
+   * in the development of new dygraph. It may be removed in the future.
+   * */
+  explicit Tensor(const std::string& name) : name_(name) {}
+
   /* Part 2: Dimension, DataType and DataLayout methods */
 
   /**
@@ -163,9 +172,10 @@ class PD_DLL_DECL Tensor final {
 
   /**
    * @brief Reset the shape of the tensor.
-   * Reshape must be called before calling mutable_data() or
-   * copy_to(const PlaceType& place).
-   * This is a deprecated method and may be removed in the future!
+   * @note: This method means Reset the shape of the tensor,
+   * and must be called before calling mutable_data() or
+   * copy_to(const PlaceType& place), this is not a standard definition of
+   * reshape behavior, so we will deprecated this feature in the future.
    *
    * @param shape
    */
@@ -312,13 +322,34 @@ class PD_DLL_DECL Tensor final {
   gpuStream_t stream() const;
 #endif
 
+  /**
+   * @brief Return the name of Tensor.
+   * @note Used to adapt original execution mechanism and debug analysis
+   * in the development of new dygraph. It may be removed in the future.
+   *
+   * @return const std::string&
+   */
+  const std::string& name() const { return name_; }
+
+  /**
+   * @brief Set name of Tensor.
+   * @note Used to adapt original execution mechanism and debug analysis
+   * in the development of new dygraph. It may be removed in the future.
+   *
+   * @param const std::string& name
+   */
+  void set_name(const std::string& name) { name_ = name; }
+
   /* Part 5: Data Transform methods */
 
   /**
    * @brief Copy the current Tensor data to the specified device
-   * and return the new Tensor.
-   * It's usually used to set the input tensor data.
-   * This is a deprecated method and may be removed in the future!
+   * and return the new Tensor. It's usually used to set the input tensor data.
+   * @note The Tensor's `copy_to` method is deprecated since version 2.3, and
+   * will be removed in version 2.4, please use `copy_to` method without
+   * template argument instead.
+   * reason: copying a Tensor to another device does not need to specify the
+   * data type template argument
    *
    * @tparam T
    * @param target_place, the target place of which the tensor will copy to.
@@ -333,7 +364,8 @@ class PD_DLL_DECL Tensor final {
    * @param place, the target place of which the tensor will copy to.
    * @return Tensor
    */
-  Tensor to(const PlaceType& place) const;
+  // TODO(chenweihang): replace Backend by new Place
+  Tensor copy_to(Backend backend, bool blocking) const;
 
   /**
    * @brief Cast datatype from one to another
@@ -341,7 +373,7 @@ class PD_DLL_DECL Tensor final {
    * @param target_type
    * @return Tensor
    */
-  Tensor cast(const DataType& target_type) const;
+  Tensor cast(DataType target_type) const;
 
   /* Part 6: Status utils methods */
 
@@ -449,16 +481,11 @@ class PD_DLL_DECL Tensor final {
   std::shared_ptr<AbstractAutogradMeta> autograd_meta_{nullptr};
 
   /**
-   * Tensor name: used for adapt original execution mechanism and debug analysis
+   * Tensor name: used to adapt original execution mechanism and debug analysis
    * in the development of new dygraph. It may be removed in the future.
    */
-  std::string name_;
+  std::string name_{""};
 };
 
 }  // namespace experimental
-}  // namespace paddle
-
-namespace paddle {
-// In order to be compatible with the original custom operator Tensor interface
-using Tensor = paddle::experimental::Tensor;
 }  // namespace paddle

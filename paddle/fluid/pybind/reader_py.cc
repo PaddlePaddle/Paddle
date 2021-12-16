@@ -37,6 +37,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "If set true, the queue.pop will only get data from queue but not "
     "remove the data from queue for speed testing");
 
+// disable auto conversion to list in Python
+PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+
 namespace paddle {
 namespace pybind {
 

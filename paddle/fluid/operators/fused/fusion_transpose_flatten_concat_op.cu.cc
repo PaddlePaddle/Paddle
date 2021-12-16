@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_transpose_flatten_concat_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {
@@ -50,9 +50,9 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 
     cudnnTensorDescriptor_t in_desc;
     cudnnTensorDescriptor_t out_desc;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&in_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&out_desc));
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
@@ -92,12 +92,12 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         dims_y[i] = 1;
       }
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           in_desc, cudnn_dtype, max_dim, dims_y.data(), stride_x.data()));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()));
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnTransformTensor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnTransformTensor(
           handle, CudnnDataType<T>::kOne(), in_desc,
           static_cast<const void*>(ins[k]->data<T>()),
           CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)));
@@ -108,9 +108,9 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         odata += flat_shape[1];
       }
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(in_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(out_desc));
   }
 };

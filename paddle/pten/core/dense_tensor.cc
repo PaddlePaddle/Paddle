@@ -69,7 +69,9 @@ void* DenseTensor::mutable_data(size_t request_bytes) {
                           bytes));
     bytes = request_bytes;
   }
-  if (storage_->size() < bytes) {
+  if (storage_->size() < bytes || storage_->size() == 0) {
+    VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
+             << ", new size: " << bytes;
     storage_->Realloc(bytes);
   }
   return storage_->data();
@@ -80,8 +82,10 @@ T* DenseTensor::mutable_data() {
   // In order to be compatible with the original Tensor design and
   // execution system, we have to reset the datatype in mutable_data<T>.
   // When the compatibility phase is over in the future, we can delete it
-  if (meta_.type == DataType::UNDEFINED) {
-    const_cast<DataType&>(meta_.type) =
+  if (meta_.dtype == DataType::UNDEFINED) {
+    VLOG(10) << "change data type in mutbale_data, target dtype - "
+             << paddle::experimental::CppTypeToDataType<T>::Type();
+    const_cast<DataType&>(meta_.dtype) =
         paddle::experimental::CppTypeToDataType<T>::Type();
   }
   PADDLE_ENFORCE(
@@ -112,30 +116,20 @@ const void* DenseTensor::data() const {
   return storage_->data();
 }
 
-void DenseTensor::check_memory_size() const {
-  size_t bytes = numel() * SizeOf(dtype());
-  PADDLE_ENFORCE_GE(memory_size(),
-                    bytes,
-                    paddle::platform::errors::InvalidArgument(
-                        "The memory size %d should be enough to meet the "
-                        "volume required by metadata %d.",
-                        memory_size(),
-                        bytes));
+void DenseTensor::set_meta(DenseTensorMeta&& meta) {
+  PADDLE_ENFORCE(!meta_.valid(),
+                 paddle::platform::errors::InvalidArgument(
+                     "Only when the original attribute of Tensor is "
+                     "incomplete, can it be reset."));
+  meta_ = std::move(meta);
 }
 
 void DenseTensor::Resize(const DDim& dims) {
-  if (product(dims) == product(meta_.dims)) {
-    set_dims(dims);
-  } else {
-    meta_.dims = dims;
-    storage_->Clear();
-  }
+  meta_.dims = dims;
+  mutable_data();
 }
 
-void DenseTensor::set_dims(const DDim& dims) {
-  CHECK(product(dims) == product(meta_.dims));
-  meta_.dims = dims;
-}
+void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
   template dtype* DenseTensor::mutable_data(); \

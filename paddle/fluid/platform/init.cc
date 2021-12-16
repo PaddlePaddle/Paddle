@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -30,8 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -43,6 +43,10 @@ limitations under the License. */
 #include <windows.h>
 
 #include "DbgHelp.h"
+#endif
+
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
 DECLARE_int32(paddle_num_threads);
@@ -165,6 +169,15 @@ void InitDevices() {
         << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
   }
 #endif
+#ifdef PADDLE_WITH_IPU
+  try {
+    // use user specified IPUs.
+    devices = platform::GetSelectedIPUDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING)
+        << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
+  }
+#endif
   InitDevices(devices);
 }
 
@@ -184,6 +197,9 @@ void InitDevices(const std::vector<int> devices) {
 #endif
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
+#endif
+#ifdef PADDLE_WITH_IPU
+    places.emplace_back(platform::IPUPlace(devices[i]));
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
     places.emplace_back(platform::NPUPlace(devices[i]));

@@ -33,7 +33,7 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
-from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
@@ -277,13 +277,15 @@ class Fleet(object):
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
 
-            # init hybrid parallel environment in dygraph
-            if tp._HYBRID_PARALLEL_GROUP is None:
-                self._init_hybrid_parallel_env()
-            else:
-                warnings.warn(
-                    "The dygraph hybrid parallel environment has been initialized."
-                )
+            # hybrid parallel not support for npu/xpu
+            if self._user_defined_strategy.heter_ccl_mode == False:
+                # init hybrid parallel environment in dygraph
+                if tp._HYBRID_PARALLEL_GROUP is None:
+                    self._init_hybrid_parallel_env()
+                else:
+                    warnings.warn(
+                        "The dygraph hybrid parallel environment has been initialized."
+                    )
         elif self._is_collective:
             use_sharding = self._user_defined_strategy.sharding
 
@@ -565,24 +567,6 @@ class Fleet(object):
         """
         return self._role_maker._is_server()
 
-    def is_heter_worker(self):
-        """
-        Check whether the node is an instance of heter worker.
-
-        Returns:
-            bool: True if this is a node of heter worker,
-                  False if not.
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                fleet.is_heter_worker()
-        """
-        return self._role_maker._is_heter_worker()
-
     def barrier_worker(self):
         """
         barrier all workers
@@ -616,30 +600,6 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker()
-
-    @is_non_distributed_check
-    @inited_runtime_handler
-    def init_heter_worker(self):
-        """
-        init_heter_worker executor to initialize startup program,
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-                # build net
-                # fleet.distributed_optimizer(...)
-
-                fleet.init_heter_worker()
-
-        """
-        self._runtime_handle._init_heter_worker()
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -689,31 +649,6 @@ class Fleet(object):
 
         """
         self._runtime_handle.load_model(path, mode)
-
-    @is_non_distributed_check
-    @inited_runtime_handler
-    def run_heter_worker(self, dataset):
-        """
-        run_heter_worker will run heter trainer main program with executor.
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-
-                # build net
-                # fleet.distributed_optimizer(...)
-                dataset = "" 
-                if fleet.is_heter_worker():
-                    fleet.run_heter_worker(dataset)
-
-        """
-        self._runtime_handle._run_heter_worker(dataset)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -890,7 +825,7 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
-    def shrink(self, threshold):
+    def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
     def distributed_optimizer(self, optimizer, strategy=None):
@@ -939,8 +874,12 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() > 1:
-                return HybridParallelOptimizer(optimizer, self._hcg,
-                                               self._user_defined_strategy)
+                if self._user_defined_strategy.heter_ccl_mode == False:
+                    return HybridParallelOptimizer(optimizer, self._hcg,
+                                                   self._user_defined_strategy)
+                else:
+                    return HeterParallelOptimizer(optimizer,
+                                                  self._user_defined_strategy)
             else:
                 return optimizer
         return self
@@ -1004,6 +943,17 @@ class Fleet(object):
         assert model is not None, "model should not be None"
         if self.worker_num() <= 1:
             return model
+
+        if self._user_defined_strategy.heter_ccl_mode == True:
+            distributed_model = paddle.DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB,
+                find_unused_parameters=self._user_defined_strategy.
+                find_unused_parameters)
+            return distributed_model
 
         if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
             distributed_model = ShardingParallel(
@@ -1636,13 +1586,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))

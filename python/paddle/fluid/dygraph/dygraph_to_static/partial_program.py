@@ -27,8 +27,8 @@ from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.contrib.mixed_precision.decorator import AutoMixedPrecisionLists
-from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program
-from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard
+from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program, cast_model_to_fp16
+from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 import paddle.compat as cpt
 from paddle import _C_ops
 
@@ -152,8 +152,14 @@ class PartialProgramLayer:
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
+        custom_white_list, custom_black_list = None, None
+        tracer = framework._dygraph_tracer()
+        if tracer:
+            custom_white_list, custom_black_list = tracer._get_amp_op_list()
         # For AMP training
-        self._amp_list = AutoMixedPrecisionLists()
+        self._amp_list = AutoMixedPrecisionLists(
+            custom_white_list=custom_white_list,
+            custom_black_list=custom_black_list)
 
     @LazyInitialized
     def _infer_program(self):
@@ -194,6 +200,26 @@ class PartialProgramLayer:
         return self._append_backward_desc(self._infer_amp_program)
 
     @LazyInitialized
+    @switch_to_static_graph
+    def _infer_pure_fp16_program(self):
+        """
+        Lazy initialized property of _infer_pure_fp16_program.
+        """
+        infer_pure_fp16_program = self._origin_main_program.clone()
+        with program_guard(infer_pure_fp16_program):
+            cast_model_to_fp16(
+                infer_pure_fp16_program, self._amp_list, use_fp16_guard=False)
+
+        return infer_pure_fp16_program
+
+    @LazyInitialized
+    def _train_pure_fp16_program(self):
+        """
+        Lazy initialized property of _train_pure_fp16_program.
+        """
+        return self._append_backward_desc(self._infer_pure_fp16_program)
+
+    @LazyInitialized
     def _infer_program_id(self):
         return _hash_with_id(self._infer_program, self)
 
@@ -208,6 +234,14 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = _hash_with_id(self._train_amp_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
+
+    @LazyInitialized
+    def _train_pure_fp16_program_id(self):
+        program_id = _hash_with_id(self._train_pure_fp16_program, self)
         core._set_cached_executor_build_strategy(program_id,
                                                  self._build_strategy)
 
@@ -275,8 +309,12 @@ class PartialProgramLayer:
         return self._valid_vars(double_grads)
 
     def _get_end_op_index(self):
-        infer_program = self._infer_amp_program if _in_amp_guard(
-        ) else self._infer_program
+        if _in_amp_guard():
+            infer_program = self._infer_amp_program
+        elif _in_pure_fp16_guard():
+            infer_program = self._infer_pure_fp16_program
+        else:
+            infer_program = self._infer_program
         return infer_program.desc.block(0).op_size()
 
     def __call__(self, inputs):
@@ -285,6 +323,9 @@ class PartialProgramLayer:
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
                  0, 'end_op_index', self._get_end_op_index(), 'is_test',
                  not self.training, 'program_id', self.program_id)
+
+        self._cast_fp16_if_pure_fp16(in_vars)
+
         _C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -294,6 +335,16 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
+    def _cast_fp16_if_pure_fp16(self, in_vars):
+        if _in_pure_fp16_guard():
+            for i, var in enumerate(in_vars):
+                name = var.name
+                if (self.program.global_block().has_var(name) and
+                        self.program.global_block().var(name).dtype ==
+                        paddle.float16):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
+
     def drop_scope_if_no_grad(self):
         tracer = framework._dygraph_tracer()
         if self.training and not tracer._has_grad:
@@ -302,16 +353,24 @@ class PartialProgramLayer:
     @property
     def program(self):
         if self.training:
-            return self._train_amp_program if _in_amp_guard(
-            ) else self._train_program
+            if _in_amp_guard():
+                return self._train_amp_program
+            elif _in_pure_fp16_guard():
+                return self._train_pure_fp16_program
+            else:
+                return self._train_program
         else:
             return self._infer_program
 
     @property
     def program_id(self):
         if self.training:
-            return self._train_amp_program_id if _in_amp_guard(
-            ) else self._train_program_id
+            if _in_amp_guard():
+                return self._train_amp_program_id
+            elif _in_pure_fp16_guard():
+                return self._train_pure_fp16_program_id
+            else:
+                return self._train_program_id
         else:
             return self._infer_program_id
 

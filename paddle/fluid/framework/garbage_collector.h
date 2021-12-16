@@ -80,6 +80,16 @@ class XPUGarbageCollector : public GarbageCollector {
 };
 #endif
 
+#ifdef PADDLE_WITH_IPU
+class IPUGarbageCollector : public GarbageCollector {
+ public:
+  IPUGarbageCollector(const platform::IPUPlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class UnsafeFastGPUGarbageCollector : public GarbageCollector {
  public:

@@ -88,12 +88,9 @@ class DenseTensor : public TensorBase,
     return meta_.lod;
   }
 
-  /// \brief Set the lod of the tensor.
-  void set_lod(const std::vector<std::vector<size_t>>& lod) { meta_.lod = lod; }
-
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override { return meta_.type; }
+  DataType dtype() const noexcept override { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
@@ -106,6 +103,11 @@ class DenseTensor : public TensorBase,
   /// \brief Returns the meta information of the tensor.
   /// \return The meta information of the tensor.
   const DenseTensorMeta& meta() const noexcept { return meta_; }
+
+  /// \brief Sets the meta information of the tensor. Only when the original
+  /// attribute of Tensor is incomplete, can it be reset.
+  /// \param meta The meta information of the tensor.
+  void set_meta(DenseTensorMeta&& meta);
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
@@ -121,25 +123,20 @@ class DenseTensor : public TensorBase,
   /// \return Whether the storage is shared with other objects.
   bool IsSharedWith(const DenseTensor& b) const;
 
-  /// \brief Change the dims information in the metadata. If the new size is
-  /// inconsistent with the original value, the storage area will be released
-  /// to avoid wrong access.
+  /// \brief Change the shape information in the metadata. If the new size is
+  /// larger than the original value, the storage area will be reallocated.
   /// \param dims The new dims of the dense tensor.
+  /// \param lod The new lod of the dense tensor.
   void Resize(const DDim& dims);
 
-  /// \brief Change the dims information in the metadata.
-  /// \param dims The new dims of the dense tensor. The product of the dims
-  /// elements must be consistent with the original value.
-  void set_dims(const DDim& dims);
+  /// \brief Change the lod information in the metadata.
+  /// \param lod The new lod of the dense tensor.
+  void ResetLoD(const LoD& lod);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
-  size_t memory_size() const { return storage_->size(); }
-
-  /// \brief Check that the storage area is large enough to hold the data of the
-  /// metadata size, and throw an exception if the conditions are not met.
-  void check_memory_size() const;
+  size_t capacity() const { return storage_->size(); }
 
   /// \brief Release the storage area for other purposes. Because of the
   /// destruction of encapsulation, we do not support two dense tensors directly

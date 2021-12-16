@@ -14,35 +14,46 @@
 
 #pragma once
 #include <memory>
+#include <string>
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 class ProgramDesc;
+class Scope;
 }
 
 namespace distributed {
 class RuntimeGraph;
 class Carrier;
 class MessageBus;
+class TaskNode;
 
 class FleetExecutor final {
  public:
   FleetExecutor() = delete;
-  FleetExecutor(const std::string& exe_desc_str);
+  explicit FleetExecutor(const std::string& exe_desc_str);
   ~FleetExecutor();
-  void Init(const paddle::framework::ProgramDesc& program_desc);
+  void Init(const framework::ProgramDesc& program_desc, framework::Scope* scope,
+            const platform::Place& place,
+            const std::vector<TaskNode*>& task_nodes,
+            const std::unordered_map<int64_t, int64_t>& task_id_to_rank);
   void Run();
-  void Release();
-  static std::shared_ptr<Carrier> GetCarrier();
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
-  FleetExecutorDesc exe_desc_;
-  std::unique_ptr<RuntimeGraph> runtime_graph_;
   void InitMessageBus();
+  void InitCarrier();
+  void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
+  FleetExecutorDesc exe_desc_;
+  std::shared_ptr<RuntimeGraph> runtime_graph_;
+  framework::Scope* root_scope_;
+  framework::Scope* minibatch_scope_;
+  platform::Place place_;
+  std::vector<framework::Scope*> microbatch_scopes_;
 };
 
 }  // namespace distributed

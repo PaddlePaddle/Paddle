@@ -31,12 +31,13 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard, _convert_into_variable
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
 
@@ -78,7 +79,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(core.Layer):
+class Layer(object):
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -881,41 +882,48 @@ class Layer(core.Layer):
     def _build_once(self, *args, **kwargs):
         pass
 
+    def _dygraph_call_func(self, *inputs, **kwargs):
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
+        if not self._built:
+            with program_desc_tracing_guard(False):
+                self._build_once(*inputs, **kwargs)
+
+                # TODO(liuyuhui) Only xpu broadcast parameters here.
+                # The other device is to call _sync_params_buffers in DataParallel
+                # to realize the parameter synchronization among multiply cards.
+                if parallel_helper._is_data_parallel_mode(
+                ) and paddle.is_compiled_with_xpu():
+                    parallel_helper._broadcast_parameters(
+                        self._parameters.values())
+
+            self._built = True
+
+        outputs = self.forward(*inputs, **kwargs)
+
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
+        return outputs
+
     def __call__(self, *inputs, **kwargs):
         # NOTE(Aurelius84): Why we still need param_guard here?
         # In case of ControlFlow, true_fn and false_fn will contain
         # parameters that may not trigger logic of `Operator` to create
         # them. we add this to make sure all parameters is available.
-        with param_guard(self._parameters), param_guard(self._buffers):
-            for forward_pre_hook in self._forward_pre_hooks.values():
-                hook_result = forward_pre_hook(self, inputs)
-                if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result, )
-                    inputs = hook_result
 
-            if not self._built:
-                with program_desc_tracing_guard(False):
-                    self._build_once(*inputs, **kwargs)
-
-                    # TODO(liuyuhui) Only xpu broadcast parameters here.
-                    # The other device is to call _sync_params_buffers in DataParallel
-                    # to realize the parameter synchronization among multiply cards.
-                    if parallel_helper._is_data_parallel_mode(
-                    ) and paddle.is_compiled_with_xpu():
-                        parallel_helper._broadcast_parameters(
-                            self._parameters.values())
-
-                self._built = True
-
-            outputs = self.forward(*inputs, **kwargs)
-
-            for forward_post_hook in self._forward_post_hooks.values():
-                hook_result = forward_post_hook(self, inputs, outputs)
-                if hook_result is not None:
-                    outputs = hook_result
-
-            return outputs
+        if in_declarative_mode() and not framework.in_dygraph_mode():
+            with param_guard(self._parameters), param_guard(self._buffers):
+                return self._dygraph_call_func(*inputs, **kwargs)
+        else:
+            return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -968,7 +976,7 @@ class Layer(core.Layer):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert (isinstance(sublayer, core.Layer) or sublayer == None)
+        assert (isinstance(sublayer, Layer) or sublayer == None)
 
         self._sub_layers[name] = sublayer
         return sublayer
@@ -1140,7 +1148,7 @@ class Layer(core.Layer):
             params[name] = None
         else:
             layers = self.__dict__.get('_sub_layers', None)
-            if isinstance(value, core.Layer):
+            if isinstance(value, Layer):
                 if layers is None:
                     raise ValueError(
                         "super(YourLayer, self).__init__() should be called first"
@@ -1493,7 +1501,7 @@ class Layer(core.Layer):
             If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
             index of the GPUs or XPUs. Default: None.
 
-            dtype(str|core.VarDesc.VarType|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
@@ -1504,7 +1512,7 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                # required: gpu
+                # required: skip
                 import paddle
 
                 linear=paddle.nn.Linear(2, 2)
@@ -1561,19 +1569,18 @@ class Layer(core.Layer):
             if dtype is None:
                 dtype = t.dtype
 
+            if type(dtype) is not VarDesc.VarType:
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
             # 1. gpu place need to determine whether the memory is sufficient for allocation:
             if t.place.is_gpu_place():
-                gpu_memory_available = core.gpu_memory_available()
                 # for gpu, minimum memory allocation unit is 256 bytes.
-                if type(dtype) is str:
-                    size_dtype = core.size_of_dtype(
-                        convert_np_dtype_to_dtype_(dtype))
-                else:
-                    size_dtype = core.size_of_dtype(dtype)
+                size_dtype = core.size_of_dtype(dtype)
                 # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
                 waiting_alloc_memory = (
-                    (t.numel().numpy()[0] * size_dtype) / 256 + 1) * 256 * 1.2
+                    (np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
+                gpu_memory_available = core.gpu_memory_available()
                 if gpu_memory_available < waiting_alloc_memory:
                     # Copy param / Tensor to cpu
                     t_used = t._copy_to(paddle.CPUPlace(),
@@ -1587,26 +1594,17 @@ class Layer(core.Layer):
 
             # 2. cast param / Tensor to dtype
             if dtype is not None and dtype != t_used.dtype:
-                if isinstance(t_used, framework.ParamBase):
-                    from paddle.fluid.layer_helper import LayerHelper
-                    helper = LayerHelper("cast", **locals())
-                    t_casted = helper.create_variable_for_type_inference(
-                        dtype=dtype)
-                    framework._dygraph_tracer().trace_op(
-                        type='cast',
-                        inputs={'X': t_used},
-                        outputs={'Out': t_casted},
-                        attrs={
-                            'in_dtype': t_used.dtype,
-                            'out_dtype': convert_np_dtype_to_dtype_(dtype)
-                        })
-                else:
+                with paddle.fluid.framework._dygraph_place_guard(
+                        place=t_used.place):
                     t_casted = t_used.cast(dtype=dtype)
             else:
                 t_casted = t_used
 
             # 3. Copy casted cpu param / Tensor to device
-            new_t = t_casted._copy_to(device, blocking)
+            if device is not None and not t_casted.place._equals(device):
+                new_t = t_casted._copy_to(device, blocking)
+            else:
+                new_t = t_casted
 
             # 4. share Tensor to origin param / Tensor
             dst_tensor = t.value().get_tensor()
