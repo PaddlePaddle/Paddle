@@ -216,7 +216,7 @@ class PlanSpace:
         # compose dims mapping
         composed_dims_mapping_list = list(
             product(
-                * [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+                *[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
         for composed_dims_mapping in composed_dims_mapping_list:
             op_dist_attr = OperatorDistributedAttribute()
             op_dist_attr.process_mesh = process_mesh
@@ -809,6 +809,9 @@ class MCMC(SearchAlgorithm):
         if non_pipeline_min_cost > pipeline_min_cost:
             searched_dist_context = searched_pipeline_dist_context
             min_cost = pipeline_min_cost
+            logging.info(
+                "Better set FLAGS_benchmark=1 to avoid hang problem in the pipeline mode."
+            )
         else:
             searched_dist_context = searched_non_pipeline_dist_context
             min_cost = non_pipeline_min_cost

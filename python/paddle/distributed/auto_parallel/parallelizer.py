@@ -157,7 +157,7 @@ class AutoParallelizer:
                 planner = Planner(
                     serial_program_info,
                     algorithm_config={"name": "mcmc",
-                                      "max_search_times": 0})
+                                      "max_search_times": 5})
                 dist_context, _ = planner.search()
                 logging.info("End searching dist attr.")
 
@@ -264,7 +264,7 @@ class AutoParallelizer:
                         serial_program_info,
                         algorithm_config={
                             "name": "mcmc",
-                            "max_search_times": 0
+                            "max_search_times": 5
                         })
                     dist_context, _ = planner.search()
 
