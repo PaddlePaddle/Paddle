@@ -1047,7 +1047,7 @@ class Optimizer(object):
         There are two method to clear grad: set_to_zero or delete grad.
         
         Args:
-            set_to_zero (bool): If set grads to zero or not, default is True.
+            set_to_zero (bool, optional): If set grads to zero or not, default is True.
         
         Returns:
             None
