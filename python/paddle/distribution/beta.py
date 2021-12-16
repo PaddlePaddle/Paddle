@@ -20,7 +20,7 @@ from .exponential_family import ExponentialFamily
 
 
 class Beta(ExponentialFamily):
-    """Beta distribution parameterized by
+    """Beta distribution parameterized by alpha and beta
 
     Mathematical details
 
@@ -28,31 +28,47 @@ class Beta(ExponentialFamily):
 
     .. math::
 
-        pdf(x; \mu, \sigma) = \\frac{1}{Z}e^{\\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
+        f(x; \alpha, \beta) = \frac{1}{B(\alpha, \beta)}x^{\alpha-1}(1-x)^{\beta-1}
+
+    where the normalization, B, is the beta function,
 
     .. math::
 
-        Z = (2 \pi \sigma^2)^{0.5}
+        B(\alpha, \beta) = \int_{0}^{1} t^{\alpha - 1} (1-t)^{\beta - 1}\mathrm{d}t 
 
-    In the above equation:
-
-    * :math:`loc = \mu`: is the mean.
-    * :math:`scale = \sigma`: is the std.
-    * :math:`Z`: is the normalization constant.
 
     Args:
-        alpha (float|Tensor): alpha parameter of beta distribution
-        beta (float|Tensor): beta parameter of beta distribution
-
+        alpha (float|Tensor): alpha parameter of beta distribution, positive(>0).
+        beta (float|Tensor): beta parameter of beta distribution, positive(>0).
 
     Examples:
     .. code-block:: python
 
-      import paddle
-      from paddle.distribution import Normal
+        import paddle
 
-      # Define a single scalar Normal distribution.
-      dist = Normal(loc=0., scale=3.)
+        # scale input
+        beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
+        print(beta.mean)
+        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [0.50000000])
+        print(beta.variance)
+        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [0.12500000])
+        print(beta.entropy())
+        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [0.12500000])
+
+        # tensor input with broadcast
+        beta = paddle.distribution.Beta(alpha=paddle.to_tensor([0.2, 0.4]), beta=0.6)
+        print(beta.mean)
+        # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [0.25000000, 0.40000001])
+        print(beta.variance)
+        # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [0.10416666, 0.12000000])
+        print(beta.entropy())
+        # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [-1.91923141, -0.38095069])
     """
 
     def __init__(self, alpha, beta):
@@ -103,7 +119,10 @@ class Beta(ExponentialFamily):
         """probability density funciotn evaluated at value
 
         Args:
-            value (Tensor): value to be evaluated
+            value (Tensor): value to be evaluated.
+        
+        Returns:
+            Tensor: probability.
         """
         return paddle.exp(self.log_prob(value))
 
@@ -112,17 +131,20 @@ class Beta(ExponentialFamily):
 
         Args:
             value (Tensor): value to be evaluated
+        
+        Returns:
+            Tensor: log probability.
         """
         return self._dirichlet.log_prob(paddle.stack([value, 1.0 - value], -1))
 
     def sample(self, shape=None):
-        """sample from beta distribution with sample shape 
+        """sample from beta distribution with sample shape.
 
         Args:
-            shape (Tensor): sample shape
+            shape (Tensor): sample shape.
 
         Returns:
-            sampled data
+            sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
         return self._dirichlet.sample(shape).select(-1, 0)
 
@@ -130,6 +152,6 @@ class Beta(ExponentialFamily):
         """entropy of dirichlet distribution
 
         Returns:
-            Tensor: [description]
+            Tensor: entropy.
         """
         return self._dirichlet.entropy()
