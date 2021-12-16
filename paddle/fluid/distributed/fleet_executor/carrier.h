@@ -75,6 +75,11 @@ class Carrier final {
 
   bool IsInit() const;
 
+  // NOTE: This mutex will be used in interceptor's RunOps function.
+  // This mutex is used for avoiding forward ops and backward ops run
+  // simultaneously, which will lead to a random hang for some sync ops.
+  std::mutex run;
+
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
  private:

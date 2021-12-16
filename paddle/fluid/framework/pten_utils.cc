@@ -15,6 +15,7 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -190,8 +191,9 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
-                         GetAttrsArgsNames(), GetOutputArgsNames());
+  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
+                         GetInputArgsNames(), GetAttrsArgsNames(),
+                         GetOutputArgsNames());
 }
 
 std::string KernelSignatureToString(const KernelSignature& signature) {

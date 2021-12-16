@@ -17,15 +17,11 @@ limitations under the License. */
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
@@ -49,32 +45,32 @@ void Scale(const CUDAContext& dev_ctx,
            DenseTensor* out);
 
 template <typename T>
-void ElementwiseAdd(const CUDAContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Add(const CUDAContext& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& y,
+         int axis,
+         DenseTensor* out);
 
 template <typename T>
-void ElementwiseSub(const CUDAContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Subtract(const CUDAContext& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              int axis,
+              DenseTensor* out);
 
 template <typename T>
-void ElementwiseDiv(const CUDAContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Divide(const CUDAContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            int axis,
+            DenseTensor* out);
 
 template <typename T>
-void ElementwiseMul(const CUDAContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Multiply(const CUDAContext& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              int axis,
+              DenseTensor* out);
 
 template <typename T>
 void Sum(const CUDAContext& dev_ctx,
@@ -90,11 +86,11 @@ void Sum(const CUDAContext& dev_ctx,
 
 #define DEFINE_CUDA_ELEMENTWISE_OP(name)                               \
   template <typename T>                                                \
-  void Elementwise##name(const CUDAContext& dev_ctx,                   \
-                         const DenseTensor& x,                         \
-                         const DenseTensor& y,                         \
-                         int axis,                                     \
-                         DenseTensor* out) {                           \
+  void name(const CUDAContext& dev_ctx,                                \
+            const DenseTensor& x,                                      \
+            const DenseTensor& y,                                      \
+            int axis,                                                  \
+            DenseTensor* out) {                                        \
     std::vector<const DenseTensor*> inputs;                            \
     std::vector<DenseTensor*> outputs;                                 \
     inputs.emplace_back(&x);                                           \
