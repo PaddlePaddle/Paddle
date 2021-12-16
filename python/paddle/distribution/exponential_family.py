@@ -16,23 +16,16 @@ from .distribution import Distribution
 
 
 class ExponentialFamily(Distribution):
-    """[summary]
-
-    Args:
-        Distribution ([type]): [description]
+    """ Base class for exponential family distribution.
     """
 
     def _natural_params(self):
-        """[summary]
-        """
         raise NotImplementedError
 
     def _log_normalizer(self):
-        """[summary]
-        """
         raise NotImplementedError
 
     def entropy(self):
-        """
+        """entropy
         """
         raise NotImplementedError

@@ -25,11 +25,9 @@ from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'alpha', 'beta'),
-    [
-        ('test-scale', 1.0, 2.0),
-        ('test-tensor', np.random.rand(5, 10) + 5, np.random.rand(5, 10) + 5),
-        # ('test-broadcast', np.random.rand(2, 1), np.random.rand(2, 5) + 1)
-    ])
+    [('test-scale', 1.0, 2.0),
+     ('test-tensor', np.random.rand(5, 10) + 5, np.random.rand(5, 10) + 5),
+     ('test-broadcast', np.random.rand(2, 1), np.random.rand(2, 5) + 1)])
 class TestBeta(unittest.TestCase):
     def setUp(self):
         # scale no need convert to tensor for scale input unittest

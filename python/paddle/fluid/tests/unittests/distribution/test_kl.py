@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -78,6 +78,20 @@ class TestKLDirichletDirichlet(unittest.TestCase):
                      (scipy.special.digamma(conc1) -
                       scipy.special.digamma(np.sum(conc1, -1, keepdims=True))),
                      -1))
+
+
+class DummyDistribution(paddle.distribution.Distribution):
+    pass
+
+
+@config.place(config.DEVICES)
+@config.parameterize(
+    (config.TEST_CASE_NAME, 'p', 'q'),
+    [('test-unregister', DummyDistribution(), DummyDistribution)])
+class TestDispatch(unittest.TestCase):
+    def test_dispatch_with_unregister(self):
+        with self.assertRaises(NotImplementedError):
+            paddle.distribution.kl_divergence(self.p, self.q)
 
 
 if __name__ == '__main__':
