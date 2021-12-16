@@ -12,21 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/kernels/scale_kernel.h"
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace pten {
-namespace eigen {
 
-template <typename DevCtx, typename T>
-void Scale(const DevCtx& dev_ctx,
+template <typename T, typename ContextT>
+void Scale(const ContextT& dev_ctx,
            const DenseTensor& x,
-           float scale,
+           const Scalar& scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
@@ -42,10 +44,41 @@ void Scale(const DevCtx& dev_ctx,
       dev,
       eigen_out,
       eigen_x,
-      static_cast<T>(scale),
+      scale.to<T>(),
       static_cast<T>(bias),
       bias_after_scale);
 }
 
-}  // namespace eigen
 }  // namespace pten
+
+// TODO(chenweihang): Use EigenContext to specialize the ContextT parameter,
+// and only register the backend as Eigen's kernel during registration,
+// instead of using macros to register the CPU and CUDA kernels separately
+
+PT_REGISTER_CTX_KERNEL(scale,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::Scale,
+                       float,
+                       double,
+                       paddle::platform::bfloat16,
+                       uint8_t,
+                       int8_t,
+                       int16_t,
+                       int,
+                       int64_t) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_REGISTER_CTX_KERNEL(scale,
+                       CUDA,
+                       ALL_LAYOUT,
+                       pten::Scale,
+                       float,
+                       double,
+                       paddle::platform::float16,
+                       uint8_t,
+                       int8_t,
+                       int16_t,
+                       int,
+                       int64_t) {}
+#endif
