@@ -236,11 +236,18 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             self.assertTrue(tensor2.place.is_cpu_place())
             tensor2.persistable = True
             tensor2.stop_gradient = False
-            tensor3 = tensor2._copy_to(True, core.CUDAPlace(0))
-            self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
-            self.assertTrue(tensor3.persistable, True)
-            self.assertTrue(tensor3.stop_gradient, True)
-            self.assertTrue(tensor3.place.is_gpu_place())
+            if core.is_compiled_with_cuda():
+                tensor3 = tensor2._copy_to(True, core.CUDAPlace(0))
+                self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+                self.assertTrue(tensor3.persistable, True)
+                self.assertTrue(tensor3.stop_gradient, True)
+                self.assertTrue(tensor3.place.is_gpu_place())
+            else:
+                tensor3 = tensor2._copy_to(True, core.CPUPlace())
+                self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+                self.assertTrue(tensor3.persistable, True)
+                self.assertTrue(tensor3.stop_gradient, True)
+                self.assertTrue(tensor3.place.is_gpu_place())
 
     def test_properties(self):
         print("Test_properties")
