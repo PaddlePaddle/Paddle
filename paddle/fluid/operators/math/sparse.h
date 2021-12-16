@@ -53,6 +53,11 @@ class Sparse {
   void DenseToSparseCsr(const int M, const int N, const T* dense,
                         int64_t* crows, int64_t* cols, T* values) const;
 
+  template <typename T>
+  void SparseCsrToDense(const int M, const int N, const int nnz,
+                        const int64_t* crows, const int64_t* cols,
+                        const T* values, T* dense) const;
+
  private:
   const DeviceContext& context_;
 };
@@ -74,6 +79,10 @@ class SparseT : private Sparse<DeviceContext> {
   template <typename... ARGS>
   void DenseToSparseCsr(ARGS... args) const {
     Base()->template DenseToSparseCsr(args...);
+  }
+  template <typename... ARGS>
+  void SparseCsrToDense(ARGS... args) const {
+    Base()->template SparseCsrToDense(args...);
   }
 
  private:

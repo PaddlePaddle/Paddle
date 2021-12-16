@@ -162,6 +162,39 @@ void Sparse<platform::CUDADeviceContext>::DenseToSparseCsr(
   });
 }
 
+template <>
+template <typename T>
+void Sparse<platform::CUDADeviceContext>::SparseCsrToDense(
+    const int M, const int N, const int nnz, const int64_t* crows,
+    const int64_t* cols, const T* values, T* dense) const {
+  cusparseSpMatDescr_t matA;
+  cusparseDnMatDescr_t matB;
+
+  cudaDataType_t dtype = GetGpuDataType<T>();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCsr(
+      &matA, M, N, nnz, crows, cols, values, CUSPARSE_INDEX_64I,
+      CUSPARSE_INDEX_64I, CUSPARSE_INDEX_BASE_ZERO, dtype));
+
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateDnMat(
+      &matB, M, N, N, const_cast<void*>(reinterpret_cast<const void*>(dense)),
+      dtype, CUSPARSE_ORDER_ROW));
+
+  size_t buffer_size = 0;
+  context_.CusparseCall([&](cusparseHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusparseSparseToDense_bufferSize(
+            handle, matA, matB, CUSPARSE_SPARSETODENSE_ALG_DEFAULT,
+            &buffer_size));
+  });
+  framework::Tensor buffer;
+  float* buffer_data = buffer.mutable_data<float>(
+      {static_cast<int64_t>(buffer_size)}, context_.GetPlace());
+
+  context_.CusparseCall([&](cusparseHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseSparseToDense(
+        handle, matA, matB, CUSPARSE_SPARSETODENSE_ALG_DEFAULT, buffer_data));
+  });
+}
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

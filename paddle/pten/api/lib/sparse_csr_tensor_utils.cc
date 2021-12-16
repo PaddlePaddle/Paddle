@@ -24,12 +24,11 @@ limitations under the License. */
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/include/core.h"
 
-// PT_DECLARE_MODULE(SparseCsrTensorUtilsCPU);
 PT_DECLARE_KERNEL(to_sparse_csr, CPU);
 
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// PT_DECLARE_MODULE(SparseCooTensorUtilCUDA);
-// #endif
+#if defined(PADDLE_WITH_CUDA)
+PT_DECLARE_KERNEL(to_sparse_csr, CUDA);
+#endif
 
 namespace paddle {
 namespace experimental {
