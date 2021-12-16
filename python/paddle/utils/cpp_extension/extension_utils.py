@@ -35,7 +35,6 @@ try:
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
-from .rw_lock import RWLOCK
 from ...fluid import core
 from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
@@ -864,13 +863,13 @@ def _generate_python_module(module_name,
                             module_name + '_' + thread_id + '.py')
     log_v("generate api file: {}".format(api_file), verbose)
 
+    # delete the temp file before exit python process    
+    atexit.register(lambda: remove_if_exit(api_file))
+
     # write into .py file with RWLock
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))
-
-    # delete the temp file before exit python process    
-    atexit.register(lambda: remove_if_exit(api_file))
 
     # load module
     custom_module = _load_module_from_file(api_file, module_name, verbose)
