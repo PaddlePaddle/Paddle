@@ -84,7 +84,7 @@ class AbstractAutogradMeta {
  * another simple Tensor design may be required for inference.
  */
 
-class PD_DLL_DECL Tensor final {
+class PADDLE_API Tensor final {
  public:
   /* Part 1: Construction and destruction methods */
 
@@ -488,9 +488,4 @@ class PD_DLL_DECL Tensor final {
 };
 
 }  // namespace experimental
-}  // namespace paddle
-
-namespace paddle {
-// In order to be compatible with the original custom operator Tensor interface
-using Tensor = paddle::experimental::Tensor;
 }  // namespace paddle

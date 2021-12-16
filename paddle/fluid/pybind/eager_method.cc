@@ -36,14 +36,14 @@ extern PyTypeObject* pEagerTensorType;
 
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
-  EAGER_TRY
-  if (!self->eagertensor.initialized()) {
+  EAGER_SYNC_TRY
+  if (!self->eager_tensor.initialized()) {
     Py_INCREF(Py_None);
     return Py_None;
   }
-  auto tensor_dims = self->eagertensor.shape();
-  auto numpy_dtype = pten::TensorDtype2NumpyDtype(self->eagertensor.type());
-  auto sizeof_dtype = pten::DataTypeSize(self->eagertensor.type());
+  auto tensor_dims = self->eager_tensor.shape();
+  auto numpy_dtype = TensorDtype2NumpyDtype(self->eager_tensor.type());
+  auto sizeof_dtype = pten::DataTypeSize(self->eager_tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
@@ -60,18 +60,18 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);
 
-  if (self->eagertensor.is_cpu()) {
+  if (self->eager_tensor.is_cpu()) {
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(self->eagertensor.impl());
+        std::dynamic_pointer_cast<pten::DenseTensor>(self->eager_tensor.impl());
     platform::CPUPlace place;
     // deep copy
     paddle::memory::Copy(place, reinterpret_cast<void*>(
                                     pybind11::detail::array_proxy(array)->data),
                          place, dense_tensor->data(), sizeof_dtype * numel);
 #if defined(PADDLE_WITH_CUDA)
-  } else if (self->eagertensor.is_cuda()) {
+  } else if (self->eager_tensor.is_cuda()) {
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(self->eagertensor.impl());
+        std::dynamic_pointer_cast<pten::DenseTensor>(self->eager_tensor.impl());
 
     paddle::platform::GpuMemcpySync(
         pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
@@ -92,8 +92,8 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
 static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
-  EAGER_TRY
-  return ToPyObject(self->eagertensor.initialized());
+  EAGER_SYNC_TRY
+  return ToPyObject(self->eager_tensor.initialized());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

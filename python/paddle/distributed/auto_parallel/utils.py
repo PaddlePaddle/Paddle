@@ -13,6 +13,7 @@
 # limitations under the License
 
 import os
+import copy
 import paddle
 import threading
 import numpy as np
@@ -1005,11 +1006,11 @@ def set_grad_var_shape(program, dist_context):
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
                     "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad"
+                    "dropout_grad", "unsqueeze2_grad"
                 ]
                 forward_list = [
                     "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout"
+                    "softmax", "cross_entropy2", "dropout", "unsqueeze2"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
@@ -1036,3 +1037,224 @@ def set_grad_var_shape(program, dist_context):
 
                 if list(grad_var.shape) != ref_shape:
                     grad_var.desc.set_shape(ref_shape)
+
+
+def update_op_dims_mapping_by_default_dist_impl(dist_op):
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    # The following statement will be replaced by a more elegent way
+    if op_desc.type() == "shape" or op_desc.type() == "slice":
+        return False
+    output_names = op_desc.output_names()
+    xshape_arg_names = []
+    if "XShape" in output_names:
+        xshape_arg_names = op_desc.output("XShape")
+    batch_dim_mappings = []
+    for arg_name in op_desc.input_arg_names():
+        serial_tensor = dist_op.get_serial_input(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if len(dims_mapping) > 1:
+            for idx, mapping in enumerate(dims_mapping[1:]):
+                assert mapping == -1, \
+                    "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
+                        .format(op_desc.type(), idx, mapping)
+        batch_dim_mappings.append(dims_mapping[0])
+    for arg_name in op_desc.output_arg_names():
+        serial_tensor = dist_op.get_serial_output(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if arg_name not in xshape_arg_names:
+            if len(dims_mapping) > 1:
+                for idx, mapping in enumerate(dims_mapping[1:]):
+                    assert mapping == -1, \
+                        "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
+                            .format(op_desc.type(), idx, mapping)
+            batch_dim_mappings.append(dims_mapping[0])
+        else:
+            assert dims_mapping[0] == -1, \
+                "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part."\
+                    .format(op_desc.type(), mapping)
+            if len(dims_mapping) > 2:
+                for idx, mapping in enumerate(dims_mapping[2:]):
+                    assert mapping == -1, \
+                        "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {} is sharded by {} part."\
+                            .format(op_desc.type(), idx, mapping)
+            batch_dim_mappings.append(dims_mapping[1])
+
+    compatible_dim_mapping = compute_compatible_dim_mapping(batch_dim_mappings)
+    assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+    for arg_name in op_desc.input_arg_names():
+        serial_tensor = dist_op.get_serial_input(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if compatible_dim_mapping != dims_mapping[0]:
+            dims_mapping[0] = compatible_dim_mapping
+            changed = True
+    for arg_name in op_desc.output_arg_names():
+        serial_tensor = dist_op.get_serial_output(arg_name)
+        if serial_tensor.is_parameter:
+            continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if arg_name not in xshape_arg_names:
+            if compatible_dim_mapping != dims_mapping[0]:
+                dims_mapping[0] = compatible_dim_mapping
+                changed = True
+        else:
+            if compatible_dim_mapping != dims_mapping[1]:
+                dims_mapping[1] = compatible_dim_mapping
+                changed = True
+
+    return changed
+
+
+def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+    op_desc = dist_op.serial_op.desc
+    input_arg_names = op_desc.input_arg_names()
+    input_dims_mapping_dict = {}
+    input_dims_mapping_lens = {}
+    max_dims_mapping_len = -1
+    for arg_name in input_arg_names:
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if max_dims_mapping_len < len(dims_mapping):
+            max_dims_mapping_len = len(dims_mapping)
+        input_dims_mapping_dict[arg_name] = dims_mapping
+        input_dims_mapping_lens[arg_name] = len(dims_mapping)
+
+    dims_mapping_list = []
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [-1 for _ in range(max_dims_mapping_len)]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[new_idx] = input_dims_mapping_dict[arg_name][i]
+            dims_mapping_list.append(new_dims_mapping)
+        else:
+            dims_mapping_list.append(input_dims_mapping_dict[arg_name])
+    output_arg_names = op_desc.output_arg_names()
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        assert len(dims_mapping) == max_dims_mapping_len
+        dims_mapping_list.append(dims_mapping)
+
+    compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
+    assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [
+                -1 for _ in range(input_dims_mapping_lens[arg_name])
+            ]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[i] = compatible_dims_mapping[new_idx]
+            if new_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+                changed = True
+        else:
+            if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name,
+                                                    compatible_dims_mapping)
+                changed = True
+
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if compatible_dims_mapping != dims_mapping:
+            op_dist_attr.set_output_dims_mapping(arg_name,
+                                                 compatible_dims_mapping)
+            changed = True
+
+    return changed
+
+
+def get_all_distributed_main_program(serial_program_info, dist_context):
+    "Get all distributed main programs by dist_context."
+    from .dist_context import DistributedOperatorContext
+    cluster = serial_program_info.cluster
+    all_dist_main_program = []
+    ranks = paddle.distributed.get_world_size() if cluster is None else len(
+        cluster.get_all_devices("GPU"))
+    for rank_id in range(ranks):
+        used_dist_context = copy.deepcopy(dist_context)
+        used_dist_context._dist_op_context = DistributedOperatorContext()
+        dist_main_program, dist_startup_program = get_specified_distributed_main_program(
+            serial_program_info, used_dist_context, rank_id)
+        all_dist_main_program.append(dist_main_program)
+
+    return all_dist_main_program
+
+
+def get_specified_distributed_main_program(serial_program_info, dist_context,
+                                           rank_id):
+    "Get distributed main program by the given dist_context and rank_id."
+    from .partitioner import Partitioner
+    from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
+    from .process_group import _g_process_group_map, ProcessGroup
+
+    dist_strategy = paddle.distributed.fleet.DistributedStrategy()
+    train_program = serial_program_info.train_program
+    startup_program = serial_program_info.startup_program
+    loss = serial_program_info.loss
+    optimizer = serial_program_info.optimizer
+
+    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    dist_main_program, dist_startup_program = partitioner.transpile_forward(
+        train_program, startup_program)
+    dist_params_grads = partitioner.apply_backward(
+        loss, train_program, startup_program, dist_main_program,
+        dist_startup_program)
+    opt_ops = partitioner.apply_optimize(
+        copy.deepcopy(optimizer), dist_params_grads, dist_main_program,
+        dist_startup_program)
+    set_grad_var_shape(dist_main_program, dist_context)
+    make_data_unshard(dist_main_program, dist_startup_program, dist_context)
+    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
+    HAS_SENT.clear()
+    HAS_RECV.clear()
+    HAS_ALLGATHER.clear()
+
+    _g_process_group_map.clear()
+    _g_process_group_map[0] = ProcessGroup(0, [])
+    return dist_main_program, dist_startup_program
+
+
+class SerialProgramInfo:
+    def __init__(self,
+                 train_program,
+                 satrtup_program,
+                 loss,
+                 optimizer,
+                 cluster=None):
+        self._train_program = train_program
+        self._startup_program = satrtup_program
+        self._loss = loss
+        self._optimizer = optimizer
+        self._cluster = cluster
+
+    @property
+    def train_program(self):
+        return self._train_program
+
+    @property
+    def startup_program(self):
+        return self._startup_program
+
+    @property
+    def loss(self):
+        return self._loss
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @property
+    def cluster(self):
+        return self._cluster

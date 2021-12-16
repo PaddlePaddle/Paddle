@@ -29,6 +29,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -252,12 +253,16 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
   InitVarBaseAndTensor(self, array, place, "");
 }
 
-static void InitVarBaseFromTensorWithArgDefault(
-    imperative::VarBase *self, const framework::Tensor &tensor) {
+static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
+                                                const framework::Tensor &tensor,
+                                                const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
-  new (self) imperative::VarBase(
-      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  auto name_ = name == ""
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
+  new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
@@ -275,10 +280,14 @@ static void InitVarBaseFromTensorWithArgDefault(
 template <typename P>
 static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
                                          const framework::Tensor &tensor,
-                                         const P &place) {
+                                         const P &place,
+                                         const std::string &name) {
   VLOG(4) << "Init VarBase";
-  new (self) imperative::VarBase(
-      imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor"));
+  auto name_ = name == ""
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
+  new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor.type());
@@ -860,9 +869,18 @@ void BindImperative(py::module *m_ptr) {
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
   m.def("_switch_tracer",
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
-          imperative::SetCurrentTracer(tracer);
+          if (egr::Controller::Instance().InEagerMode()) {
+            egr::Controller::Instance().SetCurrentTracer(tracer);
+          } else {
+            imperative::SetCurrentTracer(tracer);
+          }
         });
-
+  m.def("_enable_eager_mode",
+        []() { egr::Controller::Instance().SetInEagerMode(true); });
+  m.def("_disable_eager_mode",
+        []() { egr::Controller::Instance().SetInEagerMode(false); });
+  m.def("_in_eager_mode",
+        []() { return egr::Controller::Instance().InEagerMode(); });
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
       m, "VarBase", R"DOC()DOC");
   g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
@@ -917,17 +935,18 @@ void BindImperative(py::module *m_ptr) {
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
-      .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
+      .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"),
+           py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CPUPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::XPUPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
-           py::arg("tensor"), py::arg("place"))
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
           "__setitem_varbase__",
@@ -960,6 +979,11 @@ void BindImperative(py::module *m_ptr) {
                 return false;
               }
             };
+
+            // NOTE(liym27):
+            // Increase the version of VarBase self because __setitem__ is an
+            // inplace operator for the VarBase self.
+            self->BumpInplaceVersion();
 
             // 1. Check argumnets
             bool parse_index = true;
@@ -1128,10 +1152,6 @@ void BindImperative(py::module *m_ptr) {
               SetTensorFromPyArray(self_tensor, self_numpy,
                                    self_tensor->place(), false);
             }
-            // NOTE(liym27):
-            // Increase the version of VarBase self because __setitem__ is an
-            // inplace operator for the VarBase self.
-            self->BumpInplaceVersion();
           })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -1538,7 +1558,7 @@ void BindImperative(py::module *m_ptr) {
              self.MutableGradVarBase()->SetType(type);
            })
       .def("_reset_grad_inplace_version",
-           [](imperative::VarBase &self) {
+           [](imperative::VarBase &self, bool set_to_zero) {
              /*
              *** This interfaceis a complete hack ***
              reset_grad_inplace_version removes all inplace related records to
@@ -1550,15 +1570,20 @@ void BindImperative(py::module *m_ptr) {
              Make sure you fully understand what you're doing before make use of
              this interface, and prepare for the worst.
              */
+             py::gil_scoped_release release;
+
              if (self.HasGradVar()) {
                auto grad_var = self.GradVarBase();
                auto var_wrapper = grad_var->SharedVar();
-               if (var_wrapper) var_wrapper->ResetInplaceVersion();
+               if (var_wrapper) {
+                 var_wrapper->ResetInplaceVersion(set_to_zero);
+               }
              }
            })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
+
              if (grad_var && grad_var->Var().IsInitialized()) {
                auto *tensor =
                    grad_var->MutableVar()->IsType<framework::LoDTensor>()
@@ -1567,6 +1592,7 @@ void BindImperative(py::module *m_ptr) {
                        : grad_var->MutableVar()
                              ->GetMutable<framework::SelectedRows>()
                              ->mutable_value();
+
                if (tensor->IsInitialized()) {
                  return grad_var;
                }

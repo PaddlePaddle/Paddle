@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/math.h"
-#include "paddle/pten/kernels/functions/general/reduce_impl.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
@@ -326,6 +326,67 @@ class BoolReduceKernel : public framework::OpKernel<OutT> {
   }
 };
 
+template <typename DeviceContext, typename T, typename Functor>
+void LaunchReduceGradKernel(const framework::ExecutionContext& context,
+                            const framework::Tensor* input0,
+                            const framework::Tensor* input1,
+                            const framework::Tensor* input2,
+                            paddle::framework::Tensor* output,
+                            const std::vector<int>& dims,
+                            bool reduce_all = false) {
+  if (reduce_all) {
+    auto x = EigenVector<T>::Flatten(*input0);
+    auto x_reduce = EigenVector<T>::Flatten(*input1);
+    auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
+    auto x_grad = EigenVector<T>::Flatten(*output);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto broadcast_dim =
+        Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
+    Functor functor;
+    functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+            broadcast_dim[0]);
+  } else {
+    int rank = input0->dims().size();
+    switch (rank) {
+      case 1:
+        ReduceGradFunctor<DeviceContext, T, 1, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, dims);
+        break;
+      case 2:
+        ReduceGradFunctor<DeviceContext, T, 2, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, dims);
+        break;
+      case 3:
+        ReduceGradFunctor<DeviceContext, T, 3, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, dims);
+        break;
+      case 4:
+        ReduceGradFunctor<DeviceContext, T, 4, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, dims);
+        break;
+      case 5:
+        ReduceGradFunctor<DeviceContext, T, 5, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, dims);
+        break;
+      case 6:
+        ReduceGradFunctor<DeviceContext, T, 6, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, dims);
+        break;
+      default:
+        HandleLargeDimGrad<DeviceContext, T, Functor>(context, input0, input1,
+                                                      input2, output, dims);
+        break;
+    }
+  }
+}
+
 template <typename DeviceContext, typename T, typename Functor,
           bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
@@ -362,61 +423,13 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       input1 = input2;
     }
 
+    const std::vector<int> const_dims = dims;
+
     // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
     // not be set as Input in grad Maker, use Out_grad to replace here
     if (!input1) input1 = input2;
-
-    if (reduce_all) {
-      auto x = EigenVector<T>::Flatten(*input0);
-      auto x_reduce = EigenVector<T>::Flatten(*input1);
-      auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
-      auto x_grad = EigenVector<T>::Flatten(*output);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      auto broadcast_dim =
-          Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
-      Functor functor;
-      functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
-              broadcast_dim[0]);
-    } else {
-      int rank = input0->dims().size();
-      switch (rank) {
-        case 1:
-          ReduceGradFunctor<DeviceContext, T, 1, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 2:
-          ReduceGradFunctor<DeviceContext, T, 2, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 3:
-          ReduceGradFunctor<DeviceContext, T, 3, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 4:
-          ReduceGradFunctor<DeviceContext, T, 4, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 5:
-          ReduceGradFunctor<DeviceContext, T, 5, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 6:
-          ReduceGradFunctor<DeviceContext, T, 6, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        default:
-          HandleLargeDimGrad<DeviceContext, T, Functor>(context, input0, input1,
-                                                        input2, output, dims);
-          break;
-      }
-    }
+    LaunchReduceGradKernel<DeviceContext, T, Functor>(
+        context, input0, input1, input2, output, const_dims, reduce_all);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -657,7 +670,8 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp>
+template <typename T, template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -669,15 +683,19 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     std::vector<int> reduce_dims =
         GetReduceDim(dims, input->dims().size(), reduce_all);
-
+    int reduce_num = 1;
+    for (int i = 0; i < input->dims().size(); i++) {
+      reduce_num *= (input->dims())[i];
+    }
     gpuStream_t stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+          TensorReduceFunc<T, ReduceOp, TransformOp>(
+              *input, output, reduce_dims, reduce_num, stream));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, T>>(
+          *input, output, TransformOp<T, T>(reduce_num), reduce_dims, stream);
     }
   }
 };

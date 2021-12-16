@@ -807,6 +807,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
+                           ->assert_is_persistable_var()
                            ->AsInput();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
@@ -1619,6 +1620,26 @@ PDNode *patterns::Reshape::operator()() {
   return reshape_out;
 }
 
+PDNode *patterns::Slice::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto slice_op = pattern->NewNode(slice_op_repr())->assert_is_op("slice");
+
+  auto slice_in = pattern->NewNode(slice_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("slice", "Input");
+  auto slice_out = pattern->NewNode(slice_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("slice", "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({slice_in});
+  slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
+  next_op->LinksFrom({slice_out});
+  return slice_out;
+}
+
 PDNode *patterns::Matmul::operator()() {
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
 
@@ -2315,7 +2336,7 @@ PDNode *patterns::QuantizePlacement::operator()(
       std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
                                        "fc", "matmul", "pool2d", "prior_box",
                                        "reshape2", "transpose2", "fusion_gru",
-                                       "fusion_lstm", "multi_gru"});
+                                       "fusion_lstm", "multi_gru", "slice"});
   if (!quantize_enabled_op_types.empty()) {
     supported_op_types = quantize_enabled_op_types;
   }
@@ -2390,6 +2411,23 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
   op->LinksFrom({prev_out}).LinksTo({op_out});
   next_op->LinksFrom({op_out});
   return next_op;
+}
+
+PDNode *patterns::UnsupportedBfloat16::operator()() {
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->HasAttr("mkldnn_data_type") == false;
+  });
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  prev_op->LinksTo({prev_out});
+  op->LinksFrom({prev_out});
+  return op;
 }
 
 PDNode *patterns::LastBfloat16Ops::operator()() {
@@ -2691,12 +2729,13 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
 }
 
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
-    bool with_reshape_xshape, bool with_transpose_xshape) {
+    const std::string &op_name, bool with_reshape_xshape,
+    bool with_transpose_xshape) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto reshape_in = pattern->NewNode(reshape_in_repr())
                         ->AsInput()
@@ -2717,7 +2756,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_op_input("matmul")
+                           ->assert_is_op_input(op_name)
                            ->assert_is_op_output("transpose2", "Out");
   if (!with_transpose_xshape)
     transpose_out->assert_is_only_output_of_op("transpose2");
@@ -2731,7 +2770,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output(op_name, "Out");
 
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
   if (with_reshape_xshape) reshape_op->LinksTo({reshape_xshape});

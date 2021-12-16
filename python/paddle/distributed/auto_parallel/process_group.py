@@ -19,10 +19,6 @@ from ..collective import _new_ring_id
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers.tensor import fill_constant
 
-# Note that Process group 0 is reserved for representing all ranks.
-# At the begining, group 0 is empty and new ranks will be added automatically. 
-_g_process_group_map = {}
-
 
 def get_all_process_groups():
     global _g_process_group_map
@@ -32,6 +28,11 @@ def get_all_process_groups():
 def get_process_group(group_id):
     global _g_process_group_map
     return _g_process_group_map.get(group_id, None)
+
+
+def get_world_process_groups():
+    global _g_process_group_map
+    return _g_process_group_map[0]
 
 
 def new_process_group(ranks):
@@ -151,4 +152,7 @@ class ProcessGroup:
         return string
 
 
+# Note that Process group 0 is reserved for representing all ranks.
+# At the begining, group 0 is empty and new ranks will be added automatically. 
+_g_process_group_map = {}
 _g_process_group_map[0] = ProcessGroup(0, [])
