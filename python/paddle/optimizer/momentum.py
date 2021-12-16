@@ -122,18 +122,17 @@ class Momentum(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(
-            self,
-            learning_rate=0.001,
-            momentum=0.9,
-            parameters=None,
-            use_nesterov=False,
-            weight_decay=None,
-            grad_clip=None,
-            multi_precision=False,
-            rescale_grad=1.0,
-            use_multi_tensor=False,
-            name=None, ):
+    def __init__(self,
+                 learning_rate=0.001,
+                 momentum=0.9,
+                 parameters=None,
+                 use_nesterov=False,
+                 weight_decay=None,
+                 grad_clip=None,
+                 multi_precision=False,
+                 rescale_grad=1.0,
+                 use_multi_tensor=False,
+                 name=None):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         if momentum is None:
