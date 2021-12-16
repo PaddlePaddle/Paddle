@@ -147,11 +147,12 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        if (FLAGS_use_stream_safe_cuda_allocator) {
-          LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
-                          "naive_best_fit strategy";
-          FLAGS_use_stream_safe_cuda_allocator = false;
-        }
+        PADDLE_ENFORCE_EQ(
+            FLAGS_use_stream_safe_cuda_allocator, false,
+            paddle::platform::errors::Unimplemented(
+                "StreamSafeCUDAAllocator is only implemented for auto_growth "
+                "strategy, not support naive_best_fit strategy"));
+
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
@@ -218,11 +219,11 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        if (FLAGS_use_stream_safe_cuda_allocator) {
-          LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
-                          "thread_local strategy";
-          FLAGS_use_stream_safe_cuda_allocator = false;
-        }
+        PADDLE_ENFORCE_EQ(
+            FLAGS_use_stream_safe_cuda_allocator, false,
+            paddle::platform::errors::Unimplemented(
+                "StreamSafeCUDAAllocator is only implemented for auto_growth "
+                "strategy, not support thread_local strategy"));
 
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
