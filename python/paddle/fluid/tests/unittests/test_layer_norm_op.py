@@ -26,6 +26,8 @@ from op_test import _set_use_system_allocator
 from paddle.fluid import Program, program_guard
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
+paddle.enable_static()
+
 np.random.random(123)
 
 _set_use_system_allocator(True)
@@ -379,5 +381,4 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
