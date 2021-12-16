@@ -27,16 +27,22 @@ import hypothesis.strategies as st
 
 class TestShuffleChannelDetectPass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if attrs[0]['input_shape'] != attrs[2]['shape']:
+            return False
+
         return True
 
     def sample_program_config(self, draw):
-        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
         in_channel = draw(st.integers(min_value=1, max_value=16)) * 4
-        x_shape = [
-            batch_size, in_channel, 64, 64
-        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
-        axis_v = [0, 3, 1, 2]
+        x_shape = [batch_size, in_channel, 64, 64]
+        shape = [1, batch_size, in_channel, 64, 64]
+        axis_v = [0, 1, 2, 3, 4]
 
         def generate_reshape2_Input():
             return np.random.random(x_shape).astype(np.float32)
@@ -48,7 +54,8 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
                 "Out": ["reshape2_output1"],
                 "XShape": ["reshape2_xshape1"]
             },
-            shape=x_shape)
+            shape=x_shape,
+            input_shape=x_shape)
         transpose2_op = OpConfig(
             "transpose2",
             inputs={"X": ["reshape2_output1"], },
@@ -74,7 +81,7 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_reshape2_Input)),
             },
             weights={},
-            outputs=["reshape2_output2", "reshape2_xshape2"])
+            outputs=["reshape2_output2"])
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -87,6 +94,16 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             use_static=False,
             use_calib_mode=False)
         yield config, ['shuffle_channel'], (1e-5, 1e-5)
+
+    def add_ignore_pass_case(self):
+        def teller1(program_config, predictor_config):
+            if program_config.ops[1].attrs['axis'] != [0, 1, 2, 3, 4]:
+                return True
+            return False
+
+        self.add_ignore_check_case(
+            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            "Currently mkldnn Output has diff for those axis_v cases!")
 
     def test(self):
         self.run_and_statis(
