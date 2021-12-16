@@ -726,7 +726,7 @@ template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
           typename TransformOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
                                const ReduceOp& reducer,
-                               const TransformOp transform, MPType init,
+                               const TransformOp& transform, MPType init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
   if (config.reduce_type == kReduceLastDim) {
     int stride_reduce = 1;
@@ -817,7 +817,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 template <typename Tx, typename Ty, template <typename> class ReduceOp,
           typename TransformOp>
 void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
-                             const TransformOp transform,
+                             const TransformOp& transform,
                              std::vector<int> origin_reduce_dims,
                              gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
