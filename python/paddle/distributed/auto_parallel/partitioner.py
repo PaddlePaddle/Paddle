@@ -310,9 +310,10 @@ class Partitioner(object):
                 if isinstance(var, Parameter):
                     # TODO if var not belong to this rank, should be filtered
                     serial_main_var = serial_main_block.var(var.name)
-                    dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                    dist_tensor = self._dist_context.get_dist_tensor_for_program(
                         serial_main_var)
-                    target_shape = _get_dist_shape(serial_main_var, dist_attr)
+                    target_shape = dist_tensor.get_local_partition_info(
+                        self._rank_id).size
                     new_name = var.name + self._dist_varname_suffix
                     temp_varname_map[var.name] = new_name
                     _partition_parameter(self._dist_context, serial_main_var,
@@ -692,28 +693,6 @@ def _is_distributed(dist_attr):
     return False
 
 
-def _get_dist_shape(var, dist_attr):
-
-    var_shape = var.shape
-    mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
-    assert len(var_shape) == len(
-        mapping
-    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
-        var_shape, mapping)
-    new_shape = []
-    for idx in range(len(var_shape)):
-        if var_shape[idx] == -1 or mapping[idx] == -1:
-            new_shape.append(var_shape[idx])
-        else:
-            assert var_shape[idx] % mesh[mapping[
-                idx]] == 0, "un-event partition: var_shape[idx]=[{}], mesh[{}]".format(
-                    var_shape[idx], mesh[mapping[idx]])
-            new_shape.append(var_shape[idx] // mesh[mapping[idx]])
-
-    return new_shape
-
-
 def _partition_parameter(dist_context, src_var, dst_block, dst_varname,
                          dst_shape):
     # NOTE hack to copied Parameter
@@ -784,8 +763,9 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
             persistable=True,
             stop_gradient=True)
     else:
-        dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
-        target_shape = _get_dist_shape(src_var, dist_attr)
+        dist_tensor = self._dist_context.get_dist_tensor_for_program(
+            serial_main_var)
+        target_shape = dist_tensor.get_local_partition_info(self._rank_id).size
 
         if isinstance(src_var, Parameter):
             _partition_parameter(dist_context, src_var, dst_block, dst_varname,

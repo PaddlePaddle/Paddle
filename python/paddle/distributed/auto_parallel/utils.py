@@ -18,6 +18,7 @@ import threading
 import numpy as np
 import warnings
 import logging
+from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.framework.io import _to_LodTensor
@@ -768,19 +769,19 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
 def _merge_parameter_with_dist_attr(param_list, dist_attr):
     """ Merge parameter with distributed attribute """
-    from .reshard import _compute_complete_shape, _compute_partition_index
+    from .dist_tensor import DistributedTensor
 
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
-    complete_shape = _compute_complete_shape(param_list[0].shape, process_shape,
-                                             dims_mapping)
+    complete_shape = compute_complete_shape(param_list[0].shape, process_shape,
+                                            dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
     merged_partiton = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = DistributedTensor.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         if partition_index not in merged_partiton:
@@ -926,9 +927,9 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
                                             process_shape, process_group)
             # index: 2
     """
-    from .reshard import _compute_partition_index
+    from .dist_tensor import DistributedTensor
 
-    partition_index = _compute_partition_index(
+    partition_index = DistributedTensor.compute_partition_index(
         rank, complete_shape, dims_mapping, process_shape, process_group)
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
@@ -965,11 +966,11 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
             # index: [[], [], [2, 4]]
     """
-    from .reshard import _compute_partition_index
+    from .dist_tensor import DistributedTensor
 
     split_indices_list = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = DistributedTensor.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         if split_indices_list:
             for dim in range(len(partition_index)):
@@ -1172,3 +1173,41 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
             changed = True
 
     return changed
+
+
+def compute_partition_shape(complete_shape, dims_mapping, process_shape):
+    """Compute the shape of partition."""
+    partition_shape = []
+    for idx, item in enumerate(complete_shape):
+        if dims_mapping[idx] == -1:
+            partition_shape.append(item)
+        else:
+            partition_shape.append(item // process_shape[dims_mapping[idx]])
+
+    return partition_shape
+
+
+def compute_process_index(process, process_group, process_shape):
+    """Compute the index of process_shape corresponding to the process."""
+    relative_process = process_group.index(process)
+    process_index = []
+    product = reduce(lambda x, y: x * y, process_shape)
+
+    for i in range(len(process_shape)):
+        idx = relative_process // (product // process_shape[i])
+        product = product // process_shape[i]
+        relative_process = relative_process - relative_process // product * product
+        process_index.append(idx)
+
+    return process_index
+
+
+def compute_complete_shape(slice_shape, process_shape, dims_mapping):
+    """compute the complete shape of the slice tensor  with its process mesh and dims mapping"""
+    complete_shape = []
+    for idx, item in enumerate(slice_shape):
+        if dims_mapping[idx] == -1:
+            complete_shape.append(item)
+        else:
+            complete_shape.append(item * process_shape[dims_mapping[idx]])
+    return complete_shape

@@ -25,6 +25,7 @@ from ..collective import _get_global_env
 from .dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from .process_group import new_process_group, ProcessGroup, _g_process_group_map
+from .utils import compute_complete_shape
 
 
 class AllGatherOpDesc:
@@ -171,54 +172,6 @@ class ConcatOpDesc:
         return f"op: {self._desc}, partition_index_list: {self._partition_index_list}."
 
 
-def _compute_partition_shape(complete_shape, dims_mapping, process_shape):
-    """Compute the shape of partition."""
-    partition_shape = []
-    for idx, item in enumerate(complete_shape):
-        if dims_mapping[idx] == -1:
-            partition_shape.append(item)
-        else:
-            partition_shape.append(item // process_shape[dims_mapping[idx]])
-
-    return partition_shape
-
-
-def _compute_process_index(process, process_group, process_shape):
-    """Compute the index of process_shape corresponding to the process."""
-    relative_process = process_group.index(process)
-    process_index = []
-    product = reduce(lambda x, y: x * y, process_shape)
-
-    for i in range(len(process_shape)):
-        idx = relative_process // (product // process_shape[i])
-        product = product // process_shape[i]
-        relative_process = relative_process - relative_process // product * product
-        process_index.append(idx)
-
-    return process_index
-
-
-def _compute_partition_index(process, complete_shape, dims_mapping,
-                             process_shape, process_group):
-    """Compute the partition index in complete tensor."""
-    partition_shape = _compute_partition_shape(complete_shape, dims_mapping,
-                                               process_shape)
-    process_index = _compute_process_index(process, process_group,
-                                           process_shape)
-    partition_index = []
-
-    for i in range(len(complete_shape)):
-        if dims_mapping[i] == -1:
-            partition_index.append([0, partition_shape[i]])
-        else:
-            partition_index.append([
-                process_index[dims_mapping[i]] * partition_shape[i],
-                (process_index[dims_mapping[i]] + 1) * partition_shape[i]
-            ])
-
-    return partition_index
-
-
 def _compute_concat_info(partition_index_x, partition_index_y):
     """Judge whether two partition can be concatenated and compute concatenated partition index."""
     differ_count = 0
@@ -296,17 +249,6 @@ def _need_reshard(dist_tensor, dist_op):
     return is_reshard
 
 
-def _compute_complete_shape(slice_shape, process_shape, dims_mapping):
-    """compute the complete shape of the slice tensor  with its process mesh and dims mapping"""
-    complete_shape = []
-    for idx, item in enumerate(slice_shape):
-        if dims_mapping[idx] == -1:
-            complete_shape.append(item)
-        else:
-            complete_shape.append(item * process_shape[dims_mapping[idx]])
-    return complete_shape
-
-
 def find_op_desc_seq(dist_tensor, dist_op):
     """
     Find the op description sequence to reshard the source tensor for matching the op requirement.
@@ -333,7 +275,7 @@ def find_op_desc_seq(dist_tensor, dist_op):
     target_process_group = target_process_mesh.processes
     target_process_shape = target_process_mesh.topology
 
-    complete_shape = _compute_complete_shape(
+    complete_shape = compute_complete_shape(
         source_tensor.shape, source_process_shape, source_dims_mapping)
     op_desc_seq = {}
 
