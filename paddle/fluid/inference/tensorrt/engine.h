@@ -321,6 +321,8 @@ class TensorRTEngine {
             "on the same GPU architecture;\n2. The Paddle Inference version of "
             "generating serialization file and doing inference are "
             "consistent."));
+
+    getEngineInfo();
   }
 
   void SetRuntimeBatch(size_t batch_size);
@@ -536,6 +538,17 @@ class TensorRTEngine {
           TypeToString(typeid(AttrType*)),
           TypeToString(attrs_.at(attr_name).type())));
     }
+  }
+
+  void getEngineInfo() {
+#if IS_TRT_VERSION_GE(8200)
+    auto infer_inspector_ = infer_engine_->createEngineInspector();
+    infer_inspector_->setExecutionContext(context());
+    VLOG(3) << infer_inspector_->getEngineInformation(
+        nvinfer1::LayerInformationFormat::kJSON);
+#else
+    VLOG(3) << "Inspector needs TensorRT version 8.2 and after."
+#endif
   }
 
  private:
