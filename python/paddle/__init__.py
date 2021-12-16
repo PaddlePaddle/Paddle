@@ -374,6 +374,8 @@ __all__ = [  # noqa
            'equal',
            'equal_all',
            'is_tensor',
+           'is_complex',
+           'is_integer',
            'cross',
            'where',
            'log1p',
