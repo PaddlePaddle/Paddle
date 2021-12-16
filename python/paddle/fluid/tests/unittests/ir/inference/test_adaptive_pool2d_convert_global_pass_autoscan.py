@@ -109,7 +109,7 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=200,
             passes=["adaptive_pool2d_convert_global_pass"],
             min_success_num=40)
 
