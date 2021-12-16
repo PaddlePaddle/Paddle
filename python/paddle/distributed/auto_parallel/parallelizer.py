@@ -183,7 +183,7 @@ class AutoParallelizer:
                     pickle.dump(saved_dist_context, dist_context_file)
                     os.environ[
                         'PADDLE_SEARCHED_DIST_CONTEXT_PATH'] = searched_dist_context_path
-                    _logger.info(
+                    logging.info(
                         f"End serialize searched dist attr to {searched_dist_context_path}"
                     )
 
