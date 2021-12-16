@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/prelu.h"
 #include "paddle/fluid/operators/prelu_op.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -123,13 +123,6 @@ class PreluOpGradFunctor {
   }
 };
 
-struct IdentityFunctor {
-  template <typename T>
-  HOSTDEVICE inline T operator()(const T& x) const {
-    return x;
-  }
-};
-
 template <typename DeviceContext, typename T>
 class CUDAPReluGradKernel : public framework::OpKernel<T> {
  public:
@@ -192,9 +185,8 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-    TensorReduce<T, T, cub::Sum, IdentityFunctor>(
-        dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), cub::Sum(),
-        IdentityFunctor(), stream);
+    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        dalpha_tmp, dalpha, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };
 
