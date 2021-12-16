@@ -51,7 +51,6 @@ void PSCore::init_gflag(const std::string& gflags) {
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
-    flags.push_back("-bthread_concurrency=200");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
     flags.push_back("-max_connection_pool_size=1950");
   }

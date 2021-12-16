@@ -269,8 +269,14 @@ class TracedGradOp {
         for (auto& var : vars) {
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              // Because inplace var isn't a leaf var, it should have
+              // dirty_grad_node.
               node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
-            } else {
+            } else if (node_ != var->GradNode()) {
+              // For non-inplace var.
+              // Special case: `set_value` is inplace op, and it can change
+              // the var with `stop_gradient=True` to the var with
+              // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
             }
           }
@@ -347,15 +353,28 @@ class TracedGradOp {
     //  Use original var_wrapper if its inplace_version is not
     //  changed. Otherwise, it will affect the accuracy of the model
     //  results and affect double grad.
-    if (!var_wrapper->MutableVar()->IsInitialized() ||
-        var_wrapper->InplaceVersionSnapshot() ==
-            var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+    if (!var_wrapper->MutableVar()->IsInitialized()) {
       return var_wrapper;
-    } else {
-      VariableWrapper new_var_wrapper = *var_wrapper.get();
-      new_var_wrapper.ResetInplaceVersion();
-      return std::make_shared<VariableWrapper>(new_var_wrapper);
+    } else if (var_wrapper->InplaceVersionSnapshot() ==
+               var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+               var_wrapper->MutableVar()->IsType<framework::SelectedRows>()) {
+      auto* tensor =
+          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+              : var_wrapper->MutableVar()
+                    ->GetMutable<framework::SelectedRows>()
+                    ->mutable_value();
+      if (!tensor->IsInitialized()) {
+        return var_wrapper;
+      }
     }
+
+    auto new_var_wrapper =
+        std::make_shared<VariableWrapper>(*var_wrapper.get());
+    new_var_wrapper->ResetInplaceVersion();
+    return new_var_wrapper;
   }
 
  private:

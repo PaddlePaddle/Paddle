@@ -317,21 +317,28 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
         input1_shape_list = [[4, 32], [2, 4, 32], [4, 2, 4, 32]]
         input2_shape1_list = [[32], [4, 32], [2, 4, 32]]
         input2_shape2_list = [[4, 1], [2, 4, 1], [4, 2, 4, 1]]
-        input2_shape3_list = [[32], [2, 1, 1], [4, 2, 1, 1]]
-        input2_shape4_list = [[32], [4, 32], [4, 1, 1, 1]]
+        input2_shape3_list = [[32], [2, 1, 1], [4, 2, 1, 32]]
+        input2_shape4_list = [[32], [4, 32], [4, 1, 4, 32]]
+        input2_shape5_list = [[32], [2, 1, 32], [4, 1, 1, 32]]
+        input2_shape6_list = [[1, 32], [1, 32], [1, 1, 1, 32]]
         input2_shape_list = [
             input2_shape1_list, input2_shape2_list, input2_shape3_list,
-            input2_shape4_list
+            input2_shape4_list, input2_shape5_list, input2_shape6_list
         ]
         axis1_list = [[-1], [1, -1], [1, -1]]
         axis2_list = [[-1], [0], [0]]
         axis3_list = [[-1], [0], [0]]
         axis4_list = [[-1], [-1], [0]]
-        axis_list = [axis1_list, axis2_list, axis3_list, axis4_list]
+        axis5_list = [[-1, 1], [-1, 0], [-1, 0]]
+        axis6_list = [[-1, 0], [-1, 1], [-1, 0]]
+        axis_list = [
+            axis1_list, axis2_list, axis3_list, axis4_list, axis5_list,
+            axis6_list
+        ]
 
         for i in range(3):
             input1_shape = input1_shape_list[i]
-            for j in range(4):
+            for j in range(6):
                 input2_shape = input2_shape_list[j][i]
                 for op_type in ["elementwise_add", "elementwise_mul"]:
                     for axis in axis_list[j][i]:

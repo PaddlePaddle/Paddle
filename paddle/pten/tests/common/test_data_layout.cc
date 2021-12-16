@@ -19,13 +19,16 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/layout.h"
 
+namespace pten {
+namespace tests {
+
 TEST(DataLayout, OStream) {
   std::ostringstream oss;
   oss << pten::DataLayout::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
   oss << pten::DataLayout::ANY;
-  EXPECT_EQ(oss.str(), "Any");
+  EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
   oss << pten::DataLayout::NHWC;
   EXPECT_EQ(oss.str(), "NHWC");
@@ -44,3 +47,6 @@ TEST(DataLayout, OStream) {
                 std::string::npos);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

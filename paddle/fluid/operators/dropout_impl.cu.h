@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -167,14 +167,14 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto* y_data = y->data<T>();
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #endif
       return;

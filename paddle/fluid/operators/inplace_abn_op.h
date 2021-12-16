@@ -104,7 +104,7 @@ class InplaceABNActivation {
       auto temp2 = (y * temp / static_cast<T>(alpha) + static_cast<T>(1)).log();
       x.device(d) = (y * temp1 + temp2).template cast<T>();
 
-      ELUGradFunctor<T> functor;
+      ELUGradNegativeAlphaFunctor<T> functor;
       compute(ctx, &functor, d, x, y, dy, dx);
     } else {
       PADDLE_THROW(

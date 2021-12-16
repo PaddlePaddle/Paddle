@@ -18,6 +18,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
@@ -27,14 +28,13 @@ namespace pten {
 using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-void FillAnyLike(const CUDAContext& dev_ctx,
-                 const Scalar& val,
-                 DenseTensor* out);
+void FullLike(const CUDAContext& dev_ctx, const Scalar& val, DenseTensor* out);
 
 template <typename T>
-void FillConstant(const CUDAContext& dev_ctx,
-                  const Scalar& val,
-                  DenseTensor* out);
+void Full(const CUDAContext& dev_ctx,
+          const ScalarArray& shape,
+          const Scalar& val,
+          DenseTensor* out);
 
 }  // namespace pten
 

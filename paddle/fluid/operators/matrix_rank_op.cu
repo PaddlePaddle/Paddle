@@ -162,9 +162,9 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
   int ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSgesvdj_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgesvdj_bufferSize(
       handle, jobz, thin_UV, m, n, A, lda, S, U, ldu, V, ldt, &lwork,
       gesvdj_params));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
@@ -173,7 +173,7 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSgesvdj(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgesvdj(
         handle, jobz, thin_UV, m, n, A + stride_A * i, lda, S + k * i,
         U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
         info, gesvdj_params));
@@ -186,7 +186,7 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
 
@@ -203,9 +203,9 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
   int ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDgesvdj_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgesvdj_bufferSize(
       handle, jobz, thin_UV, m, n, A, lda, S, U, ldu, V, ldt, &lwork,
       gesvdj_params));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
@@ -214,7 +214,7 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDgesvdj(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgesvdj(
         handle, jobz, thin_UV, m, n, A + stride_A * i, lda, S + k * i,
         U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
         info, gesvdj_params));
@@ -228,7 +228,7 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
 
@@ -247,14 +247,14 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
   int stride_A = lda * n;
   int lwork = 0;
   syevjInfo_t params = NULL;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnCreateSyevjInfo(&params));
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSsyevj_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
   for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSsyevj(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSsyevj(
         handle, jobz, uplo, n, A + stride_A * i, lda, W + n * i, workspace_ptr,
         lwork, info, params));
 
@@ -268,7 +268,7 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
             "For batch [%d]: CUSolver eigenvalues is not zero. [%d]", i,
             error_info));
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnDestroySyevjInfo(params));
 }
 
@@ -285,15 +285,15 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
   int stride_A = lda * n;
   int lwork = 0;
   syevjInfo_t params = NULL;
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnCreateSyevjInfo(&params));
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDsyevj_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
 
   for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDsyevj(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDsyevj(
         handle, jobz, uplo, n, A + stride_A * i, lda, W + n * i, workspace_ptr,
         lwork, info, params));
     int error_info;
@@ -306,7 +306,7 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
             "For batch [%d]: CUSolver eigenvalues is not zero. [%d]", i,
             error_info));
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnDestroySyevjInfo(params));
 }
 

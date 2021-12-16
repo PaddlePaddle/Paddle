@@ -136,7 +136,7 @@ _op_real_in_out_name = {
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
     "unsqueeze2": [["X"], ["Out"]],
-    "flatten_contiguous_range": [['X'], ["Out", "XShape"]],
+    "flatten_contiguous_range": [['X'], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
