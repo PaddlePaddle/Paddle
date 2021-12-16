@@ -16,13 +16,13 @@ import paddle.fluid.core as core
 import paddle.fluid.eager.eager_tensor_patch_methods as eager_tensor_patch_methods
 import paddle
 import numpy as np
-from paddle.fluid import eager_guard
+from paddle.fluid.framework import _test_eager_guard
 import unittest
 
 
 class EagerOpAPIGenerateTestCase(unittest.TestCase):
     def test_elementwise_add(self):
-        with eager_guard():
+        with _test_eager_guard():
             paddle.set_device("cpu")
             np_x = np.ones([4, 16, 16, 32]).astype('float32')
             np_y = np.ones([4, 16, 16, 32]).astype('float32')
@@ -35,7 +35,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             self.assertTrue(np.array_equal(out_arr, out_arr_expected))
 
     def test_sum(self):
-        with eager_guard():
+        with _test_eager_guard():
             x_data = np.array(
                 [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]]).astype('float32')
             x = paddle.to_tensor(x_data, 'float32')
@@ -45,7 +45,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             self.assertTrue(np.array_equal(out_arr, out_arr_expected))
 
     def test_mm(self):
-        with eager_guard():
+        with _test_eager_guard():
             np_input = np.random.random([16, 32]).astype('float32')
             np_mat2 = np.random.random([32, 32]).astype('float32')
             input = paddle.to_tensor(np_input)
@@ -56,7 +56,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             self.assertTrue(np.allclose(out_arr, out_arr_expected))
 
     def test_sigmoid(self):
-        with eager_guard():
+        with _test_eager_guard():
             np_x = np.array([-0.4, -0.2, 0.1, 0.3]).astype('float32')
             x = paddle.to_tensor(np_x)
             out = paddle.nn.functional.sigmoid(x)

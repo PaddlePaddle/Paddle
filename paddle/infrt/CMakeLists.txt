@@ -75,5 +75,5 @@ set(infrt_mlir_incs
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 
-cc_library(infrt SRCS ${infrt_src} DEPS glog ${mlir_libs} paddle_framework_proto)
+cc_library(infrt SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs})
