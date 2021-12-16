@@ -2,7 +2,7 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -181,7 +181,7 @@ if(WITH_PYTHON)
     ":retry\n"
     "ECHO eager_op_function_generator run %build_times% time\n"
     "taskkill /f /im eager_op_function_generator.exe 2>NUL\n"
-    "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file} ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt\n"
+    "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
     "    if %build_times% GEQ 10 (\n"
@@ -256,7 +256,7 @@ if(WITH_PYTHON)
       add_custom_command(OUTPUT ${eager_impl_file}
             COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
                 "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
-                "${tmp_eager_impl_file}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
+                "${tmp_eager_impl_file}"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
             COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
             DEPENDS ${EAGER_OP_IMPL_DEPS}

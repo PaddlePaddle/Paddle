@@ -605,7 +605,7 @@ EOF
         tmpfile=$tmp_dir/$tmpfile_rand
         set +ex
         ut_startTime_s=`date +%s`
-        get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label="(NIGHTLY_LABEL)"
         else
@@ -979,11 +979,11 @@ function check_coverage() {
 function cp_coverage_message_to_cfs() {
     cast_type=$1
     cd ${PADDLE_ROOT}/build
-    /bin/cp -rf coverage-full.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-full-$cast_type.info 2>/dev/null || :
-    /bin/cp -rf coverage-diff.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-diff-$cast_type.info 2>/dev/null || :
-    /bin/cp -rf python-coverage-full.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-full-$cast_type.info 2>/dev/null || :
-    /bin/cp -rf python-coverage-diff.info /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-diff-$cast_type.info 2>/dev/null || :
-    /bin/cp -rf failed_case.txt /home/data/cfs/coverage/${GIT_PR_ID}/${GIT_COMMIT_ID}/failed_case_$cast_type.txt 2>/dev/null || :
+    /bin/cp -rf coverage-full.info /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-full-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf coverage-diff.info /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-diff-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf python-coverage-full.info /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-full-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf python-coverage-diff.info /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-diff-$cast_type.info 2>/dev/null || :
+    /bin/cp -rf failed_case.txt /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/failed_case_$cast_type.txt 2>/dev/null || :
 }
 
 function single_test() {
@@ -1089,7 +1089,7 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-        disable_ut_quickly=''
+        disable_ut_quickly='disable_ut'
     fi
 }
 
@@ -1238,7 +1238,7 @@ set +x
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
 
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
@@ -2166,7 +2166,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
-        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -2200,7 +2200,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V)        # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -2261,7 +2261,7 @@ EOF
 
 set +x
         test_cases=$(ctest -N -V) # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue

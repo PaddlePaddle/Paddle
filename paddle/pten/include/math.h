@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/math.h"
 #include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
 
@@ -86,7 +87,7 @@ DenseTensor Scale(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Scale<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
+  Scale<T, ContextT>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
 
@@ -100,7 +101,7 @@ DenseTensor Add(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseAdd<T>(dev_ctx, x, y, axis, &dense_out);
+  Add<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -114,7 +115,7 @@ DenseTensor Subtract(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseSub<T>(dev_ctx, x, y, axis, &dense_out);
+  Subtract<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -128,7 +129,7 @@ DenseTensor Divide(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseDiv<T>(dev_ctx, x, y, axis, &dense_out);
+  Divide<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -142,7 +143,7 @@ DenseTensor Multiply(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseMul<T>(dev_ctx, x, y, axis, &dense_out);
+  Multiply<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 }  // namespace pten

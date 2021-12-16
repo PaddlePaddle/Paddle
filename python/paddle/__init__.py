@@ -88,6 +88,7 @@ from .tensor.creation import meshgrid  # noqa: F401
 from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
+from .tensor.creation import complex  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -235,6 +236,8 @@ from .tensor.math import gcd  # noqa: F401
 from .tensor.math import lcm  # noqa: F401
 from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
+from .tensor.math import fmax  # noqa: F401
+from .tensor.math import fmin  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -440,6 +443,7 @@ __all__ = [  # noqa
            'shape',
            'real',
            'imag',
+           'complex',
            'reciprocal',
            'rand',
            'less_equal',
@@ -568,5 +572,7 @@ __all__ = [  # noqa
            'as_real',
            'diff',
            'angle',
+           'fmax',
+           'fmin',
            'moveaxis',
 ]

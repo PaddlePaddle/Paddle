@@ -33,6 +33,7 @@ from .creation import tril  # noqa: F401
 from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
+from .creation import complex  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import norm  # noqa: F401
@@ -202,6 +203,8 @@ from .math import gcd  # noqa: F401
 from .math import lcm  # noqa: F401
 from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
+from .math import fmax  # noqa: F401
+from .math import fmin  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -305,6 +308,8 @@ tensor_method_func  = [ #noqa
            'maximum',
            'min',
            'minimum',
+           'fmax',
+           'fmin',
            'mm',
            'divide',
            'floor_divide',
