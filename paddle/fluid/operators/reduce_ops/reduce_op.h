@@ -670,7 +670,8 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp>
+template <typename T, template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -682,15 +683,19 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     std::vector<int> reduce_dims =
         GetReduceDim(dims, input->dims().size(), reduce_all);
-
+    int reduce_num = 1;
+    for (int i = 0; i < input->dims().size(); i++) {
+      reduce_num *= (input->dims())[i];
+    }
     gpuStream_t stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+          TensorReduceFunc<T, ReduceOp, TransformOp>(
+              *input, output, reduce_dims, reduce_num, stream));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, T>>(
+          *input, output, TransformOp<T, T>(reduce_num), reduce_dims, stream);
     }
   }
 };

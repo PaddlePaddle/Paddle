@@ -42,6 +42,8 @@ NEED_TO_FIX_OP_LIST = [
     'elementwise_mul',
     'elementwise_sub',
     'elementwise_pow',
+    'elementwise_fmin',
+    'elementwise_fmax',
     'filter_by_instag',
     'fused_elemwise_activation',
     'fused_emb_seq_pool',
