@@ -31,8 +31,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/pten/include dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/hybird/cpu/elementwise.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_base.h"
+#include "paddle/pten/kernels/mixed/elementwise_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -151,9 +150,9 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    int *x_dims_array, int *y_dims_array,
                                    int *out_dims_array, const int max_dim,
                                    const int axis) {
-  pten::general::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array,
-                                        y_dims_array, out_dims_array, max_dim,
-                                        axis);
+  pten::functions::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array,
+                                          y_dims_array, out_dims_array, max_dim,
+                                          axis);
 }
 
 template <typename Functor, typename T, typename OutType = T>
@@ -1073,7 +1072,7 @@ void CommonGradBroadcastCUDA(
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
-  return pten::general::trim_trailing_singular_dims(dims);
+  return pten::functions::trim_trailing_singular_dims(dims);
 }
 
 template <typename Functor, typename T, typename DeviceContext,
@@ -1104,11 +1103,11 @@ class TransformFunctor {
     platform::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_, x_, x_ + nx_,
-            pten::general::RowwiseTransformIterator<T, DeviceContext>(y_, n),
+            pten::functions::RowwiseTransformIterator<T, DeviceContext>(y_, n),
             z_, func_);
     } else {
       trans(ctx_, y_, y_ + nx_,
-            pten::general::RowwiseTransformIterator<T, DeviceContext>(x_, n),
+            pten::functions::RowwiseTransformIterator<T, DeviceContext>(x_, n),
             z_, func_);
     }
   }
@@ -1117,13 +1116,13 @@ class TransformFunctor {
     platform::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_, x_, x_ + nx_,
-            pten::general::MidWiseTransformIterator<T, DeviceContext>(y_, n,
-                                                                      post),
+            pten::functions::MidWiseTransformIterator<T, DeviceContext>(y_, n,
+                                                                        post),
             z_, func_);
     } else {
       trans(ctx_, y_, y_ + nx_,
-            pten::general::MidWiseTransformIterator<T, DeviceContext>(x_, n,
-                                                                      post),
+            pten::functions::MidWiseTransformIterator<T, DeviceContext>(x_, n,
+                                                                        post),
             z_, func_);
     }
   }
@@ -1453,13 +1452,13 @@ void ElemwiseGradComputeWithBroadcast(
   if (is_xsize_larger) {
     auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
     axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
-    pten::general::get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n,
-                                &post, &is_run_common_broadcast);
+    pten::functions::get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n,
+                                  &post, &is_run_common_broadcast);
   } else {
     auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
     axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
-    pten::general::get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n,
-                                &post, &is_run_common_broadcast);
+    pten::functions::get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n,
+                                  &post, &is_run_common_broadcast);
   }
   // special case for common backward implementation.
   if (is_run_common_broadcast) {
@@ -1856,8 +1855,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  pten::general::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                              &is_run_common_broadcast);
+  pten::functions::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+                                &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -2404,8 +2403,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  pten::general::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                              &is_run_common_broadcast);
+  pten::functions::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+                                &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();

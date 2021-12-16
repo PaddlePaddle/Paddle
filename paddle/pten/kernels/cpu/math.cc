@@ -15,10 +15,8 @@
 #include "paddle/pten/kernels/cpu/math.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
-#include "paddle/pten/kernels/hybird/cpu/elementwise.h"
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
 #include "paddle/pten/kernels/hybird/eigen/sign.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -47,30 +45,6 @@ void Mean(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void Divide(const CPUContext& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            int axis,
-            DenseTensor* out) {
-  // allocate memory for out
-  out->mutable_data<T>();
-  if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
-    SameDimsElementwiseCompute<general::SameDimsDivideFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<general::DivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::DivideFunctor<T>(), out);
-    } else {
-      ElementwiseCompute<general::InverseDivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, general::InverseDivideFunctor<T>(), out);
-    }
-  }
-}
-
-template <typename T>
 void Sum(const CPUContext& dev_ctx,
          const DenseTensor& x,
          const std::vector<int64_t>& dims,
@@ -83,15 +57,6 @@ void Sum(const CPUContext& dev_ctx,
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
-// Create the definition of Add
-DEFINE_CPU_ELEMENTWISE_OP(Add)
-
-// Create the definition of Subtract
-DEFINE_CPU_ELEMENTWISE_OP(Subtract)
-
-// Create the definition of Multiply
-DEFINE_CPU_ELEMENTWISE_OP(Multiply)
-
 }  // namespace pten
 
 using complex64 = ::paddle::platform::complex<float>;
@@ -101,47 +66,6 @@ using complex128 = ::paddle::platform::complex<double>;
 // using bfloat16 = ::paddle::platform::bfloat16;
 PT_REGISTER_KERNEL(sign, CPU, ALL_LAYOUT, pten::Sign, float, double) {}
 PT_REGISTER_KERNEL(mean, CPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL(add,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Add,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(subtract,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Subtract,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(divide,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Divide,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(multiply,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Multiply,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   complex64,
-                   complex128) {}
 PT_REGISTER_KERNEL(sum,
                    CPU,
                    ALL_LAYOUT,

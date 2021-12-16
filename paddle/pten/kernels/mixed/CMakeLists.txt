@@ -1,0 +1,1 @@
+cc_library(elementwise_mixed SRCS elementwise_kernel.cc DEPS dense_tensor kernel_context kernel_factory eigen_function blas)
