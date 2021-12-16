@@ -144,10 +144,12 @@ class AutoScanTest(unittest.TestCase):
                 baseline[key].shape == arr.shape,
                 "The output shapes are not equal, the baseline shape is " +
                 str(baseline[key].shape) + ', but got ' + str(arr.shape))
+            diff = abs(baseline[key] - arr)
             self.assertTrue(
                 np.allclose(
                     baseline[key], arr, atol=atol, rtol=rtol),
-                "Output has diff. ")
+                "Output has diff, Maximum absolute error: {}".format(
+                    np.amax(diff)))
 
     @abc.abstractmethod
     def run_test(self, quant=False):
