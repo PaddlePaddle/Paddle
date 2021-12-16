@@ -31,7 +31,7 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard, in_declarative_mode
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, _convert_into_variable
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
@@ -919,11 +919,12 @@ class Layer(object):
         # parameters that may not trigger logic of `Operator` to create
         # them. we add this to make sure all parameters is available.
 
-        if in_declarative_mode() and not framework.in_dygraph_mode():
-            with param_guard(self._parameters), param_guard(self._buffers):
-                return self._dygraph_call_func(*inputs, **kwargs)
-        else:
-            return self._dygraph_call_func(*inputs, **kwargs)
+        # if in_declarative_mode() and not framework.in_dygraph_mode():
+        #     with param_guard(self._parameters), param_guard(self._buffers):
+        #         return self._dygraph_call_func(*inputs, **kwargs)
+        # else:
+        #     return self._dygraph_call_func(*inputs, **kwargs)
+        return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1100,7 +1101,6 @@ class Layer(object):
         self.__dict__.update(state)
 
     def __getattr__(self, name):
-        from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
