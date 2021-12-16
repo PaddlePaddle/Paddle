@@ -108,7 +108,7 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor1.place._equals(place))
         self.assertTrue(np.array_equal(egr_tensor1.numpy(), arr0))
 
-        arr1 = np.random.randint(100, size=(4, 16, 16, 32))
+        arr1 = np.random.randint(100, size=(4, 16, 16, 32), dtype=np.int64)
         egr_tensor2 = core.eager.EagerTensor(arr1, place, False, True,
                                              "numpy_tensor2", True)
         self.assertEqual(egr_tensor2.persistable, False)
