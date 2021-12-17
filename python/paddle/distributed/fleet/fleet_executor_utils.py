@@ -208,7 +208,7 @@ def origin(program, cur_rank):
     Origin scheduler for fleet executor, supports non-pp mode
     :param program: The origin program.
     :param cur_rank: Current rank (can be got from fleet.worker_index()).
-     :return:
+    :return:
         task_nodes (list): four task nodes for current rank
         task_id_to_rank (dict): a fake dict, since there is no upstream or downstream, this dict won't be used
     """
