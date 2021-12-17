@@ -1977,13 +1977,18 @@ class Executor(object):
         strategy = fleet_opt['scheduler']
         if strategy == '1F1B':
             from paddle.distributed.fleet.fleet_executor_utils import one_f_one_b
+            assert "dist_strategy" in fleet_opt and \
+                   "pp_degree" in fleet_opt["dist_strategy"] and \
+                   fleet_opt["dist_strategy"]["pp_degree"] > 1, \
+                    "For 1F1B scheduler mode, pp_degree should be greater then 1."
             tasks, task_id_to_rank = one_f_one_b(
                 program, cur_rank,
                 fleet_opt.get('num_micro_batches', 1),
                 fleet_opt.get('dist_strategy', {}), nrank)
         elif strategy == 'Origin':
             from paddle.distributed.fleet.fleet_executor_utils import origin
-            if "dist_strategy" in fleet_opt:
+            if "dist_strategy" in fleet_opt and "pp_degree" in fleet_opt[
+                    "dist_strategy"]:
                 assert fleet_opt["dist_strategy"]["pp_degree"] == 1, \
                     "For pipeline mode, the scheduler should be 1F1B instead of Origin"
             if "num_micro_batches" in fleet_opt:
