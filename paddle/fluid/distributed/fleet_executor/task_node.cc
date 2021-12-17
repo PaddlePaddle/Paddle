@@ -60,25 +60,6 @@ TaskNode::TaskNode(int32_t role,
   }
 }
 
-TaskNode::TaskNode(int32_t role,
-                   const std::vector<framework::OperatorBase*>& ops,
-                   int64_t rank, int64_t task_id, int64_t max_run_times,
-                   int64_t max_slot_nums)
-    : ops_(ops),
-      role_(role),
-      rank_(rank),
-      task_id_(task_id),
-      max_run_times_(max_run_times),
-      max_slot_nums_(max_slot_nums) {}
-
-TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
-                   int64_t max_run_times, int64_t max_slot_nums)
-    : role_(role),
-      rank_(rank),
-      task_id_(task_id),
-      max_run_times_(max_run_times),
-      max_slot_nums_(max_slot_nums) {}
-
 bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
   const auto& ret = upstream_.emplace(task_id, buff_size);
   return ret.second;
