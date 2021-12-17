@@ -25,8 +25,7 @@
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/math.h"
-#include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace paddle {
 namespace experimental {

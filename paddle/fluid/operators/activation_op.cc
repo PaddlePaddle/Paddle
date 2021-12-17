@@ -284,6 +284,27 @@ $$out = cosh(x)$$
 
 )DOC";
 
+UNUSED constexpr char AsinhDoc[] = R"DOC(
+Asinh Activation Operator.
+
+$$out = asinh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AcoshDoc[] = R"DOC(
+Acosh Activation Operator.
+
+$$out = acosh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AtanhDoc[] = R"DOC(
+Atanh Activation Operator.
+
+$$out = atanh(x)$$
+
+)DOC";
+
 UNUSED constexpr char RoundDoc[] = R"DOC(
 The OP rounds the values in the input to the nearest integer value.
 
@@ -832,6 +853,9 @@ REGISTER_ACTIVATION_OP_MAKER(Tan, TanDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
+REGISTER_ACTIVATION_OP_MAKER(Acosh, AcoshDoc);
+REGISTER_ACTIVATION_OP_MAKER(Asinh, AsinhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Atanh, AtanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
