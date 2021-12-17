@@ -210,7 +210,7 @@ def origin(program, cur_rank):
     :param cur_rank: Current rank (can be got from fleet.worker_index()).
      :return:
         task_nodes (list): four task nodes for current rank
-        task_id_to_rank (dict): a fake dict, since there is no upstream or downstream ,this dict won't be used
+        task_id_to_rank (dict): a fake dict, since there is no upstream or downstream, this dict won't be used
     """
     print("fleet executor will use python side origin scheduler.")
     task_node = core.TaskNode(program.desc, cur_rank, 1, 1)
