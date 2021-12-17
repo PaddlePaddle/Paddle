@@ -16,7 +16,7 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/fill_kernel.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 namespace pten {
 
