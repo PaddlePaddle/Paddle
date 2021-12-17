@@ -129,6 +129,21 @@ PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager_tensor_properties_get_retain_grads(EagerTensorObject* self,
+                                                   void* closure) {
+  EAGER_SYNC_TRY
+  return ToPyObject(self->eager_tensor.retain_grads());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int eager_tensor_properties_set_retain_grads(EagerTensorObject* self,
+                                             PyObject* value, void* closure) {
+  EAGER_SYNC_TRY
+  self->eager_tensor.set_retain_grads(CastPyArg2AttrBoolean(value, 0));
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
+}
+
 struct PyGetSetDef variable_properties[] = {
     {"grad", (getter)eager_tensor_properties_get_grad, nullptr, nullptr,
      nullptr},
@@ -149,6 +164,8 @@ struct PyGetSetDef variable_properties[] = {
      nullptr, nullptr},
     {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
      nullptr},
+    {"retain_grads", (getter)eager_tensor_properties_get_retain_grads,
+     (setter)eager_tensor_properties_set_retain_grads, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind

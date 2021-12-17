@@ -292,6 +292,10 @@ class EagerTensor final {
     tensor_ = tensor;
   }
 
+  bool retain_grads() { return retain_grads_; }
+
+  void set_retain_grads(bool value) { retain_grads_ = value; }
+
  private:
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
@@ -314,5 +318,6 @@ class EagerTensor final {
 
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;
   paddle::framework::Variable var_;
+  bool retain_grads_{false};
 };
 }  // namespace egr

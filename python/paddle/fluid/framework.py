@@ -929,7 +929,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
             list(shape) if shape else [], name, type
             if type else core.VarDesc.VarType.LOD_TENSOR, True
             if persistable else False)
-        core.eager.retain_grad_for_tensor(eager_tensor)
+        eager_tensor.retain_grads = True
         return eager_tensor
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
@@ -6280,7 +6280,7 @@ class EagerParamBase(core.eager.EagerTensor):
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape)
             if shape else [], name, core.VarDesc.VarType.LOD_TENSOR, True)
-        core.eager.retain_grad_for_tensor(self)
+        self.retain_grads = True
 
         trainable = kwargs.get('trainable', True)
         self.stop_gradient = not trainable
