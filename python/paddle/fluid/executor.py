@@ -1972,6 +1972,8 @@ class Executor(object):
             rank_info.rank = rank
             rank_info.ip_port = endpoint
             fleet_exe_desc.cluster_info.append(rank_info)
+        if "num_micro_batches" in fleet_opt:
+            fleet_exe_desc.num_micro_batches = fleet_opt['num_micro_batches']
         assert 'scheduler' in fleet_opt, \
             "Fleet executor need configuration for scheduler, you can choose from 1F1B or Origin."
         strategy = fleet_opt['scheduler']
