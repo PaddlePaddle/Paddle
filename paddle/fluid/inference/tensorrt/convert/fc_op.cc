@@ -246,33 +246,55 @@ class FcOpConverter : public OpConverter {
     if (!engine_->with_dynamic_shape()) {
       x_num_col_dims--;
     }
-    // If use tensorrt'oss, the x_dim and x_num_col_dims need change
+    // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
+    // not add Shuffle layer in ernie's multihead.
     if (engine_->use_oss() && engine_->with_ernie() && x_dim.nbDims == 4 &&
-        x_dim.d[3] == 1 &&
-        x_num_col_dims == 2) {  // needn't reshape input before and after fc
-      // add conv layer
-      nvinfer1::DimsHW nv_ksize(1, 1);
-      auto* fc_layer_int8 =
-          TRT_ENGINE_ADD_LAYER(engine_, Convolution, *X, n_output, nv_ksize,
-                               weight.get(), bias.get());
-      if (activation_type == "relu") {
-        fc_layer_int8->setName(
-            ("fc_op_int8: Convolution (Output: " + output_name + ")").c_str());
-        PADDLE_ENFORCE_EQ(
-            op_desc.HasAttr("out_threshold"), true,
-            platform::errors::InvalidArgument(
-                "must have out threshold in fc layers in int8 mode"));
-        float out_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-        engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
-        nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
-            engine_, Activation, *(fc_layer_int8->getOutput(0)),
-            nvinfer1::ActivationType::kRELU);
-        RreplenishLayerAndOutput(relu_layer_int8, "relu_after_fc_int8",
-                                 {output_name}, test_mode);
+        x_dim.d[3] == 1 && x_num_col_dims == 2) {
+      if (enable_int8) {
+        // add conv1x1 layer
+        nvinfer1::DimsHW nv_ksize(1, 1);
+        auto* fc_layer_int8 =
+            TRT_ENGINE_ADD_LAYER(engine_, Convolution, *X, n_output, nv_ksize,
+                                 weight.get(), bias.get());
+        if (activation_type == "relu") {
+          fc_layer_int8->setName(
+              ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
+                  .c_str());
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("out_threshold"), true,
+              platform::errors::InvalidArgument(
+                  "must have out threshold in fc layers in int8 mode"));
+          float out_scale =
+              BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
+                                         out_scale);
+          nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
+              engine_, Activation, *(fc_layer_int8->getOutput(0)),
+              nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_int8, "relu_after_ernie_fc_int8",
+                                   {output_name}, test_mode);
+        } else {
+          RreplenishLayerAndOutput(fc_layer_int8,
+                                   "ernie_fc_op_int8: Convolution",
+                                   {output_name}, test_mode);
+        }
       } else {
-        RreplenishLayerAndOutput(fc_layer_int8, "fc_op_int8: Convolution",
-                                 {output_name}, test_mode);
+        // add fc layer
+        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
+            engine_, FullyConnected, *X, n_output, weight.get(), bias.get());
+        if (activation_type == "relu") {
+          fc_layer_float->setName(
+              ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
+          nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
+              engine_, Activation, *(fc_layer_float->getOutput(0)),
+              nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_float,
+                                   "relu_after_ernie_fc_float", {output_name},
+                                   test_mode);
+        } else {
+          RreplenishLayerAndOutput(fc_layer_float, "ernie_fc_op_float",
+                                   {output_name}, test_mode);
+        }
       }
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
