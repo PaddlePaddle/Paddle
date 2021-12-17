@@ -83,8 +83,8 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
       }
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(dx_result, dx, reduce_dims,
-                                               stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dx_result, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
 
@@ -105,8 +105,8 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(dy_result, dy, reduce_dims,
-                                               stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dy_result, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
 }
