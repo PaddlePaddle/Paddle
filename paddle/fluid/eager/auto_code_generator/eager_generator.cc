@@ -1201,19 +1201,19 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::vector<egr::EagerTensor>& %s";
+            ", std::vector<egr::EagerTensor*>& %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
 
       } else {
-        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor& %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor* %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
       }
       const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(&%s) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
 
@@ -1317,20 +1317,6 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += "\n";
     VLOG(6) << "Generated GradNode Creation codes";
   }
-
-  // [Generation] Handle out Tensors
-  for (const proto::OpProto::Var& output : out_vars) {
-    const std::string& output_name = output.name();
-    if (op_passing_outs_map[op_type].count(output_name)) {
-      std::string out_tensor_str;
-      const std::string output_var_name = output_name + "Var";
-      std::string return_varname = LegalizeVariableName(output_name);
-      generated_function_body +=
-          "  " + output_var_name + " = " + return_varname + ";\n";
-    }
-  }
-  generated_function_body += "\n";
-  VLOG(6) << "Handle out Tensors";
 
   // [Generation] Handle return: Tuple/Vector/Tensor
   generated_function_body += "\n";

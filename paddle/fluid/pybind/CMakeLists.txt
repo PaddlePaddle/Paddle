@@ -181,7 +181,7 @@ if(WITH_PYTHON)
     ":retry\n"
     "ECHO eager_op_function_generator run %build_times% time\n"
     "taskkill /f /im eager_op_function_generator.exe 2>NUL\n"
-    "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file} ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt\n"
+    "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
     "    if %build_times% GEQ 10 (\n"
@@ -256,7 +256,7 @@ if(WITH_PYTHON)
       add_custom_command(OUTPUT ${eager_impl_file}
             COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
                 "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
-                "${tmp_eager_impl_file}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
+                "${tmp_eager_impl_file}"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
             COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
             DEPENDS ${EAGER_OP_IMPL_DEPS}
@@ -275,7 +275,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api global_utils autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node math_cpu linalg_cpu creation_cpu utils_cpu manipulation_cpu accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node math_cpu linalg_cpu creation_cpu utils_cpu manipulation_cpu accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)

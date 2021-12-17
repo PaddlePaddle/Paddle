@@ -135,12 +135,14 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
   return res;
 }
 
+void deleter(egr::EagerTensor* ptr) {}
+
 static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
     egr::EagerTensor* tensor) {
   if (tensor->initialized() || tensor->Var().IsInitialized()) {
     tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
   }
-  return std::make_shared<EagerTensor>(*tensor);
+  return std::shared_ptr<egr::EagerTensor>(tensor, deleter);
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
@@ -155,6 +157,17 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
     res.emplace_back(TrySyncToVar(&(*tensors)[i]));
+  }
+  return res;
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    const std::vector<egr::EagerTensor*>& tensors) {
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors.size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(TrySyncToVar(tensors[i]));
   }
   return res;
 }

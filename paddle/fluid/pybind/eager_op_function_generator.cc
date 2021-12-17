@@ -75,6 +75,12 @@ const char* CAST_VAR_TEMPLATE = R"(
 const char* CAST_VAR_LIST_TEMPLATE = R"(
     auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
+const char* CAST_VAR_PTR_TEMPLATE = R"(
+    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+
+const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
+    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
+
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
 
@@ -221,8 +227,8 @@ std::string GenerateOpFunctionsBody(
         outs_initializer += ",";
       }
 
-      const auto in_cast_type =
-          output.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
+      const auto in_cast_type = output.duplicable() ? CAST_VAR_PTR_LIST_TEMPLATE
+                                                    : CAST_VAR_PTR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
@@ -360,8 +366,8 @@ GenerateOpFunctions() {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "argc must be 3" << std::endl;
+  if (argc != 2) {
+    std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
 

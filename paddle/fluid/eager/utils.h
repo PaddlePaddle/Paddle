@@ -149,6 +149,8 @@ class EagerUtils {
       egr::EagerTensor* tensor);
   static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
       std::vector<egr::EagerTensor>* tensors);
+  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+      const std::vector<egr::EagerTensor*>& tensors);
 
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
       const egr::EagerTensor& tensor);
