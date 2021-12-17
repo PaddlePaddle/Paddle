@@ -416,3 +416,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
+list(JOIN all_inc_dirs "\r\n" all_inc_dirs)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/includes.txt" ${all_inc_dirs})

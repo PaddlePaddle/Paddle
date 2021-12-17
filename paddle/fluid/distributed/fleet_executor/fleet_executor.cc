@@ -34,7 +34,15 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
                                  "Error occurs while parsing string to proto"));
 }
 
-FleetExecutor::~FleetExecutor() { root_scope_->DropKids(); }
+FleetExecutor::~FleetExecutor() {
+  root_scope_->DropKids();
+  GetCarrier().Release();
+}
+
+Carrier& FleetExecutor::GetCarrier() {
+  static Carrier carrier;
+  return carrier;
+}
 
 void FleetExecutor::Init(
     const framework::ProgramDesc& program_desc, framework::Scope* scope,
@@ -78,15 +86,17 @@ void FleetExecutor::Init(
     CopyParameters(i, program_desc);
   }
   VLOG(5) << runtime_graph_->DebugString();
+  msg_bus_ = std::make_shared<MessageBus>();
   InitCarrier();
   InitMessageBus();
 }
 
 void FleetExecutor::InitCarrier() {
-  Carrier& carrier_instance = Carrier::Instance();
-  if (!carrier_instance.IsInit()) {
-    carrier_instance.Init(runtime_graph_, root_scope_, minibatch_scope_,
-                          microbatch_scopes_, place_);
+  Carrier& carrier = GetCarrier();
+  if (!carrier.IsInit()) {
+    carrier.SetMsgBus(msg_bus_);
+    carrier.Init(runtime_graph_, root_scope_, minibatch_scope_,
+                 microbatch_scopes_, place_);
   }
 }
 
@@ -120,24 +130,22 @@ void FleetExecutor::InitMessageBus() {
   VLOG(3) << "The number of ranks are "
           << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
-  MessageBus& message_bus_instance = MessageBus::Instance();
-  if (!message_bus_instance.IsInit()) {
-    message_bus_instance.Init(runtime_graph_->intercepter_id_to_rank(),
-                              rank_to_addr, addr);
+  if (!msg_bus_->IsInit()) {
+    msg_bus_->Init(runtime_graph_->intercepter_id_to_rank(), rank_to_addr,
+                   addr);
   }
 }
 
 void FleetExecutor::Run() {
   // Run
-  Carrier& carrier_instance = Carrier::Instance();
-  MessageBus& message_bus_instance = MessageBus::Instance();
+  Carrier& carrier = GetCarrier();
   PADDLE_ENFORCE_EQ(
-      carrier_instance.IsInit(), true,
+      carrier.IsInit(), true,
       platform::errors::Unavailable("Carrier has not been init yet."));
   PADDLE_ENFORCE_EQ(
-      message_bus_instance.IsInit(), true,
+      msg_bus_->IsInit(), true,
       platform::errors::Unavailable("MessageBus has not been init yet."));
-  carrier_instance.Start();
+  carrier.Start();
   for (auto* micro_scop : microbatch_scopes_) {
     // By default, we should delete all kid scopes after run executor because
     // some operators may create local scope when running, such as while_op.
