@@ -44,6 +44,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nll_loss", {"X", "Label", "Weight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
+    {"repeat_interleave", {"X", "RepeatsTensor"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
     {"psroi_pool", {"X", "ROIs", "RoisNum"}},
