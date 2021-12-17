@@ -40,31 +40,28 @@ void FleetExecutor::Init(
     const framework::ProgramDesc& program_desc, framework::Scope* scope,
     const platform::Place& place, const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
-  if (task_nodes.size() == 0) {
-    LOG(INFO) << "fleet executor will use c++ side scheduler construction.";
-    runtime_graph_ = std::make_shared<RuntimeGraph>(program_desc, exe_desc_);
-  } else {
-    LOG(INFO) << "fleet executor has been set dependency on python side.";
-    // TODO(fleet_exe devs): the unused_vars should be got from run time graph
-    std::vector<std::unique_ptr<framework::OperatorBase>> ops;
-    for (auto task_node : task_nodes) {
-      for (auto op : task_node->ops()) {
-        ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
-      }
+  PADDLE_ENFORCE_GT(task_nodes.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "Fleet executor is inited with empty task node"));
+  // TODO(fleet_exe devs): the unused_vars should be got from run time graph
+  std::vector<std::unique_ptr<framework::OperatorBase>> ops;
+  for (auto task_node : task_nodes) {
+    for (auto op : task_node->ops()) {
+      ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
     }
-    auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
-    runtime_graph_ = std::make_shared<RuntimeGraph>();
-    std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
-    for (auto task_node : task_nodes) {
-      task_node->SetUnusedVars(unused_vars);
-      int64_t interceptor_id = task_node->task_id();
-      interceptor_id_to_task.emplace(interceptor_id, task_node);
-    }
-    runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
-    runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
-    for (auto& unique_op : ops) {
-      unique_op.release();
-    }
+  }
+  auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
+  runtime_graph_ = std::make_shared<RuntimeGraph>();
+  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
+  for (auto task_node : task_nodes) {
+    task_node->SetUnusedVars(unused_vars);
+    int64_t interceptor_id = task_node->task_id();
+    interceptor_id_to_task.emplace(interceptor_id, task_node);
+  }
+  runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
+  runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
+  for (auto& unique_op : ops) {
+    unique_op.release();
   }
   root_scope_ = scope;
   place_ = place;

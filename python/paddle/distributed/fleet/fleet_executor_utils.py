@@ -201,3 +201,10 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
         for j in range(num_of_functionality):
             task_id_to_rank[int(i * num_of_functionality + j)] = i
     return task_nodes, task_id_to_rank
+
+
+def origin(program, cur_rank):
+    task_node = core.TaskNode(program, cur_rank, 1, 1)
+    task_id = task_node.task_id()
+    task_id_to_rank = {task_id, cur_rank}
+    return task_node, task_id_to_rank
