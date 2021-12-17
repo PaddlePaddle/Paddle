@@ -90,9 +90,9 @@ class CUDAGraphAllocator
    public:
     PrivateAllocation(CUDAGraphAllocator* allocator,
                       AllocationPtr underlying_allocation)
-        : Allocation(underlying_allocation->ptr(),
-                     underlying_allocation->size(),
-                     underlying_allocation->place()),
+        : Allocation(
+              underlying_allocation->ptr(), underlying_allocation->base_ptr(),
+              underlying_allocation->size(), underlying_allocation->place()),
           allocator_(allocator->shared_from_this()),
           underlying_allocation_(std::move(underlying_allocation)) {}
 

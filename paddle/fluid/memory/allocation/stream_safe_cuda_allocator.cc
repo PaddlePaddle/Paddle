@@ -20,8 +20,9 @@ namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
     AllocationPtr underlying_allocation, gpuStream_t owning_stream)
-    : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
-                 underlying_allocation->place()),
+    : Allocation(underlying_allocation->ptr(),
+                 underlying_allocation->base_ptr(),
+                 underlying_allocation->size(), underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)) {}
 
