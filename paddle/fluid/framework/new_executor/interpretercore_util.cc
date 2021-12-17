@@ -438,15 +438,14 @@ void build_op_func_list(const platform::Place& place,
       VLOG(6) << "Erase variable " << var_name;
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+            UnsafeMoveMemoryHolder(var->GetMutable<LoDTensor>()));
       } else if (var->IsType<SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<SelectedRows>()
-                                   ->mutable_value()
-                                   ->MoveMemoryHolder());
+        garbages->emplace_back(UnsafeMoveMemoryHolder(
+            var->GetMutable<SelectedRows>()->mutable_value()));
       } else if (var->IsType<LoDTensorArray>()) {
         auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
         for (auto& t : *lod_tensor_arr) {
-          garbages->emplace_back(t.MoveMemoryHolder());
+          garbages->emplace_back(UnsafeMoveMemoryHolder(&t));
         }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(

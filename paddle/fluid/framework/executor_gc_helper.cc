@@ -146,14 +146,15 @@ void DeleteUnusedTensors(const Scope &scope,
 
     VLOG(2) << "Erase variable " << var_name;
     if (var->IsType<LoDTensor>()) {
-      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<SelectedRows>()) {
       garbages.emplace_back(
-          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+          UnsafeMoveMemoryHolder(var->GetMutable<LoDTensor>()));
+    } else if (var->IsType<SelectedRows>()) {
+      garbages.emplace_back(UnsafeMoveMemoryHolder(
+          var->GetMutable<SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto *lod_tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto &t : *lod_tensor_arr) {
-        garbages.emplace_back(t.MoveMemoryHolder());
+        garbages.emplace_back(UnsafeMoveMemoryHolder(&t));
       }
     } else if (var->IsType<Strings>()) {
     } else {

@@ -275,9 +275,7 @@ class Tensor {
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
 
-  std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
-    return std::move(holder_);
-  }
+  void ClearHolder() { holder_ = nullptr; }
 
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
@@ -327,6 +325,24 @@ class Tensor {
   size_t offset_;
   std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 };
+
+/*
+   Replacement for original MoveMemoryHolder method to support efforts
+   for unifying Tensor, LoDTensor and DenseTensor.
+
+   For now, MoveMemoryHolder is only used in GC, yet majority of the developers
+   shouldn't be
+   aware of this interface change.
+
+   */
+inline std::shared_ptr<memory::Allocation> UnsafeMoveMemoryHolder(
+    Tensor* tensor) {
+  // Introduced a copy for shared_ptr<Allocation>
+  std::shared_ptr<memory::Allocation> ret = tensor->Holder();
+
+  tensor->ClearHolder();
+  return ret;
+}
 
 }  // namespace framework
 }  // namespace paddle

@@ -65,7 +65,7 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
   }
 
   if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
+    Add(UnsafeMoveMemoryHolder(var->GetMutable<LoDTensor>()), event, ctx);
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
@@ -75,13 +75,14 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<SelectedRows>()) {
-    Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
+    Add(UnsafeMoveMemoryHolder(
+            var->GetMutable<SelectedRows>()->mutable_value()),
         event, ctx);
     var->GetMutable<SelectedRows>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {
-      Add(t.MoveMemoryHolder(), event, ctx);
+      Add(UnsafeMoveMemoryHolder(&t), event, ctx);
     }
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE

@@ -130,14 +130,15 @@ void EagerDeletionOpHandle::RunImpl() {
     Variable *var = vars_[i];
 
     if (var->IsType<LoDTensor>()) {
-      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<SelectedRows>()) {
       garbages.emplace_back(
-          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+          UnsafeMoveMemoryHolder(var->GetMutable<LoDTensor>()));
+    } else if (var->IsType<SelectedRows>()) {
+      garbages.emplace_back(UnsafeMoveMemoryHolder(
+          var->GetMutable<SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto *tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto &t : *tensor_arr) {
-        garbages.emplace_back(t.MoveMemoryHolder());
+        garbages.emplace_back(UnsafeMoveMemoryHolder(&t));
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
