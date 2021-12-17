@@ -13,14 +13,22 @@
 // limitations under the License.
 
 #pragma once
-#include <iostream>
+#include <cmath>
 #include <random>
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
 // ROCM hcc doesn't work well with using std:: in kernel functions
-#if defined(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
+#define compat_exp exp
+#define compat_ceil ceil
+#define compat_floor floor
+#define compat_log log
+#define compat_pow pow
+#define compat_sqrt sqrt
+#define compat_tan tan
+#define compat_abs abs
+#define compat_log1p log1p
 #else
 #define compat_exp std::exp
 #define compat_ceil std::ceil
@@ -35,8 +43,8 @@
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
+template <typename DeviceContext, typename T>
+struct DirichletSampler;
 
 template <typename scalar_t, typename sampler_t>
 struct BaseSampler {
@@ -106,42 +114,17 @@ sample_gamma(scalar_t alpha,
   }
 }
 
-template <typename T, typename uniform_sampler_t, typename normal_sampler_t>
-struct GammaSampler {
-  GammaSampler(const T* alpha, T* gamma,
-               BaseSampler<T, uniform_sampler_t> uniform,
-               BaseSampler<T, normal_sampler_t> normal)
-      : alpha_(alpha), gamma_(gamma), uniform_(uniform), normal_(normal) {}
-
-  HOSTDEVICE void operator()(int64_t index) {
-    auto sample = sample_gamma<T, T, uniform_sampler_t, normal_sampler_t>(
-        alpha_[index], uniform_, normal_);
-    gamma_[index] = std::max(std::numeric_limits<T>::min(), sample);
-  }
-
-  const T* alpha_;
-  T* gamma_;
-  BaseSampler<T, uniform_sampler_t> uniform_;
-  BaseSampler<T, normal_sampler_t> normal_;
-};
-
-template <typename DeviceContext, typename T>
-struct DirichletSampler {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor* alpha,
-                  Tensor* out);
-};
-
 template <typename DeviceContext, typename T>
 class DirichletKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* alpha = ctx.Input<Tensor>("Alpha");
-    auto* out = ctx.Output<Tensor>("Out");
+    const auto* alpha = ctx.Input<framework::Tensor>("Alpha");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-    DirichletSampler<DeviceContext, T> sample;
-    sample(ctx, alpha, out);
+
+    DirichletSampler<DeviceContext, T> sampler;
+    sampler(ctx, alpha, out);
   }
 };
-
 }  // namespace operators
 }  // namespace paddle

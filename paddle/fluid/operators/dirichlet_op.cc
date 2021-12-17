@@ -14,57 +14,74 @@
 
 #include "paddle/fluid/operators/dirichlet_op.h"
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 namespace paddle {
 namespace operators {
+template <typename T, typename uniform_sampler_t, typename normal_sampler_t>
+struct GammaCPUFunctor {
+  GammaCPUFunctor(const T* alpha, T* gamma,
+                  BaseSampler<T, uniform_sampler_t> uniform,
+                  BaseSampler<T, normal_sampler_t> normal)
+      : alpha_(alpha), gamma_(gamma), uniform_(uniform), normal_(normal) {}
+
+  HOST void operator()(int64_t index) {
+    auto sample = sample_gamma<T, T, uniform_sampler_t, normal_sampler_t>(
+        alpha_[index], uniform_, normal_);
+    gamma_[index] = std::max(std::numeric_limits<T>::min(), sample);
+  }
+
+  const T* alpha_;
+  T* gamma_;
+  BaseSampler<T, uniform_sampler_t> uniform_;
+  BaseSampler<T, normal_sampler_t> normal_;
+};
 
 template <typename T>
 struct DirichletSampler<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx, const Tensor* alpha,
                   Tensor* out) {
     auto& dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-    std::random_device rd;
-    std::mt19937 generator(rd());
+
+    auto p_gen = framework::DefaultCPUGenerator();
+    auto generator = p_gen->GetCPUEngine();
 
     auto uniform = [&generator]() -> T {
       std::uniform_real_distribution<T> u(0.0, 1.0);
-      return u(generator);
+      return u(*generator);
     };
     BaseSampler<T, decltype(uniform)> standard_uniform(uniform);
 
     auto normal = [&generator]() {
       std::normal_distribution<T> n(0.0, 1.0);
-      return n(generator);
+      return n(*generator);
     };
     BaseSampler<T, decltype(normal)> standard_normal(normal);
 
-    framework::Tensor gamma;
-    gamma.mutable_data<T>(alpha->dims(), dev_ctx.GetPlace());
-
-    GammaSampler<T, decltype(uniform), decltype(normal)> gamma_sampler(
-        alpha->data<T>(), gamma.data<T>(), standard_uniform, standard_normal);
-
+    // sample from K gamma distributions, where K=alpha.numel()
+    framework::Tensor gamma_samples;
+    gamma_samples.mutable_data<T>(alpha->dims(), dev_ctx.GetPlace());
+    GammaCPUFunctor<T, decltype(uniform), decltype(normal)> gamma_functor(
+        alpha->data<T>(), gamma_samples.data<T>(), standard_uniform,
+        standard_normal);
     platform::ForRange<platform::CPUDeviceContext> for_range(dev_ctx,
                                                              alpha->numel());
-    for_range(gamma_sampler);
+    for_range(gamma_functor);
 
+    // normalize them into a simplex, along the last axis
     framework::Tensor gamma_sum;
-    auto gamma_sum_dims_vector = vectorize(gamma.dims());
-    gamma_sum_dims_vector[gamma_sum_dims_vector.size() - 1] = 1;
-    gamma_sum.mutable_data<T>(framework::make_ddim(gamma_sum_dims_vector),
-                              dev_ctx.GetPlace());
+    auto new_shape = gamma_samples.dims();
+    new_shape[new_shape.size() - 1] = 1;
+    gamma_sum.mutable_data<T>(new_shape, dev_ctx.GetPlace());
 
-    std::vector<int> reduce_dims;
-    reduce_dims.push_back(gamma_sum_dims_vector.size() - 1);
     ReduceKernelFunctor<platform::CPUDeviceContext, T, SumFunctor>(
-        &gamma, &gamma_sum, reduce_dims, true, false, ctx)
+        &gamma_samples, &gamma_sum, {new_shape.size() - 1}, true, false, ctx)
         .template apply<T>();
-
     ElementwiseComputeEx<DivFunctor<T>, platform::CPUDeviceContext, T, T>(
-        ctx, &gamma, &gamma_sum, -1, DivFunctor<T>(), out);
+        ctx, &gamma_samples, &gamma_sum, -1, DivFunctor<T>(), out);
   }
 };
 
@@ -84,7 +101,13 @@ class DirichletOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Alpha"), "Input", "Alpha", "dirichlet");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "dirichlet");
-
+    const auto alpha_dim = ctx->GetInputDim("Alpha");
+    PADDLE_ENFORCE_GE(alpha_dim.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: The number of dimensions of 'Alpha' "
+                          "must be greater than or euqal to 1. "
+                          "But received Alpha's dimensions = %d,",
+                          alpha_dim.size()));
     ctx->ShareDim("Alpha", /*->*/ "Out");
   }
 };
