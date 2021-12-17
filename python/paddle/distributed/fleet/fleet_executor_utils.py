@@ -204,8 +204,8 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
 
 
 def origin(program, cur_rank):
-    task_node = core.TaskNode(program, cur_rank, 1, 1)
+    task_node = core.TaskNode(program.desc, cur_rank, 1, 1)
     task_node.set_type("Compute")
     task_id = task_node.task_id()
     task_id_to_rank = {task_id, cur_rank}
-    return task_node, task_id_to_rank
+    return [task_node], task_id_to_rank

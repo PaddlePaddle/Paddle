@@ -34,7 +34,7 @@ class TestFleetExecutor(unittest.TestCase):
         fleet_opt = {
             "dist_strategy": strategy.sharding_configs,
             "num_micro_batches": strategy.pipeline_configs["accumulate_steps"],
-            "python_side": "Origin"
+            "scheduler": "Origin"
         }
         return fleet_opt
 
