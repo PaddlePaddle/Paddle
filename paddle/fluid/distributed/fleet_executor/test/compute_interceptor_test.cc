@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -46,9 +47,12 @@ class StartInterceptor : public Interceptor {
 };
 
 TEST(ComputeInterceptor, Compute) {
-  Carrier& carrier = Carrier::Instance();
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
+  Carrier& carrier = FleetExecutor::GetCarrier();
+
+  auto msg_bus = std::make_shared<MessageBus>();
+  msg_bus->Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "");
+  carrier.SetMsgBus(msg_bus);
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
@@ -74,6 +78,9 @@ TEST(ComputeInterceptor, Compute) {
   a->Send(1, msg);
   a->Send(1, msg);
   a->Send(1, msg);
+
+  carrier.Wait();
+  carrier.Release();
 }
 
 }  // namespace distributed

@@ -18,7 +18,7 @@ namespace paddle {
 namespace pybind {
 
 typedef struct {
-  PyObject_HEAD egr::EagerTensor eagertensor;
+  PyObject_HEAD egr::EagerTensor eager_tensor;
 } EagerTensorObject;
 
 int TensorDtype2NumpyDtype(pten::DataType dtype);
@@ -35,7 +35,8 @@ egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
                                                             ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
-
+framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
+                                                    ssize_t arg_pos);
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
@@ -51,7 +52,10 @@ PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const void* value);
+PyObject* ToPyObject(
+    const std::unordered_map<std::string, std::vector<std::string>>& value);
 
 template <typename Tuple, size_t N>
 struct TupleEagerTensorResult {

@@ -15,7 +15,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -37,18 +36,17 @@ namespace py = ::pybind11;
 
 PyTypeObject* p_eager_tensor_type;
 
-PyObject* eagertensor_new(PyTypeObject* type, PyObject* args,
-                          PyObject* kwargs) {
+PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
-    new (&(v->eagertensor)) egr::EagerTensor();
+    new (&(v->eager_tensor)) egr::EagerTensor();
   }
   return obj;
 }
 
 static void eagertensor_dealloc(EagerTensorObject* self) {
-  self->eagertensor.~EagerTensor();
+  self->eager_tensor.~EagerTensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
@@ -94,7 +92,7 @@ PyTypeObject eager_tensor_type = {
     0,                       /* tp_dictoffset */
     0,                       /* tp_init */
     0,                       /* tp_alloc */
-    eagertensor_new,         /* tp_new */
+    EagerTensorNew,          /* tp_new */
     0,                       /* tp_free */
     0,                       /* tp_is_gc */
     0,                       /* tp_bases */

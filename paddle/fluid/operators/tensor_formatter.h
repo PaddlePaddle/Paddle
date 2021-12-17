@@ -35,6 +35,10 @@ class TensorFormatter {
                      const std::string& tensor_name = "",
                      const std::string& message = "");
 
+  template <typename T>
+  void FormatData(const framework::LoDTensor& print_tensor,
+                  std::stringstream& log_stream);
+
   void Print(const framework::LoDTensor& print_tensor,
              const std::string& tensor_name = "",
              const std::string& message = "");
@@ -46,10 +50,6 @@ class TensorFormatter {
   void SetSummarize(int64_t summarize);
 
  private:
-  template <typename T>
-  void FormatData(const framework::LoDTensor& print_tensor,
-                  std::stringstream& log_stream);
-
   int64_t summarize_ = -1;
   bool print_tensor_type_ = true;
   bool print_tensor_shape_ = true;

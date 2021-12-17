@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/math.h"
 #include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
 
@@ -44,9 +45,7 @@ DenseTensor Mean(const ContextT& dev_ctx,
           dev_ctx.GetPlace()),
       std::move(out_meta));
   bool reduce_all = false;
-  DataType out_dtype = pten::DataType::UNDEFINED;
-  Mean<T>(
-      dev_ctx, x, axis, keep_dim, reduce_all, x.dtype(), out_dtype, &dense_out);
+  Mean<T>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
   return dense_out;
 }
 
@@ -56,7 +55,7 @@ DenseTensor Sum(const ContextT& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DataType dtype,
                 bool keep_dim) {
-  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
+  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim, dtype);
   pten::DenseTensor dense_out(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
@@ -66,12 +65,7 @@ DenseTensor Sum(const ContextT& dev_ctx,
   // so use default value(false) is OK.
   bool reduce_all = false;
 
-  if (x.dtype() == pten::DataType::BOOL || x.dtype() == pten::DataType::INT32 ||
-      x.dtype() == pten::DataType::INT64) {
-    dtype = pten::DataType::INT64;
-  }
-
-  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, x.dtype(), dtype, &dense_out);
+  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, out_meta.dtype, &dense_out);
   return dense_out;
 }
 
@@ -86,7 +80,7 @@ DenseTensor Scale(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Scale<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
+  Scale<T, ContextT>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
 
@@ -100,7 +94,7 @@ DenseTensor Add(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseAdd<T>(dev_ctx, x, y, axis, &dense_out);
+  Add<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -114,7 +108,7 @@ DenseTensor Subtract(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseSub<T>(dev_ctx, x, y, axis, &dense_out);
+  Subtract<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -128,7 +122,7 @@ DenseTensor Divide(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseDiv<T>(dev_ctx, x, y, axis, &dense_out);
+  Divide<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 
@@ -142,7 +136,7 @@ DenseTensor Multiply(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  ElementwiseMul<T>(dev_ctx, x, y, axis, &dense_out);
+  Multiply<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
 }  // namespace pten
