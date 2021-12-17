@@ -229,13 +229,12 @@ void Carrier::CreateInterceptors() {
             task_node->run_at_offset(), task_node->run_per_steps()));
 
     std::unique_ptr<Interceptor> interceptor;
-    if (task_node->type().empty()) {
-      // TODO(wangxi): delete this in future
-      interceptor.reset(new Interceptor(interceptor_id, task_node));
-    } else {
-      interceptor = InterceptorFactory::Create(task_node->type(),
-                                               interceptor_id, task_node);
-    }
+    PADDLE_ENFORCE_NE(task_node->type().empty(), true,
+                      platform::errors::NotFound(
+                          "Cannot found type for task node with id %lld",
+                          task_node->task_id()));
+    interceptor = InterceptorFactory::Create(task_node->type(), interceptor_id,
+                                             task_node);
     interceptor->SetPlace(place_);
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);
