@@ -32,8 +32,6 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-std::set<std::string> gen_list = {};
-
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -102,7 +100,6 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
-    std::cout << "%s" << " begin..." << std::endl;
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -110,7 +107,6 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     %s
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-    std::cout << "%s" << " end..." << std::endl;
     %s
   }
   catch(...) {
@@ -288,8 +284,8 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, func_name, ins_cast_str, op_type,
-      input_args_num, call_api_str, func_name, return_str);
+      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
+      call_api_str, return_str);
 
   return op_function_str;
 }
@@ -328,27 +324,11 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
-  std::string line;
-  std::ifstream op_list_file(op_list_path);
-  if (op_list_file.is_open()) {
-    while (getline(op_list_file, line)) {
-      gen_list.insert(line);
-    }
-    op_list_file.close();
-  } else {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
-  }
-}
-
 int main(int argc, char* argv[]) {
   if (argc != 3) {
     std::cerr << "argc must be 3" << std::endl;
     return -1;
   }
-
-  CollectOperatorsToCodeGen(argv[2]);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();

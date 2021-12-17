@@ -36,7 +36,8 @@ GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   adj_edges_.resize(bwd_out_slot_num);
 }
 
-void GradNodeBase::AddEdges(std::vector<AutogradMeta*>& metas, size_t slot_id) {
+void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas,
+                            size_t slot_id) {
   PADDLE_ENFORCE_LT(
       slot_id, adj_edges_.size(),
       paddle::platform::errors::InvalidArgument(
