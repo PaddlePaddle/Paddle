@@ -331,6 +331,7 @@ if is_compiled_with_cinn():
         os.environ['runtime_include_dir'] = runtime_include_dir
 
 disable_static()
+from .fluid import core
 if core.is_compiled_with_npu():
     set_device("npu")
 elif core.is_compiled_with_xpu():
