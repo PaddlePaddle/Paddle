@@ -1987,8 +1987,8 @@ class Executor(object):
                 fleet_opt.get('dist_strategy', {}), nrank)
         elif strategy == 'Origin':
             from paddle.distributed.fleet.fleet_executor_utils import origin
-            if "dist_strategy" in fleet_opt and "pp_degree" in fleet_opt[
-                    "dist_strategy"]:
+            if "dist_strategy" in fleet_opt and \
+               "pp_degree" in fleet_opt["dist_strategy"]:
                 assert fleet_opt["dist_strategy"]["pp_degree"] == 1, \
                     "For pipeline mode, the scheduler should be 1F1B instead of Origin"
             if "num_micro_batches" in fleet_opt:
