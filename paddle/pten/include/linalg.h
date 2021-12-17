@@ -19,6 +19,7 @@
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/linalg.h"
 #include "paddle/pten/kernels/cuda/linalg.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
 namespace pten {
 

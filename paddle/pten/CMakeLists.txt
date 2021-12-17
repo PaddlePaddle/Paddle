@@ -31,7 +31,7 @@ if(WITH_GPU OR WITH_ROCM)
   set(PTEN_DEPS ${PTEN_DEPS} math_cuda linalg_cuda creation_cuda manipulation_cuda)
 endif()
 if(WITH_XPU)
-  set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu)
+  set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu matmul_xpu)
 endif()
 
 cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})

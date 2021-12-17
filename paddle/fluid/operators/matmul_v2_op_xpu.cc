@@ -132,17 +132,14 @@ class MatMulV2XPUKernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
     out->mutable_data<T>(ctx.GetPlace());
-    if (std::is_same<paddle::platform::float16, T>::value) {
-      MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, ctx);
-    } else {
-      if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
-        MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, ctx);
-      } else if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
-        MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, ctx);
-      } else {
-        MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, ctx);
-      }
-    }
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*X);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*Y);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
+
+    // call new kernel
+    pten::Matmul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
+                    pt_out.get());
   }
 };
 
