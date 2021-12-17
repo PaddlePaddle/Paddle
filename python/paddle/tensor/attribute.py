@@ -51,11 +51,8 @@ def is_complex(x):
     Args:
         x (Tensor): The input tensor.
 
-    Raises:
-        TypeError: if x is not a tensor.
-
     Returns:
-        bool: The data type of the input is complex data type.
+        bool: True if the data type of the input is complex data type, otherwise false.
 
     Examples:
         .. code-block:: python
@@ -98,11 +95,8 @@ def is_integer(x):
     Args:
         x (Tensor): The input tensor.
 
-    Raises:
-        TypeError: if x is not a tensor.
-
     Returns:
-        bool: The data type of the input is an integeral data type.
+        bool: True if the data type of the input is integer data type, otherwise false.
 
     Examples:
         .. code-block:: python
