@@ -154,16 +154,15 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor5.place._equals(place))
         self.assertTrue(np.array_equal(egr_tensor5.numpy(), arr4))
 
-        if core.is_compiled_with_cuda():
-            egr_tensor6 = core.eager.EagerTensor(egr_tensor5, core.CPUPlace())
-            self.assertEqual(egr_tensor6.persistable, False)
-            self.assertTrue("generated_tensor" in egr_tensor6.name)
-            self.assertEqual(egr_tensor6.shape, [4, 16, 16, 32])
-            self.assertEqual(egr_tensor6.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(egr_tensor6.stop_gradient, True)
-            self.assertEqual(egr_tensor6.place.is_cpu_place(), True)
-            self.assertTrue(
-                np.array_equal(egr_tensor6.numpy(), egr_tensor5.numpy()))
+        egr_tensor6 = core.eager.EagerTensor(egr_tensor5, core.CPUPlace())
+        self.assertEqual(egr_tensor6.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor6.name)
+        self.assertEqual(egr_tensor6.shape, [4, 16, 16, 32])
+        self.assertEqual(egr_tensor6.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor6.stop_gradient, True)
+        self.assertEqual(egr_tensor6.place.is_cpu_place(), True)
+        self.assertTrue(
+            np.array_equal(egr_tensor6.numpy(), egr_tensor5.numpy()))
 
         egr_tensor7 = core.eager.EagerTensor(arr4, place, True)
         self.assertEqual(egr_tensor7.persistable, True)
