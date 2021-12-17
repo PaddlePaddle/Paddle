@@ -37,19 +37,6 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
   }
 };
 
-template <typename T>
-struct GreaterThanFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
-    return a > b ? c : static_cast<T>(0);
-  }
-};
-template <typename T>
-struct LessEqualThanFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
-    return (a < b || a == b) ? c : static_cast<T>(0);
-  }
-};
-
 template <typename DeviceContext, typename T>
 void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
                            const framework::Tensor* x,
@@ -68,7 +55,7 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     std::vector<framework::Tensor*> outs = {&dx_result};
     LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-        dev_ctx, ins, &outs, axis, GreaterThanFunctor<T>());
+        dev_ctx, ins, &outs, axis, TernaryGreaterThanFunctor<T>());
 
     if (dx->dims() == dout->dims()) {
       framework::TensorCopy(
@@ -96,7 +83,7 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
     std::vector<const framework::Tensor*> ins = {x, y, dout};
     std::vector<framework::Tensor*> outs = {&dy_result};
     LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-        dev_ctx, ins, &outs, axis, LessEqualThanFunctor<T>());
+        dev_ctx, ins, &outs, axis, TernaryLessEqualThanFunctor<T>());
 
     if (dy->dims() == dout->dims()) {
       framework::TensorCopy(
