@@ -47,11 +47,9 @@ static TracerOption g_tracer_option = TracerOption::kDefault;
 static ProfilerState g_state = ProfilerState::kDisabled;
 // To hook RecordEvent's events, use it to nvtx timeline
 static bool g_enable_nvprof_hook = false;
-// To hook RecordEvent, use HostEventRecorder
-static bool g_enable_host_event_recorder_hook = false;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
-static thread_local int32_t g_thread_id;
+static thread_local uint64_t g_thread_id;
 // The g_next_thread_id is a global counter for threads, by the g_thread_id and
 // g_next_thread_id, we can know how many threads have created EventList.
 static uint32_t g_next_thread_id = 0;

@@ -20,9 +20,7 @@
 namespace pten {
 
 template <typename T>
-void FillAnyLike(const CUDAContext& dev_ctx,
-                 const Scalar& val,
-                 DenseTensor* out) {
+void FullLike(const CUDAContext& dev_ctx, const Scalar& val, DenseTensor* out) {
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
@@ -52,10 +50,10 @@ void FillAnyLike(const CUDAContext& dev_ctx,
 }
 
 template <typename T>
-void FillConstant(const CUDAContext& dev_ctx,
-                  const ScalarArray& shape,
-                  const Scalar& val,
-                  DenseTensor* out) {
+void Full(const CUDAContext& dev_ctx,
+          const ScalarArray& shape,
+          const Scalar& val,
+          DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
   eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
@@ -65,7 +63,7 @@ void FillConstant(const CUDAContext& dev_ctx,
 PT_REGISTER_KERNEL(full_like,
                    CUDA,
                    ALL_LAYOUT,
-                   pten::FillAnyLike,
+                   pten::FullLike,
                    float,
                    double,
                    int,
@@ -76,7 +74,7 @@ PT_REGISTER_KERNEL(full_like,
 PT_REGISTER_KERNEL(full,
                    CUDA,
                    ALL_LAYOUT,
-                   pten::FillConstant,
+                   pten::Full,
                    float,
                    double,
                    uint8_t,
