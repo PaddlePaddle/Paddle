@@ -309,7 +309,7 @@ bool InterpretercoreInferShapeContext::IsRuntime() const { return true; }
 
 // TODO(paddle-dev): Can this be template?
 std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
-    const std::string& name) {
+    const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());
@@ -318,7 +318,8 @@ std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
 }
 
 std::vector<InferShapeVarPtr>
-InterpretercoreInferShapeContext::GetOutputVarPtrs(const std::string& name) {
+InterpretercoreInferShapeContext::GetOutputVarPtrs(
+    const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
   std::vector<InferShapeVarPtr> res;
   res.reserve(vars.size());
@@ -596,6 +597,16 @@ paddle::framework::VarDesc* VariableScope::VarDesc(
 paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   CheckExist(id);
   return vec_meta_info_[id].var_desc_;
+}
+
+void VariableScope::SetVarSikpInplace(const std::string& name, bool skip) {
+  CheckExist(name);
+  vec_meta_info_[VarId(name)].sikp_inplace_ = skip;
+}
+
+bool VariableScope::GetVarSikpInplace(int id) const {
+  CheckExist(id);
+  return vec_meta_info_[id].sikp_inplace_;
 }
 
 void VariableScope::CheckExist(int id) const {

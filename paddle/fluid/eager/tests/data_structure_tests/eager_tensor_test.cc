@@ -18,9 +18,6 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 
-// TODO(jiabin): remove nolint here!!!
-using namespace egr;  // NOLINT
-
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
 class AutogradMetaTest : public AbstractAutogradMeta {
@@ -30,8 +27,8 @@ class AutogradMetaTest : public AbstractAutogradMeta {
 };
 }
 TEST(EagerTensor, Constructor) {
-  EagerTensor et1 = EagerTensor();
-  EagerTensor et2 = EagerTensor("et2");
+  egr::EagerTensor et1 = egr::EagerTensor();
+  egr::EagerTensor et2 = egr::EagerTensor("et2");
 
   CHECK_EQ(et1.defined(), false);
   CHECK_EQ(et2.name(), "et2");
@@ -45,18 +42,18 @@ TEST(EagerTensor, Constructor) {
   auto* dt_ptr = dt->mutable_data<float>();
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
-  EagerTensor et3 = EagerTensor(dt);
+  egr::EagerTensor et3 = egr::EagerTensor(dt);
   auto* et3_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
   CHECK_EQ(et3_ptr[0], 5.0f);
   CHECK_EQ(et3_ptr[1], 10.0f);
   // copy constructor
-  EagerTensor et4(et3);
+  egr::EagerTensor et4(et3);
   auto* et4_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et4.impl())->data<float>();
   CHECK_EQ(et4_ptr[0], 5.0f);
   CHECK_EQ(et4_ptr[1], 10.0f);
-  EagerTensor et5(std::move(et4));
+  egr::EagerTensor et5(std::move(et4));
   auto* et5_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et5.impl())->data<float>();
   CHECK_EQ(et5_ptr[0], 5.0f);
@@ -64,7 +61,7 @@ TEST(EagerTensor, Constructor) {
 }
 
 TEST(EagerTensor, MemberFunction) {
-  EagerTensor et3;
+  egr::EagerTensor et3;
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
@@ -95,7 +92,7 @@ TEST(EagerTensor, MemberFunction) {
       std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
   CHECK_EQ(dt3_ptr[0], 5.0f);
   CHECK_EQ(dt3_ptr[1], 10.0f);
-  EagerTensor et4 = et3;
+  egr::EagerTensor et4 = et3;
   VLOG(6) << "copy =";
   CHECK(et4.initialized() == true);
   auto* dt4_ptr =
@@ -103,7 +100,7 @@ TEST(EagerTensor, MemberFunction) {
   CHECK_EQ(dt4_ptr[0], 5.0f);
   CHECK_EQ(dt4_ptr[1], 10.0f);
   VLOG(6) << "move =";
-  EagerTensor et5 = std::move(et4);
+  egr::EagerTensor et5 = std::move(et4);
   auto* dt5_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et5.impl())->data<float>();
   CHECK_EQ(dt5_ptr[0], 5.0f);

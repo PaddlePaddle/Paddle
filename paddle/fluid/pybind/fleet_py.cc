@@ -76,7 +76,9 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
-      .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable);
+      .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
+      .def("create_client2client_connection",
+           &FleetWrapper::CreateClient2ClientConnection);
 }
 
 void BindPSHost(py::module* m) {
@@ -159,8 +161,11 @@ void BindDistCommunicator(py::module* m) {
       .def("push_sparse_param", &Communicator::RpcSendSparseParam)
       .def("is_running", &Communicator::IsRunning)
       .def("init_params", &Communicator::InitParams)
-      .def("pull_dense", &Communicator::PullDense);
-  //  .def("recv", &Communicator::RecvNoBarrier);
+      .def("pull_dense", &Communicator::PullDense)
+      .def("create_client_to_client_connection",
+           &Communicator::CreateC2CConnection)
+      .def("get_client_info", &Communicator::GetClientInfo)
+      .def("set_clients", &Communicator::SetClients);
 }
 
 void BindHeterClient(py::module* m) {
@@ -315,6 +320,5 @@ void BindIndexSampler(py::module* m) {
       .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
       .def("sample", &IndexSampler::sample);
 }
-
 }  // end namespace pybind
 }  // namespace paddle

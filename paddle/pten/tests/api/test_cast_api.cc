@@ -15,17 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(ManipulationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(ManipulationCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -67,3 +64,24 @@ TEST(API, cast) {
     ASSERT_NEAR(dense_out_data[i], static_cast<double>(dense_x_data[i]), 1e-6f);
   }
 }
+
+TEST(Tensor, cast) {
+  auto x = paddle::experimental::full({3, 4}, 1.0, pten::DataType::FLOAT32);
+  auto y = x.cast(pten::DataType::INT32);
+
+  // check slice result
+  ASSERT_EQ(y.dims().size(), 2);
+  ASSERT_EQ(y.dims()[0], 3);
+  ASSERT_EQ(y.dims()[1], 4);
+  ASSERT_EQ(y.numel(), 12);
+  ASSERT_EQ(y.is_cpu(), true);
+  ASSERT_EQ(y.type(), pten::DataType::INT32);
+  ASSERT_EQ(y.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(y.initialized(), true);
+  for (int64_t i = 0; i < y.numel(); ++i) {
+    ASSERT_EQ(y.mutable_data<int>()[i], 1);
+  }
+}
+
+}  // namespace tests
+}  // namespace paddle

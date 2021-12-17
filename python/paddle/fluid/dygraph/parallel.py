@@ -62,9 +62,12 @@ def prepare_context(strategy=None):
         elif isinstance(place, core.XPUPlace):
             parallel_helper._set_parallel_ctx(
                 core.BKCLParallelContext(strategy, place))
+        elif isinstance(place, core.NPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.HCCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace or XPUPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace or NPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
@@ -122,6 +125,9 @@ class ParallelEnv(object):
         elif core.is_compiled_with_xpu():
             selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
             self._device_id = int(selected_xpus[0])
+        elif core.is_compiled_with_npu():
+            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+            self._device_id = int(selected_npus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -364,6 +370,8 @@ def sync_params_buffers(model,
             # such as moe's expert parameters
             if getattr(param, "no_sync", False):
                 continue
+        if param.type == core.VarDesc.VarType.VOCAB:
+            continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:
