@@ -23,7 +23,6 @@ from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.framework.io import _to_LodTensor
-from paddle.cost_model import CostModel
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 
@@ -1302,7 +1301,7 @@ def get_standalone_cost_data(distributed_programs):
         actual_runtime = total_actual_input_size / total_static_input_size * runtime
         return actual_runtime
 
-    cost_model = CostModel()
+    cost_model = paddle.cost_model.CostModel()
     cost_model.static_cost_data()
     DEFAULT_MULTIPLE = 2
     OP_NAME_MAPPING = {
