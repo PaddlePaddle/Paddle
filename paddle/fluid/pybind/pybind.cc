@@ -28,6 +28,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/custom_kernel.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -699,6 +700,21 @@ PYBIND11_MODULE(core_noavx, m) {
         paddle::framework::OpKernelType kernel_type = info_pair.first;
         kernel_types.push_back(
             paddle::framework::KernelTypeToString(kernel_type));
+      }
+      all_kernels_info.emplace(op_type, kernel_types);
+    }
+    return all_kernels_info;
+  });
+
+  m.def("_get_all_pten_op_kernels", [] {
+    auto &all_kernels = pten::KernelFactory::Instance().kernels();
+    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
+    for (auto &kernel_pair : all_kernels) {
+      auto op_type = kernel_pair.first;
+      std::vector<std::string> kernel_types;
+      for (auto &info_pair : kernel_pair.second) {
+        pten::KernelKey kernel_key = info_pair.first;
+        kernel_types.push_back(pten::KernelKeyToString(kernel_key));
       }
       all_kernels_info.emplace(op_type, kernel_types);
     }
@@ -2284,6 +2300,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_meta_info_and_register_op",
         framework::LoadOpMetaInfoAndRegisterOp);
+  m.def("load_custom_kernel", framework::LoadCustomKernel);
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);

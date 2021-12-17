@@ -21,6 +21,7 @@ from .cpp_extension import setup  # noqa: F401
 from .extension_utils import parse_op_info  # noqa: F401
 from .extension_utils import get_build_directory  # noqa: F401
 from .extension_utils import load_op_meta_info_and_register_op  # noqa: F401
+from .extension_utils import load_custom_kernel  # noqa: F401
 
 __all__ = [ #noqa
         'CppExtension',

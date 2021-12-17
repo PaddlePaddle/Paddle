@@ -244,6 +244,12 @@ inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
   return os;
 }
 
+inline std::string KernelKeyToString(const KernelKey& kernel_key) {
+  std::ostringstream stream;
+  stream << kernel_key;
+  return stream.str();
+}
+
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
