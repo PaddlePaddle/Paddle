@@ -273,6 +273,14 @@ struct Argument {
   DECL_ARGUMENT_FIELD(cpu_math_library_num_threads, CpuMathLibraryNumThreads,
                       int);
 
+  // ipu related
+  DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
+  DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
+  DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
+  DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
+  DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
+  DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };
