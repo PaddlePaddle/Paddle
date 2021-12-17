@@ -64,11 +64,21 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
 
     auto shape = out->dims();
     NpuOpRunner runner;
-    runner.SetType("Fill")
-        .AddInput(framework::vectorize(shape))
-        .AddInput(tensor_tmp)
-        .AddOutput(*out)
-        .Run(stream);
+    if (data_type != framework::proto::VarType::BOOL && (CANN_VERSION_CODE) >= 503003) {
+      runner.SetType("FillD")
+          .AddInput(tensor_tmp)
+          .AddOutput(*out)
+          .AddAttrs(
+              {{ "dims",
+                 framework::vectorize(shape) }})
+          .Run(stream);
+    }else{
+        runner.SetType("Fill")
+            .AddInput(framework::vectorize(shape))
+            .AddInput(tensor_tmp)
+            .AddOutput(*out)
+            .Run(stream);
+    }
   }
 };
 

@@ -649,7 +649,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
 
-  VLOG(0) << LayerDebugString(op.Type(), ins, outs);
+  VLOG(4) << LayerDebugString(op.Type(), ins, outs);
   for (auto& var_pair: outs){
     int num = 0;
     for(auto& var: var_pair.second){
