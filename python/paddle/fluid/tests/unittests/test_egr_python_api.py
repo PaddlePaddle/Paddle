@@ -246,7 +246,7 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)
-                self.assertTrue(tensor3.place.is_gpu_place())
+                self.assertTrue(tensor3.place.is_cpu_place())
 
     def test_properties(self):
         print("Test_properties")
