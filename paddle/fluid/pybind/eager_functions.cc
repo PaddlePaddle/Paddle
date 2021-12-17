@@ -90,6 +90,13 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_get_expected_place(PyObject* self, PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(egr::Controller::Instance().GetExpectedPlace());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
   EAGER_TRY
@@ -226,6 +233,9 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_expected_place",
      (PyCFunction)(void (*)(void))eager_api_set_expected_place,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_get_expected_place",
+     (PyCFunction)(void (*)(void))eager_api_get_expected_place,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grad_for_tensor",
      (PyCFunction)(void (*)(void))eager_api_retain_grad_for_tensor,

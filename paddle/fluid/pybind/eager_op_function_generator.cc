@@ -315,9 +315,6 @@ GenerateOpFunctions() {
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
-    if (!gen_list.count(op_type)) {
-      continue;
-    }
     std::string func_name = "eager_api_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 

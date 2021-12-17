@@ -59,28 +59,17 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
   return pow(base, exponent);
 }
 
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
-  template <typename T>
-  HOSTDEVICE inline T operator()(const T& x) const {
-    return static_cast<T>(x);
-  }
-};
-
+template <typename T>
 struct NonzeroFunctor {
   HOSTDEVICE explicit inline NonzeroFunctor() {}
-  HOSTDEVICE explicit inline NonzeroFunctor(int n) {}
-  template <typename T>
   HOSTDEVICE inline T operator()(const T& x) const {
     return static_cast<T>(static_cast<double>(x) != 0);
   }
 };
 
+template <typename T>
 struct AbsFunctor {
   HOSTDEVICE explicit inline AbsFunctor() {}
-  HOSTDEVICE explicit inline AbsFunctor(int n) {}
-  template <typename T>
   HOSTDEVICE inline T operator()(const T& x) const {
     return static_cast<T>(inline_abs(x));
   }
@@ -106,48 +95,6 @@ struct PowFunctor {
   float porder;
 };
 
-template <typename Tx, typename Ty = Tx>
-struct AbsAndMin {
-  using Transformer = AbsFunctor;
-  using MT = typename details::MPTypeTrait<Ty>::Type;
-  inline Ty initial() {
-    return static_cast<Ty>(std::numeric_limits<MT>::infinity());
-  }
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return (a < b) ? a : b;
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct AbsAndMax {
-  using Transformer = AbsFunctor;
-  using MT = typename details::MPTypeTrait<Ty>::Type;
-  inline Ty initial() {
-    return static_cast<Ty>(-std::numeric_limits<MT>::infinity());
-  }
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return (a > b) ? a : b;
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct NonzeroAndSum {
-  using Transformer = NonzeroFunctor;
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct IdentityAndSum {
-  using Transformer = IdentityFunctor;
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
-  }
-};
-
 template <typename DeviceContext, typename T>
 class PnormCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -167,14 +114,14 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduceFunctorImpl<T, T, NonzeroAndSum>(*in_x, out_norm, reduce_axis,
-                                                   stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis, stream);
     } else if (porder == INFINITY) {
-      TensorReduceFunctorImpl<T, T, AbsAndMax>(*in_x, out_norm, reduce_axis,
-                                               stream);
+      TensorReduceFunctorImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
     } else if (porder == -INFINITY) {
-      TensorReduceFunctorImpl<T, T, AbsAndMin>(*in_x, out_norm, reduce_axis,
-                                               stream);
+      TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
+          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
     } else {
       framework::Tensor tmp_x;
       tmp_x.mutable_data<T>(xdim, ctx.GetPlace());
@@ -189,8 +136,8 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
           cuda_ctx, ins, &outs, func);
       framework::Tensor tmp_y;
       tmp_y.mutable_data<T>(ndim, ctx.GetPlace());
-      TensorReduceFunctorImpl<T, T, IdentityAndSum>(tmp_x, &tmp_y, reduce_axis,
-                                                    stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          tmp_x, &tmp_y, kps::IdentityFunctor<T>(), reduce_axis, stream);
       const framework::Tensor* tmp_norm = &tmp_y;
       ins = {tmp_norm};
       outs = {out_norm};

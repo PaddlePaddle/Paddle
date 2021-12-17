@@ -33,8 +33,6 @@ namespace framework {
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
-static std::unordered_set<std::string> operators_to_codegen = {};
-
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
   std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
@@ -468,8 +466,6 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
 
   // Only handle matmul_v2 for now
   VLOG(1) << "------ Analyzing Op ------: " << op_type;
-
-  if (!operators_to_codegen.count(op_type)) return false;
 
   return true;
 }
@@ -2019,33 +2015,17 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["c_split"]["nranks"] = 1;
 }
 
-static void CollectOperatorsToCodeGen(const std::string& op_list_path) {
-  std::string line;
-  std::ifstream op_list_file(op_list_path);
-  if (op_list_file.is_open()) {
-    while (getline(op_list_file, line)) {
-      operators_to_codegen.insert(line);
-    }
-    op_list_file.close();
-  } else {
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("Unable to open op_list.txt file"));
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "argc must be 3" << std::endl;
+  if (argc != 2) {
+    std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
 
   std::string eager_root = argv[1];
-  std::string op_list_path = argv[2];
 
-  paddle::framework::CollectOperatorsToCodeGen(op_list_path);
   paddle::framework::PrepareAttrMapForOps();
 
   paddle::framework::DygraphCodeGeneration(eager_root);
