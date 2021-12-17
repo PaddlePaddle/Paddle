@@ -924,12 +924,13 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_eager_mode():
-        return core.eager.EagerTensor(dtype
-                                      if dtype else core.VarDesc.VarType.FP32,
-                                      list(shape) if shape else [], name, type
-                                      if type else
-                                      core.VarDesc.VarType.LOD_TENSOR, True
-                                      if persistable else False)
+        eager_tensor = core.eager.EagerTensor(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape) if shape else [], name, type
+            if type else core.VarDesc.VarType.LOD_TENSOR, True
+            if persistable else False)
+        core.eager.retain_grad_for_tensor(eager_tensor)
+        return eager_tensor
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
                         if type else core.VarDesc.VarType.LOD_TENSOR, True
@@ -6279,6 +6280,7 @@ class EagerParamBase(core.eager.EagerTensor):
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape)
             if shape else [], name, core.VarDesc.VarType.LOD_TENSOR, True)
+        core.eager.retain_grad_for_tensor(self)
 
         trainable = kwargs.get('trainable', True)
         self.stop_gradient = not trainable

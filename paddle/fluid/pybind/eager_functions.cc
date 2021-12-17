@@ -139,6 +139,8 @@ static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
     auto accumulation_node = std::make_shared<egr::GradNodeAccumulation>();
     meta->SetGradNode(accumulation_node);
 
+    egr::egr_utils_api::RetainGradForTensor(v->eager_tensor);
+
     // TODO(jiabin): Shall we increase ref cnt here to make python ref cnt num
     // correctly?
   } else {

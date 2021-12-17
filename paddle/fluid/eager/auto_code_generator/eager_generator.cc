@@ -1307,6 +1307,20 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     VLOG(6) << "Generated GradNode Creation codes";
   }
 
+  // [Generation] Handle out Tensors
+  for (const proto::OpProto::Var& output : out_vars) {
+    const std::string& output_name = output.name();
+    if (op_passing_outs_map[op_type].count(output_name)) {
+      std::string out_tensor_str;
+      const std::string output_var_name = output_name + "Var";
+      std::string return_varname = LegalizeVariableName(output_name);
+      generated_function_body +=
+          "  " + output_var_name + " = " + return_varname + ";\n";
+    }
+  }
+  generated_function_body += "\n";
+  VLOG(6) << "Handle out Tensors";
+
   // [Generation] Handle return: Tuple/Vector/Tensor
   generated_function_body += "\n";
   std::string return_str = "";

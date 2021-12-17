@@ -186,7 +186,9 @@ class EagerTensor final {
  */
   void copy_(const EagerTensor& src, const bool blocking) {
     const_cast<EagerTensor*>(&src)->SyncToTensor();
-    SyncToTensor();
+    if (var_.IsInitialized()) {
+      SyncToTensor();
+    }
     tensor_->copy_(*(src.tensor_.get()), blocking);
   }
 

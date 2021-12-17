@@ -199,7 +199,7 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
-            "list of bool, but got %s at pos %d",
+            "list of Tensor, but got %s at pos %d",
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
       }
@@ -216,7 +216,7 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
-            "list of EagerTensor, but got %s at pos %d",
+            "list of Tensor, but got %s at pos %d",
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
       }
@@ -443,10 +443,10 @@ PyObject* ToPyObject(const void* value) {
       platform::errors::Fatal("ToPyObject do not support void* with value."));
 }
 
-egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
-                                        const std::string& arg_name,
-                                        PyObject* args, ssize_t arg_idx,
-                                        bool dispensable) {
+egr::EagerTensor& GetEagerTensorFromArgs(const std::string& op_type,
+                                         const std::string& arg_name,
+                                         PyObject* args, ssize_t arg_idx,
+                                         bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -459,7 +459,7 @@ egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
           op_type, arg_name, arg_idx));
     }
-    egr::EagerTensor emptytensor;
+    static egr::EagerTensor emptytensor;
     return emptytensor;
   }
 
