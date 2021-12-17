@@ -37,14 +37,6 @@ void Mean(const CUDAContext& dev_ctx,
           DenseTensor* out);
 
 template <typename T>
-void Scale(const CUDAContext& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out);
-
-template <typename T>
 void Sum(const CUDAContext& dev_ctx,
          const DenseTensor& x,
          const std::vector<int64_t>& dims,

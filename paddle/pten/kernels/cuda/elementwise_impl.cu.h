@@ -194,7 +194,7 @@ struct DimensionsTransform {
                                     int i,
                                     int num) {
       for (int j = 1; j < num; ++j) {
-        equal = (in_dims[0][i] == in_dims[j][i]) ? true : false;
+        equal &= (in_dims[0][i] == in_dims[j][i]) ? true : false;
       }
     };
     auto merge_sequential_one_dims = [](bool &equal,
@@ -205,7 +205,7 @@ struct DimensionsTransform {
       equal = in_dims[0][i] == 1;
       if (equal) {
         for (int j = 1; j < num; ++j) {
-          equal = in_dims[j][i] == out[i];
+          equal &= in_dims[j][i] == out[i];
         }
       }
     };
@@ -720,7 +720,7 @@ void LaunchElementwiseCudaKernel(
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
-    no_broadcast_flag = ins[0]->dims() == in->dims();
+    no_broadcast_flag &= ins[0]->dims() == in->dims();
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
