@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
+#include "paddle/fluid/framework/ddim.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_fp16.h>

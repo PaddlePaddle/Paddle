@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/platform/eigen_ext.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
