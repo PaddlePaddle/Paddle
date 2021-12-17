@@ -1077,6 +1077,9 @@ def append_var_from_block_desc_static(block,
             else:
                 lod_level = None
 
+            if var_desc.persistable():
+                block = block.program.global_block()
+
             vars_append.append(
                 block.create_var(
                     name=var_desc.name(),
