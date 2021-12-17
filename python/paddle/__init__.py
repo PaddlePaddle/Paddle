@@ -159,6 +159,7 @@ from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
+from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -228,6 +229,9 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import acosh  # noqa: F401
+from .tensor.math import asinh  # noqa: F401
+from .tensor.math import atanh  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
@@ -566,6 +570,9 @@ __all__ = [  # noqa
            'einsum',
            'set_flags',
            'get_flags',
+           'asinh',
+           'acosh',
+           'atanh',
            'as_complex',
            'as_real',
            'diff',
@@ -573,4 +580,5 @@ __all__ = [  # noqa
            'fmax',
            'fmin',
            'moveaxis',
+           'repeat_interleave',
 ]
