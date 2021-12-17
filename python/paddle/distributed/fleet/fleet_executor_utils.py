@@ -89,7 +89,7 @@ def is_backward_op(op_role):
            (op_role == (int(OpRole.Backward) ^ int(OpRole.Loss)))
 
 
-def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
+def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
     """
     Split the program to support 1f1b pipeline scheduler.
     This funct will split the program based on the op_role.

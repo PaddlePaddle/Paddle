@@ -1978,12 +1978,12 @@ class Executor(object):
             "Fleet executor need configuration for scheduler, you can choose from 1F1B or Origin."
         scheduler = fleet_opt['scheduler']
         if scheduler == '1F1B':
-            from paddle.distributed.fleet.fleet_executor_utils import one_f_one_b
+            from paddle.distributed.fleet.fleet_executor_utils import run1f1b
             if "dist_strategy" not in fleet_opt or \
                "pp_degree" not in fleet_opt["dist_strategy"] or \
                fleet_opt["dist_strategy"]["pp_degree"] == 1:
                 warnings.warn("Using 1F1B scheduler with pp_degree == 1.")
-            tasks, task_id_to_rank = one_f_one_b(
+            tasks, task_id_to_rank = run1f1b(
                 program, cur_rank,
                 fleet_opt.get('num_micro_batches', 1),
                 fleet_opt.get('dist_strategy', {}), nrank)
