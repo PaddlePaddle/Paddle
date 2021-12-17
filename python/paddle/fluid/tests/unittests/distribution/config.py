@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import sys
 
 import numpy as np
@@ -25,8 +26,8 @@ TEST_CASE_NAME = 'suffix'
 RTOL = {
     'float32': 1e-03,
     'complex64': 1e-3,
-    'float64': 1e-7,
-    'complex128': 1e-7
+    'float64': 1e-6,
+    'complex128': 1e-6
 }
 ATOL = {'float32': 0.0, 'complex64': 0, 'float64': 0.0, 'complex128': 0}
 
@@ -85,3 +86,19 @@ def parameterize(fields, values=None):
         return cls
 
     return decorate
+
+
+@contextlib.contextmanager
+def stgraph(func, *args):
+    """static graph exec context"""
+    paddle.enable_static()
+    mp, sp = paddle.static.Program(), paddle.static.Program()
+    with paddle.static.program_guard(mp, sp):
+        input = paddle.static.data('input', x.shape, dtype=x.dtype)
+        output = func(input, n, axes, norm)
+
+    exe = paddle.static.Executor(place)
+    exe.run(sp)
+    [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
+    yield output
+    paddle.disable_static()

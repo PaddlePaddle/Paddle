@@ -104,7 +104,7 @@ def _dispatch(cls_p, cls_q):
             format(cls_p.__name__, cls_q.__name__, left_p.__name__,
                    right_q.__name__), RuntimeWarning)
 
-    return left_fun
+    return _REGISTER_TABLE[left_p, left_q]
 
 
 @functools.total_ordering
