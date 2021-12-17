@@ -529,7 +529,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 train_program, startup_program, dist_context, rank_id)
             # if rank_id == 0:
             #   print_program_with_dist_attr(dist_train_program, dist_context)
-            dist_programs[rank_id] = dist_train_program
+            dist_programs[rank_id] = [dist_train_program, None]
 
         rank_mapping = mapping(dist_programs, cluster)
 
