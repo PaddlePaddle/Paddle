@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #ifdef __HIPCC__
@@ -377,7 +378,7 @@ template <typename InT,
           int Arity,
           int VecSize,
           int Rank>
-void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
+void LaunchKernel(const CUDAContext &ctx,
                   const std::vector<const DenseTensor *> &ins,
                   DenseTensor *out,
                   Functor func,
@@ -444,7 +445,7 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 void LaunchBroadcastKernelForDifferentVecSize(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const CUDAContext &ctx,
     const std::vector<const DenseTensor *> &ins,
     DenseTensor *out,
     int axis,
@@ -479,7 +480,7 @@ void LaunchBroadcastKernelForDifferentVecSize(
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchBroadcastElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const CUDAContext &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     int axis,
@@ -543,7 +544,7 @@ void LaunchBroadcastElementwiseCudaKernel(
 * 2x~4x) than number of SMs. Hence, SM count is took into account within
 * this function to determine the right number of threads per block.
 */
-inline int GetThreadsConfig(const paddle::platform::CUDADeviceContext &ctx,
+inline int GetThreadsConfig(const CUDAContext &ctx,
                             int64_t numel,
                             int vec_size) {
   int threads = ELEMENTWISE_BLOCK_SIZE;
@@ -635,7 +636,7 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
 }
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
-void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
+void ElementwiseCudaKernel(const CUDAContext &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
@@ -672,7 +673,7 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchSameDimsElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &ctx,
+    const CUDAContext &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     Functor func) {
@@ -711,12 +712,11 @@ void LaunchSameDimsElementwiseCudaKernel(
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
-void LaunchElementwiseCudaKernel(
-    const paddle::platform::CUDADeviceContext &cuda_ctx,
-    const std::vector<const DenseTensor *> &ins,
-    std::vector<DenseTensor *> *outs,
-    int axis,
-    Functor func) {
+void LaunchElementwiseCudaKernel(const CUDAContext &cuda_ctx,
+                                 const std::vector<const DenseTensor *> &ins,
+                                 std::vector<DenseTensor *> *outs,
+                                 int axis,
+                                 Functor func) {
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {

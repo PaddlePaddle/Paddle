@@ -15,13 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 namespace functions {
 
 using DDim = paddle::framework::DDim;
-using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -131,7 +132,6 @@ class MidWiseTransformIterator<T, CPUContext>
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using CUDAContext = paddle::platform::CUDADeviceContext;
 template <typename T>
 class RowwiseTransformIterator<T, CUDAContext>
     : public thrust::iterator_adaptor<RowwiseTransformIterator<T, CUDAContext>,

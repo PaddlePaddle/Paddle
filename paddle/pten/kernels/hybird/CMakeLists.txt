@@ -1,5 +1,4 @@
 add_subdirectory(eigen)
-add_subdirectory(blas)
 add_subdirectory(general)
 
 cc_library(pten_transpose_cpu SRCS transpose.cc DEPS dense_tensor pten_context)

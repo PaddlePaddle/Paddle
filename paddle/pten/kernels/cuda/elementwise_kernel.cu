@@ -34,6 +34,23 @@ namespace cub = hipcub;
 
 namespace pten {
 
+#define DEFINE_CUDA_ELEMENTWISE_OP(name)                                 \
+  template <typename T, typename ContextT>                               \
+  void name(const ContextT& dev_ctx,                                     \
+            const DenseTensor& x,                                        \
+            const DenseTensor& y,                                        \
+            int axis,                                                    \
+            DenseTensor* out) {                                          \
+    std::vector<const DenseTensor*> inputs;                              \
+    std::vector<DenseTensor*> outputs;                                   \
+    inputs.emplace_back(&x);                                             \
+    inputs.emplace_back(&y);                                             \
+    outputs.emplace_back(out);                                           \
+    out->mutable_data<T>();                                              \
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(         \
+        dev_ctx, inputs, &outputs, axis, functions::name##Functor<T>()); \
+  }
+
 // Create the definition of Add
 DEFINE_CUDA_ELEMENTWISE_OP(Add)
 // Create the definition of Subtract

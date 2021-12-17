@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/functions/elementwise.h"
 
@@ -52,7 +53,7 @@ void CommonForwardBroadcastCPU(const DenseTensor &x,
                                int *y_dims_array,
                                int *out_dims_array,
                                int max_dim,
-                               const paddle::platform::CPUDeviceContext &ctx,
+                               const CPUContext &ctx,
                                Functor func,
                                const bool is_xsize_larger = true) {
   std::vector<int> index_array(max_dim, 0);
@@ -83,16 +84,15 @@ void CommonForwardBroadcastCPU(const DenseTensor &x,
 }
 
 template <typename Functor, typename T, typename OutType = T>
-void CommonElementwiseBroadcastForward(
-    const paddle::platform::CPUDeviceContext &dev_ctx,
-    const DenseTensor &x,
-    const DenseTensor &y,
-    DenseTensor *z,
-    const DDim &x_dims,
-    const DDim &y_dims,
-    Functor func,
-    int axis,
-    const bool is_xsize_larger = true) {
+void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
+                                       const DenseTensor &x,
+                                       const DenseTensor &y,
+                                       DenseTensor *z,
+                                       const DDim &x_dims,
+                                       const DDim &y_dims,
+                                       Functor func,
+                                       int axis,
+                                       const bool is_xsize_larger = true) {
   int max_dim = (std::max)(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
   PADDLE_ENFORCE_GE(
@@ -141,7 +141,7 @@ void CommonElementwiseBroadcastForward(
 // cases and avoid the need of XxxInverseFunctor.
 
 template <typename Functor, typename T, typename OutType = T>
-void ElementwiseCompute(const paddle::platform::CPUDeviceContext &dev_ctx,
+void ElementwiseCompute(const CPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
                         int axis,
@@ -156,9 +156,8 @@ void ElementwiseCompute(const paddle::platform::CPUDeviceContext &dev_ctx,
     is_xsize_larger = false;
     max_dim = y_dims.size();
   }
-  functions::
-      TransformFunctor<Functor, T, paddle::platform::CPUDeviceContext, OutType>
-          functor(x, y, z, dev_ctx, func, is_xsize_larger);
+  functions::TransformFunctor<Functor, T, CPUContext, OutType> functor(
+      x, y, z, dev_ctx, func, is_xsize_larger);
   if (x_dims == y_dims) {
     functor.Run();
     return;
@@ -220,7 +219,7 @@ void ElementwiseCompute(const paddle::platform::CPUDeviceContext &dev_ctx,
 
 template <typename Functor>
 struct SameDimsElementwiseCompute {
-  void operator()(const paddle::platform::CPUDeviceContext &dev_ctx,
+  void operator()(const CPUContext &dev_ctx,
                   const DenseTensor &x,
                   const DenseTensor &y,
                   DenseTensor *z) {
