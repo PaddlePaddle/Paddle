@@ -19,6 +19,7 @@
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
+#include "paddle/pten/kernels/flatten_kernel.h"
 #include "paddle/pten/kernels/xpu/manipulation.h"
 
 namespace pten {
@@ -33,7 +34,7 @@ DenseTensor Flatten(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Flatten<T>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+  Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, &dense_out);
   return dense_out;
 }
 

@@ -25,13 +25,6 @@
 namespace pten {
 
 template <typename T>
-void Flatten(const CUDAContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out);
-
-template <typename T>
 void Cast(const CUDAContext& dev_ctx,
           const DenseTensor& x,
           DataType out_dtype,
