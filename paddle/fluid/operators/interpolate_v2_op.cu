@@ -13,9 +13,9 @@
 #include <string>
 #include "paddle/fluid/operators/interpolate_v2_op.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -1035,9 +1035,9 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_cw = c * in_w;
-  int out_cw = c * out_w;
-  int pixelNum = n * out_cw;
+  int64_t in_cw = c * in_w;
+  int64_t out_cw = c * out_w;
+  auto pixelNum = n * out_cw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1169,12 +1169,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_hw = in_h * in_w;
-  int out_hw = out_h * out_w;
-  int in_chw = c * in_hw;
-  int out_chw = c * out_hw;
+  int64_t in_hw = in_h * in_w;
+  int64_t out_hw = out_h * out_w;
+  int64_t in_chw = c * in_hw;
+  int64_t out_chw = c * out_hw;
 
-  int pixelNum = n * out_chw;
+  auto pixelNum = n * out_chw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1198,7 +1198,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpFw<T><<<config.block_per_grid, 512, 0,
+#ifdef __HIPCC__
+    constexpr int thread_per_block = 256;
+#else
+    constexpr int thread_per_block = 512;
+#endif
+    KeBicubicInterpFw<T><<<config.block_per_grid, thread_per_block, 0,
                            ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
@@ -1355,12 +1360,12 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_dhw = in_d * in_h * in_w;
-  int out_dhw = out_d * out_h * out_w;
-  int in_cdhw = c * in_dhw;
-  int out_cdhw = c * out_dhw;
+  int64_t in_dhw = in_d * in_h * in_w;
+  int64_t out_dhw = out_d * out_h * out_w;
+  int64_t in_cdhw = c * in_dhw;
+  int64_t out_cdhw = c * out_dhw;
 
-  int pixelNum = n * out_cdhw;
+  auto pixelNum = n * out_cdhw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1456,9 +1461,9 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
                               : static_cast<float>(new_scale_w);
   }
-  int in_cw = c * in_w;
-  int out_cw = c * out_w;
-  int pixelNum = n * out_cw;
+  int64_t in_cw = c * in_w;
+  int64_t out_cw = c * out_w;
+  auto pixelNum = n * out_cw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1587,11 +1592,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_hw = in_h * in_w;
-  int out_hw = out_h * out_w;
-  int in_chw = c * in_hw;
-  int out_chw = c * out_hw;
-  int pixelNum = n * out_chw;
+  int64_t in_hw = in_h * in_w;
+  int64_t out_hw = out_h * out_w;
+  int64_t in_chw = c * in_hw;
+  int64_t out_chw = c * out_hw;
+  auto pixelNum = n * out_chw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1606,9 +1611,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     const T align_type_value = (align_mode == 0 && !align_corners) ? 0.5f : 0;
     bool is_nchw = (data_layout == DataLayout::kNCHW) ? true : false;
     bool optimize_flag = false;
+#ifndef __HIPCC__
     optimize_flag = (in_h < (out_h >> 6) && in_w < (out_w >> 6))
                         ? true
                         : ((in_h == 1 && in_w == 1) ? true : false);
+#endif
 
     if (optimize_flag & is_nchw) {
       KeBilinearInterpBwShareMemory<
@@ -1623,7 +1630,12 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
           ratio_h, ratio_w, align_type_value, is_nchw);
     }
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpBw<T><<<config.block_per_grid, 512, 0,
+#ifdef __HIPCC__
+    constexpr int thread_per_block = 256;
+#else
+    constexpr int thread_per_block = 512;
+#endif
+    KeBicubicInterpBw<T><<<config.block_per_grid, thread_per_block, 0,
                            ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
@@ -1773,12 +1785,12 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_dhw = in_d * in_h * in_w;
-  int out_dhw = out_d * out_h * out_w;
-  int in_cdhw = c * in_dhw;
-  int out_cdhw = c * out_dhw;
+  int64_t in_dhw = in_d * in_h * in_w;
+  int64_t out_dhw = out_d * out_h * out_w;
+  int64_t in_cdhw = c * in_dhw;
+  int64_t out_cdhw = c * out_dhw;
 
-  int pixelNum = n * out_cdhw;
+  auto pixelNum = n * out_cdhw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);

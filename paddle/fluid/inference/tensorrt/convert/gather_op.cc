@@ -41,33 +41,27 @@ class GatherOpConverter : public OpConverter {
     std::string input_name = op_desc.Input("X").front();
     std::string index_name = op_desc.Input("Index").front();
     std::string output_name = op_desc.Output("Out").front();
-
     const auto input_tensor = engine_->GetITensor(input_name);
     const auto index_tensor = engine_->GetITensor(index_name);
 
-    const int axis = 0;
+    int axis = 0;
+    if (op_desc.HasAttr("axis")) {
+      axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    }
+
+    auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *index_tensor);
+
+    nvinfer1::Dims index_shape{};
+    index_shape.nbDims = 1;
+    index_shape.d[0] = -1;
+
+    reshape_layer->setReshapeDimensions(index_shape);
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_tensor,
-                                      *index_tensor, axis);
+                                      *reshape_layer->getOutput(0), axis);
+    layer->setNbElementWiseDims(0);
 
-    auto odim = layer->getOutput(0)->getDimensions();
-
-    auto reshape_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
-
-    nvinfer1::Dims target_shape{};
-    target_shape.nbDims = odim.nbDims - 1;
-    for (int i = 0; i < axis; ++i) {
-      target_shape.d[i] = odim.d[i];
-    }
-    target_shape.d[axis] = 0;
-    for (int i = axis + 1; i < target_shape.nbDims; ++i) {
-      target_shape.d[i] = odim.d[i + 1];
-    }
-
-    reshape_layer->setReshapeDimensions(target_shape);
-
-    RreplenishLayerAndOutput(reshape_layer, "gather", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "gather", {output_name}, test_mode);
   }
 };
 

@@ -179,7 +179,8 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
         out_var_ptr->GeneratedOp());
 
     // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
-    if (right_generated_op->Name() != "conv2d_grad") {
+    if (right_generated_op->Name() != "conv2d_grad" &&
+        right_generated_op->Name() != "resnet_unit_grad") {
       continue;
     }
 
@@ -224,11 +225,13 @@ static bool IsValidConv2DGradDataGradNode(const Node &node) {
   if (node.inputs.empty()) return false;
   auto *generated_op = node.inputs[0];
   auto *op_desc = generated_op->Op();
-  if (op_desc == nullptr || op_desc->Type() != "conv2d_grad") {
+  if (op_desc == nullptr || (op_desc->Type() != "conv2d_grad" &&
+                             op_desc->Type() != "resnet_unit_grad")) {
     return false;
   }
   const auto &outputs = op_desc->Outputs();
-  auto iter = outputs.find(GradVarName("Input"));
+  std::string grad_var_name = op_desc->Type() == "conv2d_grad" ? "Input" : "X";
+  auto iter = outputs.find(GradVarName(grad_var_name));
   return iter != outputs.end() && !iter->second.empty() &&
          iter->second[0] == node.Name() &&
          !op_desc->GetAttrIfExists<bool>("use_addto");
@@ -274,7 +277,7 @@ static void BuildInplaceAddToGraph(Node *in_var_0, Node *in_var_1,
   grad_add_op_desc->SetInput("X", {in_var_1->Name()});
   grad_add_op_desc->SetOutput("Out", {out_var->Name()});
   grad_add_op_desc->SetOutput("XOut", {in_var_1->Name()});
-  grad_add_op_desc->SetAttr("share_dims", std::vector<bool>(1, true));
+  grad_add_op_desc->SetAttr("share_dims_and_dtype", std::vector<bool>(1, true));
 
   // Add share_buffer op between in_var_0 and in_var_1
   OpDesc share_buffer_op;
@@ -282,7 +285,7 @@ static void BuildInplaceAddToGraph(Node *in_var_0, Node *in_var_1,
   share_buffer_op.SetInput("X", {in_var_0->Name()});
   share_buffer_op.SetOutput("Out", {in_var_1->Name()});
   share_buffer_op.SetOutput("XOut", {in_var_0->Name()});
-  share_buffer_op.SetAttr("share_dims", std::vector<bool>(1, false));
+  share_buffer_op.SetAttr("share_dims_and_dtype", std::vector<bool>(1, false));
 
   auto *new_share_buffer_op = graph->CreateOpNode(&share_buffer_op);
   new_share_buffer_op->inputs.push_back(in_var_0);

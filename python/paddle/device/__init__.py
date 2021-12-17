@@ -18,6 +18,7 @@ import os
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
@@ -27,7 +28,10 @@ __all__ = [  # noqa
     'set_device',
     'get_device',
     'XPUPlace',
+    'IPUPlace',
     'is_compiled_with_xpu',
+    'is_compiled_with_ipu',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_npu'
@@ -48,9 +52,39 @@ def is_compiled_with_npu():
         .. code-block:: python
 
             import paddle
-            support_npu = paddle.is_compiled_with_npu()
+            support_npu = paddle.device.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
+
+
+def is_compiled_with_ipu():
+    """
+    Whether paddle was built with WITH_IPU=ON to support Graphcore IPU.
+
+    Returns (bool): `True` if IPU is supported, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_ipu = paddle.is_compiled_with_ipu()
+    """
+    return core.is_compiled_with_ipu()
+
+
+def IPUPlace():
+    """
+    Return a Graphcore IPU Place
+
+    Examples:
+        .. code-block:: python
+
+            # required: ipu
+
+            import paddle
+            place = paddle.device.IPUPlace()
+    """
+    return core.IPUPlace()
 
 
 def is_compiled_with_xpu():
@@ -63,7 +97,7 @@ def is_compiled_with_xpu():
         .. code-block:: python
 
             import paddle
-            support_xpu = paddle.is_compiled_with_xpu()
+            support_xpu = paddle.device.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
 
@@ -77,10 +111,11 @@ def XPUPlace(dev_id):
 
     Examples:
         .. code-block:: python
+
             # required: xpu
             
             import paddle
-            place = paddle.XPUPlace(0)
+            place = paddle.device.XPUPlace(0)
     """
     return core.XPUPlace(dev_id)
 
@@ -98,7 +133,7 @@ def get_cudnn_version():
             
             import paddle
 
-            cudnn_version = paddle.get_cudnn_version()
+            cudnn_version = paddle.device.get_cudnn_version()
 
 
 
@@ -140,13 +175,19 @@ def _convert_to_place(device):
         selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
         device_id = int(selected_npus[0])
         place = core.NPUPlace(device_id)
+    elif lower_device == 'ipu':
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "The device should not be 'ipu', " \
+                "since PaddlePaddle is not compiled with IPU")
+        place = core.IPUPlace()
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
         avaliable_npu_device = re.match(r'npu:\d+', lower_device)
         if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x', 'npu' or 'npu:x'"
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x', 'npu', 'npu:x' or ipu"
             )
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
@@ -180,13 +221,13 @@ def _convert_to_place(device):
 
 def set_device(device):
     """
-    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU and NPU.
+    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x`` and ``npu:x``,
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
             where ``x`` is the index of the GPUs, XPUs or NPUs.
 
     Examples:
@@ -195,7 +236,7 @@ def set_device(device):
             
         import paddle
 
-        paddle.set_device("cpu")
+        paddle.device.set_device("cpu")
         x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
         data = paddle.stack([x1,x2], axis=1)
@@ -217,7 +258,7 @@ def get_device():
      .. code-block:: python
             
         import paddle
-        device = paddle.get_device()
+        device = paddle.device.get_device()
 
     """
     device = ''
@@ -233,5 +274,10 @@ def get_device():
     elif isinstance(place, core.NPUPlace):
         device_id = place.get_device_id()
         device = 'npu:' + str(device_id)
+    elif isinstance(place, core.IPUPlace):
+        num_devices = core.get_ipu_device_count()
+        device = "ipus:{{0-{}}}".format(num_devices - 1)
+    else:
+        raise ValueError("The device specification {} is invalid".format(place))
 
     return device

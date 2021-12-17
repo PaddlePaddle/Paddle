@@ -16,19 +16,21 @@
 #include <atomic>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
   using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueue;
   using paddle::framework::CreateSingleThreadedWorkQueue;
+  using paddle::framework::EventsWaiter;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
-  WorkQueueOptions options;
-  options.num_threads = 1;
-  options.track_task = true;
+  EventsWaiter events_waiter;
+  WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
+                           /*track_task*/ true, &events_waiter);
   auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 1u);
@@ -43,7 +45,7 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   });
   // WaitQueueEmpty
   EXPECT_EQ(finished.load(), false);
-  work_queue->WaitQueueEmpty();
+  events_waiter.WaitEvent();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum);
 }
@@ -53,14 +55,15 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueue;
   using paddle::framework::CreateMultiThreadedWorkQueue;
+  using paddle::framework::EventsWaiter;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
   constexpr unsigned kLoopNum = 1000000;
   // CreateMultiThreadedWorkQueue
-  WorkQueueOptions options;
-  options.num_threads = 10;
-  options.track_task = true;
+  EventsWaiter events_waiter;
+  WorkQueueOptions options(/*num_threads*/ 10, /*allow_spinning*/ true,
+                           /*track_task*/ true, &events_waiter);
   auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 10u);
@@ -77,26 +80,28 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   }
   // WaitQueueEmpty
   EXPECT_EQ(finished.load(), false);
-  work_queue->WaitQueueEmpty();
+  events_waiter.WaitEvent();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
+  // Cancel
+  work_queue->Cancel();
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
   using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueueGroup;
   using paddle::framework::CreateWorkQueueGroup;
+  using paddle::framework::EventsWaiter;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
   constexpr unsigned kLoopNum = 1000000;
-  // CreateMultiThreadedWorkQueue
-  WorkQueueOptions sq_options;
-  sq_options.num_threads = 1;
-  sq_options.track_task = true;
-  WorkQueueOptions mq_options;
-  mq_options.num_threads = 10;
-  mq_options.track_task = true;
+  // ThreadedWorkQueueGroup
+  EventsWaiter events_waiter;
+  WorkQueueOptions sq_options(/*num_threads*/ 1, /*allow_spinning*/ true,
+                              /*track_task*/ true, &events_waiter);
+  WorkQueueOptions mq_options(/*num_threads*/ 10, /*allow_spinning*/ true,
+                              /*track_task*/ true, &events_waiter);
   auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
   // NumThreads
   EXPECT_EQ(queue_group->QueueNumThreads(0), 1u);
@@ -116,7 +121,9 @@ TEST(WorkQueue, TestWorkQueueGroup) {
       ++counter;
     }
   });
-  //  WaitQueueGroupEmpty()
-  queue_group->WaitQueueGroupEmpty();
+  // WaitQueueGroupEmpty
+  events_waiter.WaitEvent();
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
+  // Cancel
+  queue_group->Cancel();
 }

@@ -23,9 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -44,7 +44,7 @@ const f::DDim kDims = {20, 20};
 class NCCLTester : public ::testing::Test {
  public:
   void SetUp() override {
-    int count = p::GetCUDADeviceCount();
+    int count = p::GetGPUDeviceCount();
     if (count <= 0) {
       LOG(WARNING) << "Cannot test gpu nccl, because the CUDA device count is "
                    << count;

@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -31,6 +32,12 @@ namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
 USE_OP(dropout);
+USE_OP(layer_norm);
+
+template <typename T>
+using CudnnDataType = platform::CudnnDataType<T>;
+template <typename T>
+using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 /**
  * @brief call paddle dropout op
@@ -114,4 +121,77 @@ void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
 
   framework::TensorToVector(*tensor_dx, ctx, dx);
   ctx.Wait();
+}
+
+/**
+ * @brief call paddle layer_norm op
+ */
+template <typename T>
+void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
+               const std::vector<LayerNormParamType<T>> &bias,
+               const std::vector<T> &x,
+               std::vector<LayerNormParamType<T>> *means,
+               std::vector<LayerNormParamType<T>> *vars, std::vector<T> *y,
+               const float epsilon, const int rows, const int cols,
+               const platform::CUDADeviceContext &ctx) {
+  framework::Scope scope;
+  auto place = ctx.GetPlace();
+  if (scale.size() > 0) {
+    auto var_scale = scope.Var("Scale");
+    auto tensor_scale = var_scale->GetMutable<framework::LoDTensor>();
+    framework::TensorFromVector(scale, ctx, tensor_scale);
+    tensor_scale->Resize({cols});
+  }
+
+  if (bias.size() > 0) {
+    auto var_bias = scope.Var("Bias");
+    auto tensor_bias = var_bias->GetMutable<framework::LoDTensor>();
+    framework::TensorFromVector(bias, ctx, tensor_bias);
+    tensor_bias->Resize({cols});
+  }
+
+  auto var_x = scope.Var("X");
+  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  framework::TensorFromVector(x, ctx, tensor_x);
+  tensor_x->Resize({rows, cols});
+
+  auto var_y = scope.Var("Y");
+  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+
+  auto var_mean = scope.Var("Mean");
+  auto tensor_mean = var_mean->GetMutable<framework::LoDTensor>();
+
+  auto var_variance = scope.Var("Variance");
+  auto tensor_variance = var_variance->GetMutable<framework::LoDTensor>();
+
+  framework::AttributeMap attrs;
+  attrs.insert({"epsilon", epsilon});
+
+  auto op = framework::OpRegistry::CreateOp(
+      "layer_norm", {{"X", {"X"}}, {"Scale", {"Scale"}}, {"Bias", {"Bias"}}},
+      {{"Y", {"Y"}}, {"Mean", {"Mean"}}, {"Variance", {"Variance"}}}, attrs);
+  op->Run(scope, place);
+  framework::TensorToVector(*tensor_y, ctx, y);
+  framework::TensorToVector(*tensor_mean, ctx, means);
+  framework::TensorToVector(*tensor_variance, ctx, vars);
+  ctx.Wait();
+}
+
+template <typename T>
+inline void ReduceSum(const std::vector<T> &dout, std::vector<T> *dbias,
+                      const int rows, const int cols) {
+  for (int j = 0; j < cols; j++) {
+    std::vector<T> tmp_dbias(rows);
+    for (int i = 0; i < rows; i++) {
+      tmp_dbias[i] = dout[i * cols + j];
+    }
+    int tmp_rows = rows / 2;
+    while (tmp_rows) {
+      for (int i = 0; i < tmp_rows; i++) {
+        tmp_dbias[i] += tmp_dbias[i + tmp_rows];
+      }
+      tmp_rows /= 2;
+    }
+    (*dbias)[j] = tmp_dbias[0];
+  }
 }

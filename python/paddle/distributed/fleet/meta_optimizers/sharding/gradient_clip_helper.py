@@ -39,6 +39,7 @@ class GradientClipHelper(object):
             if not self._is_gradient_clip_op(op):
                 continue
             if op.type == "sum":
+                global_norm_sum_op_idx = idx
                 continue
             deperate_op = False
             for input_name in op.desc.input_arg_names():
@@ -61,7 +62,10 @@ class GradientClipHelper(object):
                     if output_name not in op.desc.input_arg_names():
                         deperated_vars.add(output_name)
 
-        if not deperated_vars:
+        # NOTE(wangxi): If only have 2 sharding, and 1 param.
+        # sharding 0 will not deperated_vars, will return, only
+        # sharding 1 will insert allreduce, then hang.
+        if not deperated_vars and global_norm_sum_op_idx == -1:
             # got no gradient_clip op
             return
 
@@ -71,8 +75,8 @@ class GradientClipHelper(object):
             if idx in deperate_op_idx:
                 block._remove_op(idx, sync=False)
                 continue
-            reversed_inputs = []
             if op.type == "sum":
+                reversed_inputs = []
                 global_norm_sum_op_idx = idx
                 for input_name in op.desc.input_arg_names():
                     if input_name not in deperated_vars:
@@ -81,6 +85,28 @@ class GradientClipHelper(object):
                 op.desc.set_input("X", reversed_inputs)
                 assert (len(op.desc.output_arg_names()) == 1)
                 sum_res = op.desc.output_arg_names()[0]
+
+                # NOTE(wangxi): If we have 2 param, but sharding is 4,
+                # then the sum op in some cards will not have input.
+                # So we use fill_constant_op to set `sum_var` to zero,
+                # which does not affect correctness.
+                if len(reversed_inputs) == 0:
+                    sum_var = block.var(sum_res)
+                    namescope = op.attr("op_namescope")
+
+                    block._remove_op(idx, sync=False)
+                    op = block._insert_op_without_sync(
+                        idx,
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': sum_res},
+                        attrs={
+                            'shape': sum_var.shape,
+                            'dtype': sum_var.dtype,
+                            'value': 0.0,
+                            OP_ROLE_KEY: OpRole.Optimize
+                        })
+                    op._set_attr('op_namescope', namescope)
 
                 # allreduce(mp)->allreduce(sharding)->allreduce(pp)
                 idx_offset = 1
@@ -116,32 +142,103 @@ class GradientClipHelper(object):
         return
 
     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-    def sync_global_norm(self, block, ring_ids):
+    def sync_global_norm(self, block, ring_ids, mp_rank):
         """
         prune gradient_clip related ops for params that not belong to cur shard
         prune: square, reduce_sum, elementwise_mul
         keep: sum, sqrt, elementwise_max, elementwise_div
         """
-        # FIXME(wangxi): mp should prune duplicated param_grads
+        is_clip_grad_by_global_norm = False
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if op.type == 'sum':
+                is_clip_grad_by_global_norm = True
+                break
+        if not is_clip_grad_by_global_norm:
+            # TODO(Yuang Liu): need some extra handles when clip_grad_norm for mp
+            return
+
+        removed_op_idx = set()
+        removed_tmp_var = set()
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if op.type == 'sum':
+                break
+            for input_name in op.input_arg_names:
+                input_var = block.var(input_name)
+                # NOTE: when mp_degree > 1, some vars will be split into each mp rank.
+                # However, there still some vars such as Scale, Bias are not split.
+                # Those not be split vars should only be counted once during grad clip
+                # by global norm. Those vars either doesn't have is_distributed attr
+                # or the is_distributed attr has been set as False.
+                # Therefore, we prune those duplicated vars for grad clip.
+                if mp_rank >= 1 and (not (hasattr(input_var, 'is_distributed')
+                                          and input_var.is_distributed)):
+                    removed_op_idx.add(idx)
+                    for output_name in op.output_arg_names:
+                        removed_tmp_var.add(output_name)
+
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_gradient_clip_op(op):
                 continue
+            if idx in removed_op_idx:
+                block._remove_op(idx, sync=False)
 
-            if op.type == "sum":
-                sum_res = op.desc.output_arg_names()[0]
-                for ring_id in ring_ids:
-                    if ring_id == -1: continue
+        for var_name in removed_tmp_var:
+            block._remove_var(var_name, sync=False)
 
-                    idx = idx + 1
-                    block._insert_op_without_sync(
-                        idx,
-                        type='c_allreduce_sum',
-                        inputs={'X': sum_res},
-                        outputs={'Out': sum_res},
-                        attrs={
-                            'ring_id': ring_id,
-                            'op_namescope': "/gradient_clip_model_parallelism",
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Optimize,
-                        })
-                return
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if op.type == 'sum':
+                # If mp_rank == 0, no extra handles, just allreduce
+                # If mp_rank >= 1, some extra handles is needed
+                sum_rst_var = block.var(op.output_arg_names[0])
+                if mp_rank >= 1:
+                    reserved_vars = []
+                    for input_name in op.input_arg_names:
+                        if input_name not in removed_tmp_var:
+                            reserved_vars.append(input_name)
+
+                    if len(reserved_vars) > 0:
+                        op.desc.set_input("X", reserved_vars)
+                    else:
+                        # If all input of sum op should be removed, then remove the sum op.
+                        # And set the output's value of sum to 0.
+                        namescope = op.attr("op_namescope")
+                        block._remove_op(idx, sync=False)
+                        fill_constant_op = block._insert_op_without_sync(
+                            idx,
+                            type='fill_constant',
+                            inputs={},
+                            outputs={'Out': sum_rst_var},
+                            attrs={
+                                'shape': sum_rst_var.shape,
+                                'dtype': sum_rst_var.dtype,
+                                'value': 0.0,
+                                OP_ROLE_KEY: OpRole.Optimize
+                            })
+                        fill_constant_op._set_attr('op_namescope', namescope)
+                self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
+                break
+
+    @staticmethod
+    def _insert_allreduce(block, ring_ids, idx, var):
+        for ring_id in ring_ids:
+            if ring_id == -1:
+                continue
+
+            idx = idx + 1
+            block._insert_op_without_sync(
+                idx,
+                type='c_allreduce_sum',
+                inputs={'X': var},
+                outputs={'Out': var},
+                attrs={
+                    'ring_id': ring_id,
+                    'op_namescope': "/gradient_clip_model_parallelism",
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize,
+                })

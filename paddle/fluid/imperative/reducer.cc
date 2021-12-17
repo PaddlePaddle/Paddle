@@ -27,8 +27,9 @@
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   framework::Tensor *tensor =
@@ -41,6 +42,9 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
+  } else if (platform::is_npu_place(tensor->place())) {
+    // TODO(kuizhiqing)
+    VLOG(4) << "divnrank for npu not support yet";
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
@@ -229,6 +233,16 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
+  } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    ConcatTensorsWithType(
+        static_cast<const platform::NPUDeviceContext &>(context),
+        dense_tensors_, &dense_contents_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat npu grads since it's not compiled with HCCL,"
+        "Please recompile or reinstall Paddle with HCCL support."));
+#endif
   } else if (platform::is_cpu_place(place)) {
     ConcatTensorsWithType(
         static_cast<const platform::CPUDeviceContext &>(context),
@@ -260,6 +274,16 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
+#endif
+  } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    SplitTensorsWithType(
+        static_cast<const platform::NPUDeviceContext &>(context),
+        &dense_contents_, &dense_tensors_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split npu grad since it's not compiled with HCCL,"
+        "Please recompile or reinstall Paddle with HCCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(
@@ -451,6 +475,21 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
           platform::errors::NotFound("Grad pending node should not be null"));
+      // py_layer is not supported in DataParallel
+      auto begin = grad_pending_node->begin();
+      auto end = grad_pending_node->end();
+      for (auto op_base = begin; op_base != end; op_base++) {
+        PADDLE_ENFORCE_EQ(
+            op_base->Type() != "py_layer", true,
+            platform::errors::PreconditionNotMet(
+                "Note: Currently PyLayer is not supported in DataParallel. For "
+                "using PyLayer in a DataParallel model, you can skip gradient "
+                "synchronization among multiple cards by 'no_sync', and "
+                "manually implement 'all_reduce' before model optimization. "
+                "There is an example showing specific implemetation processing "
+                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
+                "/docs/api/paddle/DataParallel_cn.html"));
+      }
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());
@@ -796,7 +835,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
       }
     });
 #elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_GLOO)
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL)
     FusedAllReduceSchedule(run_order, group, next_group_);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -979,7 +1018,7 @@ void Reducer::FinalizeBackward() {
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_GLOO)
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars

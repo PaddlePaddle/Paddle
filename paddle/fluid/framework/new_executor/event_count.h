@@ -54,13 +54,16 @@
 namespace paddle {
 namespace framework {
 
+void* AlignedMalloc(size_t size, size_t alignment);
+void AlignedFree(void* memory_ptr);
+
 class EventCount {
  public:
   class Waiter;
 
   explicit EventCount(size_t waiter_num) : state_(kStackMask) {
     assert(waiter_num < (1 << kWaiterBits) - 1);
-    void* buffer = malloc(sizeof(Waiter) * waiter_num);
+    void* buffer = AlignedMalloc(sizeof(Waiter) * waiter_num, alignof(Waiter));
     if (buffer == nullptr) {
       return;
     }
@@ -78,7 +81,7 @@ class EventCount {
   ~EventCount() {
     // Ensure there are no waiters.
     assert(state_.load() == kStackMask);
-    free(waiters_);
+    AlignedFree(waiters_);
   }
 
   Waiter* GetWaiter(size_t waiter_index) {

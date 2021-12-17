@@ -55,6 +55,10 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+  } else if (type == "slice") {
+    op->SetInput("Input", {inputs[0]});
+    op->SetOutput("Out", {outputs[0]});
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -97,6 +101,19 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("WeightX", {inputs[2]});
     op->SetInput("WeightH", {inputs[3]});
     op->SetOutput("Hidden", {outputs[0]});
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+    op->SetAttr("Scale_data", 1.0f);
+    op->SetAttr("Shift_data", 0.0f);
+    op->SetAttr("Weight_scale", std::vector<float>{1.0f});
+  } else if (type == "fusion_lstm") {
+    op->SetInput("X", {inputs[0]});
+    op->SetInput("Bias", {inputs[1]});
+    op->SetInput("WeightX", {inputs[2]});
+    op->SetInput("WeightH", {inputs[3]});
+
+    op->SetOutput("Hidden", {outputs[0]});
+    op->SetOutput("Cell", {outputs[1]});
+
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
     op->SetAttr("Scale_data", 1.0f);
     op->SetAttr("Shift_data", 0.0f);
@@ -418,6 +435,25 @@ ProgramDesc BuildProgramDescFusionGru() {
   return prog;
 }
 
+static const std::initializer_list<std::string> variable_names_fusion_lstm = {
+    "x", "wx", "wh", "b", "h", "c"};
+
+// (x, wx, wh, b)->Fusion_lstm_1->h
+ProgramDesc BuildProgramDescFusionLSTM() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_transpose) {
+    auto* var = prog.MutableBlock(0)->Var(v);
+    if (v.find("wx") == 0 || v.find("wh") || v.find("b")) {
+      var->SetPersistable(true);
+    }
+  }
+
+  SetOp(&prog, "fusion_lstm", "Fusion_lstm_1", {"x", "wx", "wh", "b"},
+        {"h", "c"}, true, "int8");
+
+  return prog;
+}
+
 void MainTestFusionGru(const ProgramDesc& prog, int gru_count, int quant_count,
                        int dequant_count, int added_nodes_count, float scale,
                        float shift) {
@@ -468,6 +504,59 @@ TEST(CpuQuantizePass, fusion_gru) {
   int added_nodes_count = 1 + 1 + 0 + 0;
   MainTestFusionGru(BuildProgramDescFusionGru(), gru_count, quant_count,
                     dequant_count, added_nodes_count, 2. * 127, 128.);
+}
+
+void MainTestFusionLSTM(const ProgramDesc& prog, int expect_lstm_count,
+                        int quant_count, int dequant_count,
+                        int added_nodes_count, float scale, float shift) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_fusion_lstm, &original_nodes_num,
+              &current_nodes_num);
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int lstm_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "fusion_lstm") {
+        lstm_nodes_count++;
+
+        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_data")), scale)
+            << "Scale_data for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Shift_data")), shift)
+            << "Shift_data for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(std::vector<float>,
+                                  op->GetAttr("Scale_weights"))[0],
+                  scale)
+            << "Scale_weights for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(bool, op->GetAttr("force_fp32_output")), true)
+            << "force_fp32_output for node '" + op_name + "'.";
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(lstm_nodes_count, expect_lstm_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, fusion_lstm) {
+  // (x, wx, wh, b)->Fusion_lstm->h
+  int expect_lstm_count = 1;
+  int expect_quant_count = 1;
+  int dequant_count = 0;
+  // 1 Quant + 1 IN + 0 DeQuant + 0 OUT
+  int added_nodes_count = 1 + 1 + 0 + 0;
+  MainTestFusionLSTM(BuildProgramDescFusionLSTM(), expect_lstm_count,
+                     expect_quant_count, dequant_count, added_nodes_count,
+                     2. * 127, 128.);
 }
 
 const std::vector<std::string> churn_out_vars(ProgramDesc* prog,
@@ -697,6 +786,113 @@ TEST(CpuQuantizePass, reshapeBetweenNonQuantizedOp) {
   MainTestReshape(BuildProgramDescReshapeBetweenNonQuantizedOp(),
                   transpose_count, reshape_count, quant_count, dequant_count,
                   added_nodes_count, 2.0f * 127);
+}
+
+static const std::initializer_list<std::string> variable_names_slice = {
+    "a", "b", "c", "d"};
+
+// a->Dequantize->b
+// b->Slice->c
+// c->Dropout->d
+ProgramDesc BuildProgramDescSlice() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_slice) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
+  SetOp(&prog, "slice", "Slice", {"b"}, {"c"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, "float32");
+
+  return prog;
+}
+
+// a->Transpose->b
+// b->slice->c
+// c->Dropout->d
+ProgramDesc BuildProgramDescSliceBetweenNonQuantizedOp() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_slice) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "transpose2", "Transpose2", {"a"}, {"b"}, true, "float32");
+  SetOp(&prog, "slice", "Slice", {"b"}, {"c"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, "float32");
+
+  return prog;
+}
+
+void MainTestSlice(const ProgramDesc& prog, int transpose_count,
+                   int slice_count, int quant_count, int dequant_count,
+                   int added_nodes_count, float scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_slice, &original_nodes_num,
+              &current_nodes_num);
+
+  float quant_scale = 1.0f;
+  float dequant_scale = 1.0f;
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int transpose_nodes_count = 0;
+  int slice_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "transpose2") {
+        transpose_nodes_count++;
+      } else if (op->Type() == "slice") {
+        slice_nodes_count++;
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+        quant_scale = BOOST_GET_CONST(float, op->GetAttr("Scale"));
+        EXPECT_EQ(quant_scale, scale) << "Scale for node '" + op->Type() + "'.";
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+        auto op_name = op->GetAttrIfExists<std::string>("name");
+        VLOG(3) << op_name << "\n";
+        if (op_name != "Dequantize1") {
+          dequant_scale = BOOST_GET_CONST(float, op->GetAttr("Scale"));
+          EXPECT_EQ(dequant_scale, scale)
+              << "Scale for node '" + op->Type() + "'.";
+        }
+      }
+    }
+  }
+  EXPECT_EQ(transpose_nodes_count, transpose_count);
+  EXPECT_EQ(slice_nodes_count, slice_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, slice) {
+  // a->Dequantize->b
+  // b2->Quant->b3->slice->c1->Dequant->c2
+  // c2->Dropout->d
+  int slice_count = 1;
+  int transpose_count = 0;
+  int quant_count = 1;
+  int dequant_count = 2;
+  // 1 Quant + 1 IN + 1 DeQuant + 1 OUT
+  int added_nodes_count = 4;
+  MainTestSlice(BuildProgramDescSlice(), transpose_count, slice_count,
+                quant_count, dequant_count, added_nodes_count, 2.0f * 127);
+}
+
+TEST(CpuQuantizePass, sliceBetweenNonQuantizedOp) {
+  // a->Transpos2->b
+  // b->slice->c
+  // c->Dropout->d
+  int slice_count = 1;
+  int transpose_count = 1;
+  int quant_count = 0;
+  int dequant_count = 0;
+  // 0 Quant + 0 IN + 0 DeQuant + 0 OUT
+  int added_nodes_count = 0;
+  MainTestSlice(BuildProgramDescSliceBetweenNonQuantizedOp(), transpose_count,
+                slice_count, quant_count, dequant_count, added_nodes_count,
+                2.0f * 127);
 }
 
 static const std::initializer_list<std::string> variable_names_matmul = {

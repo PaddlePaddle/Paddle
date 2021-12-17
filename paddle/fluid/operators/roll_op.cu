@@ -16,7 +16,8 @@
 #include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/roll_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -58,6 +59,16 @@ class RollKernel<platform::CUDADeviceContext, T>
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
+    if (context.HasInput("ShiftsTensor")) {
+      const auto* shifts_tensor =
+          context.Input<framework::Tensor>("ShiftsTensor");
+      PADDLE_ENFORCE_EQ(
+          shifts_tensor->dims().size(), 1,
+          platform::errors::InvalidArgument(
+              "The rank of ShiftsTensor is expected to be 1, got %s",
+              shifts_tensor->dims().size()));
+      shifts = GetDataFromTensor<int64_t>(shifts_tensor);
+    }
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     auto* in_data = in->data<T>();
@@ -133,6 +144,16 @@ class RollGradKernel<platform::CUDADeviceContext, T>
     auto* in = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* out = context.Output<LoDTensor>(framework::GradVarName("X"));
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
+    if (context.HasInput("ShiftsTensor")) {
+      const auto* shifts_tensor =
+          context.Input<framework::Tensor>("ShiftsTensor");
+      PADDLE_ENFORCE_EQ(
+          shifts_tensor->dims().size(), 1,
+          platform::errors::InvalidArgument(
+              "The rank of ShiftsTensor is expected to be 1, got %s",
+              shifts_tensor->dims().size()));
+      shifts = GetDataFromTensor<int64_t>(shifts_tensor);
+    }
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     auto* in_data = in->data<T>();
@@ -188,9 +209,17 @@ REGISTER_OP_CUDA_KERNEL(
     roll, ops::RollKernel<paddle::platform::CUDADeviceContext, float>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, double>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RollKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::RollKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::RollKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::complex<float>>,
+    ops::RollKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     roll_grad, ops::RollGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RollGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex<double>>);

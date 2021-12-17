@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/hybird/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -35,6 +36,7 @@ template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
 template struct SetConstant<platform::CUDADeviceContext, uint8_t>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
+template struct SetConstant<platform::CUDADeviceContext, int16_t>;
 template struct SetConstant<platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<platform::CUDADeviceContext, bool>;
 template struct SetConstant<platform::CUDADeviceContext,
@@ -43,6 +45,7 @@ template struct SetConstant<platform::CUDADeviceContext,
                             platform::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                            \
+  template struct Transpose<platform::CUDADeviceContext, bool, RANK>;     \
   template struct Transpose<platform::CUDADeviceContext, float, RANK>;    \
   template struct Transpose<platform::CUDADeviceContext, double, RANK>;   \
   template struct Transpose<platform::CUDADeviceContext, float16, RANK>;  \
@@ -281,10 +284,18 @@ struct ElementwiseAddTo<platform::CUDADeviceContext, T> {
     auto& place = *(ctx->eigen_device());
     out.device(place) = out + in;
   }
+  void operator()(platform::CUDADeviceContext* ctx,
+                  const pten::DenseTensor& src, pten::DenseTensor* dst) {
+    auto in = pten::EigenVector<T>::Flatten(src);
+    auto out = pten::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
 };
 
 template struct ElementwiseAddTo<platform::CUDADeviceContext,
                                  platform::float16>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

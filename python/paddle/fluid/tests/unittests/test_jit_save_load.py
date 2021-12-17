@@ -1099,7 +1099,6 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
                 paddle.static.InputSpec(
                     shape=[None, IMAGE_SIZE], dtype='float32')
             ])
-
         result_00 = layer_save(inps0)
         result_01 = layer_save(inps1)
         #load and save without running

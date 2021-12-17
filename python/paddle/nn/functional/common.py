@@ -235,8 +235,8 @@ def interpolate(x,
     Examples:
         .. code-block:: python
 
-	    import paddle
-	    import numpy as np
+	        import paddle
+	        import numpy as np
             import paddle.nn.functional as F
             
             # given out size
@@ -244,7 +244,7 @@ def interpolate(x,
             x = paddle.to_tensor(input_data)
             output_1 = F.interpolate(x=x, size=[12,12])
     	    print(output_1.shape)
-	    # [2L, 3L, 12L, 12L]
+	        # [2L, 3L, 12L, 12L]
             
             # given scale
             output_2 = F.interpolate(x=x, scale_factor=[2,1])
@@ -295,13 +295,17 @@ def interpolate(x,
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
 
-    if resample == 'AREA' and len(x.shape) == 3:
-        return paddle.nn.functional.adaptive_avg_pool1d(x, size)
-
-    if resample == 'AREA' and len(x.shape) == 4:
-        return paddle.nn.functional.adaptive_avg_pool2d(x, size)
-    if resample == 'AREA' and len(x.shape) == 5:
-        return paddle.nn.functional.adaptive_avg_pool3d(x, size)
+    if resample == 'AREA':
+        if isinstance(size, list) or isinstance(size, tuple) or isinstance(
+                size, Variable):
+            if len(size) == 0:
+                raise ValueError("output size can not be empty")
+        if len(x.shape) == 3:
+            return paddle.nn.functional.adaptive_avg_pool1d(x, size)
+        elif len(x.shape) == 4:
+            return paddle.nn.functional.adaptive_avg_pool2d(x, size)
+        elif len(x.shape) == 5:
+            return paddle.nn.functional.adaptive_avg_pool3d(x, size)
 
     helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -342,14 +346,13 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
+
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-
         if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
-
         else:
             if in_dygraph_mode():
                 if isinstance(out_shape, Variable):
@@ -937,6 +940,8 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
+            if not in_dygraph_mode():
+                input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
@@ -946,8 +951,12 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            for i in drop_axes:
-                mask_shape[i] = input_shape[i]
+            if not in_dygraph_mode():
+                for i in drop_axes:
+                    mask_shape[i] = input_shape_tensor[i]
+            else:
+                for i in drop_axes:
+                    mask_shape[i] = input_shape[i]
 
             #get mask
             random_tensor = paddle.uniform(
@@ -1272,7 +1281,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
-    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+    if mode == "constant" and isinstance(pad, (
+            list, tuple)) and len(pad) == x_dim * 2:
         return layers.pad(x, pad, pad_value=value)
 
     assert x_dim in [
@@ -1359,6 +1369,46 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         out = squeeze(out, axis=unsqueezed_dim)
 
     return out
+
+
+def zeropad2d(x, padding, data_format="NCHW", name=None):
+    """
+    Pads the input tensor boundaries with zero according to 'pad'.
+
+    Args:
+        x(Tensor): The input tensor with data type float16/float32/float64/int32/int64.
+        padding(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            The input dimension should be 4 and pad has the form (pad_left, pad_right,
+            pad_top, pad_bottom).
+        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
+            the input data. Default: "NCHW".
+        name(str, optional): The default value is None. Normally there is no need for user
+            to set this property.
+
+    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn.functional as F
+
+            x_shape = (1, 1, 2, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.zeropad2d(x, [1, 2, 1, 1])
+            # [[[[0. 0. 0. 0. 0. 0.]
+            #    [0. 1. 2. 3. 0. 0.]
+            #    [0. 4. 5. 6. 0. 0.]
+            #    [0. 0. 0. 0. 0. 0.]]]]
+    """
+
+    return pad(x,
+               pad=padding,
+               mode='constant',
+               value=0,
+               data_format=data_format,
+               name=name)
 
 
 def cosine_similarity(x1, x2, axis=1, eps=1e-8):
@@ -1467,9 +1517,8 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
-                      False, "alpha", 1)
+        pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
+                                    False)
 
         if bias is None:
             return pre_bias
@@ -1484,14 +1533,10 @@ def linear(x, weight, bias=None, name=None):
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
         inputs = {'X': [x], 'Y': [weight]}
-        attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
-        }
+        attrs = {'trans_x': False, 'trans_y': False}
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
-            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
         if bias is not None:
             res = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
@@ -1704,14 +1749,14 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     label_size = 1
     for dim in list(label.shape):
         label_size *= dim
-    if label_size < 1:
+    if label_size != -1 and label_size < 1:
         raise ValueError('Expected label_size > 0 \
-             (got label_size{})'.format(label_size))
+             (got label_size: {})'.format(label_size))
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
         raise ValueError('Expected label_dims == 1 \
-             (got label_dims{})'.format(label_dims))
+             (got label_dims: {})'.format(label_dims))
 
     seed = None
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:

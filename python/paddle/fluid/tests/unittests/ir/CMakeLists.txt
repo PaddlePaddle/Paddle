@@ -10,3 +10,5 @@ foreach(target ${TEST_IR_PASSES})
 endforeach()
 
 add_subdirectory(inference)
+
+set_tests_properties(test_fuse_resnet_unit PROPERTIES TIMEOUT 120)

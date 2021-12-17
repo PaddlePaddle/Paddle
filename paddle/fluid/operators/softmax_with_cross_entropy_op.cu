@@ -20,12 +20,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -73,17 +69,21 @@ __global__ void CrossEntropyHardLabel(T* loss, const T* softmax,
 
   // thread ids compute loss[ids] using softmax[idx]
   if (ids < n * d) {
-    int64_t idx = idx_n * dim * d + labels[ids] * d + idx_d;
-    if (IgnoreIndex == true) {
-      // IgnoreIndex is true
-      if (labels[ids] == ignore_idx) {
-        loss[ids] = static_cast<T>(0.0);
+    if (labels[ids] < 0) {  // label is negative
+      loss[ids] = static_cast<T>(0.0);
+    } else {  // label is positive of zero
+      int64_t idx = idx_n * dim * d + labels[ids] * d + idx_d;
+      if (IgnoreIndex == true) {
+        // IgnoreIndex is true
+        if (labels[ids] == ignore_idx) {
+          loss[ids] = static_cast<T>(0.0);
+        } else {
+          loss[ids] = -Log(softmax[idx]);
+        }
       } else {
+        // IgnoreIndex is false
         loss[ids] = -Log(softmax[idx]);
       }
-    } else {
-      // IgnoreIndex is false
-      loss[ids] = -Log(softmax[idx]);
     }
   }
 }
@@ -449,14 +449,14 @@ static void SoftmaxWithCrossEntropyHardLabel(
 #ifdef PADDLE_WITH_HIP
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
         handle, platform::CudnnDataType<T>::kOne(), descp, logits_data,
         platform::CudnnDataType<T>::kZero(), descp, softmax_data,
         MIOPEN_SOFTMAX_LOG, mode));
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
         handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
         descp, logits_data, platform::CudnnDataType<T>::kZero(), descp,
         softmax_data));

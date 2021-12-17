@@ -18,60 +18,46 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define BITWISE_BINARY_FUNCTOR(func, expr, bool_expr)    \
-  template <typename T>                                  \
-  struct Bitwise##func##CUDAFunctor {                    \
-    using ELEM_TYPE = T;                                 \
-    HOSTDEVICE T operator()(const T* args) const {       \
-      return args[0] expr args[1];                       \
-    }                                                    \
-  };                                                     \
-                                                         \
-  template <>                                            \
-  struct Bitwise##func##CUDAFunctor<bool> {              \
-    using ELEM_TYPE = bool;                              \
-    HOSTDEVICE bool operator()(const bool* args) const { \
-      return args[0] bool_expr args[1];                  \
-    }                                                    \
-  };
-
-BITWISE_BINARY_FUNCTOR(And, &, &&)
-BITWISE_BINARY_FUNCTOR(Or, |, ||)
-BITWISE_BINARY_FUNCTOR(Xor, ^, !=)
-#undef BITWISE_BINARY_FUNCTOR
-
-template <typename T>
-struct BitwiseNotCUDAFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE T operator()(const T* args) const { return ~args[0]; }
-};
-
-template <>
-struct BitwiseNotCUDAFunctor<bool> {
-  using ELEM_TYPE = bool;
-  HOSTDEVICE bool operator()(const bool* args) const { return !args[0]; }
-};
-
 template <typename Functor>
 class BinaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
-  using T = typename Functor::ELEM_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using T = typename Functor::ELEM_TYPE;
+
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
     auto functor = Functor();
-    std::vector<const framework::Tensor*> ins;
-    std::vector<framework::Tensor*> outs;
+    std::vector<const framework::Tensor*> ins = {x, y};
+    std::vector<framework::Tensor*> outs = {out};
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+        cuda_ctx, ins, &outs, -1, functor);
+  }
+};
 
-    if (ins.size() == 1) {
-      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-          cuda_ctx, ins, &outs, axis, functor);
-    } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-          cuda_ctx, ins, &outs, axis, functor);
-    }
+template <typename Functor>
+class UnaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
+    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using T = typename Functor::ELEM_TYPE;
+
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto functor = Functor();
+    std::vector<const framework::Tensor*> ins = {x};
+    std::vector<framework::Tensor*> outs = {out};
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+        cuda_ctx, ins, &outs, functor);
   }
 };
 
@@ -81,7 +67,7 @@ class BinaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
 namespace ops = ::paddle::operators;
 namespace plat = ::paddle::platform;
 
-REGISTER_BINARY_BITWISE_KERNEL(bitwise_and, CUDA, ops::BitwiseAndCUDAFunctor);
-REGISTER_BINARY_BITWISE_KERNEL(bitwise_or, CUDA, ops::BitwiseOrCUDAFunctor);
-REGISTER_BINARY_BITWISE_KERNEL(bitwise_xor, CUDA, ops::BitwiseXorCUDAFunctor);
-REGISTER_BINARY_BITWISE_KERNEL(bitwise_not, CUDA, ops::BitwiseNotCUDAFunctor);
+REGISTER_BINARY_BITWISE_KERNEL(bitwise_and, CUDA, ops::BitwiseAndFunctor);
+REGISTER_BINARY_BITWISE_KERNEL(bitwise_or, CUDA, ops::BitwiseOrFunctor);
+REGISTER_BINARY_BITWISE_KERNEL(bitwise_xor, CUDA, ops::BitwiseXorFunctor);
+REGISTER_UNARY_BITWISE_KERNEL(bitwise_not, CUDA, ops::BitwiseNotFunctor);

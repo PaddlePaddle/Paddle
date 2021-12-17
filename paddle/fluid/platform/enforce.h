@@ -31,6 +31,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
+#include <cufft.h>
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
@@ -44,11 +45,6 @@ limitations under the License. */
 #include <thrust/system/hip/error.h>
 #include <thrust/system_error.h>  // NOLINT
 #endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "acl/acl.h"
-#include "hccl/hccl_types.h"
-#endif  // PADDLE_WITH_ASCEND_CL
 
 #include <fstream>
 #include <iomanip>
@@ -85,6 +81,7 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/hipfft.h"
 #include "paddle/fluid/platform/dynload/hiprand.h"
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
@@ -99,8 +96,9 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/type_defs.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 namespace paddle {
 namespace platform {
@@ -185,11 +183,8 @@ struct TypeConverterImpl<T1, T2, false> {
 
 template <typename T1, typename T2>
 struct TypeConverter {
- private:
   static constexpr bool kIsArithmetic =
       IsArithmetic<T1>() && IsArithmetic<T2>();
-
- public:
   using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
   using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
 };
@@ -713,6 +708,8 @@ DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
+DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
+DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS, CU);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
@@ -727,6 +724,7 @@ inline const char* GetErrorMsgUrl(T status) {
       details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
   switch (proto_type) {
     case platform::proto::ApiType::CUDA:
+    case platform::proto::ApiType::CU:
       return "https://docs.nvidia.com/cuda/cuda-runtime-api/"
              "group__CUDART__TYPES.html#group__CUDART__TYPES_"
              "1g3f51e3575c2178246db0a94a430e0038";
@@ -750,6 +748,8 @@ inline const char* GetErrorMsgUrl(T status) {
       return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
              "types.html#ncclresult-t";
       break;
+    case platform::proto::ApiType::CUFFT:
+      return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
     default:
       return "Unknown type of External API, can't get error message URL!";
       break;
@@ -838,6 +838,8 @@ template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
 template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
 template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
 template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
+template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
+template std::string GetExternalErrorMsg<CUresult>(CUresult);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif
@@ -898,6 +900,24 @@ inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
   return sout.str();
 }
 
+/*************** CUFFT ERROR ***************/
+inline bool is_error(cufftResult_t stat) { return stat != CUFFT_SUCCESS; }
+
+inline std::string build_nvidia_error_msg(cufftResult_t stat) {
+  std::ostringstream sout;
+  sout << "CUFFT error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
+}
+
+/*************** CUresult ERROR ***************/
+inline bool is_error(CUresult stat) { return stat != CUDA_SUCCESS; }
+
+inline std::string build_nvidia_error_msg(CUresult stat) {
+  std::ostringstream sout;
+  sout << "CU error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
+}
+
 /**************** NCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
@@ -924,7 +944,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                        \
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                         \
   do {                                                           \
     auto __cond__ = (COND);                                      \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);             \
@@ -1098,6 +1118,14 @@ inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
+/***** HIPFFT ERROR *****/
+inline bool is_error(hipfftResult_t stat) { return stat != HIPFFT_SUCCESS; }
+
+inline std::string build_rocm_error_msg(hipfftResult_t stat) {
+  std::string msg(" HIPFFT error, ");
+  return msg + platform::dynload::hipfftGetErrorString(stat) + " ";
+}
+
 namespace details {
 
 template <typename T>
@@ -1114,6 +1142,7 @@ DEFINE_EXTERNAL_API_TYPE(hipError_t, hipSuccess);
 DEFINE_EXTERNAL_API_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(miopenStatus_t, miopenStatusSuccess);
 DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
+DEFINE_EXTERNAL_API_TYPE(hipfftResult_t, HIPFFT_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
@@ -1121,7 +1150,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 
 }  // namespace details
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                      \
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                       \
   do {                                                         \
     auto __cond__ = (COND);                                    \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);           \
@@ -1165,49 +1194,6 @@ inline void retry_sleep(unsigned millisecond) {
 
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
-
-#ifdef PADDLE_WITH_ASCEND_CL
-namespace details {
-template <typename T>
-struct NPUStatusType {};
-
-#define DEFINE_NPU_STATUS_TYPE(type, success_value) \
-  template <>                                       \
-  struct NPUStatusType<type> {                      \
-    using Type = type;                              \
-    static constexpr Type kSuccess = success_value; \
-  }
-
-DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
-DEFINE_NPU_STATUS_TYPE(HcclResult, HCCL_SUCCESS);
-}  // namespace details
-
-inline std::string build_npu_error_msg(aclError stat) {
-  std::ostringstream sout;
-  sout << " ACL error, the error code is : " << stat << ". ";
-  return sout.str();
-}
-
-inline std::string build_npu_error_msg(HcclResult stat) {
-  std::ostringstream sout;
-  sout << " HCCL error, the error code is : " << stat << ". ";
-  return sout.str();
-}
-
-#define PADDLE_ENFORCE_NPU_SUCCESS(COND)                       \
-  do {                                                         \
-    auto __cond__ = (COND);                                    \
-    using __NPU_STATUS_TYPE__ = decltype(__cond__);            \
-    constexpr auto __success_type__ =                          \
-        ::paddle::platform::details::NPUStatusType<            \
-            __NPU_STATUS_TYPE__>::kSuccess;                    \
-    if (UNLIKELY(__cond__ != __success_type__)) {              \
-      auto __summary__ = ::paddle::platform::errors::External( \
-          ::paddle::platform::build_npu_error_msg(__cond__));  \
-      __THROW_ERROR_INTERNAL__(__summary__);                   \
-    }                                                          \
-  } while (0)
-#endif  // PADDLE_WITH_ASCEND_CL
 
 }  // namespace platform
 }  // namespace paddle

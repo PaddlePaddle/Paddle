@@ -52,6 +52,20 @@ inline void ADD(int n, const T* x, const T y, T* z) {
   }
 }
 
+template <typename T>
+inline void DIV(int n, const T x, const T* y, T* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x / y[i];
+  }
+}
+
+template <typename T>
+inline void ELE_MUL(int n, const T* x, const T* y, T* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+}
+
 static bool StartWith(const std::string& str, const std::string& substr) {
   return str.find(substr) == 0;
 }
@@ -91,5 +105,6 @@ inline double GetCurrentUS() {
   gettimeofday(&time, NULL);
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
+
 }  // namespace distributed
 }  // namespace paddle

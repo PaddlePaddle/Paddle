@@ -52,7 +52,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
 
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
@@ -100,7 +100,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
             int imid;
             for (imid = 0; imid < imsize - (imsize % M);
                  imid += M, iter_x_data += M) {
-              // TODO(gaoxiang) ：Because AVX/AVX2/AVX512 can not directly used
+              // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used
               // in template class/function, before we complete high
               // performance cpu vector extension, temporarily unrolling
               // loop to get high precision and performance
@@ -138,7 +138,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
             int imid;
             for (imid = 0; imid < imsize - (imsize % M);
                  imid += M, iter_x_data += M * C) {
-              // TODO(gaoxiang) ：Because AVX/AVX2/AVX512 can not directly used
+              // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used
               // in template class/function, before we complete high
               // performance cpu vector extension, temporarily unrolling
               // loop to get high precision and performance
@@ -236,7 +236,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-    const int group_size = (C - 1) / groups + 1;
+    const int group_size = C / groups;
 
     d_x->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;

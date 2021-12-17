@@ -61,7 +61,7 @@ def test_class1(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
@@ -88,7 +88,7 @@ def test_class2(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
@@ -120,7 +120,7 @@ def test_class3(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(
@@ -153,7 +153,7 @@ def test_class4(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
@@ -184,7 +184,7 @@ def test_class5(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
@@ -217,7 +217,7 @@ def test_class6(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
@@ -252,7 +252,7 @@ def test_class7(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if typename == "float16":
+            if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
@@ -276,7 +276,7 @@ class TestGatherNdAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-for _typename in {'float16', 'float32'}:
+for _typename in {'float16', 'float32', 'int64'}:
     test_class1('gather_nd', _typename)
     test_class2('gather_nd', _typename)
     test_class3('gather_nd', _typename)

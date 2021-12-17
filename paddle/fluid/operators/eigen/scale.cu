@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -41,6 +42,8 @@ template struct EigenScale<Eigen::GpuDevice, int16_t>;
 template struct EigenScale<Eigen::GpuDevice, int>;
 template struct EigenScale<Eigen::GpuDevice, int64_t>;
 template struct EigenScale<Eigen::GpuDevice, platform::float16>;
+template struct EigenScale<Eigen::GpuDevice, platform::complex<float>>;
+template struct EigenScale<Eigen::GpuDevice, platform::complex<double>>;
 
 }  // namespace operators
 }  // namespace paddle

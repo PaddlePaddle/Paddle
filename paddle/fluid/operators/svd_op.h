@@ -54,7 +54,6 @@ class SvdCPUKernel : public framework::OpKernel<T> {
         size_t(batches * col_v * cols * sizeof(math::Real<T>)));
     auto* S_out = S->mutable_data<math::Real<T>>(
         context.GetPlace(), size_t(batches * k * sizeof(math::Real<T>)));
-
     /*SVD Use the Eigen Library*/
     math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
   }
@@ -96,7 +95,7 @@ class SvdGradKernel : public framework::OpKernel<T> {
     auto s_square = dito.Pow(S, 2);
     auto F =
         dito.Sub(dito.Unsqueeze(s_square, -2), dito.Unsqueeze(s_square, -1));
-    F = dito.Add(F, dito.Diag(dito.Infinits({k}, U.type())));
+    F = dito.Add(F, dito.Diag(dito.Infinits({k})));
     F = dito.Pow(F, -1);
     Tensor sigma_term;
     Tensor u_term;
@@ -115,8 +114,7 @@ class SvdGradKernel : public framework::OpKernel<T> {
       u_term = dito.Mul(dito.Mul(dito.Sub(UTG, GTU), F), dito.Unsqueeze(S, -2));
       u_term = dito.Matmul(U, u_term);
       if (m > k) {
-        auto project =
-            dito.Sub(dito.Eye(m, U.type()), dito.Matmul(U, U, false, true));
+        auto project = dito.Sub(dito.Eye(m), dito.Matmul(U, U, false, true));
         u_term = dito.Add(u_term, dito.Mul(dito.Matmul(project, dU),
                                            dito.Unsqueeze(s_inverse, -2)));
       }
@@ -129,8 +127,7 @@ class SvdGradKernel : public framework::OpKernel<T> {
       v_term = dito.Mul(dito.Matmul(dito.Mul(dito.Sub(UTG, GTU), F), VH),
                         dito.Unsqueeze(S, -1));
       if (n > k) {
-        auto project =
-            dito.Sub(dito.Eye(n, U.type()), dito.Matmul(VH, VH, true, false));
+        auto project = dito.Sub(dito.Eye(n), dito.Matmul(VH, VH, true, false));
         v_term = dito.Add(v_term, dito.Mul(dito.Matmul(dVH, project),
                                            dito.Unsqueeze(s_inverse, -1)));
       }

@@ -111,8 +111,13 @@ class QuantDequantTest(unittest.TestCase):
     def _save_models(self, dirname, feeded_var_names, target_vars, executor,
                      program, scope):
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor, program)
+            fluid.io.save_inference_model(
+                dirname,
+                feeded_var_names,
+                target_vars,
+                executor,
+                program,
+                clip_extra=True)
 
     def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
         '''

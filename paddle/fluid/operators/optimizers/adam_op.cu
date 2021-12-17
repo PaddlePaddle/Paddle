@@ -198,11 +198,11 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
           *mom2, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), mom2_out);
       framework::TensorCopy(
-          *beta1_pow, ctx.GetPlace(),
+          *beta1_pow, beta1_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta1_pow_out);
       framework::TensorCopy(
-          *beta2_pow, ctx.GetPlace(),
+          *beta2_pow, beta2_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta2_pow_out);
       return;

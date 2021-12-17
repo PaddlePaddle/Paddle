@@ -322,6 +322,8 @@ def concat(input, axis=0, name=None):
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
+        if not isinstance(input, Variable):
+            input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -614,6 +616,11 @@ def assign(input, output=None):
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
+        # Not support [var, var, ...] currently.
+        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+            raise TypeError(
+                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+            )
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP64:
             # Setting FP64 numpy data is not supported in Paddle, so we
@@ -674,7 +681,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
             If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
         dtype(np.dtype|str): Data type of the output Tensor which can
-            be float16, float32, float64, uint8, int32, int64.
+            be float16, float32, float64, uint8, int16, int32, int64.
         value(bool|float|int|Tensor): The constant value used to initialize 
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
         force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
@@ -712,7 +719,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     attrs = {'force_cpu': force_cpu}
     dtype = convert_dtype(dtype)
     if not isinstance(value, Variable):
-        if dtype in ['uint8', 'int64', 'int32']:
+        if dtype in ['uint8', 'int16', 'int32', 'int64']:
             attrs['str_value'] = str(int(value))
             attrs['value'] = int(value)
         else:
@@ -725,7 +732,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out = _varbase_creator(dtype=dtype)
 
         if isinstance(value, Variable):
-            if dtype in ['uint8', 'int64', 'int32']:
+            if dtype in ['uint8', 'int16', 'int32', 'int64']:
                 attrs['str_value'] = str(int(value.numpy().item(0)))
             else:
                 attrs['str_value'] = str(float(value.numpy().item(0)))
@@ -745,10 +752,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         inputs['ValueTensor'] = value
 
     check_shape(shape)
-    check_dtype(
-        dtype, 'dtype',
-        ['bool', 'float16', 'float32', 'float64', 'uint8', 'int32', 'int64'],
-        'fill_constant')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'uint8', 'int16', 'int32',
+        'int64'
+    ], 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if out is not None:
@@ -1431,7 +1438,9 @@ def range(start, end, step, dtype, name=None):
         step = cast(step, dtype)
 
     if in_dygraph_mode():
-        return _C_ops.range(start, end, step)
+        out = _C_ops.range(start, end, step)
+        out.stop_gradient = True
+        return out
 
     out_shape = None
     if not isinstance(start, Variable) and not isinstance(

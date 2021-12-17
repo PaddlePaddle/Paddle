@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperator
+from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
-from .common import register_distributed_operator
+from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
@@ -24,26 +24,26 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 
 
-class DistributedSoftmax(DistributedOperator):
+class DistributedSoftmax(DistributedOperatorImplContainer):
     def __init__(self, name):
         super(DistributedSoftmax, self).__init__()
         self._name = name
 
 
-register_distributed_operator("softmax", DistributedSoftmax("softmax"))
+register_distributed_operator_impl_container("softmax",
+                                             DistributedSoftmax("softmax"))
 
 
 class DistributedSoftmaxImpl(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedSoftmaxImpl, self).__init__()
         self._name = name
+        self._forward_implemented = False
+        self._backward_implemented = True
 
-    def is_process_mesh_compatible(self, op_dist_attr):
-        """ No restriction for now. """
-        return True
-
-    def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_input_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         axis = op_desc.attr('axis')
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -56,8 +56,9 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
 
         return True
 
-    def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_owner_op().desc
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         axis = op_desc.attr('axis')
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
@@ -70,9 +71,29 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
 
         return True
 
-    def update_dims_mapping(self, op_dist_attr):
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        axis = op_desc.attr('axis')
+        out_name = op_desc.output('Out')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        if axis != -1 and axis != len(x_dims_mapping) - 1:
+            return False
+
+        if is_dim_shard(x_dims_mapping[axis]):
+            return False
+
+        if x_dims_mapping != out_dims_mapping:
+            return False
+
+        return True
+
+    def update_dims_mapping(self, dist_op):
         changed = False
-        op_desc = op_dist_attr.get_owner_op().desc
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -85,6 +106,10 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
                 changed = True
 
         return changed
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        pass
 
 
 register_distributed_operator_impl(

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -93,7 +94,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex<float>>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like2,
@@ -101,4 +106,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex<float>>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex<double>>);

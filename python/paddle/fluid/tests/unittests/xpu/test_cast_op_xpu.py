@@ -16,71 +16,48 @@ from __future__ import print_function
 import sys
 
 sys.path.append("..")
-import op_test
 import unittest
+import op_test
 import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
-
-class TestCastOp1(op_test.OpTest):
-    def setUp(self):
-        ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float32')}
-        self.outputs = {'Out': ipt.astype('float32')}
-        self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP32)
-        }
-        self.op_type = 'cast'
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
-    def test_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['X'], ['Out'])
+typeid_dict = {
+    'int32': int(core.VarDesc.VarType.INT32),
+    'int64': int(core.VarDesc.VarType.INT64),
+    'float32': int(core.VarDesc.VarType.FP32),
+    'float16': int(core.VarDesc.VarType.FP16),
+    'bool': int(core.VarDesc.VarType.BOOL),
+}
 
 
-class TestCastOp2(op_test.OpTest):
-    def setUp(self):
-        ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float32')}
-        self.outputs = {'Out': ipt.astype('float16')}
-        self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP16)
-        }
-        self.op_type = 'cast'
+def create_test_class(in_typename, out_typename):
+    class Cls(op_test.OpTest):
+        def setUp(self):
+            ipt = np.random.random(size=[10, 10])
+            self.inputs = {'X': ipt.astype(in_typename)}
+            self.outputs = {'Out': ipt.astype(in_typename).astype(out_typename)}
+            self.attrs = {
+                'in_dtype': typeid_dict[in_typename],
+                'out_dtype': typeid_dict[out_typename],
+            }
+            self.op_type = 'cast'
 
-    def test_check_output(self):
-        #self.check_output(atol=1e-3)
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+    cls_name = "cast_{0}_{1}".format(in_typename, out_typename)
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
 
 
-class TestCastOp3(op_test.OpTest):
-    def setUp(self):
-        ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float16')}
-        self.outputs = {'Out': ipt.astype('float32')}
-        self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP16),
-            'out_dtype': int(core.VarDesc.VarType.FP32)
-        }
-        self.op_type = 'cast'
-
-    def test_check_output(self):
-        #self.check_output(atol=1e-3)
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+for in_type in {'float16', 'float32', 'int32', 'int64', 'bool'}:
+    for out_type in {'float16', 'float32', 'int32', 'int64'}:
+        create_test_class(in_type, out_type)
 
 
 class TestCastOpError(unittest.TestCase):

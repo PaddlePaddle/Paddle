@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .spawn import spawn  # noqa: F401
+from .fleet.launch import launch  # noqa: F401
 
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
@@ -42,15 +43,12 @@ from .collective import wait  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
-from .auto_parallel import set_shard_mask  # noqa: F401
-from .auto_parallel import set_offload_device  # noqa: F401
-from .auto_parallel import set_pipeline_stage  # noqa: F401
-from .auto_parallel import ProcessMesh  # noqa: F401
 
 from .fleet import BoxPSDataset  # noqa: F401
 
 from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
+from .entry_attr import ShowClickEntry  # noqa: F401
 
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
@@ -60,6 +58,7 @@ from . import utils  # noqa: F401
 
 __all__ = [  # noqa
       "spawn",
+      "launch",
       "scatter",
       "broadcast",
       "ParallelEnv",
@@ -71,6 +70,7 @@ __all__ = [  # noqa
       "QueueDataset",
       "split",
       "CountFilterEntry",
+      "ShowClickEntry",
       "get_world_size",
       "get_group",
       "all_gather",

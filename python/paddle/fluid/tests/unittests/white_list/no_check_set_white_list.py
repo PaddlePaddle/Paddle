@@ -32,5 +32,7 @@ no_check_set_white_list = [
     'fusion_lstm',
     'softmax_with_cross_entropy',
     'svd',
+    'eigh',
+    'eigvalsh',
     'class_center_sample',
 ]

@@ -146,25 +146,35 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        assert isinstance(value, (np.ndarray, core.VarBase)), \
-            "Variable set_value function, arguments type only support Variable, numpy, VarBase"
+        assert isinstance(value, (np.ndarray, core.VarBase, dict, str)), \
+            "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
 
-        value_np = value
-        if isinstance(value, core.VarBase):
-            value_np = value.numpy()
+        if isinstance(value, (dict, str)):
+            assert len(self) == len(
+                value
+            ), "Variable length not match, Variable [ {} ] need tensor with length {} but load set tensor with length {}".format(
+                self.name, len(self), len(value))
+            if isinstance(value, dict):
+                self.value().set_vocab(value)
+            else:
+                self.value().set_string_list(value)
+        else:
+            value_np = value
+            if isinstance(value, core.VarBase):
+                value_np = value.numpy()
 
-        self_tensor_np = self.numpy()
+            self_tensor_np = self.numpy()
 
-        assert self_tensor_np.shape == value_np.shape, \
-            "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                self.name, self_tensor_np.shape, value_np.shape)
+            assert self_tensor_np.shape == value_np.shape, \
+                "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
+                    self.name, self_tensor_np.shape, value_np.shape)
 
-        assert self_tensor_np.dtype == value_np.dtype, \
-            "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                self.name, self_tensor_np.dtype, value_np.dtype)
+            assert self_tensor_np.dtype == value_np.dtype, \
+                "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                    self.name, self_tensor_np.dtype, value_np.dtype)
 
-        self.value().get_tensor().set(value_np,
-                                      framework._current_expected_place())
+            self.value().get_tensor().set(value_np,
+                                          framework._current_expected_place())
 
     @framework.dygraph_only
     def backward(self, grad_tensor=None, retain_graph=False):
@@ -228,7 +238,7 @@ def monkey_patch_varbase():
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
 
-            if paddle.is_compiled_with_xpu():
+            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 core.dygraph_run_backward([scaled_loss], [grad_tensor],
@@ -346,6 +356,83 @@ def monkey_patch_varbase():
         hook_id = self._register_grad_hook(hook)
         helper = TensorHookRemoveHelper(self, hook_id)
         return helper
+
+    @framework.dygraph_only
+    def _to(self, device=None, dtype=None, blocking=None):
+
+        if device is None and dtype is None and blocking is None:
+            return self
+
+        if device is not None:
+            if isinstance(device, str):
+                device = paddle.device._convert_to_place(device)
+            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
+                                     core.CUDAPinnedPlace, core.XPUPlace)):
+                pass
+            else:
+                raise ValueError(
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    + type(device).__name__)
+
+        if blocking is None:
+            blocking = True
+        else:
+            assert isinstance(
+                blocking,
+                bool), "blocking value error, must be the True, False or None"
+
+        def transform(t, device, dtype, blocking):
+            if device is None:
+                device = t.place
+            if dtype is None:
+                dtype = t.dtype
+            if type(dtype) is str:
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+
+            # 1. gpu place need to determine whether the memory is sufficient for allocation.
+            if t.place.is_gpu_place():
+                size_dtype = core.size_of_dtype(dtype)
+                # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
+                # waiting_alloc_memory will compute the memory space occupied by 't'.
+                # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
+                waiting_alloc_memory = (
+                    (t._numel() * size_dtype) / 256 + 1) * 256 * 1.2
+                gpu_memory_available = core.gpu_memory_available()
+                if gpu_memory_available < waiting_alloc_memory:
+                    # Copy Tensor to cpu
+                    t_used = t._copy_to(paddle.CPUPlace(), blocking)
+                    # Release memory of t
+                    t._clear()
+                else:
+                    # Tensor still in GPU
+                    t_used = t
+            else:
+                t_used = t
+
+            # 2. cast Tensor to dtype
+            if dtype is not None and dtype != t_used.dtype:
+                with paddle.fluid.framework._dygraph_place_guard(
+                        place=t_used.place):
+                    t_casted = t_used.cast(dtype=dtype)
+            else:
+                t_casted = t_used
+
+            # 3. Copy casted Tensor(in CPU or GPU) to device
+            if device is not None and not t_casted.place._equals(device):
+                new_t = t_casted._copy_to(device, blocking)
+            else:
+                new_t = t_casted
+
+            # 4. Share Tensor to origin Tensor
+            dst_tensor = t.value().get_tensor()
+            src_tensor = new_t.value().get_tensor()
+            dst_tensor._share_data_with(src_tensor)
+
+            return t
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return transform(self, device, dtype, blocking)
 
     @property
     def grad(self):
@@ -553,8 +640,9 @@ def monkey_patch_varbase():
                         or isinstance(slice_item.step, Variable):
                     return True
             else:
-                if isinstance(slice_item,
-                              Variable) and Variable.dtype != paddle.bool:
+                if isinstance(
+                        slice_item,
+                    (Variable, np.ndarray)) and Variable.dtype != paddle.bool:
                     return True
         return False
 
@@ -639,7 +727,7 @@ def monkey_patch_varbase():
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__)):
+        ("__setitem__", __setitem__), ("_to", _to)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.

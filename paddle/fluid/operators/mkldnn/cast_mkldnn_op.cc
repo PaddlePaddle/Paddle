@@ -36,18 +36,15 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     auto x_paddle_type = framework::proto::VarType::Type(in_dtype);
     auto out_paddle_type = framework::proto::VarType::Type(out_dtype);
 
-    mkldnn::memory::data_type x_type =
-        framework::ToMKLDNNDataType(x_paddle_type);
-    mkldnn::memory::data_type out_type =
+    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x_paddle_type);
+    dnnl::memory::data_type out_type =
         framework::ToMKLDNNDataType(out_paddle_type);
 
     auto x_tz = framework::vectorize(x->dims());
 
-    std::string key =
-        platform::CreateKey(dev_ctx, x_tz, x->format(), x->format(), x_type);
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_tz, x_paddle_type, x_type, out_paddle_type, out_type, dev_ctx,
-        dev_ctx.GetEngine(), key);
+    platform::ReorderMKLDNNHandler reorder_handler(x_tz, x_paddle_type, x_type,
+                                                   out_paddle_type, out_type,
+                                                   dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));

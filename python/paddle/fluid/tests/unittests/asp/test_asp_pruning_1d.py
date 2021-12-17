@@ -17,7 +17,7 @@ from __future__ import print_function
 
 import unittest
 import paddle
-from paddle.fluid.contrib import sparsity
+from paddle.static import sparsity
 from paddle.fluid.tests.unittests.asp.asp_pruning_base import TestASPHelperPruningBase
 
 paddle.enable_static()
@@ -25,12 +25,12 @@ paddle.enable_static()
 
 class TestASPHelperPruning1D(TestASPHelperPruningBase):
     def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(sparsity.MaskAlgo.MASK_1D,
-                                        sparsity.CheckMethod.CHECK_1D)
+        self.run_inference_pruning_test(
+            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
 
     def test_1D_training_pruning(self):
-        self.run_training_pruning_test(sparsity.MaskAlgo.MASK_1D,
-                                       sparsity.CheckMethod.CHECK_1D)
+        self.run_training_pruning_test(
+            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
 
 
 if __name__ == '__main__':

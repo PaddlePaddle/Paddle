@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/stack_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -90,9 +90,9 @@ REGISTER_OP_NPU_KERNEL(
     paddle::operators::StackNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    stack_grad, paddle::operators::StackNPUKernel<int>,
+    stack_grad, paddle::operators::StackGradNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
-    paddle::operators::StackNPUKernel<int64_t>,
+    paddle::operators::StackGradNPUKernel<int64_t>,
 #endif
     paddle::operators::StackGradNPUKernel<float>,
     paddle::operators::StackGradNPUKernel<paddle::platform::float16>);

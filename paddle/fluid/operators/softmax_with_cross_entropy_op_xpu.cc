@@ -54,9 +54,11 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     int len = logits->numel();
     T* clip_logits_data =
         clip_logits.mutable_data<T>(context.GetPlace(), len * sizeof(T));
+
     r = xpu::clip_v2(dev_ctx.x_context(), logits->data<float>(),
                      clip_logits_data, len, static_cast<float>(-1e20),
                      static_cast<float>(1e20));
+
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External("XPU kernel error. clip "
@@ -108,10 +110,88 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+template <typename T>
+class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* out_grad =
+        context.Input<Tensor>(framework::GradVarName("Loss"));
+    const Tensor* labels = context.Input<Tensor>("Label");
+    Tensor* logit_grad =
+        context.Output<Tensor>(framework::GradVarName("Logits"));
+
+    logit_grad->mutable_data<T>(context.GetPlace());
+
+    const Tensor* softmax = context.Input<Tensor>("Softmax");
+    const bool use_softmax = context.Attr<bool>("use_softmax");
+
+    const bool soft_label = context.Attr<bool>("soft_label");
+    auto ignore_index = context.Attr<int>("ignore_index");
+
+    const int rank = logit_grad->dims().size();
+    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    PADDLE_ENFORCE_EQ(axis, rank - 1, platform::errors::InvalidArgument(
+                                          "axis should == rank - 1"));
+    const int n = SizeToAxis(axis, logit_grad->dims());
+    const int d = SizeFromAxis(axis, logit_grad->dims());
+
+    auto& dev_ctx =
+        context.template device_context<platform::XPUDeviceContext>();
+    int r = XPU_SUCCESS;
+
+    if (soft_label) {
+      r = xpu::soft_softmax_with_cross_entropy_grad<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+          reinterpret_cast<const XPUType*>(labels->data<T>()),
+          reinterpret_cast<const XPUType*>(softmax->data<T>()),
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()), use_softmax, n, d);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API(soft_softmax_with_cross_entropy_grad) return wrong "
+              "value[%d %s]",
+              r, XPUAPIErrorMsg[r]));
+    } else {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      int* labels_int_ptr_l3 =
+          RAII_GUARD.alloc_l3_or_gm<int32_t>(labels->numel());
+      r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                         labels->data<int64_t>(),
+                                         labels_int_ptr_l3, labels->numel());
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+                                            "XPU API(cast_v2) return wrong "
+                                            "value[%d %s]",
+                                            r, XPUAPIErrorMsg[r]));
+
+      r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+          labels_int_ptr_l3,
+          reinterpret_cast<const XPUType*>(softmax->data<T>()),
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()), ignore_index,
+          use_softmax, n, d);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API(hard_softmax_with_cross_entropy_grad) return wrong "
+              "value[%d %s]",
+              r, XPUAPIErrorMsg[r]));
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(
+    softmax_with_cross_entropy_grad,
+    ops::SoftmaxWithCrossEntropyGradXPUKernel<float>,
+    ops::SoftmaxWithCrossEntropyGradXPUKernel<paddle::platform::float16>);
 #endif

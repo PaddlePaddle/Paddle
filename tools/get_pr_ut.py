@@ -139,6 +139,7 @@ class PRChecker(object):
         """ judge is white file in pr's files. """
         isWhiteFile = False
         not_white_files = (PADDLE_ROOT + 'cmake/', PADDLE_ROOT + 'patches/',
+                           PADDLE_ROOT + 'paddle/testing/',
                            PADDLE_ROOT + 'tools/dockerfile/',
                            PADDLE_ROOT + 'tools/windows/',
                            PADDLE_ROOT + 'tools/test_runner.py',

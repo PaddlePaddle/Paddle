@@ -18,11 +18,15 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
+
 #ifdef PADDLE_WITH_ASCEND_CL
 using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
 #endif
@@ -37,22 +41,38 @@ using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
 class AllocatorFacadePrivate;
 class AllocatorFacade {
  public:
-  ~AllocatorFacade();
   AllocatorFacade(const AllocatorFacade& o) = delete;
   const AllocatorFacade& operator=(const AllocatorFacade& o) = delete;
+  ~AllocatorFacade();
 
   static AllocatorFacade& Instance();
+
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size);
-
   // Allocate a unique allocation.
   AllocationPtr Alloc(const platform::Place& place, size_t size);
-
   // Release unused memory pool.
   uint64_t Release(const platform::Place& place);
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
+                                          size_t size,
+                                          const gpuStream_t& stream);
+  AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+                      const gpuStream_t& stream);
+  uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
+  void RecordStream(std::shared_ptr<Allocation> allocation,
+                    const gpuStream_t& stream);
+  const gpuStream_t& GetStream(
+      const std::shared_ptr<Allocation>& allocation) const;
+#ifdef PADDLE_WITH_CUDA
+  void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
+  void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);
+#endif
+#endif
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

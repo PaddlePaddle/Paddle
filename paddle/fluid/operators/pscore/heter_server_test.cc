@@ -57,6 +57,9 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
 
+  auto micro_var = scope->Var("microbatch_id");
+  micro_var->GetMutable<framework::LoDTensor>();
+
   auto ids_var = scope->Var("ids");
   ids_var->GetMutable<framework::LoDTensor>();
 
@@ -74,6 +77,37 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   int64_t* ids_ptr =
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
+
+  auto micro_id_var =
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+  float* micro_id_ptr =
+      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+  micro_id_ptr[0] = 0;
+
+  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  float* x_ptr =
+      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+
+  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  float* res_ptr =
+      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
+}
+
+void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
+                          int64_t rows_numel) {
+  CreateVarsOnScope(scope, place);
+  auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  int64_t* ids_ptr =
+      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
+
+  auto micro_id_var =
+      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+  float* micro_id_ptr =
+      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+  micro_id_ptr[0] = 1;
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -114,29 +148,19 @@ void StartSendAndRecvServer(std::string endpoint) {
   LOG(INFO) << "before AppendSendAndRecvBlock";
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
+  std::string in_var_name2("y");
   std::vector<int> prefetch_block_ids{block->ID()};
-  auto prepared = exe.Prepare(program, prefetch_block_ids);
 
   LOG(INFO) << "before InitTensorsOnServer";
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      message_to_prepared_ctx;
-  message_to_prepared_ctx[in_var_name] = prepared[0];
 
   std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
   b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
-  LOG(INFO) << "before SetProgram";
-  b_req_handler->SetProgram(&program);
-  LOG(INFO) << "before SetGradToPreparedCtx";
-  b_req_handler->SetGradToPreparedCtx(&message_to_prepared_ctx);
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
   b_req_handler->SetScope(&scope);
-  LOG(INFO) << "before SetExecutor";
-  b_req_handler->SetExecutor(&exe);
   LOG(INFO) << "before HeterServer::GetInstance";
   b_rpc_service = distributed::HeterServer::GetInstance();
   b_rpc_service->SetEndPoint(endpoint);
@@ -146,7 +170,13 @@ void StartSendAndRecvServer(std::string endpoint) {
                        brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
+  b_rpc_service->RegisterServiceHandler(
+      in_var_name2, [&](const MultiVarMsg* request, MultiVarMsg* response,
+                        brpc::Controller* cntl) -> int {
+        return b_req_handler->Handle(request, response, cntl);
+      });
 
+  b_rpc_service->SetRequestHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
   std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
@@ -157,47 +187,89 @@ TEST(SENDANDRECV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   std::string endpoint = "127.0.0.1:4444";
+  std::string previous_endpoint = "127.0.0.1:4444";
   LOG(INFO) << "before StartSendAndRecvServer";
   b_rpc_service = distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);
   b_rpc_service->WaitServerReady();
+  using MicroScope =
+      std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
+  using MiniScope = std::unordered_map<int, framework::Scope*>;
+  std::shared_ptr<MiniScope> mini_scopes(new MiniScope{});
+  std::shared_ptr<MicroScope> micro_scopes(new MicroScope{});
+  std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
+      new std::vector<framework::Scope*>{});
+  auto* mini_scope = new framework::Scope();
+  (*mini_scopes)[0] = mini_scope;
+  auto* micro_scope_0 = &(mini_scope->NewScope());
+  auto* micro_scope_1 = &(mini_scope->NewScope());
+  (*micro_scope).push_back(micro_scope_0);
+  (*micro_scope).push_back(micro_scope_1);
+  (*micro_scopes)[0] = micro_scope;
+  b_rpc_service->SetMicroBatchScopes(micro_scopes);
+  b_rpc_service->SetMiniBatchScopes(mini_scopes);
+
+  using TaskQueue =
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>;
+  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
+      int, std::shared_ptr<::paddle::framework::BlockingQueue<
+               std::pair<std::string, int>>>>>;
+  SharedTaskQueue task_queue_(new TaskQueue{});
+  (*task_queue_)[0] = std::make_shared<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
+  b_rpc_service->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
   distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance({endpoint}, 0).get();
+      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
+          .get();
 
   PADDLE_ENFORCE_NE(rpc_client, nullptr,
                     platform::errors::InvalidArgument(
                         "Client Start Fail, Check Your Code & Env"));
 
-  framework::Scope scope;
+  framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
 
   // create var on local scope
   int64_t rows_numel = 10;
   LOG(INFO) << "before InitTensorsOnClient";
-  InitTensorsOnClient(&scope, &place, rows_numel);
+  InitTensorsOnClient(scope, &place, rows_numel);
   std::string in_var_name("x");
+  std::string micro_var_name("microbatch_id");
   std::string out_var_name("res");
-  std::vector<std::string> send_var = {in_var_name};
-  std::vector<std::string> recv_var = {out_var_name};
+  std::vector<std::string> send_var = {in_var_name, micro_var_name};
+  std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  rpc_client->SendAndRecvAsync({endpoint}, ctx, scope, in_var_name, send_var,
-                               recv_var);
-  auto var = scope.Var(out_var_name);
-  auto value = var->GetMutable<framework::LoDTensor>();
-  auto ptr = value->mutable_data<float>(place);
+  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
+                               "forward");
 
-  LOG(INFO) << "before CHECK";
-  for (int64_t i = 0; i < rows_numel; ++i) {
-    LOG(INFO) << "ptr " << i << " is " << ptr[i];
-    EXPECT_EQ(ptr[i], 0.5);
-  }
-  LOG(INFO) << "end CHECK";
+  LOG(INFO) << "client wait for Pop";
+  auto task = (*task_queue_)[0]->Pop();
+  LOG(INFO) << "client get from task queue";
+  PADDLE_ENFORCE_EQ(
+      task.first, "x",
+      platform::errors::InvalidArgument(
+          "Recv message and Send message name not match, Check your Code"));
+
+  InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
+  LOG(INFO) << "before SendAndRecvAsync 2";
+  std::string in_var_name2("y");
+  rpc_client->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name2,
+                               send_var, recv_var, "backward");
+  LOG(INFO) << "after SendAndRecvAsync 2";
+
+  auto task2 = (*task_queue_)[0]->Pop();
+  PADDLE_ENFORCE_EQ(
+      task2.first, "y",
+      platform::errors::InvalidArgument(
+          "Recv message and Send message name not match, Check your Code"));
+
   rpc_client->FinalizeWorker();
-  // b_rpc_service->Stop();
   b_rpc_service->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

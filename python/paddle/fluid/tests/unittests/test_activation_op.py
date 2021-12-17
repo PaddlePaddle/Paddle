@@ -1145,6 +1145,60 @@ class TestAsin(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestAcosh(TestActivation):
+    def setUp(self):
+        self.op_type = "acosh"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(2, 3, [10, 12]).astype(self.dtype)
+        out = np.arccosh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestAsinh(TestActivation):
+    def setUp(self):
+        self.op_type = "asinh"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(1, 2, [10, 12]).astype(self.dtype)
+        out = np.arcsinh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestAtanh(TestActivation):
+    def setUp(self):
+        self.op_type = "atanh"
+        self.init_dtype()
+
+        np.random.seed(400)
+        x = np.random.uniform(-0.9, 0.9, [10, 12]).astype(self.dtype)
+        out = np.arctanh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 class TestRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
@@ -1742,7 +1796,7 @@ class TestSoftReluOpError(unittest.TestCase):
 
 
 def elu(x, alpha):
-    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+    out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
 
 
@@ -1753,7 +1807,7 @@ class TestELU(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
-        alpha = 1.
+        alpha = self.get_alpha()
         out = elu(x, alpha)
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
         # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
@@ -1765,6 +1819,14 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def get_alpha(self):
+        return 1.
+
+
+class TestELUAlpha(TestELU):
+    def get_alpha(self):
+        return -0.2
 
 
 class TestELUAPI(unittest.TestCase):
@@ -1831,6 +1893,100 @@ class TestELUInplaceAPI(TestELUAPI):
     # test paddle.nn.functional.elu_
     def executed_api(self):
         self.elu = F.elu_
+
+    def test_alpha_error(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        self.assertRaises(Exception, F.elu_, x, -0.2)
+        paddle.enable_static()
+
+
+def celu(x, alpha):
+    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x / alpha) - 1))
+    return out_ref.astype(x.dtype)
+
+
+class TestCELU(TestActivation):
+    def setUp(self):
+        self.op_type = "celu"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
+        alpha = 1.5
+        out = celu(x, alpha)
+        self.inputs = {'X': x}
+        self.attrs = {'alpha': alpha}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestCELUAPI(unittest.TestCase):
+    # test paddle.nn.CELU, paddle.nn.functional.celu
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+        self.executed_api()
+
+    def executed_api(self):
+        self.celu = F.celu
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', [10, 12])
+            out1 = self.celu(x, 1.5)
+            m = paddle.nn.CELU(1.5)
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = celu(self.x_np, 1.5)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = self.celu(x, 1.5)
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.CELU(1.5)
+        out2 = m(x)
+        out_ref = celu(self.x_np, 1.5)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out1 = self.celu(x, 0.2)
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.CELU(0.2)
+        out2 = m(x)
+        out_ref = celu(self.x_np, 0.2)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, self.celu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[10, 12], dtype='int32')
+            self.assertRaises(TypeError, self.celu, x_int32)
+            # The alpha must be not equal 0
+            x_fp32 = paddle.fluid.data(
+                name='x_fp32', shape=[10, 12], dtype='float32')
+            self.assertRaises(ZeroDivisionError, F.celu, x_fp32, 0)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[10, 12], dtype='float16')
+            self.celu(x_fp16)
 
 
 class TestReciprocal(TestActivation):
@@ -2713,6 +2869,9 @@ create_test_error_class('sin')
 create_test_error_class('sqrt')
 create_test_error_class('tanh')
 create_test_error_class('tan')
+create_test_error_class('acosh')
+create_test_error_class('asinh')
+create_test_error_class('atanh')
 
 
 #------------------ Test Cudnn Activation----------------------
@@ -2784,6 +2943,9 @@ create_test_act_fp16_class(TestSin)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
+create_test_act_fp16_class(TestAcosh, grad_atol=0.85)
+create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
+create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
@@ -2791,6 +2953,7 @@ create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)
+create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
 if core.is_compiled_with_rocm():

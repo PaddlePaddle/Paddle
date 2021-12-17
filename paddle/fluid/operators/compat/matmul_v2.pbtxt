@@ -39,4 +39,28 @@ extra {
     name: "op_device"
     type: STRING
   }
+  attrs {
+    name: "fused_reshape_X"
+    type: INTS
+  }
+  attrs {
+    name: "fused_reshape_Y"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_X"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_Y"
+    type: INTS
+  }
+  attrs {
+    name: "fused_reshape_Out"
+    type: INTS
+  }
+  attrs {
+    name: "fused_transpose_Out"
+    type: INTS
+  }
 }

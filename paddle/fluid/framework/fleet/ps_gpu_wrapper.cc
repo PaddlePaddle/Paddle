@@ -40,63 +40,99 @@ namespace framework {
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
+void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
   int device_num = heter_devices_.size();
-  MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   gpu_task->init(thread_keys_shard_num_, device_num);
-  auto input_channel = dataset->GetInputChannel();
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
 
-  auto& device_keys = gpu_task->device_keys_;
-  auto& device_vals = gpu_task->device_values_;
-  auto& device_mutex = gpu_task->mutex_;
-
   std::vector<std::thread> threads;
-#ifdef PADDLE_WITH_PSLIB
-  auto fleet_ptr = FleetWrapper::GetInstance();
-#endif
-#ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
-#endif
 
   // data should be in input channel
   thread_keys_.resize(thread_keys_thread_num_);
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_keys_[i].resize(thread_keys_shard_num_);
   }
-  const std::deque<Record>& vec_data = input_channel->GetData();
-  size_t total_len = vec_data.size();
-  size_t len_per_thread = total_len / thread_keys_thread_num_;
-  int remain = total_len % thread_keys_thread_num_;
+
+  size_t total_len = 0;
+  size_t len_per_thread = 0;
+  int remain = 0;
   size_t begin = 0;
-  auto gen_func = [this](const std::deque<Record>& total_data, int begin_index,
-                         int end_index, int i) {
-    for (auto iter = total_data.begin() + begin_index;
-         iter != total_data.begin() + end_index; iter++) {
-      const auto& ins = *iter;
-      const auto& feasign_v = ins.uint64_feasigns_;
-      for (const auto feasign : feasign_v) {
-        uint64_t cur_key = feasign.sign().uint64_feasign_;
-        int shard_id = cur_key % thread_keys_shard_num_;
-        this->thread_keys_[i][shard_id].insert(cur_key);
+
+  std::string data_set_name = std::string(typeid(*dataset_).name());
+
+  if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
+    VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    auto input_channel = dataset->GetInputChannel();
+    VLOG(0) << "yxf::buildtask::inputslotchannle size: "
+            << input_channel->Size();
+    const std::deque<SlotRecord>& vec_data = input_channel->GetData();
+    total_len = vec_data.size();
+    len_per_thread = total_len / thread_keys_thread_num_;
+    remain = total_len % thread_keys_thread_num_;
+    VLOG(0) << "total len: " << total_len;
+    auto gen_func = [this](const std::deque<SlotRecord>& total_data,
+                           int begin_index, int end_index, int i) {
+      for (auto iter = total_data.begin() + begin_index;
+           iter != total_data.begin() + end_index; iter++) {
+        const auto& ins = *iter;
+        const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
+        for (const auto feasign : feasign_v) {
+          int shard_id = feasign % thread_keys_shard_num_;
+          this->thread_keys_[i][shard_id].insert(feasign);
+        }
       }
+    };
+    for (int i = 0; i < thread_keys_thread_num_; i++) {
+      threads.push_back(
+          std::thread(gen_func, std::ref(vec_data), begin,
+                      begin + len_per_thread + (i < remain ? 1 : 0), i));
+      begin += len_per_thread + (i < remain ? 1 : 0);
     }
-  };
-  for (int i = 0; i < thread_keys_thread_num_; i++) {
-    threads.push_back(std::thread(gen_func, std::ref(vec_data), begin,
-                                  begin + len_per_thread + (i < remain ? 1 : 0),
-                                  i));
-    begin += len_per_thread + (i < remain ? 1 : 0);
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    timeline.Pause();
+    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+  } else {
+    CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
+    VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
+    MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
+    auto input_channel = dataset->GetInputChannel();
+
+    const std::deque<Record>& vec_data = input_channel->GetData();
+    total_len = vec_data.size();
+    len_per_thread = total_len / thread_keys_thread_num_;
+    remain = total_len % thread_keys_thread_num_;
+    auto gen_func = [this](const std::deque<Record>& total_data,
+                           int begin_index, int end_index, int i) {
+      for (auto iter = total_data.begin() + begin_index;
+           iter != total_data.begin() + end_index; iter++) {
+        const auto& ins = *iter;
+        const auto& feasign_v = ins.uint64_feasigns_;
+        for (const auto feasign : feasign_v) {
+          uint64_t cur_key = feasign.sign().uint64_feasign_;
+          int shard_id = cur_key % thread_keys_shard_num_;
+          this->thread_keys_[i][shard_id].insert(cur_key);
+        }
+      }
+    };
+    for (int i = 0; i < thread_keys_thread_num_; i++) {
+      threads.push_back(
+          std::thread(gen_func, std::ref(vec_data), begin,
+                      begin + len_per_thread + (i < remain ? 1 : 0), i));
+      begin += len_per_thread + (i < remain ? 1 : 0);
+    }
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    timeline.Pause();
+    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   }
-  for (std::thread& t : threads) {
-    t.join();
-  }
-  timeline.Pause();
-  VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
 
   timeline.Start();
 
@@ -135,6 +171,38 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
     VLOG(3) << "GpuPs shard: " << i << " key len: " << local_keys[i].size();
     local_ptr[i].resize(local_keys[i].size());
   }
+}
+
+void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
+  platform::Timer timeline;
+  int device_num = heter_devices_.size();
+  auto& local_keys = gpu_task->feature_keys_;
+  auto& local_ptr = gpu_task->value_ptr_;
+
+  auto& device_keys = gpu_task->device_keys_;
+  auto& device_vals = gpu_task->device_values_;
+  auto& device_mutex = gpu_task->mutex_;
+
+  std::vector<std::thread> threads(thread_keys_shard_num_);
+#ifdef PADDLE_WITH_PSLIB
+  auto fleet_ptr = FleetWrapper::GetInstance();
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
+#endif
+
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
+  // get day_id: day nums from 1970
+  struct std::tm b;
+  b.tm_year = year_ - 1900;
+  b.tm_mon = month_ - 1;
+  b.tm_mday = day_;
+  b.tm_min = b.tm_hour = b.tm_sec = 0;
+  std::time_t seconds_from_1970 = std::mktime(&b);
+  int day_id = seconds_from_1970 / 86400;
+  fleet_ptr->pslib_ptr_->_worker_ptr->set_day_id(table_id_, day_id);
+#endif
+
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
@@ -235,13 +303,15 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
   timeline.Start();
   std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
-  uint16_t pass_id = 0;
 
   bool record_status = false;
+#ifdef PADDLE_WITH_PSLIB
+  uint16_t pass_id = 0;
   if (multi_node_) {
     record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(
         table_id_, pass_id, pass_values);
   }
+#endif
   auto build_func = [device_num, record_status, &pass_values, &local_keys,
                      &local_ptr, &device_keys, &device_vals,
                      &device_mutex](int i) {
@@ -260,6 +330,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
       task_keys[shard].push_back(local_keys[i][j]);
       task_ptrs[shard].push_back(local_ptr[i][j]);
     }
+#ifdef PADDLE_WITH_PSLIB
     if (record_status) {
       size_t local_keys_size = local_keys.size();
       size_t pass_values_size = pass_values.size();
@@ -275,6 +346,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
         }
       }
     }
+#endif
     for (int dev = 0; dev < device_num; dev++) {
       device_mutex[dev]->lock();
 
@@ -382,9 +454,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
-    if (feature_keys_count[i] > 0) {
-      HeterPs_->show_one_table(i);
-    }
+    // if (feature_keys_count[i] > 0) {
+    //   HeterPs_->show_one_table(i);
+    // }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(build_func, i);
@@ -418,50 +490,52 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 
 void PSGPUWrapper::start_build_thread() {
   running_ = true;
-  VLOG(3) << "start build CPU&GPU ps thread.";
-  build_cpu_threads_ = std::thread([this] { build_cpu_thread(); });
-  build_gpu_threads_ = std::thread([this] { build_gpu_thread(); });
+  VLOG(3) << "start build CPU ps thread.";
+  pre_build_threads_ = std::thread([this] { pre_build_thread(); });
 }
 
-void PSGPUWrapper::build_cpu_thread() {
+void PSGPUWrapper::pre_build_thread() {
+  // prebuild: process load_data
   while (running_) {
     std::shared_ptr<HeterContext> gpu_task = nullptr;
     if (!data_ready_channel_->Get(gpu_task)) {
       continue;
     }
-    VLOG(3) << "thread BuildTask start.";
+    VLOG(3) << "thread PreBuildTask start.";
     platform::Timer timer;
     timer.Start();
     // build cpu ps data process
-    BuildTask(gpu_task);
+    PreBuildTask(gpu_task);
     timer.Pause();
-    VLOG(1) << "thread BuildTask end, cost time: " << timer.ElapsedSec() << "s";
+    VLOG(1) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
+            << "s";
     buildcpu_ready_channel_->Put(gpu_task);
   }
   VLOG(3) << "build cpu thread end";
 }
 
-void PSGPUWrapper::build_gpu_thread() {
-  while (running_) {
-    std::shared_ptr<HeterContext> gpu_task = nullptr;
-    if (!gpu_free_channel_->Get(gpu_task)) {
-      continue;
-    }
-    if (!buildcpu_ready_channel_->Get(gpu_task)) {
-      continue;
-    }
-    VLOG(3) << "thread BuildGPUTask start.";
-    platform::Timer timer;
-    timer.Start();
-    BuildGPUTask(gpu_task);
-    timer.Pause();
-    VLOG(1) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
-            << "s";
-
-    gpu_task_pool_.Push(gpu_task);
-    train_ready_channel_->Put(gpu_task);
+void PSGPUWrapper::build_task() {
+  // build_task: build_pull + build_gputask
+  std::shared_ptr<HeterContext> gpu_task = nullptr;
+  // train end, gpu free
+  if (!gpu_free_channel_->Get(gpu_task)) {
+    return;
   }
-  VLOG(3) << "build gpu thread end";
+  // ins and pre_build end
+  if (!buildcpu_ready_channel_->Get(gpu_task)) {
+    return;
+  }
+
+  VLOG(1) << "BuildPull start.";
+  platform::Timer timer;
+  timer.Start();
+  BuildPull(gpu_task);
+  BuildGPUTask(gpu_task);
+  timer.Pause();
+  VLOG(1) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
+          << "s";
+
+  current_task_ = gpu_task;
 }
 
 void PSGPUWrapper::BeginPass() {
@@ -471,11 +545,15 @@ void PSGPUWrapper::BeginPass() {
     PADDLE_THROW(
         platform::errors::Fatal("[BeginPass] current task is not ended."));
   }
-  // load+build done
-  if (!train_ready_channel_->Get(current_task_)) {
-    PADDLE_THROW(platform::errors::Fatal("train_ready_channel_ failed."));
-  }
+
+  build_task();
   timer.Pause();
+
+  if (current_task_ == nullptr) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "[BeginPass] after build_task, current task is not null."));
+  }
+
   VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
@@ -494,6 +572,8 @@ void PSGPUWrapper::EndPass() {
   if (keysize_max != 0) {
     HeterPs_->end_pass();
   }
+
+  gpu_task_pool_.Push(current_task_);
   current_task_ = nullptr;
   gpu_free_channel_->Put(current_task_);
   timer.Pause();

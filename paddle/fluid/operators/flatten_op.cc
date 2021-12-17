@@ -77,9 +77,9 @@ class FlattenOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -101,6 +101,14 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
                  "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
                  "input tensor is (d_0, d_1, ... d_n).")
         .SetDefault(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
     AddComment(R"DOC(
 Flatten Operator
 
@@ -139,9 +147,9 @@ class FlattenGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -198,6 +206,13 @@ class Flatten2Op : public framework::OperatorWithKernel {
     ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class Flatten2OpMaker : public FlattenOpMaker {
@@ -244,9 +259,9 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -317,6 +332,18 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
     }
 
     return out_shape;
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (ctx.HasOutput("XShape")) {
+      return framework::KernelSignature("flatten_with_xshape", {"X"},
+                                        {"start_axis", "stop_axis"},
+                                        {"Out", "XShape"});
+    } else {
+      return framework::KernelSignature("flatten", {"X"},
+                                        {"start_axis", "stop_axis"}, {"Out"});
+    }
   }
 };
 

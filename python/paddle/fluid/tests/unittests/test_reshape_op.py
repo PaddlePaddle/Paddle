@@ -464,5 +464,19 @@ class TestDygraphReshapeInplaceAPI(TestDygraphReshapeAPI):
         self.reshape = paddle.reshape_
 
 
+class TestReshapeZeroTensor(unittest.TestCase):
+    def test_reshape_zero_tensor_success(self):
+        zero_tensor = paddle.zeros([0, 2, 3])
+        # since we use "0" as the dimension copy semantically in reshape, 
+        # we need to copy the 0 dim in the src tensor in order to make a successful zero tensor reshape
+        zero_tensor = zero_tensor.reshape([0, 6])
+        self.assertTrue(list(zero_tensor.shape) == [0, 6])
+
+    def test_reshape_zero_tensor_error(self):
+        zero_tensor = paddle.zeros([0, 2, 3])
+        with self.assertRaises(ValueError):
+            zero_tensor.reshape([2, 3])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,10 +20,16 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/norm_op.h"
+#include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
 namespace operators {
+
+__device__ __forceinline__ platform::float16 square_root(platform::float16 x) {
+  return static_cast<platform::float16>(sqrtf(static_cast<float>(x)));
+}
 
 __device__ __forceinline__ float square_root(float x) { return sqrtf(x); }
 
@@ -33,28 +39,29 @@ template <typename T, int BlockDim>
 __global__ void Normalize(const T* x, const int pre,
                           const int axis_n,  // dim in axis
                           const int post, const T eps, T* y, T* out_norm) {
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  using MT = typename details::MPTypeTrait<T>::Type;
+  typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int num = pre * post;
   for (int i = blockIdx.x; i < num; i += gridDim.x) {
     int base = (i / post) * post * axis_n + (i % post);
 
-    T sum = 0.0;
-    __shared__ T norm;
+    MT sum = 0.0;
+    __shared__ MT norm;
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      const T x_ij = x[base + j * post];
+      const MT x_ij = static_cast<MT>(x[base + j * post]);
       sum += x_ij * x_ij;
     }
-    T reduce_result = BlockReduce(temp_storage).Sum(sum);
+    MT reduce_result = BlockReduce(temp_storage).Sum(sum);
 
     if (threadIdx.x == 0) {
-      norm = square_root(reduce_result + eps);
-      out_norm[i] = norm;
+      norm = square_root(reduce_result + static_cast<MT>(eps));
+      out_norm[i] = static_cast<T>(norm);
     }
     __syncthreads();
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
       const int index = base + j * post;
-      y[index] = x[index] / norm;
+      y[index] = static_cast<T>((static_cast<MT>(x[index]) / norm));
     }
   }
 }
@@ -109,34 +116,36 @@ template <typename T, int BlockDim>
 __global__ void NormalizeGradient(const T* x, const T* x_norm, const T* y_grad,
                                   const int pre, const int axis_n,
                                   const int post, T* x_grad) {
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  using MT = typename details::MPTypeTrait<T>::Type;
+  typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage_sum;
   int num = pre * post;
   for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    T sum = 0.0;
-    __shared__ T row_sum;
-    __shared__ T row_sqrt_norm;
-    __shared__ T row_norm;
+    MT sum = 0.0;
+    __shared__ MT row_sum;
+    __shared__ MT row_sqrt_norm;
+    __shared__ MT row_norm;
 
     auto base = (i / post) * post * axis_n + (i % post);
 
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
       int index = base + j * post;
-      sum += x[index] * y_grad[index];
+      sum += static_cast<MT>(x[index]) * static_cast<MT>(y_grad[index]);
     }
-    T reduce_result = BlockReduce(temp_storage_sum).Sum(sum);
+    MT reduce_result = BlockReduce(temp_storage_sum).Sum(sum);
 
     if (threadIdx.x == 0) {
       row_sum = reduce_result;
-      row_sqrt_norm = x_norm[i];
+      row_sqrt_norm = static_cast<MT>(x_norm[i]);
       row_norm = row_sqrt_norm * row_sqrt_norm;
     }
     __syncthreads();
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
       int index = base + j * post;
-      const T x_ij = x[index];
-      const T dy_ij = y_grad[index];
-      x_grad[index] = (dy_ij - x_ij * row_sum / row_norm) / row_sqrt_norm;
+      const MT x_ij = static_cast<MT>(x[index]);
+      const MT dy_ij = static_cast<MT>(y_grad[index]);
+      x_grad[index] =
+          static_cast<T>((dy_ij - x_ij * row_sum / row_norm) / row_sqrt_norm);
     }
   }
 }
@@ -181,7 +190,11 @@ class NormGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 
-REGISTER_OP_CUDA_KERNEL(norm, ops::NormCUDAKernel<CUDA, float>,
+REGISTER_OP_CUDA_KERNEL(norm,
+                        ops::NormCUDAKernel<CUDA, paddle::platform::float16>,
+                        ops::NormCUDAKernel<CUDA, float>,
                         ops::NormCUDAKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(norm_grad, ops::NormGradCUDAKernel<CUDA, float>,
-                        ops::NormGradCUDAKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(
+    norm_grad, ops::NormGradCUDAKernel<CUDA, paddle::platform::float16>,
+    ops::NormGradCUDAKernel<CUDA, float>,
+    ops::NormGradCUDAKernel<CUDA, double>);

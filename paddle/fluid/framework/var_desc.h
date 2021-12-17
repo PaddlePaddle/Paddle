@@ -160,7 +160,7 @@ class VarDesc {
 
   // Note: the identity only used as a key for referring to its
   // distributed attribute now.
-  uint64_t Id() { return id_; }
+  uint64_t Id() const { return id_; }
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;

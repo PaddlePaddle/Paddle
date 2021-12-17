@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -69,15 +69,11 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
         comm, stream));
     if (ctx.Attr<bool>("sync_mode")) {
-#ifdef PADDLE_WITH_RCCL
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

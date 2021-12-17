@@ -19,9 +19,12 @@
 namespace paddle {
 namespace framework {
 
+template <typename Notifier>
 class TaskTracker {
  public:
-  TaskTracker() : wait_empty_cv_(1) {}
+  TaskTracker() = default;
+
+  explicit TaskTracker(Notifier& notifier) : notifier_(&notifier) {}
 
   TaskTracker(const TaskTracker&) = delete;
 
@@ -33,32 +36,17 @@ class TaskTracker {
 
   void SubCounter() {
     if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
-      wait_empty_cv_.Notify(true);
+      if (notifier_ != nullptr) {
+        notifier_->NotifyEvent();
+      }
     }
   }
 
-  // only one user can wait at any time
-  void WaitTaskNumToZero() {
-    bool waiting = false;
-    if (!wait_empty_.compare_exchange_strong(waiting, true,
-                                             std::memory_order_seq_cst,
-                                             std::memory_order_relaxed)) {
-      abort();
-    }
-    EventCount::Waiter* w = wait_empty_cv_.GetWaiter(0);
-    wait_empty_cv_.Prewait();
-    if (num_tasks_.load(std::memory_order_relaxed) == 0) {
-      wait_empty_cv_.CancelWait();
-    } else {
-      wait_empty_cv_.CommitWait(w);
-    }
-    wait_empty_.store(false);
-  }
+  uint64_t PendingTaskNum() { return num_tasks_.load(); }
 
  private:
-  std::atomic<uint64_t> num_tasks_{0};
-  EventCount wait_empty_cv_;
-  std::atomic<bool> wait_empty_{false};
+  alignas(64) std::atomic<uint64_t> num_tasks_{0};
+  Notifier* notifier_{nullptr};
 };
 
 template <typename Environment>
@@ -70,15 +58,16 @@ class ThreadPoolTempl {
   ThreadPoolTempl(int num_threads, bool allow_spinning,
                   Environment env = Environment())
       : env_(env),
-        num_threads_(num_threads),
         allow_spinning_(allow_spinning),
-        thread_data_(num_threads),
         global_steal_partition_(EncodePartition(0, num_threads_)),
         blocked_(0),
+        num_tasks_(0),
         spinning_(0),
         done_(false),
         cancelled_(false),
-        ec_(num_threads_) {
+        ec_(num_threads),
+        num_threads_(num_threads),
+        thread_data_(num_threads) {
     // Calculate coprimes of all numbers [1, num_threads].
     // Coprimes are used for random walks over all threads in Steal
     // and NonEmptyQueueIndex. Iteration is based on the fact that if we take
@@ -143,6 +132,7 @@ class ThreadPoolTempl {
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
     Task t = env_.CreateTask(std::move(fn));
     PerThread* pt = GetPerThread();
+    uint64_t num_tasks = num_tasks_.fetch_add(1, std::memory_order_relaxed) + 1;
     if (pt->pool == this) {
       // Worker thread of this pool, push onto the thread's queue.
       Queue& q = thread_data_[pt->thread_id].queue;
@@ -166,8 +156,11 @@ class ThreadPoolTempl {
     // this. We expect that such scenario is prevented by program, that is,
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
-      ec_.Notify(false);
+      if (num_tasks > num_threads_ - blocked_.load(std::memory_order_relaxed)) {
+        ec_.Notify(false);
+      }
     } else {
+      num_tasks_.fetch_sub(1, std::memory_order_relaxed);
       env_.ExecuteTask(t);  // Push failed, execute directly.
     }
   }
@@ -178,6 +171,12 @@ class ThreadPoolTempl {
 
     // Wake up the threads without work to let them exit on their own.
     ec_.Notify(true);
+  }
+
+  void WaitThreadsExit() {
+    for (size_t i = 0; i < thread_data_.size(); ++i) {
+      thread_data_[i].thread->WaitExit();
+    }
   }
 
   size_t NumThreads() const { return num_threads_; }
@@ -259,16 +258,17 @@ class ThreadPoolTempl {
   };
 
   Environment env_;
-  const int num_threads_;
   const bool allow_spinning_;
-  std::vector<ThreadData> thread_data_;
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
   std::atomic<unsigned> blocked_;
+  std::atomic<uint64_t> num_tasks_;
   std::atomic<bool> spinning_;
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
   EventCount ec_;
+  const int num_threads_;
+  std::vector<ThreadData> thread_data_;
 
   // Main worker thread loop.
   void WorkerLoop(int thread_id) {
@@ -305,6 +305,7 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
+          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
         }
       }
     } else {
@@ -315,8 +316,7 @@ class ThreadPoolTempl {
           if (!t.f) {
             t = GlobalSteal();
             if (!t.f) {
-              // Leave one thread spinning. This reduces latency.
-              if (allow_spinning_ && !spinning_ && !spinning_.exchange(true)) {
+              if (allow_spinning_) {
                 for (int i = 0; i < spin_count && !t.f; i++) {
                   if (!cancelled_.load(std::memory_order_relaxed)) {
                     t = GlobalSteal();
@@ -324,7 +324,6 @@ class ThreadPoolTempl {
                     return;
                   }
                 }
-                spinning_ = false;
               }
               if (!t.f) {
                 if (!WaitForWork(waiter, &t)) {
@@ -336,6 +335,7 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
+          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
         }
       }
     }
@@ -394,16 +394,16 @@ class ThreadPoolTempl {
     // We already did best-effort emptiness check in Steal, so prepare for
     // blocking.
     ec_.Prewait();
+    if (cancelled_) {
+      ec_.CancelWait();
+      return false;
+    }
     // Now do a reliable emptiness check.
     int victim = NonEmptyQueueIndex();
     if (victim != -1) {
       ec_.CancelWait();
-      if (cancelled_) {
-        return false;
-      } else {
-        *t = thread_data_[victim].queue.PopBack();
-        return true;
-      }
+      *t = thread_data_[victim].queue.PopBack();
+      return true;
     }
     // Number of blocked threads is used as termination condition.
     // If we are shutting down and all worker threads blocked without work,

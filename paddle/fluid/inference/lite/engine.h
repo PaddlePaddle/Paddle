@@ -39,6 +39,9 @@ struct EngineConfig {
   std::vector<std::string> neglected_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
   bool model_from_memory{true};
+  // TODO(wilber): now only works for xpu, lite gpu can support device_id or
+  // not?
+  int device_id = 0;
 
   // for xpu
   size_t xpu_l3_workspace_size;
@@ -53,6 +56,15 @@ struct EngineConfig {
 
   // for cuda
   bool use_multi_stream{false};
+
+  // for nnadapter or npu.
+  std::string nnadapter_model_cache_dir;
+  std::vector<std::string> nnadapter_device_names;
+  std::string nnadapter_context_properties;
+  std::string nnadapter_subgraph_partition_config_buffer;
+  std::string nnadapter_subgraph_partition_config_path;
+  std::vector<std::string> nnadapter_model_cache_token;
+  std::vector<std::vector<char>> nnadapter_model_cache_buffer;
 };
 
 class EngineManager {

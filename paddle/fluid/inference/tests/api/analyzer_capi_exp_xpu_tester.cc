@@ -42,7 +42,7 @@ TEST(PD_Config, use_xpu) {
   PD_ConfigSwitchIrOptim(config, TRUE);
   bool ir_optim = PD_IrOptim(config);
   EXPECT_TRUE(ir_optim);
-  PD_ConfigEnableMemoryOptim(config);
+  PD_ConfigEnableMemoryOptim(config, true);
   bool memory_optim_enable = PD_ConfigMemoryOptimEnabled(config);
   EXPECT_TRUE(memory_optim_enable);
   PD_ConfigEnableProfile(config);

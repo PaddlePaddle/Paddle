@@ -32,12 +32,13 @@ template <typename T>
 class AdamWFunctor<T, CPUAdamW> {
  private:
   const T coeff_;
+  const T lr_ratio_;
   const T* lr_;
   T* param_;
 
  public:
-  AdamWFunctor(const T coeff, const T* lr, T* param)
-      : coeff_(coeff), lr_(lr), param_(param) {}
+  AdamWFunctor(const T coeff, const T lr_ratio, const T* lr, T* param)
+      : coeff_(coeff), lr_ratio_(lr_ratio), lr_(lr), param_(param) {}
 
   inline HOSTDEVICE void operator()(size_t numel) const {
     Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param{
@@ -46,7 +47,7 @@ class AdamWFunctor<T, CPUAdamW> {
     T lr = *lr_;
 
     // Calculation
-    param = param * (1 - lr * coeff_);
+    param -= lr * lr_ratio_ * coeff_ * param;
   }
 };
 
@@ -60,6 +61,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
   MT beta2_;
   MT epsilon_;
   MT coeff_;
+  MT lr_ratio_;
 
   const MT* beta1_pow_;
   const MT* beta2_pow_;
@@ -80,7 +82,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
   bool lazy_mode_;
 
  public:
-  SparseAdamWFunctor(MT beta1, MT beta2, MT epsilon, MT coeff,
+  SparseAdamWFunctor(MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio,
                      const MT* beta1_pow, const MT* beta2_pow, const MT* mom1,
                      MT* mom1_out, const MT* mom2, MT* mom2_out, const MT* lr,
                      const T* grad, const T* param, T* param_out,
@@ -91,6 +93,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
         beta2_(beta2),
         epsilon_(epsilon),
         coeff_(coeff),
+        lr_ratio_(lr_ratio),
         beta1_pow_(beta1_pow),
         beta2_pow_(beta2_pow),
         moment1_(mom1),
@@ -112,21 +115,21 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
     // The following code is the same as dense
     MT mom1 = moment1_[i];
     MT mom2 = moment2_[i];
-    MT lr = *lr_;
+    MT lr = *lr_ * lr_ratio_;
+    MT lr_orig = lr;
     MT beta1_pow = *beta1_pow_;
     MT beta2_pow = *beta2_pow_;
     MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
 
     // Calculation
-    MT wd = static_cast<MT>(1.0) - coeff_ * lr;
     lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
           (static_cast<MT>(1.0) - beta1_pow);
 
     mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
     mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
-    p = wd * p -
-        lr * (mom1 /
-              (sqrt(mom2) + epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+    p -= lr_orig * coeff_ * p;
+    p -= lr * (mom1 / (sqrt(mom2) +
+                       epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -187,6 +190,7 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
     }
 
     T coeff = static_cast<T>(ctx.Attr<float>("coeff"));
+    T lr_ratio = static_cast<T>(ctx.Attr<float>("lr_ratio"));
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
     LoDTensor* param;
@@ -198,7 +202,8 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
       param = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Param"));
     }
 
-    AdamWFunctor<T, CPUAdamW> functor(coeff, lr->data<T>(), param->data<T>());
+    AdamWFunctor<T, CPUAdamW> functor(coeff, lr_ratio, lr->data<T>(),
+                                      param->data<T>());
     functor(param->numel());
 
     AdamOpKernel<DeviceContext, T>::Compute(ctx);

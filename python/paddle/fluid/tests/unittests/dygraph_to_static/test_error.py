@@ -108,6 +108,31 @@ def func_error_in_runtime_with_empty_line(x):
     return x
 
 
+class SuggestionErrorTestNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SuggestionErrorTestNet, self).__init__()
+        self.inner_net = SuggestionErrorTestNet2()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return self.inner_net.forward(x)
+
+
+class SuggestionErrorTestNet2():
+    def __init__(self):
+        super(SuggestionErrorTestNet2, self).__init__()
+        self.w = paddle.to_tensor([2.])
+
+    def forward(self, x):
+        out = paddle.matmul(self.w, x)
+        return out
+
+
+def func_suggestion_error_in_runtime(x):
+    net = SuggestionErrorTestNet()
+    net(x)
+
+
 class TestFlags(unittest.TestCase):
     def setUp(self):
         self.reset_flags_to_default()
@@ -383,6 +408,40 @@ class TestErrorInOther(unittest.TestCase):
 
         with self.assertRaises(NotImplementedError):
             func_decorated_by_other_2()
+
+
+class TestSuggestionErrorInRuntime(TestErrorBase):
+    def set_func(self):
+        self.func = func_suggestion_error_in_runtime
+
+    def set_input(self):
+        self.input = paddle.to_tensor([2.])
+
+    def set_exception_type(self):
+        self.exception_type = ValueError
+
+    def set_message(self):
+        self.expected_message = \
+            [
+                'File "{}", line 118, in forward'.format(self.filepath),
+                'return self.inner_net.forward(x)',
+                'File "{}", line 127, in forward'.format(self.filepath),
+                'def forward(self, x):',
+                'out = paddle.matmul(self.w, x)',
+                '<--- HERE',
+                'return out',
+                'Revise suggestion:',
+                'Please ensure all your sublayers are inheritted from nn.Layer.',
+                'Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See'
+            ]
+
+    def set_func_call(self):
+        # NOTE: self.func(self.input) is the StaticLayer().__call__(self.input)
+        self.func_call = lambda: self.func(self.input)
+
+    def test_error(self):
+        for disable_new_error in [0, 1]:
+            self._test_raise_new_exception(disable_new_error)
 
 
 if __name__ == '__main__':
