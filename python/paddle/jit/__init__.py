@@ -22,9 +22,8 @@ from ..fluid.dygraph.jit import set_code_level  # noqa: F401
 from ..fluid.dygraph.jit import set_verbosity  # noqa: F401
 from ..fluid.dygraph.jit import declarative as to_static  # noqa: F401
 from ..fluid.dygraph.jit import not_to_static  # noqa: F401
-from ..fluid.dygraph.jit import hang_a_pre_save_hook  # noqa: F401
-from ..fluid.dygraph.jit import delete_a_pre_save_hook  # noqa: F401
-from ..fluid.dygraph.jit import clear_pre_save_hooks  # noqa: F401
+from ..fluid.dygraph.jit import register_save_pre_hook  # noqa: F401
+from ..fluid.dygraph.jit import clear_save_pre_hooks  # noqa: F401
 from ..fluid.dygraph import ProgramTranslator  # noqa: F401
 from ..fluid.dygraph.io import TranslatedLayer  # noqa: F401
 
@@ -40,7 +39,6 @@ __all__ = [  # noqa
     'set_code_level',
     'set_verbosity',
     'not_to_static',
-    'hang_a_pre_save_hook',
-    'delete_a_pre_save_hook',
-    'clear_pre_save_hooks'
+    'register_save_pre_hook',
+    'clear_save_pre_hooks'
 ]

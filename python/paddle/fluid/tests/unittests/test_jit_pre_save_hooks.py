@@ -18,10 +18,9 @@ from __future__ import print_function
 import unittest
 
 import paddle
-from paddle.jit import hang_a_pre_save_hook
-from paddle.jit import delete_a_pre_save_hook
-from paddle.jit import clear_pre_save_hooks
-from paddle.fluid.dygraph.jit import run_pre_save_hooks
+from paddle.jit import register_save_pre_hook
+from paddle.jit import clear_save_pre_hooks
+from paddle.fluid.dygraph.jit import run_save_pre_hooks
 
 _counter = 0
 
@@ -32,28 +31,28 @@ class TestPreSaveHooks(unittest.TestCase):
             global _counter
             _counter += 1
 
-        hang_a_pre_save_hook(fake_func)
-        self.assertEqual(len(paddle.fluid.dygraph.jit._pre_save_hooks), 1)
+        remove_handler = register_save_pre_hook(fake_func)
+        self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 1)
         self.assertTrue(
-            paddle.fluid.dygraph.jit._pre_save_hooks[0] is fake_func)
+            paddle.fluid.dygraph.jit._save_pre_hooks[0] is fake_func)
 
         # Test of avoiding redundancy hanging
-        hang_a_pre_save_hook(fake_func)
-        self.assertEqual(len(paddle.fluid.dygraph.jit._pre_save_hooks), 1)
+        remove_handler = register_save_pre_hook(fake_func)
+        self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 1)
         self.assertTrue(
-            paddle.fluid.dygraph.jit._pre_save_hooks[0] is fake_func)
+            paddle.fluid.dygraph.jit._save_pre_hooks[0] is fake_func)
 
-        delete_a_pre_save_hook(fake_func)
-        self.assertEqual(len(paddle.fluid.dygraph.jit._pre_save_hooks), 0)
+        remove_handler.remove()
+        self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 0)
 
-        hang_a_pre_save_hook(fake_func)
-        clear_pre_save_hooks()
-        self.assertEqual(len(paddle.fluid.dygraph.jit._pre_save_hooks), 0)
+        remove_handler = register_save_pre_hook(fake_func)
+        clear_save_pre_hooks()
+        self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 0)
 
         global _counter
         _counter = 0
-        hang_a_pre_save_hook(fake_func)
-        func_with_hook = run_pre_save_hooks(fake_func)
+        remove_handler = register_save_pre_hook(fake_func)
+        func_with_hook = run_save_pre_hooks(fake_func)
         func_with_hook(None, None)
         self.assertEqual(_counter, 2)
 

@@ -44,8 +44,8 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load', 'not_to_static', 'hang_a_pre_save_hook',
-    'delete_a_pre_save_hook', 'clear_pre_save_hooks'
+    'set_verbosity', 'save', 'load', 'not_to_static', 'register_save_pre_hook',
+    'clear_save_pre_hooks'
 ]
 
 
@@ -528,47 +528,58 @@ def _build_load_path_and_config(path, config):
     return model_path, config
 
 
-_pre_save_hooks_lock = threading.Lock()
-_pre_save_hooks = []
+_save_pre_hooks_lock = threading.Lock()
+_save_pre_hooks = []
 
 
-def hang_a_pre_save_hook(hook):
-    global _pre_save_hooks_lock
-    global _pre_save_hooks
-    _pre_save_hooks_lock.acquire()
-    if hook not in _pre_save_hooks:
-        _pre_save_hooks.append(hook)
-    _pre_save_hooks_lock.release()
+class HookRemoveHelper(object):
+    """ A HookRemoveHelper that can be used to remove hook. """
+
+    def __init__(self, hook):
+        self._hook = hook
+
+    def remove(self):
+        remove_save_pre_hook(self._hook)
 
 
-def delete_a_pre_save_hook(hook):
-    global _pre_save_hooks_lock
-    global _pre_save_hooks
-    _pre_save_hooks_lock.acquire()
-    if hook in _pre_save_hooks:
-        _pre_save_hooks.remove(hook)
-    _pre_save_hooks_lock.release()
+def register_save_pre_hook(hook):
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    if hook not in _save_pre_hooks:
+        _save_pre_hooks.append(hook)
+    _save_pre_hooks_lock.release()
+    return HookRemoveHelper(hook)
 
 
-def clear_pre_save_hooks():
-    global _pre_save_hooks_lock
-    global _pre_save_hooks
-    _pre_save_hooks_lock.acquire()
-    _pre_save_hooks.clear()
-    _pre_save_hooks_lock.release()
+def remove_save_pre_hook(hook):
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    if hook in _save_pre_hooks:
+        _save_pre_hooks.remove(hook)
+    _save_pre_hooks_lock.release()
 
 
-def run_pre_save_hooks(func):
+def clear_save_pre_hooks():
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    _save_pre_hooks.clear()
+    _save_pre_hooks_lock.release()
+
+
+def run_save_pre_hooks(func):
     def wrapper(layer, path, input_spec=None, **configs):
-        global _pre_save_hooks
-        for hook in _pre_save_hooks:
+        global _save_pre_hooks
+        for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec=None, **configs)
 
     return wrapper
 
 
-@run_pre_save_hooks
+@run_save_pre_hooks
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
