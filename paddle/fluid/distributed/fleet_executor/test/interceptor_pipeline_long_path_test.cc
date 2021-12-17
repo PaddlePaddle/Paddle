@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -51,10 +52,12 @@ void LinkNodes(const std::vector<TaskNode*>& nodes) {
 }
 
 TEST(AmplifierInterceptor, Amplifier) {
-  Carrier& carrier = Carrier::Instance();
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}},
-               {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
+  Carrier& carrier = FleetExecutor::GetCarrier();
+  auto msg_bus = std::make_shared<MessageBus>();
+  msg_bus->Init({{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}},
+                {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  carrier.SetMsgBus(msg_bus);
 
   int64_t micro_steps = 3;
 
@@ -88,6 +91,8 @@ TEST(AmplifierInterceptor, Amplifier) {
   msg.set_src_id(-1);
   msg.set_dst_id(0);
   carrier.EnqueueInterceptorMessage(msg);
+  carrier.Wait();
+  carrier.Release();
 }
 
 }  // namespace distributed

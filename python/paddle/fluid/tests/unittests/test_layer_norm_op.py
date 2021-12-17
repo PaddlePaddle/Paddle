@@ -20,9 +20,13 @@ import paddle
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from functools import reduce
 from op_test import _set_use_system_allocator
 from paddle.fluid import Program, program_guard
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
+
+paddle.enable_static()
 
 np.random.random(123)
 
@@ -323,6 +327,59 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
             # float16 only can be set on GPU place
             x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
             self.assertRaises(TypeError, layer_norm, x2)
+
+
+class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
+    def check_main(self, x_np, weight_np, bias_np, dtype):
+        paddle.disable_static()
+
+        weight_np = weight_np.astype(dtype)
+        bias_np = bias_np.astype(dtype)
+
+        x = paddle.to_tensor(x_np)
+        weight = paddle.to_tensor(weight_np)
+        bias = paddle.to_tensor(bias_np)
+        x.stop_gradient = False
+        weight.stop_gradient = False
+        bias.stop_gradient = False
+        y = F.layer_norm(x, x.shape[1:], weight, bias)
+        x_g, w_g, b_g = paddle.grad(y, [x, weight, bias])
+        y_np = y.numpy().astype('float32')
+        x_g_np = x_g.numpy().astype('float32')
+        w_g_np = w_g.numpy().astype('float16')
+        b_g_np = b_g.numpy().astype('float32')
+
+        paddle.enable_static()
+        return y_np, x_g_np, w_g_np, b_g_np
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        x_np = np.random.random([10, 20]).astype('float16')
+        weight_np = np.random.random([20]).astype('float16')
+        bias_np = np.random.random([20]).astype('float16')
+
+        y_np_1, x_g_np_1, w_g_np_1, b_g_np_1 = self.check_main(
+            x_np, weight_np, bias_np, 'float16')
+        y_np_2, x_g_np_2, w_g_np_2, b_g_np_2 = self.check_main(
+            x_np, weight_np, bias_np, 'float32')
+
+        def assert_equal(x, y):
+            self.assertTrue(np.array_equal(x, y))
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(x_g_np_1, x_g_np_2)
+        assert_equal(w_g_np_1, w_g_np_2)
+        assert_equal(b_g_np_1, b_g_np_2)
+
+
+class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
+    def test_main(self):
+        self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
+        _keep_layer_norm_scale_bias_to_fp32(False)
+        self.assertFalse(_keep_layer_norm_scale_bias_to_fp32())
+        _keep_layer_norm_scale_bias_to_fp32(True)
+        self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
 
 
 if __name__ == '__main__':
