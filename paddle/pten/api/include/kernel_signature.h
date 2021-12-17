@@ -71,8 +71,6 @@ using mean_kernel = void (*)(const DeviceContext&,
                              const std::vector<int64_t>&,
                              bool,
                              bool,
-                             DataType,
-                             DataType,
                              DenseTensor*);
 
 using multiply_kernel = void (*)(const DeviceContext&,
@@ -98,7 +96,6 @@ using sum_kernel = void (*)(const DeviceContext&,
                             const std::vector<int64_t>&,
                             bool,
                             bool,
-                            DataType,
                             DataType,
                             DenseTensor*);
 
