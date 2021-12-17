@@ -1976,8 +1976,8 @@ class Executor(object):
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
         assert 'scheduler' in fleet_opt, \
             "Fleet executor need configuration for scheduler, you can choose from 1F1B or Origin."
-        strategy = fleet_opt['scheduler']
-        if strategy == '1F1B':
+        scheduler = fleet_opt['scheduler']
+        if scheduler == '1F1B':
             from paddle.distributed.fleet.fleet_executor_utils import one_f_one_b
             if "dist_strategy" not in fleet_opt or \
                "pp_degree" not in fleet_opt["dist_strategy"] or \
@@ -1987,15 +1987,15 @@ class Executor(object):
                 program, cur_rank,
                 fleet_opt.get('num_micro_batches', 1),
                 fleet_opt.get('dist_strategy', {}), nrank)
-        elif strategy == 'Origin':
+        elif scheduler == 'Origin':
             from paddle.distributed.fleet.fleet_executor_utils import origin
             if "dist_strategy" in fleet_opt and \
                "pp_degree" in fleet_opt["dist_strategy"]:
                 assert fleet_opt["dist_strategy"]["pp_degree"] == 1, \
-                    "For pipeline mode, the scheduler should be 1F1B instead of Origin"
+                    "For pipeline mode, the scheduler should be 1F1B instead of Origin."
             if "num_micro_batches" in fleet_opt:
                 assert fleet_opt["num_micro_batches"] == 1, \
-                    "For origin scheduler mode, the num micro batches should be 1"
+                    "For origin scheduler mode, the num micro batches should be 1."
             tasks, task_id_to_rank = origin(program, cur_rank)
         else:
             raise "Fleet_executor only supports 1F1B and Origin scheduler, " \
