@@ -27,7 +27,7 @@ from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
     (TEST_CASE_NAME, 'alpha', 'beta'),
     [('test-scale', 1.0, 2.0),
      ('test-tensor', np.random.rand(5, 10) + 5, np.random.rand(5, 10) + 5),
-     ('test-broadcast', np.random.rand(2, 1), np.random.rand(2, 5) + 1)])
+     ('test-broadcast', np.random.rand(2, 1) + 2, np.random.rand(2, 5) + 1)])
 class TestBeta(unittest.TestCase):
     def setUp(self):
         # scale no need convert to tensor for scale input unittest
@@ -62,8 +62,7 @@ class TestBeta(unittest.TestCase):
             with paddle.fluid.dygraph.guard(self.place):
                 np.testing.assert_allclose(
                     self._paddle_beta.prob(paddle.to_tensor(v)),
-                    scipy.stats.beta.pdf(
-                        paddle.to_tensor(v), self.alpha, self.beta),
+                    scipy.stats.beta.pdf(v, self.alpha, self.beta),
                     rtol=RTOL.get(str(self._paddle_beta.alpha.numpy().dtype)),
                     atol=ATOL.get(str(self._paddle_beta.alpha.numpy().dtype)))
 
