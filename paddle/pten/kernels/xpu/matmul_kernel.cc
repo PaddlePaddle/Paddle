@@ -24,6 +24,28 @@ limitations under the License. */
 
 namespace pten {
 
+/**
+ * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+ * original x_dim is returned.
+ */
+static DDim RowMatrixFromVector(const DDim& x_dim) {
+  if (x_dim.size() > 1) {
+    return x_dim;
+  }
+  return paddle::framework::make_ddim({1, x_dim[0]});
+}
+
+/**
+ * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+ * original y_dim is returned.
+ */
+static DDim ColumnMatrixFromVector(const DDim& y_dim) {
+  if (y_dim.size() > 1) {
+    return y_dim;
+  }
+  return paddle::framework::make_ddim({y_dim[0], 1});
+}
+
 template <typename T, typename FCT>
 static void MatMulXPUFunction(const XPUContext& dev_ctx,
                               const DenseTensor& x,
@@ -35,10 +57,10 @@ static void MatMulXPUFunction(const XPUContext& dev_ctx,
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
 
-  auto mat_dim_a =
-      math::CreateMatrixDescriptor(RowMatrixFromVector(x_dims), 0, trans_x);
-  auto mat_dim_b =
-      math::CreateMatrixDescriptor(ColumnMatrixFromVector(y_dims), 0, trans_y);
+  auto mat_dim_a = paddle::operators::math::CreateMatrixDescriptor(
+      RowMatrixFromVector(x_dims), 0, trans_x);
+  auto mat_dim_b = paddle::operators::math::CreateMatrixDescriptor(
+      ColumnMatrixFromVector(y_dims), 0, trans_y);
 
   if (x_dims.size() == 3 && y_dims.size() <= 2) {
     // if transpose_X is true, the transpose cost much time
@@ -62,7 +84,7 @@ static void MatMulXPUFunction(const XPUContext& dev_ctx,
 
   PADDLE_ENFORCE_EQ(mat_dim_a.width_,
                     mat_dim_b.height_,
-                    platform::errors::InvalidArgument(
+                    paddle::platform::errors::InvalidArgument(
                         "Shape mistake in matmul_v2_op xdims = %s ydims = %s "
                         "x_trans = %d y_trans = %d",
                         x_dims.to_str(),
@@ -71,7 +93,7 @@ static void MatMulXPUFunction(const XPUContext& dev_ctx,
                         mat_dim_b.trans_));
   PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_,
                     mat_dim_b.batch_size_,
-                    platform::errors::InvalidArgument(
+                    paddle::platform::errors::InvalidArgument(
                         "Shape mistake in matmul_v2_op xdims = %s ydims = %s "
                         "x_trans = %d y_trans = %d",
                         x_dims.to_str(),
@@ -112,7 +134,7 @@ static void MatMulXPUFunction(const XPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        platform::errors::External(
+        paddle::platform::errors::External(
             "XPU fc kernel return wrong value[%d %s] , m = %d, n = "
             "%d, "
             "k = %d, a_tr = %d, b_tr = %d",
@@ -146,7 +168,7 @@ static void MatMulXPUFunction(const XPUContext& dev_ctx,
 
     PADDLE_ENFORCE_EQ(r,
                       XPU_SUCCESS,
-                      platform::errors::External(
+                      paddle::platform::errors::External(
                           "XPU fc_batched kernel return wrong value[%d %s]",
                           r,
                           XPUAPIErrorMsg[r]));
@@ -161,14 +183,16 @@ void Matmul(const DevCtx& dev_ctx,
             bool transpose_y,
             DenseTensor* out) {
   if (std::is_same<paddle::platform::float16, T>::value) {
-    MatMulXPUFunction<T, int16_t>(dev_ctx, x, y, out, trans_x, trans_y);
+    MatMulXPUFunction<T, int16_t>(dev_ctx, x, y, out, transpose_x, transpose_y);
   } else {
     if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
-      MatMulXPUFunction<T, int32_t>(dev_ctx, x, y, out, trans_x, trans_y, ctx);
+      MatMulXPUFunction<T, int32_t>(
+          dev_ctx, x, y, out, transpose_x, transpose_y);
     } else if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
-      MatMulXPUFunction<T, float>(dev_ctx, x, y, out, trans_x, trans_y, ctx);
+      MatMulXPUFunction<T, float>(dev_ctx, x, y, out, transpose_x, transpose_y);
     } else {
-      MatMulXPUFunction<T, int16_t>(dev_ctx, x, y, out, trans_x, trans_y, ctx);
+      MatMulXPUFunction<T, int16_t>(
+          dev_ctx, x, y, out, transpose_x, transpose_y);
     }
   }
 }
