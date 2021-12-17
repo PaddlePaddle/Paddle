@@ -111,7 +111,7 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
             quant=False,
             max_examples=300,
             passes=["adaptive_pool2d_convert_global_pass"],
-            min_success_num=90)
+            min_success_num=40)
 
 
 if __name__ == "__main__":
