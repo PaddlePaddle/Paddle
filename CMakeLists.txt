@@ -139,7 +139,7 @@ if(WIN32)
         endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
-        set(${flag_var} "${${flag_var}} /w")
+        set(${flag_var} "${${flag_var}} /w /GS-")
     endforeach(flag_var)
 
     # Windows Remove /Zi, /ZI for Release, MinSizeRel builds
