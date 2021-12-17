@@ -432,12 +432,13 @@ void LaunchBroadcastElementwiseCudaKernel(
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));
-  PADDLE_ENFORCE_EQ(kArity,
-                    2,
-                    paddle::platform::errors::InvalidArgument(
-                        "Currently only broadcast of binary is supported and "
-                        "verified, but received %d.",
-                        kArity));
+  PADDLE_ENFORCE_LE(
+      kArity,
+      3,
+      paddle::platform::errors::InvalidArgument(
+          "Currently only broadcast of binary&ternary are supported and "
+          "verified, but received %d.",
+          kArity));
 
   int in_vec_size = 4;
   DenseTensor *out = (*outs)[0];

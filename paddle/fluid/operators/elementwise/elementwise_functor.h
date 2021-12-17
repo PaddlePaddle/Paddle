@@ -153,5 +153,18 @@ struct FMinFunctor<paddle::platform::float16> {
   }
 };
 
+template <typename T>
+struct TernaryLessThanFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+    return a < b ? c : static_cast<T>(0);
+  }
+};
+template <typename T>
+struct TernaryGreaterEqualThanFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+    return (a > b || a == b) ? c : static_cast<T>(0);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
