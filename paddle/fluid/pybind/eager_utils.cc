@@ -402,6 +402,41 @@ PyObject* ToPyObject(const void* value) {
       platform::errors::Fatal("ToPyObject do not support void* with value."));
 }
 
+PyObject* ToPyObject(
+    const std::unordered_map<std::string, std::vector<std::string>>& value) {
+  PyObject* dict = PyDict_New();
+  for (const auto map_iter : value) {
+    // Convert Key
+    PyObject* key_string = PyUnicode_FromString(map_iter.first.c_str());
+    if (!key_string) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to convert std::string to PyObject"));
+    }
+
+    // Convert Val
+    PyObject* py_list = PyList_New(0);
+    for (const auto vector_iter : map_iter.second) {
+      PyObject* val_string = PyUnicode_FromString(vector_iter.c_str());
+      if (!val_string) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Unable to convert std::string to PyObject"));
+      }
+
+      if (PyList_Append(py_list, val_string) != 0) {
+        PADDLE_THROW(
+            platform::errors::Fatal("Unable to append string to py_list"));
+      }
+    }
+
+    if (PyDict_SetItem(dict, key_string, py_list) != 0) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to set key:value for py_dict"));
+    }
+  }
+
+  return dict;
+}
+
 egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
                                         const std::string& arg_name,
                                         PyObject* args, ssize_t arg_idx,

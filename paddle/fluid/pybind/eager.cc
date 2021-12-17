@@ -15,7 +15,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
