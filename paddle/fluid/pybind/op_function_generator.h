@@ -44,6 +44,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nll_loss", {"X", "Label", "Weight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
+    {"repeat_interleave", {"X", "RepeatsTensor"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
     {"psroi_pool", {"X", "ROIs", "RoisNum"}},
@@ -71,6 +72,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"adamw",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
+    {"sparse_attention",
+     {"Q", "K", "V", "Offset", "Columns", "KeyPaddingMask", "AttnMask"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

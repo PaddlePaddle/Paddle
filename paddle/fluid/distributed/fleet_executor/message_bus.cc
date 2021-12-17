@@ -57,10 +57,6 @@ void MessageBus::Init(
 bool MessageBus::IsInit() const { return is_init_; }
 
 MessageBus::~MessageBus() {
-  // NOTE: fleet_executor inits carrier before message bus,
-  // therefore the message bus's destructor will be called first
-  Carrier& carrier = Carrier::Instance();
-  carrier.Release();
   VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
@@ -245,7 +241,8 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
 
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
-  return Carrier::Instance().EnqueueInterceptorMessage(interceptor_message);
+  return FleetExecutor::GetCarrier().EnqueueInterceptorMessage(
+      interceptor_message);
 }
 
 }  // namespace distributed

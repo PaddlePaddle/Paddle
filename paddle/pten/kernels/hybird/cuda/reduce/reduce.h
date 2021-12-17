@@ -17,15 +17,12 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
 
 namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 static inline std::vector<int64_t> GetReduceDim(
     const std::vector<int64_t>& dims, int dim_size, bool reduce_all) {
