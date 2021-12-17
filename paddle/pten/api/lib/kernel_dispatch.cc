@@ -51,8 +51,7 @@ std::size_t CountLeadingZeros(uint64_t val) {
 
 }  // namespace detail
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(
-    pten::Backend backend) {
+pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   return pool.Get(pten::TransToFluidPlace(backend));
 }

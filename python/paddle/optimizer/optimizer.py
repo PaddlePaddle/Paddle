@@ -217,10 +217,19 @@ class Optimizer(object):
         else:
             self._param_groups = self._parameter_list
 
+
         # NOTE: Multi Tensor: Pass in all parameters and gradients to the op kernel of the Optimizer at one time for updating for dygraph mode.
         # Optimizer support list: [ paddle.optimizer.Momentum ].
         self._use_multi_tensor = None
         self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
+        
+        self._auxiliary_vars = {}
+
+    def _set_auxiliary_var(self, key, val):
+        self._auxiliary_vars[key] = val
+
+    def _get_auxiliary_var(self, key):
+        return self._auxiliary_vars.get(key, None)
 
     @framework.dygraph_only
     def state_dict(self):
