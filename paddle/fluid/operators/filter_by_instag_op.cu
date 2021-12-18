@@ -47,7 +47,7 @@ using Vector = framework::CPUVector<T>;
 #define THREADS 256
 
 __global__ void filter_by_instag_cuda_kernel(
-    const size_t N, const int64_t* x2_data, const size_t instag_num_per_ins,
+    const size_t N, const size_t* x2_lods_data, const int64_t* x2_data,
     const int64_t* x3_data, int64_t filter_tag_size, int* flag_data) {
   // N is instance num
   // one threads for one instance
@@ -55,8 +55,9 @@ __global__ void filter_by_instag_cuda_kernel(
   if (idx >= N) {
     return;
   }
-  int ins_tag_start = idx * instag_num_per_ins;
-  int ins_tag_end = (idx + 1) * instag_num_per_ins;
+
+  int ins_tag_start = x2_lods_data[idx];
+  int ins_tag_end = x2_lods_data[idx + 1];
 
   // fileter logic
   int i = ins_tag_start;
@@ -81,9 +82,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     gpuStream_t current_stream = context.cuda_device_context().stream();
-
-    // auto cpu_place = platform::CPUPlace();
-    // auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
 
     // X1 is global FC output
     // Dim [batch size, embedding size]
@@ -110,10 +108,19 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     auto* x3 = context.Input<Tensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
+    Vector<size_t> x2_lods(1, 0);
     // Vector, in GPU
-    const size_t x2_lods_size = x2->dims()[0];
-    const size_t instag_num_per_ins = x2->dims()[1];
-
+    if (x2->lod().size() != 0) {  // lod_level = 1
+      x2_lods = x2->lod()[0];
+    } else {  // lod_level = 0
+      const size_t x2_lods_size = x2->dims()[0];
+      const size_t instag_num_per_ins = x2->dims()[1];
+      for (size_t i = 0; i < x2_lods_size; i++) {
+        x2_lods.push_back(x2_lods.back() + instag_num_per_ins);
+      }
+    }
+    const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
+    const size_t x2_lods_size = x2_lods.size() - 1;
     // Vector, in GPU
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
@@ -123,11 +130,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     } else {
       // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
       // new: lod_level=0 => lod() return {}
-      if (x1->lod().size() != 0) {
+      if (x1->lod().size() != 0) {  // lod_level = 1
         x1_lods = x1->lod()[0];
-      } else {
+      } else {  // lod_level = 0
+        const size_t feasign_num_per_ins = x1->dims()[1];
         for (int i = 0; i < x1->dims()[0]; i++) {
-          x1_lods.push_back(i + 1);
+          x1_lods.push_back(x1_lods.back() + feasign_num_per_ins);
         }
       }
     }
@@ -154,8 +162,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     // fileter_logic
     filter_by_instag_cuda_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
-        x2_lods_size, x2_data, instag_num_per_ins, x3_data, x3->numel(),
-        flag_data);
+        x2_lods_size, x2_lods_data, x2_data, x3_data, x3->numel(), flag_data);
 
     platform::GpuStreamSync(current_stream);
     std::unordered_map<int64_t, int64_t> mmap_aux;
