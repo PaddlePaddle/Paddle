@@ -45,6 +45,7 @@ from .mapper import mapping
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
 from .planner import Planner
+from paddle.distributed.passes import new_pass, PassContext
 
 _logger = get_logger(logging.INFO)
 
@@ -90,6 +91,17 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
+    def _apply_gradient_merge_pass(self, main_program, startup_program,
+                                   params_grads):
+        config = copy.deepcopy(self._dist_strategy.gradient_merge_configs)
+        config["dist_context"] = self._dist_context
+        config["params_grads"] = params_grads
+        auto_parallel_gradient_merge_pass = new_pass(
+            "auto_parallel_gradient_merge_pass", config)
+
+        auto_parallel_gradient_merge_pass.apply(
+            [main_program], [startup_program], self._pass_context)
+
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
         completed_main_program = None
         if dist_context is None:
@@ -118,6 +130,11 @@ class AutoParallelizer:
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 
         reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
+
+        # apply gradient merge
+        if self._dist_strategy.gradient_merge:
+            self._apply_gradient_merge_pass(dist_main_prog, dist_startup_prog,
+                                            dist_params_grads)
 
         g_process_group_map = None
         if not relaunch_phase:

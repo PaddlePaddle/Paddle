@@ -14,6 +14,7 @@
 
 from .pass_base import new_pass, PassManager, PassContext
 from .fuse_all_reduce import *
+from .gradient_merge import *
 from .cpp_pass import *
 
 __all__ = [
