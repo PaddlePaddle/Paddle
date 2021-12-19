@@ -1999,7 +1999,7 @@ class Executor(object):
             tasks, task_id_to_rank = origin(program, cur_rank)
         else:
             raise "Fleet_executor only supports 1F1B and Origin scheduler, " \
-                  "but received " + str(strategy) + "."
+                  "but received " + str(scheduler) + "."
         # NOTE: have to hold these vars, otherwise will be destructed
         fleet_opt['tasks'] = tasks
         fleet_opt['task_id_to_rank'] = task_id_to_rank
