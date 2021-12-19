@@ -204,7 +204,7 @@ function cmake_base() {
         -DWITH_ROCM=${WITH_ROCM:-OFF}
         -DWITH_CINN=${WITH_CINN:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
-        -DWITH_MKL=${WITH_MKL:-ON}
+        -DWITH_MKL=ON
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
@@ -250,7 +250,7 @@ EOF
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
         -DWITH_CINN=${WITH_CINN:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
-        -DWITH_MKL=${WITH_MKL:-ON} \
+        -DWITH_MKL=ON \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
