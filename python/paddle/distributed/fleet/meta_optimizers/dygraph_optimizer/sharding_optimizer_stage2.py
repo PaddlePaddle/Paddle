@@ -95,10 +95,11 @@ class ShardingOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        self.group = group
-        group = _get_global_group() if group is None else group
-        self.world_size = group.nranks
-        self.rank = group.rank
+        self.group = dist.new_group(_get_global_group()
+                                    .id) if group is None else group
+
+        self.world_size = self.group.nranks
+        self.rank = self.group.rank
 
         self.broadcast_fp16 = broadcast_fp16
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
@@ -108,8 +109,8 @@ class ShardingOptimizerStage2(Optimizer):
                 "While using ClipGradByGlobalNorm in ShardingOptimizer, the grad clip of original optimizer will be changed."
             )
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
-                                                      group,
-                                                      paddle.get_device())
+                                                      paddle.get_device(),
+                                                      self.group)
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
@@ -301,7 +302,6 @@ class ShardingOptimizerStage2(Optimizer):
                         self.offload_grads.add_grad(
                             p, self.offload_param2align[p.name])
 
-                    self._optim._parameter_list = [self.offload_params.buffer]
                     self._optim._master_weights[
                         self.offload_params.buffer.
                         name] = self.offload_params.buffer
@@ -335,7 +335,7 @@ class ShardingOptimizerStage2(Optimizer):
         """
 
         if self.offload:
-            params_list = list(self._master_params.values())
+            params_list = [self.offload_params.buffer]
         else:
             # Synchronize optimizer parameters for the current rank
             params_list = []

@@ -28,6 +28,7 @@ from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.dygraph import base as imperative_base
+from paddle.distributed.collective import _get_global_group
 
 
 class Taskflow:
@@ -49,10 +50,10 @@ class Type(Enum):
 
 
 class ShardingClipGrad:
-    def __init__(self, clip, group, device):
+    def __init__(self, clip, device, group):
         self._clip = clip
-        self._group = group
         self._device = device
+        self._group = group
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
@@ -144,7 +145,7 @@ def device_guard(dev_id=0, device="cpu"):
 
 
 @dygraph_only
-def ShardingScaler(scaler, sharding_group):
+def ShardingScaler(scaler):
     def unscale_method(self, optimizer):
         if not self._enable:
             return
@@ -185,7 +186,8 @@ def ShardingScaler(scaler, sharding_group):
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
 
         device = "cpu" if optimizer.offload else "gpu"
-        dev_id = 0 if device == "cpu" else int(paddle.get_device().split(":")[1])
+        dev_id = 0 if device == "cpu" else int(paddle.get_device().split(":")[
+            1])
 
         with device_guard(dev_id, device):
             if len(param_grads_fp16):
@@ -203,7 +205,7 @@ def ShardingScaler(scaler, sharding_group):
         paddle.distributed.all_reduce(
             is_found_inf,
             op=paddle.distributed.ReduceOp.MAX,
-            group=sharding_group)
+            group=optimizer.group)
         self._found_inf = is_found_inf.numpy()[0]
 
     scaler._unscale = MethodType(unscale_method, scaler)

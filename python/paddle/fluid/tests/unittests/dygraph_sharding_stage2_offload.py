@@ -45,7 +45,7 @@ def train_mlp(model, offload=False):
 
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
-    scaler = ShardingScaler(scaler, group)
+    scaler = ShardingScaler(scaler)
 
     optimizer = ShardingOptimizerStage2(
         params=model.parameters(),

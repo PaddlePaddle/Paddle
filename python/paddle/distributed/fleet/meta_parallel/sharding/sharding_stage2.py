@@ -51,7 +51,7 @@ class ShardingStage2(nn.Layer):
     # Feature Notes::
     # 1. Unified memory for param and param.grad to InternalStorage.
     # 2. Divide param.grad according to rank to centrally apply for and release GPU memory.
-    # 3. Dynamically adjust training parameters and models。
+    # 3. Dynamically adjust training parameters and models.
     # 4. Support offload function.
     # 5. Support the establishment of independent communication groups.
 
@@ -85,17 +85,18 @@ class ShardingStage2(nn.Layer):
         self._accumulate_grads = accumulate_grads
 
         # Communication related attributes
-        self._group = group
-        group = _get_global_group() if group is None else group
-        self._world_size_scaling = 1.0 / group.nranks
-        assert group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
-        self._rank = group.rank
+        self._group = dist.new_group(_get_global_group()
+                                     .id) if group is None else group
+        self._world_size_scaling = 1.0 / self._group.nranks
+        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
+        self._rank = self._group.rank
         self._global_root_rank = 0  # picking rank 0 as the reference
         self._default_device = device
 
         # Global statistical parameters
         self._all_params = list(
-            chain(*[optim.local_params for optim in self._sharding_optimizers]))
+            chain(
+                * [optim.local_params for optim in self._sharding_optimizers]))
         self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
@@ -489,7 +490,7 @@ class ShardingStage2(nn.Layer):
                            ._fill))
 
         self._grad_storage_list = list(
-            chain(*[
+            chain(* [
                 self._grad_storages[dtype].values()
                 for dtype in self._grad_storages.keys()
             ]))
