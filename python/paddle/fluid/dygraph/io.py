@@ -1078,9 +1078,6 @@ def append_var_from_block_desc_static(block,
                 lod_level = None
 
             if var_desc.persistable():
-                block = block.program.global_block()
-
-            if var_desc.persistable():
                 current_block = block.program.global_block()
             else:
                 current_block = block
