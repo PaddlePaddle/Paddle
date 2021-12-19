@@ -30,11 +30,11 @@ from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed.collective import _get_global_group
 
-from ...utils.internal_storage import ParamStorage
+from ...utils.internal_storage import ParamStorage, GradStorage
 from ...meta_parallel.sharding.sharding_utils import Type, device_guard, ShardingClipGrad
 
-# CUDA alignment 256 bytes
-alignment = {"gpu": 256, }
+# CUDA alignment 256 bytes, cpu alignment 4096 bytes
+alignment = {"gpu": 256, "cpu": 4096}
 align = {
     Type.fp16.value: 2,
     Type.fp32.value: 4,
@@ -116,6 +116,10 @@ class ShardingOptimizerStage2(Optimizer):
 
         self.offload = offload  # Using for offload
         self.offload_device = "cpu"
+        self.offload_buffer_size = 0
+        self.offload_param2align = {}
+        self.offload_params = None
+        self.offload_grads = None
 
         self._master_params = {}
 
@@ -131,7 +135,6 @@ class ShardingOptimizerStage2(Optimizer):
                         value=param.cast(dtype=Type.fp32.value).numpy(),
                         place=core.CPUPlace(),
                         stop_gradient=param.stop_gradient)
-            self._optim._master_weights = self._master_params
         else:
             for param in trainable_params:
                 if param.dtype == Type.fp16.value:
@@ -265,6 +268,67 @@ class ShardingOptimizerStage2(Optimizer):
         for d in dtype_to_pop:
             self.param_storages.pop(d)
 
+        if self.offload:
+            self._optim._master_weights = self._master_params
+            cpu_master_params = [p for p in self._master_params.values()]
+            for param in cpu_master_params:
+                size = np.prod(param.shape) * align[Type.fp32.value]
+                remaining = size % alignment[self.offload_device]
+                ali = 0 if remaining == 0 else alignment[
+                    self.offload_device] - remaining
+                align_ = ali // align[Type.fp32.value]
+                self.offload_buffer_size += np.prod(param.shape) + align_
+                self.offload_param2align[param.name] = align_
+
+            if cpu_master_params:
+                with device_guard(self.rank, self.offload_device):
+                    self.offload_params = ParamStorage(
+                        size=self.offload_buffer_size,
+                        dtype=Type.fp32.value,
+                        device=self.offload_device)
+                    self.offload_params.add_rank_params(
+                        cpu_master_params, self.offload_param2align, False)
+                    self.offload_params.buffer.stop_gradient = False
+
+                    self.offload_grads = GradStorage(
+                        size=self.offload_buffer_size,
+                        dtype=Type.fp32.value,
+                        device=self.offload_device,
+                        destination=self.rank,
+                        parm2align=self.offload_param2align,
+                        convert_cpu=True)
+                    for p in cpu_master_params:
+                        self.offload_grads.add_grad(
+                            p, self.offload_param2align[p.name])
+
+                    self._optim._parameter_list = [self.offload_params.buffer]
+                    self._optim._master_weights[
+                        self.offload_params.buffer.
+                        name] = self.offload_params.buffer
+
+    def _offload_acc_grad(self, param_name, grad_fp32_cpu):
+        """accumulate grads with offload strategy"""
+        with device_guard(self.rank, self.offload_device):
+            if param_name in self._master_params.keys():
+                if self._master_params[param_name].grad is None:
+                    self._master_params[param_name]._copy_gradient_from(
+                        grad_fp32_cpu)
+                else:
+                    self._master_params[param_name].grad.add_(grad_fp32_cpu)
+
+        self.offload_params.buffer._copy_gradient_from(
+            self.offload_grads.buffer)
+
+    def _offload_scale_grad(self, scale_size):
+        """scale grads with offload strategy"""
+        with device_guard(self.rank, self.offload_device):
+            self.offload_grads.buffer.scale_(scale=scale_size)
+
+    def _offload_clear_grad(self):
+        """clear grads with offload strategy"""
+        with device_guard(self.rank, self.offload_device):
+            self.offload_grads.buffer.zero_()
+
     def step(self):
         """
         A wrapper for Optimizer's step function to finish the update operation of the optimizer.
@@ -296,14 +360,11 @@ class ShardingOptimizerStage2(Optimizer):
             with device_guard(device=self.offload_device):
                 self._optim.step()
 
-            dev_id = 0 if paddle.get_device() == "cpu" else int(
-                paddle.get_device().split(":")[1])
-
+            dev_id = int(paddle.get_device().split(":")[1])
             for param in self._local_params:
                 if param.name in self._master_params.keys():
                     param.set_value(self._master_params[param.name].cuda(dev_id)
                                     .cast(dtype=param.dtype))
-                    self._master_params[param.name].clear_gradient(False)
         else:
             self._optim.step()
 
