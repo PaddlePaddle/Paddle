@@ -147,7 +147,8 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
       dx_tmp.Resize(dout->dims());
       ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
           ctx, dout, y, axis, MulGradFunctor<T>(), &dx_tmp);
-      TensorReduceFunctorImpl<T, T, CustomSum>(dx_tmp, dx, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dx_tmp, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
   // dy
@@ -164,7 +165,8 @@ default_elementwise_mul_grad(const framework::ExecutionContext& ctx,
       dy_tmp.Resize(dout->dims());
       ElementwiseComputeEx<MulGradFunctor<T>, DeviceContext, T>(
           ctx, dout, x, axis, MulGradFunctor<T>(), &dy_tmp);
-      TensorReduceFunctorImpl<T, T, CustomSum>(dy_tmp, dy, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dy_tmp, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
 }
