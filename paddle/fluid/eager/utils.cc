@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
 #include "paddle/pten/api/all.h"
@@ -23,6 +24,9 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
+
+PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, true,
+                            "retain grad for all tensor");
 
 namespace egr {
 /**
@@ -135,14 +139,13 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
   return res;
 }
 
-void deleter(egr::EagerTensor* ptr) {}
-
 static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
     egr::EagerTensor* tensor) {
   if (tensor->initialized() || tensor->Var().IsInitialized()) {
     tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
   }
-  return std::shared_ptr<egr::EagerTensor>(tensor, deleter);
+  return std::shared_ptr<egr::EagerTensor>(tensor,
+                                           [&](egr::EagerTensor* ptr) {});
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
@@ -247,6 +250,20 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
     ret.emplace_back(t.recover(grad_node));
   }
   return ret;
+}
+
+void EagerUtils::CheckRetainGrad(const egr::EagerTensor& tensor) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    egr::egr_utils_api::RetainGradForTensor(tensor);
+  }
+}
+
+void EagerUtils::CheckRetainGrad(const std::vector<egr::EagerTensor>& tensors) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    for (auto& tensor : tensors) {
+      egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
 }
 
 }  // namespace egr

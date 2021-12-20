@@ -81,6 +81,8 @@ void EmptyEagerTensorInitializer(
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation for it.";
     autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
   }
 }

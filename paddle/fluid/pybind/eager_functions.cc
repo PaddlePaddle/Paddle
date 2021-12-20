@@ -213,8 +213,8 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_api_eagertensor_copy(PyObject* self, PyObject* args,
-                                            PyObject* kwargs) {
+static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
+                                       PyObject* kwargs) {
   EAGER_TRY
   egr::EagerTensor& src =
       reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
@@ -226,7 +226,8 @@ static PyObject* eager_api_eagertensor_copy(PyObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
 
   dst = src.copy_to(pten::TransToPtenBackend(place), blocking);
-  egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(true);
+  egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
+      egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
       egr::EagerUtils::autograd_meta(&(src))->Persistable());
   Py_INCREF(Py_None);
@@ -250,8 +251,7 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"eagertensor_copy",
-     (PyCFunction)(void (*)(void))eager_api_eagertensor_copy,
+    {"tensor_copy", (PyCFunction)(void (*)(void))eager_api_tensor_copy,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
