@@ -100,8 +100,8 @@ function make_ce_framework_dockcerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8034#g' ${dockerfile_name}
-  sed -i 's#28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz#94/b0/e10bdc8809c81796c80aa3644a8e3dc16594fb1bd68f5996929f26cad980/pip-21.0.1.tar.gz#g' ${dockerfile_name}
-  sed -i 's#pip-21.0.1#pip-21.1.1#g' ${dockerfile_name}
+  sed -i 's#28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz#b7/2d/ad02de84a4c9fd3b1958dc9fb72764de1aa2605a9d7e943837be6ad82337/pip-21.0.1.tar.gz#g' ${dockerfile_name}
+  sed -i 's#pip-20.0.1#pip-21.0.1#g' ${dockerfile_name}
 }
 
 
