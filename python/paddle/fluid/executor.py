@@ -1980,6 +1980,7 @@ class Executor(object):
         if 'tasks' in fleet_opt:
             assert 'task_id_to_rank' in fleet_opt, "If you provide tasks to init fleet executor," \
                                                    " task_id_to_rank should also be provided."
+            print('fleet executor will use user defined task nodes')
             tasks = [task.task_node() for task in fleet_opt['tasks']]
             task_id_to_rank = fleet_opt['task_id_to_rank']
         else:
