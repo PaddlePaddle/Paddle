@@ -13,6 +13,7 @@
 // limitations under the License.
 
 // Eager Dygraph
+#include <paddle/fluid/framework/op_registry.h>
 #include <chrono>
 
 #include "gtest/gtest.h"
@@ -187,5 +188,11 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
     }
   }
 }
+
+USE_OP(scale);
+USE_OP(matmul_v2);
+USE_OP(reduce_sum);
+USE_OP(reduce_sum_grad);
+USE_OP(elementwise_add);
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

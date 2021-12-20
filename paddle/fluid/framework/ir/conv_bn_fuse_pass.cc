@@ -608,7 +608,7 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .IsOptional()
       .End()
       .AddAttr("groups")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("dilations")
       .IsType<std::vector<int>>()
@@ -624,7 +624,7 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 }
 
@@ -652,7 +652,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .IsOptional()
       .End()
       .AddAttr("groups")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("dilations")
       .IsType<std::vector<int>>()
@@ -668,7 +668,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 }
 
@@ -737,4 +737,15 @@ REGISTER_PASS_CAPABILITY(conv_eltwiseadd_bn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .LE("elementwise_add", 1)
+            .EQ("batch_norm", 0));
+REGISTER_PASS_CAPABILITY(conv_transpose_eltwiseadd_bn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d_transpose", 2)
+            .LE("elementwise_add", 1)
+            .EQ("batch_norm", 0));
+REGISTER_PASS_CAPABILITY(conv_transpose_bn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d_transpose", 2)
             .EQ("batch_norm", 0));

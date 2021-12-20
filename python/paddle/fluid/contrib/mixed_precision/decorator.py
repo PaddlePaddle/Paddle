@@ -411,6 +411,8 @@ class OptimizerWithMixedPrecision(object):
                 found_inf = paddle.tensor.creation._memcpy(found_inf,
                                                            paddle.CPUPlace())
             real_optimizer._set_auxiliary_var('found_inf', found_inf)
+        elif hasattr(real_optimizer, "_set_auxiliary_var"):
+            real_optimizer._set_auxiliary_var('found_inf', found_inf)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 

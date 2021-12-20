@@ -27,7 +27,7 @@ import numpy
 import six
 
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
@@ -77,6 +77,10 @@ def is_builtin_len(func):
     if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
         return True
     return False
+
+
+def is_builtin_zip(func):
+    return is_builtin(func) and func.__name__ == 'zip'
 
 
 def is_unsupported(func):
@@ -163,6 +167,9 @@ def convert_call(func):
 
     if is_builtin_len(func):
         return convert_len
+
+    if is_builtin_zip(func):
+        return convert_zip
 
     if is_builtin(func) or is_unsupported(func):
         return func

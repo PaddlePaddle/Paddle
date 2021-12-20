@@ -31,6 +31,13 @@
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+
+namespace operators {
+namespace details {
+class CinnLaunchContext;
+}  // namespace details
+}  // namespace operators
+
 namespace framework {
 namespace paddle2cinn {
 
@@ -39,6 +46,7 @@ struct CinnCompiledObject {
   std::unique_ptr<::cinn::hlir::framework::Program> runtime_program;
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
   std::unordered_map<std::string, std::string> paddle2cinn_varmap;
+  std::unique_ptr<operators::details::CinnLaunchContext> launch_context;
 };
 
 // Entrance to use CINN.
@@ -87,9 +95,12 @@ class CinnCompiler {
       void* stream = nullptr) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
-  std::unordered_map<CinnCacheKey, std::unique_ptr<CinnCompiledObject>,
+  std::unordered_map<CinnCacheKeyByAddress, CinnCompiledObject*,
                      CinnCacheKey::Hash>
-      cache_;
+      cache_by_address_;
+  std::unordered_map<CinnCacheKeyByStructure,
+                     std::unique_ptr<CinnCompiledObject>, CinnCacheKey::Hash>
+      cache_by_struct_;
   std::atomic_int64_t real_compiled_num_{0};
   mutable RWLock rwlock_;
 
