@@ -28,13 +28,6 @@ RUN wget -q https://paddlepaddledeps.bj.bcebos.com/MLNX_OFED_LINUX-4.2-1.2.0.0-u
     ./mlnxofedinstall --user-space-only --force && \
     rm -rf ${HOME_WORK_DIR}/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64*
 
-# install nccl2
-#RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nccl_2.3.5.tar.gz && \
-#    tar zxf nccl_2.3.5.tar.gz -C ${HOME_WORK_DIR}/ && \
-#    mv nccl_2.3.5/include/nccl.h /usr/include/ && \
-#    mv nccl_2.3.5/lib/libnccl.so /usr/lib/x86_64-linux-gnu/ && \
-#    rm -rf ${HOME_WORK_DIR}/nccl_2.3.5.tar.gz
-
 ENV LD_LIBRARY_PATH=/usr/lib64/:/usr/lib/x86_64-linux-gnu/:${LD_LIBRARY_PATH}
 
 # Add PDC init script (run.sh) deps
@@ -83,9 +76,11 @@ RUN rm /usr/bin/lsb_release
 
 <install_dali>
 
+<install_nccl2>
+
 ADD tools/dockerfile/performance_docker/requirements.txt ${HOME_WORK_DIR} 
 RUN cd ${HOME_WORK_DIR} && pip install -r requirements.txt && rm -f requirements.txt
 
-<set_cuda_en>
+<set_cuda_env>
 
 RUN unset https_proxy http_proxy no_proxy
