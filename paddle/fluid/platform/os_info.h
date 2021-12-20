@@ -45,7 +45,7 @@ class ThreadId {
  public:
   ThreadId();
 
-  uint64_t MainTid() const { return std_tid_; }
+  uint64_t MainTid() const { return SysTid(); }
 
   uint64_t StdTid() const { return std_tid_; }
 
