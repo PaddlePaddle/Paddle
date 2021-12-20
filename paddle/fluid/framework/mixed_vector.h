@@ -23,10 +23,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/details/cow_ptr.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
