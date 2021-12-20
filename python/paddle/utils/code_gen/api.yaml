@@ -160,7 +160,5 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
-    param : [x]
   kernel :
     func : conj
-    param : [x]

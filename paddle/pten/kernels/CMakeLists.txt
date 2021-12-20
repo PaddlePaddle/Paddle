@@ -1,11 +1,3 @@
-if(WITH_GPU)
-  nv_library(conj_kernel SRCS conj_kernel.cc conj_kernel.cu DEPS dense_tensor)
-elseif(WITH_ROCM)
-  hip_library(conj_kernel SRCS conj_kernel.cc conj_kernel.cu DEPS dense_tensor)
-else()
-  cc_library(conj_kernel SRCS conj_kernel.cc DEPS dense_tensor)
-endif()
-
 # kernel primitive api
 add_subdirectory(primitive)
 # pten hybird functors and functions called by kernels

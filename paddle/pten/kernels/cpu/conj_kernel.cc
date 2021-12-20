@@ -12,18 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/conj_kernel.h"
+#include "paddle/pten/kernels/cpu/conj_kernel.h"
+
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/conj_impl.h"
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
-PT_REGISTER_CTX_KERNEL(conj,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::Conj,
-                       complex64,
-                       complex128,
-                       float,
-                       double,
-                       int,
-                       int64_t) {}
+#include "paddle/pten/kernels/hybird/math/conj_impl.h"
+
+namespace pten {
+
+template <typename T>
+void Conj(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  ConjImpl<T, CPUContext>(dev_ctx, x, out);
+}
+
+}  // namespace pten
+
+PT_REGISTER_KERNEL(conj,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::Conj,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

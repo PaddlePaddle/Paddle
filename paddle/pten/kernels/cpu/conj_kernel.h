@@ -14,11 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Conj(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out);
+template <typename T>
+void Conj(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 }  // namespace pten
