@@ -769,7 +769,7 @@ static void LaunchReduceKernel(const Tx* x_data,
   }
 }
 
-void TensorCopy(const DenseTensor& src, DenseTensor* dst) {
+static void AsyncCopy(const DenseTensor& src, DenseTensor* dst) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   const paddle::platform::CUDADeviceContext* dev_ctx;
@@ -804,10 +804,9 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   // temp_output should be stored temp_data in output_data space or stored in
   // y_data;
   pten::DDim tmp_ddim;
-  const auto alloc =
-      std::make_shared<paddle::experimental::DefaultAllocator>(y->place());
   pten::DenseTensor tmp = pten::DenseTensor(
-      alloc, pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
+      pten::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
+      pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
 
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>();
@@ -817,7 +816,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   if (config.reduce_num == 1) {
     auto out_dims = y->dims();
     if (x.dtype() == y->dtype()) {
-      TensorCopy(x, y);
+      AsyncCopy(x, y);
       y->Resize(out_dims);
     } else {
       PD_VISIT_ALL_TYPES(y->dtype(), "CastKernelImpl", ([&] {
@@ -847,10 +846,8 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
                               reducer.initial(),
                               stream);
     // framework::Tensor tmp;
-    const auto alloc =
-        std::make_shared<paddle::experimental::DefaultAllocator>(x.place());
     pten::DenseTensor tmp = pten::DenseTensor(
-        alloc,
+        pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
         pten::DenseTensorMeta(pten::DataType::UINT8,
                               paddle::framework::make_ddim(
                                   {static_cast<int64_t>(temp_storage_bytes)}),

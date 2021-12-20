@@ -401,7 +401,17 @@ def _is_enable_standalone_executor():
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key. 
+    def _get_varname_from_block(block):
+        block_str = []
+        for var_name in list(block.vars.keys()):
+            block_str.append(var_name)
+        return "\n".join(block_str)
+
+    inner_program = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    return _get_varname_from_block(inner_program.blocks[0]) + str(id(
+        program)) + _get_program_cache_key(feed, fetch_list)
 
 
 def _get_program_cache_key(feed, fetch_list):
@@ -1954,7 +1964,8 @@ class Executor(object):
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
         trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        fleet_exe_desc.cur_rank = cur_rank
         nrank = len(trainer_endpoints)
         for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
@@ -1969,10 +1980,27 @@ class Executor(object):
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
         num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
         assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
+        if 'python_side' in fleet_opt:
+            strategy = fleet_opt['python_side']
+            if strategy == '1F1B':
+                from paddle.distributed.fleet.fleet_executor_utils import one_f_one_b
+                tasks, task_id_to_rank = one_f_one_b(
+                    program, cur_rank,
+                    fleet_opt.get('num_micro_batches', 1),
+                    fleet_opt.get('dist_strategy', {}), nrank)
+                # NOTE: have to hold these vars, otherwise will be destructed
+                fleet_opt['tasks'] = tasks
+                fleet_opt['task_id_to_rank'] = task_id_to_rank
+            else:
+                raise "Fleet_executor only supports 1F1B scheduler if you choose python side split, " \
+                      "but received " + str(strategy) + "."
+        else:
+            task_id_to_rank = fleet_opt.get("task_id_to_rank", {})
+            tasks = fleet_opt.get("tasks", [])
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program.desc, scope, place)
+        fleet_exe.init(program.desc, scope, place, tasks, task_id_to_rank)
         return fleet_exe
 
     def _run_using_fleet_executor(self,

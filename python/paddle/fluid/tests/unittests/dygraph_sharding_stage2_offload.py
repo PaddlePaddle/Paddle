@@ -33,7 +33,7 @@ from dygraph_sharding_stage2 import MLP, reader_decorator, optimizer_setting
 seed = 2021
 epoch = 2
 batch_size = 32
-linear_size = 8000
+linear_size = 1000
 
 np.random.seed(seed)
 paddle.seed(seed)
@@ -52,7 +52,12 @@ def train_mlp(model, offload=False):
         optim=optimizer,
         group=group,
         offload=offload)
-    model = ShardingStage2(model, optimizer, group=group, accumulate_grads=True)
+    model = ShardingStage2(
+        model,
+        optimizer,
+        group=group,
+        buffer_max_size=2**21,
+        accumulate_grads=True)
 
     train_reader = paddle.batch(
         reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
@@ -81,10 +86,9 @@ def train_mlp(model, offload=False):
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             scaler.scale(avg_loss).backward()
 
-            model.grad_scale()
             scaler.step(optimizer)
             scaler.update()
-            model.clear_gradients()
+            optimizer.clear_grad()
 
     for dtype in optimizer.param_storages:
         for dst_rank, param_storage in optimizer.param_storages[dtype].items():

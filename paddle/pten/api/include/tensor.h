@@ -341,7 +341,9 @@ class PADDLE_API Tensor final {
   void set_name(const std::string& name) { name_ = name; }
 
   /* Part 5: Data Transform methods */
-
+  /* Alert!!!!: All copy method can only deep copy impl, autograd info only be
+   * copied */
+  /* out of pten */
   /**
    * @brief Copy the current Tensor data to the specified device
    * and return the new Tensor. It's usually used to set the input tensor data.
@@ -361,12 +363,20 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param place, the target place of which the tensor will copy to.
+   * @param backend, The target backend of which the tensor will copy to.
+   * @param blocking, Should we copy this in sync way.
    * @return Tensor
    */
-  // TODO(chenweihang): replace Backend by new Place
   Tensor copy_to(Backend backend, bool blocking) const;
 
+  /**
+   * @brief Transfer the source Tensor to current Tensor.
+   *
+   * @param src, the source Tensor to be copied.
+   * @param blocking, Should we copy this in sync way.
+   * @return void
+   */
+  void copy_(const Tensor& src, const bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
@@ -488,9 +498,4 @@ class PADDLE_API Tensor final {
 };
 
 }  // namespace experimental
-}  // namespace paddle
-
-namespace paddle {
-// In order to be compatible with the original custom operator Tensor interface
-using Tensor = paddle::experimental::Tensor;
 }  // namespace paddle
