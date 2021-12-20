@@ -39,22 +39,20 @@ namespace distributed {
 
 class TaskNode;
 class InterceptorMessageServiceImpl;
+class RuntimeGraph;
+class MessageBus;
 
-// A singleton MessageBus
 class Carrier final {
  public:
-  static Carrier& Instance() {
-    static Carrier carrier;
-    return carrier;
-  }
-
-  void Init(
-      const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-      framework::Scope* root_scope, framework::Scope* minibatch_scope,
-      const std::vector<framework::Scope*>& microbatch_scopes,
-      const platform::Place& place);
-
+  Carrier() = default;
   ~Carrier();
+  void Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+            framework::Scope* root_scope, framework::Scope* minibatch_scope,
+            const std::vector<framework::Scope*>& microbatch_scopes,
+            const platform::Place& place);
+
+  void Release();
+  void Wait();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
@@ -67,6 +65,9 @@ class Carrier final {
                               std::unique_ptr<Interceptor>);
 
   void SetCreatingFlag(bool flag);
+  void SetMsgBus(const std::shared_ptr<MessageBus>& msg_bus) {
+    msg_bus_ = msg_bus;
+  }
 
   std::condition_variable& GetCondVar();
 
@@ -74,18 +75,20 @@ class Carrier final {
 
   bool IsInit() const;
 
-  DISABLE_COPY_AND_ASSIGN(Carrier);
+  bool Send(const InterceptorMessage& msg) const;
+
+  // NOTE: This mutex will be used in interceptor's RunOps function.
+  // This mutex is used for avoiding forward ops and backward ops run
+  // simultaneously, which will lead to a random hang for some sync ops.
+  std::mutex run;
 
  private:
-  Carrier() = default;
+  DISABLE_COPY_AND_ASSIGN(Carrier);
 
   // create each Interceptor
   void CreateInterceptors();
 
   void HandleTmpMessages();
-
-  // interceptor logic id to the Nodes info
-  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
 
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
@@ -105,7 +108,10 @@ class Carrier final {
   framework::Scope* root_scope_;
   framework::Scope* minibatch_scope_;
   paddle::platform::Place place_;
-  paddle::platform::DeviceContext* dev_ctx_ = nullptr;
+  paddle::platform::DeviceContext* dev_ctx_{nullptr};
+  std::shared_ptr<RuntimeGraph> runtime_graph_;
+  std::shared_ptr<MessageBus> msg_bus_;
+  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
 };
 
 }  // namespace distributed

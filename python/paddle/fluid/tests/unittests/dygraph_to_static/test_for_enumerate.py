@@ -20,6 +20,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.static import InputSpec
 
 program_translator = ProgramTranslator()
 
@@ -322,6 +323,24 @@ def for_original_tuple():
     return z
 
 
+# 23. for zip error
+@paddle.jit.to_static(
+    input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])])
+def for_zip_error(x, y):
+    for i, j in zip(x, y):
+        a = i + j
+    return x + y
+
+
+# 24. for zip
+@paddle.jit.to_static(
+    input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])])
+def for_zip(x, y):
+    for i, j in zip(x, y):
+        a = i + j
+    return x + y
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -510,6 +529,15 @@ class TestForOriginalTuple(TestTransformForOriginalList):
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()
+
+
+class TestForZip(unittest.TestCase):
+    def test_for_zip_error(self):
+        with self.assertRaises(RuntimeError):
+            paddle.jit.save(for_zip_error, './for_zip_error')
+
+    def test_for_zip(self):
+        paddle.jit.save(for_zip, './for_zip')
 
 
 if __name__ == '__main__':

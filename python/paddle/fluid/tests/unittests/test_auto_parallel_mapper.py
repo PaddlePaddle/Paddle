@@ -52,6 +52,9 @@ from paddle.distributed.auto_parallel.mapper import mapping
 from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
 from paddle.distributed.auto_parallel.mapper import get_comm_volume
 
+if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
@@ -526,7 +529,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 train_program, startup_program, dist_context, rank_id)
             # if rank_id == 0:
             #   print_program_with_dist_attr(dist_train_program, dist_context)
-            dist_programs[rank_id] = dist_train_program
+            dist_programs[rank_id] = [dist_train_program, None]
 
         rank_mapping = mapping(dist_programs, cluster)
 
