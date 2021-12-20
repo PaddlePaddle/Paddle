@@ -1336,6 +1336,8 @@ struct KernelRegistrar {
       __declare_kernel_symbol_for_##kernel_name##_##backend##_##layout =  \
           TouchKernelSymbolFor_##kernel_name##_##backend##_##layout()
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 // TODO(chenweihang): replace dynamic cast by type info like DenseTensor
 #define PT_VISIT_KERNEL_FUNC_IMPL(kernel_func_name, ...)             \
   try {                                                              \
@@ -1347,7 +1349,7 @@ struct KernelRegistrar {
                           __VA_ARGS__);                              \
     } catch (std::bad_cast exp) {                                    \
       PADDLE_THROW(paddle::platform::errors::Unimplemented(          \
-          "No implemention for %s Kernel on special device.",        \
+          "No implemention for %s Kernel on cpu or gpu device.",     \
           #kernel_func_name));                                       \
     }                                                                \
   }                                                                  \
@@ -1362,5 +1364,27 @@ struct KernelRegistrar {
   void kernel_func_name(const CUDAContext& dev_ctx, __VA_ARGS__); \
   template <typename T>                                           \
   void kernel_func_name(const DeviceContext& dev_ctx, __VA_ARGS__)
+
+#else  // only for CPU
+
+#define PT_VISIT_KERNEL_FUNC_IMPL(kernel_func_name, ...)                     \
+  try {                                                                      \
+    kernel_func_name<T>(dynamic_cast<const CPUContext&>(dev_ctx),            \
+                        __VA_ARGS__);                                        \
+  } catch (std::bad_cast exp) {                                              \
+    PADDLE_THROW(paddle::platform::errors::Unimplemented(                    \
+        "No implemention for %s Kernel on cpu device.", #kernel_func_name)); \
+  }                                                                          \
+  return
+
+#define PT_DECLARE_KERNEL_FUNC(kernel_func_name, ...)            \
+  using kernel_func_name##Kernel =                               \
+      void (*)(const DeviceContext& dev_ctx, __VA_ARGS__);       \
+  template <typename T>                                          \
+  void kernel_func_name(const CPUContext& dev_ctx, __VA_ARGS__); \
+  template <typename T>                                          \
+  void kernel_func_name(const DeviceContext& dev_ctx, __VA_ARGS__)
+
+#endif
 
 }  // namespace pten

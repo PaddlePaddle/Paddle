@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/sharedimpl/scale_kernel_impl.h"
+#include "paddle/pten/kernels/impl/scale_kernel_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/bfloat16.h"
