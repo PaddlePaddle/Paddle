@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -43,77 +43,55 @@ class TestMulLstmFusePass(PassAutoScanTest):
             st.sampled_from(["sigmoid", "tanh", "relu", "identity"]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
-        def generate_input(attrs):
-            shape = [attrs[2]['batch_size'], 128, 6, 120]
+        def generate_input():
+            shape = [batch_size, 128, 6, 120]
             return np.full(shape, 0.01).astype(np.float32)
 
         def generate_weight(shape):
             return np.full(shape, 0.0001).astype(np.float32)
 
-        attrs = [{
-            "x_col": x_col,
-            "y_col": y_col
-        }, {
-            'use_peepholes': use_peepholes,
-            'is_reverse': is_reverse,
-            'gate_activation': gate_activation,
-            'cell_activation': cell_activation,
-            'candidate_activation': candidate_activation,
-        }, {
-            'batch_size': batch_size
-        }]
-
-        ops_config = [{
-            "op_type": "im2sequence",
-            "op_inputs": {
-                "X": ["input_data"]
-            },
-            "op_outputs": {
-                "Out": ["seq_out"]
-            },
-            "op_attrs": {
+        im2sequence_op = OpConfig(
+            type="im2sequence",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["seq_out"]},
+            attrs={
                 "kernels": [6, 1],
                 "out_stride": [1, 1],
                 "paddings": [0, 0, 0, 0],
                 "strides": [1, 1]
-            }
-        }, {
-            "op_type": "mul",
-            "op_inputs": {
-                "X": ["seq_out"],
-                "Y": ["mul_weight"]
-            },
-            "op_outputs": {
-                "Out": ["mul_out"]
-            },
-            "op_attrs": {
-                "x_num_col_dims": attrs[0]['x_col'],
-                "y_num_col_dims": attrs[0]['y_col']
-            }
-        }, {
-            "op_type": "lstm",
-            "op_inputs": {
+            })
+
+        mul_op = OpConfig(
+            type="mul",
+            inputs={"X": ["seq_out"],
+                    "Y": ["mul_weight"]},
+            outputs={"Out": ["mul_out"]},
+            attrs={"x_num_col_dims": x_col,
+                   "y_num_col_dims": y_col})
+
+        lstm_op = OpConfig(
+            type="lstm",
+            inputs={
                 "Input": ["mul_out"],
                 "Weight": ["lstm_weight"],
                 "Bias": ["lstm_bias"]
             },
-            "op_outputs": {
+            outputs={
                 "Hidden": ["lstm_hidden"],
                 "Cell": ["lstm_cell"],
                 "BatchGate": ["lstm_gate"],
                 "BatchCellPreAct": ["lstm_batch_cell"]
             },
-            "op_attrs": {
-                'use_peepholes': attrs[1]['use_peepholes'],
-                'is_reverse': attrs[1]['is_reverse'],
-                'gate_activation': attrs[1]['gate_activation'],
-                'cell_activation': attrs[1]['cell_activation'],
-                'candidate_activation': attrs[1]['candidate_activation'],
+            attrs={
+                'use_peepholes': use_peepholes,
+                'is_reverse': is_reverse,
+                'gate_activation': gate_activation,
+                'cell_activation': cell_activation,
+                'candidate_activation': candidate_activation,
                 'is_test': True
-            }
-        }]
+            })
 
-        ops = self.generate_op_config(ops_config)
+        model_net = [im2sequence_op, mul_op, lstm_op]
 
         if use_peepholes:
             lstm_bias_shape = [1, 1050]
@@ -121,7 +99,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
             lstm_bias_shape = [1, 600]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
                 "mul_weight":
                 TensorConfig(data_gen=partial(generate_weight, [768, 600])),
@@ -131,8 +109,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_weight, lstm_bias_shape))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
+                "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             outputs=["lstm_hidden"])
 
