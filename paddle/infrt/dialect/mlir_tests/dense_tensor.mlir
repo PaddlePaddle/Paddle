@@ -1,3 +1,4 @@
+// CHECK-LABEL: dense_shape0
 func @dense_shape0() {
   %shape = ts.build_shape [1:i64, 57:i64]
   %a = dt.create_uninit_tensor.f32 [12:i64, 23:i64] -> !infrt.tensor<X86, NCHW, F32>

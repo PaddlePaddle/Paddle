@@ -25,9 +25,12 @@ def get_all_process_groups():
     return _g_process_group_map.values()
 
 
-def get_process_group(group_id):
+def get_process_group(group_id, g_process_group_map=None):
     global _g_process_group_map
-    return _g_process_group_map.get(group_id, None)
+    return _g_process_group_map.get(
+        group_id,
+        None) if g_process_group_map is None else g_process_group_map.get(
+            group_id, None)
 
 
 def get_world_process_groups():
