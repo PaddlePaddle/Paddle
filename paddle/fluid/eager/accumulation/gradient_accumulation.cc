@@ -116,6 +116,22 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
+#ifdef PADDLE_WITH_IPU
+  void operator()(const paddle::platform::IPUPlace& place) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const paddle::platform::IPUPlace& place) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
   void operator()(const paddle::platform::NPUPinnedPlace& place) {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
@@ -193,13 +209,14 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
   // TODO(jiabin): Support NPU here
   PADDLE_TENSOR_ADD(float);
-  // NOTE(phlrain): xpu only support float
+// NOTE(phlrain): xpu only support float
+#ifndef PADDLE_WITH_XPU
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
   PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
-
+#endif
 #undef PADDLE_TENSOR_ADD
 
   if (data_type == paddle::framework::proto::VarType::FP16) {
@@ -268,13 +285,14 @@ void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
 
   // TODO(jiabin): Support NPU here
   PADDLE_TENSOR_ADD(float);
-  // NOTE(phlrain): xpu only support float
+// NOTE(phlrain): xpu only support float
+#ifndef PADDLE_WITH_XPU
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
   PADDLE_TENSOR_ADD(paddle::platform::complex<float>);
   PADDLE_TENSOR_ADD(paddle::platform::complex<double>);
-
+#endif
 #undef PADDLE_TENSOR_ADD
 
   if (data_type == paddle::framework::proto::VarType::FP16) {

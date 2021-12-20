@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -67,7 +67,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
 #else

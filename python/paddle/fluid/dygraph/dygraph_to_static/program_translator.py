@@ -573,28 +573,6 @@ class StaticFunction(object):
         return self._function_spec
 
 
-# Flag that indicates whether running code under `@declarative`
-_in_declarative_mode_ = False
-
-
-def in_declarative_mode():
-    """
-    Return a bool value that indicates whether running code under `@declarative`
-
-    """
-    return _in_declarative_mode_
-
-
-@signature_safe_contextmanager
-def _switch_declarative_mode_guard_(is_declarative=True):
-
-    global _in_declarative_mode_
-    original_val = _in_declarative_mode_
-    _in_declarative_mode_ = is_declarative
-    yield
-    _in_declarative_mode_ = original_val
-
-
 def _verify_init_in_dynamic_mode(class_instance):
     """
     Verifies the instance is initialized in dynamic mode.
@@ -658,6 +636,7 @@ class ConcreteProgram(object):
         startup_program.random_seed = framework.default_startup_program(
         ).random_seed
 
+        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed

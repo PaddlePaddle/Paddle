@@ -336,6 +336,29 @@ class UniformTest11(UniformTest):
                 name='values', shape=[dims], dtype='float32')
 
 
+class UniformTestSample(unittest.TestCase):
+    def setUp(self):
+        self.init_param()
+
+    def init_param(self):
+        self.low = 3.0
+        self.high = 4.0
+
+    def test_uniform_sample(self):
+        paddle.disable_static()
+        uniform = Uniform(low=self.low, high=self.high)
+        s = uniform.sample([100])
+        self.assertTrue((s >= self.low).all())
+        self.assertTrue((s < self.high).all())
+        paddle.enable_static()
+
+
+class UniformTestSample2(UniformTestSample):
+    def init_param(self):
+        self.low = -5.0
+        self.high = 2.0
+
+
 class NormalNumpy(DistributionNumpy):
     def __init__(self, loc, scale):
         self.loc = np.array(loc)
