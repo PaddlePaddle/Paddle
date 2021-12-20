@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
-class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
+class TestSquaredMatSubFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -42,152 +42,106 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
         axis2 = draw(st.sampled_from([-1, 0]))
         input_dim = draw(st.sampled_from([32, 64]))
 
-        def generate_input(attrs, type):
-            shape_x = [32, attrs[5]['input_dim']]
-            shape_y = [attrs[5]['input_dim'], 16]
+        def generate_input(type):
+            shape_x = [32, input_dim]
+            shape_y = [input_dim, 16]
 
             if type == "x":
                 return np.random.random(shape_x).astype(np.float32)
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
-        attrs = [{
-            "transpose_X": transpose_X,
-            "transpose_Y": transpose_Y,
-            "alpha": alpha1
-        }, {
-            "transpose_X": transpose_X,
-            "transpose_Y": transpose_Y,
-            "alpha": alpha2
-        }, {
-            "axis": axis1
-        }, {
-            "place_type": place_type,
-            "str_value": str_value,
-            "value": value,
-            "shape": shape
-        }, {
-            "axis": axis2
-        }, {
-            'input_dim': input_dim
-        }]
+        matmul_op1 = OpConfig(
+            type="matmul",
+            inputs={"X": ["input_data1"],
+                    "Y": ["input_data2"]},
+            outputs={"Out": ["matmul1_output"]},
+            attrs={
+                "transpose_X": transpose_X,
+                "transpose_Y": transpose_Y,
+                "alpha": alpha1,
+                "fused_reshape_X": [],
+                "fused_reshape_Y": [],
+                "fused_transpose_X": [],
+                "fused_transpose_Y": [],
+                "fused_reshape_Out": [],
+                "fused_transpose_Out": []
+            })
 
-        ops_config = [{
-            "op_type": "matmul",
-            "op_inputs": {
-                "X": ["input_data1"],
-                "Y": ["input_data2"]
-            },
-            "op_outputs": {
-                "Out": ["matmul1_output"]
-            },
-            "op_attrs": {
-                "transpose_X": attrs[0]["transpose_X"],
-                "transpose_Y": attrs[0]["transpose_Y"],
-                "alpha": attrs[0]["alpha"],
+        square_op1 = OpConfig(
+            type="square",
+            inputs={"X": ["matmul1_output"]},
+            outputs={"Out": ["square1_output"]},
+            attrs={})
+
+        square_op2 = OpConfig(
+            type="square",
+            inputs={"X": ["input_data1"]},
+            outputs={"Out": ["square2_output"]},
+            attrs={})
+
+        square_op3 = OpConfig(
+            type="square",
+            inputs={"X": ["input_data2"]},
+            outputs={"Out": ["square3_output"]},
+            attrs={})
+
+        matmul_op2 = OpConfig(
+            type="matmul",
+            inputs={"X": ["square2_output"],
+                    "Y": ["square3_output"]},
+            outputs={"Out": ["matmul2_output"]},
+            attrs={
+                "transpose_X": transpose_X,
+                "transpose_Y": transpose_Y,
+                "alpha": alpha2,
                 "fused_reshape_X": [],
                 "fused_reshape_Y": [],
                 "fused_transpose_X": [],
                 "fused_transpose_Y": [],
                 "fused_reshape_Out": [],
                 "fused_transpose_Out": []
-            }
-        }, {
-            "op_type": "square",
-            "op_inputs": {
-                "X": ["matmul1_output"]
-            },
-            "op_outputs": {
-                "Out": ["square1_output"]
-            },
-            "op_attrs": {}
-        }, {
-            "op_type": "square",
-            "op_inputs": {
-                "X": ["input_data1"]
-            },
-            "op_outputs": {
-                "Out": ["square2_output"]
-            },
-            "op_attrs": {}
-        }, {
-            "op_type": "square",
-            "op_inputs": {
-                "X": ["input_data2"]
-            },
-            "op_outputs": {
-                "Out": ["square3_output"]
-            },
-            "op_attrs": {}
-        }, {
-            "op_type": "matmul",
-            "op_inputs": {
-                "X": ["square2_output"],
-                "Y": ["square3_output"]
-            },
-            "op_outputs": {
-                "Out": ["matmul2_output"]
-            },
-            "op_attrs": {
-                "transpose_X": attrs[1]["transpose_X"],
-                "transpose_Y": attrs[1]["transpose_Y"],
-                "alpha": attrs[1]["alpha"],
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": []
-            }
-        }, {
-            "op_type": "elementwise_sub",
-            "op_inputs": {
-                "X": ["square1_output"],
-                "Y": ["matmul2_output"]
-            },
-            "op_outputs": {
-                "Out": ["sub_out"]
-            },
-            "op_attrs": {
-                "axis": attrs[2]["axis"]
-            }
-        }, {
-            "op_type": "fill_constant",
-            "op_inputs": {},
-            "op_outputs": {
-                "Out": ["constant_out"]
-            },
-            "op_attrs": {
+            })
+
+        elt_sub_op = OpConfig(
+            type="elementwise_sub",
+            inputs={"X": ["square1_output"],
+                    "Y": ["matmul2_output"]},
+            outputs={"Out": ["sub_out"]},
+            attrs={"axis": axis1})
+
+        fill_constant_op = OpConfig(
+            type="fill_constant",
+            inputs={},
+            outputs={"Out": ["constant_out"]},
+            attrs={
                 "dtype": 5,
-                "place_type": attrs[3]["place_type"],
-                "str_value": attrs[3]["str_value"],
-                "value": attrs[3]["value"],
-                "shape": attrs[3]["shape"]
-            }
-        }, {
-            "op_type": "elementwise_mul",
-            "op_inputs": {
-                "X": ["sub_out"],
-                "Y": ["constant_out"]
-            },
-            "op_outputs": {
-                "Out": ["mul_out"]
-            },
-            "op_attrs": {
-                "axis": attrs[4]["axis"]
-            }
-        }]
+                "place_type": place_type,
+                "str_value": str_value,
+                "value": value,
+                "shape": shape
+            })
 
-        ops = self.generate_op_config(ops_config)
+        elt_mul_op = OpConfig(
+            type="elementwise_mul",
+            inputs={"X": ["sub_out"],
+                    "Y": ["constant_out"]},
+            outputs={"Out": ["mul_out"]},
+            attrs={"axis": axis2})
+
+        model_net = [
+            matmul_op1, square_op1, square_op2, square_op3, matmul_op2,
+            elt_sub_op, fill_constant_op, elt_mul_op
+        ]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={},
             inputs={
                 "input_data1":
-                TensorConfig(data_gen=partial(generate_input, attrs, "x")),
+                TensorConfig(data_gen=partial(generate_input, "x")),
                 "input_data2":
-                TensorConfig(data_gen=partial(generate_input, attrs, "y"))
+                TensorConfig(data_gen=partial(generate_input, "y"))
             },
             outputs=["mul_out"])
 
