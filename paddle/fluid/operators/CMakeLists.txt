@@ -52,6 +52,10 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
+if (WITH_MLU)
+    add_subdirectory(mlu)
+endif()
+
 if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
