@@ -3262,6 +3262,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
+            inplace_map = kwargs.get("inplace_map", {})
             type = kwargs.get("type", None)
             op = Operator(
                 block=self,
@@ -3280,7 +3281,8 @@ class Block(object):
                                        kwargs.get("inputs", {}),
                                        kwargs.get("outputs", {}), attrs
                                        if attrs else {},
-                                       kwargs.get("stop_gradient", False))
+                                       kwargs.get("stop_gradient", False),
+                                       inplace_map if inplace_map else None)
         else:
             from paddle.fluid.dygraph.base import param_guard
 
