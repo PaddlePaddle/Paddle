@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// Get current time in nanoseconds
+// Get system-wide realtime clock in nanoseconds
 inline uint64_t PosixInNsec() {
 #ifdef _POSIX_C_SOURCE
   struct timespec tp;
@@ -51,7 +51,7 @@ class ThreadId {
 
   uint32_t CuptiTid() const { return cupti_tid_; }
 
-  uint64_t SysTid() const { return sys_tid_; }
+  uint64_t SysTid() const { return sys_tid_ != 0 ? sys_tid_ : std_tid_; }
 
  private:
   uint64_t std_tid_ = 0;    // std::hash<std::thread::id>

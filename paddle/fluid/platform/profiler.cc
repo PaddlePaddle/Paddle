@@ -740,8 +740,9 @@ std::string PrintHostEvents() {
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
-      oss << "{ " << evt.name << " | " << evt.start_ns << " | " << evt.end_ns
-          << " }" << std::endl;
+      oss << "{ " << evt.name << " | " << evt.start_ns << "ns | " << evt.end_ns
+          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000 << "us }"
+          << std::endl;
     }
   }
   return oss.str();
