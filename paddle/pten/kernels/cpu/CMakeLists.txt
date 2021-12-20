@@ -4,3 +4,4 @@ cc_library(utils_cpu SRCS utils.cc DEPS dense_tensor kernel_context kernel_facto
 cc_library(manipulation_cpu SRCS manipulation.cc DEPS dense_tensor kernel_context kernel_factory utils_cpu unary)
 cc_library(scale_kernel_cpu SRCS scale_kernel.cc DEPS dense_tensor kernel_context kernel_factory eigen_function)
 cc_library(full_kernel_cpu SRCS full_kernel.cc DEPS dense_tensor kernel_context kernel_factory eigen_function)
+cc_library(conj_kernel_cpu SRCS conj_kernel.cc DEPS dense_tensor kernel_context kernel_factory)

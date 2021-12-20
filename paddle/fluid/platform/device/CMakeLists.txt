@@ -15,3 +15,8 @@ ENDIF()
 IF(WITH_IPU)
   add_subdirectory(ipu)
 ENDIF()
+
+# MLU
+IF(WITH_MLU)
+  add_subdirectory(mlu)
+ENDIF()
