@@ -574,7 +574,7 @@ def run_save_pre_hooks(func):
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
-        func(layer, path, input_spec=None, **configs)
+        func(layer, path, input_spec, **configs)
 
     return wrapper
 
