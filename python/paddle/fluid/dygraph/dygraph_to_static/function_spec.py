@@ -396,7 +396,7 @@ def _set_spec_stop_gradient(spec, stop_gradient):
     spec.stop_gradient = stop_gradient
 
 
-def _hash_spec_names(self, args_specs, kwargs_specs):
+def _hash_spec_names(args_specs, kwargs_specs):
     """
     Generater hash spec with args/kwargs InputSpec names.
     Consider the following InputSpecs with same shape/dtype except for name:
