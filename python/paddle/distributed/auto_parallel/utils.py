@@ -993,7 +993,9 @@ def set_grad_var_shape(program, dist_context):
     block = program.global_block()
     vars = block.vars
     for op in block.ops:
-        if op.type == "sum":
+        if op.type in [
+                "sum", "check_finite_and_unscale", "update_loss_scaling"
+        ]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -1004,15 +1006,24 @@ def set_grad_var_shape(program, dist_context):
                 forward_var_name = var_name[:var_name.find("@GRAD")]
                 if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
                     forward_var_name = op.input_arg_names[0]
+                elif op.type == "matmul_v2_grad":
+                    forward_var_name = None
+                    for output_name in op.output_names:
+                        if var_name in op.output(output_name):
+                            assert "@GRAD" in output_name
+                            input_name = output_name[:output_name.find("@GRAD")]
+                            assert len(op.input(input_name)) == 1
+                            forward_var_name = op.input(input_name)[0]
+                    assert forward_var_name is not None
 
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
                     "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad", "unsqueeze2_grad"
+                    "dropout_grad"
                 ]
                 forward_list = [
                     "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout", "unsqueeze2"
+                    "softmax", "cross_entropy2", "dropout"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
@@ -1039,6 +1050,23 @@ def set_grad_var_shape(program, dist_context):
 
                 if list(grad_var.shape) != ref_shape:
                     grad_var.desc.set_shape(ref_shape)
+
+
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
+
+def is_forward_op(op):
+    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
+    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
+    op_role = int(op.attr('op_role'))
+    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1 or
+                                             op_role == ref_role2)
+
+
+def is_backward_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
 
 
 def update_op_dims_mapping_by_default_dist_impl(dist_op):

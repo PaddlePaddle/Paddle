@@ -329,10 +329,10 @@ def get_cluster_info(args):
             cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
                 args, device_mode)
         else:
-            os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
-            os.environ["PADDLE_RANK_MAPPING_PATH"] = str(args.rank_mapping_path)
-            os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
+            os.environ["PADDLE_NEED_RANK_MAPPING"] = str(False)
+            os.environ["PADDLE_ENABLE_ELASTIC"] = str(
                 enable_elastic(args, device_mode))
+
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
             os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
             os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
