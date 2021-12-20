@@ -807,6 +807,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
+                           ->assert_is_persistable_var()
                            ->AsInput();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
@@ -1696,6 +1697,49 @@ PDNode *patterns::MatmulV2::operator()() {
   matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
       .LinksTo({matmul_v2_out});
   return matmul_v2_out;
+}
+
+PDNode *patterns::MatmulScale::operator()() {
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "Y");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_in_x = pattern->NewNode(scale_in_x_repr())
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_input("scale", "X");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({scale_in_x});
+  scale_op->LinksFrom({scale_in_x}).LinksTo({scale_out});
+  return scale_out;
+}
+
+PDNode *patterns::MatmulV2Scale::operator()() {
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()  // Y is weight
+                            ->assert_is_op_input("matmul_v2", "Y");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_in_x = pattern->NewNode(scale_in_x_repr())
+                        ->assert_is_op_output("matmul_v2", "Out")
+                        ->assert_is_op_input("scale", "X");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
+      .LinksTo({scale_in_x});
+  scale_op->LinksFrom({scale_in_x}).LinksTo({scale_out});
+  return scale_out;
 }
 
 PDNode *patterns::Squeeze2Matmul::operator()() {
