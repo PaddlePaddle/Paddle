@@ -100,6 +100,7 @@ function make_ce_framework_dockcerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8034#g' ${dockerfile_name}
+  sed -i 's#20.0.1#21.0.1#g' ${dockerfile_name}
 }
 
 
