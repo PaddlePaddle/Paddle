@@ -33,12 +33,6 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 DeviceType = core.DeviceType
 
-if core.is_compiled_with_ipu():
-    IpuStrategy = core.IpuStrategy
-else:
-    IpuStrategy = None
-
-
 def _place_obj(place):
     p = core.Place()
     p.set_place(place)
@@ -490,6 +484,38 @@ class CompiledProgram(object):
         return place_list
 
 
+def IpuStrategy():
+    """
+    The IpuStrategy allows the user to preciously control how to
+    build the IPU Program by setting the property.
+
+    Returns:
+        IpuStrategy: An IpuStrategy object.
+
+    Attrs:
+        num_ipus(int): Set the number of IPUs we need. Default 1.
+        is_training(bool): True for training, False inference. Default True.
+        batch_size(int): Used to make input batch size fixed to infer the shapes 
+            of all tensors in the pass. Default 1.
+        enable_manual_shard(bool): True enable graph sharding, otherwise disable. 
+            Default False.
+        need_avg_shard(bool): True enable auto graph sharding, otherwise disable. 
+            Default False.
+        enable_pipelining(bool): True enable data pipeline between subgraphs(requires 
+            enable_manual_shard=True), otherwise disable. Default False.
+        batches_per_step(int): Set batches per run in data pipelining mode. Default 1.
+        accumulationFactor(int): Specify the number of micro-batches to accumulate 
+            before applying the varUpdate. Default 1.
+        enable_fp16(bool): True enable float16 mode, otherwise disable. Default False.
+    """
+    if core.is_compiled_with_ipu():
+        return core.IpuStrategy()
+    else:
+        raise RuntimeError(
+            "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
+        )
+
+
 class IpuCompiledProgram(object):
     """
     :api_attr: Static Graph
@@ -505,7 +531,7 @@ class IpuCompiledProgram(object):
             it to different scope. Default is :code:`paddle.static.global_scope()`
         ipu_strategy(IpuStrategy): This argument is used to build the program with the
             specified options, such as training or inference mode, batch size in popart,
-            dtype, etc. For more details, please refer to :`code:paddle.static.IpuStrategy`.
+            dtype, etc. For more details, please refer to :`IpuStrategy()`.
 
     Returns:
         IpuCompiledProgram
@@ -513,20 +539,20 @@ class IpuCompiledProgram(object):
     Example:
         .. code-block:: python
 	
-        # required: ipu
+            # required: ipu
 
-        import paddle
-        import paddle.static as static
+            import paddle
+            import paddle.static as static
 
-        paddle.enable_static()
+            paddle.enable_static()
 
-        a = static.data(name='data', shape=[None, 1], dtype='int32')
-        b = a + 1
-        main_prog = static.default_main_program()
-        ipu_strategy = static.IpuStrategy()
-        ipu_compiled_program = static.IpuCompiledProgram(
-            main_prog,
-            ipu_strategy=ipu_strategy)
+            a = static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 1
+            main_prog = static.default_main_program()
+            ipu_strategy = static.IpuStrategy()
+            ipu_compiled_program = static.IpuCompiledProgram(
+                main_prog,
+                ipu_strategy=ipu_strategy)
     """
 
     def __init__(self, program, scope=None, ipu_strategy=None):
@@ -586,21 +612,21 @@ class IpuCompiledProgram(object):
         Example:
             .. code-block:: python
     	
-            # required: ipu
+                # required: ipu
     
-            import paddle
-            import paddle.static as static
+                import paddle
+                import paddle.static as static
     
-            paddle.enable_static()
+                paddle.enable_static()
     
-            a = static.data(name='data', shape=[None, 1], dtype='int32')
-            b = a + 1
-            main_prog = static.default_main_program()
+                a = static.data(name='data', shape=[None, 1], dtype='int32')
+                b = a + 1
+                main_prog = static.default_main_program()
 
-            ipu_strategy = static.IpuStrategy()
-            program = static.IpuCompiledProgram(
-                main_prog,
-                ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+                ipu_strategy = static.IpuStrategy()
+                program = static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile([a.name], [b.name])
         """
         # feed and fetch doesn't have corresponding popart op, so we rm both here
         global_block = self._program.global_block()

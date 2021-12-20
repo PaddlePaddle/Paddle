@@ -114,16 +114,15 @@ def ipu_shard(ipu_index=None, ipu_stage=None):
             The sharded model will be computed from small to large. The default value is None.
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            # required: ipu
 
-        # required: ipu
-
-        import paddle
-        paddle.enable_static()
-        a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-        with paddle.static.ipu_shard(ipu_index=1):
-            b = a + 1
+            import paddle
+            paddle.enable_static()
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            with paddle.static.ipu_shard(ipu_index=1):
+                b = a + 1
     """
     if not core.is_compiled_with_ipu():
         raise ValueError(
