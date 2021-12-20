@@ -280,6 +280,8 @@ XPUOpMap& get_kl2_ops() {
       {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                 pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"split", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                              pOpKernelType(vartype::INT32, XPUPlace())})},
       {"squeeze2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
