@@ -28,8 +28,8 @@ class TaskNode:
                  task_id=None,
                  ops=None,
                  program=None):
-        assert (bool(ops) ^ bool(program)
-                ), "Should provide only one of ops or program to task node."
+        assert (bool(ops) ^ bool(program)), \
+            "Should provide only one of ops or program to task node."
         if not self.previous:
             self.previous = 'program' if program else 'ops'
         assert (program and self.previous == 'program') or (ops and self.previous == 'ops'), \
