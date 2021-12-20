@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -48,84 +48,55 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
 
-        ops_config = [{
-            "op_type": "sequence_expand",
-            "op_inputs": {
-                "X": ["input_data1"],
-                "Y": ["input_data2"]
-            },
-            "op_outputs": {
-                "Out": ["seq_exp1_out"]
-            },
-            "op_attrs": {
-                "ref_level": ref_level
-            }
-        }, {
-            "op_type": "sequence_expand",
-            "op_inputs": {
-                "X": ["input_data1"],
-                "Y": ["input_data3"]
-            },
-            "op_outputs": {
-                "Out": ["seq_exp2_out"]
-            },
-            "op_attrs": {
-                "ref_level": ref_level
-            }
-        }, {
-            "op_type": "concat",
-            "op_inputs": {
-                "X": ["input_data1", "seq_exp1_out", "seq_exp2_out"]
-            },
-            "op_outputs": {
-                "Out": ["concat_output"]
-            },
-            "op_attrs": {
-                'axis': axis1
-            }
-        }, {
-            "op_type": "mul",
-            "op_inputs": {
-                "X": ["concat_output"],
-                "Y": ["mul_weight"]
-            },
-            "op_outputs": {
-                "Out": ["mul_out"]
-            },
-            "op_attrs": {
-                "x_num_col_dims": x_col,
-                "y_num_col_dims": y_col
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["mul_out"],
-                "Y": ["elt_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elt_out"]
-            },
-            "op_attrs": {
-                "axis": axis2
-            }
-        }, {
-            "op_type": act_type,
-            "op_inputs": {
-                "X": ["elt_out"]
-            },
-            "op_outputs": {
-                "Out": ["elt_out"]
-            },
-            "op_attrs": {
-                "use_cudnn": use_cudnn,
-                "use_mkldnn": use_mkldnn
-            }
-        }]
+        sequence_expand_op1 = OpConfig(
+            type="sequence_expand",
+            inputs={"X": ["input_data1"],
+                    "Y": ["input_data2"]},
+            outputs={"Out": ["seq_exp1_out"]},
+            attrs={"ref_level": ref_level})
 
-        ops = self.generate_op_config(ops_config)
+        sequence_expand_op2 = OpConfig(
+            type="sequence_expand",
+            inputs={"X": ["input_data1"],
+                    "Y": ["input_data3"]},
+            outputs={"Out": ["seq_exp2_out"]},
+            attrs={"ref_level": ref_level})
+
+        concat_op = OpConfig(
+            type="concat",
+            inputs={"X": ["input_data1", "seq_exp1_out", "seq_exp2_out"]},
+            outputs={"Out": ["concat_output"]},
+            attrs={'axis': axis1})
+
+        mul_op = OpConfig(
+            type="mul",
+            inputs={"X": ["concat_output"],
+                    "Y": ["mul_weight"]},
+            outputs={"Out": ["mul_out"]},
+            attrs={"x_num_col_dims": x_col,
+                   "y_num_col_dims": y_col})
+
+        elt_op = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["mul_out"],
+                    "Y": ["elt_weight"]},
+            outputs={"Out": ["elt_out"]},
+            attrs={"axis": axis2})
+
+        act_op = OpConfig(
+            type=act_type,
+            inputs={"X": ["elt_out"]},
+            outputs={"Out": ["act_out"]},
+            attrs={"use_cudnn": use_cudnn,
+                   "use_mkldnn": use_mkldnn})
+
+        model_net = [
+            sequence_expand_op1, sequence_expand_op2, concat_op, mul_op, elt_op,
+            act_op
+        ]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
                 "mul_weight":
                 TensorConfig(data_gen=partial(generate_weight, [384, dim])),
@@ -143,7 +114,7 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
                     data_gen=partial(generate_input, [batch_size, 128]),
                     lod=[[0, 1]])
             },
-            outputs=["elt_out"])
+            outputs=["act_out"])
 
         return program_config
 
