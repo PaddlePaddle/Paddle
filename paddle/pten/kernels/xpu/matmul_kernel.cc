@@ -111,7 +111,7 @@ static void MatMulXPUFunction(const XPUContext& dev_ctx,
   int ldout = n;
   if (batch_size <= 1) {
     int r = 0;
-    r = xpu_fc_wrapper<XPUType, FCT>(
+    r = paddle::operators::xpu_fc_wrapper<XPUType, FCT>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(y.data<T>()),
