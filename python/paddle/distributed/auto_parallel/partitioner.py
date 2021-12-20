@@ -24,7 +24,7 @@ from paddle.distributed.auto_parallel.operators.common import get_distributed_op
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
-from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_recompute_op
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
 
