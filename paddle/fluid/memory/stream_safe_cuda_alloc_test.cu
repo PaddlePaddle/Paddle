@@ -243,6 +243,27 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   CheckMemLeak(place);
 }
 
+TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  std::shared_ptr<Allocation> zero_size_allocation = AllocShared(place, 0);
+  EXPECT_EQ(zero_size_allocation->ptr(), nullptr);
+
+  gpuStream_t stream;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
+#endif
+
+  EXPECT_NO_THROW(RecordStream(zero_size_allocation, stream));
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
+#endif
+}
+
 TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   size_t alloc_size = 256;
