@@ -43,5 +43,27 @@ class DefaultAllocator : public pten::Allocator {
   static paddle::memory::Allocator::AllocationDeleter deleter_;
 };
 
+class StringAllocator : public pten::Allocator {
+ public:
+  using Allocation = pten::Allocation;
+  explicit StringAllocator(const paddle::platform::Place& place)
+      : place_(place) {}
+
+  static void Delete(void* data) {
+    deleter_(static_cast<paddle::memory::Allocation*>(data));
+  }
+
+  Allocation Allocate(size_t bytes_size) override {
+    paddle::memory::AllocationPtr a = memory::Alloc(place_, bytes_size);
+    void* ptr = a->ptr();
+    std::memset(ptr, 0, bytes_size);
+    return Allocation(ptr, a.release(), &Delete, place_);
+  }
+
+ private:
+  paddle::platform::Place place_;
+  static paddle::memory::Allocator::AllocationDeleter deleter_;
+};
+
 }  // namespace experimental
 }  // namespace paddle
