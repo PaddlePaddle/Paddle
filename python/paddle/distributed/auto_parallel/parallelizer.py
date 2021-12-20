@@ -20,6 +20,9 @@ import copy
 import pathlib
 import subprocess
 import logging
+import pickle
+import time
+
 import paddle
 from paddle.distributed.utils import get_logger
 from paddle.distributed.fleet import cloud_utils
@@ -30,13 +33,18 @@ from .dist_context import set_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
+from .process_group import get_process_group
 from .process_group import get_world_process_groups
+from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
-from .reshard import reshard
+from .utils import SerialProgramInfo
+from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from .cluster import Cluster
 from .mapper import mapping
-# from .auto_search import auto_search
+from .dist_op import DistributedOperator
+from .dist_tensor import DistributedTensor
+from .planner import Planner
 
 _logger = get_logger(logging.INFO)
 
@@ -82,12 +90,20 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _get_dist_program(self, dist_context, rank):
-        # Annotation completion
-        completed_main_program = complete_annotation(self._main_program,
-                                                     dist_context)
+    def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
+        completed_main_program = None
+        if dist_context is None:
+            # Annotation completion
+            self._dist_context = DistributedContext()
+            _logger.info("Start annotation dist attr.")
+            completed_main_program = complete_annotation(self._main_program,
+                                                         self._dist_context)
+        else:
+            completed_main_program = self._main_program
+            self._dist_context = copy.deepcopy(dist_context)
+
         # Logical partition
-        partitioner = Partitioner(self._dist_strategy, dist_context, rank)
+        partitioner = Partitioner(self._dist_strategy, self._dist_context, rank)
         dist_main_prog, dist_startup_prog = partitioner.transpile_forward(
             completed_main_program, self._startup_program)
         dist_params_grads = partitioner.apply_backward(
@@ -97,11 +113,21 @@ class AutoParallelizer:
             copy.deepcopy(self._optimizer), dist_params_grads, dist_main_prog,
             dist_startup_prog)
 
-        make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
+        set_grad_var_shape(dist_main_prog, self._dist_context)
 
-        reshard(dist_main_prog, dist_startup_prog, rank, dist_context)
+        make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 
-        return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog
+        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
+
+        g_process_group_map = None
+        if not relaunch_phase:
+            g_process_group_map = copy.deepcopy(_g_process_group_map)
+            HAS_SENT.clear()
+            HAS_RECV.clear()
+            HAS_ALLGATHER.clear()
+            _g_process_group_map.clear()
+            _g_process_group_map[0] = ProcessGroup(0, [])
+        return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map
 
     def parallelize(self,
                     loss,
@@ -121,11 +147,51 @@ class AutoParallelizer:
                 "The cluster must not be none when using auto mapping."
             dist_programs = {}
             world_process_group = get_world_process_groups()
+            dist_context = None
+            # auto search
+            if self._dist_strategy.auto_search:
+                logging.info("Start searching dist attr.")
+                serial_program_info = SerialProgramInfo(
+                    self._main_program, self._startup_program, self._loss,
+                    self._optimizer, self._cluster)
+                planner = Planner(
+                    serial_program_info,
+                    algorithm_config={"name": "mcmc",
+                                      "max_search_times": 5})
+                dist_context, _ = planner.search()
+                logging.info("End searching dist attr.")
+
+            # serialize the dist context by planner
+            if dist_context is not None:
+                logging.info("Start serialize searched dist attr")
+                cwd = pathlib.Path().resolve()
+                searched_dist_context_path = os.path.join(
+                    cwd, f"searched_dist_context_{time.time()}.pkl")
+                saved_dist_context = {}
+                ops_dist_attr = {}
+                tensors_dist_attr = {}
+                for key, dist_op in dist_context._dist_ops_for_program.items():
+                    ops_dist_attr[key] = dist_op.dist_attr
+                for key, dist_tensor in dist_context._dist_tensors_for_program.items(
+                ):
+                    tensors_dist_attr[key] = dist_tensor.dist_attr
+                saved_dist_context["ops_dist_attr"] = ops_dist_attr
+                saved_dist_context["tensors_dist_attr"] = tensors_dist_attr
+                saved_dist_context[
+                    "process_meshes"] = dist_context._process_meshes
+                with open(searched_dist_context_path,
+                          "wb") as dist_context_file:
+                    pickle.dump(saved_dist_context, dist_context_file)
+                    os.environ[
+                        'PADDLE_SEARCHED_DIST_CONTEXT_PATH'] = searched_dist_context_path
+                    logging.info(
+                        f"End serialize searched dist attr to {searched_dist_context_path}"
+                    )
+
             for rank in world_process_group.ranks:
-                dist_context = DistributedContext()
-                dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog = self._get_dist_program(
-                    dist_context, rank)
-                dist_programs[rank] = dist_main_prog
+                dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map = self._get_dist_program(
+                    rank, dist_context)
+                dist_programs[rank] = [dist_main_prog, g_process_group_map]
 
             # Do the mapping between the distributed program graph and the cluster graph
             rank_mapping_dict = mapping(dist_programs, self._cluster)
@@ -162,9 +228,64 @@ class AutoParallelizer:
         else:
             # Parallelization after the mapping pass
             rank = paddle.distributed.get_rank()
+            dist_context = None
+            searched_dist_context_path = os.getenv(
+                "PADDLE_SEARCHED_DIST_CONTEXT_PATH", None)
+            if searched_dist_context_path is not None:
+                with open(searched_dist_context_path,
+                          "rb") as dist_context_file:
+                    saved_dist_context = pickle.load(dist_context_file)
+                    dist_context = DistributedContext()
+                    for op in self._main_program.global_block().ops:
+                        dist_attr = saved_dist_context["ops_dist_attr"][
+                            op.desc.id()]
+                        dist_op = DistributedOperator(op, dist_attr)
+                        dist_context.add_dist_op_for_program(dist_op)
 
-            dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog = self._get_dist_program(
-                self._dist_context, rank)
+                    vars = self._main_program.global_block().vars
+                    for var in vars.values():
+                        dist_attr = saved_dist_context["tensors_dist_attr"][
+                            var.desc.id()]
+                        dist_tensor = DistributedTensor(var, dist_attr)
+                        dist_context.add_dist_tensor_for_program(dist_tensor)
+
+                    dist_context._process_meshes = saved_dist_context[
+                        "process_meshes"]
+
+            else:
+                if self._dist_strategy.auto_search:
+                    serial_program_info = SerialProgramInfo(
+                        self._main_program,
+                        self._startup_program,
+                        self._loss,
+                        self._optimizer,
+                        cluster=self._cluster)
+                    planner = Planner(
+                        serial_program_info,
+                        algorithm_config={
+                            "name": "mcmc",
+                            "max_search_times": 5
+                        })
+                    dist_context, _ = planner.search()
+
+            # rebuild g_process_group
+            if dist_context is not None:
+                pg0 = get_process_group(0)
+                for process_mesh in dist_context._process_meshes:
+                    pg0.add_ranks(process_mesh.processes)
+            dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, _ = self._get_dist_program(
+                rank, dist_context, relaunch_phase=True)
+
+            # NOTE: This is a trick to fix hang in pipeline mode when dist context is searched by planner
+            if self._dist_strategy.auto_search:
+                is_pipeline = False
+                for op in dist_main_prog.global_block().ops:
+                    if op.type == "send_v2" or op.type == "recv_v2":
+                        is_pipeline = True
+                        break
+                if is_pipeline:
+                    with paddle.static.program_guard(dist_main_prog):
+                        paddle.distributed.barrier()
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.

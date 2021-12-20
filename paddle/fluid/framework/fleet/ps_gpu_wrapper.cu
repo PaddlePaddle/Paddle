@@ -116,7 +116,7 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                     platform::DeviceContextPool::Instance().Get(
                         BOOST_GET_CONST(platform::CUDAPlace, place)))
                     ->stream();
-  auto buf_value = memory::AllocShared(place, values.size() * sizeof(float*));
+  auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
   cudaMemcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              cudaMemcpyHostToDevice);
@@ -156,11 +156,10 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
     slot_lengths_lod[i] += slot_lengths_lod[i - 1];
   }
   auto buf_grad_value =
-      memory::AllocShared(place, grad_values.size() * sizeof(float*));
-  auto buf_length =
-      memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
+      memory::Alloc(place, grad_values.size() * sizeof(float*));
+  auto buf_length = memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
   auto buf_slot_vector =
-      memory::AllocShared(place, slot_lengths_lod.size() * sizeof(int));
+      memory::Alloc(place, slot_lengths_lod.size() * sizeof(int));
 
   float** gpu_values = reinterpret_cast<float**>(buf_grad_value->ptr());
   int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());

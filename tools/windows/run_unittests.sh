@@ -53,6 +53,10 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         echo "========================================"
         exit 8;
     fi
+    if nvcc --version | grep 11.2; then
+        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+        exit 0;
+    fi
 fi
 set -e
 
@@ -91,7 +95,6 @@ disable_wingpu_test="^test_model$|\
 ^test_activation_op$|\
 ^test_norm_nn_grad$|\
 ^test_bilinear_interp_op$|\
-^test_imperative_optimizer_v2$|\
 ^disable_wingpu_test$"
 
 # /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
@@ -184,7 +187,6 @@ long_time_test="^test_gru_op$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
 ^test_imperative_auto_mixed_precision$|\
-^test_imperative_optimizer_v2$|\
 ^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 

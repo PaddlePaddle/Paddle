@@ -218,6 +218,13 @@ def amp_guard(enable=True,
             % tracer._expected_place)
         enable = False
 
+    if tracer._expected_place.is_gpu_place():
+        prop = paddle.device.cuda.get_device_capability()
+        if prop[0] < 7:
+            warnings.warn(
+                "AMP only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
+                % (paddle.device.cuda.get_device_name(), prop[0], prop[1]))
+
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
