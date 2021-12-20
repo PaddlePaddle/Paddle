@@ -27,13 +27,12 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename DeviceContext, cnnlActivationMode_t act_mode, typename T>
+template <cnnlActivationMode_t act_mode, typename T>
 class ActivationMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     output->mutable_data<T>(ctx.GetPlace());
 
@@ -43,7 +42,7 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
                                   ToCnnlDataType(output->type()));
 
-    MLUCnnl::Active(dev_ctx, act_desc.get(), input_desc.get(),
+    MLUCnnl::Active(ctx, act_desc.get(), input_desc.get(),
                     reinterpret_cast<const void*>(input->data<T>()),
                     output_desc.get(),
                     reinterpret_cast<void*>(output->data<T>()));
@@ -53,14 +52,13 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
   float alpha_ = 1.0;
 };
 
-template <typename DeviceContext, cnnlActivationMode_t act_mode, typename T>
+template <cnnlActivationMode_t act_mode, typename T>
 class ActivationGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     dx->mutable_data<T>(ctx.GetPlace());
 
@@ -72,7 +70,7 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
                               ToCnnlDataType(dx->type()));
     MLUCnnlActivationDesc act_desc(act_mode, alpha_);
     MLUCnnl::ActiveGrad(
-        dev_ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,
+        ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,
         dout_desc.get(), reinterpret_cast<const void*>(dout->data<T>()),
         out_desc.get(), reinterpret_cast<const void*>(out->data<T>()),
         dx_desc.get(), reinterpret_cast<void*>(dx->data<T>()));
@@ -88,13 +86,9 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    relu, ops::ActivationMLUKernel<paddle::platform::MLUDeviceContext,
-                                   CNNL_ACTIVATION_RELU, float>,
-    ops::ActivationMLUKernel<paddle::platform::MLUDeviceContext,
-                             CNNL_ACTIVATION_RELU, paddle::platform::float16>);
+    relu, ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU, float>,
+    ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU, paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
-    relu_grad, ops::ActivationGradMLUKernel<paddle::platform::MLUDeviceContext,
-                                            CNNL_ACTIVATION_RELU, float>,
-    ops::ActivationGradMLUKernel<paddle::platform::MLUDeviceContext,
-                                 CNNL_ACTIVATION_RELU,
+    relu_grad, ops::ActivationGradMLUKernel<CNNL_ACTIVATION_RELU, float>,
+    ops::ActivationGradMLUKernel<CNNL_ACTIVATION_RELU,
                                  paddle::platform::float16>);
