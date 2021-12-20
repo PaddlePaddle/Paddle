@@ -22,21 +22,12 @@
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
-namespace framework {
-class ProgramDesc;
-class OperatorBase;
-}
-
 namespace distributed {
 class TaskNode;
 
 class RuntimeGraph final {
  public:
-  using ProgramDesc = paddle::framework::ProgramDesc;
-  using OperatorBase = paddle::framework::OperatorBase;
   RuntimeGraph() = default;
-  explicit RuntimeGraph(const ProgramDesc& program,
-                        const FleetExecutorDesc& exe_desc);
   ~RuntimeGraph() = default;
   const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node() const {
     return intercepter_id_to_node_;
@@ -56,18 +47,8 @@ class RuntimeGraph final {
 
  private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
-  void SplitProgramBasedFunctionality(const ProgramDesc& program);
-  void FakeDependence();
-  void AssignTaskToIntercepter();
-  void FakeRuntimeInfo();
-  void OriginProgramCompile(const ProgramDesc& program);
-  // LRSched, Forward, Backward, Optimize
-  static std::vector<paddle::framework::OpRole> functionality_order;
-  std::vector<std::unique_ptr<TaskNode>> task_nodes_;
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
   std::unordered_map<int64_t, TaskNode*> intercepter_id_to_node_;
   std::unordered_map<int64_t, int64_t> intercepter_id_to_rank_;
-  FleetExecutorDesc exe_desc_;
 };
 
 }  // namespace distributed

@@ -1436,7 +1436,7 @@ class Fleet(object):
         context["role_maker"] = self._role_maker
 
         # Use the auto-parallel's routines instead
-        if self._user_defined_strategy.semi_auto:
+        if self._user_defined_strategy.semi_auto or self._user_defined_strategy.auto_search:
             from ...auto_parallel.parallelizer import AutoParallelizer
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
@@ -1586,13 +1586,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and
-                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and
-                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))

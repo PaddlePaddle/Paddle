@@ -39,9 +39,8 @@ void Mean(const CPUContext& dev_ctx,
           const std::vector<int64_t>& dims,
           bool keep_dim,
           bool reduce_all,
-          DataType in_dtype,
-          DataType out_dtype,
           DenseTensor* out) {
+  auto out_dtype = x.dtype();
   pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -76,7 +75,6 @@ void Sum(const CPUContext& dev_ctx,
          const std::vector<int64_t>& dims,
          bool keep_dim,
          bool reduce_all,
-         DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out) {
   pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(

@@ -744,3 +744,8 @@ REGISTER_PASS_CAPABILITY(conv_transpose_eltwiseadd_bn_fuse_pass)
             .LE("conv2d_transpose", 2)
             .LE("elementwise_add", 1)
             .EQ("batch_norm", 0));
+REGISTER_PASS_CAPABILITY(conv_transpose_bn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d_transpose", 2)
+            .EQ("batch_norm", 0));
