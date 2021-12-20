@@ -326,8 +326,8 @@ def find_op_desc_seq(dist_tensor, dist_op):
     source_process_mesh = tensor_dist_attr.process_mesh
     source_process_group = source_process_mesh.processes
     source_process_shape = source_process_mesh.topology
-    op_dist_attr = dist_op.dist_attr
 
+    op_dist_attr = dist_op.dist_attr
     target_process_mesh = op_dist_attr.process_mesh
     target_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
     target_process_group = target_process_mesh.processes
@@ -481,35 +481,31 @@ def find_op_desc_seq(dist_tensor, dist_op):
     return op_desc_seq
 
 
-def _insert_send_op(block, idx, tensor, dst, rank_id):
+def _insert_send_op(block, idx, tensor, dst):
     """Insert send op into block at the given index."""
     op_type = 'send_v2'
-    ranks = [rank_id, dst]
-    group = new_process_group(ranks)
     block._insert_op(
         idx,
         type=op_type,
         inputs={'X': [tensor]},
         attrs={
-            'ring_id': group.id,
-            'peer': group.local_rank(dst),
+            'ring_id': 0,
+            'peer': dst,
             'use_calc_stream': True,
         })
 
 
-def _insert_recv_op(block, idx, tensor, src, rank_id):
+def _insert_recv_op(block, idx, tensor, src):
     """Insert recv op into block at the given index."""
     op_type = 'recv_v2'
-    ranks = [src, rank_id]
-    group = new_process_group(ranks)
     block._insert_op(
         idx,
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
         attrs={
-            'ring_id': group.id,
-            'peer': group.local_rank(src),
+            'ring_id': 0,
+            'peer': src,
             'out_shape': tensor.shape,
             'dtype': tensor.dtype,
             'use_calc_stream': True,
@@ -725,7 +721,7 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
             if var_name not in HAS_SENT.keys():
                 HAS_SENT[var_name] = []
             if op_desc.dst not in HAS_SENT[var_name]:
-                _insert_send_op(block, idx, source_tensor, op_desc.dst, rank_id)
+                _insert_send_op(block, idx, source_tensor, op_desc.dst)
                 idx += 1
                 HAS_SENT[var_name].append(op_desc.dst)
 
@@ -741,7 +737,7 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
                     name=unique_name.generate(var_name + "@recv"),
                     shape=shape,
                     dtype=source_tensor.dtype)
-                _insert_recv_op(block, idx, recv_tensor, op_desc.src, rank_id)
+                _insert_recv_op(block, idx, recv_tensor, op_desc.src)
                 tensor_list.append(recv_tensor)
                 idx += 1
                 HAS_RECV[var_name][op_desc.src] = recv_tensor
@@ -981,8 +977,6 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
                 dist_tensor = dist_context.get_dist_tensor_for_program(var)
                 if dist_tensor is not None and _need_reshard(dist_tensor,
                                                              dist_op):
-                    assert var.shape[
-                        0] != 0, "Xshape is not supportted reshard!"
                     reshard_op_desc = find_op_desc_seq(dist_tensor, dist_op)
                     parse_op_desc(auto_parallel_main_prog, rank_id,
                                   reshard_op_desc, var_name, op, dist_context)
