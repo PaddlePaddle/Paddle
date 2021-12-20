@@ -46,7 +46,8 @@ class TestFleetExecutor(unittest.TestCase):
             opt.minimize(loss)
         # TODO: section_program will be removed in the future
         task_node = TaskNode(
-            program=empty_program,
+            # must clone, if copies, there will be two fetches and two feeds
+            program=empty_program.clone(),
             cur_rank=0,
             max_run_times=1,
             max_slot_times=1)

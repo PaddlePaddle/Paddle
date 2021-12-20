@@ -2052,7 +2052,7 @@ class Executor(object):
         if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
             if 'tasks' in fleet_opt:
-                # insert feed/fetch op for program in task node
+                # insert feed/fetch op for cloned program in each task node
                 for task in fleet_opt['tasks']:
                     tmp_program = task.get_program()
                     tmp_program = self._add_feed_fetch_ops(

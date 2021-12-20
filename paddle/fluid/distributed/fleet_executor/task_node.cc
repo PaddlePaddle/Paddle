@@ -41,10 +41,7 @@ void TaskNode::SetProgram(const paddle::framework::ProgramDesc& program) {
 void TaskNode::Init() {
   if (ops_.empty()) {
     for (const auto& op_desc : program_.Block(0).AllOps()) {
-      ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
-    }
-    for (const auto& op : ops_vec_) {
-      ops_.emplace_back(op.get());
+      ops_.emplace_back(framework::OpRegistry::CreateOp(*op_desc).get());
     }
   }
 }
