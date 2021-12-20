@@ -216,6 +216,47 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
+            "list of EagerTensor, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list or tuple, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
+  std::vector<int> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
             "list of bool, but got %s at pos %d",
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
@@ -400,6 +441,41 @@ PyObject* ToPyObject(const void* value) {
   }
   PADDLE_THROW(
       platform::errors::Fatal("ToPyObject do not support void* with value."));
+}
+
+PyObject* ToPyObject(
+    const std::unordered_map<std::string, std::vector<std::string>>& value) {
+  PyObject* dict = PyDict_New();
+  for (const auto map_iter : value) {
+    // Convert Key
+    PyObject* key_string = PyUnicode_FromString(map_iter.first.c_str());
+    if (!key_string) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to convert std::string to PyObject"));
+    }
+
+    // Convert Val
+    PyObject* py_list = PyList_New(0);
+    for (const auto vector_iter : map_iter.second) {
+      PyObject* val_string = PyUnicode_FromString(vector_iter.c_str());
+      if (!val_string) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Unable to convert std::string to PyObject"));
+      }
+
+      if (PyList_Append(py_list, val_string) != 0) {
+        PADDLE_THROW(
+            platform::errors::Fatal("Unable to append string to py_list"));
+      }
+    }
+
+    if (PyDict_SetItem(dict, key_string, py_list) != 0) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to set key:value for py_dict"));
+    }
+  }
+
+  return dict;
 }
 
 egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,

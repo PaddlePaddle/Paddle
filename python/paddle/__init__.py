@@ -88,6 +88,7 @@ from .tensor.creation import meshgrid  # noqa: F401
 from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
+from .tensor.creation import complex  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -159,6 +160,7 @@ from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
+from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -445,6 +447,7 @@ __all__ = [  # noqa
            'shape',
            'real',
            'imag',
+           'complex',
            'reciprocal',
            'rand',
            'less_equal',
@@ -579,4 +582,5 @@ __all__ = [  # noqa
            'fmax',
            'fmin',
            'moveaxis',
+           'repeat_interleave',
 ]

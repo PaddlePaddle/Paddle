@@ -12,27 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/complex_op.h"
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace ops = paddle::operators;
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
+REGISTER_OP_CUDA_KERNEL(
+    complex, ops::ComplexKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ComplexKernel<paddle::platform::CUDADeviceContext, double>);
 
-namespace pten {
-
-template <typename T>
-void FullLike(const CUDAContext& dev_ctx, const Scalar& val, DenseTensor* out);
-
-template <typename T>
-void Full(const CUDAContext& dev_ctx,
-          const ScalarArray& shape,
-          const Scalar& val,
-          DenseTensor* out);
-
-}  // namespace pten
-
-#endif
+REGISTER_OP_CUDA_KERNEL(
+    complex_grad,
+    ops::ComplexGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ComplexGradKernel<paddle::platform::CUDADeviceContext, double>);

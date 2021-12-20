@@ -145,6 +145,11 @@ bool IsGpuMallocRecorded(int dev_id);
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
 
+//! Get the primitive pointer return from cudaMalloc, just for testing
+#ifdef PADDLE_WITH_TESTING
+void *GetGpuBasePtr(void *ptr, int dev_id);
+#endif
+
 }  // namespace platform
 }  // namespace paddle
 
