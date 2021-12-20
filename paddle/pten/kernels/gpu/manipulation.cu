@@ -14,8 +14,8 @@
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/cuda/manipulation.h"
-#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/gpu/manipulation.h"
+#include "paddle/pten/kernels/gpu/utils.h"
 #include "paddle/pten/kernels/hybird/cuda/cast_kernel_impl.h"
 #include "paddle/pten/kernels/hybird/general/manipulation.h"
 

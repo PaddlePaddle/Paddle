@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/gpu/utils.h"
 
 namespace pten {
 

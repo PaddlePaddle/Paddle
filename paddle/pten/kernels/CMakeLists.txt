@@ -13,8 +13,7 @@ add_subdirectory(eigen)
 add_subdirectory(blas)
 add_subdirectory(cpu)
 if(WITH_GPU OR WITH_ROCM)
-  # NOTE(chenweihang): if hip can split from cuda impl, we should add hip dir
-  add_subdirectory(cuda)
+  add_subdirectory(gpu)
 endif()
 if(WITH_MKLDNN)
   # mkldnn will be deprecated and use the new name dnnl

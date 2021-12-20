@@ -42,7 +42,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/gpu/utils.h"
 #include "paddle/pten/kernels/hybird/math/cast_func.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim

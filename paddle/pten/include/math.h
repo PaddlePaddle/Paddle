@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/math.h"
-#include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/gpu/math.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
