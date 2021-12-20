@@ -22,49 +22,54 @@ namespace operators {
 
 template <typename T>
 struct GeluWithApproximateFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  inline HOSTDEVICE T operator()(T x) {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T arg_x) {
     // this function is tanh approximation of gelu
-    MT mx = static_cast<MT>(x);
-    MT out = mx * static_cast<MT>(0.5) *
-             (static_cast<MT>(1.0) +
-              tanh(static_cast<MT>(0.79788456) * mx *
-                   (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx)));
+    MPType x = static_cast<MPType>(arg_x);
+    MPType one = static_cast<MPType>(1);
+    MPType out = x * static_cast<MPType>(0.5) *
+                 (one + tanh(static_cast<MPType>(0.79788456) * x *
+                             (one + static_cast<MPType>(0.044715) * x * x)));
     return static_cast<T>(out);
   }
 };
 
 template <typename T>
-struct GeluNoApproximateFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  inline HOSTDEVICE T operator()(T x) {
-    // actual gelu with approximation=false
-    // x * 0.5 * (1.0 + erf(x * 0.70710678))
-    MT mx = static_cast<MT>(x);
-    MT temp = erf(mx * static_cast<MT>(M_SQRT1_2));
-    MT out = mx * static_cast<MT>(0.5) * (static_cast<MT>(1) + temp);
+struct GeluWithoutApproximateFunctor {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T arg_x) {
+    // actual gelu with approximation = false
+    MPType x = static_cast<MPType>(arg_x);
+    MPType erf_out = erf(x * static_cast<MPType>(M_SQRT1_2));
+    MPType out =
+        x * static_cast<MPType>(0.5) * (static_cast<MPType>(1) + erf_out);
     return static_cast<T>(out);
   }
 };
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-default_gelu_fw(const framework::ExecutionContext& ctx,
-                const framework::Tensor* in, const bool approximate,
-                framework::Tensor* out) {
-  std::vector<const framework::Tensor*> ins = {in};
-  std::vector<framework::Tensor*> outs = {out};
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  if (approximate) {
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
-  } else {
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluNoApproximateFunctor<T>());
+template <typename T>
+class GeluKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* in = context.Input<framework::Tensor>("X");
+    auto approximate = context.Attr<bool>("approximate");
+    out->mutable_data<T>(in->place());
+
+    std::vector<const framework::Tensor*> ins = {in};
+    std::vector<framework::Tensor*> outs = {out};
+    const auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    if (approximate) {
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
+    } else {
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, 0, GeluWithoutApproximateFunctor<T>());
+    }
   }
-}
+};
 
 }  // namespace operators
 }  // namespace paddle
