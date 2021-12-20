@@ -234,7 +234,8 @@ DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
 
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
-                                bool keep_dim) {
+                                bool keep_dim,
+                                DataType dtype) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
@@ -268,10 +269,16 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
   }
   DDim out_dim = paddle::framework::make_ddim(out_dim_vector);
 
-  DataType out_dtype = x_meta.dtype;
-  if (x_meta.dtype == DataType::BOOL || x_meta.dtype == DataType::INT32 ||
-      x_meta.dtype == DataType::INT64) {
-    out_dtype = DataType::INT64;
+  DataType out_dtype;
+  if (dtype != DataType::UNDEFINED) {
+    out_dtype = dtype;
+  } else {
+    if (x_meta.dtype == DataType::BOOL || x_meta.dtype == DataType::INT32 ||
+        x_meta.dtype == DataType::INT64) {
+      out_dtype = DataType::INT64;
+    } else {
+      out_dtype = x_meta.dtype;
+    }
   }
 
   DenseTensorMeta return_meta(out_dtype, out_dim, x_meta.layout);

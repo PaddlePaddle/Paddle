@@ -131,7 +131,7 @@ class ShardingClipGrad:
 
 
 @contextlib.contextmanager
-def device_guard(dev_id, device="cpu"):
+def device_guard(dev_id=0, device="cpu"):
     origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)

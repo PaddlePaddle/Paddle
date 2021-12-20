@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
@@ -46,8 +45,9 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
 }
 
 void Interceptor::StopCarrier() {
-  Carrier& carrier_instance = Carrier::Instance();
-  std::condition_variable& cond_var = carrier_instance.GetCondVar();
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
+  std::condition_variable& cond_var = carrier_->GetCondVar();
   // probably double notify, but ok for ut
   cond_var.notify_all();
 }
@@ -73,9 +73,11 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
 }
 
 bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
   msg.set_src_id(interceptor_id_);
   msg.set_dst_id(dst_id);
-  return MessageBus::Instance().Send(msg);
+  return carrier_->Send(msg);
 }
 
 void Interceptor::PoolTheMailbox() {
