@@ -816,40 +816,9 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 
 template <typename Tx, typename Ty, template <typename> class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<!std::is_same<Tx, platform::float16>::value,
-                               void>::type
-CubTensorReduceFunctorImpl(const Tx* x_data, Ty* y_data,
-                           const TransformOp& transform, int reduce_num,
-                           const platform::Place& place, gpuStream_t stream) {
-  auto reducer = ReduceOp<Ty>();
-  cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
-                                                                  transform);
-  size_t temp_storage_bytes = 0;
-  cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
-                            reduce_num, reducer, reducer.initial(), stream);
-  framework::Tensor tmp;
-  auto* temp_storage = tmp.mutable_data<uint8_t>(
-      framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}), place);
-  cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
-                            reduce_num, reducer, reducer.initial(), stream);
-}
-
-template <typename Tx, typename Ty, template <typename> class ReduceOp,
-          typename TransformOp>
-static typename std::enable_if<std::is_same<Tx, platform::float16>::value,
-                               void>::type
-CubTensorReduceFunctorImpl(const Tx* x_data, Ty* y_data,
-                           const TransformOp& transform, int reduce_num,
-                           const platform::Place& place, gpuStream_t stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
-}
-
-template <typename Tx, typename Ty, template <typename> class ReduceOp,
-          typename TransformOp>
 void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                              const TransformOp& transform,
-                             const std::vector<int>& origin_reduce_dims,
+                             std::vector<int> origin_reduce_dims,
                              gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
@@ -879,11 +848,25 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-  constexpr bool kIsTxFP16 = std::is_same<Tx, paddle::platform::float16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+  bool use_cub_reduce = (config.reduce_num == numel) &&
+                        (!std::is_same<Tx, paddle::platform::float16>::value);
   if (use_cub_reduce) {
-    CubTensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
-        x_data, y_data, transform, config.reduce_num, x.place(), stream);
+    // launch CUB::Reduce
+    auto reducer = ReduceOp<Ty>();
+    cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
+                                                                    transform);
+    size_t temp_storage_bytes = 0;
+    cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
+                              config.reduce_num, reducer, reducer.initial(),
+                              stream);
+    framework::Tensor tmp;
+    auto* temp_storage = tmp.mutable_data<uint8_t>(
+        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
+        x.place());
+    cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
+                              config.reduce_num, reducer, reducer.initial(),
+                              stream);
+
     return;
   }
 

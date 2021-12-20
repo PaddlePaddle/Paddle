@@ -63,25 +63,17 @@ class TestMeanOpError(unittest.TestCase):
 class TestFP16MeanOp(TestMeanOp):
     def init_dtype_type(self):
         self.dtype = np.float16
-        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, atol=2e-3)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            with fluid.dygraph.guard():
-                x_np = np.random.random((10, 10)).astype(self.dtype)
-                x = paddle.to_tensor(x_np)
-                x.stop_gradient = False
-                y = fluid.layers.mean(x)
-                dx = paddle.grad(y, x)[0].numpy()
-                dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
-                    x_np.shape).astype(self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=0.8)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -106,14 +98,6 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
     return np.mean(x, axis=axis, keepdims=keepdim)
 
 
-def ref_reduce_mean_grad(x, axis, dtype):
-    if reduce_all:
-        axis = list(range(x.ndim))
-
-    shape = [x.shape[i] for i in axis]
-    return (1.0 / np.prod(shape) * np.ones(shape)).astype(dtype)
-
-
 class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
@@ -121,13 +105,11 @@ class TestReduceMeanOp(OpTest):
         self.shape = [2, 3, 4, 5]
         self.axis = [0]
         self.keepdim = False
+        self.reduce_all = False
         self.set_attrs()
 
         np.random.seed(10)
         x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        if not hasattr(self, "reduce_all"):
-            self.reduce_all = (not self.axis) or len(self.axis) == len(x_np)
-
         out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out_np}
@@ -137,39 +119,14 @@ class TestReduceMeanOp(OpTest):
             'reduce_all': self.reduce_all
         }
 
-        if self.dtype == 'float16':
-            self.__class__.no_need_check_grad = True
-
     def set_attrs(self):
         pass
 
     def test_check_output(self):
-        if self.dtype != 'float16':
-            self.check_output()
-        else:
-            if not core.is_compiled_with_cuda():
-                return
-            place = paddle.CUDAPlace(0)
-            self.check_output_with_place(place=place)
+        self.check_output()
 
     def test_check_grad(self):
-        if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'])
-        else:
-            return
-            if not core.is_compiled_with_cuda():
-                return
-            place = paddle.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                return
-            with fluid.dygraph.guard(place=place):
-                x = paddle.tensor(self.inputs['X'])
-                y = paddle.mean(
-                    x, axis=self.attrs['dim'], keepdim=self.attrs['keep_dim'])
-                dx = paddle.grad(y, x)[0].numpy()
-                dx_expected = ref_reduce_mean_grad(
-                    self.inputs['X'], self.attrs['dim'], self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+        self.check_grad(['X'], ['Out'])
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
@@ -187,11 +144,6 @@ class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
 class TestReduceMeanOpFloat32(TestReduceMeanOp):
     def set_attrs(self):
         self.dtype = 'float32'
-
-
-class TestReduceMeanOpFloat16(TestReduceMeanOp):
-    def set_attrs(self):
-        self.dtype = 'float16'
 
 
 class TestReduceMeanOpShape1D(TestReduceMeanOp):

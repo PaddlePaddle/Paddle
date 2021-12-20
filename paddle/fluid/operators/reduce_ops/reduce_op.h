@@ -713,10 +713,8 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
           TensorReduceFunc<T, ReduceOp, TransformOp>(
               *input, output, reduce_dims, reduce_num, stream));
     } else {
-      using MPType = typename details::MPTypeTrait<T>::Type;
-      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
-          *input, output, TransformOp<T, MPType>(reduce_num), reduce_dims,
-          stream);
+      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, T>>(
+          *input, output, TransformOp<T, T>(reduce_num), reduce_dims, stream);
     }
   }
 };
