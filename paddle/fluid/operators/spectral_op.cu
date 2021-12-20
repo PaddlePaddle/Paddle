@@ -96,7 +96,7 @@ static void exec_cufft_plan_raw(const FFTConfig& config, void* in_data,
                                 void* out_data, bool forward) {
   auto& plan = config.plan();
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftXtExec(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftXtExec(
       plan, in_data, out_data, forward ? CUFFT_FORWARD : CUFFT_INVERSE));
 }
 
@@ -167,20 +167,20 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
   if (value_type == framework::proto::VarType::FP32) {
     switch (config.transform_type()) {
       case FFTTransformType::C2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecC2C(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecC2C(
             plan, static_cast<hipfftComplex*>(in_data),
             static_cast<hipfftComplex*>(out_data),
             forward ? HIPFFT_FORWARD : HIPFFT_BACKWARD));
         return;
       }
       case FFTTransformType::R2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecR2C(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecR2C(
             plan, static_cast<hipfftReal*>(in_data),
             static_cast<hipfftComplex*>(out_data)));
         return;
       }
       case FFTTransformType::C2R: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecC2R(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecC2R(
             plan, static_cast<hipfftComplex*>(in_data),
             static_cast<hipfftReal*>(out_data)));
         return;
@@ -189,20 +189,20 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
   } else if (value_type == framework::proto::VarType::FP64) {
     switch (config.transform_type()) {
       case FFTTransformType::C2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecZ2Z(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecZ2Z(
             plan, static_cast<hipfftDoubleComplex*>(in_data),
             static_cast<hipfftDoubleComplex*>(out_data),
             forward ? HIPFFT_FORWARD : HIPFFT_BACKWARD));
         return;
       }
       case FFTTransformType::R2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecD2Z(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecD2Z(
             plan, static_cast<hipfftDoubleReal*>(in_data),
             static_cast<hipfftDoubleComplex*>(out_data)));
         return;
       }
       case FFTTransformType::C2R: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecZ2D(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecZ2D(
             plan, static_cast<hipfftDoubleComplex*>(in_data),
             static_cast<hipfftDoubleReal*>(out_data)));
         return;
@@ -332,11 +332,11 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   }
 
   // prepare cufft for execution
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cufftSetStream(config->plan(), ctx.stream()));
   framework::Tensor workspace_tensor;
   workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftSetWorkArea(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftSetWorkArea(
       config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
   exec_cufft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,
@@ -355,11 +355,11 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   config = &(plan_cache.lookup(key));
 
   // prepare cufft for execution
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::hipfftSetStream(config->plan(), ctx.stream()));
   framework::Tensor workspace_tensor;
   workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftSetWorkArea(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftSetWorkArea(
       config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
   exec_hipfft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,

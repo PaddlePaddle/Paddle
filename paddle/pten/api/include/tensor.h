@@ -84,17 +84,14 @@ class AbstractAutogradMeta {
  * another simple Tensor design may be required for inference.
  */
 
-class PD_DLL_DECL Tensor final {
+class PADDLE_API Tensor final {
  public:
+  /* Part 1: Construction and destruction methods */
+
   /**
    * @brief Construct a new Tensor object
    */
   Tensor() = default;
-
-  /**
-   * @brief Construct a new Tensor object with name
-   * */
-  explicit Tensor(const std::string& name) { name_ = name; }
 
   /**
    * @brief Construct a new Tensor object by copy
@@ -132,18 +129,14 @@ class PD_DLL_DECL Tensor final {
   Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
   /**
-   * @brief Return the name of Tensor.
+   * @brief Construct a new Tensor object with name
    *
-   * @return const std::string&
-   */
-  const std::string& name() const { return name_; }
+   * @note Used to adapt original execution mechanism and debug analysis
+   * in the development of new dygraph. It may be removed in the future.
+   * */
+  explicit Tensor(const std::string& name) : name_(name) {}
 
-  /**
-   * @brief Set name of Tensor.
-   *
-   * @param const std::string& name
-   */
-  void set_name(const std::string& name) { name_ = name; }
+  /* Part 2: Dimension, DataType and DataLayout methods */
 
   /**
    * @brief Return the number of elements of Tensor.
@@ -179,7 +172,7 @@ class PD_DLL_DECL Tensor final {
 
   /**
    * @brief Reset the shape of the tensor.
-   * Note: This method means Reset the shape of the tensor,
+   * @note: This method means Reset the shape of the tensor,
    * and must be called before calling mutable_data() or
    * copy_to(const PlaceType& place), this is not a standard definition of
    * reshape behavior, so we will deprecated this feature in the future.
@@ -329,14 +322,35 @@ class PD_DLL_DECL Tensor final {
   gpuStream_t stream() const;
 #endif
 
-  /* Part 5: Data Transform methods */
+  /**
+   * @brief Return the name of Tensor.
+   * @note Used to adapt original execution mechanism and debug analysis
+   * in the development of new dygraph. It may be removed in the future.
+   *
+   * @return const std::string&
+   */
+  const std::string& name() const { return name_; }
 
+  /**
+   * @brief Set name of Tensor.
+   * @note Used to adapt original execution mechanism and debug analysis
+   * in the development of new dygraph. It may be removed in the future.
+   *
+   * @param const std::string& name
+   */
+  void set_name(const std::string& name) { name_ = name; }
+
+  /* Part 5: Data Transform methods */
+  /* Alert!!!!: All copy method can only deep copy impl, autograd info only be
+   * copied */
+  /* out of pten */
   /**
    * @brief Copy the current Tensor data to the specified device
    * and return the new Tensor. It's usually used to set the input tensor data.
-   * Note: The Tensor's `copy_to` method is deprecated since version 2.3, and
-   * will be removed in version 2.4, please use `to` method instead. reason:
-   * copying a Tensor to another device does not need to specify the
+   * @note The Tensor's `copy_to` method is deprecated since version 2.3, and
+   * will be removed in version 2.4, please use `copy_to` method without
+   * template argument instead.
+   * reason: copying a Tensor to another device does not need to specify the
    * data type template argument
    *
    * @tparam T
@@ -349,20 +363,27 @@ class PD_DLL_DECL Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param place, the target place of which the tensor will copy to.
+   * @param backend, The target backend of which the tensor will copy to.
+   * @param blocking, Should we copy this in sync way.
    * @return Tensor
    */
-  // TODO(chenweihang): replace Backend by new Place, may be append dtype and
-  // layout arguments in the future
-  Tensor to(Backend backend, bool blocking) const;
+  Tensor copy_to(Backend backend, bool blocking) const;
 
+  /**
+   * @brief Transfer the source Tensor to current Tensor.
+   *
+   * @param src, the source Tensor to be copied.
+   * @param blocking, Should we copy this in sync way.
+   * @return void
+   */
+  void copy_(const Tensor& src, const bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
    * @param target_type
    * @return Tensor
    */
-  Tensor cast(const DataType& target_type) const;
+  Tensor cast(DataType target_type) const;
 
   /* Part 6: Status utils methods */
 
@@ -470,16 +491,11 @@ class PD_DLL_DECL Tensor final {
   std::shared_ptr<AbstractAutogradMeta> autograd_meta_{nullptr};
 
   /**
-   * Tensor name: used for adapt original execution mechanism and debug analysis
+   * Tensor name: used to adapt original execution mechanism and debug analysis
    * in the development of new dygraph. It may be removed in the future.
    */
-  std::string name_;
+  std::string name_{""};
 };
 
 }  // namespace experimental
-}  // namespace paddle
-
-namespace paddle {
-// In order to be compatible with the original custom operator Tensor interface
-using Tensor = paddle::experimental::Tensor;
 }  // namespace paddle

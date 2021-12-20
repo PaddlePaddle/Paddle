@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
-    reduce_prod, ops::ReduceCudaKernel<float, paddle::operators::CustomMul>,
-    ops::ReduceCudaKernel<int, paddle::operators::CustomMul>,
-    ops::ReduceCudaKernel<double, paddle::operators::CustomMul>,
-    ops::ReduceCudaKernel<int64_t, paddle::operators::CustomMul>);
+    reduce_prod,
+    ops::ReduceCudaKernel<float, kps::MulFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int, kps::MulFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<double, kps::MulFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int64_t, kps::MulFunctor, kps::IdentityFunctor>);

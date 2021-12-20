@@ -436,13 +436,15 @@ class TestVariableSlice(unittest.TestCase):
             out1 = x[0:, None]
             out2 = x[None, 1:]
             out3 = x[None]
+            out4 = x[..., None, :, None]
 
-        outs = [out0, out1, out2, out3]
+        outs = [out0, out1, out2, out3, out4]
         exe = paddle.static.Executor(place)
         result = exe.run(prog, fetch_list=outs)
 
         expected = [
-            data[0:, None, 1:], data[0:, None], data[None, 1:], data[None]
+            data[0:, None, 1:], data[0:, None], data[None, 1:], data[None],
+            data[..., None, :, None]
         ]
         for i in range(len(outs)):
             self.assertEqual(outs[i].shape, expected[i].shape)

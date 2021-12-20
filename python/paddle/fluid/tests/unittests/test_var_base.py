@@ -568,10 +568,12 @@ class TestVarBase(unittest.TestCase):
         var14 = var[1:-1, 0:2, ::-1]
         var15 = var[::-1, ::-1, ::-1]
         var16 = var[-4:4]
+        var17 = var[:, 0, 0:0]
+        var18 = var[:, 1:1:2]
 
         vars = [
             var, var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
-            var11, var12, var13, var14, var15, var16
+            var11, var12, var13, var14, var15, var16, var17, var18
         ]
         local_out = [var.numpy() for var in vars]
 
@@ -600,6 +602,8 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
         self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
+        self.assertTrue(np.array_equal(local_out[17], tensor_array[:, 0, 0:0]))
+        self.assertTrue(np.array_equal(local_out[18], tensor_array[:, 1:1:2]))
 
     def _test_slice_for_tensor_attr(self):
         tensor_array = np.array(
@@ -723,6 +727,7 @@ class TestVarBase(unittest.TestCase):
             var_tensor[None].numpy(),
             var_tensor[0, 0, None, 0, 0, None].numpy(),
             var_tensor[None, None, 0, ..., None].numpy(),
+            var_tensor[..., None, :, None].numpy(),
             var_tensor[0, 1:10:2, None, None, ...].numpy(),
         ]
 
@@ -738,11 +743,12 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
         self.assertTrue(
             np.array_equal(var[9], np_value[None, None, 0, ..., None]))
+        self.assertTrue(np.array_equal(var[10], np_value[..., None, :, None]))
 
         # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
         #              indexs has int type 
         # self.assertTrue(
-        #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
+        #     np.array_equal(var[11], np_value[0, 1:10:2, None, None, ...]))
 
     def _test_bool_index(self):
         shape = (4, 2, 5, 64)
@@ -1189,15 +1195,15 @@ class TestVarBaseOffset(unittest.TestCase):
         self.assertEqual(actual_x._offset(), expected_offset)
 
 
-class TestVarBaseShareBufferWith(unittest.TestCase):
-    def test_share_buffer_with(self):
+class TestVarBaseShareBufferTo(unittest.TestCase):
+    def test_share_buffer_To(self):
         paddle.disable_static()
-        np_x = np.random.random((3, 8, 8))
-        np_y = np.random.random((3, 8, 8))
-        x = paddle.to_tensor(np_x, dtype="float64")
-        y = paddle.to_tensor(np_y, dtype="float64")
-        x._share_buffer_with(y)
-        self.assertEqual(x._is_shared_buffer_with(y), True)
+        np_src = np.random.random((3, 8, 8))
+        src = paddle.to_tensor(np_src, dtype="float64")
+        # empty_var
+        dst = core.VarBase()
+        src._share_buffer_to(dst)
+        self.assertEqual(src._is_shared_buffer_with(dst), True)
 
 
 class TestVarBaseTo(unittest.TestCase):
@@ -1273,13 +1279,19 @@ class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
 
 
 class TestVarBaseNumel(unittest.TestCase):
-    def test_numel(self):
+    def test_numel_normal(self):
         paddle.disable_static()
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
         x_actual_numel = x._numel()
         x_expected_numel = np.product((3, 8, 8))
         self.assertEqual(x_actual_numel, x_expected_numel)
+
+    def test_numel_without_holder(self):
+        paddle.disable_static()
+        x_without_holder = core.VarBase()
+        x_actual_numel = x_without_holder._numel()
+        self.assertEqual(x_actual_numel, 0)
 
 
 class TestVarBaseCopyGradientFrom(unittest.TestCase):

@@ -42,8 +42,10 @@ class CompatibleDenseTensorUtils {
   // only can deal with SharedStorage now
   static void ClearStorage(DenseTensor* tensor) {
     // use static_cast to improve performance, replace by dynamic_cast later
-    static_cast<paddle::experimental::SharedStorage*>(tensor->storage_.get())
-        ->Reset();
+    if (tensor->storage_ != nullptr) {
+      static_cast<paddle::experimental::SharedStorage*>(tensor->storage_.get())
+          ->Reset();
+    }
   }
 
   static DenseTensor Slice(DenseTensor* tensor,

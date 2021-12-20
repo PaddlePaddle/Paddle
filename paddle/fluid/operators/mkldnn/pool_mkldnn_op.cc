@@ -20,24 +20,24 @@ namespace paddle {
 namespace operators {
 
 using framework::DataLayout;
-using mkldnn::memory;
-using mkldnn::pooling_backward;
-using mkldnn::pooling_forward;
-using mkldnn::primitive;
-using mkldnn::reorder;
-using mkldnn::stream;
+using dnnl::memory;
+using dnnl::pooling_backward;
+using dnnl::pooling_forward;
+using dnnl::primitive;
+using dnnl::reorder;
+using dnnl::stream;
 using platform::to_void_cast;
 
 template <typename T>
 class PoolingMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, mkldnn::pooling_forward,
-                                               mkldnn::pooling_backward> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::pooling_forward,
+                                               dnnl::pooling_backward> {
  public:
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                       const mkldnn::engine mkldnn_engine, const Tensor* input,
+                       const dnnl::engine mkldnn_engine, const Tensor* input,
                        Tensor* output)
-      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::pooling_forward,
-                                          mkldnn::pooling_backward>(
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::pooling_forward,
+                                          dnnl::pooling_backward>(
             mkldnn_engine, ctx.GetPlace()) {
     PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
                       platform::errors::InvalidArgument(
@@ -98,7 +98,7 @@ class PoolingMKLDNNHandler
 
     const auto exclude_padding = ctx.Attr<bool>("exclusive");
 
-    const auto src_md = mkldnn::memory::desc(src_tz, dt, input->format());
+    const auto src_md = dnnl::memory::desc(src_tz, dt, input->format());
     /* create memory descriptor for pooling without specified format
      * ('any') which lets a primitive (pooling in this case) choose
      * the memory format preferred for best performance
@@ -119,22 +119,21 @@ class PoolingMKLDNNHandler
     ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides);
 
     this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
+        is_test ? dnnl::prop_kind::forward_inference
+                : dnnl::prop_kind::forward_training,
         pooling_type == "max"
-            ? mkldnn::algorithm::pooling_max
-            : (exclude_padding
-                   ? mkldnn::algorithm::pooling_avg_exclude_padding
-                   : mkldnn::algorithm::pooling_avg_include_padding),
+            ? dnnl::algorithm::pooling_max
+            : (exclude_padding ? dnnl::algorithm::pooling_avg_exclude_padding
+                               : dnnl::algorithm::pooling_avg_include_padding),
         src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
   }
 
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                       const mkldnn::engine mkldnn_engine, const Tensor* in_x,
+                       const dnnl::engine mkldnn_engine, const Tensor* in_x,
                        const Tensor* out_grad, Tensor* in_x_grad)
 
-      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::pooling_forward,
-                                          mkldnn::pooling_backward>(
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::pooling_forward,
+                                          dnnl::pooling_backward>(
             mkldnn_engine, ctx.GetPlace()) {
     PADDLE_ENFORCE_EQ(
         in_x->layout(), DataLayout::kMKLDNN,
@@ -185,12 +184,11 @@ class PoolingMKLDNNHandler
     auto diff_dst_tz = paddle::framework::vectorize<int64_t>(out_grad->dims());
 
     const auto dt = framework::ToMKLDNNDataType(in_x->type());
-    auto src_md = mkldnn::memory::desc(src_tz, dt, in_x->format());
-    auto dst_md =
-        mkldnn::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
-    auto diff_dst_md = mkldnn::memory::desc(
+    auto src_md = dnnl::memory::desc(src_tz, dt, in_x->format());
+    auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
+    auto diff_dst_md = dnnl::memory::desc(
         diff_dst_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
-    auto diff_src_md = mkldnn::memory::desc(
+    auto diff_src_md = dnnl::memory::desc(
         diff_src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
     auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
@@ -205,44 +203,42 @@ class PoolingMKLDNNHandler
     const auto exclude_padding = ctx.Attr<bool>("exclusive");
 
     this->AcquireForwardPrimitiveDescriptor(
-        mkldnn::prop_kind::forward_training,
+        dnnl::prop_kind::forward_training,
         pooling_type == "max"
-            ? mkldnn::algorithm::pooling_max
-            : (exclude_padding
-                   ? mkldnn::algorithm::pooling_avg_exclude_padding
-                   : mkldnn::algorithm::pooling_avg_include_padding),
+            ? dnnl::algorithm::pooling_max
+            : (exclude_padding ? dnnl::algorithm::pooling_avg_exclude_padding
+                               : dnnl::algorithm::pooling_avg_include_padding),
         src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
 
     this->AcquireBackwardPrimitiveDescriptor(
         pooling_type == "max"
-            ? mkldnn::algorithm::pooling_max
-            : (exclude_padding
-                   ? mkldnn::algorithm::pooling_avg_exclude_padding
-                   : mkldnn::algorithm::pooling_avg_include_padding),
+            ? dnnl::algorithm::pooling_max
+            : (exclude_padding ? dnnl::algorithm::pooling_avg_exclude_padding
+                               : dnnl::algorithm::pooling_avg_include_padding),
         diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
         mkldnn_paddings[1]);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(
+  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(
       const platform::MKLDNNDeviceContext& dev_ctx,
       const std::string& unique_name) {
-    mkldnn::memory::desc workspace_md = this->fwd_pd_->workspace_desc();
+    dnnl::memory::desc workspace_md = this->fwd_pd_->workspace_desc();
     // Pooling Workspace has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
     std::string workspace_key =
         platform::CreateKey(dev_ctx, workspace_md.dims(),
                             workspace_md.data_type(), unique_name, "@wrk");
-    auto mem_p = std::static_pointer_cast<mkldnn::memory>(
-        dev_ctx.GetBlob(workspace_key));
+    auto mem_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(workspace_key));
     if (mem_p == nullptr) {
       static std::mutex acquire_barrier;
       std::lock_guard<std::mutex> block_threads_until_finish_this_job(
           acquire_barrier);
-      mem_p = std::static_pointer_cast<mkldnn::memory>(
+      mem_p = std::static_pointer_cast<dnnl::memory>(
           dev_ctx.GetBlob(workspace_key));
       if (mem_p == nullptr) {
-        mem_p = std::make_shared<mkldnn::memory>(workspace_md, this->engine_);
+        mem_p = std::make_shared<dnnl::memory>(workspace_md, this->engine_);
         dev_ctx.SetBlob(workspace_key, mem_p);
       }
     }
@@ -318,13 +314,13 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // Training
       auto workspace_memory =
           handler.AcquireWorkspaceMemory(dev_ctx, ctx.OutputName("Out"));
-      pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
-                                {MKLDNN_ARG_DST, *dst_memory},
-                                {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
+      pool_p->execute(astream, {{DNNL_ARG_SRC, *src_memory},
+                                {DNNL_ARG_DST, *dst_memory},
+                                {DNNL_ARG_WORKSPACE, *workspace_memory}});
     } else {
       // Inference
-      pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
-                                {MKLDNN_ARG_DST, *dst_memory}});
+      pool_p->execute(
+          astream, {{DNNL_ARG_SRC, *src_memory}, {DNNL_ARG_DST, *dst_memory}});
     }
     astream.wait();
 
@@ -360,13 +356,13 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // Max - pooling needs Workspace
       auto workspace_memory =
           handler.AcquireWorkspaceMemory(dev_ctx, ctx.InputName("Out"));
-      pool_bwd_p->execute(astream, {{MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
-                                    {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
-                                    {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
+      pool_bwd_p->execute(astream, {{DNNL_ARG_DIFF_SRC, *diff_src_memory},
+                                    {DNNL_ARG_DIFF_DST, *diff_dst_memory},
+                                    {DNNL_ARG_WORKSPACE, *workspace_memory}});
     } else {
       // Average Pooling
-      pool_bwd_p->execute(astream, {{MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
-                                    {MKLDNN_ARG_DIFF_DST, *diff_dst_memory}});
+      pool_bwd_p->execute(astream, {{DNNL_ARG_DIFF_SRC, *diff_src_memory},
+                                    {DNNL_ARG_DIFF_DST, *diff_dst_memory}});
     }
     astream.wait();
 
