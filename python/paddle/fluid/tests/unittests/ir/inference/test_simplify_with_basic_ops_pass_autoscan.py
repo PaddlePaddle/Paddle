@@ -107,7 +107,8 @@ class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
         dropout_op = OpConfig(
             "dropout",
             inputs={"X": ["input_data"]},
-            outputs={"Out": ["dropout_output"]},
+            outputs={"Out": ["dropout_output"],
+                     "Mask": ["mask"]},
             fix_seed=fix_seed,
             dropout_implementation=dropout_implementation,
             dropout_prob=dropout_prob,
