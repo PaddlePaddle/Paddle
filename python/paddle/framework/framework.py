@@ -122,6 +122,9 @@ def is_grad_enabled():
     """
     Returns whether current dygraph gradient calculation mode is enabled.
 
+    Returns:
+        bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
+
     Examples:
         .. code-block:: python
             

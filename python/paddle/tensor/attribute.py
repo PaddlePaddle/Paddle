@@ -58,6 +58,9 @@ def is_floating_point(x):
     Args:
         x (Tensor): The input tensor.
 
+    Returns:
+        bool: True if the dtype of `x` is floating type, otherwise false.
+
     Examples:
         .. code-block:: python
 
