@@ -45,14 +45,19 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
 
-    output->mutable_data<T>(context.GetPlace());
-    auto numel = input->numel();
-    auto rank = input->dims().size();
-    if (rank == 0) return;
-
     const T* in_data = input->data<T>();
     T* out_data = output->mutable_data<T>(context.GetPlace());
+    auto numel = input->numel();
+    auto rank = input->dims().size();
+    auto place = context.GetPlace();
     auto stream = context.cuda_device_context().stream();
+
+    if (rank == 0) {  // scalar
+      auto gpu_place = BOOST_GET(platform::CUDAPlace, place);
+      memory::Copy(gpu_place, out_data, gpu_place, in_data, numel * sizeof(T),
+                   stream);
+      return;
+    }
 
     using MT = typename details::MPTypeTrait<T>::Type;
     using Div = kernel_primitives::DivideFunctor<T, MT>;
@@ -81,8 +86,6 @@ class MeanCUDAGradKernel : public framework::OpKernel<T> {
 
     auto in_data = OG->data<T>();
     auto size_prob = IG->numel();
-    if (IG->dims().size() == 0) return;
-
     auto out_data = IG->data<T>();
     int threads = 512;
     int grid = (size_prob + threads - 1) / threads;
