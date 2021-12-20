@@ -86,7 +86,7 @@ class ShardingStage2(nn.Layer):
 
         # Communication related attributes
         self._group = dist.new_group(_get_global_group()
-                                     .id) if group is None else group
+                                     .ranks) if group is None else group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
         self._rank = self._group.rank

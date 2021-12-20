@@ -96,7 +96,7 @@ class ShardingOptimizerStage2(Optimizer):
                        self._local_params))) > 0
 
         self.group = dist.new_group(_get_global_group()
-                                    .id) if group is None else group
+                                    .ranks) if group is None else group
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
