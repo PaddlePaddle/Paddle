@@ -1981,7 +1981,7 @@ class Executor(object):
             assert 'task_id_to_rank' in fleet_opt, "If you provide tasks to init fleet executor," \
                                                    " task_id_to_rank should also be provided."
             tasks = [task.task_node() for task in fleet_opt['tasks']]
-            fleet_opt['tasks'] = tasks
+            fleet_opt['real_tasks'] = tasks
             task_id_to_rank = fleet_opt['task_id_to_rank']
         else:
             scheduler = fleet_opt['scheduler']
@@ -2009,7 +2009,7 @@ class Executor(object):
                 raise "Fleet_executor only supports 1F1B and Origin scheduler, " \
                       "but received " + str(scheduler) + "."
             # NOTE: have to hold these vars, otherwise will be destructed
-            fleet_opt['tasks'] = tasks
+            fleet_opt['real_tasks'] = tasks
             fleet_opt['task_id_to_rank'] = task_id_to_rank
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
