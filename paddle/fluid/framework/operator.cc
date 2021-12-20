@@ -871,7 +871,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(vars.size());
@@ -880,7 +880,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     const std::vector<Variable*>& vars = OutputVars(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(vars.size());
@@ -1212,14 +1212,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#if defined(PADDLE_WITH_CUDA) || defined(PADLDE_WITH_ROCM)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
 #endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
-#endif
   }
 
   if (FLAGS_check_nan_inf) {
@@ -1279,7 +1275,7 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->name);
+  auto pt_kernel_name = pt_kernel_signature_->name;
   auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
@@ -1764,7 +1760,8 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(Type());
+  return KernelSignatureMap::Instance().Get(
+      pten::TransToPtenKernelName(Type()));
 }
 
 void OperatorWithKernel::BuildPtenKernelContext(
@@ -1875,6 +1872,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
             std::type_index(typeid(std::vector<int64_t>))) {
           pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(
+              BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "

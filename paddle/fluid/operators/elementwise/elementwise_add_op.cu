@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
@@ -91,7 +90,8 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
       }
       std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dx, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
   // dy
@@ -106,7 +106,8 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
     } else {
       std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
-      TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dy, reduce_dims, stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          *dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
 }

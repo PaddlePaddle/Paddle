@@ -24,6 +24,8 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
@@ -163,7 +165,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     auto pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
     VLOG(6) << framework::KernelSignatureToString(pt_kernel_signature);
 
-    auto pt_kernel_name = pten::KernelName(pt_kernel_signature.name);
+    auto pt_kernel_name = pt_kernel_signature.name;
     auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
@@ -356,6 +358,10 @@ static void BuildDygraphPtenKernelContext(
             std::type_index(typeid(std::vector<int64_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
@@ -485,6 +491,14 @@ static void PreparedOpRunImpl(
         op.Type(), outs, dev_ctx->GetPlace());
   }
 
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
+#endif
+  }
+
   /**
    * [ Why need handle complex gradient to real gradient? ]
    *
@@ -523,12 +537,8 @@ static void PreparedOpRunPtImpl(
 
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
 #endif
   }

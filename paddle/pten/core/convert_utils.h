@@ -32,6 +32,8 @@ namespace pten {
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
+const std::string& TransToPtenKernelName(const std::string& fluid_op_name);
+
 Backend TransToPtenBackend(const paddle::platform::Place& place);
 DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype);
@@ -48,6 +50,5 @@ pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod);
 size_t DataTypeSize(DataType dtype);
 DataType String2DataType(const std::string& str);
 std::string DataType2String(DataType dtype);
-int TensorDtype2NumpyDtype(pten::DataType dtype);
 
 }  // namespace pten

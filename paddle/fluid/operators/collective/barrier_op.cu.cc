@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -41,13 +41,9 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     auto stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
     ncclRedOp_t nccl_red_type = ncclSum;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+    platform::GpuStreamSync(stream);
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should compile with NCCL."));
