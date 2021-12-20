@@ -32,11 +32,20 @@ TaskNode::TaskNode(const framework::ProgramDesc& program, int64_t rank,
   // Should be serially invoked, not thread-safe
   static int64_t task_node_cnt = 0;
   task_id_ = task_node_cnt++;
-  for (const auto& op_desc : program.Block(0).AllOps()) {
-    ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
-  }
-  for (const auto& op : ops_vec_) {
-    ops_.emplace_back(op.get());
+}
+
+void TaskNode::SetProgram(const paddle::framework::ProgramDesc& program) {
+  program_ = program;
+}
+
+void TaskNode::Init() {
+  if (ops_.empty()) {
+    for (const auto& op_desc : program_.Block(0).AllOps()) {
+      ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+    }
+    for (const auto& op : ops_vec_) {
+      ops_.emplace_back(op.get());
+    }
   }
 }
 

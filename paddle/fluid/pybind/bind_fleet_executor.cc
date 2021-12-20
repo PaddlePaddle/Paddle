@@ -47,7 +47,9 @@ void BindFleetExecutor(py::module* m) {
       .def("set_run_pre_steps", &TaskNode::SetRunPerSteps)
       .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
       .def("set_type", &TaskNode::SetType)
-      .def("role", &TaskNode::role);
+      .def("role", &TaskNode::role)
+      .def("init", &TaskNode::Init)
+      .def("set_program", &TaskNode::SetProgram);
 }
 }  // namespace pybind
 }  // namespace paddle
