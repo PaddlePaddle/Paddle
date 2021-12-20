@@ -80,10 +80,26 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
+_keep_layer_norm_scale_bias_to_fp32_flag = True
+
+
+def _keep_layer_norm_scale_bias_to_fp32(*args):
+    global _keep_layer_norm_scale_bias_to_fp32_flag
+    if len(args) == 0:
+        return _keep_layer_norm_scale_bias_to_fp32_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _keep_layer_norm_scale_bias_to_fp32_flag
+        _keep_layer_norm_scale_bias_to_fp32_flag = args[0]
+        return old_value
+
+
 def _keep_fp32_input(op, in_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'layer_norm']:
+    if op_type == 'batch_norm':
         # Scale, Bias, Mean, Variance should be float32.
+        return in_name != 'X'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
@@ -98,7 +114,9 @@ def _keep_fp32_input(op, in_name):
 
 def _keep_fp32_output(op, out_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+    if op_type in ['batch_norm', 'fused_bn_add_activation']:
+        return out_name != 'Y'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return out_name != 'Y'
     if op_type == 'resnet_unit':
         return out_name not in {'Y', 'ConvX', 'ConvZ'}

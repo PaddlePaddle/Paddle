@@ -13,7 +13,7 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/box_coder_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

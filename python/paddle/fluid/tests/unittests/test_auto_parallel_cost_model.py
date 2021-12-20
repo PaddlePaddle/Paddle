@@ -198,10 +198,10 @@ def check_empty_program_runtime(cost):
 
 def check_empty_program_memory(cost):
     for mem in cost.peak_mem:
-        if mem > 0:
+        if mem > 1:
             return False
     for mem in cost.static_mem:
-        if mem > 0:
+        if mem > 1:
             return False
     return True
 

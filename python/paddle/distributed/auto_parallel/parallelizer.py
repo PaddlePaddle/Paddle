@@ -33,16 +33,18 @@ from .dist_context import set_default_distributed_context
 from .completion import complete_annotation, complete_backward_annotation, complete_update_annotation
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
+from .process_group import get_process_group
 from .process_group import get_world_process_groups
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
+from .utils import SerialProgramInfo
 from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from .cluster import Cluster
 from .mapper import mapping
-from .auto_search import auto_search
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
+from .planner import Planner
 
 _logger = get_logger(logging.INFO)
 
@@ -74,8 +76,9 @@ class AutoParallelizer:
             self._enable_auto_mapping = False
         else:
             self._enable_auto_mapping = True
-        # TODO enable pass
-        # self._pass_context = PassContext()
+        self._need_rank_mapping = os.getenv("PADDLE_NEED_RANK_MAPPING")
+        self._need_rank_mapping = True if self._need_rank_mapping and \
+            self._need_rank_mapping.lower() == 'true' else False
         self._pass_context = None
 
     def _remove_distributed_attrs(self, main_program):
@@ -213,37 +216,37 @@ class AutoParallelizer:
                     loss,
                     startup_program,
                     parameter_list=None,
-                    no_grad_set=None,
-                    callbacks=None):
+                    no_grad_set=None):
         assert startup_program is not None
         self._loss = loss
         self._startup_program = startup_program
         self._main_program = loss.block.program
         self._parameter_list = parameter_list
         self._no_grad_set = no_grad_set
-        self._callbacks = callbacks
 
-        if self._enable_auto_mapping and self._rank_mapping_path is None:
+        if self._enable_auto_mapping and self._need_rank_mapping:
             # Do the mapping pass before parallelization
             assert self._cluster is not None, \
                 "The cluster must not be none when using auto mapping."
             dist_programs = {}
             world_process_group = get_world_process_groups()
             dist_context = None
-            # auto_search
+            # auto search
             if self._dist_strategy.auto_search:
-                _logger.info("Start search dist attr.")
-                dist_context, _ = auto_search(
-                    self._main_program,
-                    self._startup_program,
-                    loss,
-                    self._optimizer,
-                    cluster=self._cluster)
-                _logger.info("End search dist attr.")
+                logging.info("Start searching dist attr.")
+                serial_program_info = SerialProgramInfo(
+                    self._main_program, self._startup_program, self._loss,
+                    self._optimizer, self._cluster)
+                planner = Planner(
+                    serial_program_info,
+                    algorithm_config={"name": "mcmc",
+                                      "max_search_times": 5})
+                dist_context, _ = planner.search()
+                logging.info("End searching dist attr.")
 
-            # serialize the dist_context by planner
+            # serialize the dist context by planner
             if dist_context is not None:
-                _logger.info("Start serialize searched dist attr")
+                logging.info("Start serialize searched dist attr")
                 cwd = pathlib.Path().resolve()
                 searched_dist_context_path = os.path.join(
                     cwd, f"searched_dist_context_{time.time()}.pkl")
@@ -264,7 +267,7 @@ class AutoParallelizer:
                     pickle.dump(saved_dist_context, dist_context_file)
                     os.environ[
                         'PADDLE_SEARCHED_DIST_CONTEXT_PATH'] = searched_dist_context_path
-                    _logger.info(
+                    logging.info(
                         f"End serialize searched dist attr to {searched_dist_context_path}"
                     )
 
@@ -278,18 +281,27 @@ class AutoParallelizer:
             rank_mapping = list(rank_mapping_dict.values())
 
             # Relaunch the training by using the rank mapping file
-            cwd = pathlib.Path().resolve()
-            rank_mapping_path = os.path.join(cwd,
-                                             "auto_parallel_rank_mapping.json")
-            with open(rank_mapping_path, "w") as rank_mapping_file:
+            with open(self._rank_mapping_path, "w") as rank_mapping_file:
                 json.dump(rank_mapping, rank_mapping_file)
+
+            enable_elastic = os.getenv("PADDLE_ENABLE_ELASTIC")
+            enable_elastic = True if enable_elastic and enable_elastic.lower(
+            ) == 'true' else False
+            if enable_elastic:
+                print("Auto mapping finished, now do elastic re-launch")
+                sys.exit(paddle.distributed.fleet.elastic.manager.
+                         ELASTIC_AUTO_PARALLEL_EXIT_CODE)
 
             original_cmd_args = os.getenv("PADDLE_ORIGINAL_CMD_ARGS")
             rank_mapping_args = " ".join(
-                ["--rank_mapping_path", rank_mapping_path])
-            new_cmd_args = "-u -m paddle.distributed.fleet.launch" + " " + rank_mapping_args + " " + original_cmd_args
-            new_cmd = [sys.executable] + shlex.split(new_cmd_args)
-            print(new_cmd)
+                ["--rank_mapping_path", self._rank_mapping_path])
+            if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
+                coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            else:
+                coverage_args = []
+            new_cmd_args = "-m paddle.distributed.fleet.launch" + " " + rank_mapping_args + " " + original_cmd_args
+            new_cmd = [sys.executable, "-u"] + coverage_args + shlex.split(
+                new_cmd_args)
             new_process = subprocess.Popen(new_cmd)
             new_process.wait()
             assert new_process.returncode == 0, \
@@ -325,16 +337,38 @@ class AutoParallelizer:
 
             else:
                 if self._dist_strategy.auto_search:
-                    _logger.info("Start search dist attr.")
-                    dist_context, _ = auto_search(
+                    serial_program_info = SerialProgramInfo(
                         self._main_program,
                         self._startup_program,
-                        loss,
+                        self._loss,
                         self._optimizer,
                         cluster=self._cluster)
-                    _logger.info("End search dist attr.")
+                    planner = Planner(
+                        serial_program_info,
+                        algorithm_config={
+                            "name": "mcmc",
+                            "max_search_times": 5
+                        })
+                    dist_context, _ = planner.search()
+
+            # rebuild g_process_group
+            if dist_context is not None:
+                pg0 = get_process_group(0)
+                for process_mesh in dist_context._process_meshes:
+                    pg0.add_ranks(process_mesh.processes)
             dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, _ = self._get_dist_program(
                 rank, dist_context, relaunch_phase=True)
+
+            # NOTE: This is a trick to fix hang in pipeline mode when dist context is searched by planner
+            if self._dist_strategy.auto_search:
+                is_pipeline = False
+                for op in dist_main_prog.global_block().ops:
+                    if op.type == "send_v2" or op.type == "recv_v2":
+                        is_pipeline = True
+                        break
+                if is_pipeline:
+                    with paddle.static.program_guard(dist_main_prog):
+                        paddle.distributed.barrier()
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.

@@ -18,12 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/softmax_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -226,15 +222,27 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
     idx_max_v[i] = idx_max / kVSize;
   }
 
-  // read data from global memory
+  // data src
   AccT srcdata[kBatchSize][kLoopsV][kVSize];
-  kps::Init<AccT, kStep>(&srcdata[0][0][0], kLowInf);
   T src_tmp[kBatchSize][kLoopsV][kVSize];
+  kps::Init<AccT, kStep>(&srcdata[0][0][0], kLowInf);
   kps::Init<T, kStep>(&src_tmp[0][0][0], -std::numeric_limits<T>::infinity());
+
+  // data dst
+  T out_tmp[kBatchSize][kLoopsV][kVSize];
+
+  // max value
+  AccT max[kBatchSize];
+  kps::Init<AccT, kBatchSize>(&max[0], kLowInf);
+
+  // sum value
+  AccT sum[kBatchSize] = {0};
+
+// read data from global memory
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    int ptr = (first_batch + i) * stride;
-    const VecT* src_v = reinterpret_cast<const VecT*>(&src[ptr]);
+    const VecT* src_v =
+        reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&src_tmp[i][0][0]);
     kps::ReadData<VecT, VecT, kLoopsV, 1, 1, true>(
         &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
@@ -243,15 +251,12 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
   }
 
   // compute max
-  AccT max[kBatchSize];
-  kps::Init<AccT, kBatchSize>(&max[0], kLowInf);
   kps::Reduce<AccT, kVItem, kBatchSize, 1, ReduceMaxFunctor<AccT>,
               kMode::kLocalMode>(&max[0], &srcdata[0][0][0],
                                  ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max);
 
   // compute sum
-  AccT sum[kBatchSize] = {0};
   for (int i = 0; i < kBatchSize; ++i) {
     kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpSubFunctor<AccT>>(
         &srcdata[i][0][0], &srcdata[i][0][0], ExpSubFunctor<AccT>(max[i]));
@@ -261,15 +266,14 @@ __global__ void WarpSoftmaxForward(T* softmax, const T* src,
                                  kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
-  // write result to global memory
-  T out_tmp[kBatchSize][kLoopsV][kVSize];
+// write data to global memory
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
+    VecT* softmax_v =
+        reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
+    VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
     kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnaryDivFunctor<AccT>>(
         &out_tmp[i][0][0], &srcdata[i][0][0], UnaryDivFunctor<AccT>(sum[i]));
-    int softmax_ptr = (first_batch + i) * stride;
-    VecT* softmax_v = reinterpret_cast<VecT*>(&softmax[softmax_ptr]);
-    VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
     kps::WriteData<VecT, VecT, kLoopsV, 1, 1, true>(
         &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
   }
@@ -453,7 +457,7 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
   const int N = SizeToAxis(axis, dims);
   const int D = SizeOutAxis(axis, dims);
 
-  constexpr int max_dim = 320;
+  constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
 
   if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
@@ -503,12 +507,12 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data,
           MIOPEN_SOFTMAX_LOG, mode));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data,
           MIOPEN_SOFTMAX_ACCURATE, mode));
@@ -517,12 +521,12 @@ void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
           desc_, x.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           out_data));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, x.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data));
@@ -544,7 +548,7 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
   const int N = SizeToAxis(axis, dims);
   const int D = SizeOutAxis(axis, dims);
 
-  constexpr int max_dim = 320;
+  constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
 
   if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
@@ -591,12 +595,12 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(),
           desc_, dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data, MIOPEN_SOFTMAX_LOG, mode));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
           handle, platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(),
           desc_, dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data, MIOPEN_SOFTMAX_ACCURATE, mode));
@@ -605,12 +609,12 @@ void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     if (LogMode) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_LOG, mode, platform::CudnnDataType<T>::kOne(),
           desc_, out.data<T>(), desc_, dout.data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, dx_data));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, out.data<T>(), desc_,
           dout.data<T>(), platform::CudnnDataType<T>::kZero(), desc_, dx_data));
