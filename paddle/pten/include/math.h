@@ -80,7 +80,7 @@ DenseTensor Scale(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Scale<T, ContextT>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
+  Scale<T>(dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
 

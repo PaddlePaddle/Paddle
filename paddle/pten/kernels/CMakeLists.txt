@@ -7,10 +7,6 @@ add_subdirectory(hybird)
 # NOTE(chenweihang): We need to increase the compilation option of WITH_EIGEN,
 # which will support splitting eigen at compile time on demand in the future
 add_subdirectory(eigen)
-# NOTE(chenweihang): We need to increase the compilation option of WITH_BLAS,
-# which will support splitting eigen at compile time on demand in the future,
-# and if necessary, blas can be split into openblas and cublas
-add_subdirectory(blas)
 add_subdirectory(cpu)
 if(WITH_GPU OR WITH_ROCM)
   # NOTE(chenweihang): if hip can split from cuda impl, we should add hip dir
