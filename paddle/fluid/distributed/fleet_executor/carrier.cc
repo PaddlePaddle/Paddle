@@ -49,10 +49,11 @@ void Carrier::Release() {
   // otherwise Derived object will be destructed before thread complete.
 
   // Sending STOP msg to the source interceptor
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
-                        "Message bus has not been initialized."));
+                        "Using message bus since it has not been initialized. "
+                        "Please invoke MessageBus::Init() before using it or "
+                        "neccessary components are not ready."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
             << ".";
@@ -61,7 +62,7 @@ void Carrier::Release() {
     stop_msg.set_src_id(-1);
     stop_msg.set_dst_id(id);
     stop_msg.set_message_type(STOP);
-    msg_bus.Send(stop_msg);
+    Send(stop_msg);
   }
 
   // TODO(wangxi): Maybe need a better to use thread.
@@ -113,11 +114,17 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   return iter->second.get();
 }
 
+void Carrier::Wait() {
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
+}
+
 void Carrier::Start() {
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
-                        "Message bus has not been initialized."));
+                        "Using message bus since it has not been initialized. "
+                        "Please invoke MessageBus::Init() before using it or "
+                        "neccessary components are not ready."));
 
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
@@ -127,17 +134,20 @@ void Carrier::Start() {
     start_msg.set_src_id(-1);
     start_msg.set_dst_id(id);
     start_msg.set_message_type(DATA_IS_READY);
-    msg_bus.Send(start_msg);
+    Send(start_msg);
   }
-
-  std::unique_lock<std::mutex> lock(running_mutex_);
-  cond_var_.wait(lock);
+  Wait();
   dev_ctx_->Wait();
 }
 
 std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
+
+// TODO(liyurui): Move SendIntra into carrier
+bool Carrier::Send(const InterceptorMessage& msg) const {
+  return msg_bus_->Send(msg);
+}
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {
@@ -147,6 +157,7 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         "The interceptor id %lld has already been created! "
                         "The interceptor id should be unique.",
                         interceptor_id));
+  interceptor->RegisterCarrier(this);
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
@@ -229,13 +240,12 @@ void Carrier::CreateInterceptors() {
             task_node->run_at_offset(), task_node->run_per_steps()));
 
     std::unique_ptr<Interceptor> interceptor;
-    if (task_node->type().empty()) {
-      // TODO(wangxi): delete this in future
-      interceptor.reset(new Interceptor(interceptor_id, task_node));
-    } else {
-      interceptor = InterceptorFactory::Create(task_node->type(),
-                                               interceptor_id, task_node);
-    }
+    PADDLE_ENFORCE_NE(task_node->type().empty(), true,
+                      platform::errors::NotFound(
+                          "Cannot found type for task node with id %lld",
+                          task_node->task_id()));
+    interceptor = InterceptorFactory::Create(task_node->type(), interceptor_id,
+                                             task_node);
     interceptor->SetPlace(place_);
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);
