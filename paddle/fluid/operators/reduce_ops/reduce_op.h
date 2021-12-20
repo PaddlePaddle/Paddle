@@ -496,6 +496,28 @@ class ReduceAGradKernel : public framework::OpKernel<T> {
     // not be set as Input in grad Maker, use Out_grad to replace here
     if (!input1) input1 = input2;
 
+    // int dims_rank = dims.size();
+
+    // for(int i = 0; i< static_cast<int>(dims.size());i++){
+    //   std::cout<< "the dims is: "<< dims[i] << std::endl;
+    // }
+
+  //   int rank = dims.size();
+  // switch (rank) {
+  //   case 1:
+  //     {std::array<int, 1> array_dims;
+  //     std::copy(dims.begin(), dims.end(), array_dims.begin()); 
+  //     functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+  //             broad_cats_times, array_dims);}
+  //     break;
+  //   // case 2:
+  //   //   {std::array<int, 2> array_dims;
+  //   //   std::copy(dims.begin(), dims.end(), array_dims.begin());
+  //   //   functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+  //   //           broad_cats_times, array_dims);}
+  //     break;
+  // }
+    
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::Flatten(*input1);
@@ -503,6 +525,10 @@ class ReduceAGradKernel : public framework::OpKernel<T> {
       auto x_grad = EigenVector<T>::Flatten(*output);
       std::array<int, 1> d_dims;
       std::copy(dims.begin(), dims.end(), d_dims.begin());
+      // for(int i = 0; i< static_cast<int>(d_dims.size()); i++){
+      //   std::cout<< "the d_dims is: "<< d_dims[i] << std::endl;
+      // } 
+    
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
       auto broadcast_dim =
@@ -512,6 +538,7 @@ class ReduceAGradKernel : public framework::OpKernel<T> {
               broadcast_dim[0], d_dims);
     } else {
       int rank = input0->dims().size();
+      // int dims_rank = dims.size();
       switch (rank) {
         case 1:
           ReduceAGradFunctor<DeviceContext, T, 1, Functor>(

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_amin_amax_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
-    reduce_amin_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
+    reduce_amin_grad, ops::ReduceAGradKernel<paddle::platform::CUDADeviceContext,
                                            float, ops::AmaxOrAminGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
+    ops::ReduceAGradKernel<paddle::platform::CUDADeviceContext, double,
                           ops::AmaxOrAminGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
+    ops::ReduceAGradKernel<paddle::platform::CUDADeviceContext, int,
                           ops::AmaxOrAminGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
+    ops::ReduceAGradKernel<paddle::platform::CUDADeviceContext, int64_t,
                           ops::AmaxOrAminGradFunctor>);

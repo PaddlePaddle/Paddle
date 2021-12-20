@@ -126,8 +126,11 @@ void ReduceAGradFunctor(const DeviceContext& context,
   auto reduced_dims_v = framework::vectorize(x_dims);
   std::vector<int> dims_ref = dims;
   Eigen::array<int, D> broadcast_dim;
-  std::array<int, D> d_dims;
-  std::copy(dims.begin(), dims.end(), d_dims.begin());
+
+  // std::vector<int>::size_type dims_rank = dims.size();
+  // std::array<int, dims_rank> d_dims;
+  // std::copy(dims.begin(), dims.end(), d_dims.begin());
+  // for (std::vector<int>::size_type i = 0; i < dims_rank; ++i) d_dims[i] = dims[i];
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
 
   int broad_cats_times = 1;
@@ -144,10 +147,29 @@ void ReduceAGradFunctor(const DeviceContext& context,
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 
   auto& place = *context.eigen_device();
-
   Functor functors;
-  functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
-          broad_cats_times, d_dims);
+
+  size_t rank = dims.size();
+  
+  switch (static_cast<int>(rank)) {
+    case 1:
+      {std::array<int, 1> array_dims;
+      std::copy(dims.begin(), dims.end(), array_dims.begin()); 
+      functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+              broad_cats_times, array_dims);}
+      break;
+    // case 2:
+    //   {std::array<int, 2> array_dims;
+    //   std::copy(dims.begin(), dims.end(), array_dims.begin());
+    //   functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+    //           broad_cats_times, array_dims);}
+    //   break;
+  }
+  
+
+  // Functor functors;
+  // functors(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+  //         broad_cats_times, d_dims);
 }
 
 

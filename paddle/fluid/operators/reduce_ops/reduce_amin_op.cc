@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_amin_amax_op.h"
 
 REGISTER_REDUCE_OP(reduce_amin);
 REGISTER_OP_CPU_KERNEL(
@@ -24,11 +25,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::MinFunctor>);
 REGISTER_OP_CPU_KERNEL(
-    reduce_amin_grad, ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
+    reduce_amin_grad, ops::ReduceAGradKernel<paddle::platform::CPUDeviceContext,
                                            float, ops::AmaxOrAminGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,
+    ops::ReduceAGradKernel<paddle::platform::CPUDeviceContext, double,
                           ops::AmaxOrAminGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int,
+    ops::ReduceAGradKernel<paddle::platform::CPUDeviceContext, int,
                           ops::AmaxOrAminGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,
+    ops::ReduceAGradKernel<paddle::platform::CPUDeviceContext, int64_t,
                           ops::AmaxOrAminGradFunctor>);

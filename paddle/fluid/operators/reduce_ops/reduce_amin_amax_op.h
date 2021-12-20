@@ -23,14 +23,16 @@ namespace operators {
 
 struct AmaxOrAminGradFunctor {
   template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim, size_t D>
+            typename DY, typename Dim, std::vector<int>::size_type D>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size, const std::array<int, D> dims) {
     auto equals = (*x) == y->broadcast(dim);
+    // std::cout<< "run equal end -----------------" << std::endl;
     auto ones = dx->constant(1);
     auto zeros = dx->constant(0);
 
     auto number = equals.template cast<typename DY::Scalar>().sum(dims).reshape(dy->dimensions()).broadcast(dim);
+    // std::cout<< "run number end -----------------" << std::endl;
     dx->device(place) = dy->broadcast(dim) * equals.select(ones, zeros) / number;
     // If there are multiple minimum or maximum elements, the subgradient of
     // each is the set [0, 1], and we pass gradient to all of them here.
