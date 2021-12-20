@@ -37,6 +37,9 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("workspace_size", "the workspace size.");
     AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
     AddAttr<bool>("enable_int8", "whether swith to int8 mode");
+    AddAttr<bool>("use_inspector", "whether to use inspector");
+    AddAttr<bool>("use_inspector_exec",
+                  "whether to show inspector info when execution");
     AddComment("TensorRT engine operator.");
   }
 };
@@ -45,6 +48,18 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
+
+void TensorRTEngineOp::OutputInspectorData(TensorRTEngine *engine,
+                                           bool exec_time) const {
+  std::string trt_inspector_data = engine->GetInspectorData(exec_time);
+  inference::analysis::SaveTrtEngineInspectorDataToFile(
+      model_opt_cache_dir_, engine_key_, trt_inspector_data);
+  if (!exec_time) {
+    LOG(INFO) << "Save TRT Inspector data to "
+              << inference::analysis::GetTrtEngineSerializedPath(
+                     model_opt_cache_dir_, engine_key_);
+  }
+}
 
 }  // namespace operators
 }  // namespace paddle

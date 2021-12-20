@@ -241,16 +241,6 @@ static std::string GetTrtEngineSerializedPath(const std::string &model_root,
   return model_root + "/trt_serialized_" + engine_key;
 }
 
-static std::string GetTrtEngineInspectorPath(const std::string &model_root,
-                                             const std::string &engine_key,
-                                             bool exec_time = false) {
-  std::string output_path = model_root + "/trt_serialized_" + engine_key;
-  if (exec_time) {
-    output_path += "exec";
-  }
-  return output_path + ".JSON";
-}
-
 static std::string GetTrtEngineSerializedData(
     const std::string &model_opt_cache_dir, const std::string &engine_key) {
   std::string trt_serialized_path =
@@ -275,19 +265,9 @@ static void SaveTrtEngineSerializedDataToFile(
   outfile.close();
 }
 
-static void SaveTrtEngineInspectorDataToFile(
-    const std::string &trt_inspector_path, const std::string &inspector_data) {
-  std::ofstream outfile(trt_inspector_path, std::ios::binary);
-  outfile << inspector_data;
-  outfile.close();
-}
-
-static void SaveTrtEngineInspectorExecDataToFile(
-    const std::string &trt_inspector_path, const std::string &inspector_data) {
-  std::ofstream outfile(trt_inspector_path, std::ios::app);
-  outfile << inspector_data;
-  outfile.close();
-}
+void SaveTrtEngineInspectorDataToFile(const std::string &model_root,
+                                      const std::string &engine_key,
+                                      const std::string &inspector_data);
 
 }  // namespace analysis
 }  // namespace inference

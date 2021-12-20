@@ -402,13 +402,16 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
+  /// \param use_inspector Use TRT inspector to get engine information
+  /// \param use_inspector_exec Use TRT inspector when execution
   ///
   ///
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
-                            bool use_static = false,
-                            bool use_calib_mode = true);
+                            bool use_static = false, bool use_calib_mode = true,
+                            bool use_inspector = false,
+                            bool use_inspector_exec = false);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -523,15 +526,6 @@ struct PD_INFER_DECL AnalysisConfig {
 
   void EnableDlnne(int min_subgraph_size = 3);
   bool dlnne_enabled() const { return use_dlnne_; }
-
-  ///
-  /// \brief A boolean state telling whether to use the TensorRT Inspector.
-  ///
-  /// \return bool Whether to use the TensorRT Inspector.
-  ///
-  void EnableTensorRtInspector(bool x = false, bool exec_time = false);
-  bool inspector_enable() const { return trt_use_inspector_; }
-  bool inspector_exec_enable() const { return trt_use_inspector_exec_; }
 
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.

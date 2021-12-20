@@ -86,6 +86,16 @@ void SetAttr<std::vector<int64_t>>(framework::proto::OpDesc *op,
   }
 }
 
+void SaveTrtEngineInspectorDataToFile(const std::string &model_root,
+                                      const std::string &engine_key,
+                                      const std::string &inspector_data) {
+  std::string output_file =
+      model_root + "/trt_serialized_" + engine_key + ".JSON";
+  std::ofstream outfile(output_file, std::ios::app);
+  outfile << inspector_data;
+  outfile.close();
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

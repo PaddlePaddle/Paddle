@@ -538,19 +538,7 @@ class TensorRTEngine {
     }
   }
 
-  std::string GetInspectorData(bool exec_time = false) {
-#if IS_TRT_VERSION_GE(8200)
-    std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
-        infer_engine_->createEngineInspector());
-    if (exec_time) {
-      infer_inspector->setExecutionContext(context());
-    }
-    return std::string(infer_inspector->getEngineInformation(
-        nvinfer1::LayerInformationFormat::kONELINE));
-#else
-    return std::string("Inspector needs TensorRT version 8.2 and after.");
-#endif
-  }
+  std::string GetInspectorData(bool exec_time = false);
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,

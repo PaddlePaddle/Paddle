@@ -342,14 +342,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                       << inference::analysis::GetTrtEngineSerializedPath(
                              model_opt_cache_dir_, engine_key_);
             if (use_inspector_) {
-              std::string trt_inspector_data = trt_engine->GetInspectorData();
-              inference::analysis::SaveTrtEngineInspectorDataToFile(
-                  inference::analysis::GetTrtEngineInspectorPath(
-                      model_opt_cache_dir_, engine_key_),
-                  trt_inspector_data);
-              LOG(INFO) << "Save TRT Inspector data to "
-                        << inference::analysis::GetTrtEngineSerializedPath(
-                               model_opt_cache_dir_, engine_key_);
+              this->OutputInspectorData(trt_engine, false);
             }
           }
         }
@@ -408,6 +401,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     temp_calibrator->setBatch(calib_data);
     RunNativeImpl(scope, dev_place);
   }
+
+  void OutputInspectorData(TensorRTEngine *engine, bool exec_time) const;
 
   void RunTrt(const framework::Scope &scope, const platform::Place &dev_place,
               TensorRTEngine *engine) const {
@@ -583,11 +578,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     LOG(INFO) << (use_inspector_exec_ ? "Set to True" : "Set to False");
     if (use_inspector_exec_) {
-      std::string trt_inspector_data = engine->GetInspectorData(true);
-      inference::analysis::SaveTrtEngineInspectorExecDataToFile(
-          inference::analysis::GetTrtEngineInspectorPath(model_opt_cache_dir_,
-                                                         engine_key_, true),
-          trt_inspector_data);
+      this->OutputInspectorData(engine, true);
     }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);

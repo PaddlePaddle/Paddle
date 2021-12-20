@@ -156,10 +156,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       LOG(INFO) << (argument->tensorrt_use_inspector() ? "Set to true"
                                                        : "Set to false");
-      pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("trt_use_inspector",
+                new bool(argument->tensorrt_use_inspector()));
       LOG(INFO) << (argument->tensorrt_use_inspector() ? "Set to true"
                                                        : "Set to false");
-      pass->Set("use_inspector_exec",
+      pass->Set("trt_use_inspector_exec",
                 new bool(argument->tensorrt_use_inspector_exec()));
 
       // tuned trt dynamic_shape
