@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -39,119 +39,70 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
         channel = draw(st.integers(min_value=1, max_value=64))
         input_dim = draw(st.sampled_from([32, 64]))
 
-        def generate_input(attrs, type):
-            if attrs[0]['transpose_X'] and attrs[0]['transpose_Y']:
-                shape_x = [
-                    attrs[3]['batch_size'], attrs[3]['channel'],
-                    attrs[3]['input_dim'], 32
-                ]
-                shape_y = [
-                    attrs[3]['batch_size'], attrs[3]['channel'], 64,
-                    attrs[3]['input_dim']
-                ]
-            elif attrs[0]['transpose_X']:
-                shape_x = [
-                    attrs[3]['batch_size'], attrs[3]['channel'],
-                    attrs[3]['input_dim'], 32
-                ]
-                shape_y = [
-                    attrs[3]['batch_size'], attrs[3]['channel'],
-                    attrs[3]['input_dim'], 64
-                ]
-            elif attrs[0]['transpose_Y']:
-                shape_x = [
-                    attrs[3]['batch_size'], attrs[3]['channel'], 32,
-                    attrs[3]['input_dim']
-                ]
-                shape_y = [
-                    attrs[3]['batch_size'], attrs[3]['channel'], 8,
-                    attrs[3]['input_dim']
-                ]
+        def generate_input(type):
+            if transpose_X and transpose_Y:
+                shape_x = [batch_size, channel, input_dim, 32]
+                shape_y = [batch_size, channel, 64, input_dim]
+            elif transpose_X:
+                shape_x = [batch_size, channel, input_dim, 32]
+                shape_y = [batch_size, channel, input_dim, 64]
+            elif transpose_Y:
+                shape_x = [batch_size, channel, 32, input_dim]
+                shape_y = [batch_size, channel, 8, input_dim]
             else:
-                shape_x = [
-                    attrs[3]['batch_size'], attrs[3]['channel'], 32,
-                    attrs[3]['input_dim']
-                ]
-                shape_y = [
-                    attrs[3]['batch_size'], attrs[3]['channel'],
-                    attrs[3]['input_dim'], 16
-                ]
+                shape_x = [batch_size, channel, 32, input_dim]
+                shape_y = [batch_size, channel, input_dim, 16]
 
             if type == "x":
                 return np.random.random(shape_x).astype(np.float32)
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
-        attrs = [{
-            "transpose_X": transpose_X,
-            "transpose_Y": transpose_Y,
-            "alpha": alpha
-        }, {
-            "axis": axis
-        }, {
-            "shape": shape
-        }, {
-            'batch_size': batch_size,
-            'channel': channel,
-            'input_dim': input_dim
-        }]
-
-        ops_config = [{
-            "op_type": "matmul",
-            "op_inputs": {
-                "X": ["input_data1"],
-                "Y": ["input_data2"]
-            },
-            "op_outputs": {
-                "Out": ["matmul_output"]
-            },
-            "op_attrs": {
-                "transpose_X": attrs[0]["transpose_X"],
-                "transpose_Y": attrs[0]["transpose_Y"],
-                "alpha": attrs[0]["alpha"],
+        matmul_op = OpConfig(
+            type="matmul",
+            inputs={"X": ["input_data1"],
+                    "Y": ["input_data2"]},
+            outputs={"Out": ["matmul_output"]},
+            attrs={
+                "transpose_X": transpose_X,
+                "transpose_Y": transpose_Y,
+                "alpha": alpha,
                 "fused_reshape_X": [],
                 "fused_reshape_Y": [],
                 "fused_transpose_X": [],
                 "fused_transpose_Y": [],
                 "fused_reshape_Out": [],
                 "fused_transpose_Out": []
-            }
-        }, {
-            "op_type": "transpose2",
-            "op_inputs": {
-                "X": ["matmul_output"]
-            },
-            "op_outputs": {
+            })
+
+        transpose2_op = OpConfig(
+            type="transpose2",
+            inputs={"X": ["matmul_output"]},
+            outputs={
                 "Out": ["transpose2_output"],
                 "XShape": ["transpose2_xshape"]
             },
-            "op_attrs": {
-                'axis': attrs[1]['axis']
-            },
-        }, {
-            "op_type": "reshape2",
-            "op_inputs": {
-                "X": ["transpose2_output"]
-            },
-            "op_outputs": {
+            attrs={'axis': axis})
+
+        reshape2_op = OpConfig(
+            type="reshape2",
+            inputs={"X": ["transpose2_output"]},
+            outputs={
                 "Out": ["reshape2_output"],
                 "XShape": ["reshape2_xshape"]
             },
-            "op_attrs": {
-                'shape': attrs[2]['shape']
-            },
-        }]
+            attrs={'shape': shape})
 
-        ops = self.generate_op_config(ops_config)
+        model_net = [matmul_op, transpose2_op, reshape2_op]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={},
             inputs={
                 "input_data1":
-                TensorConfig(data_gen=partial(generate_input, attrs, "x")),
+                TensorConfig(data_gen=partial(generate_input, "x")),
                 "input_data2":
-                TensorConfig(data_gen=partial(generate_input, attrs, "y"))
+                TensorConfig(data_gen=partial(generate_input, "y"))
             },
             outputs=["reshape2_output"])
 
