@@ -21,13 +21,13 @@
 
 namespace pten {
 
-template <typename T>
-void FullLike(const CPUContext& dev_ctx, const Scalar& val, DenseTensor* out);
-
-template <typename T>
-void Full(const CPUContext& dev_ctx,
+template <typename T, typename ContextT>
+void Full(const ContextT& dev_ctx,
           const ScalarArray& shape,
           const Scalar& val,
           DenseTensor* out);
+
+template <typename T, typename ContextT>
+void FullLike(const ContextT& dev_ctx, const Scalar& val, DenseTensor* out);
 
 }  // namespace pten

@@ -174,7 +174,7 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
-                    self.assertTrue(impls[2].is_auto_compatible(
+                    self.assertFalse(impls[2].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
                     self.assertFalse(impls[2].is_auto_compatible(
@@ -261,7 +261,7 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, 1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, 1, -1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, -1])
-                    self.assertTrue(impls[1].is_auto_compatible(
+                    self.assertFalse(impls[1].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_input_dims_mapping(Y, [0, -1, -1, -1])
                     self.assertFalse(impls[1].is_auto_compatible(
@@ -362,7 +362,7 @@ class Testcompatible(unittest.TestCase):
                     op_dist_attr.set_input_dims_mapping(X, [-1, -1, -1, -1])
                     op_dist_attr.set_input_dims_mapping(Y, [-1, -1, -1, 1])
                     op_dist_attr.set_output_dims_mapping(out, [-1, -1, -1, 1])
-                    self.assertTrue(impls[0].is_auto_compatible(
+                    self.assertFalse(impls[0].is_auto_compatible(
                         DistributedOperator(op, op_dist_attr)))
                     op_dist_attr.set_output_dims_mapping(out, [0, -1, -1, 1])
                     self.assertFalse(impls[0].is_auto_compatible(
