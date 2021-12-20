@@ -74,26 +74,6 @@ class TestFcGruFusePass(PassAutoScanTest):
             outputs={"Out": ["elt_out"]},
             attrs={"axis": axis})
 
-        gru_op = OpConfig(
-            type="gru",
-            inputs={
-                "Input": ["elt_out"],
-                "Weight": ["gru_weight"],
-                "Bias": ["gru_bias"]
-            },
-            outputs={
-                "BatchGate": ["batch_gate"],
-                "BatchHidden": ["batch_hidden"],
-                "BatchResetHiddenPrev": ["batch_reset"],
-                "Hidden": ["hidden"]
-            },
-            attrs={
-                'activation': activation,
-                'is_reverse': is_reverse,
-                'gate_activation': gate_activation,
-                'is_test': True
-            })
-
         if has_origin_mode:
             gru_op = OpConfig(
                 type="gru",
