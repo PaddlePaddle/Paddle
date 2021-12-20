@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -63,16 +63,12 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         def generate_weight2():
             return np.random.random([16 * groups]).astype(np.float32)
 
-        ops_config = [{
-            "op_type": "conv2d_transpose",
-            "op_inputs": {
-                "Input": ["input_data"],
-                "Filter": ["conv2d_weight"],
-            },
-            "op_outputs": {
-                "Output": ["conv_output"]
-            },
-            "op_attrs": {
+        conv2d_op = OpConfig(
+            type="conv2d_transpose",
+            inputs={"Input": ["input_data"],
+                    "Filter": ["conv2d_weight"]},
+            outputs={"Output": ["conv_output"]},
+            attrs={
                 "data_format": data_format,
                 "dilations": dilations,
                 "padding_algorithm": padding_algorithm,
@@ -82,25 +78,19 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
                 "output_size": [],
                 "output_padding": [],
                 "is_test": True
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["conv_output"],
-                "Y": ["elementwise_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise_output"]
-            },
-            "op_attrs": {
-                'axis': axis
-            },
-        }]
+            })
 
-        ops = self.generate_op_config(ops_config)
+        elt_op = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["conv_output"],
+                    "Y": ["elementwise_weight"]},
+            outputs={"Out": ["elementwise_output"]},
+            attrs={'axis': axis})
+
+        model_net = [conv2d_op, elt_op]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
                 "conv2d_weight":
                 TensorConfig(data_gen=partial(generate_weight1)),
