@@ -30,8 +30,10 @@ from paddle.autograd import PyLayer
 import paddle.fluid.core as core
 import paddle.distributed as dist
 from paddle.fluid.framework import ParamBase
+from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.distributed.collective import _get_global_group
 
-from .sharding_utils import Type
+from .sharding_utils import Type, ShardingClipGrad
 from ..pp_utils.utils import _all_gather
 
 # CUDA alignment 256 bytes
@@ -40,6 +42,9 @@ align = {
     Type.fp16.value: 2,
     Type.fp32.value: 4,
 }
+
+global CHECK_LAYER
+CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class ShardingStage3(nn.Layer):
@@ -61,9 +66,10 @@ class ShardingStage3(nn.Layer):
     def __init__(self,
                  layer,
                  optimizer,
-                 group,
+                 group=None,
                  sync_buffers=False,
                  device="gpu",
+                 pertrain_sync_models=True,
                  accumulate_grads=False,
                  not_update_list=[]):
         super().__init__()
@@ -83,8 +89,8 @@ class ShardingStage3(nn.Layer):
         self._not_update_list = not_update_list
 
         # Communication group establishment
-        assert group is not None, "Distributed communication group is must be gived."
-        self._group = group
+        self._group = dist.new_group(_get_global_group()
+                                     .ranks) if group is None else group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
@@ -97,6 +103,19 @@ class ShardingStage3(nn.Layer):
         self._param2buffer = dict(
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = dict()  # {layer.name: [trainable_params]}
+
+        # Replace optimizer's _grad_clip
+        if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
+            logging.warning(
+                "While using ClipGradByGlobalNorm in ShardingStage3, the grad clip of original optimizer will be changed."
+            )
+            self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
+                                                      paddle.get_device(),
+                                                      self._group)
+
+        # Synchronous all ranks models
+        if pertrain_sync_models:
+            self._sync_params_and_buffers()
 
         self._segment_rank_params(self._layer)
 
@@ -125,6 +144,22 @@ class ShardingStage3(nn.Layer):
     @not_update_list.setter
     def not_update_list(self, not_update_list):
         self._not_update_list = not_update_list
+
+    @paddle.no_grad()
+    def _sync_params_and_buffers(self):
+        """
+        Sync all model states for all ranks
+        """
+
+        for p in self._layer.parameters():
+            dist.broadcast(
+                p,
+                src=self._global_root_rank,
+                group=self._group,
+                use_calc_stream=True)
+
+        # Multi stream operation will be supported later
+        dist.wait(tensor=p, group=self._group, use_calc_stream=True)
 
     def _clear_gradients(self):
         assert len(self._trainable_params.keys()) > 0
@@ -174,16 +209,17 @@ class ShardingStage3(nn.Layer):
 
         return fw
 
-    def _segment_rank_params(self, layer):
+    def _segment_rank_params(self, layer, name="last_layer"):
         """
         Flatten parameters according to layer.
         """
         current_layer_params = _current_layer_params(layer)
         if current_layer_params:
             self._flatten_layer_params(layer, current_layer_params)
+            CHECK_LAYER[id(layer)] = name
 
-        for _, sub_layer in layer.named_children():
-            self._segment_rank_params(sub_layer)
+        for name, sub_layer in layer.named_children():
+            self._segment_rank_params(sub_layer, name)
 
     def _flatten_layer_params(self, layer, current_layer_params):
         """
@@ -255,10 +291,15 @@ class ShardingStage3(nn.Layer):
         param.value().get_tensor()._set_dims(param_shape)
         param._clear()
 
-        # current rank param_storage
+        # Current rank param_storage
         param.fw_storage = core.VarBase(
-            buffer._slice(start, end), param.name + "@slice")
+            buffer._slice(start, end), "slice@" + param.name)
         param.status = "part"
+
+        # Updata optimizer master weights
+        if param.dtype == Type.fp16.value:
+            self._optim._master_weights[param.fw_storage.name] = paddle.cast(
+                param.fw_storage, Type.fp32.value)
 
     def _register_forward_hooks(self, layer):
         """

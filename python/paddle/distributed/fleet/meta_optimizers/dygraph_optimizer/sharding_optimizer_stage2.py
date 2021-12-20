@@ -16,21 +16,19 @@
 #Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
 
 import copy
-import time
 import logging
 import numpy as np
-from math import inf
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict
 
 import paddle
 import paddle.fluid as fluid
-from paddle import framework
 from paddle.fluid import core
 import paddle.distributed as dist
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import ParamStorage
 from ...meta_parallel.sharding.sharding_utils import Type, device_guard, ShardingClipGrad
@@ -59,14 +57,14 @@ class ShardingOptimizerStage2(Optimizer):
     # Feature Notes:
     # 1. Unified memory for parameters and parameters.grad to InternalStorage.
     # 2. Support the segmentation of optimizer parameters and partial updating of parameters.
-    # 3. Dynamically adjust training parameters and models。
+    # 3. Dynamically adjust training parameters and models.
     # 4. Support offload function.
     # 5. Support the establishment of independent communication groups.
     # 6. Broadcast_fp16 is not supported now.
     def __init__(self,
                  params,
                  optim,
-                 group,
+                 group=None,
                  broadcast_fp16=False,
                  offload=False,
                  device="gpu",
@@ -78,13 +76,16 @@ class ShardingOptimizerStage2(Optimizer):
         self._dtype_rank_params = OrderedDict(
         )  # {dtype:[param1,param2]} device, rank, params
         self._param2rank = {}
-        self._segment_params = []
+        self.__segment_params = []
         self._rank_buffer_size = {}  # {dtype: {rank: numel+alignment}}
         self._param2align = {}  # {param.name: align}
 
         # Default information
         self._optim_defaults = kw
         self._optim = optim
+        self._ori_parameter_list = self._optim._parameter_list
+        self._ori_param_groups = self._optim._param_groups
+
         assert hasattr(self._optim, "_master_weights"
                        ), "Must use optimizer with _master_weights attribute"
         self._local_params = params
@@ -94,8 +95,8 @@ class ShardingOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        assert group is not None, "Distributed communication group is must be gived"
         self.group = group
+        group = _get_global_group() if group is None else group
         self.world_size = group.nranks
         self.rank = group.rank
 
@@ -119,7 +120,7 @@ class ShardingOptimizerStage2(Optimizer):
         self._master_params = {}
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
-        self.update_opt_status()
+        self._update_opt_status()
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -137,7 +138,7 @@ class ShardingOptimizerStage2(Optimizer):
                     self._optim._master_weights[param.name] = paddle.cast(
                         param, Type.fp32.value)
 
-    def update_opt_status(self):
+    def _update_opt_status(self):
         """Update optimizer status and parameter storage information, and special functions to be developed.
         """
         # func 1
@@ -147,12 +148,12 @@ class ShardingOptimizerStage2(Optimizer):
 
     # Segement helpers
 
-    def segment_params(self):
+    def _segment_params(self):
         """
         Divide all optimizer parameters equally into rank.
         """
-        if len(self._segment_params) == 0:
-            self._segment_params, param_lists = [
+        if len(self.__segment_params) == 0:
+            self.__segment_params, param_lists = [
                 [] for _ in range(self.world_size)
             ], [[] for _ in range(self.world_size)]
             sizes = [0] * self.world_size
@@ -165,9 +166,8 @@ class ShardingOptimizerStage2(Optimizer):
                 sizes[rank] += np.prod(param.shape) if param.trainable else 0
 
             for rank, params in enumerate(param_lists):
-                # param_group_rank = copy.copy(params)
-                self._segment_params[rank].extend(params)
-        return self._segment_params
+                self.__segment_params[rank].extend(params)
+        return self.__segment_params
 
     @property
     def local_params(self):
@@ -177,7 +177,7 @@ class ShardingOptimizerStage2(Optimizer):
     def param2rank(self):
         """Map the params to the rank which owns them"""
         if len(self._param2rank) == 0:
-            for rank, params in enumerate(self.segment_params()):
+            for rank, params in enumerate(self._segment_params()):
                 for param in params:
                     self._param2rank[param.name] = rank
         return self._param2rank
@@ -271,31 +271,30 @@ class ShardingOptimizerStage2(Optimizer):
         """
 
         if self.offload:
-            self._optim._parameter_list = [
-                param for name, param in self._master_params.items()
-            ]
+            params_list = list(self._master_params.values())
         else:
             # Synchronize optimizer parameters for the current rank
-            if len(self.dtype_rank_params.keys(
-            )) == 1 and Type.fp32.value in self.dtype_rank_params.keys():
-                self._optim._parameter_list = self.dtype_rank_params[
-                    Type.fp32.value][self.rank]
-            elif len(self.dtype_rank_params.keys(
-            )) == 1 and Type.fp16.value in self.dtype_rank_params.keys():
-                self._optim._parameter_list = self.dtype_rank_params[
-                    Type.fp16.value][self.rank]
-            else:
-                self._optim._parameter_list = self.dtype_rank_params[
-                    Type.fp16.value][self.rank] + self.dtype_rank_params[
-                        Type.fp32.value][self.rank]
+            params_list = []
+            for dtype in self.dtype_rank_params.keys():
+                params_list.extend(self.dtype_rank_params[dtype][self.rank])
+
+        params_name_list = list(map(lambda p: p.name, params_list))
+        if not isinstance(self._optim._param_groups[0], dict):
+            self._optim._parameter_list = params_list
+            self._optim._param_groups = params_list
+        else:
+            for param_group in self._optim._param_groups:
+                p_group = []
+                for param in param_group['params']:
+                    if param.name in params_name_list:
+                        p_group.append(params_list[params_name_list.index(
+                            param.name)])
+                param_group['params'] = p_group
 
         # Run the optimizer of the current rank step
         if self.offload:
-            with device_guard(self.rank, self.offload_device):
+            with device_guard(device=self.offload_device):
                 self._optim.step()
-
-                for param in self._optim._parameter_list:
-                    self._master_params[param.name].set_value(param)
 
             dev_id = 0 if paddle.get_device() == "cpu" else int(
                 paddle.get_device().split(":")[1])
@@ -312,10 +311,11 @@ class ShardingOptimizerStage2(Optimizer):
         self._broadcast_params()
 
         # Return full parameters to optimizer parameters
-        self._optim._parameter_list = self._local_params
+        self._optim._parameter_list = self._ori_parameter_list
+        self._optim._param_groups = self._ori_param_groups
 
-    def clear_cache(self):
-        self._segment_params.clear()
+    def _clear_cache(self):
+        self.__segment_params.clear()
         self._dtype_rank_params.clear()
         self._param2rank.clear()
 
