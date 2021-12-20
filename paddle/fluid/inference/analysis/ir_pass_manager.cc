@@ -160,8 +160,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new bool(argument->tensorrt_use_inspector()));
       LOG(INFO) << (argument->tensorrt_use_inspector() ? "Set to true"
                                                        : "Set to false");
-      pass->Set("trt_use_inspector_exec",
-                new bool(argument->tensorrt_use_inspector_exec()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",

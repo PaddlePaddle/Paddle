@@ -403,15 +403,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
   /// \param use_inspector Use TRT inspector to get engine information
-  /// \param use_inspector_exec Use TRT inspector when execution
   ///
   ///
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false, bool use_calib_mode = true,
-                            bool use_inspector = false,
-                            bool use_inspector_exec = false);
+                            bool use_inspector = false);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -810,7 +808,6 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
-  bool trt_use_inspector_exec_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

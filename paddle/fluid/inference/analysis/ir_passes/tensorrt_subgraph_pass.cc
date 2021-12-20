@@ -263,13 +263,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
 
-  auto trt_use_inspector = Get<bool>("trt_use_static_engine");
+  auto trt_use_inspector = Get<bool>("trt_use_inspector");
   LOG(INFO) << (trt_use_inspector ? "Set to True" : "Set to False");
   op_desc->SetAttr("trt_use_inspector", Get<bool>("trt_use_inspector"));
-  auto trt_use_inspector_exec = Get<bool>("trt_use_static_engine");
-  LOG(INFO) << (trt_use_inspector_exec ? "Set to True" : "Set to False");
-  op_desc->SetAttr("trt_use_inspector_exec",
-                   Get<bool>("trt_use_inspector_exec"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -425,12 +421,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
               << GetTrtEngineSerializedPath(
                      Get<std::string>("model_opt_cache_dir"), engine_key);
     if (trt_use_inspector) {
-      std::string trt_inspector_data = trt_engine->GetInspectorData();
-      SaveTrtEngineInspectorDataToFile(Get<std::string>("model_opt_cache_dir"),
-                                       engine_key, trt_inspector_data);
-      LOG(INFO) << "Save TRT Inspector data to "
-                << GetTrtEngineSerializedPath(
-                       Get<std::string>("model_opt_cache_dir"), engine_key);
+      trt_engine->GetEngineInfo();
     }
   }
 }

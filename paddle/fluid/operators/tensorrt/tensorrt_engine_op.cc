@@ -49,18 +49,6 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
-void TensorRTEngineOp::OutputInspectorData(TensorRTEngine *engine,
-                                           bool exec_time) const {
-  std::string trt_inspector_data = engine->GetInspectorData(exec_time);
-  inference::analysis::SaveTrtEngineInspectorDataToFile(
-      model_opt_cache_dir_, engine_key_, trt_inspector_data);
-  if (!exec_time) {
-    LOG(INFO) << "Save TRT Inspector data to "
-              << inference::analysis::GetTrtEngineSerializedPath(
-                     model_opt_cache_dir_, engine_key_);
-  }
-}
-
 }  // namespace operators
 }  // namespace paddle
 

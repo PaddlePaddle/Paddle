@@ -141,7 +141,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_fp16_;
   bool use_calib_mode_;
   bool use_inspector_;
-  bool use_inspector_exec_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -178,11 +177,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
     use_inspector_ = Attr<bool>("use_inspector");
-    use_inspector_exec_ = Attr<bool>("use_inspector_exec");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
-    LOG(INFO) << (use_inspector_exec_ ? "Set to True" : "Set to False");
 
     if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
         HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
@@ -319,7 +316,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
-
+          if (use_inspector_) {
+            trt_engine->GetEngineInfo();
+          }
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
             inference::UpdateShapeRangeInfo(
@@ -341,9 +340,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             LOG(INFO) << "Save TRT Optimized Info to "
                       << inference::analysis::GetTrtEngineSerializedPath(
                              model_opt_cache_dir_, engine_key_);
-            if (use_inspector_) {
-              this->OutputInspectorData(trt_engine, false);
-            }
           }
         }
       }
@@ -401,8 +397,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     temp_calibrator->setBatch(calib_data);
     RunNativeImpl(scope, dev_place);
   }
-
-  void OutputInspectorData(TensorRTEngine *engine, bool exec_time) const;
 
   void RunTrt(const framework::Scope &scope, const platform::Place &dev_place,
               TensorRTEngine *engine) const {
@@ -487,6 +481,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+        if (use_inspector_) {
+          engine->GetEngineInfo();
+        }
 #endif
       }
       runtime_batch = t_shape[0];
@@ -575,10 +572,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "of "
               "nodes in the inconsistent subgraph.\n",
               runtime_batch, max_batch_size_));
-    }
-    LOG(INFO) << (use_inspector_exec_ ? "Set to True" : "Set to False");
-    if (use_inspector_exec_) {
-      this->OutputInspectorData(engine, true);
     }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);

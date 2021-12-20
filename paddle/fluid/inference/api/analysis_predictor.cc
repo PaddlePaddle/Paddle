@@ -615,7 +615,6 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_allow_build_at_runtime());
     LOG(INFO) << "Analysis predictor set TensorRtUseInspector to True";
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
-    argument_.SetTensorRtUseInspectorExec(config_.trt_use_inspector_exec_);
   }
 
   if (config_.dlnne_enabled()) {

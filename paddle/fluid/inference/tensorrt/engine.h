@@ -538,7 +538,7 @@ class TensorRTEngine {
     }
   }
 
-  std::string GetInspectorData(bool exec_time = false);
+  void GetEngineInfo();
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,

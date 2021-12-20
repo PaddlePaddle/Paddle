@@ -383,7 +383,7 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
     AnalysisConfig::Precision precision_mode, bool use_static,
-    bool use_calib_mode, bool use_inspector, bool use_inspector_exec) {
+    bool use_calib_mode, bool use_inspector) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -398,7 +398,6 @@ void AnalysisConfig::EnableTensorRtEngine(
   trt_use_static_engine_ = use_static;
   trt_use_calib_mode_ = use_calib_mode;
   trt_use_inspector_ = use_inspector;
-  trt_use_inspector_exec_ = use_inspector_exec;
 
   Update();
 #else
