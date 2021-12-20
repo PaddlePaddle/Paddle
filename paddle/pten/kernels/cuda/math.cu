@@ -68,9 +68,8 @@ void Mean(const CUDAContext& dev_ctx,
           const std::vector<int64_t>& dims,
           bool keep_dim,
           bool reduce_all,
-          DataType in_dtype,
-          DataType out_dtype,
           DenseTensor* out) {
+  auto out_dtype = x.dtype();
   pten::Reduce<T, paddle::operators::CustomMean>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -90,7 +89,6 @@ void Sum(const CUDAContext& dev_ctx,
          const std::vector<int64_t>& dims,
          bool keep_dim,
          bool reduce_all,
-         DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out) {
   pten::Reduce<T, paddle::operators::CustomSum>(
