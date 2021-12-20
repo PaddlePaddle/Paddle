@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -39,7 +40,28 @@ TaskNode::TaskNode(const framework::ProgramDesc& program, int64_t rank,
   }
 }
 
-TaskNode::TaskNode(int32_t role, const std::vector<OperatorBase*>& ops,
+TaskNode::TaskNode(int32_t role,
+                   const std::vector<framework::OpDesc*>& op_descs,
+                   int64_t rank, int64_t task_id, int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : role_(role),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  if (op_descs.empty()) {
+    return;
+  }
+  for (const auto& desc : op_descs) {
+    ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*desc));
+  }
+  for (const auto& op : ops_vec_) {
+    ops_.emplace_back(op.get());
+  }
+}
+
+TaskNode::TaskNode(int32_t role,
+                   const std::vector<framework::OperatorBase*>& ops,
                    int64_t rank, int64_t task_id, int64_t max_run_times,
                    int64_t max_slot_nums)
     : ops_(ops),
@@ -57,14 +79,14 @@ TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {}
 
-bool TaskNode::AddUpstreamTask(int64_t task_id) {
-  const auto& ret = upstream_.insert(task_id);
-  return *ret.first == task_id;
+bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
+  const auto& ret = upstream_.emplace(task_id, buff_size);
+  return ret.second;
 }
 
-bool TaskNode::AddDownstreamTask(int64_t task_id) {
-  const auto& ret = downstream_.insert(task_id);
-  return *ret.first == task_id;
+bool TaskNode::AddDownstreamTask(int64_t task_id, int64_t buff_size) {
+  const auto& ret = downstream_.emplace(task_id, buff_size);
+  return ret.second;
 }
 
 std::string TaskNode::DebugString() const {

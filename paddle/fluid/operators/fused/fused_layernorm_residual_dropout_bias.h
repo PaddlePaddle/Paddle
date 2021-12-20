@@ -169,7 +169,7 @@ void LaunchLayernormResidualDropoutBias(
     auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     memory::Copy(cuda_place, dst, cuda_place, residual, rows * cols * sizeof(T),
                  ctx.stream());
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
         mask_data, 0, rows * cols * sizeof(MaskType), ctx.stream()));
 
     // call layernorm forward

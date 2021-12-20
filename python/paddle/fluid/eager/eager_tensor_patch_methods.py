@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.core as core
+from .. import core as core
 
 
 def monkey_patch_eagertensor():
@@ -20,4 +20,5 @@ def monkey_patch_eagertensor():
         from paddle.tensor.to_string import eager_tensor_to_string
         return eager_tensor_to_string(self)
 
-    setattr(core.eager.EagerTensor, "__str__", __str__)
+    if hasattr(core, "eager"):
+        setattr(core.eager.EagerTensor, "__str__", __str__)
