@@ -27,7 +27,6 @@ void Conj(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 
 }  // namespace pten
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_KERNEL(conj,
                    CUDA,
                    ALL_LAYOUT,
@@ -38,4 +37,3 @@ PT_REGISTER_KERNEL(conj,
                    double,
                    int,
                    int64_t) {}
-#endif
