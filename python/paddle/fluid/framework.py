@@ -6225,7 +6225,13 @@ class ParamBase(core.VarBase):
     __repr__ = __str__
 
 
-class EagerParamBase(core.eager.EagerTensor):
+if hasattr(core, "eager"):
+    _core_eager_eagertensor = core.eager.EagerTensor
+else:
+    _core_eager_eagertensor = object
+
+
+class EagerParamBase(_core_eager_eagertensor):
     """
     EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode). 
     A EagerParamBase is a persistable Tensor, and will be updated by optimizers 
