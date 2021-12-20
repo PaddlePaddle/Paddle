@@ -1708,8 +1708,7 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
     t = var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported input variable type(%s) in complex type promotion.",
-        var->Type()));
+        "Unsupported input variable type in complex type promotion."));
   }
   PADDLE_ENFORCE_NOT_NULL(
       t,
