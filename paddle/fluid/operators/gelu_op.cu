@@ -22,53 +22,63 @@ namespace operators {
 
 template <typename T>
 struct GeluWithApproximateGradFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  inline HOSTDEVICE T operator()(T x, T dout) {
-    MT mx = static_cast<MT>(x);
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
+    MPType one = static_cast<MPType>(1);
+    MPType half = static_cast<MPType>(0.5);
     auto tanh_out =
-        tanh(static_cast<MT>(M_2_SQRTPI * M_SQRT1_2) * mx *
-             (static_cast<MT>(1) + static_cast<MT>(0.044715) * mx * mx));
-    auto ans = static_cast<MT>(0.5) * mx *
-                   ((static_cast<MT>(1) - tanh_out * tanh_out) *
-                    (static_cast<MT>(M_2_SQRTPI * M_SQRT1_2) +
-                     static_cast<MT>(0.1070322243) * mx * mx)) +
-               static_cast<MT>(0.5) * (static_cast<MT>(1) + tanh_out);
-    return static_cast<T>(ans * static_cast<MT>(dout));
+        tanh(kAlpha * x * (one + static_cast<MPType>(0.044715) * x * x));
+    auto ans =
+        half * x * ((one - tanh_out * tanh_out) *
+                    (kAlpha + static_cast<MPType>(0.1070322243) * x * x)) +
+        half * (one + tanh_out);
+    return static_cast<T>(ans * dout);
   }
 };
 
 template <typename T>
-struct GeluNoApproximateGradFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  inline HOSTDEVICE T operator()(T x, T dout) {
-    MT mx = static_cast<MT>(x);
-    auto first = static_cast<MT>(0.5) *
-                 (static_cast<MT>(1) + erf(mx * static_cast<MT>(M_SQRT1_2)));
-    auto second = static_cast<MT>(0.5 * M_2_SQRTPI * M_SQRT1_2) * mx *
-                  exp(-static_cast<MT>(0.5) * mx * mx);
-    return static_cast<T>(static_cast<MT>(dout) * (first + second));
+struct GeluWithoutApproximateGradFunctor {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
+    MPType one = static_cast<MPType>(1);
+    MPType half = static_cast<MPType>(0.5);
+    auto ans = half * (one + erf(x * static_cast<MPType>(M_SQRT1_2))) +
+               half * kAlpha * x * exp(-half * x * x);
+    return static_cast<T>(ans * dout);
   }
 };
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-default_gelu_bw(const framework::ExecutionContext& ctx,
-                const framework::Tensor* in, const framework::Tensor* dout,
-                const bool approximate, framework::Tensor* out) {
-  std::vector<const framework::Tensor*> ins = {in, dout};
-  std::vector<framework::Tensor*> outs = {out};
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  if (approximate) {
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithApproximateGradFunctor<T>());
-  } else {
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluNoApproximateGradFunctor<T>());
-  }
-}
+template <typename T>
+class GeluGradKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* dout =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto approximate = context.Attr<bool>("approximate");
+    dx->mutable_data<T>(dout->place());
 
+    std::vector<const framework::Tensor*> ins = {x, dout};
+    std::vector<framework::Tensor*> outs = {dx};
+    const auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    if (approximate) {
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, 0, GeluWithApproximateGradFunctor<T>());
+    } else {
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, 0, GeluWithoutApproximateGradFunctor<T>());
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
