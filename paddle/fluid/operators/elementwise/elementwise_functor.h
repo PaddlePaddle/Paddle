@@ -165,9 +165,9 @@ struct DivGradYFunctor<paddle::platform::complex<T>> {
       const paddle::platform::complex<T>& c) const {
     paddle::platform::complex<T> c_conj(c.real, -c.imag);
     return a * b / c_conj;
-    }
+  }
 };
-   
+
 // Fmax
 template <typename T>
 struct FMaxFunctor {
