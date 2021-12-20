@@ -1328,7 +1328,6 @@ struct KernelRegistrar {
  *
  * Used to export the symbols of the file where the kernel is located,
  * to avoid being removed by linker
- * Remove it later.
  */
 #define PT_DECLARE_KERNEL(kernel_name, backend, layout)                   \
   extern int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout(); \
