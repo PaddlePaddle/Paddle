@@ -29,12 +29,14 @@ __all__ = [  # noqa
     'get_device',
     'XPUPlace',
     'IPUPlace',
+    'MLUPlace',
     'is_compiled_with_xpu',
     'is_compiled_with_ipu',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
-    'is_compiled_with_npu'
+    'is_compiled_with_npu',
+    'is_compiled_with_mlu'
 ]
 
 _cudnn_version = None
@@ -120,6 +122,39 @@ def XPUPlace(dev_id):
     return core.XPUPlace(dev_id)
 
 
+def is_compiled_with_mlu():
+    """
+    Whether paddle was built with WITH_MLU=ON to support Cambricon MLU
+
+    Returns (bool): whether paddle was built with WITH_MLU=ON
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_mlu = paddle.device.is_compiled_with_mlu()
+    """
+    return core.is_compiled_with_mlu()
+
+
+def MLUPlace(dev_id):
+    """
+    Return a Cambricon MLU Place
+
+    Parameters:
+        dev_id(int): MLU device id
+
+    Examples:
+        .. code-block:: python
+
+            # required: mlu
+
+            import paddle
+            place = paddle.device.MLUPlace(0)
+    """
+    return core.MLUPlace(dev_id)
+
+
 def get_cudnn_version():
     """
     This funciton return the version of cudnn. the retuen value is int which represents the 
@@ -181,6 +216,13 @@ def _convert_to_place(device):
                 "The device should not be 'ipu', " \
                 "since PaddlePaddle is not compiled with IPU")
         place = core.IPUPlace()
+    elif lower_device == 'mlu':
+        if not core.is_compiled_with_mlu():
+            raise ValueError("The device should not be 'mlu', "
+                             "since PaddlePaddle is not compiled with MLU")
+        selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+        device_id = int(selected_mlus[0])
+        place = core.MLUPlace(device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
@@ -216,6 +258,15 @@ def _convert_to_place(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.NPUPlace(device_id)
+        if avaliable_mlu_device:
+            if not core.is_compiled_with_mlu():
+                raise ValueError(
+                    "The device should not be {}, since PaddlePaddle is "
+                    "not compiled with mlu".format(avaliable_mlu_device))
+            device_info_list = device.split(':', 1)
+            device_id = device_info_list[1]
+            device_id = int(device_id)
+            place = core.MLUPlace(device_id)
     return place
 
 
@@ -277,6 +328,9 @@ def get_device():
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
         device = "ipus:{{0-{}}}".format(num_devices - 1)
+    elif isinstance(place, core.MLUPlace):
+        device_id = place.get_device_id()
+        device = 'mlu:' + str(device_id)
     else:
         raise ValueError("The device specification {} is invalid".format(place))
 

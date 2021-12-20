@@ -279,6 +279,7 @@ from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
+from .framework import MLUPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
@@ -308,6 +309,7 @@ from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import is_compiled_with_ipu  # noqa: F401
+from .device import is_compiled_with_mlu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
@@ -447,6 +449,7 @@ __all__ = [  # noqa
            'multiplex',
            'CUDAPlace',
            'NPUPlace',
+           'MLUPlace',
            'empty',
            'shape',
            'real',
