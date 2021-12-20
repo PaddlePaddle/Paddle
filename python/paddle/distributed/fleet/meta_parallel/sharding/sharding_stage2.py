@@ -24,10 +24,12 @@ import numpy as np
 from itertools import chain
 from functools import reduce
 from collections import deque
+from types import MethodType
 
 import paddle
 from paddle import nn
 import paddle.distributed as dist
+from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import GradStorage
 from ...meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
@@ -57,7 +59,7 @@ class ShardingStage2(nn.Layer):
             self,
             layer,
             sharding_optimizer,
-            group,
+            group=None,
             sync_buffers=False,
             pertrain_sync_models=True,
             buffer_max_size=2**23,  #8MB
@@ -83,13 +85,12 @@ class ShardingStage2(nn.Layer):
         self._accumulate_grads = accumulate_grads
 
         # Communication related attributes
-        assert group is not None, "Distributed communication group is must be gived"
         self._group = group
-        self._world_size_scaling = 1.0 / self._group.nranks
-        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
-        self._rank = self._group.rank
+        group = _get_global_group() if group is None else group
+        self._world_size_scaling = 1.0 / group.nranks
+        assert group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
+        self._rank = group.rank
         self._global_root_rank = 0  # picking rank 0 as the reference
-        self._global_ranks = self._group.ranks
         self._default_device = device
 
         # Global statistical parameters
@@ -112,8 +113,8 @@ class ShardingStage2(nn.Layer):
         self._has_grad_storage = []
         self._grad_storage_list = []
 
-        # offload
-        # TODO(haohongxiang): Now it's not supported for multi-optimizers using Offload strategy
+        # Offload
+        # TODO(haohongxiang): Now it's not be supported for multi-optimizers using Offload strategy
         self._offload_optims = list(
             filter(lambda optim: optim.offload, self._sharding_optimizers))
         if len(self._offload_optims) > 0:
@@ -133,6 +134,11 @@ class ShardingStage2(nn.Layer):
 
         # Set tasks flow
         self._tasks_flow = deque()
+
+        # Define optimizer step and clear_grad
+        if self._accumulate_grads:
+            self._redefine_opt_step()
+        self._redefine_opt_clear()
 
     def forward(self, *inputs, **kwargs):
         """
@@ -161,7 +167,7 @@ class ShardingStage2(nn.Layer):
 
         return fw
 
-    def clear_gradients(self):
+    def _clear_gradients(self):
         """
         Set zero to the gradient of the optimizer's current rank trainable parameters.
         """
@@ -176,7 +182,7 @@ class ShardingStage2(nn.Layer):
             if param.name in self._param_grads and param.grad is not None:
                 param.clear_gradient()
 
-    def grad_scale(self):
+    def _grad_scale(self):
         """
         Before the gradient accumulation, scale the gradient.
         """
@@ -286,9 +292,6 @@ class ShardingStage2(nn.Layer):
         if self._use_grad_storage:
             for grad_storage in self._grad_storage_list:
                 grad_storage.reset_checked_in()
-
-        if not self._accumulate_grads:
-            self._grads_flipped = False
 
     def _get_reduce_fn(self, index, param, dst_rank):
         """
@@ -412,7 +415,6 @@ class ShardingStage2(nn.Layer):
             self._bw_hooks.pop().remove()
 
         # Go through the parameters, attach the hook
-        self._grad_accs = []
         if not self.training:
             return
 
@@ -500,9 +502,6 @@ class ShardingStage2(nn.Layer):
         # Whether parameters trainability changed
         trainability_changed = trainable_mask != self._trainable_mask
 
-        # The whole model is not trainable but we still have grad hooks
-        trainability_changed |= not self.training and len(self._bw_hooks) > 0
-
         if trainability_changed:
             logging.warning(
                 "Trainable params changed, because of eval/train mode or parameter freezing/unfreeze."
@@ -548,3 +547,25 @@ class ShardingStage2(nn.Layer):
                 format(rank_buffer_size[Type.fp32.value] / 2**18, model_size / 2
                        **18))
         return rank_buffer_size
+
+    def _redefine_opt_step(self):
+        if not self._accumulate_grads:
+            return
+        grad_func = self._grad_scale
+        for opt in self._sharding_optimizers:
+            opt_step = opt.step
+
+            def _opt_step(self):
+                grad_func()
+                opt_step()
+
+            opt.step = MethodType(_opt_step, opt)
+
+    def _redefine_opt_clear(self):
+        clear_func = self._clear_gradients
+
+        def _opt_clear(self):
+            clear_func()
+
+        for opt in self._sharding_optimizers:
+            opt.clear_grad = MethodType(_opt_clear, opt)

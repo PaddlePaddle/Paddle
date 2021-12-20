@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import paddle
 import unittest
 import numpy as np
@@ -32,7 +33,7 @@ class TestPureFP16(TestMNIST):
         return self.train(to_static=False)
 
     def test_mnist_to_static(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.fluid.is_compiled_with_cuda() and os.name != 'nt':
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
