@@ -21,7 +21,6 @@ limitations under the License. */
 #elif defined(_MSC_VER)
 #include <processthreadsapi.h>
 #endif
-#include "paddle/fluid/platform/device_tracer.h"
 
 namespace paddle {
 namespace platform {
@@ -41,7 +40,6 @@ ThreadId::ThreadId() {
   std::stringstream ss;
   ss << std::this_thread::get_id();
   cupti_tid_ = static_cast<uint32_t>(std::stoull(ss.str()));
-  RecoreCurThreadId(MainTid());  // For DeviceTracer
 }
 
 ThreadIdRegistry::~ThreadIdRegistry() {
