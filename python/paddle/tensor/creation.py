@@ -27,6 +27,7 @@ from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
@@ -1256,3 +1257,46 @@ def _memcpy(input, place=None, output=None):
         outputs={'Out': [output]},
         attrs=attrs)
     return output
+
+
+def complex(real, imag, name=None):
+    """Return a compelx tensor given the real and image component.
+
+    Args:
+        real (Tensor): The real component. The data type should be 'float32' or 'float64'.
+        imag (Tensor): The image component. The data type should be the same as ``real``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
+
+    **Note**:
+        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
+            y = paddle.arange(3, dtype=paddle.float32)
+            z = paddle.complex(x, y)
+            print(z.numpy())
+
+            # [[0.+0.j 0.+1.j 0.+2.j]
+            #  [1.+0.j 1.+1.j 1.+2.j]]
+    """
+    if in_dygraph_mode():
+        return paddle._C_ops.complex(real, imag)
+
+    check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
+    check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
+
+    op_type = "complex"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": real, "Y": imag}
+    out = helper.create_variable_for_type_inference(
+        dtype=_real_to_complex_dtype(real.dtype))
+    outputs = {"Out": out}
+    attrs = {}
+    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
