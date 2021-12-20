@@ -36,6 +36,7 @@ class GarbageCollector;
 namespace distributed {
 
 class TaskNode;
+class Carrier;
 
 class Interceptor {
  public:
@@ -77,6 +78,7 @@ class Interceptor {
   void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
     gc_ = gc;
   }
+  void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
 
   TaskNode* GetTaskNode() const { return node_; }
 
@@ -99,6 +101,8 @@ class Interceptor {
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
+
+  Carrier* carrier_;
 
  private:
   // pool the local mailbox, parse the Message

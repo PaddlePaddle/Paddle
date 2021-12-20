@@ -65,6 +65,9 @@ from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
 from ..fluid.layers import lgamma    # noqa: F401
+from ..fluid.layers import asinh    # noqa: F401
+from ..fluid.layers import acosh    # noqa: F401
+from ..fluid.layers import atanh    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -3010,6 +3013,9 @@ def lerp(x, y, weight, name=None):
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
         return _C_ops.lerp(x, y, weight)
+
+    if isinstance(weight, float):
+        weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
