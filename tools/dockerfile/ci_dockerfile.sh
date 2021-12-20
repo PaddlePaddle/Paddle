@@ -108,6 +108,7 @@ function main() {
   make_centos_dockerfile
   make_cinn_dockerfile
   make_ce_framework_dockcerfile
+  cp Dockerfile.cuda11.2_cudnn8_gcc82_trt8 Dockerfile.cuda10_cudnn7_gcc82_ubuntu16
 }
 
 main "$@"
