@@ -299,6 +299,7 @@ tensor_method_func  = [ #noqa
            'square',
            'stanh',
            'sum',
+           'nansum',
            'tanh',
            'tanh_',
            'add_n',

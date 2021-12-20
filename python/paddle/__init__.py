@@ -500,6 +500,7 @@ __all__ = [  # noqa
            'ones',
            'not_equal',
            'sum',
+           'nansum',
            'tile',
            'greater_equal',
            'isfinite',
