@@ -64,7 +64,9 @@ struct DirichletSampler<platform::CUDADeviceContext, T> {
     auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
 
     // init state, seed & offset for all threads
-    auto p_gen = framework::GetDefaultCUDAGenerator();
+    int device_id =
+        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    auto p_gen = framework::GetDefaultCUDAGenerator(device_id);
     auto seed_and_offset = p_gen->IncrementOffset(10);  // hard-coded offset
     auto seed = seed_and_offset.first;
     auto offset = seed_and_offset.second;
@@ -84,10 +86,10 @@ struct DirichletSampler<platform::CUDADeviceContext, T> {
     new_shape[new_shape.size() - 1] = 1;
     gamma_sum.mutable_data<T>(new_shape, dev_ctx.GetPlace());
 
-    ReduceKernelFunctor<platform::CPUDeviceContext, T, SumFunctor>(
+    ReduceKernelFunctor<platform::CUDADeviceContext, T, SumFunctor>(
         &gamma_samples, &gamma_sum, {new_shape.size() - 1}, true, false, ctx)
         .template apply<T>();
-    ElementwiseComputeEx<DivFunctor<T>, platform::CPUDeviceContext, T, T>(
+    ElementwiseComputeEx<DivFunctor<T>, platform::CUDADeviceContext, T, T>(
         ctx, &gamma_samples, &gamma_sum, -1, DivFunctor<T>(), out);
   }
 };
