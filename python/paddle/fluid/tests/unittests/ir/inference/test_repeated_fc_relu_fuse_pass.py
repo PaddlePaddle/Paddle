@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 from functools import reduce
 
 
-class TestMulLstmFusePass(PassAutoScanTest):
+class TestRepeatedFcReluFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -37,9 +37,8 @@ class TestMulLstmFusePass(PassAutoScanTest):
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dim = draw(st.sampled_from([32, 64, 128]))
 
-        def generate_input(attrs):
-            return np.random.random(
-                [attrs[2]['batch_size'], attrs[2]['dim']]).astype(np.float32)
+        def generate_input():
+            return np.random.random([batch_size, dim]).astype(np.float32)
 
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
@@ -54,83 +53,55 @@ class TestMulLstmFusePass(PassAutoScanTest):
             'dim': dim
         }]
 
-        ops_config = [{
-            "op_type": "mul",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Y": ["mul1_weight"]
-            },
-            "op_outputs": {
-                "Out": ["mul1_output"]
-            },
-            "op_attrs": {
-                "x_num_col_dims": attrs[0]['x_col'],
-                "y_num_col_dims": attrs[0]['y_col']
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["mul1_output"],
-                "Y": ["elementwise1_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise1_output"]
-            },
-            "op_attrs": {
-                'axis': attrs[1]['axis']
-            },
-        }, {
-            "op_type": "relu",
-            "op_inputs": {
-                "X": ["elementwise1_output"]
-            },
-            "op_outputs": {
-                "Out": ["relu1_output"]
-            },
-            "op_attrs": {}
-        }, {
-            "op_type": "mul",
-            "op_inputs": {
-                "X": ["relu1_output"],
-                "Y": ["mul2_weight"]
-            },
-            "op_outputs": {
-                "Out": ["mul2_output"]
-            },
-            "op_attrs": {
-                "x_num_col_dims": attrs[0]['x_col'],
-                "y_num_col_dims": attrs[0]['y_col']
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["mul2_output"],
-                "Y": ["elementwise2_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise2_output"]
-            },
-            "op_attrs": {
-                'axis': attrs[1]['axis']
-            },
-        }, {
-            "op_type": "relu",
-            "op_inputs": {
-                "X": ["elementwise2_output"]
-            },
-            "op_outputs": {
-                "Out": ["relu2_output"]
-            },
-            "op_attrs": {}
-        }]
+        mul_op1 = OpConfig(
+            type="mul",
+            inputs={"X": ["input_data"],
+                    "Y": ["mul1_weight"]},
+            outputs={"Out": ["mul1_output"]},
+            attrs={"x_num_col_dims": x_col,
+                   "y_num_col_dims": y_col})
 
-        ops = self.generate_op_config(ops_config)
+        elt_op1 = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["mul1_output"],
+                    "Y": ["elementwise1_weight"]},
+            outputs={"Out": ["elementwise1_output"]},
+            attrs={"axis": axis})
+
+        relu_op1 = OpConfig(
+            type="relu",
+            inputs={"X": ["elementwise1_output"]},
+            outputs={"Out": ["relu1_output"]},
+            attrs={})
+
+        mul_op2 = OpConfig(
+            type="mul",
+            inputs={"X": ["relu1_output"],
+                    "Y": ["mul2_weight"]},
+            outputs={"Out": ["mul2_output"]},
+            attrs={"x_num_col_dims": x_col,
+                   "y_num_col_dims": y_col})
+
+        elt_op2 = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["mul2_output"],
+                    "Y": ["elementwise2_weight"]},
+            outputs={"Out": ["elementwise2_output"]},
+            attrs={"axis": axis})
+
+        relu_op2 = OpConfig(
+            type="relu",
+            inputs={"X": ["elementwise2_output"]},
+            outputs={"Out": ["relu2_output"]},
+            attrs={})
+
+        model_net = [mul_op1, elt_op1, relu_op1, mul_op2, elt_op2, relu_op2]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
-                "mul1_weight": TensorConfig(data_gen=partial(
-                    generate_weight, [attrs[2]['dim'], 32])),
+                "mul1_weight": TensorConfig(data_gen=partial(generate_weight,
+                                                             [dim, 32])),
                 "mul2_weight":
                 TensorConfig(data_gen=partial(generate_weight, [32, 128])),
                 "elementwise1_weight":
@@ -139,8 +110,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_weight, [128]))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs)),
+                "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             outputs=["relu2_output"])
 
