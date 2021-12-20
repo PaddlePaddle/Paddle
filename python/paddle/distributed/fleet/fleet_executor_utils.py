@@ -43,14 +43,17 @@ class TaskNode:
         :param ops (list): A list of op.desc to init the task node.
         :param program (Program): An instance of Program to init the task node.
         """
-        assert (bool(ops) ^ bool(program)), \
+        # NOTE: ops should be checked by `is not None`, since it may be empty list
+        assert ((ops is not None) ^ (program is not None)), \
             "Should provide only one of ops or program to task node."
         if not self.previous:
             self.previous = 'program' if program else 'ops'
-        assert (program and self.previous == 'program') or (ops and self.previous == 'ops'), \
-            "In one program, task node should be inited in the same way, all by ops or all by program."
-        if ops:
-            assert role and task_id, "If init task node with ops, should provide `role` and `task_id`."
+        assert (program is not None and self.previous == 'program') or \
+               (ops is not None and self.previous == 'ops'), \
+               "In one program, task node should be inited in the same way, all by ops or all by program."
+        if ops is not None:
+            assert role is not None and task_id is not None, \
+                "If init task node with ops, should provide `role` and `task_id`."
             self.node = core.TaskNode(role, ops, cur_rank,
                                       int(task_id), max_run_times,
                                       max_slot_times)
@@ -84,7 +87,7 @@ class TaskNode:
         return self.node.role()
 
     def task_id(self):
-        return self.node.task_id
+        return self.node.task_id()
 
 
 class CoordSys:

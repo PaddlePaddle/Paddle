@@ -45,10 +45,17 @@ class TestFleetExecutor(unittest.TestCase):
                 grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0))
             opt.minimize(loss)
         # TODO: section_program will be removed in the future
-        task_node = TaskNode(empty_program, 0, 1, 1)
+        task_node = TaskNode(
+            program=empty_program,
+            cur_rank=0,
+            max_run_times=1,
+            max_slot_times=1)
         empty_program._pipeline_opt = {
             "fleet_opt": {
-                'tasks': [task_node]
+                'tasks': [task_node],
+                'task_id_to_rank': {
+                    task_node.task_id(): 0
+                }
             },
             "section_program": empty_program
         }
