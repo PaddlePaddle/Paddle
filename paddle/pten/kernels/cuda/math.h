@@ -17,15 +17,11 @@ limitations under the License. */
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
@@ -36,17 +32,7 @@ void Mean(const CUDAContext& dev_ctx,
           const std::vector<int64_t>& dims,
           bool keep_dim,
           bool reduce_all,
-          DataType in_dtype,
-          DataType out_dtype,
           DenseTensor* out);
-
-template <typename T>
-void Scale(const CUDAContext& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out);
 
 template <typename T>
 void Add(const CUDAContext& dev_ctx,
@@ -82,7 +68,6 @@ void Sum(const CUDAContext& dev_ctx,
          const std::vector<int64_t>& dims,
          bool keep_dim,
          bool reduce_all,
-         DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out);
 
