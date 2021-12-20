@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -35,79 +35,83 @@ class TestMulGruFusePass(PassAutoScanTest):
         y_col = draw(st.sampled_from([1]))
         activation = draw(st.sampled_from(['sigmoid', 'tanh']))
         is_reverse = draw(st.booleans())
+        has_origin_mode = draw(st.booleans())
+        origin_mode = False
         gate_activation = draw(st.sampled_from(['sigmoid', 'tanh']))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
-        def generate_input(attrs):
-            shape = [attrs[2]['batch_size'], 128, 6, 120]
+        def generate_input():
+            shape = [batch_size, 128, 6, 120]
             return np.full(shape, 0.001).astype(np.float32)
 
         def generate_weight(shape):
             return np.full(shape, 0.0001).astype(np.float32)
 
-        attrs = [{
-            'x_col': x_col,
-            'y_col': y_col
-        }, {
-            'activation': activation,
-            'is_reverse': is_reverse,
-            'gate_activation': gate_activation
-        }, {
-            'batch_size': batch_size
-        }]
-
-        ops_config = [{
-            "op_type": "im2sequence",
-            "op_inputs": {
-                "X": ["input_data"]
-            },
-            "op_outputs": {
-                "Out": ["seq_out"]
-            },
-            "op_attrs": {
+        im2sequence_op = OpConfig(
+            type="im2sequence",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["seq_out"]},
+            attrs={
                 "kernels": [6, 1],
                 "out_stride": [1, 1],
                 "paddings": [0, 0, 0, 0],
                 "strides": [1, 1]
-            }
-        }, {
-            "op_type": "mul",
-            "op_inputs": {
-                "X": ["seq_out"],
-                "Y": ["mul_weight"]
-            },
-            "op_outputs": {
-                "Out": ["mul_out"]
-            },
-            "op_attrs": {
-                "x_num_col_dims": attrs[0]['x_col'],
-                "y_num_col_dims": attrs[0]['y_col']
-            }
-        }, {
-            "op_type": "gru",
-            "op_inputs": {
-                "Input": ["mul_out"],
-                "Weight": ["gru_weight"],
-                "Bias": ["gru_bias"]
-            },
-            "op_outputs": {
-                "BatchGate": ["batch_gate"],
-                "BatchHidden": ["batch_hidden"],
-                "BatchResetHiddenPrev": ["batch_reset"],
-                "Hidden": ["hidden"]
-            },
-            "op_attrs": {
-                'activation': attrs[1]['activation'],
-                'is_reverse': attrs[1]['is_reverse'],
-                'gate_activation': attrs[1]['gate_activation'],
-                'is_test': True
-            }
-        }]
+            })
 
-        ops = self.generate_op_config(ops_config)
+        mul_op = OpConfig(
+            type="mul",
+            inputs={"X": ["seq_out"],
+                    "Y": ["mul_weight"]},
+            outputs={"Out": ["mul_out"]},
+            attrs={"x_num_col_dims": x_col,
+                   "y_num_col_dims": y_col})
+
+        if has_origin_mode:
+            gru_op = OpConfig(
+                type="gru",
+                inputs={
+                    "Input": ["mul_out"],
+                    "Weight": ["gru_weight"],
+                    "Bias": ["gru_bias"]
+                },
+                outputs={
+                    "BatchGate": ["batch_gate"],
+                    "BatchHidden": ["batch_hidden"],
+                    "BatchResetHiddenPrev": ["batch_reset"],
+                    "Hidden": ["hidden"]
+                },
+                attrs={
+                    'activation': activation,
+                    'is_reverse': is_reverse,
+                    'gate_activation': gate_activation,
+                    'is_test': True,
+                    'origin_mode': origin_mode
+                })
+        else:
+            gru_op = OpConfig(
+                type="gru",
+                inputs={
+                    "Input": ["mul_out"],
+                    "Weight": ["gru_weight"],
+                    "Bias": ["gru_bias"]
+                },
+                outputs={
+                    "BatchGate": ["batch_gate"],
+                    "BatchHidden": ["batch_hidden"],
+                    "BatchResetHiddenPrev": ["batch_reset"],
+                    "Hidden": ["hidden"]
+                },
+                attrs={
+                    'activation': activation,
+                    'is_reverse': is_reverse,
+                    'gate_activation': gate_activation,
+                    'is_test': True
+                })
+
+        model_net = [im2sequence_op, mul_op, gru_op]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
                 "mul_weight":
                 TensorConfig(data_gen=partial(generate_weight, [768, 600])),
@@ -117,8 +121,7 @@ class TestMulGruFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_weight, [1, 600]))
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, attrs))
+                "input_data": TensorConfig(data_gen=partial(generate_input))
             },
             outputs=["hidden"])
 
