@@ -154,12 +154,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      LOG(INFO) << (argument->tensorrt_use_inspector() ? "Set to true"
-                                                       : "Set to false");
       pass->Set("trt_use_inspector",
                 new bool(argument->tensorrt_use_inspector()));
-      LOG(INFO) << (argument->tensorrt_use_inspector() ? "Set to true"
-                                                       : "Set to false");
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",

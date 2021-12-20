@@ -265,10 +265,6 @@ static void SaveTrtEngineSerializedDataToFile(
   outfile.close();
 }
 
-void SaveTrtEngineInspectorDataToFile(const std::string &model_root,
-                                      const std::string &engine_key,
-                                      const std::string &inspector_data);
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

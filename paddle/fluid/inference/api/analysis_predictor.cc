@@ -613,7 +613,6 @@ void AnalysisPredictor::PrepareArgument() {
         config_.tuned_tensorrt_dynamic_shape());
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
-    LOG(INFO) << "Analysis predictor set TensorRtUseInspector to True";
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
   }
 
