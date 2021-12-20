@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 from functools import reduce
 
 
-class TestSeqConcatFcFusePass(PassAutoScanTest):
+class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
