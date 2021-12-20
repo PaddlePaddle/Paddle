@@ -86,6 +86,7 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     pip install wheel --user
+    pip install pyyaml --user
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
@@ -223,6 +224,7 @@ set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
+set WITH_TENSORRT=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -662,9 +664,22 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 
 if "%WITH_GPU%"=="ON" (
-    goto:parallel_test_base_gpu
+    call:parallel_test_base_gpu
 ) else (
-    goto:parallel_test_base_cpu
+    call:parallel_test_base_cpu
+)
+
+set error_code=%ERRORLEVEL%
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
+call :timestamp "%start%" "%end%" "TestCases Total"
+
+if %error_code% NEQ 0 (
+    exit /b 8
+) else ( 
+    goto:eof 
 )
 
 :parallel_test_base_gpu
@@ -688,7 +703,6 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >> %work_dir%\win_cmake.sh
-set FLAGS_fraction_of_gpu_memory_to_use=0.92
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
@@ -708,10 +722,6 @@ goto:eof
 :test_unit_error
 :: echo 8 > %cache_dir%\error_code.txt
 :: type %cache_dir%\error_code.txt
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
-set end=%end:~4,10%
-call :timestamp "%start%" "%end%" "1 card TestCases Total"
-call :timestamp "%start%" "%end%" "TestCases Total"
 echo Running unit tests failed, will exit!
 exit /b 8
 
@@ -721,11 +731,6 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
-
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
-set end=%end:~4,10%
-call :timestamp "%start%" "%end%" "1 card TestCases Total"
-call :timestamp "%start%" "%end%" "TestCases Total"
 
 tree /F %cd%\paddle_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
@@ -737,7 +742,7 @@ for /F %%i in ("%libsize%") do (
 )
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %MSVC_STATIC_CRT%
 goto:eof
 
 :test_inference_error

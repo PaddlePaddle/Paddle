@@ -154,12 +154,25 @@ std::vector<paddle::Tensor> AttrTestForward(
   return {out};
 }
 
+std::vector<std::vector<int64_t>> AttrTestInferShape(
+    const std::vector<int64_t>& x_shape,
+    bool bool_attr,
+    int int_attr,
+    float float_attr,
+    int64_t int64_attr,
+    std::string str_attr,
+    std::vector<int> int_vec_attr,
+    std::vector<float> float_vec_attr,
+    std::vector<std::string> str_vec_attr) {
+  return {x_shape};
+}
+
 // The attrs of backward op must be the subset of attrs of forward op
 std::vector<paddle::Tensor> AttrTestBackward(
     const paddle::Tensor& grad_out,
     int int_attr,
-    std::vector<float> float_vec_attr,
-    std::vector<std::string> str_vec_attr) {
+    const std::vector<float>& float_vec_attr,
+    const std::vector<std::string>& str_vec_attr) {
   auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, grad_out.shape());
 
   PD_DISPATCH_FLOATING_TYPES(grad_out.type(), "assign_cpu_kernel", ([&] {
@@ -207,6 +220,19 @@ std::vector<paddle::Tensor> ConstAttrTestForward(
   return {out};
 }
 
+std::vector<std::vector<int64_t>> ConstAttrTestInferShape(
+    const std::vector<int64_t>& x_shape,
+    const bool& bool_attr,
+    const int& int_attr,
+    const float& float_attr,
+    const int64_t& int64_attr,
+    const std::string& str_attr,
+    const std::vector<int>& int_vec_attr,
+    const std::vector<float>& float_vec_attr,
+    const std::vector<std::string>& str_vec_attr) {
+  return {x_shape};
+}
+
 // The attrs of backward op must be the subset of attrs of forward op
 std::vector<paddle::Tensor> ConstAttrTestBackward(
     const paddle::Tensor& grad_out,
@@ -239,7 +265,8 @@ PD_BUILD_OP(attr_test)
             "float_vec_attr: std::vector<float>",
             "int64_vec_attr: std::vector<int64_t>",
             "str_vec_attr: std::vector<std::string>"})
-    .SetKernelFn(PD_KERNEL(AttrTestForward));
+    .SetKernelFn(PD_KERNEL(AttrTestForward))
+    .SetInferShapeFn(PD_INFER_SHAPE(AttrTestInferShape));
 
 PD_BUILD_GRAD_OP(attr_test)
     .Inputs({paddle::Grad("Out")})
@@ -261,7 +288,8 @@ PD_BUILD_OP(const_attr_test)
             "float_vec_attr: std::vector<float>",
             "int64_vec_attr: std::vector<int64_t>",
             "str_vec_attr: std::vector<std::string>"})
-    .SetKernelFn(PD_KERNEL(AttrTestForward));
+    .SetKernelFn(PD_KERNEL(ConstAttrTestForward))
+    .SetInferShapeFn(PD_INFER_SHAPE(ConstAttrTestInferShape));
 
 PD_BUILD_GRAD_OP(const_attr_test)
     .Inputs({paddle::Grad("Out")})
@@ -269,4 +297,4 @@ PD_BUILD_GRAD_OP(const_attr_test)
     .Attrs({"int_attr: int",
             "float_vec_attr: std::vector<float>",
             "str_vec_attr: std::vector<std::string>"})
-    .SetKernelFn(PD_KERNEL(AttrTestBackward));
+    .SetKernelFn(PD_KERNEL(ConstAttrTestBackward));

@@ -16,7 +16,7 @@ include (ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
 
-set(SNAPPY_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy)
+set(SNAPPY_PREFIX_DIR ${THIRD_PARTY_PATH}/snappy)
 set(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_INSTALL_DIR}/include" CACHE PATH "snappy include directory." FORCE)
 
@@ -37,7 +37,7 @@ ExternalProject_Add(
         extern_snappy
         GIT_REPOSITORY "https://github.com/google/snappy"
         GIT_TAG "1.1.7"
-        PREFIX          ${SNAPPY_SOURCES_DIR}
+        PREFIX          ${SNAPPY_PREFIX_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

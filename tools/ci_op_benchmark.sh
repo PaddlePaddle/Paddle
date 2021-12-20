@@ -73,7 +73,7 @@ function load_CHANGE_OP_FILES {
   LOG "[INFO] run function load_CHANGE_OP_FILES"
   local sub_dir change_file
   # TODO(Avin0323): Need to filter the files added by the new OP.
-  for change_file in $(git diff --name-only origin/develop)
+  for change_file in $(git diff --name-only develop)
   do
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
@@ -92,7 +92,6 @@ function load_CHANGE_OP_FILES {
     fi
   done
   [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
-  echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt && \
   exit 0
 }
 
@@ -237,14 +236,15 @@ function check_CHANGE_OP_MAP {
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
-      exit_code=8
-      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+      # Disable the check of missing op benchmark script temporarily.
+      # exit_code=8
+      LOG "[WARNING] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
     fi
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
     LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
-    exit $exit_code
+    exit ${exit_code}
   fi
 }
 

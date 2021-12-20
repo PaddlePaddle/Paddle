@@ -167,7 +167,7 @@ void QrGPUKernel<float>::BatchedGeqrf(
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSgeqrf_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgeqrf_bufferSize(
       handle, m, n, a, lda, &lwork));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
@@ -178,7 +178,7 @@ void QrGPUKernel<float>::BatchedGeqrf(
     float* a_working_ptr = &a[i * a_stride];
     float* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSgeqrf(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgeqrf(
         handle, m, n, a_working_ptr, lda, tau_working_ptr, workspace_ptr, lwork,
         info_d));
     // Do we need synchronized here?
@@ -201,7 +201,7 @@ void QrGPUKernel<double>::BatchedGeqrf(
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDgeqrf_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgeqrf_bufferSize(
       handle, m, n, a, lda, &lwork));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
@@ -212,7 +212,7 @@ void QrGPUKernel<double>::BatchedGeqrf(
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDgeqrf(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgeqrf(
         handle, m, n, a_working_ptr, lda, tau_working_ptr, workspace_ptr, lwork,
         info_d));
     // Do we need synchronized here?
@@ -235,7 +235,7 @@ void QrGPUKernel<float>::BatchedOrgqr(
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSorgqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
@@ -246,7 +246,7 @@ void QrGPUKernel<float>::BatchedOrgqr(
     float* a_working_ptr = &a[i * a_stride];
     float* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSorgqr(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSorgqr(
         handle, m, n, k, a_working_ptr, lda, tau_working_ptr, workspace_ptr,
         lwork, info_d));
     // Do we need synchronized here?
@@ -270,7 +270,7 @@ void QrGPUKernel<double>::BatchedOrgqr(
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDorgqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
@@ -281,7 +281,7 @@ void QrGPUKernel<double>::BatchedOrgqr(
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnDorgqr(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDorgqr(
         handle, m, n, k, a_working_ptr, lda, tau_working_ptr, workspace_ptr,
         lwork, info_d));
     // Do we need synchronized here?

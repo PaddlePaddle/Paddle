@@ -14,56 +14,83 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
-
-using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
 void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 template <typename T>
-void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
+void Mean(const CPUContext& dev_ctx,
+          const DenseTensor& x,
+          const std::vector<int64_t>& dims,
+          bool keep_dim,
+          bool reduce_all,
+          DenseTensor* out);
 
 template <typename T>
-void Scale(const CPUContext& dev_ctx,
-           const DenseTensor& x,
-           float scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out);
+void Add(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& y,
+         int axis,
+         DenseTensor* out);
 
 template <typename T>
-void ScaleHost(const CPUContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out);
+void Subtract(const CPUContext& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              int axis,
+              DenseTensor* out);
 
 template <typename T>
-void ElementwiseAdd(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Divide(const CPUContext& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            int axis,
+            DenseTensor* out);
 
 template <typename T>
-void ElementwiseSub(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
-
+void Multiply(const CPUContext& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              int axis,
+              DenseTensor* out);
 template <typename T>
-void ElementwiseDiv(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out);
+void Sum(const CPUContext& dev_ctx,
+         const DenseTensor& x,
+         const std::vector<int64_t>& dims,
+         bool keep_dim,
+         bool reduce_all,
+         DataType out_dtype,
+         DenseTensor* out);
+
 }  // namespace pten
+
+#define DEFINE_CPU_ELEMENTWISE_OP(name)                                      \
+  template <typename T>                                                      \
+  void name(const CPUContext& dev_ctx,                                       \
+            const DenseTensor& x,                                            \
+            const DenseTensor& y,                                            \
+            int axis,                                                        \
+            DenseTensor* out) {                                              \
+    out->mutable_data<T>();                                                  \
+    if (x.dims() == y.dims()) {                                              \
+      SameDimsElementwiseCompute<                                            \
+          general::SameDims##name##Functor<CPUContext, T>>()(                \
+          dev_ctx, x, y, out);                                               \
+    } else {                                                                 \
+      auto x_dims = x.dims();                                                \
+      auto y_dims = y.dims();                                                \
+      if (x_dims.size() >= y_dims.size()) {                                  \
+        ElementwiseCompute<general::name##Functor<T>, T>(                    \
+            dev_ctx, x, y, axis, general::name##Functor<T>(), out);          \
+      } else {                                                               \
+        ElementwiseCompute<general::Inverse##name##Functor<T>, T>(           \
+            dev_ctx, x, y, axis, general::Inverse##name##Functor<T>(), out); \
+      }                                                                      \
+    }                                                                        \
+  }

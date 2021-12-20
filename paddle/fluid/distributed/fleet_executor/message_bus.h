@@ -39,10 +39,8 @@ class Carrier;
 // A singleton MessageBus
 class MessageBus final {
  public:
-  static MessageBus& Instance() {
-    static MessageBus msg_bus;
-    return msg_bus;
-  }
+  MessageBus() = default;
+  ~MessageBus();
 
   void Init(const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
@@ -50,15 +48,11 @@ class MessageBus final {
 
   bool IsInit() const;
 
-  void Release();
-
   // called by Interceptor, send InterceptorMessage to dst
   bool Send(const InterceptorMessage& interceptor_message);
 
-  DISABLE_COPY_AND_ASSIGN(MessageBus);
-
  private:
-  MessageBus() = default;
+  DISABLE_COPY_AND_ASSIGN(MessageBus);
 
   // function keep listen the port and handle the message
   void ListenPort();
@@ -72,11 +66,10 @@ class MessageBus final {
   bool SendInterRank(const InterceptorMessage& interceptor_message);
 #endif
 
+  bool is_init_{false};
+
   // send the message intra rank (dst is the same rank with src)
   bool SendIntraRank(const InterceptorMessage& interceptor_message);
-
-  bool is_init_{false};
-  std::once_flag once_flag_;
 
   // handed by above layer, save the info mapping interceptor id to rank id
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
@@ -89,6 +82,7 @@ class MessageBus final {
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
+  InterceptorMessageServiceImpl interceptor_message_service_;
   // brpc server
   brpc::Server server_;
 #endif
