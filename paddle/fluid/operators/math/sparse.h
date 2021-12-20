@@ -54,7 +54,7 @@ class Sparse {
                         int64_t* crows, int64_t* cols, T* values) const;
 
   template <typename T>
-  void SparseCsrToDense(const int M, const int N, const int nnz,
+  void SparseCsrToDense(const int64_t M, const int64_t N, const int64_t nnz,
                         const int64_t* crows, const int64_t* cols,
                         const T* values, T* dense) const;
 

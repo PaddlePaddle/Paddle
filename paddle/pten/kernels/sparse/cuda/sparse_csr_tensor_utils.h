@@ -32,6 +32,10 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
                  const DenseTensor& src,
                  SparseCsrTensor* dst);
 
+template <typename T>
+void SparseCsrToDense(const CUDAContext& dev_ctx,
+                      const SparseCsrTensor& src,
+                      DenseTensor* dst);
 }  // namespace pten
 
 #endif

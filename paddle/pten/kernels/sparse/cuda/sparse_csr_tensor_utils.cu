@@ -82,7 +82,32 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
                        src_dims);
 }
 
+template <typename T>
+void SparseCsrToDense(const CUDAContext& dev_ctx,
+                      const SparseCsrTensor& src,
+                      DenseTensor* dst) {
+  auto sparse =
+      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
+                                         T>(dev_ctx);
+  const auto src_dims = src.dims();
+  const int M = src_dims[0];
+  const int N = src_dims[1];
+  const DenseTensor& crows = src.non_zero_crows();
+  const DenseTensor& cols = src.non_zero_cols();
+  const DenseTensor& values = src.non_zero_elements();
+  const int64_t nnz = src.nnz();
+  sparse.SparseCsrToDense(M,
+                          N,
+                          nnz,
+                          crows.data<int64_t>(),
+                          cols.data<int64_t>(),
+                          values.data<T>(),
+                          dst->mutable_data<T>());
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(to_sparse_csr, CUDA, ANY, pten::ToSparseCsr, float, double) {
 }
+PT_REGISTER_KERNEL(
+    sparse_csr_to_dense, CUDA, ANY, pten::SparseCsrToDense, float, double) {}

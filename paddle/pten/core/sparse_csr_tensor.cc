@@ -67,4 +67,27 @@ void SparseCsrTensor::SetMemberTensor(
   this->non_zero_elements_.reset(non_zero_elements.release());
 }
 
+void SparseCsrTensor::Resize(const DDim& dims, const int64_t non_zero_num) {}
+
+void SparseCsrTensor::Resize(const std::shared_ptr<Allocator>& a,
+                             const DenseTensorMeta& meta,
+                             const int64_t non_zero_num) {
+  // non_zero_crows_->set_default_allocator(a);
+  // non_zero_cols_->set_default_allocator(a);
+  // non_zero_elements_->set_default_allocator(a);
+}
+
+int64_t* SparseCsrTensor::mutable_non_zero_crows() {
+  return non_zero_crows_->mutable_data<int64_t>();
+}
+
+int64_t* SparseCsrTensor::mutable_non_zero_cols() {
+  return non_zero_cols_->mutable_data<int64_t>();
+}
+
+template <typename T>
+T* SparseCsrTensor::mutable_non_zero_elements() {
+  return non_zero_elements_->mutable_data<int64_t>();
+}
+
 }  // namespace pten
