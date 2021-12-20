@@ -418,16 +418,6 @@ class PassAutoScanTest(AutoScanTest):
                     atol, rtol) in self.sample_predictor_configs(prog_config):
                 self.num_predictor_kinds += 1
 
-                # baseline: no ir_optim run
-                base_config = self.create_inference_config(
-                    ir_optim=False,
-                    use_gpu=pred_config.use_gpu(),
-                    use_mkldnn=pred_config.mkldnn_enabled(), )
-                base_result = self.run_test_config(model, params, prog_config,
-                                                   base_config, feed_data)
-                self.success_log('RUN_BASELINE ' + self.inference_config_str(
-                    base_config) + ' done')
-
                 # skip info
                 ignore_flag = False
                 for ignore_info in self.ignore_cases:
@@ -448,7 +438,22 @@ class PassAutoScanTest(AutoScanTest):
                 if not os.path.exists(self.cache_dir):
                     os.mkdir(self.cache_dir)
 
+                # baseline: no ir_optim run
+                base_config = self.create_inference_config(
+                    ir_optim=False,
+                    use_gpu=pred_config.use_gpu(),
+                    use_mkldnn=pred_config.mkldnn_enabled(), )
                 try:
+                    # baseline
+                    base_result = self.run_test_config(
+                        model, params, prog_config, base_config, feed_data)
+                    self.success_log('RUN_BASELINE ' +
+                                     self.inference_config_str(
+                                         base_config) + ' done')
+
+                    if os.path.exists(self.cache_dir):
+                        shutil.rmtree(self.cache_dir)
+
                     pred_result = self.run_test_config(
                         model, params, prog_config, pred_config, feed_data)
                     self.assert_tensors_near(atol, rtol, pred_result,
