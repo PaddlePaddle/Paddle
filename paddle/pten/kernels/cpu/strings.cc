@@ -26,12 +26,18 @@ using AsciiLowerConverter =
 using AsciiUpperConverter =
     pten::strings::AsciiCaseConverter<CPUContext, pten::strings::AsciiToUpper>;
 
-template <typename AsciiCoverter>
+using UTF8LowerConverter =
+    pten::strings::UTF8CaseConverter<CPUContext, pten::strings::UTF8ToLower>;
+using UTF8UpperConverter =
+    pten::strings::UTF8CaseConverter<CPUContext, pten::strings::UTF8ToUpper>;
+
+template <typename AsciiConverter, typename UTF8Converter>
 void StringCaseConvert(const CPUContext& dev_ctx,
                        const DenseTensor& x,
                        const std::string& encoding,
                        DenseTensor* out) {
-  AsciiCoverter ascii_converter;
+  AsciiConverter ascii_converter;
+  UTF8Converter utf8_converter;
   const pstring* in_ptr = x.data<pstring>();
   pstring* out_ptr = out->mutable_data<pstring>();
   auto num = x.numel();
@@ -39,8 +45,7 @@ void StringCaseConvert(const CPUContext& dev_ctx,
     if (encoding.empty()) {
       ascii_converter(dev_ctx, in_ptr[i], out_ptr + i);
     } else {
-      // TODO(zhoushunjie): need to add utf-8 encoding converter
-      ascii_converter(dev_ctx, in_ptr[i], out_ptr + i);
+      utf8_converter(dev_ctx, in_ptr[i], out_ptr + i);
     }
   }
 }
@@ -49,14 +54,16 @@ void StringLower(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const std::string& encoding,
                  DenseTensor* out) {
-  StringCaseConvert<AsciiLowerConverter>(dev_ctx, x, encoding, out);
+  StringCaseConvert<AsciiLowerConverter, UTF8LowerConverter>(
+      dev_ctx, x, encoding, out);
 }
 
 void StringUpper(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const std::string& encoding,
                  DenseTensor* out) {
-  StringCaseConvert<AsciiUpperConverter>(dev_ctx, x, encoding, out);
+  StringCaseConvert<AsciiUpperConverter, UTF8UpperConverter>(
+      dev_ctx, x, encoding, out);
 }
 
 }  // namespace pten

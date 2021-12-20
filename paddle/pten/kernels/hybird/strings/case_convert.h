@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <utf8proc.h>
+
+#include <codecvt>
+#include <string>
 
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -40,6 +44,35 @@ struct AsciiCaseConverter {
                              pten::platform::pstring* out) const {
     paddle::platform::Transform<DeviceContext> trans;
     trans(dev_ctx, in.begin(), in.end(), out->data(), CharConverter());
+  }
+};
+
+struct UTF8ToLower {
+  HOSTDEVICE char32_t operator()(char32_t in) const {
+    return utf8proc_tolower(in);
+  }
+};
+
+struct UTF8ToUpper {
+  HOSTDEVICE char32_t operator()(char32_t in) const {
+    return utf8proc_toupper(in);
+  }
+};
+
+template <typename DeviceContext, typename CharConverter>
+struct UTF8CaseConverter {
+  HOSTDEVICE void operator()(const DeviceContext& dev_ctx,
+                             const pten::platform::pstring& in,
+                             pten::platform::pstring* out) const {
+    paddle::platform::Transform<DeviceContext> trans;
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> utf32conv;
+    std::u32string unicode_in = utf32conv.from_bytes(in.begin(), in.end());
+    trans(dev_ctx,
+          unicode_in.begin(),
+          unicode_in.end(),
+          unicode_in.begin(),
+          CharConverter());
+    *out = utf32conv.to_bytes(unicode_in);
   }
 };
 

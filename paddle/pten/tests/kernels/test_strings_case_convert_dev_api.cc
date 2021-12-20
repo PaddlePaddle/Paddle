@@ -56,7 +56,22 @@ TEST(DEV_API, strings_cast_convert) {
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
-  // 2. test API
+  // 2. get expected results
+  std::string expected_results[] = {short_str, short_str, long_str, long_str};
+  std::transform(short_str.begin(),
+                 short_str.end(),
+                 expected_results[0].begin(),
+                 ::tolower);
+  std::transform(short_str.begin(),
+                 short_str.end(),
+                 expected_results[1].begin(),
+                 ::toupper);
+  std::transform(
+      long_str.begin(), long_str.end(), expected_results[2].begin(), ::tolower);
+  std::transform(
+      long_str.begin(), long_str.end(), expected_results[3].begin(), ::toupper);
+
+  // 3. test API, ascii encoding
   auto dense_lower_out = pten::StringLower(
       *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
       "",
@@ -66,23 +81,62 @@ TEST(DEV_API, strings_cast_convert) {
       "",
       dense_x);
 
-  // 3. check result
-  ASSERT_EQ(dense_lower_out.dims().size(), 2);
-  ASSERT_EQ(dense_upper_out.dims().size(), 2);
+  // 4. check results
+  ASSERT_EQ(dense_lower_out.numel(), 2);
+  ASSERT_EQ(dense_upper_out.numel(), 2);
 
   // lower case
-  std::transform(
-      short_str.begin(), short_str.end(), short_str.begin(), ::tolower);
-  std::transform(long_str.begin(), long_str.end(), long_str.begin(), ::tolower);
-  ASSERT_EQ(dense_lower_out.data<pstring>()[0].data(), short_str);
-  ASSERT_EQ(dense_lower_out.data<pstring>()[1].data(), long_str);
+  ASSERT_EQ(dense_lower_out.data<pstring>()[0].data(), expected_results[0]);
+  ASSERT_EQ(dense_lower_out.data<pstring>()[1].data(), expected_results[2]);
 
   // upper case
-  std::transform(
-      short_str.begin(), short_str.end(), short_str.begin(), ::toupper);
-  std::transform(long_str.begin(), long_str.end(), long_str.begin(), ::toupper);
-  ASSERT_EQ(dense_upper_out.data<pstring>()[0].data(), short_str);
-  ASSERT_EQ(dense_upper_out.data<pstring>()[1].data(), long_str);
+  ASSERT_EQ(dense_upper_out.data<pstring>()[0].data(), expected_results[1]);
+  ASSERT_EQ(dense_upper_out.data<pstring>()[1].data(), expected_results[3]);
+}
+
+TEST(DEV_API, strings_cast_convert_utf8) {
+  // 1. create tensor
+  const DDim dims({1, 1});
+  const DataType dtype{DataType::STRING};
+  const DataLayout layout{DataLayout::NHWC};
+  const std::vector<std::vector<size_t>> lod{};
+  DenseTensorMeta meta(dtype, dims, layout, lod);
+
+  const auto alloc = std::make_shared<paddle::experimental::StringAllocator>(
+      paddle::platform::CPUPlace());
+  DenseTensor dense_x(alloc, meta);
+
+  std::string utf8_str = "óósschloë";
+
+  pstring* dense_x_data = dense_x.mutable_data<pstring>();
+  dense_x_data[0] = utf8_str;
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  // 2. get expected results
+  std::string expected_results[] = {"óósschloë", "ÓÓSSCHLOË"};
+
+  // 3. test API, ascii encoding
+  auto dense_lower_out = pten::StringLower(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      "utf-8",
+      dense_x);
+  auto dense_upper_out = pten::StringUpper(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      "utf-8",
+      dense_x);
+
+  // 4. check results
+  ASSERT_EQ(dense_lower_out.numel(), 1);
+  ASSERT_EQ(dense_upper_out.numel(), 1);
+
+  // lower case
+  ASSERT_EQ(dense_lower_out.data<pstring>()[0].data(), expected_results[0]);
+
+  // upper case
+  ASSERT_EQ(dense_upper_out.data<pstring>()[0].data(), expected_results[1]);
 }
 
 }  // namespace tests
