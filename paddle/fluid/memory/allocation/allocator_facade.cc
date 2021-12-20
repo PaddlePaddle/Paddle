@@ -311,6 +311,10 @@ class AllocatorFacadePrivate {
 
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     const gpuStream_t& stream) {
+    if (allocation->size() == 0) {
+      return;
+    }
+
     StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
         dynamic_cast<StreamSafeCUDAAllocation*>(allocation.get());
     PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
