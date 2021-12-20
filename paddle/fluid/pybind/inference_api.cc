@@ -635,6 +635,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
+      .def("enable_tensorrt_inspector",
+           &AnalysisConfig::EnableTensorRtInspector, py::arg("x") = false,
+           py::arg("exec_time") = false)
 #ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)

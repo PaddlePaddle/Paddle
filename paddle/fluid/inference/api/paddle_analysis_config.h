@@ -525,6 +525,15 @@ struct PD_INFER_DECL AnalysisConfig {
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
+  /// \brief A boolean state telling whether to use the TensorRT Inspector.
+  ///
+  /// \return bool Whether to use the TensorRT Inspector.
+  ///
+  void EnableTensorRtInspector(bool x = false, bool exec_time = false);
+  bool inspector_enable() const { return trt_use_inspector_; }
+  bool inspector_exec_enable() const { return trt_use_inspector_exec_; }
+
+  ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
   /// \param precision_mode Precion used in Lite sub-graph engine.
@@ -806,6 +815,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_allow_build_at_runtime_{false};
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
+  bool trt_use_inspector_{false};
+  bool trt_use_inspector_exec_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

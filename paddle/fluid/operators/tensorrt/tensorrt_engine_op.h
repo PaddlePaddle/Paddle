@@ -140,6 +140,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_int8_;
   bool enable_fp16_;
   bool use_calib_mode_;
+  bool use_inspector_;
+  bool use_inspector_exec_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -175,9 +177,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
+    use_inspector_ = Attr<bool>("use_inspector");
+    use_inspector_exec_ = Attr<bool>("use_inspector_exec");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
+    LOG(INFO) << (use_inspector_exec_ ? "Set to True" : "Set to False");
 
     if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
         HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
@@ -336,6 +341,16 @@ class TensorRTEngineOp : public framework::OperatorBase {
             LOG(INFO) << "Save TRT Optimized Info to "
                       << inference::analysis::GetTrtEngineSerializedPath(
                              model_opt_cache_dir_, engine_key_);
+            if (use_inspector_) {
+              std::string trt_inspector_data = trt_engine->GetInspectorData();
+              inference::analysis::SaveTrtEngineInspectorDataToFile(
+                  inference::analysis::GetTrtEngineInspectorPath(
+                      model_opt_cache_dir_, engine_key_),
+                  trt_inspector_data);
+              LOG(INFO) << "Save TRT Inspector data to "
+                        << inference::analysis::GetTrtEngineSerializedPath(
+                               model_opt_cache_dir_, engine_key_);
+            }
           }
         }
       }
@@ -565,6 +580,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "of "
               "nodes in the inconsistent subgraph.\n",
               runtime_batch, max_batch_size_));
+    }
+    LOG(INFO) << (use_inspector_exec_ ? "Set to True" : "Set to False");
+    if (use_inspector_exec_) {
+      std::string trt_inspector_data = engine->GetInspectorData(true);
+      inference::analysis::SaveTrtEngineInspectorExecDataToFile(
+          inference::analysis::GetTrtEngineInspectorPath(model_opt_cache_dir_,
+                                                         engine_key_, true),
+          trt_inspector_data);
     }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);

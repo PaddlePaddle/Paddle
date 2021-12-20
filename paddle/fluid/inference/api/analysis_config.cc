@@ -193,6 +193,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
+  CP_MEMBER(trt_use_inspector_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -402,6 +403,13 @@ void AnalysisConfig::EnableTensorRtEngine(
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::EnableTensorRtInspector(bool x, bool exec_time) {
+  trt_use_inspector_ = x;
+  trt_use_inspector_exec_ = exec_time;
+  LOG(INFO) << "AnalysisConfig set use_inspector to be True";
+  Update();
 }
 
 void AnalysisConfig::EnableDlnne(int min_subgraph_size) {

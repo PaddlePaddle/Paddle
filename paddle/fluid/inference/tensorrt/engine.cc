@@ -54,7 +54,6 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
 #if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
-    GetEngineInfo();
 #endif
   }
   SetRuntimeBatch(batch_size);
@@ -259,8 +258,6 @@ void TensorRTEngine::FreezeNetwork() {
       infer_engine_, platform::errors::Fatal(
                          "Build TensorRT cuda engine failed! Please recheck "
                          "you configurations related to paddle-TensorRT."));
-
-  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
