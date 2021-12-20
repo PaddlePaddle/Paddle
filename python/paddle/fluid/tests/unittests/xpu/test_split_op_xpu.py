@@ -18,14 +18,13 @@ sys.path.append("..")
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 # test with attr(num)
-@skip_check_grad_ci(reason="No support for split_grad_xpu op.")
 class TestSplitOp(XPUOpTest):
     def initDefaultParameters(self):
         self.dtype = 'float32'
