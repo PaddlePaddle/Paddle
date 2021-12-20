@@ -61,7 +61,7 @@ class TaskNode:
                   self.role(), "and with id:", self.task_id())
         else:
             self.program = program
-            core.TaskNode(program.desc, cur_rank, max_run_times, max_slot_times)
+            core.TaskNode(cur_rank, max_run_times, max_slot_times)
         self.node.set_type(node_type)
 
     def set_type(self, interceptor_type):
@@ -74,7 +74,7 @@ class TaskNode:
 
     def set_program(self, program):
         self.program = program
-        self.node.set_program(program)
+        self.node.set_program(program.desc)
 
     def get_program(self):
         assert hasattr(self, 'program'), 'There is no program to get'

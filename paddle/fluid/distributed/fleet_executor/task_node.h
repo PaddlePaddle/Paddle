@@ -40,8 +40,7 @@ class TaskNode final {
   TaskNode(int32_t role, const std::vector<framework::OperatorBase*>& ops,
            int64_t rank, int64_t task_id, int64_t max_run_times,
            int64_t max_slot_nums);
-  TaskNode(const paddle::framework::ProgramDesc& program, int64_t rank,
-           int64_t max_run_times, int64_t max_slot_nums);
+  TaskNode(int64_t rank, int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
 
   void SetProgram(const paddle::framework::ProgramDesc& program);
