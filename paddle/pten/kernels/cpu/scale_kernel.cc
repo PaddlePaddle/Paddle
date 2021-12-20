@@ -22,12 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 
 PT_REGISTER_CTX_KERNEL(scale,
-                       CUDA,
+                       CPU,
                        ALL_LAYOUT,
                        pten::Scale,
                        float,
                        double,
-                       paddle::platform::float16,
+                       paddle::platform::bfloat16,
                        uint8_t,
                        int8_t,
                        int16_t,
