@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/eigen_ext.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -66,6 +67,28 @@ struct MinGradDy {
     return dout * (x >= y);
   }
 };
+
+#ifdef PADDLE_CUDA_FP16
+template <>
+struct MinGradDx<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(platform::float16 x,
+                                          platform::float16 y,
+                                          platform::float16 out,
+                                          platform::float16 dout) const {
+    return x < y ? dout : static_cast<platform::float16>(0);
+  }
+};
+
+template <>
+struct MinGradDy<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(platform::float16 x,
+                                          platform::float16 y,
+                                          platform::float16 out,
+                                          platform::float16 dout) const {
+    return x >= y ? dout : static_cast<platform::float16>(0);
+  }
+};
+#endif
 
 template <typename DeviceContext, typename T>
 class ElementwiseMinGradKernel : public ElemwiseGradKernel<T> {
