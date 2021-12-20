@@ -81,7 +81,7 @@ def bernoulli(x, name=None):
 
 def poisson(x, name=None):
     """
-    This OP returns a tensor filled with random number from a Poisson distribution.
+    This OP returns a tensor filled with random number from a Poisson Distribution.
 
     .. math::
 

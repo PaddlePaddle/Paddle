@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
 #include <hiprand_kernel.h>
 #endif
 #include "paddle/fluid/operators/poisson_op.h"
@@ -32,11 +32,11 @@ struct PoissonCudaFunctor {
       : in_(in), out_(out), seed_(seed), offset_(offset) {}
 
   __device__ void operator()(int64_t idx) {
-#ifdef PADDLE_WITH_CUDA
+#ifdef __NVCC__
     curandStatePhilox4_32_10_t state;
     curand_init(seed_, idx, offset_, &state);
     out_[idx] = static_cast<T>(curand_poisson(&state, in_[idx]));
-#elif PADDLE_WITH_HIP
+#elif __HIPCC__
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed_, idx, offset_, &state);
     out_[idx] = static_cast<T>(hiprand_poisson(&state, in_[idx]));
