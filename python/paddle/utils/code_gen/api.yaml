@@ -79,13 +79,14 @@
     func : matmul
 
 - api : mean
-  args : (const Tensor& x, const std::vector<int64_t>& axis, bool keep_dim)
+  args : (const Tensor& x, const std::vector<int64_t>& axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta : 
     func : ReduceInferMeta
+    param: [x, axis, keep_dim]
   kernel : 
     func : mean
-    param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
+    param : [x, axis, keep_dim, false]
 
 - api : multiply
   args : (const Tensor& x, const Tensor& y)
@@ -103,10 +104,10 @@
   invoke : full_like(x, 1, dtype, place, layout)
 
 - api : reshape
-  args : (const Tensor& x, const std::vector<int64_t>& shape)
+  args : (const Tensor& x, const ScalarArray& shape)
   output : Tensor
   infer_meta : 
-    func : InferMetaFromVecValue
+    func : ReshapeInferMeta
   kernel : 
     func : reshape
 
@@ -130,13 +131,15 @@
     param : [x, y, -1]
 
 - api : sum
-  args : (const Tensor& x, const std::vector<int64_t>& axis, bool keep_dim)
+  args : (const Tensor& x, const std::vector<int64_t>& axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
   infer_meta : 
     func : ReduceInferMeta
+    param: [x, axis, keep_dim, dtype]
   kernel : 
     func : sum
-    param : [x, axis, keep_dim, false, x.dtype(), DataType::UNDEFINED]
+    param : [x, axis, keep_dim, false, DataType::UNDEFINED]
+    data_type : x
 
 - api : zeros_like
   args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)

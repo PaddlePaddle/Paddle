@@ -127,11 +127,11 @@ std::vector<paddle::Tensor> AttrTestForward(
     int int_attr,
     float float_attr,
     int64_t int64_attr,
-    const std::string& str_attr,
-    const std::vector<int>& int_vec_attr,
-    const std::vector<float>& float_vec_attr,
-    const std::vector<int64_t>& int64_vec_attr,
-    const std::vector<std::string>& str_vec_attr) {
+    std::string str_attr,
+    std::vector<int> int_vec_attr,
+    std::vector<float> float_vec_attr,
+    std::vector<int64_t> int64_vec_attr,
+    std::vector<std::string> str_vec_attr) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(
@@ -160,10 +160,10 @@ std::vector<std::vector<int64_t>> AttrTestInferShape(
     int int_attr,
     float float_attr,
     int64_t int64_attr,
-    const std::string& str_attr,
-    const std::vector<int>& int_vec_attr,
-    const std::vector<float>& float_vec_attr,
-    const std::vector<std::string>& str_vec_attr) {
+    std::string str_attr,
+    std::vector<int> int_vec_attr,
+    std::vector<float> float_vec_attr,
+    std::vector<std::string> str_vec_attr) {
   return {x_shape};
 }
 

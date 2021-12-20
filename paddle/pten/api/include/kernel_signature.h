@@ -71,8 +71,6 @@ using mean_kernel = void (*)(const DeviceContext&,
                              const std::vector<int64_t>&,
                              bool,
                              bool,
-                             DataType,
-                             DataType,
                              DenseTensor*);
 
 using multiply_kernel = void (*)(const DeviceContext&,
@@ -83,7 +81,7 @@ using multiply_kernel = void (*)(const DeviceContext&,
 
 using reshape_kernel = void (*)(const DeviceContext&,
                                 const DenseTensor&,
-                                const std::vector<int64_t>&,
+                                const ScalarArray&,
                                 DenseTensor*);
 
 using scale_kernel = void (*)(const DeviceContext&,
@@ -98,7 +96,6 @@ using sum_kernel = void (*)(const DeviceContext&,
                             const std::vector<int64_t>&,
                             bool,
                             bool,
-                            DataType,
                             DataType,
                             DenseTensor*);
 

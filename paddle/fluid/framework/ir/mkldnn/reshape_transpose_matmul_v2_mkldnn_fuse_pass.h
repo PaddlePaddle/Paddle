@@ -14,25 +14,26 @@
 
 #pragma once
 
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include <string>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
 
-namespace pten {
+namespace paddle {
+namespace framework {
+namespace ir {
+/*
+ * Fuse Reshape->Transpose->MatMulV2 when MatMulV2 uses mkldnn.
+ */
 
-using CPUContext = paddle::platform::CPUDeviceContext;
+class ReshapeTransposeMatmulV2MkldnnFusePass
+    : public ReshapeTransposeMatmulMkldnnFusePass {
+ public:
+  ReshapeTransposeMatmulV2MkldnnFusePass();
+  virtual ~ReshapeTransposeMatmulV2MkldnnFusePass() {}
 
-template <typename T>
-void FillAnyLike(const CPUContext& dev_ctx,
-                 const Scalar& val,
-                 DenseTensor* out);
-
-template <typename T>
-void FillConstant(const CPUContext& dev_ctx,
-                  const ScalarArray& shape,
-                  const Scalar& val,
-                  DenseTensor* out);
-
-}  // namespace pten
+ protected:
+  const std::string name_scope_{"reshape_transpose_matmul_v2_fuse"};
+};
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

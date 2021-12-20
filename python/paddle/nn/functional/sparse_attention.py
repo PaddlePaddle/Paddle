@@ -25,6 +25,8 @@ def sparse_attention(query,
                      value,
                      sparse_csr_offset,
                      sparse_csr_columns,
+                     key_padding_mask=None,
+                     attn_mask=None,
                      name=None):
     r"""
     This operator sparsify the Attention matrix in Transformer module
@@ -68,6 +70,14 @@ def sparse_attention(query,
                         3-D tensor with shape:  
                         [batch_size, num_heads, sparse_nnz]. 
                         The dtype should be int32.
+        key_padding_mask(Tensor, optional):The key padding mask tensor in the Attention module. 
+                        2-D tensor with shape: [batch_size, seq_len]. 
+                        The dtype can be float32 and float64.
+                        A value of 0 means that the position is masked.
+        attn_mask(Tensor, optional):The attention mask tensor in the Attention module. 
+                        2-D tensor with shape: [seq_len, seq_len]. 
+                        The dtype can be float32 and float64.
+                        A value of 0 means that the position is masked.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -83,7 +93,7 @@ def sparse_attention(query,
             # required: skiptest
             import paddle
             import numpy as np
-            
+
             query_data = np.array([[[[0, 1,], [2, 3],
                     [ 0, 1], [2, 3]]]]).astype("float32")
             key_data = np.array([[[[0, 1,], [2, 3],
@@ -94,6 +104,8 @@ def sparse_attention(query,
                             4, 6, 8]]]).astype("int32")
             sparse_csr_columns_data = np.array([[[0, 1,
                             0, 1, 2, 3, 2, 3]]]).astype("int32")
+            key_padding_mask_data = np.array([[1,1,1,0]]).astype("float32")
+            attention_mask_data = np.array([[1,0,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]).astype("float32")
             print(query_data.shape)
             # (1, 1, 4, 2)
             print(sparse_csr_offset_data.shape)
@@ -111,10 +123,21 @@ def sparse_attention(query,
                             place=paddle.CUDAPlace(0))
             columns = paddle.to_tensor(sparse_csr_columns_data, stop_gradient=False, 
                             place=paddle.CUDAPlace(0))
+            key_padding_mask = paddle.to_tensor(key_padding_mask_data, stop_gradient=False, 
+                            place=paddle.CUDAPlace(0))
+            attention_mask = paddle.to_tensor(attention_mask_data, stop_gradient=False, 
+                            place=paddle.CUDAPlace(0))
+            output_mask = paddle.nn.functional.sparse_attention(query, key, 
+                            value, offset, columns, 
+                            key_padding_mask=key_padding_mask, attn_mask=attention_mask)
+            print(output_mask)
+            # [[[[0.        , 1.        ],
+            #    [1.99830270, 2.99830270],
+            #    [0.        , 1.        ],
+            #    [0.        , 1.        ]]]]
             output = paddle.nn.functional.sparse_attention(query, key, 
                             value, offset, columns)
-            print(output)
-            
+            print(output) 
             # [[[[1.60885942, 2.60885954],
             #       [1.99830270, 2.99830270],
             #       [1.60885942, 2.60885954],
@@ -122,7 +145,8 @@ def sparse_attention(query,
     """
     if in_dygraph_mode():
         result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
-            query, key, value, sparse_csr_offset, sparse_csr_columns)
+            query, key, value, sparse_csr_offset, sparse_csr_columns,
+            key_padding_mask, attn_mask)
         return result_attention
 
     helper = LayerHelper('sparse_attention', **locals())
@@ -135,7 +159,9 @@ def sparse_attention(query,
         'K': key,
         'V': value,
         'Offset': sparse_csr_offset,
-        'Columns': sparse_csr_columns
+        'Columns': sparse_csr_columns,
+        'KeyPaddingMask': key_padding_mask,
+        'AttnMask': attn_mask,
     }
     outputs = {
         'Out': out,
