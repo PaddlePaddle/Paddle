@@ -238,14 +238,6 @@ class GeluGradKernel : public framework::OpKernel<T> {
     auto approximate = context.Attr<bool>("approximate");
     dx->mutable_data<T>(dout->place());
     default_gelu_bw<DeviceContext, T>(context, x, dout, approximate, dx);
-    // auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    // auto eigen_dout = framework::EigenVector<T>::Flatten(*dout);
-    // auto eigen_dx = framework::EigenVector<T>::Flatten(*dx);
-    // auto& place =
-    //     *context.template device_context<DeviceContext>().eigen_device();
-
-    // GeluGradFunctor<T> functor;
-    // functor(place, eigen_x, eigen_dout, eigen_dx, approximate);
   }
 };
 
