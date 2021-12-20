@@ -527,7 +527,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._next_heter_trainer_endpoints = []
         self._previous_heter_trainer_endpoints = []
         self._heter_trainer_endpoints = []
-        self._heter_trainer_device = "CPU"
+        self._heter_trainer_device = "cpu"
+        self._heter_trainer_device_type = "cpu"
         self._is_heter_parameter_server_mode = False
         self._stage_trainers = []
 
@@ -545,13 +546,21 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         return self._gloo.all_reduce(input, mode, comm_world)
 
+    def _heter_device(self):
+        """
+        return the heter device that current heter worker is using
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._heter_trainer_device
+
     def _heter_device_type(self):
         """
         return the heter device type that current heter worker is using
         """
         if not self._role_is_generated:
             self._generate_role()
-        return self._heter_trainer_device
+        return self._heter_trainer_device_type
 
     def _get_stage_id(self):
         """
@@ -935,14 +944,24 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 )
             self._stage_trainers = eval(self._stage_trainers)
 
-            self._heter_trainer_device = os.getenv("HETER_DEVICE_TYPE", None)
-            if self._heter_trainer_device == None:
+            self._heter_trainer_device_type = os.getenv("HETER_DEVICE_TYPE",
+                                                        None)
+            if self._heter_trainer_device_type == None:
                 raise ValueError(
                     "Can not find HETER_DEVICE_TYPE, please check your environment."
                 )
-            assert self._heter_trainer_device in (
+            assert self._heter_trainer_device_type in (
                 "cpu", "gpu", "xpu"
             ), "HETER_DEVICE_TYPE should be cpu,gpu or xpu"
+            if self._heter_trainer_device_type == "gpu":
+                heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
+                self._heter_trainer_device = ":".join(
+                    (self._heter_trainer_device_type, heter_device_id))
+            if self._heter_trainer_device == "xpu":
+                heter_device_id = os.getenv("FLAGS_selected_xpus", "0")
+                self._heter_trainer_device = ":".join(
+                    (self._heter_trainer_device_type, heter_device_id))
+
             cur_port = os.getenv("PADDLE_PORT", None)
             if cur_port == None:
                 raise ValueError(

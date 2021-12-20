@@ -21,6 +21,7 @@ namespace pten {
 
 void Copy(const XPUDeviceContext& dev_ctx,
           const DenseTensor& src,
+          bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   auto* dst_ptr = dst->mutable_data();
@@ -75,7 +76,4 @@ void Copy(const XPUDeviceContext& dev_ctx,
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(UtilsXPU);
-
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", XPU, ANY, pten::Copy) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, XPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}

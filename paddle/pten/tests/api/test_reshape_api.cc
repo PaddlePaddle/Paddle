@@ -15,17 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(ManipulationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(ManipulationCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -68,3 +65,19 @@ TEST(API, reshape) {
   }
   ASSERT_EQ(value_equal, true);
 }
+
+TEST(Tensor, old_reshape) {
+  paddle::experimental::Tensor x(paddle::PlaceType::kCPU);
+  x.reshape({3, 4});
+
+  ASSERT_EQ(x.shape()[0], 3);
+  ASSERT_EQ(x.shape()[1], 4);
+  ASSERT_EQ(x.numel(), 12);
+  ASSERT_EQ(x.is_cpu(), true);
+  ASSERT_EQ(x.type(), pten::DataType::UNDEFINED);
+  ASSERT_EQ(x.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(x.initialized(), false);
+}
+
+}  // namespace tests
+}  // namespace paddle

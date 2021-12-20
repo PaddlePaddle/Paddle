@@ -31,32 +31,32 @@ TEST(dense_tensor, meta) {
   CHECK(!meta_0.valid());
 
   DenseTensorMeta meta_1(dtype, dims);
-  CHECK(meta_1.type == dtype);
+  CHECK(meta_1.dtype == dtype);
   CHECK(meta_1.dims == dims);
   CHECK(meta_1.valid());
 
   DenseTensorMeta meta_2(dtype, dims, layout);
-  CHECK(meta_2.type == dtype);
+  CHECK(meta_2.dtype == dtype);
   CHECK(meta_2.dims == dims);
   CHECK(meta_2.layout == layout);
   CHECK(meta_2.valid());
 
   DenseTensorMeta meta_3(dtype, dims, layout, lod);
-  CHECK(meta_3.type == dtype);
+  CHECK(meta_3.dtype == dtype);
   CHECK(meta_3.dims == dims);
   CHECK(meta_3.layout == layout);
   CHECK(meta_3.lod == lod);
   CHECK(meta_3.valid());
 
   DenseTensorMeta meta_4(meta_3);
-  CHECK(meta_4.type == dtype);
+  CHECK(meta_4.dtype == dtype);
   CHECK(meta_4.dims == dims);
   CHECK(meta_4.layout == layout);
   CHECK(meta_4.lod == lod);
   CHECK(meta_4.valid());
 
   DenseTensorMeta meta_5(std::move(meta_4));
-  CHECK(meta_5.type == dtype);
+  CHECK(meta_5.dtype == dtype);
   CHECK(meta_5.dims == dims);
   CHECK(meta_5.layout == layout);
   CHECK(meta_5.lod == lod);
@@ -82,7 +82,7 @@ TEST(dense_tensor, ctor) {
     bool r{true};
     r = r && (t.numel() == product(m.dims));
     r = r && (t.dims() == m.dims);
-    r = r && (t.dtype() == m.type);
+    r = r && (t.dtype() == m.dtype);
     r = r && (t.layout() == m.layout);
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();

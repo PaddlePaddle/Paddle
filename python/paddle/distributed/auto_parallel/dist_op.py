@@ -219,6 +219,17 @@ class DistributedOperator:
 
         return str
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == "_serial_op" or k == "_serial_inputs" or k == "_serial_outputs":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
 
 class DistributedModule:
     def __init__(self, serial_module, dist_attr=None):

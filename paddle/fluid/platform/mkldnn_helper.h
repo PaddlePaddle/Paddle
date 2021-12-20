@@ -230,6 +230,9 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
       } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
                  strides[1] >= strides[0]) {
         return dnnl::memory::format_tag::cdba;
+      } else if (strides[3] >= strides[2] && strides[2] >= strides[0] &&
+                 strides[0] >= strides[1]) {
+        return dnnl::memory::format_tag::dcab;
       } else {
         return dnnl::memory::format_tag::nhwc;
       }
@@ -339,34 +342,34 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(const dnnl::memory memory) {
   return GetMKLDNNFormat(mem_desc);
 }
 
-inline mkldnn::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
+inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
     case 1:
-      return mkldnn::memory::format_tag::a;
+      return dnnl::memory::format_tag::a;
       break;
     case 2:
-      return mkldnn::memory::format_tag::ab;
+      return dnnl::memory::format_tag::ab;
       break;
     case 3:
-      return mkldnn::memory::format_tag::abc;
+      return dnnl::memory::format_tag::abc;
       break;
     case 4:
-      return mkldnn::memory::format_tag::abcd;
+      return dnnl::memory::format_tag::abcd;
       break;
     case 5:
-      return mkldnn::memory::format_tag::abcde;
+      return dnnl::memory::format_tag::abcde;
       break;
     case 6:
-      return mkldnn::memory::format_tag::abcdef;
+      return dnnl::memory::format_tag::abcdef;
       break;
     case 7:
-      return mkldnn::memory::format_tag::abcdefg;
+      return dnnl::memory::format_tag::abcdefg;
       break;
     case 8:
-      return mkldnn::memory::format_tag::abcdefgh;
+      return dnnl::memory::format_tag::abcdefgh;
       break;
     case 9:
-      return mkldnn::memory::format_tag::abcdefghi;
+      return dnnl::memory::format_tag::abcdefghi;
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

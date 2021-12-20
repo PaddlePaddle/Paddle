@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/bkcl_helper.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -148,6 +148,23 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
         "LoDTensor are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
   }
+}
+
+void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
+  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  const auto &place = src_tensor->place();
+  platform::BKCLComm *comm =
+      platform::BKCLCommContext::Instance().Get(ring_id, place);
+  XPUStream stream = comm->stream();
+
+  void *src_ptr = src_tensor->data<void>();
+  auto data_type = platform::ToBKCLDataType(src_tensor->type());
+
+  PADDLE_ENFORCE_EQ(bkcl_broadcast(comm->comm(), src_ptr, src_ptr,
+                                   src_tensor->numel(), data_type, 0, stream),
+                    BKCL_SUCCESS,
+                    platform::errors::Unavailable("bkcl_broadcast failed"));
 }
 
 paddle::platform::DeviceContext *BKCLParallelContext::GetDeviceContext(

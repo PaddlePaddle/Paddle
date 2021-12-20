@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 DECLARE_uint64(conv_workspace_size_limit);
 
@@ -95,15 +95,15 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionDescriptor_t* conv_desc =
         new cudnnConvolutionDescriptor_t[4];
     for (int i = 0; i < 4; ++i) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateFilterDescriptor(&filter_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&bias_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&in_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&out_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnCreateConvolutionDescriptor(&conv_desc[i]));
     }
 
@@ -127,11 +127,11 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < 4; ++i) {
       filter_dims.push_back(framework::vectorize<int>(filters[i]->dims()));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
           filter_desc[i], cudnn_dtype, format, 4, filter_dims[i].data()));
       bias_dims.push_back({1, filter_dims[i][0], 1, 1});
       bias_strides.push_back({filter_dims[i][0], 1, 1, 1});
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           bias_desc[i], cudnn_dtype, 4, bias_dims[i].data(),
           bias_strides[i].data()));
       in_dims.push_back({n, filter_dims[i][1], h, w});
@@ -140,22 +140,21 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       out_strides.push_back({oc * h * w, h * w, w, 1});
 
       if (i < 2) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnSetConvolutionNdDescriptor(
                 conv_desc[i], 2, k0x0.data(), k1x1.data(), k1x1.data(),
                 CUDNN_CROSS_CORRELATION, compute_type));
       } else {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnSetConvolutionNdDescriptor(
                 conv_desc[i], 2, k1x1.data(), k1x1.data(), k1x1.data(),
                 CUDNN_CROSS_CORRELATION, compute_type));
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
-                                                         CUDNN_DEFAULT_MATH));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+          conv_desc[i], CUDNN_DEFAULT_MATH));
 #if CUDA_VERSION >= 11000 && CUDNN_VERSION >= 8000
       if (!platform::allow_tf32_cudnn) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
                                                            CUDNN_FMA_MATH));
       }
@@ -165,7 +164,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     in_strides[2][0] = oc * h * w;
     out_strides[2][0] = filter_dims[2][0] * h * w;  // this out is continuous.
     in_strides[3][0] = filter_dims[2][0] * h * w;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnSetConvolutionGroupCount(conv_desc[2], 2));
 
     cudnnConvolutionFwdAlgo_t algo[4];
@@ -181,9 +180,9 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     }
 
     for (int i = 0; i < 4; ++i) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           in_desc[i], cudnn_dtype, 4, in_dims[i].data(), in_strides[i].data()));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           out_desc[i], cudnn_dtype, 4, out_dims[i].data(),
           out_strides[i].data()));
 
@@ -192,13 +191,13 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       size_t tmp_size = 0;
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
           new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
               kNUM_CUDNN_FWD_ALGS, &perf_count, perf_results.get()));
       algo[i] = (perf_results.get())[best_algo_idx].algo;
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
               algo[i], &tmp_size));
@@ -215,7 +214,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     // branch1: pool + 1x1 conv
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
         pool_out_desc, temp_data));
 
@@ -237,7 +236,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < 4; ++i) {
       auto func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnConvolutionBiasActivationForward(
                 handle, &alpha, in_desc[i], in_datas[i], filter_desc[i],
                 static_cast<const void*>(filters[i]->data<T>()), conv_desc[i],
@@ -252,34 +251,34 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     cudnnTensorDescriptor_t x_desc;
     cudnnTensorDescriptor_t y_desc;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&x_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&y_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         x_desc, cudnn_dtype, 4, out_dims[3].data(), out_strides[2].data()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         y_desc, cudnn_dtype, 4, out_dims[3].data(), out_strides[3].data()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnTransformTensor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnTransformTensor(
         handle, CudnnDataType<T>::kOne(), x_desc,
         static_cast<const void*>(out_datas[2]), CudnnDataType<T>::kZero(),
         y_desc, static_cast<void*>(output_data + (oc0 + oc1) * h * w)));
 
     for (int i = 0; i < 4; ++i) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(in_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(out_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyFilterDescriptor(filter_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(bias_desc[i]));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDestroyConvolutionDescriptor(conv_desc[i]));
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(x_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(y_desc));
   }
 };

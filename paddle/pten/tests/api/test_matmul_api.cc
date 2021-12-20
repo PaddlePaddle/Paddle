@@ -15,18 +15,15 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/linalg.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/cuda/utils.h"
 
-PT_DECLARE_MODULE(LinalgCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(LinalgCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -158,3 +155,6 @@ TEST(API, matmul_cuda) {
 }
 
 #endif
+
+}  // namespace tests
+}  // namespace paddle

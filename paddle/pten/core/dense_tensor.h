@@ -90,7 +90,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override { return meta_.type; }
+  DataType dtype() const noexcept override { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
@@ -127,7 +127,11 @@ class DenseTensor : public TensorBase,
   /// larger than the original value, the storage area will be reallocated.
   /// \param dims The new dims of the dense tensor.
   /// \param lod The new lod of the dense tensor.
-  void Resize(const DDim& dims, const LoD& lod = {});
+  void Resize(const DDim& dims);
+
+  /// \brief Change the lod information in the metadata.
+  /// \param lod The new lod of the dense tensor.
+  void ResetLoD(const LoD& lod);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.

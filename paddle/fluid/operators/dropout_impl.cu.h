@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -167,14 +167,14 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     auto* y_data = y->data<T>();
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #endif
       return;
@@ -244,34 +244,42 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                 const std::string dropout_implementation,
                                 float dropout_prob, const Tensor& grad_y,
                                 const Tensor& mask, int64_t size,
-                                Tensor* grad_x) {
-  auto M = EigenVector<uint8_t>::Flatten(mask);
+                                Tensor* grad_x, bool is_test = false) {
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(grad_y);
 
   auto& place = *dev_ctx.eigen_device();
-  if (dropout_implementation == "upscale_in_train") {
-    if (dropout_prob == 1.0f) {
-      dX.device(place) = static_cast<T>(0) * dY;
+  if (is_test) {
+    if (dropout_implementation == "upscale_in_train") {
+      dX.device(place) = static_cast<T>(1) * dY;
     } else {
-      int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
-      if (vec_size == 4 && size % 4 == 0) {
-        auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-        auto stream = dev_ctx.stream();
-        platform::GpuLaunchConfig config =
-            platform::GetGpuLaunchConfig1D(dev_ctx, size);
-        DropoutGradCUDAKernel<
-            T, uint8_t,
-            4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-            grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
-            grad_x->data<T>());
-      } else {
-        dX.device(place) =
-            dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
-      }
+      dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
     }
   } else {
-    dX.device(place) = dY * M.cast<T>();
+    auto M = EigenVector<uint8_t>::Flatten(mask);
+    if (dropout_implementation == "upscale_in_train") {
+      if (dropout_prob == 1.0f) {
+        dX.device(place) = static_cast<T>(0) * dY;
+      } else {
+        int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
+        if (vec_size == 4 && size % 4 == 0) {
+          auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+          auto stream = dev_ctx.stream();
+          platform::GpuLaunchConfig config =
+              platform::GetGpuLaunchConfig1D(dev_ctx, size);
+          DropoutGradCUDAKernel<
+              T, uint8_t,
+              4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+              grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
+              grad_x->data<T>());
+        } else {
+          dX.device(place) =
+              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+        }
+      }
+    } else {
+      dX.device(place) = dY * M.cast<T>();
+    }
   }
 }
 
