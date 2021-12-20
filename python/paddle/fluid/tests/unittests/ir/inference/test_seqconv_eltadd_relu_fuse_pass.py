@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -45,62 +45,48 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
 
-        ops_config = [{
-            "op_type": "im2sequence",
-            "op_inputs": {
-                "X": ["input_data"]
-            },
-            "op_outputs": {
-                "Out": ["seq_out"]
-            },
-            "op_attrs": {
+        im2sequence_op = OpConfig(
+            type="im2sequence",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["seq_out"]},
+            attrs={
                 "kernels": [6, 1],
                 "out_stride": [1, 1],
                 "paddings": [0, 0, 0, 0],
                 "strides": [1, 1]
-            }
-        }, {
-            "op_type": "sequence_conv",
-            "op_inputs": {
-                "X": ["seq_out"],
-                "Filter": ["conv_weight"]
-            },
-            "op_outputs": {
-                "Out": ["conv_out"]
-            },
-            "op_attrs": {
+            })
+
+        sequence_conv_op = OpConfig(
+            type="sequence_conv",
+            inputs={"X": ["seq_out"],
+                    "Filter": ["conv_weight"]},
+            outputs={"Out": ["conv_out"]},
+            attrs={
                 "contextLength": contextLength,
                 "contextStart": contextStart,
                 "contextStride": contextStride,
                 "paddingTrainable": paddingTrainable
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["conv_out"],
-                "Y": ["elt_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elt_output"]
-            },
-            "op_attrs": {
-                'axis': axis
-            }
-        }, {
-            "op_type": "relu",
-            "op_inputs": {
-                "X": ["elt_output"]
-            },
-            "op_outputs": {
-                "Out": ["relu_output"]
-            },
-            "op_attrs": {}
-        }]
+            })
 
-        ops = self.generate_op_config(ops_config)
+        elementwise_add_op = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["conv_out"],
+                    "Y": ["elt_weight"]},
+            outputs={"Out": ["elt_output"]},
+            attrs={'axis': axis})
+
+        relu_op = OpConfig(
+            type="relu",
+            inputs={"X": ["elt_output"]},
+            outputs={"Out": ["relu_output"]},
+            attrs={})
+
+        model_net = [
+            im2sequence_op, sequence_conv_op, elementwise_add_op, relu_op
+        ]
 
         program_config = ProgramConfig(
-            ops=ops,
+            ops=model_net,
             weights={
                 "conv_weight": TensorConfig(data_gen=partial(
                     generate_weight, [768 * contextLength, 16])),
