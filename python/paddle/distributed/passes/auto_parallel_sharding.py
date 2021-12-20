@@ -76,6 +76,8 @@ class ShardingPass(PassBase):
         self.dp_groups = set()
         self.sharding_infos = []
         self.var2sharding_info = {}
+        self.outer_dp_group = None
+        self.partial_sharding = False
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
@@ -110,6 +112,8 @@ class ShardingPass(PassBase):
         self._build_sharding_group(main_program, params_grads)
         self._shard_optimizer(main_program, startup_program, params_grads,
                               context)
+        self._update_gradient_synchronization(main_program)
+        self._shard_parameter(main_program, startup_program)
 
     def _build_sharding_group(self, main_program, params_grads):
 
@@ -152,17 +156,22 @@ class ShardingPass(PassBase):
 
             # sharding hybrid data parallel: partial sharding param within 
             if dp_group.nranks > self.sharding_world_size:
-                partial_group = get_partial_group(
+                self.partial_sharding = True
+                assert len(
+                    self.dp_groups
+                ) == 1, "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
+                outer_dp_group, sharding_group = get_dp_and_sharding_groups(
                     dp_group.ranks, self.sharding_world_size, self.global_rank)
-                group = new_process_group(partial_group)
+                sharding_group = new_process_group(sharding_group)
+                self.outer_dp_group = new_process_group(outer_dp_group)
             else:
-                group = dp_group
+                sharding_group = dp_group
 
             # TODO when support multiple dp groups in future, should group param and bind them to corresponding dp group
             params_in_group = [p for p, g in params_grads]
             assert len(params_in_group) == len(set(
                 params_in_group)), "found duplicated param in params_grads"
-            sharding_info = ShardingInfo(group, self.global_rank,
+            sharding_info = ShardingInfo(sharding_group, self.global_rank,
                                          params_in_group)
             self.sharding_infos.append(sharding_info)
             for param in params_in_group:
@@ -182,10 +191,10 @@ class ShardingPass(PassBase):
         # remove dependencies of gradient that not belong to local rank
         # allow the gradinet to be GC in time
 
-        # self._shard_amp_backward(main_block, pass_context)
-        # self._shard_weight_decay(main_block)
-        # self._shard_gradient_clip(main_block)
-        # self._shard_weight_decay(main_block)
+        self._shard_amp_backward(main_block, pass_context)
+        self._shard_weight_decay(main_block)
+        self._shard_gradient_clip(main_block)
+        self._shard_weight_decay(main_block)
 
         self._shard_optimizer_ops_and_states(main_block, startup_block)
 
@@ -343,7 +352,7 @@ class ShardingPass(PassBase):
                         outputs={'Out': param},
                         attrs={
                             'ring_id': sharding_info.group.id,
-                            'root': sharding_info.param2rank[param],
+                            'root': sharding_info.get_var_rank(param.name),
                             'use_calc_stream': True,
                             OP_ROLE_KEY: role
                         })
@@ -359,21 +368,130 @@ class ShardingPass(PassBase):
         sharding_info = self.var2sharding_info[param_name]
         return sharding_info.is_in_local_shard(param_name)
 
+    def _update_gradient_synchronization(self, main_program):
+        main_block = main_program.global_block()
+        dp_ring_ids = [group.id for group in self.dp_groups]
+        for idx, op in reversed(list(enumerate(main_block.ops))):
+            if is_gradient_allreduce(op, main_block, dp_ring_ids):
+                input_name = op.input_arg_names[0]
+                base_name = get_base_name_from_grad_name(input_name)
+                assert main_block.var(
+                    base_name
+                ).is_parameter, "[{}] should be a parameter".format(base_name)
+                sharding_info = self.var2sharding_info[base_name]
+                insert_reduce_op(
+                    main_block, idx, input_name, sharding_info.group.id,
+                    sharding_info.get_var_rank(base_name), self._dist_context)
 
-def get_partial_group(origin_group, partial_group_size, rank):
-    chunk_groups = chunks(origin_group, partial_group_size)
-    partial_group = None
-    for ranks in chunk_groups:
-        if rank in ranks:
-            partial_group = ranks[:]
-    assert partial_group is not None
+                if not self.partial_sharding:
+                    main_block._remove_op(idx + 1, sync=False)
+                else:
+                    op._set_attr("ring_id", self.outer_dp_group.id)
 
-    return partial_group
+        main_block._sync_with_cpp
+
+    def _shard_parameter(self, main_program, startup_program):
+        main_block = main_program.global_block()
+        startup_block = startup_program.global_block()
+
+        for sharding_info in self.sharding_infos:
+            need_broadcast_vars, param_usage = sharding_info.get_broadcast_vars_and_param_usage(
+                main_block)
+            not_used_param_nane = []
+            for param_name in param_usage:
+                if param_usage[param_name] == 0 and sharding_info.get_var_rank(
+                        param_name) != sharding_info.local_rank:
+                    not_used_param_nane.append(param_name)
+
+            for idx, op in reversed(list(enumerate(main_block.ops))):
+                if is_optimizer_op(op):
+                    continue
+
+                for input_name in op.desc.input_arg_names():
+                    if input_name not in need_broadcast_vars:
+                        continue
+                    if op.type == "cast":
+                        continue
+                    root_rank = sharding_info.get_var_rank(input_name)
+                    if root_rank == sharding_info.local_rank:
+                        broadcast_varname = input_name
+                    else:
+                        broadcast_varname = unique_name.generate(input_name +
+                                                                 "@BroadCast")
+                        input_var = main_block.var(input_name)
+                        main_block.create_var(
+                            name=broadcast_varname,
+                            shape=input_var.shape,
+                            dtype=input_var.dtype,
+                            persistable=False)
+                        op._rename_input(input_name, broadcast_varname)
+
+                    _insert_init_and_broadcast_op(main_block, idx,
+                                                  broadcast_varname, root_rank,
+                                                  sharding_info.group.id,
+                                                  op.attr('op_role'))
+
+            for idx, op in reversed(list(enumerate(main_block.ops))):
+                if op.type != "cast":
+                    continue
+                input_name = op.input_arg_names[0]
+                output_name = op.output_arg_names[0]
+                if input_name in not_used_param_nane:
+                    main_block._remove_op(idx, sync=False)
+                    main_block._remove_var(output_name, sync=False)
+
+            for idx, op in reversed(list(enumerate(startup_block.ops))):
+                assert len(op.output_arg_names) == 1
+                output_name = op.output_arg_names[0]
+                if output_name in not_used_param_nane:
+                    startup_block._remove_op(idx, sync=False)
+
+            for var_name in not_used_param_nane:
+                main_block._remove_var(var_name, sync=False)
+                startup_block._remove_var(var_name, sync=False)
+
+        main_block._sync_with_cpp()
+        startup_block._sync_with_cpp()
 
 
-def chunks(list_, n):
-    n = max(1, n)
-    return (list[i:i + n] for i in range(0, len(list_), n))
+def _insert_init_and_broadcast_op(block, insert_idx, varname, root_rank,
+                                  ring_id, op_role):
+    """
+    empty op for initialization
+    """
+    block._insert_op_without_sync(
+        insert_idx,
+        type='c_broadcast',
+        inputs={'X': varname},
+        outputs={'Out': varname},
+        attrs={'ring_id': ring_id,
+               'root': root_rank,
+               OP_ROLE_KEY: op_role})
+
+    broadcast_var = block.var(varname)
+    block._insert_op_without_sync(
+        insert_idx,
+        type="empty",
+        outputs={"Out": broadcast_var.name},
+        attrs={
+            "shape": broadcast_var.shape,
+            "dtype": broadcast_var.dtype,
+            OP_ROLE_KEY: op_role
+        })
+    return
+
+
+def get_dp_and_sharding_groups(origin_group, sharding_group_size, rank):
+    from paddle.distributed.auto_parallel.utils import _get_comm_group
+
+    dp_axis = 0
+    sharding_axis = 1
+    shape = [len(origin_group) // sharding_group_size, sharding_group_size]
+
+    dp_group = _get_comm_group(origin_group, shape, dp_axis, rank)
+    sharding_group = _get_comm_group(origin_group, shape, sharding_axis, rank)
+
+    return dp_group, sharding_group
 
 
 def _is_gradient_clip_op(op):
@@ -416,36 +534,84 @@ def is_amp_related_param_grad_cast_op(block, op):
     return block.var(base_name).is_parameter
 
 
+def _is_fp16_cast_op(block, op, params):
+    if op.type != "cast":
+        return False
+    if is_optimizer_op(op):
+        return False
+    assert (len(op.desc.input_arg_names()) == 1)
+    assert (len(op.desc.output_arg_names()) == 1)
+    input_name, output_name = op.desc.input_arg_names()[
+        0], op.desc.output_arg_names()[0]
+    if input_name not in params:
+        return False
+    input_var = block.var(input_name)
+    output_var = block.var(output_name)
+    if input_var.dtype != core.VarDesc.VarType.FP32 or \
+        output_var.dtype != core.VarDesc.VarType.FP16:
+        return False
+    return True
+
+
 class ShardingInfo(object):
     def __init__(self, group, rank, params):
         self.group = group
         self.params = params
+        self.param_names = [p.name for p in self.params]
         self.group_size = group.nranks
         self.global_rank = rank
         self.local_rank = group.ranks.index(self.global_rank)
         # rank in below mapping are local rank in this sharding group
-        self.rank2params = shard_parameters(self.params, self.group_size)
-        self.param2rank = dict()
+        self.rank_to_params = shard_parameters(self.params, self.group_size)
+        # include fp32 and fp16 param
+        self.param_to_rank = dict()
         self._map_param_to_rank()
-        self._param_names_in_local_shard = set()
-        self._shard_params()
 
     def _map_param_to_rank(self):
         """
         mapping parameters to the rank which holds it.
         """
-        for rank, params in self.rank2params.items():
+        for rank, params in self.rank_to_params.items():
             for param in params:
-                self.param2rank[param] = rank
+                self.param_to_rank[param.name] = rank
 
-    def _shard_params(self):
-        for p, rank in self.param2rank.items():
-            if rank == self.local_rank:
-                self._param_names_in_local_shard.add(p.name)
-        assert len(self._param_names_in_local_shard) > 0
+    def get_var_rank(self, varname):
+        if varname in self.param_to_rank:
+            return self.param_to_rank[varname]
+        return -1
 
     def is_in_local_shard(self, param_name):
-        return param_name in self._param_names_in_local_shard
+        return self.get_var_rank(param_name) == self.local_rank
+
+    def get_broadcast_vars_and_param_usage(self, block):
+        broadcast_vars = set([])
+        fp16_params = set([])
+        fp16_to_fp32 = {}
+
+        param_usage = {x: 0 for x in self.param_names}
+        for op in block.ops:
+            if is_optimizer_op(op):
+                continue
+            for input_name in op.desc.input_arg_names():
+                if input_name in self.param_names:
+                    param_usage[input_name] += 1
+
+        for op in block.ops:
+            if not _is_fp16_cast_op(block, op, self.param_names):
+                continue
+            input_name = op.input_arg_names[0]
+            output_name = op.output_arg_names[0]
+            broadcast_vars.add(output_name)
+            fp16_params.add(output_name)
+            fp16_to_fp32[output_name] = input_name
+            param_usage[input_name] -= 1
+            self.param_to_rank[output_name] = self.param_to_rank[input_name]
+
+        for param, usage in param_usage.items():
+            if usage > 0:
+                broadcast_vars.add(param)
+                print("param [{}] use in fp32 format".format(param))
+        return broadcast_vars, param_usage
 
 
 def shard_parameters(params, group_size):
@@ -467,3 +633,58 @@ def shard_parameters(params, group_size):
         sizes[rank] += numel
 
     return mapping
+
+
+def get_base_name_from_grad_name(grad_name):
+    base_name = None
+    if ".cast_fp16@GRAD" in grad_name:
+        base_name = grad_name[:grad_name.find(".cast_fp16@GRAD")]
+    elif "@GRAD" in grad_name:
+        base_name = grad_name[:grad_name.find("@GRAD")]
+    return base_name
+
+
+def is_gradient_allreduce(op, block, dp_ring_ids):
+
+    if not is_backward_op(op):
+        return False
+    if op.type != "c_allreduce_sum":
+        return False
+    if op.attr('ring_id') not in dp_ring_ids:
+        return False
+
+    output_name = op.output_arg_names[0]
+    base_name = get_base_name_from_grad_name(output_name)
+
+    if not block.has_var(base_name):
+        return False
+
+    return block.var(base_name).is_parameter
+
+
+def insert_reduce_op(block,
+                     insert_idx,
+                     reduce_var,
+                     ring_id,
+                     root_id,
+                     dist_context,
+                     op_role=OpRole.Backward,
+                     use_calc_stream=True):
+    assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
+        root_id)
+    new_op = block._insert_op_without_sync(
+        insert_idx,
+        type='c_reduce_sum',
+        inputs={'X': [reduce_var]},
+        outputs={'Out': [reduce_var]},
+        attrs={
+            'ring_id': ring_id,
+            'root_id': root_id,
+            'use_calc_stream': use_calc_stream,
+            OP_ROLE_KEY: op_role
+        })
+
+    dist_attr = dist_context.get_tensor_dist_attr_for_program(
+        block.var(reduce_var))
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context)
