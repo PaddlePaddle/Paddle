@@ -1973,10 +1973,10 @@ class Executor(object):
             fleet_exe_desc.cluster_info.append(rank_info)
         if "num_micro_batches" in fleet_opt:
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
+
         assert 'scheduler' in fleet_opt or 'tasks' in fleet_opt, \
             "Fleet executor need configuration for scheduler, you can choose from 1F1B or Origin. " \
             "Or you can provide a list of task nodes to init fleet executor directly."
-
         if 'tasks' in fleet_opt:
             assert 'task_id_to_rank' in fleet_opt, "If you provide tasks to init fleet executor," \
                                                    " task_id_to_rank should also be provided."
