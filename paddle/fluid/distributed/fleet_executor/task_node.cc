@@ -25,7 +25,8 @@ using OperatorBase = TaskNode::OperatorBase;
 
 TaskNode::TaskNode(const paddle::framework::ProgramDesc& program, int64_t rank,
                    int64_t max_run_times, int64_t max_slot_nums)
-    : program_(program) rank_(rank),
+    : program_(program),
+      rank_(rank),
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {
   // Should be serially invoked, not thread-safe
