@@ -17,18 +17,8 @@ import sys
 import six
 from distutils.sysconfig import get_python_lib
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
-from paddle.path import get_python_paddle_path
 
 IS_MAC = sys.platform.startswith('darwin')
-from paddle.utils.cpp_extension import get_build_directory
-
-build_path = os.path.abspath(os.path.join(get_python_paddle_path(), '..', '..'))
-paddle_path = os.path.abspath(os.path.join(build_path, '..'))
-
-path = os.path.abspath("")
-eigen_path = os.path.abspath(
-    os.path.join(path, '..', '..', '..', '..', '..', 'third_party', 'eigen3',
-                 'src', 'extern_eigen3'))
 
 site_packages_path = get_python_lib()
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
@@ -38,14 +28,8 @@ site_packages_path = get_python_lib()
 paddle_includes = [
     os.path.join(site_packages_path, 'paddle', 'include'),
     os.path.join(site_packages_path, 'paddle', 'include', 'third_party'),
-    os.path.join(site_packages_path, 'paddle', 'include', 'third_party',
-                 'eigen3', 'src', 'extern_eigen3'),
-    os.path.join(paddle_path),
-    os.path.join(paddle_path, 'paddle', 'fluid', 'platform'),
-    eigen_path,
-    "C:\\home\\workspace\\cache\\third_party\\cpu\\42f1341df65c796cf2b261c10cd2e4af\\eigen3\\src\\extern_eigen3",
-    "C:\\home\\workspace\\cache\\third_party\\eigen3\\src\\extern_eigen3",
-    "C:\\home\\workspace\\cache\\third_party\\cuda102\\42f1341df65c796cf2b261c10cd2e4af\\eigen3\\src\\extern_eigen3",
+    "/home/ppaturej/Paddle",
+    "/home/ppaturej/Paddle/paddle/fluid/platform",
 ]
 
 # Test for extra compile args

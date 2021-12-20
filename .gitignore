@@ -36,3 +36,4 @@ model_test
 
 Testing
 tools/__pycache__
+paddle/utils/eigen_include.h

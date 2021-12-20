@@ -21,7 +21,7 @@
 #endif
 #endif
 
-#include "unsupported/Eigen/CXX11/Tensor"
+#include "paddle/utils/eigen_include.h"
 
 namespace paddle {
 namespace platform {

@@ -20,6 +20,8 @@ set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
 set(EIGEN_TAG        f612df273689a19d25b45ca4f8269463207c4fee)
 
+file(WRITE ${PADDLE_SOURCE_DIR}/paddle/utils/eigen_include.h "#include \"${EIGEN_SOURCE_DIR}/Eigen/Core\"")
+
 if(WIN32)
     add_definitions(-DEIGEN_STRONG_INLINE=inline)
 elseif(LINUX)
