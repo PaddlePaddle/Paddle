@@ -14,25 +14,20 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
-template <typename T>
-void FullLike(const CUDAContext& dev_ctx, const Scalar& val, DenseTensor* out);
-
-template <typename T>
-void Full(const CUDAContext& dev_ctx,
+template <typename T, typename ContextT>
+void Full(const ContextT& dev_ctx,
           const ScalarArray& shape,
           const Scalar& val,
           DenseTensor* out);
 
-}  // namespace pten
+template <typename T, typename ContextT>
+void FullLike(const ContextT& dev_ctx, const Scalar& val, DenseTensor* out);
 
-#endif
+}  // namespace pten
