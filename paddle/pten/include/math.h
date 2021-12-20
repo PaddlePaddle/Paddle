@@ -17,7 +17,9 @@ limitations under the License. */
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/kernels/cpu/conj_kernel.h"
 #include "paddle/pten/kernels/cpu/math.h"
+#include "paddle/pten/kernels/cuda/conj_kernel.h"
 #include "paddle/pten/kernels/cuda/math.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
@@ -139,4 +141,16 @@ DenseTensor Multiply(const ContextT& dev_ctx,
   Multiply<T>(dev_ctx, x, y, axis, &dense_out);
   return dense_out;
 }
+
+template <typename T, typename ContextT>
+DenseTensor Conj(const ContextT& dev_ctx, const DenseTensor& x) {
+  auto out_meta = UnchangedInferMeta(x.meta());
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  Conj<T>(dev_ctx, x, &dense_out);
+  return dense_out;
+}
+
 }  // namespace pten
