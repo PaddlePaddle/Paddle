@@ -229,10 +229,21 @@ if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 2 6888866 39303645
   fi
 
-HAS_ALLOC_SHARED=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "AllocShared" || true`
-if [ ${HAS_ALLOC_SHARED} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="memory::AllocShared is not recommended, because it is being modularized and refactored. Please use memory::Alloc here. Otherwise, please request zhiqiu and Shixiaowei02 review and approve.\n"
-    check_approval 2 6888866 39303645
+ALLOCSHARED_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -E "*\.(h|cc)" || true`
+if [ "${ALLOCSHARED_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for TEST_FILE in ${ALLOCSHARED_FILE_CHANGED};
+    do
+        HAS_SKIP_CHECK_ALLOC_CI=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep "AllocShared" || true`
+        if [ "${HAS_SKIP_CHECK_ALLOC_CI}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${HAS_SKIP_CHECK_ALLOC_CI}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="memory::AllocShared is not recommended, because it is being modularized and refactored. Please use memory::Alloc here. Otherwise, please request zhiqiu and Shixiaowei02 review and approve.\n"
+        check_approval 2 6888866 39303645
+    fi
 fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
