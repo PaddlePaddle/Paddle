@@ -39,7 +39,7 @@ void BindFleetExecutor(py::module* m) {
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<TaskNode>(*m, "TaskNode")
-      .def(py::init<const framework::ProgramDesc&, int64_t, int64_t, int64_t>())
+      .def(py::init<const framework::ProgramDesc*, int64_t, int64_t, int64_t>())
       .def(py::init<int32_t, const std::vector<framework::OpDesc*>&, int64_t,
                     int64_t, int64_t, int64_t>())
       .def("task_id", &TaskNode::task_id)

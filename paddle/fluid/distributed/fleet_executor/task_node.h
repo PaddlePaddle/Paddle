@@ -40,11 +40,11 @@ class TaskNode final {
   TaskNode(int32_t role, const std::vector<framework::OperatorBase*>& ops,
            int64_t rank, int64_t task_id, int64_t max_run_times,
            int64_t max_slot_nums);
-  TaskNode(const paddle::framework::ProgramDesc& program, int64_t rank,
+  TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
            int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
 
-  void SetProgram(const paddle::framework::ProgramDesc& program);
+  void SetProgram(paddle::framework::ProgramDesc* program);
   void Init();
   int64_t rank() const { return rank_; }
   int64_t task_id() const { return task_id_; }
@@ -96,7 +96,7 @@ class TaskNode final {
   // task_id-->buff_size
   std::unordered_map<int64_t, int64_t> upstream_;
   std::unordered_map<int64_t, int64_t> downstream_;
-  framework::ProgramDesc program_;
+  framework::ProgramDesc* program_;
   std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
