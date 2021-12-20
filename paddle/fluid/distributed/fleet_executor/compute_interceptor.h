@@ -39,7 +39,6 @@ class ComputeInterceptor : public Interceptor {
   void DecreaseBuff(int64_t down_id);
   bool IsInputReady();
   bool CanWriteOutput();
-  bool ShouldReset();
 
   void Run();
   void Compute(const InterceptorMessage& msg);

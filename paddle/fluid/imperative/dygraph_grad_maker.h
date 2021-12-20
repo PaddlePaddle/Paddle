@@ -236,6 +236,7 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
+        VLOG(6) << "SetIutput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
@@ -267,11 +268,22 @@ class TracedGradOp {
         return;
       } else {
         for (auto& var : vars) {
+          VLOG(6) << "SetOutput var name: " << var->Name();
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              // Because inplace var isn't a leaf var, it should have
+              // dirty_grad_node.
               node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
-            } else {
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(map_dirty_grad_node_[var].get()))[0].Type();
+            } else if (node_ != var->GradNode()) {
+              // For non-inplace var.
+              // Special case: `set_value` is inplace op, and it can change
+              // the var with `stop_gradient=True` to the var with
+              // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(var->GradNode().get()))[0].Type();
             }
           }
         }
