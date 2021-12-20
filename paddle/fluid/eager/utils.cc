@@ -252,13 +252,14 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
   return ret;
 }
 
-void EagerUtils::CheckRetainGrad(const egr::EagerTensor& tensor) {
+void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
   if (FLAGS_retain_grad_for_all_tensor) {
     egr::egr_utils_api::RetainGradForTensor(tensor);
   }
 }
 
-void EagerUtils::CheckRetainGrad(const std::vector<egr::EagerTensor>& tensors) {
+void EagerUtils::CheckAndRetainGrad(
+    const std::vector<egr::EagerTensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
       egr::egr_utils_api::RetainGradForTensor(tensor);

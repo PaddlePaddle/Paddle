@@ -1322,7 +1322,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   for (const proto::OpProto::Var& input : in_vars) {
     const std::string& input_name = input.name();
     generated_function_body +=
-        "  egr::EagerUtils::CheckRetainGrad(" + input_name + ");\n";
+        "  egr::EagerUtils::CheckAndRetainGrad(" + input_name + ");\n";
   }
   VLOG(6) << "Generated Call RetainGradForTensor";
 
