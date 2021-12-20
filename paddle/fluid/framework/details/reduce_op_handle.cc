@@ -193,7 +193,7 @@ void ReduceOpHandle::RunImpl() {
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
-              PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
+              PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
                   buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
                   ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
             });

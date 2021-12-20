@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 
+#include <utility>
 #include <vector>
 
 #include "paddle/pten/core/compat_utils.h"
@@ -342,6 +343,29 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
   MovesStorage(src, static_cast<paddle::framework::Tensor*>(dst));
 }
 
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::Tensor* dst) {
+  PADDLE_ENFORCE_NOT_NULL(
+      src,
+      platform::errors::InvalidArgument(
+          "The source DenseTensor is nullptr when move allocation."));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst,
+      platform::errors::InvalidArgument(
+          "The destination Tensor is nullptr when move allocation."));
+  dst->Resize(src->dims());
+  auto* storage = static_cast<SharedStorage*>(
+      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
+  dst->ResetHolderWithType(storage->GetAllocation(),
+                           pten::TransToProtoVarType(src->dtype()));
+}
+
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::LoDTensor* dst) {
+  MovesSharedStorage(src, static_cast<paddle::framework::Tensor*>(dst));
+  SetLoD(dst->mutable_lod(), src->lod());
+}
+
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst) {
@@ -349,6 +373,28 @@ void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
   meta->dims = src.dims();
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataType&>(meta->dtype) = arg_def.dtype;
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataLayout&>(meta->layout) =
+      pten::TransToPtenDataLayout(src.layout());
+
+  auto* shared_storage = static_cast<SharedStorage*>(
+      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
+  PADDLE_ENFORCE_NOT_NULL(
+      shared_storage,
+      platform::errors::NotFound(
+          "Target DenseTensor's shared storage is nullptr."));
+
+  if (src.IsInitialized()) {
+    shared_storage->ResetAllocation(src.Holder(), src.offset());
+  }
+}
+
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           pten::DenseTensor* dst) {
+  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  meta->dims = src.dims();
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataLayout&>(meta->layout) =
       pten::TransToPtenDataLayout(src.layout());

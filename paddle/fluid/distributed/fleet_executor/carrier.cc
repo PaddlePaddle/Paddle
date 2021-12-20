@@ -18,6 +18,7 @@
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -48,10 +49,11 @@ void Carrier::Release() {
   // otherwise Derived object will be destructed before thread complete.
 
   // Sending STOP msg to the source interceptor
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
-                        "Message bus has not been initialized."));
+                        "Using message bus since it has not been initialized. "
+                        "Please invoke MessageBus::Init() before using it or "
+                        "neccessary components are not ready."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
             << ".";
@@ -60,7 +62,7 @@ void Carrier::Release() {
     stop_msg.set_src_id(-1);
     stop_msg.set_dst_id(id);
     stop_msg.set_message_type(STOP);
-    msg_bus.Send(stop_msg);
+    Send(stop_msg);
   }
 
   // TODO(wangxi): Maybe need a better to use thread.
@@ -112,11 +114,17 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   return iter->second.get();
 }
 
+void Carrier::Wait() {
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
+}
+
 void Carrier::Start() {
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
-                        "Message bus has not been initialized."));
+                        "Using message bus since it has not been initialized. "
+                        "Please invoke MessageBus::Init() before using it or "
+                        "neccessary components are not ready."));
 
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
@@ -126,17 +134,20 @@ void Carrier::Start() {
     start_msg.set_src_id(-1);
     start_msg.set_dst_id(id);
     start_msg.set_message_type(DATA_IS_READY);
-    msg_bus.Send(start_msg);
+    Send(start_msg);
   }
-
-  std::unique_lock<std::mutex> lock(running_mutex_);
-  cond_var_.wait(lock);
+  Wait();
   dev_ctx_->Wait();
 }
 
 std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
+
+// TODO(liyurui): Move SendIntra into carrier
+bool Carrier::Send(const InterceptorMessage& msg) const {
+  return msg_bus_->Send(msg);
+}
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {
@@ -146,6 +157,7 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         "The interceptor id %lld has already been created! "
                         "The interceptor id should be unique.",
                         interceptor_id));
+  interceptor->RegisterCarrier(this);
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
@@ -191,49 +203,70 @@ void Carrier::HandleTmpMessages() {
   message_tmp_.clear();
 }
 
-void Carrier::CreateInterceptors() {
-  // create each Interceptor
-  if (!(runtime_graph_->intercepter_id_to_node().empty())) {
-    // no auto init since there is no config
-    for (const auto& item : runtime_graph_->intercepter_id_to_node()) {
-      int64_t interceptor_id = item.first;
-      TaskNode* task_node = item.second;
-
-      PADDLE_ENFORCE_LT(
-          task_node->run_at_offset(), task_node->run_per_steps(),
-          platform::errors::InvalidArgument(
-              "Interceptor's run_at_offset must < run_per_steps, must now "
-              "run_at_offset=%ld run_per_steps=%ld",
-              task_node->run_at_offset(), task_node->run_per_steps()));
-
-      std::unique_ptr<Interceptor> interceptor;
-      if (task_node->type().empty()) {
-        // TODO(wangxi): delete this in future
-        interceptor.reset(new Interceptor(interceptor_id, task_node));
-      } else {
-        interceptor = InterceptorFactory::Create(task_node->type(),
-                                                 interceptor_id, task_node);
-      }
-      interceptor->SetPlace(place_);
-      interceptor->SetMiniBatchScope(minibatch_scope_);
-      interceptor->SetMicroBatchScope(microbatch_scopes_);
-      interceptor->SetRootScope(root_scope_);
-
-      SetInterceptor(interceptor_id, std::move(interceptor));
-      VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
-              << " with type: " << task_node->type() << ".";
-
-      if (task_node->upstream().empty()) {
-        source_interceptor_ids_.emplace_back(interceptor_id);
+static std::shared_ptr<framework::GarbageCollector> GetGC(
+    const platform::Place& place) {
+  int64_t max_memory_size = framework::GetEagerDeletionThreshold();
+  std::shared_ptr<framework::GarbageCollector> gc;
+  if (max_memory_size >= 0) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::is_gpu_place(place)) {
+      if (framework::IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new framework::UnsafeFastGPUGarbageCollector(
+            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       }
     }
-    // The carrier will be always waiting for outside initializer
-    // since there is no interceptor has been created during auto init
-    creating_flag_mutex_.lock();
-    creating_interceptors_ = false;
-    creating_flag_mutex_.unlock();
-    HandleTmpMessages();
+#endif
+  }  // max_memory_size >= 0
+
+  return gc;
+}
+
+void Carrier::CreateInterceptors() {
+  if (runtime_graph_->intercepter_id_to_node().empty()) return;
+
+  auto gc = GetGC(place_);
+
+  // create each Interceptor
+  // no auto init since there is no config
+  for (const auto& item : runtime_graph_->intercepter_id_to_node()) {
+    int64_t interceptor_id = item.first;
+    TaskNode* task_node = item.second;
+
+    PADDLE_ENFORCE_LT(
+        task_node->run_at_offset(), task_node->run_per_steps(),
+        platform::errors::InvalidArgument(
+            "Interceptor's run_at_offset must < run_per_steps, must now "
+            "run_at_offset=%ld run_per_steps=%ld",
+            task_node->run_at_offset(), task_node->run_per_steps()));
+
+    std::unique_ptr<Interceptor> interceptor;
+    if (task_node->type().empty()) {
+      // TODO(wangxi): delete this in future
+      interceptor.reset(new Interceptor(interceptor_id, task_node));
+    } else {
+      interceptor = InterceptorFactory::Create(task_node->type(),
+                                               interceptor_id, task_node);
+    }
+    interceptor->SetPlace(place_);
+    interceptor->SetMiniBatchScope(minibatch_scope_);
+    interceptor->SetMicroBatchScope(microbatch_scopes_);
+    interceptor->SetRootScope(root_scope_);
+    interceptor->SetGC(gc);
+
+    SetInterceptor(interceptor_id, std::move(interceptor));
+    VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id
+            << " with type: " << task_node->type() << ".";
+
+    if (task_node->upstream().empty()) {
+      source_interceptor_ids_.emplace_back(interceptor_id);
+    }
   }
+  // The carrier will be always waiting for outside initializer
+  // since there is no interceptor has been created during auto init
+  creating_flag_mutex_.lock();
+  creating_interceptors_ = false;
+  creating_flag_mutex_.unlock();
+  HandleTmpMessages();
 }
 
 }  // namespace distributed

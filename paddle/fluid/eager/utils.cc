@@ -56,6 +56,14 @@ std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
   return metas;
 }
 
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    const egr::EagerTensor& target) {
+  auto* p_autograd_meta = target.get_autograd_meta();
+  if (!p_autograd_meta) return nullptr;
+
+  return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
     std::vector<egr::EagerTensor>* targets) {
   std::vector<AutogradMeta*> ret;
@@ -123,6 +131,30 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
     const_cast<EagerTensor*>(&(tensors[i]))
         ->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
     res.emplace_back(new EagerTensor(tensors[i]));
+  }
+  return res;
+}
+
+static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
+    egr::EagerTensor* tensor) {
+  if (tensor->initialized() || tensor->Var().IsInitialized()) {
+    tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
+  }
+  return std::make_shared<EagerTensor>(*tensor);
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    egr::EagerTensor* tensor) {
+  return {TrySyncToVar(tensor)};
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    std::vector<egr::EagerTensor>* tensors) {
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors->size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(TrySyncToVar(&(*tensors)[i]));
   }
   return res;
 }
