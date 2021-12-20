@@ -19,86 +19,19 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/imperative/distributed/Types.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
-namespace framework {
-class Variable;
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
-
-constexpr auto kNoTimeout = std::chrono::milliseconds(0);
-constexpr auto kProcessGroupDefaultTimeout =
-    std::chrono::milliseconds(30 * 60 * 1000);
 
 namespace paddle {
 namespace imperative {
 
-enum class OpType : std::uint8_t {
-  BROADCAST = 0,
-  ALLREDUCE = 1,
-  ALLREDUCE_SPARSE = 2,
-  REDUCE = 3,
-  ALLGATHER = 4,
-  GATHER = 5,
-  SCATTER = 6,
-  REDUCE_SCATTER = 7,
-  ALLTOALL = 8,
-  SEND = 9,
-  RECV = 10,
-  BARRIER = 11,
-  UNKNOWN = 100,
-};
-
-struct ProcessGroupStrategy {
-  int nranks_{1};
-  int local_rank_{0};
-  std::vector<std::string> trainer_endpoints_{};
-  std::string current_endpoint_{""};
-  int nrings_{1};
-};
-
 class ProcessGroup {
  public:
-  class Work {
-   public:
-    Work(int rank, OpType opType,
-         const std::vector<framework::Tensor>& inputTensors);
-
-    virtual ~Work();
-
-   protected:
-    const int rank_;
-    OpType opType_;
-  };
-
   explicit ProcessGroup(int rank, int size);
   virtual ~ProcessGroup();
 
   int getRank() const { return rank_; }
 
   int getSize() const { return size_; }
-
-  // subclass must override this method to return the backend name
-  // virtual const std::string getBackendName() const = 0;
-
-  // virtual std::shared_ptr<ProcessGroup::Work> allreduce(
-  //   std::vector<framework::Tensor>& /* tensors */,
-  //   const AllreduceOptions& = AllreduceOptions()
-  // ){
-  //   // PADDLE_THROW(platform::errors::InvalidArgument(
-  //   //       "ProcessGroup%s does not support allreduce", getBackendName()));
-
-  // }
-
-  virtual void allreduce(
-      // std::vector<framework::Tensor>& /* tensors */,
-      const AllreduceOptions& = AllreduceOptions()) {
-    // PADDLE_THROW(platform::errors::InvalidArgument(
-    //       "ProcessGroup%s does not support allreduce",  getBackendName()));
-  }
 
  protected:
   const int rank_;

@@ -22,7 +22,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/imperative/distributed/ProcessGroup.h"
-#include "paddle/fluid/imperative/distributed/ProcessGroupNCCL.h"
 #include "paddle/fluid/pybind/distributed_py.h"
 
 namespace py = pybind11;
@@ -36,25 +35,6 @@ void BindDistributed(py::module* m) {
           .def(py::init<int, int>())
           .def("rank", &imperative::ProcessGroup::getRank)
           .def("size", &imperative::ProcessGroup::getSize);
-  // .def("name", &imperative::ProcessGroup::getBackendName)
-
-  // .def(
-  //      "allreduce",
-  //      &imperative::ProcessGroup::allreduce,
-  //      // py::arg("tensors"),
-  //      py::arg("opts") = imperative::AllreduceOptions(),
-  //      py::call_guard<py::gil_scoped_release>());
-  // .def(
-  //      "allreduce",
-
-  // )
-
-  auto processGroupNCCL =
-      py::class_<imperative::ProcessGroupNCCL,
-                 std::shared_ptr<imperative::ProcessGroupNCCL>>(
-          *m, "ProcessGroupNCCL", processGroup)
-          .def(py::init<const imperative::ProcessGroupStrategy&, int, int>(),
-               py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind
