@@ -247,9 +247,6 @@ class EagerTensor final {
                 "Unrecognized egr::EagerTensor type, only "
                 "DenseTensor is supported for now."));
           }
-        } else {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "Can not Sync EagerTensor %s to var type(%s).", name(), type));
         }
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -296,10 +293,6 @@ class EagerTensor final {
     tensor_ = tensor;
   }
 
-  bool retain_grads() { return retain_grads_; }
-
-  void set_retain_grads(bool value) { retain_grads_ = value; }
-
  private:
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
@@ -322,6 +315,5 @@ class EagerTensor final {
 
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;
   paddle::framework::Variable var_;
-  bool retain_grads_{false};
 };
 }  // namespace egr

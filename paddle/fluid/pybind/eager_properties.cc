@@ -148,7 +148,8 @@ PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
 PyObject* eager_tensor_properties_get_retain_grads(EagerTensorObject* self,
                                                    void* closure) {
   EAGER_SYNC_TRY
-  return ToPyObject(self->eager_tensor.retain_grads());
+  return ToPyObject(
+      egr::EagerUtils::autograd_meta(&self->eager_tensor)->RetainGrads());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -163,7 +164,8 @@ int eager_tensor_properties_set_retain_grads(EagerTensorObject* self,
     }
     egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
   }
-  self->eager_tensor.set_retain_grads(retain_grads);
+  egr::EagerUtils::autograd_meta(&self->eager_tensor)
+      ->SetRetainGrads(retain_grads);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
