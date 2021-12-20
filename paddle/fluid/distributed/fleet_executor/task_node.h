@@ -62,7 +62,7 @@ class TaskNode final {
     return downstream_;
   }
   const std::string& type() const { return type_; }
-  const paddle::framework::ProgramDesc& program() const { return program_; }
+  const paddle::framework::ProgramDesc* program() const { return program_; }
   const std::vector<OperatorBase*>& ops() const { return ops_; }
   const std::vector<std::unique_ptr<OperatorBase>>& unique_ops() const {
     return ops_vec_;

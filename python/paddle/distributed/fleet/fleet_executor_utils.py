@@ -61,7 +61,8 @@ class TaskNode:
                   self.role(), "and with id:", self.task_id())
         else:
             self.program = program
-            core.TaskNode(cur_rank, max_run_times, max_slot_times)
+            self.node = core.TaskNode(program.desc, cur_rank, max_run_times,
+                                      max_slot_times)
         self.node.set_type(node_type)
 
     def set_type(self, interceptor_type):

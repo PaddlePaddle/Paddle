@@ -2052,7 +2052,8 @@ class Executor(object):
         if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
             if 'tasks' in fleet_opt:
-                # insert feed/fetch op for cloned program in each task node
+                # insert feed/fetch op for cloned program in each task node,
+                # these ops has already been inserted into the origin program
                 for task in fleet_opt['tasks']:
                     tmp_program = task.get_program()
                     tmp_program = self._add_feed_fetch_ops(
@@ -2074,6 +2075,9 @@ class Executor(object):
                 program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
             self._add_ctx_cache(cache_key, cached_ctx)
         if feed:
+            # NOTE: don't have to traverse programs in task nodes,
+            # since they all sub program of cached program and
+            # cached program is also added feed fetch var
             self._feed_data(cached_program, feed, feed_var_name, cached_scope)
 
         from paddle.optimizer.lr import LRScheduler
