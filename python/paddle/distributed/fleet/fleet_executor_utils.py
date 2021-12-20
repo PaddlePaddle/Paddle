@@ -17,6 +17,11 @@ from paddle.fluid import core
 
 
 class TaskNode:
+    """
+    Python side TaskNode, connection to the c++ side TaskNode
+    """
+
+    # track the previous init method
     previous = None
 
     def __init__(self,
@@ -28,6 +33,16 @@ class TaskNode:
                  task_id=None,
                  ops=None,
                  program=None):
+        """
+        :param cur_rank (int): Current rank of the task node.
+        :param max_run_times (int): The max run times of the task node.
+        :param max_slot_times (int): The mas slot times of the task node.
+        :param role (int): The role of the task node.
+        :param node_type (str): The type of the task node, default is 'Compute'
+        :param task_id (int): The task id of the task node.
+        :param ops (list): A list of op.desc to init the task node.
+        :param program (Program): An instance of Program to init the task node.
+        """
         assert (bool(ops) ^ bool(program)), \
             "Should provide only one of ops or program to task node."
         if not self.previous:
