@@ -188,6 +188,183 @@ long_time_test="^test_gru_op$|\
 ^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 
+# let test failing of exit code 0xc0000409 run serially according to ci: 36226-36595
+vs2019_test="^test_elementwise_api$|\
+^test_reshape_api$|\
+^test_intrusive_ptr$|\
+^test_convert_utils$|\
+^auto_growth_best_fit_allocator_test$|\
+^test_multihead_matmul_fuse_pass$|\
+^aes_cipher_test$|\
+^test_tracer$|\
+^test_common_infer_shape_functions$|\
+^save_load_combine_op_test$|\
+^test_leaky_relu_grad_grad_functor$|\
+^mask_util_test$|\
+^reader_blocking_queue_test$|\
+^test_egr_ds_grad_node_info$|\
+^test_egr_ds_grad_tensor_holder$|\
+^test_egr_task_cross_batch$|\
+^test_egr_task_fwd_bwd_joint$|\
+^test_egr_performance_benchmark_eager_cpu$|\
+^test_egr_performance_benchmark_eager_cuda$|\
+^infer_io_utils_tester$|\
+^test_analyzer_small_dam$|\
+^test_analyzer_save_model$|\
+^test_analyzer_ner$|\
+^test_analyzer_ernie$|\
+^test_analyzer_text_classification$|\
+^test_analyzer_mobilenet_transpose$|\
+^test_analyzer_bert$|\
+^lite_mul_model_test$|\
+^test_analyzer_capi_exp_pd_config$|\
+^test_framework_place_utils$|\
+^test_flatten_api$|\
+^test_elementwise_api$|\
+^pten_test_data_type$|\
+^buffered_allocator_test$|\
+^operator_exception_test$|\
+^test_fc_gru_fuse_pass_cc$|\
+^share_buffer_op_cpp_test$|\
+^sequence_padding_test$|\
+^cpu_vec_test$|\
+^test_elementwise_div_grad_grad$|\
+^op_tester$|\
+^split_test$|\
+^test_egr_ds_auotgrad_meta$|\
+^test_egr_ds_grad_node_info$|\
+^test_egr_ds_accumulation_node$|\
+^test_egr_ds_tensor_wrapper$|\
+^test_matmul_api$|\
+^test_cast_api$|\
+^test_reshape_api$|\
+^test_slice_api$|\
+^test_scale_benchmark$|\
+^test_storage$|\
+^test_fill_dev_api$|\
+^test_flatten_dev_api$|\
+^test_scale_dev_api$|\
+^naive_best_fit_allocator_test$|\
+^auto_growth_best_fit_allocator_test$|\
+^cpu_helper_test$|\
+^data_layout_transform_test$|\
+^graph_test$|\
+^aes_cipher_test$|\
+^test_layer$|\
+^test_tracer$|\
+^assign_op_test$|\
+^test_leaky_relu_grad_grad_functor$|\
+^share_buffer_op_cpp_test$|\
+^concat_test$|\
+^conditional_block_op_test$|\
+^test_elementwise_add_grad_grad$|\
+^stringpiece_test$|\
+^to_string_test$|\
+^test_egr_ds_accumulation_node$|\
+^test_egr_task_eager_utils$|\
+^test_egr_task_autocodegen$|\
+^test_analyzer$|\
+^test_benchmark$|\
+^zero_copy_tensor_test$|\
+^test_analyzer_pyramid_dnn$|\
+^test_analyzer_ernie_int8$|\
+^test_analyzer_text_classification$|\
+^test_analyzer_detect_functional_mkldnn$|\
+^test_analyzer_googlenet$|\
+^test_analyzer_resnet50$|\
+^pten_test_data_layout$|\
+^allocator_facade_frac_flags_test$|\
+^enforce_test$|\
+^data_type_test$|\
+^exception_holder_test$|\
+^test_gradient_accmulator$|\
+^sequence_padding_test$|\
+^to_string_test$|\
+^test_analyzer$|\
+^test_analyzer_ernie_large$|\
+^test_analyzer_text_classification$|\
+^test_analyzer_capi_exp_pd_config$|\
+^op_tester$|\
+^string_helper_test$|\
+^test_egr_ds_auotgrad_meta$|\
+^test_egr_performance_benchmark_eager_cpu$|\
+^test_framework_tensor_utils$|\
+^test_reshape_api$|\
+^pten_test_data_layout$|\
+^test_allocator$|\
+^test_copy_dev_api$|\
+^no_need_buffer_vars_inference_test$|\
+^program_processing_test$|\
+^math_function_test$|\
+^im2col_test$|\
+^vol2col_test$|\
+^test_elementwise_add_grad_grad$|\
+^test_egr_ds_eager_tensor$|\
+^test_egr_ds_grad_node_info$|\
+^test_egr_ds_accumulation_node$|\
+^test_egr_task_hook$|\
+^test_egr_performance_benchmark_eager_cpu$|\
+^test_analyzer_rnn2$|\
+^test_analyzer_save_model$|\
+^test_analyzer_ner$|\
+^test_analyzer_pyramid_dnn$|\
+^test_analyzer_ernie$|\
+^test_analyzer_ernie_int8$|\
+^test_analyzer_seq_conv1$|\
+^test_analyzer_transformer_profile$|\
+^test_analyzer_ocr$|\
+^test_analyzer_googlenet$|\
+^lite_resnet50_test$|\
+^test_analyzer_capi_exp$|\
+^test_analyzer_capi_exp_pd_config$|\
+^test_matmul_api$|\
+^op_call_stack_test$|\
+^test_layer$|\
+^test_elementwise_add_op_inplace$|\
+^test_paddle_inference_api$|\
+^test_analyzer_googlenet$|\
+^test_analyzer_resnet50$|\
+^op_proto_maker_test$|\
+^test_simplify_with_basic_ops_pass$|\
+^workqueue_test$|\
+^test_prepare_op$|\
+^gather_test$|\
+^save_load_combine_op_test$|\
+^selected_rows_functor_test$|\
+^im2col_test$|\
+^op_tester$|\
+^test_sum_dev_api$|\
+^system_allocator_test$|\
+^selected_rows_test$|\
+^save_load_util_test$|\
+^test_mean_dev_api$|\
+^test_adaptive_pool2d_convert_global_pass$
+^test_framework_storage$|\
+^test_mean_api$|\
+^test_to_api$|\
+^test_scale_api$|\
+^test_elementwise_dev_api$|\
+^eigen_test$|\
+^op_compatible_info_test$|\
+^test_egr_task_forward_autograd$|\
+^test_egr_performance_benchmark_fluid_cpu$|\
+^test_table_printer$|\
+^test_analysis_predictor$|\
+^test_analyzer_transformer_fuse$|\
+^test_analyzer_zerocopytensor_tensor$|\
+^test_analyzer_paddletensor_tensor$|\
+^paddle_infer_api_errors_test$|\
+^test_conj_api$|\
+^program_desc_test$|\
+^test_dot_api$|\
+^test_sum_api$|\
+^test_reshape_dev_api$|\
+^test_conj_dev_api$|\
+^buddy_allocator_test$|\
+^test_aligned_allocator$|\
+^tuple_test$|\
+^sequence_pooling_test$"
+
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
 
@@ -232,9 +409,15 @@ function collect_failed_tests() {
 }
 
 function run_unittest_cpu() {
+    parallel_job=$1
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -E "$disable_ut_quickly|$disable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
-    wait;
+    if [ "$parallel_job" == "8" ]; then
+        (ctest -E "$disable_ut_quickly|$disable_wincpu_test|$vs2019_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
+        wait;
+    else 
+        (ctest -R "$vs2019_test" -E "$disable_ut_quickly|$disable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 1 | tee $tmpfile) &
+        wait;
+    fi
 }
 
 function run_unittest_gpu() {
@@ -361,7 +544,8 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     run_unittest_gpu $two_parallel_job 2
     run_unittest_gpu $non_parallel_job
 else
-    run_unittest_cpu
+    run_unittest_cpu 8
+    run_unittest_cpu 1
 fi
 collect_failed_tests
 set -e
