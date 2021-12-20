@@ -1677,3 +1677,28 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             'dtype': tensor.dtype,
             'use_calc_stream': use_calc_stream,
         })
+
+
+# construct processgroup
+
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid import core
+
+ProcessGroupStrategy = core.ProcessGroupStrategy
+
+
+def init_process_group(strategy=None):
+    # this will remove
+    if strategy is None:
+        strategy = ProcessGroupStrategy()
+        strategy.nranks = ParallelEnv().nranks
+        strategy.local_rank = ParallelEnv().local_rank
+        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+        strategy.current_endpoint = ParallelEnv().current_endpoint
+    if strategy.nranks < 2:
+        return
+
+    pg_group = core.ProcessGroupNCCL(strategy, strategy.local_rank,
+                                     strategy.nranks)
+
+    return pg_group

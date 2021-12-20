@@ -571,6 +571,14 @@ void CUDADeviceContext::RecordEvent(
   phi::GPUContext::RecordEvent(ev, callback);
 }
 
+void CUDADeviceContext::RecordEvent(gpuEvent_t ev) const {
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->RecordEvent(ev);
+    return;
+  }
+  pten::GPUContext::RecordEvent(ev);
+}
+
 void CUDADeviceContext::AddStreamCallback(
     const std::function<void()>& callback) const {
   if (thread_ctx_.count(this)) {

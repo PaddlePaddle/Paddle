@@ -80,6 +80,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/fluid/pybind/distributed_py.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
 #endif
@@ -531,7 +532,6 @@ PYBIND11_MODULE(core_noavx, m) {
   BindEager(&m);
 #endif
   BindCudaStream(&m);
-
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
@@ -3893,6 +3893,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+  BindDistributed(&m);
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);
