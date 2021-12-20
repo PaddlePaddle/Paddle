@@ -60,16 +60,30 @@ class TaskNode:
             print("Creating task node with role:",
                   self.role(), "and with id:", self.task_id())
         else:
-            self.node = core.TaskNode(program.desc, cur_rank, max_run_times,
-                                      max_slot_times)
-            print("Creating task node with id:", self.task_id())
+            # NOTE, if task node take program ,the init should be delayed until added feed/fetch ops
+            self.cur_rank = cur_rank
+            self.max_run_times = max_run_times
+            self.program = program
+            self.max_slot_times = max_slot_times
         self.node.set_type(node_type)
 
     def set_type(self, interceptor_type):
         self.node.set_type(interceptor_type)
 
     def task_node(self):
-        return self.node
+        if hasattr(self, 'node'):
+            return self.node
+        else:
+            print("Creating task node with id:", self.task_id())
+            return core.TaskNode(self.program.desc, self.cur_rank,
+                                 self.max_run_times, self.max_slot_times)
+
+    def set_program(self, program):
+        self.program = program
+
+    def get_program(self):
+        assert hasattr(self, 'program'), 'There is no program to get'
+        return self.program
 
     def set_run_pre_steps(self, steps):
         self.node.set_run_pre_steps(steps)

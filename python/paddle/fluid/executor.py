@@ -2026,11 +2026,11 @@ class Executor(object):
         cached_ctx = self._get_ctx_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
         cached_program = self._get_program_cache(cache_key)
+        real_feed = [] if feed is None else feed
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
         if cached_program is None:
-            real_feed = [] if feed is None else feed
             real_program = program
             if "section_program" in program._pipeline_opt:
                 real_program = program._pipeline_opt["section_program"]
@@ -2051,6 +2051,25 @@ class Executor(object):
             self._add_program_cache(cache_key, cached_program)
         if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
+            if 'tasks' in fleet_opt:
+                # insert feed/fetch op for program in task node
+                for task in fleet_opt['tasks']:
+                    tmp_program = task.get_program()
+                    tmp_program = self._add_feed_fetch_ops(
+                        program=tmp_program,
+                        feed=real_feed,
+                        fetch_list=fetch_list,
+                        feed_var_name=feed_var_name,
+                        fetch_var_name=fetch_var_name)
+                    main_block = tmp_program.block(0)
+                    for op in main_block.ops:
+                        # set the op_role of fetch op to Optimize to avoid
+                        # erase the fetched vars by gc for pipeline
+                        if op.type == 'fetch':
+                            op._set_attr(
+                                'op_role',
+                                core.op_proto_and_checker_maker.OpRole.Optimize)
+                    task.set_program(tmp_program)
             cached_ctx = self._prepare_fleet_executor(
                 program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
             self._add_ctx_cache(cache_key, cached_ctx)
