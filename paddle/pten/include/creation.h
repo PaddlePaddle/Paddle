@@ -16,15 +16,14 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/creation.h"
-#include "paddle/pten/kernels/cuda/creation.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 namespace pten {
 
 // TODO(YuanRisheng) This function name should be same as User API name.
 // TODO(zyfncg) Automatic code generation
 template <typename T, typename ContextT>
-DenseTensor FillAnyLike(
+DenseTensor FullLike(
     const ContextT& dev_ctx,
     const DenseTensor& x,
     const Scalar& val,
@@ -36,7 +35,7 @@ DenseTensor FillAnyLike(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  FillAnyLike<T>(dev_ctx, val, &dense_out);
+  FullLike<T, ContextT>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 
