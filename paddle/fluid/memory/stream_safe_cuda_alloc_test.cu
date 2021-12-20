@@ -25,17 +25,29 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace memory {
 
 __global__ void add_kernel(int *x, int n) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < n; i += blockDim.x * gridDim.x) {
-    atomicAdd(x + i, tid);
+  int thread_num = gridDim.x * blockDim.x;
+  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = thread_id; i < n; i += thread_num) {
+    atomicAdd(x + i, thread_id);
   }
+}
+
+void CheckMemLeak(const platform::CUDAPlace &place) {
+  uint64_t cuda_malloc_size =
+      platform::RecordedGpuMallocSize(place.GetDeviceId());
+  ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
+                                 << " bytes memory that not released yet,"
+                                 << " there may be a memory leak problem";
 }
 
 class StreamSafeCUDAAllocTest : public ::testing::Test {
@@ -44,52 +56,67 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     place_ = platform::CUDAPlace();
     stream_num_ = 64;
     grid_num_ = 1;
-    block_num_ = 64;
-    data_num_ = 64;
-    default_stream = nullptr;
+    block_num_ = 32;
+    data_num_ = 131072;
+    workspace_size_ = data_num_ * sizeof(int);
 
-    streams_.reserve(stream_num_);
-    streams_.emplace_back(default_stream);
-    for (size_t i = 1; i < stream_num_; ++i) {
+    // alloc workspace for each stream
+    for (size_t i = 0; i < stream_num_; ++i) {
       gpuStream_t stream;
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
-      streams_.emplace_back(stream);
-    }
 
-    for (size_t i = 0; i < stream_num_; ++i) {
-      size_t allocation_size = data_num_ * sizeof(int);
       std::shared_ptr<Allocation> allocation =
-          AllocShared(place_, allocation_size, streams_[i]);
+          AllocShared(place_, workspace_size_, stream);
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemset(allocation->ptr(), 0, allocation->size()));
 #endif
-      allocations_.emplace_back(allocation);
+
+      streams_.emplace_back(stream);
+      workspaces_.emplace_back(allocation);
     }
+
+    result_ = AllocShared(place_, stream_num_ * workspace_size_);
   }
 
   void SingleStreamRun(size_t idx) {
+    // for all stream i,
+    // stream idx lauch a kernel to add (j % thread_num) to workspaces_[i][j]
     for (size_t i = 0; i < stream_num_; ++i) {
-      int *x = reinterpret_cast<int *>(allocations_[i]->ptr());
+      int *x = reinterpret_cast<int *>(workspaces_[i]->ptr());
       add_kernel<<<grid_num_, block_num_, 0, streams_[idx]>>>(x, data_num_);
-      if (i != idx) {
-        RecordStream(allocations_[i].get(), streams_[idx]);
-      }
+      RecordStream(workspaces_[i], streams_[idx]);
+    }
+  }
+
+  void CopyResultAsync() {
+    for (size_t i = 0; i < stream_num_; ++i) {
+#ifdef PADDLE_WITH_CUDA
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
+          reinterpret_cast<int *>(result_->ptr()) + i * data_num_,
+          workspaces_[i]->ptr(), workspace_size_, cudaMemcpyDeviceToDevice));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
+          reinterpret_cast<int *>(result_->ptr()) + i * data_num_,
+          workspaces_[i]->ptr(), workspace_size_, hipMemcpyDeviceToDevice));
+#endif
     }
   }
 
   void MultiStreamRun() {
-    for (int i = 0; i < stream_num_; ++i) {
+    for (size_t i = 0; i < stream_num_; ++i) {
       SingleStreamRun(i);
     }
-    allocations_.clear();  // fast_gc
+    CopyResultAsync();
+    workspaces_.clear();  // fast_gc
+    cudaDeviceSynchronize();
   }
 
   void MultiThreadMUltiStreamRun() {
@@ -101,35 +128,37 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     for (size_t i = 0; i < stream_num_; ++i) {
       threads[i].join();
     }
-    allocations_.clear();  // fast_gc
+    CopyResultAsync();
+    workspaces_.clear();  // fast_gc
+    cudaDeviceSynchronize();
   }
 
   void CheckResult() {
-    auto host_x = std::unique_ptr<int[]>(new int[data_num_]);
-    size_t thread_num = grid_num_ * block_num_;
-    for (int i = 0; i < stream_num_; ++i) {
-// tricky code, the allocations are still accessible even though
-// allocations_.clear() has been called
+    auto result_host = std::unique_ptr<int[]>(new int[result_->size()]);
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaMemcpy(host_x.get(), allocations_[i]->ptr(),
-                     data_num_ * sizeof(int), cudaMemcpyDeviceToHost));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(result_host.get(), result_->ptr(),
+                                          result_->size(),
+                                          cudaMemcpyDeviceToHost));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          hipMemcpy(host_x.get(), allocations_[i]->ptr(),
-                    data_num_ * sizeof(int), hipMemcpyDeviceToHost));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(result_host.get(), result_->ptr(),
+                                         result_->size(),
+                                         hipMemcpyDeviceToHost));
 #endif
-      for (int j = 0; j < data_num_; ++j) {
-        EXPECT_TRUE(host_x[j] == (j % thread_num) * stream_num_);
+    size_t thread_num = grid_num_ * block_num_;
+    for (size_t i = 0; i < stream_num_; ++i) {
+      for (size_t j = 0; j < data_num_; ++j) {
+        EXPECT_TRUE(result_host[i * stream_num_ + j] ==
+                    (j % thread_num) * stream_num_);
       }
     }
+    result_.reset();
   }
 
   void TearDown() override {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
     for (gpuStream_t stream : streams_) {
       Release(place_, stream);
@@ -137,27 +166,24 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
     for (size_t i = 1; i < stream_num_; ++i) {
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(streams_[i]));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(streams_[i]));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(streams_[i]));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(streams_[i]));
 #endif
     }
 
-    uint64_t cuda_malloc_size =
-        platform::RecordedCudaMallocSize(place_.GetDeviceId());
-    ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
-                                   << " bytes memory that not released yet,"
-                                   << " there may be a memory leak problem";
+    CheckMemLeak(place_);
   }
 
   size_t stream_num_;
   size_t grid_num_;
   size_t block_num_;
   size_t data_num_;
+  size_t workspace_size_;
   platform::CUDAPlace place_;
-  gpuStream_t default_stream;
   std::vector<gpuStream_t> streams_;
-  std::vector<std::shared_ptr<Allocation>> allocations_;
+  std::vector<std::shared_ptr<Allocation>> workspaces_;
+  std::shared_ptr<Allocation> result_;
 };
 
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
@@ -181,25 +207,139 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
   void *address = allocation_implicit_stream->ptr();
   allocation_implicit_stream.reset();
 
-  gpuStream_t default_stream = nullptr;
+  gpuStream_t default_stream =
+      dynamic_cast<platform::CUDADeviceContext *>(
+          paddle::platform::DeviceContextPool::Instance().Get(place))
+          ->stream();
   allocation::AllocationPtr allocation_unique =
       Alloc(place, alloc_size, default_stream);
   EXPECT_GE(allocation_unique->size(), alloc_size);
   EXPECT_EQ(allocation_unique->ptr(), address);
+  allocation_unique.reset();
+
+  Release(place);
+  CheckMemLeak(place);
 }
+
+TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  auto &instance = allocation::AllocatorFacade::Instance();
+  const std::shared_ptr<Allocator> &allocator = instance.GetAllocator(place);
+
+  size_t alloc_size = 256;
+  std::shared_ptr<Allocation> allocation_from_allocator =
+      allocator->Allocate(alloc_size);
+  EXPECT_GE(allocation_from_allocator->size(), alloc_size);
+  void *address = allocation_from_allocator->ptr();
+  allocation_from_allocator.reset();
+
+  std::shared_ptr<Allocation> allocation_implicit_stream =
+      AllocShared(place, alloc_size);
+  EXPECT_GE(allocation_implicit_stream->size(), alloc_size);
+  EXPECT_EQ(allocation_implicit_stream->ptr(), address);
+  allocation_implicit_stream.reset();
+
+  Release(place);
+  CheckMemLeak(place);
+}
+
+TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  std::shared_ptr<Allocation> zero_size_allocation = AllocShared(place, 0);
+  EXPECT_EQ(zero_size_allocation->ptr(), nullptr);
+
+  gpuStream_t stream;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
+#endif
+
+  EXPECT_NO_THROW(RecordStream(zero_size_allocation, stream));
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
+#endif
+}
+
+TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  size_t alloc_size = 256;
+
+  gpuStream_t default_stream =
+      dynamic_cast<platform::CUDADeviceContext *>(
+          paddle::platform::DeviceContextPool::Instance().Get(place))
+          ->stream();
+  std::shared_ptr<Allocation> allocation_implicit_stream =
+      AllocShared(place, alloc_size);
+  EXPECT_EQ(GetStream(allocation_implicit_stream), default_stream);
+
+  gpuStream_t new_stream;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&new_stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&new_stream));
+#endif
+
+  std::shared_ptr<Allocation> allocation_new_stream =
+      AllocShared(place, alloc_size, new_stream);
+  EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(new_stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(new_stream));
+#endif
+
+  allocation_implicit_stream.reset();
+  allocation_new_stream.reset();
+  Release(place);
+  CheckMemLeak(place);
+}
+
+#ifdef PADDLE_WITH_CUDA
+TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
+  platform::CUDAPlace place = platform::CUDAPlace();
+  size_t alloc_size = 1;
+  std::shared_ptr<Allocation> allocation = AllocShared(place, alloc_size);
+
+  platform::BeginCUDAGraphCapture(place, cudaStreamCaptureModeGlobal);
+  EXPECT_THROW(AllocShared(place, alloc_size), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Alloc(place, alloc_size), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Release(place), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(allocation::AllocatorFacade::Instance().GetAllocator(place),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(AllocShared(place, alloc_size, nullptr),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Alloc(place, alloc_size, nullptr),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(Release(place, nullptr), paddle::platform::EnforceNotMet);
+  EXPECT_THROW(RecordStream(allocation, nullptr),
+               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(GetStream(allocation), paddle::platform::EnforceNotMet);
+  platform::EndCUDAGraphCapture();
+
+  allocation.reset();
+  Release(place);
+  CheckMemLeak(place);
+}
+#endif
 
 TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   gpuStream_t stream1, stream2;
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream1));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream2));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream1));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream2));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream1));
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream2));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream1));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream2));
 #endif
   size_t available_size = platform::GpuAvailableMemToAlloc();
-  // alloc_size < available_size < 2 * alloc_size
+  // alloc_size < available_size < 2 * alloc_size,
+  // so the second alloc will fail and retry
   size_t alloc_size = available_size / 4 * 3;
 
   std::shared_ptr<Allocation> allocation1 =
@@ -216,13 +356,14 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   allocation2.reset();
 
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
 
   Release(place, stream1);
   Release(place, stream2);
+  CheckMemLeak(place);
 }
 
 }  // namespace memory

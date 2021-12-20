@@ -88,6 +88,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -122,9 +126,26 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
+}
+
+// At the end of each step, the holder of Tensor in LoDTensorArray is null.
+// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
+// will occur in the next step
+void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
+  auto vars = local_scope_->LocalVars();
+  for (auto var : vars) {
+    if (var->IsType<LoDTensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+      lod_tensor_arr->clear();
+    }
+  }
 }
 
 void InterpreterCore::BuildOperatorDependences() {
@@ -377,13 +398,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     instr_node.DeviceContext().Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op->Type()
-            << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op->Type()
             << "): context wait and get last error";
 #endif
@@ -418,6 +434,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(4) << "Exception caught " << exception_holder_.Type();
+    async_work_queue_->Cancel();
     exception_holder_.ReThrow();
   }
 
@@ -493,7 +510,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(op->Type());
+    platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
 
     try {
@@ -607,6 +624,10 @@ interpreter::CostInfo InterpreterCore::DryRun(
     interpreter::ProfilerGuard(place_, &cost_info);
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
   }
 
   return cost_info;

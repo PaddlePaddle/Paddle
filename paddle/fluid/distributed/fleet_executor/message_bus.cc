@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <memory>
+#include <set>
 #include <thread>
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
@@ -51,15 +52,11 @@ void MessageBus::Init(
 #endif
 
   ListenPort();
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { MessageBus::Instance().Release(); });
-  });
 }
 
 bool MessageBus::IsInit() const { return is_init_; }
 
-void MessageBus::Release() {
+MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
@@ -90,6 +87,8 @@ bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
                 << retry_time << " times retries.";
         return true;
       }
+      VLOG(3) << "Message bus sends failed, retry after 1 seconds.";
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     VLOG(3) << "Message bus sends inter rank fail after 10 times retries.";
     return false;
@@ -121,16 +120,40 @@ void MessageBus::ListenPort() {
   brpc::ServerOptions options;
   options.idle_timeout_sec = -1;
   int retry_times = 0;
-  int interval = 1000;
+  int interval = 100;
   while (server_.Start(ip_for_brpc, &options) != 0) {
     ++retry_times;
     LOG(INFO) << "Message bus is retring for starting brpc for " << retry_times
               << " times. And will retry after " << interval / 1000
               << " seconds.";
     std::this_thread::sleep_for(std::chrono::milliseconds(interval));
-    interval += 2000;
+    interval += 500;
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
+
+  std::set<int64_t> visit;
+  InterceptorMessage tmp_msg;
+  tmp_msg.set_ctrl_message(true);
+  for (auto pair : interceptor_id_to_rank_) {
+    if (rank_to_addr_.at(pair.second) == addr_) {
+      tmp_msg.set_src_id(pair.first);
+    }
+  }
+  for (auto pair : interceptor_id_to_rank_) {
+    int64_t rank = pair.second;
+    if (rank_to_addr_.at(rank) == addr_) {
+      continue;
+    }
+    tmp_msg.set_dst_id(pair.first);
+    if (visit.find(rank) == visit.end()) {
+      VLOG(3) << "Message bus is testing connection for rank: " << rank << ".";
+      visit.insert(rank);
+      while (!Send(tmp_msg)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      }
+      VLOG(3) << "Message bus has connected to rank: " << rank << ".";
+    }
+  }
 #else
   LOG(WARNING)
       << "Fleet executor's ListenPort() is a fake function when Paddle is "
@@ -140,6 +163,9 @@ void MessageBus::ListenPort() {
 }
 
 bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
+  // -1 is sent by carrier to source interceptor
+  if (src_id == -1) src_id = dst_id;
+
   // check whether the dst is the same rank or different rank with src
   const auto& src_rank = interceptor_id_to_rank_.find(src_id);
   const auto& dst_rank = interceptor_id_to_rank_.find(dst_id);
@@ -215,7 +241,8 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
 
 bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
   // send the message intra rank (dst is the same rank with src)
-  return Carrier::Instance().EnqueueInterceptorMessage(interceptor_message);
+  return FleetExecutor::GetCarrier().EnqueueInterceptorMessage(
+      interceptor_message);
 }
 
 }  // namespace distributed

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {

@@ -439,13 +439,16 @@ void FleetWrapper::PushSparseFromTensorAsync(
     const LoDTensor* shows, const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs) {
   int batch_size = -1;
+  bool batch_size_consist = true;
   for (auto* input : *inputs) {
     int cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      CHECK(batch_size == cur_batch_size);  // NOLINT
+      // CHECK(batch_size == cur_batch_size);  // NOLINT
+      batch_size_consist = false;
+      break;
     }
   }
   CHECK(batch_size > 0);  // NOLINT
@@ -461,8 +464,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
   for (framework::LoDTensor* g_tensor : *outputs) {
     float* g_ori = g_tensor->data<float>();
     // no cvm
-    if (true) {  // TODO(zhaocaibei123): add config
-                 // scale_sparse_gradient_with_batch_size_
+    if (batch_size_consist) {  // TODO(zhaocaibei123): add config
+                               // scale_sparse_gradient_with_batch_size_
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
           g_mat(g_ori, g_tensor->numel() / fea_dim, fea_dim);
@@ -570,8 +573,6 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
-    sleep(sleep_seconds_before_fail_exit_);
-    exit(-1);
   }
 }
 
@@ -596,8 +597,6 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "save model failed";
-    sleep(sleep_seconds_before_fail_exit_);
-    exit(-1);
   }
 }
 

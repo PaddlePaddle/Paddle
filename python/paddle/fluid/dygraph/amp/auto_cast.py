@@ -218,6 +218,13 @@ def amp_guard(enable=True,
             % tracer._expected_place)
         enable = False
 
+    if tracer._expected_place.is_gpu_place():
+        prop = paddle.device.cuda.get_device_capability()
+        if prop[0] < 7:
+            warnings.warn(
+                "AMP only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
+                % (paddle.device.cuda.get_device_name(), prop[0], prop[1]))
+
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
         _white_list = WHITE_LIST
@@ -332,6 +339,19 @@ def amp_decorate(models,
             output2 = models[1](data)
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
+        
+        # required: gpu
+        # Demo3: optimizers is None:
+        model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimizer3 = paddle.optimizer.Adam(parameters=model2.parameters())
+
+        model = paddle.fluid.dygraph.amp_decorate(models=model3, level='O2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with paddle.fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            output = model(data)
+            print(output.dtype) # FP16
     """
     if not (level in ['O1', 'O2']):
         raise ValueError(
@@ -339,7 +359,10 @@ def amp_decorate(models,
         )
 
     if level == 'O1':
-        return models, optimizers
+        if optimizers is None:
+            return models
+        else:
+            return models, optimizers
 
     models_is_list = False
     if isinstance(models, paddle.nn.Layer):
@@ -353,29 +376,30 @@ def amp_decorate(models,
         raise TypeError(
             "models must be either a single model or a list of models.")
 
-    optimizers_is_list = False
-    if isinstance(optimizers, (paddle.optimizer.Optimizer,
-                               paddle.fluid.optimizer.Optimizer)):
-        optimizers_is_list = False
-        optimizers = [optimizers]
-        check_optimizers(optimizers)
-    elif isinstance(optimizers, list):
-        check_optimizers(optimizers)
-        optimizers_is_list = True
-    else:
-        raise TypeError(
-            "optimizers must be either a single optimizer or a list of optimizers."
-        )
-
     models = pure_fp16_initialize(models=models)
 
-    # supprot master_weight    
-    for idx_opt in range(len(optimizers)):
-        if hasattr(optimizers[idx_opt], '_multi_precision'):
-            if master_weight is False:
-                optimizers[idx_opt]._multi_precision = False
-            else:
-                optimizers[idx_opt]._multi_precision = True
+    if optimizers is not None:
+        # check optimizers
+        optimizers_is_list = False
+        if isinstance(optimizers, (paddle.optimizer.Optimizer,
+                                   paddle.fluid.optimizer.Optimizer)):
+            optimizers_is_list = False
+            optimizers = [optimizers]
+            check_optimizers(optimizers)
+        elif isinstance(optimizers, list):
+            check_optimizers(optimizers)
+            optimizers_is_list = True
+        else:
+            raise TypeError(
+                "optimizers must be either a single optimizer or a list of optimizers."
+            )
+        # supprot master_weight    
+        for idx_opt in range(len(optimizers)):
+            if hasattr(optimizers[idx_opt], '_multi_precision'):
+                if master_weight is False:
+                    optimizers[idx_opt]._multi_precision = False
+                else:
+                    optimizers[idx_opt]._multi_precision = True
 
     if save_dtype is not None:
         if not (save_dtype in ['float16', 'float32', 'float64']):
@@ -387,12 +411,18 @@ def amp_decorate(models,
                 layer.register_state_dict_hook(StateDictHook(save_dtype))
 
     if models_is_list:
-        if optimizers_is_list:
-            return models, optimizers
+        if optimizers is not None:
+            if optimizers_is_list:
+                return models, optimizers
+            else:
+                return models, optimizers[0]
         else:
-            return models, optimizers[0]
+            return models
     else:
-        if optimizers_is_list:
-            return models[0], optimizers
+        if optimizers is not None:
+            if optimizers_is_list:
+                return models[0], optimizers
+            else:
+                return models[0], optimizers[0]
         else:
-            return models[0], optimizers[0]
+            return models[0]
