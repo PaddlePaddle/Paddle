@@ -10,7 +10,7 @@ else()
   cc_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils enforce)
 endif()
 
-cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor device_context kernel_factory)
+cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor pten_context kernel_factory)
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
 

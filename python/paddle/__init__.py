@@ -88,6 +88,7 @@ from .tensor.creation import meshgrid  # noqa: F401
 from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
+from .tensor.creation import complex  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -158,7 +159,8 @@ from .tensor.manipulation import tolist  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
-
+from .tensor.manipulation import moveaxis  # noqa: F401
+from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -228,13 +230,19 @@ from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import acosh  # noqa: F401
+from .tensor.math import asinh  # noqa: F401
+from .tensor.math import atanh  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
+from .tensor.math import erfinv  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
 from .tensor.math import gcd  # noqa: F401
 from .tensor.math import lcm  # noqa: F401
 from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
+from .tensor.math import fmax  # noqa: F401
+from .tensor.math import fmin  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -440,6 +448,7 @@ __all__ = [  # noqa
            'shape',
            'real',
            'imag',
+           'complex',
            'reciprocal',
            'rand',
            'less_equal',
@@ -480,6 +489,7 @@ __all__ = [  # noqa
            'neg',
            'lgamma',
            'lerp',
+           'erfinv',
            'square',
            'divide',
            'ceil',
@@ -564,8 +574,15 @@ __all__ = [  # noqa
            'einsum',
            'set_flags',
            'get_flags',
+           'asinh',
+           'acosh',
+           'atanh',
            'as_complex',
            'as_real',
            'diff',
            'angle',
+           'fmax',
+           'fmin',
+           'moveaxis',
+           'repeat_interleave',
 ]
