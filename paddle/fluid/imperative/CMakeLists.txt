@@ -6,6 +6,8 @@ cc_library(prepared_operator SRCS prepared_operator.cc DEPS proto_desc operator 
 ENDIF()
 cc_library(layer SRCS layer.cc DEPS prepared_operator math_function imperative_flag variable_helper op_registry)
 add_subdirectory(jit)
+add_subdirectory(distributed)
+
 cc_library(amp SRCS amp_auto_cast.cc DEPS layer )
 cc_library(tracer SRCS tracer.cc DEPS layer engine program_desc_tracer amp denormal garbage_collector)
 cc_library(basic_engine SRCS basic_engine.cc DEPS layer gradient_accumulator)
