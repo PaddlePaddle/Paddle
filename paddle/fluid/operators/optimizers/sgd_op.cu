@@ -24,10 +24,9 @@ namespace {
 
 template <typename T, typename MT>
 __global__ void SGDKernelMT(const T* param, const T* grad,
-                            const MT* learning_rate, const int num,
-                            T* param_out, const MT* master_param,
-                            MT* master_param_out) {
-  MT lr = learning_rate[0];
+                            const T* learning_rate, const int num, T* param_out,
+                            const MT* master_param, MT* master_param_out) {
+  MT lr = static_cast<MT>(learning_rate[0]);
   CUDA_KERNEL_LOOP(i, num) {
     MT p_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
     MT g_data = static_cast<MT>(grad[i]);
@@ -109,7 +108,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
 
       SGDKernelMT<
           T, MPDType><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-          param->data<T>(), grad->data<T>(), learning_rate->data<MPDType>(),
+          param->data<T>(), grad->data<T>(), learning_rate->data<T>(),
           param->numel(), param_out->mutable_data<T>(ctx.GetPlace()),
           master_in_data, master_out_data);
 
