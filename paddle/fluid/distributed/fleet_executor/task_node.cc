@@ -23,8 +23,9 @@ namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
 
-TaskNode::TaskNode(int64_t rank, int64_t max_run_times, int64_t max_slot_nums)
-    : rank_(rank),
+TaskNode::TaskNode(const paddle::framework::ProgramDesc& program, int64_t rank,
+                   int64_t max_run_times, int64_t max_slot_nums)
+    : program_(program) rank_(rank),
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {
   // Should be serially invoked, not thread-safe
@@ -33,7 +34,16 @@ TaskNode::TaskNode(int64_t rank, int64_t max_run_times, int64_t max_slot_nums)
 }
 
 void TaskNode::SetProgram(const paddle::framework::ProgramDesc& program) {
-  program_ = program;
+  // program has unique_ptr, cannot be assigned, just create op
+  // can be called only once
+  if (ops_.empty()) {
+    for (const auto& op_desc : program.Block(0).AllOps()) {
+      ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+    }
+    for (const auto& op : ops_vec_) {
+      ops_.emplace_back(op.get());
+    }
+  }
 }
 
 void TaskNode::Init() {
