@@ -115,7 +115,8 @@ static PyObject* eager_api_scale(PyObject* self, PyObject* args,
 static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
                                            pten::DataType dtype,
                                            const paddle::platform::Place& place,
-                                           bool stop_gradient) {
+                                           bool stop_gradient,
+                                           bool retain_grads) {
   std::vector<int64_t> vec_dims;
   auto numpy_shape = pybind11::detail::array_proxy(numpy_data)->dimensions;
   int rank = pybind11::detail::array_proxy(numpy_data)->nd;
@@ -146,6 +147,13 @@ static PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
     auto accumulation_node = std::make_shared<egr::GradNodeAccumulation>();
     meta->SetGradNode(accumulation_node);
 
+    if (retain_grads) {
+      if (!meta->GetMutableGradNode()) {
+        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      }
+      egr::egr_utils_api::RetainGradForTensor(v->eager_tensor);
+    }
+
     // TODO(jiabin): Shall we increase ref cnt here to make python ref cnt num
     // correctly?
   } else {
@@ -165,11 +173,13 @@ static PyObject* eager_api_to_tensor(PyObject* self, PyObject* args,
   pten::DataType dtype = pten::String2DataType(str_dtype);
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
+  bool retain_grads = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
   // TODO(jiabin): Support this when python given name
-  // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
+  // auto str_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 5), 5);
 
   if (pybind11::detail::npy_api::get().PyArray_Check_(data)) {
-    return eager_api_numpy_to_tensor(data, dtype, place, stop_gradient);
+    return eager_api_numpy_to_tensor(data, dtype, place, stop_gradient,
+                                     retain_grads);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Eater to_tensor only support numpy to tensor."));
@@ -203,6 +213,27 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_eagertensor_copy(PyObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  egr::EagerTensor& src =
+      reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
+          ->eager_tensor;
+  egr::EagerTensor& dst =
+      reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 1))
+          ->eager_tensor;
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
+
+  dst = src.copy_to(pten::TransToPtenBackend(place), blocking);
+  egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(true);
+  egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
+      egr::EagerUtils::autograd_meta(&(src))->Persistable());
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     {"to_tensor", (PyCFunction)(void (*)(void))eager_api_to_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -218,6 +249,9 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_retain_grad_for_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"eagertensor_copy",
+     (PyCFunction)(void (*)(void))eager_api_eagertensor_copy,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

@@ -1201,19 +1201,19 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::vector<egr::EagerTensor>& %s";
+            ", std::vector<egr::EagerTensor*>& %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
 
       } else {
-        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor& %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor* %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
       }
       const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(&%s) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
 

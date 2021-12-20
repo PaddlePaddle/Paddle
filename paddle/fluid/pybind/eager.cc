@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
@@ -72,6 +73,15 @@ void EmptyEagerTensorInitializer(
             pten::DenseTensorMeta(pten::TransToPtenDataType(dtype),
                                   paddle::framework::make_ddim(dims)));
     self->eager_tensor.set_impl(dense_tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "We only support LoDTensor to be constructed by this initializer, "
+        "please check your var type first and make sure you are going to "
+        "construct LoDTensor."));
+  }
+
+  if (!autograd_meta->GetMutableGradNode()) {
+    autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
   }
 }
 

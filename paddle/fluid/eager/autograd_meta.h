@@ -120,6 +120,10 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
+  bool RetainGrads() { return retain_grads_; }
+
+  void SetRetainGrads(bool value) { retain_grads_ = value; }
+
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
   egr::EagerTensor grad_;
@@ -148,6 +152,8 @@ class AutogradMeta : public AbstractAutogradMeta {
   int stop_gradient_{-1};
 
   bool persistable_{false};
+
+  bool retain_grads_{false};
 
   // TODO(jiabin) :Support Quantum here and add cache mechanism as
   // VarCache defined in VarBase

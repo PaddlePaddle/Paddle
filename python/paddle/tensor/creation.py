@@ -38,7 +38,11 @@ __all__ = []
 
 
 @dygraph_only
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(data,
+              dtype=None,
+              place=None,
+              stop_gradient=True,
+              retain_grads=True):
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
@@ -57,6 +61,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+        retain_grads(bool, optional):Whether enables this Tensor to have their grad populated during backward. Default: True.
 
     Returns:
         Tensor: A Tensor constructed from ``data`` .
@@ -121,7 +126,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         if dtype is None:
             dtype = paddle.get_default_dtype()
         return core.eager.to_tensor(data,
-                                    convert_dtype(dtype), place, stop_gradient)
+                                    convert_dtype(dtype), place, stop_gradient,
+                                    retain_grads)
 
     if not isinstance(data, np.ndarray):
 

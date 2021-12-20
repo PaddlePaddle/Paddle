@@ -14,7 +14,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -60,8 +62,22 @@ PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
 PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
                                            void* closure) {
   EAGER_SYNC_TRY
-  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
-  return ToPyObject(meta->Grad());
+  if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
+    // Add RetainGrad as PostHook to AccumulationNode
+    std::shared_ptr<egr::GradNodeBase> grad_node =
+        egr::EagerUtils::grad_node(self->eager_tensor);
+    PADDLE_ENFORCE(
+        grad_node.get() != nullptr,
+        paddle::platform::errors::Fatal("Detected NULL grad_node"
+                                        "Leaf tensor should have had grad_node "
+                                        "with type: GradNodeAccumulation"));
+    auto accumulation_grad_node =
+        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+    return ToPyObject(accumulation_grad_node->Grad());
+  } else {
+    auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
+    return ToPyObject(meta->Grad());
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -129,6 +145,31 @@ PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager_tensor_properties_get_retain_grads(EagerTensorObject* self,
+                                                   void* closure) {
+  EAGER_SYNC_TRY
+  return ToPyObject(
+      egr::EagerUtils::autograd_meta(&self->eager_tensor)->RetainGrads());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int eager_tensor_properties_set_retain_grads(EagerTensorObject* self,
+                                             PyObject* value, void* closure) {
+  EAGER_SYNC_TRY
+  bool retain_grads = CastPyArg2AttrBoolean(value, 0);
+  if (retain_grads) {
+    auto meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+    if (!meta->GetMutableGradNode()) {
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+    }
+    egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
+  }
+  egr::EagerUtils::autograd_meta(&self->eager_tensor)
+      ->SetRetainGrads(retain_grads);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
+}
+
 struct PyGetSetDef variable_properties[] = {
     {"grad", (getter)eager_tensor_properties_get_grad, nullptr, nullptr,
      nullptr},
@@ -149,6 +190,8 @@ struct PyGetSetDef variable_properties[] = {
      nullptr, nullptr},
     {"dtype", (getter)eager_tensor_properties_get_dtype, nullptr, nullptr,
      nullptr},
+    {"retain_grads", (getter)eager_tensor_properties_get_retain_grads,
+     (setter)eager_tensor_properties_set_retain_grads, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind
