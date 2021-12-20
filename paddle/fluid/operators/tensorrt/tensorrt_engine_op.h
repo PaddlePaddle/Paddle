@@ -431,8 +431,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int num_inputs = 0;
 
     num_inputs += runtime_input_names_.size();
-    const int num_bindings = num_inputs + Outputs("Ys").size();
-    std::vector<void *> buffers(num_bindings);
+    //  const int num_bindings = num_inputs + Outputs("Ys").size();
+    //  std::vector<void *> buffers(num_bindings);
+    // This method returns the total over all profiles.
+    const int num_bindings = engine->GetNbBindings();
+    std::vector<void *> buffers(num_bindings, nullptr);
+
+    int binding_offset = 0;
+    nvinfer1::IExecutionContext *trt_context = nullptr;
+    if (engine->with_dynamic_shape()) {
+      // Initilize context and get offset by profile index
+      trt_context = engine->context();
+      binding_offset = engine->GetBindingsOffset();
+    }
 
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
@@ -447,7 +458,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
         t.ShareDataWith(out);
       }
       auto t_shape = framework::vectorize<int64_t>(t.dims());
-      const int bind_index = engine->engine()->getBindingIndex(x.c_str());
+      // const int bind_index = engine->engine()->getBindingIndex(x.c_str());
+      // Get index of profile 0 first, then plus binding offset
+      const int bind_index =
+          engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
       PADDLE_ENFORCE_LT(
           bind_index, num_bindings,
           platform::errors::InvalidArgument(
@@ -491,7 +505,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
@@ -528,7 +541,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        auto *trt_context = engine->context();
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
