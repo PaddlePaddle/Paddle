@@ -39,7 +39,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
   auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
   tensor1->Resize(framework::make_ddim({512, 8, 4, 2}));
   framework::LoD lod1;
-  lod1.push_back(framework::Vector<size_t>({1, 3, 8}));
+  lod1.push_back(framework::CPUVector<size_t>({1, 3, 8}));
   tensor1->set_lod(lod1);
   tensor1->mutable_data<float>(*place);
   math::set_constant(ctx, tensor1, 31.9);
@@ -49,7 +49,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
   auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
   tensor2->Resize(framework::make_ddim({1000, 64}));
   framework::LoD lod2;
-  lod2.push_back(framework::Vector<size_t>({1, 1}));
+  lod2.push_back(framework::CPUVector<size_t>({1, 1}));
   tensor2->set_lod(lod2);
   tensor2->mutable_data<int>(*place);
   math::set_constant(ctx, tensor2, 100);

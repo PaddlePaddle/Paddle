@@ -54,7 +54,7 @@ namespace framework {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
+using LoD = std::vector<CPUVector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);

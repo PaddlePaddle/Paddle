@@ -192,8 +192,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     auto* loss = ctx.Output<Tensor>("Loss");
 
     size_t num_sequences, sequence_width, max_sequence_length;
-    framework::Vector<size_t> logits_lod;
-    framework::Vector<size_t> label_lod;
+    framework::CPUVector<size_t> logits_lod;
+    framework::CPUVector<size_t> label_lod;
 
     if (ctx.HasInput("LogitsLength") && ctx.HasInput("LabelLength")) {
       num_sequences = logits->dims()[1];
@@ -342,7 +342,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       warpctc_label.mutable_data<int>(
           {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
           platform::CPUPlace());
-      std::vector<framework::Vector<size_t>> lod;
+      std::vector<framework::CPUVector<size_t>> lod;
       lod.push_back(label_lod);
       warpctc_label.set_lod(lod);
 

@@ -465,7 +465,7 @@ class Vector {
   mutable details::COWPtr<VectorData> m_;
 };
 
-#else  // PADDLE_WITH_CUDA
+#endif  // PADDLE_WITH_CUDA
 
 template <typename T>
 class CPUVector : public std::vector<T, std::allocator<T>> {
@@ -536,10 +536,10 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
   const void *Handle() const { return static_cast<const void *>(this); }
 };
 
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template <typename T>
 using Vector = CPUVector<T>;
-
-#endif  // PADDLE_WITH_CUDA
+#endif
 
 };  // namespace framework
 }  // namespace paddle
