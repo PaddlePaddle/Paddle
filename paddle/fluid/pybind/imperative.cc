@@ -871,9 +871,8 @@ void BindImperative(py::module *m_ptr) {
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           if (egr::Controller::Instance().InEagerMode()) {
             egr::Controller::Instance().SetCurrentTracer(tracer);
-          } else {
-            imperative::SetCurrentTracer(tracer);
           }
+          imperative::SetCurrentTracer(tracer);
         });
   m.def("_enable_eager_mode",
         []() { egr::Controller::Instance().SetInEagerMode(true); });

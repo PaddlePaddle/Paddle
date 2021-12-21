@@ -18,6 +18,7 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
+from ..framework import _in_eager_mode
 
 import numpy as np
 import warnings
@@ -332,11 +333,16 @@ def monkey_patch_math_varbase():
     ]
 
     global _already_patch_varbase
+    global _already_patch_eager_tensor
+
     if not _already_patch_varbase:
         for method in varbase_methods:
             method_name = method[0]
             method_impl = method[1]
             setattr(core.VarBase, method_name, method_impl)
+            if _in_eager_mode() and not _already_patch_eager_tensor:
+                print("patch eager 1")
+                setattr(core.eager.EagerTensor, method_name, method_impl)
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
@@ -344,9 +350,19 @@ def monkey_patch_math_varbase():
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
+            if _in_eager_mode():
+                print("patch eager 2")
+                if hasattr(core.eager.EagerTensor, method_name): continue
+                method_impl = getattr(core.eager.EagerTensor, method_name, None)
+                if method_impl:
+                    setattr(core.eager.EagerTensor, method_name, method_impl)
 
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
             if impl: setattr(core.VarBase, magic_method, impl)
+            if _in_eager_mode():
+                print("patch eager 3")
+                impl = getattr(core.eager.EagerTensor, origin_method, None)
+                if impl: setattr(core.eager.EagerTensor, magic_method, impl)
 
     _already_patch_varbase = True

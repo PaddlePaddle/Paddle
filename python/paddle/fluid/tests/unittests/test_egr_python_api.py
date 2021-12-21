@@ -46,7 +46,7 @@ class EagerScaleTestCase(unittest.TestCase):
             grad_data = np.ones([4, 16, 16, 32]).astype('float32')
             grad_eager = paddle.to_tensor(grad_data, 'float32', core.CPUPlace())
 
-            core.eager.retain_grad_for_tensor(data_eager)
+            data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
             self.assertFalse(data_eager.grad._is_initialized())
