@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]

@@ -51,7 +51,7 @@ class ShardingStage2(nn.Layer):
     # Feature Notes::
     # 1. Unified memory for param and param.grad to InternalStorage.
     # 2. Divide param.grad according to rank to centrally apply for and release GPU memory.
-    # 3. Dynamically adjust training parameters and models。
+    # 3. Dynamically adjust training parameters and models.
     # 4. Support offload function.
     # 5. Support the establishment of independent communication groups.
 
@@ -85,11 +85,11 @@ class ShardingStage2(nn.Layer):
         self._accumulate_grads = accumulate_grads
 
         # Communication related attributes
-        self._group = group
-        group = _get_global_group() if group is None else group
-        self._world_size_scaling = 1.0 / group.nranks
-        assert group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
-        self._rank = group.rank
+        self._group = dist.new_group(_get_global_group()
+                                     .ranks) if group is None else group
+        self._world_size_scaling = 1.0 / self._group.nranks
+        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
+        self._rank = self._group.rank
         self._global_root_rank = 0  # picking rank 0 as the reference
         self._default_device = device
 
@@ -173,37 +173,40 @@ class ShardingStage2(nn.Layer):
         """
         # Release grad storages
         for dtype in self._grad_storages.keys():
-            if self._rank in self._grad_storages[dtype].keys():
-                if not self._offload:
-                    self._grad_storages[dtype][self._rank].buffer.zero_()
+            if not self._offload and self._rank in self._grad_storages[
+                    dtype].keys():
+                self._grad_storages[dtype][self._rank].buffer.zero_()
 
-        # Release params
+        # Release grads of params
         for param in self._trainable_params:
             if param.name in self._param_grads and param.grad is not None:
                 param.clear_gradient()
+
+        # Release grads of master params with offload strategy
+        if self._offload:
+            self._sharding_optimizers[0]._offload_clear_grad()
 
     def _grad_scale(self):
         """
         Before the gradient accumulation, scale the gradient.
         """
-        if self._offload:
-            for param in self._trainable_params:
-                if param.name in self._sharding_optimizers[
-                        0]._master_params.keys():
-                    self._sharding_optimizers[0]._master_params[
-                        param.name].grad.scale_(scale=self._world_size_scaling)
-        else:
-            # Scale grad storages
-            for dtype in self._grad_storages.keys():
-                if self._rank in self._grad_storages[dtype].keys():
-                    self._grad_storages[dtype][self._rank].buffer.scale_(
-                        scale=self._world_size_scaling)
+        # Scale grad storages
+        for dtype in self._grad_storages.keys():
+            if not self._offload and self._rank in self._grad_storages[
+                    dtype].keys():
+                self._grad_storages[dtype][self._rank].buffer.scale_(
+                    scale=self._world_size_scaling)
 
-            # Scale params
-            for param in self._trainable_params:
-                if param.name in self._param_grads and param.grad is not None:
-                    param.grad.scale_(scale=self._world_size_scaling)
-                    param._reset_grad_inplace_version(True)
+        # Scale grads of params
+        for param in self._trainable_params:
+            if param.name in self._param_grads and param.grad is not None:
+                param.grad.scale_(scale=self._world_size_scaling)
+                param._reset_grad_inplace_version(True)
+
+        # Scale grads of master params with offload strategy
+        if self._offload:
+            self._sharding_optimizers[0]._offload_scale_grad(
+                self._world_size_scaling)
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -319,9 +322,9 @@ class ShardingStage2(nn.Layer):
                         if dst_rank != self._rank:
                             param.clear_gradient(False)
                         elif self._offload:
-                            self._sharding_optimizers[0]._master_params[
-                                param.name]._copy_gradient_from(param.grad.cpu(
-                                ).cast(dtype=Type.fp32.value))
+                            self._sharding_optimizers[0]._offload_acc_grad(
+                                param.name,
+                                param.grad.cast(dtype=Type.fp32.value).cpu())
                             param.clear_gradient(False)
 
                     # Synchronize the reduce parameter gradient
@@ -375,11 +378,14 @@ class ShardingStage2(nn.Layer):
                                 )
                             elif self._offload:
                                 grad_storage.to(device=self._offload_device)
-                                for param in grad_storage._params:
-                                    self._sharding_optimizers[0]._master_params[
-                                        param.name]._copy_gradient_from(
-                                            param.grad.cast(
-                                                dtype=Type.fp32.value))
+                                for p in grad_storage._params:
+                                    self._sharding_optimizers[
+                                        0]._offload_acc_grad(
+                                            p.name,
+                                            p.grad.cast(dtype=Type.fp32.value))
+                                    p.clear_gradient(False)
+                                    p._gradient_set_empty(False)
+                                grad_storage._device = self._default_device
                                 grad_storage.buffer.value().get_tensor()._clear(
                                 )
 
