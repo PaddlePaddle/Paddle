@@ -44,6 +44,12 @@ class FancyAllocator : public pten::Allocator {
     void* data = ::operator new(bytes_size);
     return Allocation(data, data, &Delete, paddle::platform::CPUPlace());
   }
+
+  std::shared_ptr<paddle::memory::Allocation> AllocateShared(
+      size_t bytes_size) override {
+    return paddle::memory::AllocShared(paddle::platform::CPUPlace(),
+                                       bytes_size);
+  }
 };
 
 template <typename T>

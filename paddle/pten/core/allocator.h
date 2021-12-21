@@ -158,19 +158,15 @@ class Allocator {
   }
 };
 
-/* --------- Deprecated ---------- */
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
   CHECK(a);
   return a->Allocate(n);
 }
-/* --------- Deprecated ---------- */
 
-/* --------- shared_ptr<Allocation> -------- */
 inline std::shared_ptr<paddle::memory::Allocation> AllocateShared(
     const std::shared_ptr<Allocator>& a, size_t n) {
   CHECK(a);
   return a->AllocateShared(n);
 }
-/* --------- shared_ptr<Allocation> -------- */
 
 }  // namespace pten
