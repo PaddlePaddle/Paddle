@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infermeta/nary.h"
+#pragma once
+
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
-DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
-                                DataType dtype,
-                                DataLayout layout) {
-  const auto& out_dims = paddle::framework::make_ddim(shape);
-  return {dtype, out_dims, layout};
+template <typename T, typename ContextT>
+void Empty(const ContextT& dev_ctx,
+           const ScalarArray& shape,
+           DenseTensor* out) {
+  out->Resize(paddle::framework::make_ddim(shape.GetData()));
 }
 
-DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
-                                DataType dtype,
-                                DataLayout layout) {
-  const auto& out_dims = paddle::framework::make_ddim(shape.GetData());
-  return {dtype, out_dims, layout};
+template <typename T, typename ContextT>
+void EmptyLike(const ContextT& dev_ctx, DenseTensor* out) {
+  out->mutable_data<T>();
 }
 
 }  // namespace pten
