@@ -2061,6 +2061,7 @@ class Executor(object):
 
                 # Insert feed ops
                 feed_task = fleet_opt['tasks'][0]
+                print("Inserting feed ops for task", feed_task.task_id())
                 feed_program = feed_task.get_program()
                 feed_program = self._add_feed_ops(
                     program=feed_program,
@@ -2070,6 +2071,7 @@ class Executor(object):
 
                 # Insert fetch ops
                 fetch_task = fleet_opt['tasks'][-1]
+                print("Inserting fetch ops for task", fetch_task.task_id())
                 fetch_program = fetch_task.get_program()
                 fetch_program = self._add_fetch_ops(
                     program=fetch_program,
