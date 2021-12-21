@@ -18,8 +18,8 @@
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
-#include "paddle/pten/kernels/cuda/utils.h"
 #include "paddle/pten/kernels/functions/common_shape.h"
+#include "paddle/pten/kernels/gpu/utils.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {

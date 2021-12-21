@@ -24,7 +24,7 @@ limitations under the License. */
 PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(copy, CUDA, ALL_LAYOUT);
+PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 #endif
 
 #ifdef PADDLE_WITH_XPU
