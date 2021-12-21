@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
-using CUDAContext = paddle::platform::CUDADeviceContext;
+using GPUContext = paddle::platform::CUDADeviceContext;
 }  // namespace pten
 
 #endif

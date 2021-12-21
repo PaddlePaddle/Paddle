@@ -75,7 +75,7 @@ PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_CTX_KERNEL(flatten,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Flatten,
                        float,
@@ -87,7 +87,7 @@ PT_REGISTER_CTX_KERNEL(flatten,
                        int64_t) {}
 
 PT_REGISTER_CTX_KERNEL(flatten_with_xshape,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::FlattenWithXShape,
                        float,
