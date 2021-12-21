@@ -19,5 +19,7 @@
 REGISTER_OP_CUDA_KERNEL(
     reduce_mean,
     ops::ReduceCudaKernel<bool, kps::AddFunctor, kps::DivideFunctor>,
+    ops::ReduceCudaKernel<paddle::platform::float16, kps::AddFunctor,
+                          kps::DivideFunctor>,
     ops::ReduceCudaKernel<float, kps::AddFunctor, kps::DivideFunctor>,
     ops::ReduceCudaKernel<double, kps::AddFunctor, kps::DivideFunctor>);
