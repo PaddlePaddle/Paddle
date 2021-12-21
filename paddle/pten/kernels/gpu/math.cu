@@ -36,6 +36,8 @@ namespace cub = hipcub;
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+namespace kps = paddle::operators::kernel_primitives;
+
 namespace pten {
 
 /**
@@ -70,7 +72,7 @@ void Mean(const GPUContext& dev_ctx,
           bool reduce_all,
           DenseTensor* out) {
   auto out_dtype = x.dtype();
-  pten::Reduce<T, paddle::operators::CustomMean>(
+  pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -91,7 +93,7 @@ void Sum(const GPUContext& dev_ctx,
          bool reduce_all,
          DataType out_dtype,
          DenseTensor* out) {
-  pten::Reduce<T, paddle::operators::CustomSum>(
+  pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 

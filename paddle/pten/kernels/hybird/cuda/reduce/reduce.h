@@ -17,11 +17,11 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
-
 namespace pten {
 
 static inline std::vector<int64_t> GetReduceDim(
@@ -48,7 +48,9 @@ static inline std::vector<int64_t> GetReduceDim(
   return reduce_dims;
 }
 
-template <typename T, template <typename, typename> class ReduceFunctor>
+template <typename T,
+          template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 void Reduce(const GPUContext& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
@@ -56,20 +58,30 @@ void Reduce(const GPUContext& dev_ctx,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
-  std::vector<int64_t> reduce_dims =
+  std::vector<int64_t> reduce_dims_int64 =
       GetReduceDim(dims, x.dims().size(), reduce_all);
+  std::vector<int> reduce_dims{reduce_dims_int64.begin(),
+                               reduce_dims_int64.end()};
+
+  int reduce_num = x.numel();
 
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
     PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         out_dtype, "TensorReduceFunctorImpl", ([&] {
-          pten::detail::TensorReduceFunctorImpl<T, data_t, ReduceFunctor>(
-              x, out, reduce_dims, stream);
+          using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
+          paddle::operators::TensorReduceFunctorImpl<T,
+                                                     data_t,
+                                                     ReduceOp,
+                                                     TransformOp<T, MPType>>(
+              x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
         }));
   } else {
-    pten::detail::TensorReduceFunctorImpl<T, T, ReduceFunctor>(
-        x, out, reduce_dims, stream);
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    paddle::operators::
+        TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+            x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
   }
 }
 
