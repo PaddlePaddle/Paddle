@@ -757,6 +757,8 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         self._visit_Call(node)
         if is_paddle_api(node):
             self.is_control_flow_num += 1
+        elif isinstance(node.func, gast.Name) and node.func.id == 'len':
+            self.is_control_flow_num += 1
         return node
 
     def visit_Name(self, node):
