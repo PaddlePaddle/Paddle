@@ -19,8 +19,7 @@ import unittest
 
 import paddle
 from paddle.jit import register_save_pre_hook
-from paddle.jit import clear_save_pre_hooks
-from paddle.fluid.dygraph.jit import run_save_pre_hooks
+from paddle.fluid.dygraph.jit import _run_save_pre_hooks, _clear_save_pre_hooks
 
 _counter = 0
 
@@ -46,13 +45,13 @@ class TestPreSaveHooks(unittest.TestCase):
         self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 0)
 
         remove_handler = register_save_pre_hook(fake_func)
-        clear_save_pre_hooks()
+        _clear_save_pre_hooks()
         self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 0)
 
         global _counter
         _counter = 0
         remove_handler = register_save_pre_hook(fake_func)
-        func_with_hook = run_save_pre_hooks(fake_func)
+        func_with_hook = _run_save_pre_hooks(fake_func)
         func_with_hook(None, None)
         self.assertEqual(_counter, 2)
 

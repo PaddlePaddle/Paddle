@@ -44,8 +44,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load', 'not_to_static', 'register_save_pre_hook',
-    'clear_save_pre_hooks'
+    'set_verbosity', 'save', 'load', 'not_to_static', 'register_save_pre_hook'
 ]
 
 
@@ -567,10 +566,10 @@ def register_save_pre_hook(hook):
             IMAGE_SIZE = 256
             CLASS_NUM = 10
 
-            class LinearNet(nn.Layer):
+            class LinearNet(paddle.nn.Layer):
                 def __init__(self):
                     super(LinearNet, self).__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                    self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, x):
                     return self._linear(x)
@@ -599,45 +598,7 @@ def register_save_pre_hook(hook):
     return HookRemoveHelper(hook)
 
 
-def clear_save_pre_hooks():
-    """
-    Clear all save pre-hooks for `paddle.jit.save`.
-
-    Args:
-        None
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            import paddle
-
-            IMAGE_SIZE = 256
-            CLASS_NUM = 10
-
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
-                def forward(self, x):
-                    return self._linear(x)
-
-            saving_count = 0
-            def save_pre_hook(layer, input_spec, configs):
-                global saving_count
-                saving_count += 1
-
-            remove_handler = paddle.jit.register_save_pre_hook(save_pre_hook)
-
-            layer = LinearNet()
-            paddle.jit.clear_save_pre_hooks()
-            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
-            # saving_count == 0
-    """
+def _clear_save_pre_hooks():
     global _save_pre_hooks_lock
     global _save_pre_hooks
     _save_pre_hooks_lock.acquire()
@@ -654,7 +615,7 @@ def _remove_save_pre_hook(hook):
     _save_pre_hooks_lock.release()
 
 
-def run_save_pre_hooks(func):
+def _run_save_pre_hooks(func):
     def wrapper(layer, path, input_spec=None, **configs):
         global _save_pre_hooks
         for hook in _save_pre_hooks:
@@ -664,7 +625,7 @@ def run_save_pre_hooks(func):
     return wrapper
 
 
-@run_save_pre_hooks
+@_run_save_pre_hooks
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
