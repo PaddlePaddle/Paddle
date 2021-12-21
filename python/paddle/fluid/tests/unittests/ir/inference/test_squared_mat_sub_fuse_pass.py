@@ -32,11 +32,12 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         transpose_X = False
         transpose_Y = False
-        alpha1 = draw(st.floats(min_value=0.01, max_value=2))
-        alpha2 = draw(st.floats(min_value=0.01, max_value=2))
+        alpha1 = 1.0
+        alpha2 = 1.0
         axis1 = draw(st.sampled_from([-1, 0]))
         place_type = draw(st.sampled_from([-1, 0]))
-        str_value = draw(st.sampled_from(['-0.2', '3']))
+        has_str_value = draw(st.booleans())
+        str_value = ''
         value = draw(st.floats(min_value=-10, max_value=10))
         shape = draw(st.sampled_from([[1]]))
         axis2 = draw(st.sampled_from([-1, 0]))
@@ -110,17 +111,29 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
             outputs={"Out": ["sub_out"]},
             attrs={"axis": axis1})
 
-        fill_constant_op = OpConfig(
-            type="fill_constant",
-            inputs={},
-            outputs={"Out": ["constant_out"]},
-            attrs={
-                "dtype": 5,
-                "place_type": place_type,
-                "str_value": str_value,
-                "value": value,
-                "shape": shape
-            })
+        if has_str_value:
+            fill_constant_op = OpConfig(
+                type="fill_constant",
+                inputs={},
+                outputs={"Out": ["constant_out"]},
+                attrs={
+                    "dtype": 5,
+                    "place_type": place_type,
+                    "str_value": str_value,
+                    "value": value,
+                    "shape": shape
+                })
+        else:
+            fill_constant_op = OpConfig(
+                type="fill_constant",
+                inputs={},
+                outputs={"Out": ["constant_out"]},
+                attrs={
+                    "dtype": 5,
+                    "place_type": place_type,
+                    "value": value,
+                    "shape": shape
+                })
 
         elt_mul_op = OpConfig(
             type="elementwise_mul",
@@ -151,20 +164,8 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
         config = self.create_inference_config()
         yield config, ["fusion_squared_mat_sub"], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        def teller1(program_config, predictor_config):
-            return True
-
-        self.add_ignore_check_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
-                                   "The output has diff!")
-
     def test(self):
-        self.run_and_statis(
-            # If the output diff problem has been fixed,
-            # min_success_num=0 should be deleted!
-            min_success_num=0,
-            quant=False,
-            passes=["squared_mat_sub_fuse_pass"])
+        self.run_and_statis(quant=False, passes=["squared_mat_sub_fuse_pass"])
 
 
 if __name__ == "__main__":
