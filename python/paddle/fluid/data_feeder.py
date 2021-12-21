@@ -109,11 +109,12 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
             "Because received '{}' in {} is a imperative Variable.".format(
                 input_name, op_name))
-    elif isinstance(input, core.eager.EagerTensor):
-        raise TypeError(
-            "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
-            "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name))
+    elif hasattr(core, "eager"):
+        if isinstance(input, core.eager.EagerTensor):
+            raise TypeError(
+                "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
+                "Because received '{}' in {} is a imperative Variable.".format(
+                    input_name, op_name))
     if not isinstance(input, expected_type):
         raise TypeError(
             "The type of '%s' in %s must be %s, but received %s. %s" %
