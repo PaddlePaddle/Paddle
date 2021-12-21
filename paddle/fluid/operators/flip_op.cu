@@ -162,6 +162,7 @@ REGISTER_OP_CUDA_KERNEL(
     flip, ops::FlipKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::FlipKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, bool>,

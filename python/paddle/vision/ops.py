@@ -20,6 +20,7 @@ from ..fluid.layers import nn, utils
 from ..nn import Layer
 from ..fluid.initializer import Normal
 
+import paddle
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
@@ -30,6 +31,7 @@ __all__ = [ #noqa
     'DeformConv2D',
     'read_file',
     'decode_jpeg',
+    'random_flip',
     'roi_pool',
     'RoIPool',
     'psroi_pool',
@@ -967,6 +969,19 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
         type="batch_decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
     return out
+
+
+def random_flip(x, batch_size, prob=0.5, name=None):
+    if prob < 0. or prob > 1.:
+        raise ValueError("prob should in (0, 1) in random_flip")
+
+    p = paddle.uniform([batch_size, 1], min=0., max=1.)
+    ie = layers.IfElse(p < prob)
+    with ie.true_block():
+        out = ie.input(x)
+        out = paddle.flip(x, -1)
+        ie.output(out)
+    return ie()[0]
 
 
 def decode_jpeg(x, mode='unchanged', name=None):

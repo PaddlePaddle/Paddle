@@ -153,6 +153,7 @@ REGISTER_OPERATOR(flip, ops::FlipOp, ops::FlipOpMaker, ops::FlipOpInferVarType,
 REGISTER_OP_CPU_KERNEL(
     flip, ops::FlipKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FlipKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, bool>,
