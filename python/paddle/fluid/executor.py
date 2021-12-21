@@ -2053,25 +2053,38 @@ class Executor(object):
         if cached_ctx is None:
             fleet_opt = program._pipeline_opt["fleet_opt"]
             if 'tasks' in fleet_opt:
-                # insert feed/fetch op for cloned program in each task node,
-                # these ops has already been inserted into the origin program
-                for task in fleet_opt['tasks']:
-                    tmp_program = task.get_program()
-                    tmp_program = self._add_feed_fetch_ops(
-                        program=tmp_program,
-                        feed=real_feed,
-                        fetch_list=fetch_list,
-                        feed_var_name=feed_var_name,
-                        fetch_var_name=fetch_var_name)
-                    main_block = tmp_program.block(0)
-                    for op in main_block.ops:
-                        # set the op_role of fetch op to Optimize to avoid
-                        # erase the fetched vars by gc for pipeline
-                        if op.type == 'fetch':
-                            op._set_attr(
-                                'op_role',
-                                core.op_proto_and_checker_maker.OpRole.Optimize)
-                    task.set_program(tmp_program)
+                # Insert feed/fetch op for cloned program in each task node,
+                # these ops has already been inserted into the origin program.
+                # To avoid every task nodes all have feed/fetch ops,
+                # only insert feed ops into the first task node,
+                # then insert fetch ops into the last task node.
+
+                # Insert feed ops
+                feed_task = fleet_opt['tasks'][0]
+                feed_program = feed_task.get_program()
+                feed_program = self._add_feed_ops(
+                    program=feed_program,
+                    feed=real_feed,
+                    feed_var_name=feed_var_name)
+                feed_task.set_program(feed_program)
+
+                # Insert fetch ops
+                fetch_task = fleet_opt['tasks'][-1]
+                fetch_program = fetch_task.get_program()
+                fetch_program = self._add_fetch_ops(
+                    program=fetch_program,
+                    fetch_list=fetch_list,
+                    fetch_var_name=fetch_var_name)
+                main_block = fetch_program.block(0)
+                for op in main_block.ops:
+                    # set the op_role of fetch op to Optimize to avoid
+                    # erase the fetched vars by gc for pipeline
+                    if op.type == 'fetch':
+                        op._set_attr(
+                            'op_role',
+                            core.op_proto_and_checker_maker.OpRole.Optimize)
+                fetch_task.set_program(fetch_program)
+
             cached_ctx = self._prepare_fleet_executor(
                 program=cached_program, scope=cached_scope, fleet_opt=fleet_opt)
             self._add_ctx_cache(cache_key, cached_ctx)
@@ -2098,6 +2111,73 @@ class Executor(object):
             tensors = arr._move_to_list()
             return as_numpy(tensors)
         return None
+
+    def _add_feed_ops(self, program, feed, feed_var_name):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
+        else:
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True)
+
+        # prepend feed operators
+        if not has_feed_operators(global_block, feed, feed_var_name):
+            for i, name in enumerate(feed):
+                if global_block.has_var(name):
+                    out = global_block.var(name)
+                    global_block._prepend_op(
+                        type='feed',
+                        inputs={'X': [feed_var]},
+                        outputs={'Out': [out]},
+                        attrs={'col': i})
+                else:
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % name)
+
+        return tmp_program
+
+    def _add_fetch_ops(self,
+                       program,
+                       fetch_list,
+                       fetch_var_name,
+                       use_fetch_v2=False):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if fetch_var_name in global_block.vars:
+            fetch_var = global_block.var(fetch_var_name)
+        else:
+            fetch_var = global_block.create_var(
+                name=fetch_var_name,
+                type=core.VarDesc.VarType.FETCH_LIST,
+                persistable=True)
+
+        if use_fetch_v2:
+            fetch_op = 'fetch_v2'
+        else:
+            fetch_op = 'fetch'
+
+        # append fetch_operators
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name,
+                                   fetch_op):
+            for i, var in enumerate(fetch_list):
+                assert isinstance(var, Variable) or isinstance(
+                    var, six.string_types), (
+                        "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
+                global_block.append_op(
+                    type=fetch_op,
+                    inputs={'X': [var]},
+                    outputs={'Out': [fetch_var]},
+                    attrs={'col': i})
+
+        return tmp_program
 
     def _run_pipeline(self,
                       program=None,
