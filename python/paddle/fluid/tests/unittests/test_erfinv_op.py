@@ -29,9 +29,14 @@ class TestErfinv(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
         self.init_dtype()
-        x = np.random.rand(100).astype(self.dtype)
-        self.inputs = {'X': x}
-        self.outputs = {'Out': erfinv(x)}
+        self.shape = [11, 17]
+        self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
+        self.res_ref = erfinv(self.x).astype(self.dtype)
+        self.grad_out = np.ones(self.shape, self.dtype)
+        self.gradient = np.sqrt(np.pi) / 2 * np.exp(np.square(
+            self.res_ref)) * self.grad_out
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.res_ref}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -40,7 +45,11 @@ class TestErfinv(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.gradient],
+            user_defined_grad_outputs=self.grad_out)
 
 
 class TestErfinvFP32(TestErfinv):

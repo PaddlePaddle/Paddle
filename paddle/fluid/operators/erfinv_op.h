@@ -38,7 +38,7 @@ class ErfinvKernel : public framework::OpKernel<T> {
   }
 };
 
-// 0.5 * sqrt(pi) * exp(out.pow(2)) * grad
+// sqrt(pi) / 2 * exp(square(out)) * grad
 template <typename DeviceContext, typename T>
 class ErfinvGradKernel : public framework::OpKernel<T> {
  public:
@@ -54,7 +54,8 @@ class ErfinvGradKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     constexpr T half_sqrt_pi = static_cast<T>(1 / M_2_SQRTPI);
-    eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.pow(2).exp();
+    eigen_dx.device(place) =
+        half_sqrt_pi * eigen_dout * eigen_out.square().exp();
   }
 };
 
