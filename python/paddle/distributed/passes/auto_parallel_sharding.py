@@ -23,7 +23,7 @@ from .pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
 from paddle.distributed.auto_parallel.process_group import get_world_process_groups, new_process_group
 from paddle.distributed.auto_parallel.operators.common import is_parameter_related
-from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
+from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -194,9 +194,8 @@ class ShardingPass(PassBase):
         self._shard_amp_backward(main_block, pass_context)
         self._shard_weight_decay(main_block)
         self._shard_gradient_clip(main_block)
-        self._shard_weight_decay(main_block)
-
         self._shard_optimizer_ops_and_states(main_block, startup_block)
+        self._insert_not_overlap_broadcasts(main_block, startup_block)
 
     def _shard_amp_backward(self, main_block, pass_context):
         """
@@ -205,6 +204,9 @@ class ShardingPass(PassBase):
         check_nan_inf
         unscale_gradient
         """
+        if self.stage < 2:
+            return
+
         # if not _is_amp_applied(pass_context):
         #     return 
         for idx, op in reversed(list(enumerate(main_block.ops))):
@@ -231,8 +233,11 @@ class ShardingPass(PassBase):
         main_block._sync_with_cpp()
 
     def _shard_gradient_clip(self, main_block):
-        # TODO support calculate global norm with tensor parallelism
 
+        if self.stage < 2:
+            return
+
+        # TODO support calculate global norm with tensor parallelism
         is_clip_grad_by_global_norm = False
         for idx, op in list(enumerate(main_block.ops)):
             if not _is_gradient_clip_op(op):
@@ -295,6 +300,9 @@ class ShardingPass(PassBase):
 
     def _shard_weight_decay(self, main_block):
 
+        if self.stage < 2:
+            return
+
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if not _is_weight_decay_op(op):
                 continue
@@ -332,36 +340,37 @@ class ShardingPass(PassBase):
             if startup_block.has_var(varname):
                 startup_block._remove_var(varname, sync=False)
 
-        if self.stage <= 2:
-            self._insert_not_overlap_broadcasts(main_block, startup_block)
-
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
 
     def _insert_not_overlap_broadcasts(self, main_block, startup_block):
 
+        if self.stage > 2:
+            return
+
         for sharding_info in self.sharding_infos:
             for param in sharding_info.params:
                 assert main_block.has_var(param.name)
                 assert startup_block.has_var(param.name)
-                for block, role in zip([main_block, startup_block],
-                                       [OpRole.Optimize, OpRole.Forward]):
-                    new_op = block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
-                            'ring_id': sharding_info.group.id,
-                            'root': sharding_info.get_var_rank(param.name),
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: role
-                        })
-                    param_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                        param)
-                    assert param_dist_attr is not None
-                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                        new_op, param_dist_attr.process_mesh,
-                        param_dist_attr.dims_mapping, self._dist_context)
+                # for block, role in zip([main_block, startup_block],
+                #                        [OpRole.Optimize, OpRole.Forward]):
+                new_op = main_block.append_op(
+                    type='c_broadcast',
+                    inputs={'X': param},
+                    outputs={'Out': param},
+                    attrs={
+                        'ring_id': sharding_info.group.id,
+                        'root': sharding_info.get_var_rank(param.name),
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Optimize
+                    })
+                param_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                    param)
+                assert param_dist_attr is not None
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    new_op, param_dist_attr.process_mesh,
+                    param_dist_attr.dims_mapping, self._dist_context)
+        main_block._sync_with_cpp()
 
     def _is_parameter_in_local_shard(self, param_name):
         assert param_name in self.var2sharding_info
@@ -369,6 +378,9 @@ class ShardingPass(PassBase):
         return sharding_info.is_in_local_shard(param_name)
 
     def _update_gradient_synchronization(self, main_program):
+
+        if self.stage < 2:
+            return
         main_block = main_program.global_block()
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
@@ -391,8 +403,12 @@ class ShardingPass(PassBase):
         main_block._sync_with_cpp
 
     def _shard_parameter(self, main_program, startup_program):
+
+        if self.stage < 3:
+            return
         main_block = main_program.global_block()
         startup_block = startup_program.global_block()
+        dp_ring_ids = [group.id for group in self.dp_groups]
 
         for sharding_info in self.sharding_infos:
             need_broadcast_vars, param_usage = sharding_info.get_broadcast_vars_and_param_usage(
@@ -408,9 +424,9 @@ class ShardingPass(PassBase):
                     continue
 
                 for input_name in op.desc.input_arg_names():
-                    if input_name not in need_broadcast_vars:
-                        continue
                     if op.type == "cast":
+                        continue
+                    if input_name not in need_broadcast_vars:
                         continue
                     root_rank = sharding_info.get_var_rank(input_name)
                     if root_rank == sharding_info.local_rank:
@@ -419,17 +435,24 @@ class ShardingPass(PassBase):
                         broadcast_varname = unique_name.generate(input_name +
                                                                  "@BroadCast")
                         input_var = main_block.var(input_name)
-                        main_block.create_var(
+                        new_var = main_block.create_var(
                             name=broadcast_varname,
                             shape=input_var.shape,
                             dtype=input_var.dtype,
                             persistable=False)
+                        ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                            input_var)
+                        out_var_dist_attr = set_var_dist_attr(
+                            self._dist_context, new_var,
+                            ref_dist_attr.dims_mapping,
+                            ref_dist_attr.process_mesh)
                         op._rename_input(input_name, broadcast_varname)
 
-                    _insert_init_and_broadcast_op(main_block, idx,
-                                                  broadcast_varname, root_rank,
-                                                  sharding_info.group.id,
-                                                  op.attr('op_role'))
+                    _insert_init_and_broadcast_op(
+                        main_block, idx, broadcast_varname,
+                        sharding_info.local_rank, root_rank,
+                        sharding_info.group.id,
+                        op.attr('op_role'), self._dist_context)
 
             for idx, op in reversed(list(enumerate(main_block.ops))):
                 if op.type != "cast":
@@ -443,7 +466,17 @@ class ShardingPass(PassBase):
             for idx, op in reversed(list(enumerate(startup_block.ops))):
                 assert len(op.output_arg_names) == 1
                 output_name = op.output_arg_names[0]
-                if output_name in not_used_param_nane:
+
+                if op.type == "c_broadcast" and op.attr(
+                        "ring_id") in dp_ring_ids:
+                    if self.outer_dp_group and sharding_info.get_var_rank(
+                            output_name) == sharding_info.local_rank:
+                        op._set_attr("ring_id", self.outer_dp_group.id)
+                    else:
+                        startup_block._remove_op(idx, sync=False)
+                    continue
+
+                if op.type != "c_broadcast" and output_name in not_used_param_nane:
                     startup_block._remove_op(idx, sync=False)
 
             for var_name in not_used_param_nane:
@@ -454,30 +487,43 @@ class ShardingPass(PassBase):
         startup_block._sync_with_cpp()
 
 
-def _insert_init_and_broadcast_op(block, insert_idx, varname, root_rank,
-                                  ring_id, op_role):
+def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
+                                  root_rank, ring_id, op_role, dist_context):
     """
     empty op for initialization
     """
-    block._insert_op_without_sync(
+    broadcast_var = block.var(varname)
+    broadcast_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+        broadcast_var)
+
+    new_op = block._insert_op_without_sync(
         insert_idx,
         type='c_broadcast',
         inputs={'X': varname},
         outputs={'Out': varname},
-        attrs={'ring_id': ring_id,
-               'root': root_rank,
-               OP_ROLE_KEY: op_role})
-
-    broadcast_var = block.var(varname)
-    block._insert_op_without_sync(
-        insert_idx,
-        type="empty",
-        outputs={"Out": broadcast_var.name},
         attrs={
-            "shape": broadcast_var.shape,
-            "dtype": broadcast_var.dtype,
+            'ring_id': ring_id,
+            'root': root_rank,
+            'use_calc_stream': True,
             OP_ROLE_KEY: op_role
         })
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        new_op, broadcast_var_dist_attr.process_mesh,
+        broadcast_var_dist_attr.dims_mapping, dist_context)
+    if local_rank != root_rank:
+
+        new_op = block._insert_op_without_sync(
+            insert_idx,
+            type="empty",
+            outputs={"Out": broadcast_var.name},
+            attrs={
+                "shape": broadcast_var.shape,
+                "dtype": broadcast_var.dtype,
+                OP_ROLE_KEY: op_role
+            })
+        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            new_op, broadcast_var_dist_attr.process_mesh,
+            broadcast_var_dist_attr.dims_mapping, dist_context)
     return
 
 
