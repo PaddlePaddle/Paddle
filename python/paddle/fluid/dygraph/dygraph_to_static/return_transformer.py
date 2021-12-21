@@ -386,9 +386,12 @@ class ReturnTransformer(gast.NodeTransformer):
                         type_comment=None) for n in no_value_names
                 ]
                 if return_node.value is not None:
-                    if isinstance(return_node.value, gast.Tuple):
+                    if isinstance(
+                            return_node.value,
+                            gast.Tuple) and len(return_node.value.elts) > 1:
                         fill_tuple[:0] = return_node.value.elts
                     else:
+                        # If return_node.value is a gast.Tuple like (a, ), we also insert here
                         fill_tuple.insert(0, return_node.value)
 
                 assign_nodes.append(
