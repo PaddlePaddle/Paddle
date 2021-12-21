@@ -38,6 +38,11 @@ class DefaultAllocator : public pten::Allocator {
     return Allocation(ptr, a.release(), &Delete, place_);
   }
 
+  std::shared_ptr<paddle::memory::Allocation> AllocateShared(
+      size_t bytes_size) override {
+    return memory::AllocShared(place_, bytes_size);
+  }
+
  private:
   paddle::platform::Place place_;
   static paddle::memory::Allocator::AllocationDeleter deleter_;

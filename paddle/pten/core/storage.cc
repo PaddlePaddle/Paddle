@@ -17,8 +17,14 @@ limitations under the License. */
 namespace pten {
 
 void TensorStorage::Realloc(size_t size) {
-  data_.Clear();
-  data_ = Allocate(alloc_, size);
+  data_orig.Clear();
+  data_orig = Allocate(alloc_, size);
+  size_ = size;
+}
+
+void TensorStorage::ReallocShared(size_t size) {
+  this->Clear();
+  data_ = AllocateShared(alloc_, size);
   size_ = size;
 }
 

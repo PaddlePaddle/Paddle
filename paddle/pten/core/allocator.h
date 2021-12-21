@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace pten {
@@ -148,11 +149,28 @@ class Allocator {
  public:
   virtual ~Allocator() = default;
   virtual Allocation Allocate(size_t bytes_size) = 0;
+  virtual std::shared_ptr<paddle::memory::Allocation> AllocateShared(
+      size_t bytes_size) {
+    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        "AllocateShared has not been overrided by the current Allocator"));
+
+    return nullptr;
+  }
 };
 
+/* --------- Deprecated ---------- */
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
   CHECK(a);
   return a->Allocate(n);
 }
+/* --------- Deprecated ---------- */
+
+/* --------- shared_ptr<Allocation> -------- */
+inline std::shared_ptr<paddle::memory::Allocation> AllocateShared(
+    const std::shared_ptr<Allocator>& a, size_t n) {
+  CHECK(a);
+  return a->AllocateShared(n);
+}
+/* --------- shared_ptr<Allocation> -------- */
 
 }  // namespace pten
