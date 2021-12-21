@@ -77,6 +77,8 @@ class AutoParallelizer:
             self._enable_auto_mapping = False
         else:
             self._enable_auto_mapping = True
+        self._pass_context = PassContext()
+
         self._need_rank_mapping = os.getenv("PADDLE_NEED_RANK_MAPPING")
         self._need_rank_mapping = True if self._need_rank_mapping and \
             self._need_rank_mapping.lower() == 'true' else False
