@@ -2797,4 +2797,3 @@ def moveaxis(x, source, destination, name=None):
                  'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
->>>>>>> c197d73be1babe64d93b714701b21066d6645482

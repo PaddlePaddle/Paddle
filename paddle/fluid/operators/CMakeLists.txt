@@ -87,7 +87,9 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils)
+cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu)
+
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils gather_scatter_kernel)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -96,9 +98,6 @@ op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS execu
 op_library(save_combine_op DEPS string_array)
 op_library(load_combine_op DEPS string_array)
 
-cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu)
-target_link_libraries(take_along_axis_op gather_scatter_kernel)
-target_link_libraries(put_along_axis_op gather_scatter_kernel)
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
