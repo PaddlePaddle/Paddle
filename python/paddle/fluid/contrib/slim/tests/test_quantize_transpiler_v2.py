@@ -145,7 +145,7 @@ class TestQuantizeProgramPass(unittest.TestCase):
                     './infer_model', ['image', 'label'], [loss],
                     exe,
                     test_program,
-                    clip_extra=True)
+                    clip_extra=False)
 
     def test_gpu_1(self):
         if fluid.core.is_compiled_with_cuda():
