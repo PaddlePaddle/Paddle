@@ -60,7 +60,7 @@ using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL(dot,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Dot,
                    float,
                    double,
@@ -69,9 +69,9 @@ PT_REGISTER_KERNEL(dot,
                    complex64,
                    complex128) {}
 
-PT_REGISTER_KERNEL(matmul_v2,
+PT_REGISTER_KERNEL(matmul,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Matmul,
                    float,
                    double,
