@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 #include <atomic>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";

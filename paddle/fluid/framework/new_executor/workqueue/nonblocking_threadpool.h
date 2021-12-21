@@ -12,9 +12,9 @@
 #include <atomic>
 #include <cstdlib>
 #include <vector>
-#include "paddle/fluid/framework/new_executor/event_count.h"
-#include "paddle/fluid/framework/new_executor/run_queue.h"
-#include "paddle/fluid/framework/new_executor/thread_environment.h"
+#include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
+#include "paddle/fluid/framework/new_executor/workqueue/run_queue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/thread_environment.h"
 #include "paddle/fluid/platform/os_info.h"
 
 namespace paddle {

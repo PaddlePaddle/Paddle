@@ -4,9 +4,9 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/framework/new_executor/nonblocking_threadpool.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/nonblocking_threadpool.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

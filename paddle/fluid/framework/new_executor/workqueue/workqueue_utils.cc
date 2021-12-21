@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include <cstdint>
 #include <cstdlib>
 
