@@ -132,7 +132,7 @@ function gen_diff_html_report() {
 
     mv -f coverage-diff.tmp coverage-diff.info
 
-    genhtml -o coverage-diff -t 'Diff Coverage' --no-function-coverage --no-branch-coverage coverage-diff.info
+    #genhtml -o coverage-diff -t 'Diff Coverage' --no-function-coverage --no-branch-coverage coverage-diff.info
 }
 
 gen_diff_html_report || true
@@ -187,12 +187,12 @@ function gen_python_diff_html_report() {
 
     mv -f python-coverage-diff.tmp python-coverage-diff.info
 
-    genhtml -o python-coverage-diff \
-        -t 'Python Diff Coverage' \
-        --no-function-coverage \
-        --no-branch-coverage \
-        --ignore-errors source \
-        python-coverage-diff.info
+    #genhtml -o python-coverage-diff \
+    #    -t 'Python Diff Coverage' \
+    #    --no-function-coverage \
+    #    --no-branch-coverage \
+    #    --ignore-errors source \
+    #    python-coverage-diff.info
 }
 
 gen_python_diff_html_report || true

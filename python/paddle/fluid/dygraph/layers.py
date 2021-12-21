@@ -31,7 +31,7 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard, in_declarative_mode
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, _convert_into_variable
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
@@ -914,16 +914,7 @@ class Layer(object):
         return outputs
 
     def __call__(self, *inputs, **kwargs):
-        # NOTE(Aurelius84): Why we still need param_guard here?
-        # In case of ControlFlow, true_fn and false_fn will contain
-        # parameters that may not trigger logic of `Operator` to create
-        # them. we add this to make sure all parameters is available.
-
-        if in_declarative_mode() and not framework.in_dygraph_mode():
-            with param_guard(self._parameters), param_guard(self._buffers):
-                return self._dygraph_call_func(*inputs, **kwargs)
-        else:
-            return self._dygraph_call_func(*inputs, **kwargs)
+        return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1103,6 +1094,8 @@ class Layer(object):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
+                if in_declarative_mode() and not framework.in_dygraph_mode():
+                    return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
             _sub_layers = self.__dict__['_sub_layers']
@@ -1111,7 +1104,8 @@ class Layer(object):
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                return _buffers[name]
+                if in_declarative_mode() and not framework.in_dygraph_mode():
+                    return _convert_into_variable(_buffers[name])
         return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
