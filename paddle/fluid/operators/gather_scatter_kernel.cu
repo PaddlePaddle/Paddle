@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -103,11 +102,8 @@ struct gpu_gather_scatter_functor {
     if (index.numel() == 0) {
       return;
     }
-    // printf("GPU 111111 start>>>>>\n");
     auto* self_data = self.data<tensor_t>();
-    // printf("GPU 22222 %d\n ", sizeof(*self_data));
     auto* index_data = index.data<index_t>();
-    // printf("GPU 33333 %d\n", sizeof(*index_data));
     auto* src_data = src.data<tensor_t>();
     int64_t self_size = self.numel();
     int64_t index_size = index.numel();
