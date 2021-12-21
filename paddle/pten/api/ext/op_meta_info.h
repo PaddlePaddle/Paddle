@@ -36,7 +36,7 @@ namespace framework {
 class PADDLE_API OpMetaInfoHelper;
 }  // namespace framework
 
-using Tensor = paddle::Tensor;
+using Tensor = paddle::experimental::Tensor;
 
 ///////////////// Util Marco Define ////////////////
 
@@ -186,6 +186,14 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(const float&);
   PD_SPECIALIZE_ComputeCallHelper(const int64_t&);
 
+  // NOTE(chenweihang): Used to be compatible with the 2.1 released
+  // interface, but not recommended
+  PD_SPECIALIZE_ComputeCallHelper(std::string);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<float>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
+
   // end: base template
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
@@ -328,6 +336,13 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const int&);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const float&);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(const int64_t&);
+
+  // NOTE(chenweihang): Used to be compatible with the 2.1 released
+  // interface, but not recommended
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::string);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<int>);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<float>);
+  PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<std::string>);
 
   // end: base template
   template <typename T>

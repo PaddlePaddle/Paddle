@@ -546,6 +546,25 @@ class ReduceOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    if (Type() == "reduce_sum") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            {"Out"});
+      }
+    }
+    if (Type() == "reduce_mean") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+      }
+    }
+    // TODO(chentianyu03): support other cases after selected rows added
+    return framework::KernelSignature("reduce.unregistered", {}, {}, {});
+  }
 };
 
 class ReduceOpUseInputPlace : public ReduceOp {
@@ -670,7 +689,8 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp>
+template <typename T, template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -682,15 +702,21 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     std::vector<int> reduce_dims =
         GetReduceDim(dims, input->dims().size(), reduce_all);
-
+    int reduce_num = 1;
+    for (auto i : reduce_dims) {
+      reduce_num *= (input->dims())[i];
+    }
     gpuStream_t stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+          TensorReduceFunc<T, ReduceOp, TransformOp>(
+              *input, output, reduce_dims, reduce_num, stream));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      using MPType = typename details::MPTypeTrait<T>::Type;
+      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+          *input, output, TransformOp<T, MPType>(reduce_num), reduce_dims,
+          stream);
     }
   }
 };

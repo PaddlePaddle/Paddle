@@ -38,16 +38,18 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/fluid/string/string_helper.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
+namespace kps = paddle::operators::kernel_primitives;
+
 namespace paddle {
 namespace operators {
-
-namespace kps = paddle::operators::kernel_primitives;
 
 namespace details {
 
@@ -722,12 +724,12 @@ __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
   }
 }
 
-template <typename Tx, typename Ty, typename MPType, typename ReduceOp>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
-                               const ReduceOp& reducer, MPType init,
+                               const ReduceOp& reducer,
+                               const TransformOp& transform, MPType init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
-  using TransformOp = typename ReduceOp::Transformer;
-
   if (config.reduce_type == kReduceLastDim) {
     int stride_reduce = 1;
     int stride_left = config.reduce_num;
@@ -743,15 +745,15 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 #ifdef PADDLE_WITH_XPU2
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
                     OneDimIndexCal><<<8, 128, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        init, config.reduce_num, config.left_num, config.reduce_last_dim,
-        reduce_index_calculator, left_index_calculator, dim);
+        x_data, config.output_data, reducer, transform, init, config.reduce_num,
+        config.left_num, config.reduce_last_dim, reduce_index_calculator,
+        left_index_calculator, dim);
 #else
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
                     OneDimIndexCal><<<config.grid, config.block, 0, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        init, config.reduce_num, config.left_num, config.reduce_last_dim,
-        reduce_index_calculator, left_index_calculator, dim);
+        x_data, config.output_data, reducer, transform, init, config.reduce_num,
+        config.left_num, config.reduce_last_dim, reduce_index_calculator,
+        left_index_calculator, dim);
 #endif
 
   } else {
@@ -771,15 +773,15 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 #ifdef PADDLE_WITH_XPU2
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
                     IndexCalculator><<<8, 128, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        init, config.reduce_num, config.left_num, config.reduce_last_dim,
-        reduce_index_calculator, left_index_calculator, dim);
+        x_data, config.output_data, reducer, transform, init, config.reduce_num,
+        config.left_num, config.reduce_last_dim, reduce_index_calculator,
+        left_index_calculator, dim);
 #else
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
                     IndexCalculator><<<config.grid, config.block, 0, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        init, config.reduce_num, config.left_num, config.reduce_last_dim,
-        reduce_index_calculator, left_index_calculator, dim);
+        x_data, config.output_data, reducer, transform, init, config.reduce_num,
+        config.left_num, config.reduce_last_dim, reduce_index_calculator,
+        left_index_calculator, dim);
 #endif
   }
 
@@ -802,24 +804,54 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 #ifdef PADDLE_WITH_XPU2
     ReduceHigherDimKernel<Ty, Ty, MPType, ReduceOp,
                           kps::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
-        config.output_data, y_data, reducer,
-        kps::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
-        config.left_num, config.grid.y, dim);
+        config.output_data, y_data, reducer, kps::IdentityFunctor<Ty, MPType>(),
+        init, config.grid.y, config.left_num, config.grid.y, dim);
 #else
     ReduceHigherDimKernel<
         Ty, Ty, MPType, ReduceOp,
         kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
-        config.output_data, y_data, reducer,
-        kps::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
-        config.left_num, config.grid.y, dim);
+        config.output_data, y_data, reducer, kps::IdentityFunctor<Ty, MPType>(),
+        init, config.grid.y, config.left_num, config.grid.y, dim);
 #endif
   }
 }
 
-template <typename Tx, typename Ty,
-          template <typename, typename> class ReduceOp>
+template <typename Tx, typename Ty, template <typename> class ReduceOp,
+          typename TransformOp>
+static typename std::enable_if<!std::is_same<Tx, platform::float16>::value,
+                               void>::type
+CubTensorReduceFunctorImpl(const Tx* x_data, Ty* y_data,
+                           const TransformOp& transform, int reduce_num,
+                           const platform::Place& place, gpuStream_t stream) {
+  auto reducer = ReduceOp<Ty>();
+  cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
+                                                                  transform);
+  size_t temp_storage_bytes = 0;
+  cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
+                            reduce_num, reducer, reducer.initial(), stream);
+  framework::Tensor tmp;
+  auto* temp_storage = tmp.mutable_data<uint8_t>(
+      framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}), place);
+  cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
+                            reduce_num, reducer, reducer.initial(), stream);
+}
+
+template <typename Tx, typename Ty, template <typename> class ReduceOp,
+          typename TransformOp>
+static typename std::enable_if<std::is_same<Tx, platform::float16>::value,
+                               void>::type
+CubTensorReduceFunctorImpl(const Tx* x_data, Ty* y_data,
+                           const TransformOp& transform, int reduce_num,
+                           const platform::Place& place, gpuStream_t stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+}
+
+template <typename Tx, typename Ty, template <typename> class ReduceOp,
+          typename TransformOp>
 void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
-                             std::vector<int> origin_reduce_dims,
+                             const TransformOp& transform,
+                             const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
@@ -849,31 +881,16 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-  bool use_cub_reduce = (config.reduce_num == numel) &&
-                        (!std::is_same<Tx, paddle::platform::float16>::value);
+  constexpr bool kIsTxFP16 = std::is_same<Tx, paddle::platform::float16>::value;
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
   if (use_cub_reduce) {
-    // launch CUB::Reduce
-    using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
-    auto reducer = ReduceOp<Tx, Ty>();
-    cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
-        x_data, TransformOp(config.reduce_num));
-    size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
-                              config.reduce_num, reducer, reducer.initial(),
-                              stream);
-    framework::Tensor tmp;
-    auto* temp_storage = tmp.mutable_data<uint8_t>(
-        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
-        x.place());
-    cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
-                              config.reduce_num, reducer, reducer.initial(),
-                              stream);
-
+    CubTensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
+        x_data, y_data, transform, config.reduce_num, x.place(), stream);
     return;
   }
 
   using MPType = typename details::MPTypeTrait<Ty>::Type;
-  auto reducer = ReduceOp<Tx, MPType>();
+  auto reducer = ReduceOp<MPType>();
   // launch ReduceHigherDimKernel
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
@@ -882,7 +899,6 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   //     32
   //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
   if (config.reduce_type == ReduceType::kReduceHigherDim) {
-    using TransformOp = typename ReduceOp<Tx, MPType>::Transformer;
     kps::DimConfig dim =
         kps::DimConfig(config.grid.x, config.grid.y, config.grid.z,
                        config.block.x, config.blocking_size, 0);
@@ -890,18 +906,16 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                config.reduce_num % config.blocking_size, 0);
 
 #ifdef PADDLE_WITH_XPU2
-    ReduceHigherDimKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>,
+    ReduceHigherDimKernel<Tx, Ty, MPType, ReduceOp<MPType>,
                           TransformOp><<<8, 128, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        reducer.initial(), config.reduce_num, config.left_num,
-        config.blocking_size, dim);
+        x_data, config.output_data, reducer, transform, reducer.initial(),
+        config.reduce_num, config.left_num, config.blocking_size, dim);
 #else
     ReduceHigherDimKernel<
-        Tx, Ty, MPType, ReduceOp<Tx, MPType>,
+        Tx, Ty, MPType, ReduceOp<MPType>,
         TransformOp><<<config.grid, config.block, 0, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        reducer.initial(), config.reduce_num, config.left_num,
-        config.blocking_size, dim);
+        x_data, config.output_data, reducer, transform, reducer.initial(),
+        config.reduce_num, config.left_num, config.blocking_size, dim);
 #endif
 
     if (config.should_reduce_again) {
@@ -913,14 +927,14 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
 
 #ifdef PADDLE_WITH_XPU2
       ReduceHigherDimKernel<
-          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+          Ty, Ty, MPType, ReduceOp<MPType>,
           kps::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
           config.output_data, y_data, reducer,
           kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
           config.grid.y, config.left_num, config.grid.y, dim2);
 #else
       ReduceHigherDimKernel<
-          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+          Ty, Ty, MPType, ReduceOp<MPType>,
           kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
           config.output_data, y_data, reducer,
           kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
@@ -933,23 +947,32 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
   // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
   // function will be used
-  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>>(
-      x_data, y_data, reducer, reducer.initial(), stream, config);
+  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<MPType>, TransformOp>(
+      x_data, y_data, reducer, transform, reducer.initial(), stream, config);
 }
 
-template <typename Tx, template <typename, typename> class ReduceOp>
+template <typename Tx, template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 struct TensorReduceFunc {
   const framework::Tensor& x;
   framework::Tensor* y;
   std::vector<int> origin_reduce_dims;
   gpuStream_t stream;
+  int reduce_num;
   TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
-                   std::vector<int> origin_reduce_dims, gpuStream_t stream)
-      : x(x), y(y), origin_reduce_dims(origin_reduce_dims), stream(stream) {}
+                   std::vector<int> origin_reduce_dims, int num_reduce,
+                   gpuStream_t stream)
+      : x(x),
+        y(y),
+        origin_reduce_dims(origin_reduce_dims),
+        reduce_num(num_reduce),
+        stream(stream) {}
 
   template <typename Ty>
   void apply() const {
-    TensorReduceFunctorImpl<Tx, Ty, ReduceOp>(x, y, origin_reduce_dims, stream);
+    using MPType = typename details::MPTypeTrait<Ty>::Type;
+    TensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp<Tx, MPType>>(
+        x, y, TransformOp<Tx, MPType>(reduce_num), origin_reduce_dims, stream);
   }
 };
 

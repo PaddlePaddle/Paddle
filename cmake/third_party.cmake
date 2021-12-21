@@ -278,6 +278,11 @@ if(WITH_XPU)
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 
+if(WITH_MLU)
+    include(external/concurrentqueue) # download, build, install concurrentqueue
+    list(APPEND third_party_deps extern_concurrentqueue)
+endif(WITH_MLU)
+
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
     list(APPEND third_party_deps extern_pslib)
@@ -393,7 +398,7 @@ endif (WIN32)
 
 if (WITH_INFRT)
     include(external/llvm)
-    list(APPEND third_party_deps external_llvm)
+    list(APPEND third_party_deps ${llvm_libs})
 endif()
 
 if (WITH_IPU)
