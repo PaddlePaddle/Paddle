@@ -25,8 +25,7 @@
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/math.h"
-#include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace paddle {
 namespace experimental {
@@ -71,11 +70,10 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   kernel_context.EmplaceBackAttr(bias_after_scale);
 
   auto out_meta = pten::UnchangedInferMeta(dense_x->meta());
-
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_backend));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(kernel_backend)),
+      std::move(out_meta));
   kernel_context.EmplaceBackOutput(dense_out);
 
   Tensor out;
@@ -144,13 +142,13 @@ static void ScaleCPU(DataType kernel_dtype,
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-static void ScaleCUDA(DataType kernel_dtype,
-                      const pten::CUDAContext& dev_ctx,
-                      const pten::DenseTensor& x,
-                      const Scalar& scale,
-                      float bias,
-                      bool bias_after_scale,
-                      pten::DenseTensor* dense_out) {
+static void ScaleGPU(DataType kernel_dtype,
+                     const pten::GPUContext& dev_ctx,
+                     const pten::DenseTensor& x,
+                     const Scalar& scale,
+                     float bias,
+                     bool bias_after_scale,
+                     pten::DenseTensor* dense_out) {
   switch (kernel_dtype) {
     case pten::DataType::FLOAT64: {
       pten::Scale<double>(
@@ -238,10 +236,10 @@ Tensor scale_switch_case(const Tensor& x,
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
 
   auto out_meta = pten::UnchangedInferMeta(dense_x->meta());
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(kernel_backend));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(kernel_backend)),
+      std::move(out_meta));
 
   Tensor out;
   out.set_impl(dense_out);
@@ -257,14 +255,14 @@ Tensor scale_switch_case(const Tensor& x,
                dense_out.get());
       break;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case Backend::CUDA:
-      ScaleCUDA(kernel_data_type,
-                static_cast<const pten::CUDAContext&>(*dev_ctx),
-                *dense_x,
-                scale,
-                bias,
-                bias_after_scale,
-                dense_out.get());
+    case Backend::GPU:
+      ScaleGPU(kernel_data_type,
+               static_cast<const pten::GPUContext&>(*dev_ctx),
+               *dense_x,
+               scale,
+               bias,
+               bias_after_scale,
+               dense_out.get());
       break;
 #endif
     default:
