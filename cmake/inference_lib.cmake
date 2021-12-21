@@ -245,7 +245,7 @@ copy(inference_lib_dist
 # the header file of pten is copied to the experimental directory,
 # the include path of pten needs to be changed to adapt to inference api path
 add_custom_command(TARGET inference_lib_dist POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/pten.cmake"
+        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/header_match.cmake"
         COMMENT "Change pten header include path to adapt to inference api path")
 
 # CAPI inference library for only inference
