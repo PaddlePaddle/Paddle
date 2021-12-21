@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
 struct GeluWithApproximateFunctor {
   using MPType = typename details::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
@@ -26,14 +27,15 @@ struct GeluWithApproximateFunctor {
     MPType x = static_cast<MPType>(arg_x);
     MPType one = static_cast<MPType>(1);
     MPType half = static_cast<MPType>(0.5);
+    MPType decimal = static_cast<MPType>(0.044715);
     MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
-    MPType kBeta = static_cast<MPType>(0.044715);
-    auto tanh_out = tanh(kAlpha * x * (one + kBeta * x * x));
+    auto tanh_out = tanh(kAlpha * x * (one + decimal * x * x));
     MPType out = x * half * (one + tanh_out);
     return static_cast<T>(out);
   }
 };
 
+template <typename T>
 struct GeluWithoutApproximateFunctor {
   using MPType = typename details::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
@@ -44,40 +46,6 @@ struct GeluWithoutApproximateFunctor {
     MPType erf_out = erf(x * static_cast<MPType>(M_SQRT1_2));
     MPType out = x * half * (one + erf_out);
     return static_cast<T>(out);
-  }
-};
-
-template <typename T>
-struct GeluWithApproximateGradFunctor {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType dout = static_cast<MPType>(arg_dout);
-    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
-    MPType one = static_cast<MPType>(1);
-    MPType half = static_cast<MPType>(0.5);
-    MPType kBeta =
-        kAlpha * static_cast<MPType>(0.044715) * static_cast<MPType>(3);
-    auto tanh_out = tanh(kAlpha * x * (one + kBeta * x * x));
-    auto temp =
-        (one - tanh_out * tanh_out) * (kAlpha + kBeta * x * x) auto ans =
-            half * x * temp + half * (one + tanh_out);
-    return static_cast<T>(ans * dout);
-  }
-};
-
-template <typename T>
-struct GeluWithoutApproximateGradFunctor {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType dout = static_cast<MPType>(arg_dout);
-    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
-    MPType one = static_cast<MPType>(1);
-    MPType half = static_cast<MPType>(0.5);
-    auto ans = half * (one + erf(x * static_cast<MPType>(M_SQRT1_2))) +
-               half * kAlpha * x * exp(-half * x * x);
-    return static_cast<T>(ans * dout);
   }
 };
 
@@ -102,6 +70,39 @@ class GeluKernel<platform::CUDADeviceContext, T>
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx, ins, &outs, 0, GeluWithoutApproximateFunctor<T>());
     }
+  }
+};
+
+template <typename T>
+struct GeluWithApproximateGradFunctor {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType one = static_cast<MPType>(1);
+    MPType half = static_cast<MPType>(0.5);
+    MPType decimal = static_cast<MPType>(0.044715);
+    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
+    MPType kBeta = kAlpha * decimal * static_cast<MPType>(3);
+    auto tanh_out = tanh(kAlpha * x * (one + decimal * x * x));
+    auto temp = (one - tanh_out * tanh_out) * (kAlpha + kBeta * x * x);
+    auto ans = half * x * temp + half * (one + tanh_out);
+    return static_cast<T>(ans * dout);
+  }
+};
+
+template <typename T>
+struct GeluWithoutApproximateGradFunctor {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType one = static_cast<MPType>(1);
+    MPType half = static_cast<MPType>(0.5);
+    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
+    auto ans = half * (one + erf(x * static_cast<MPType>(M_SQRT1_2))) +
+               half * kAlpha * x * exp(-half * x * x);
+    return static_cast<T>(ans * dout);
   }
 };
 
