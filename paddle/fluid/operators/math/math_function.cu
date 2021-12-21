@@ -102,8 +102,8 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     platform::CPUPlace cpu_place = platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = memory::AllocShared(cpu_place, size);
-    auto cuda_buf_holder = memory::AllocShared(cuda_place, size);
+    auto cpu_buf_holder = memory::Alloc(cpu_place, size);
+    auto cuda_buf_holder = memory::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {
