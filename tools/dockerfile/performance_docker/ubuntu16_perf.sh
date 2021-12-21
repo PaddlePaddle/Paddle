@@ -58,8 +58,8 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-10.2/targets/x86_64-linux/lib/:${LD_LIBRARY_
 # wrong code, bash file
 function install_nccl2(){
   if [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
-      sed -i 's#<install_nccl2>#COPY tools/dockerfile/performance_docker/install_nccl2.sh / \\
-RUN bash /install_nccl2.sh \\
+      sed -i 's#<install_nccl2>#COPY tools/dockerfile/performance_docker/install_nccl2.sh / \
+RUN bash /install_nccl2.sh \
 RUN rm -rf /install_nccl2.sh #g' Dockerfile.tmp
   else
       sed -i 's#<install_nccl2># #g' Dockerfile.tmp
