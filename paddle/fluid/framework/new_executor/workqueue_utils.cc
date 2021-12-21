@@ -138,6 +138,7 @@ void EventsWaiter::TriggerEvent(const EventId& id) {
     std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
     auto iter = events_.find(id);
     if (iter == events_.end()) {
+      delete trigger_event;
       return;
     }
     *trigger_event = iter->second.name;
