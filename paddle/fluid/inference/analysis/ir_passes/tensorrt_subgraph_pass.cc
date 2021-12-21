@@ -263,7 +263,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
 
-  auto trt_use_inspector = Get<bool>("trt_use_inspector");
+  bool trt_use_inspector = Get<bool>("trt_use_inspector");
   op_desc->SetAttr("trt_use_inspector", Get<bool>("trt_use_inspector"));
 
   // we record all inputs' shapes in attr to check if they are consistent

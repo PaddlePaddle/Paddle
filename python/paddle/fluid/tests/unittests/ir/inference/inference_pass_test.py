@@ -121,7 +121,8 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.min_subgraph_size,
                     self.trt_parameters.precision,
                     self.trt_parameters.use_static,
-                    self.trt_parameters.use_calib_mode)
+                    self.trt_parameters.use_calib_mode,
+                    self.trt_parameters.use_inspector)
 
                 if self.dynamic_shape_params:
                     config.set_trt_dynamic_shape_info(
@@ -244,14 +245,21 @@ class InferencePassTest(unittest.TestCase):
         Prepare TensorRT subgraph engine parameters. 
         '''
 
-        def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
-                     precision, use_static, use_calib_mode):
+        def __init__(self,
+                     workspace_size,
+                     max_batch_size,
+                     min_subgraph_size,
+                     precision,
+                     use_static,
+                     use_calib_mode,
+                     use_inspector=False):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
             self.min_subgraph_size = min_subgraph_size
             self.precision = precision
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
+            self.use_inspector = use_inspector
 
     class DynamicShapeParam:
         '''
