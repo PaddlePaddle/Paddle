@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -193,8 +194,17 @@ void AddOutputVar(const GraphNodeSet& output_vars, const GraphNodeSet& cluster,
                   const GraphNodeMap& old_op2new_op,
                   const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : output_vars) {
+    // create fetch op
+    OpDesc desc;
+    desc.SetType("fetch");
+    desc.SetInput("X", {old_var->Name()});
+    auto op = graph->CreateOpNode(&desc);
+
     auto* var = old_var2new_var.at(old_var);
     VLOG(4) << "Add Output Var Node: " << var->Name();
+
+    // link fetch op and fetch var
+    IR_NODE_LINK_TO(var, op);
 
     for (auto* old_op : old_var->inputs) {
       if (cluster.count(old_op)) {
@@ -372,7 +382,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                     input_names.emplace_back(n->Name());
                   }
                 });
-  cinn_op_desc.SetInput("X", input_names);
+  cinn_op_desc.SetInput(operators::kX, input_names);
   std::vector<std::string> output_names;
   std::for_each(cluster_outputs.begin(), cluster_outputs.end(),
                 [&output_names, &deny_var_set](Node* n) {
@@ -380,8 +390,8 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                     output_names.emplace_back(n->Name());
                   }
                 });
-  cinn_op_desc.SetOutput("Out", output_names);
-  cinn_op_desc.SetAttr(kCompilationKey, compilation_key);
+  cinn_op_desc.SetOutput(operators::kOutputs, output_names);
+  cinn_op_desc.SetAttr(operators::kCompilationKey, compilation_key);
   cinn_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                        ExtractOpRole(cluster));
   cinn_op_desc.Flush();

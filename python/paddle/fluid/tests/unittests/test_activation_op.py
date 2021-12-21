@@ -1145,6 +1145,60 @@ class TestAsin(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestAcosh(TestActivation):
+    def setUp(self):
+        self.op_type = "acosh"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(2, 3, [10, 12]).astype(self.dtype)
+        out = np.arccosh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestAsinh(TestActivation):
+    def setUp(self):
+        self.op_type = "asinh"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(1, 2, [10, 12]).astype(self.dtype)
+        out = np.arcsinh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestAtanh(TestActivation):
+    def setUp(self):
+        self.op_type = "atanh"
+        self.init_dtype()
+
+        np.random.seed(400)
+        x = np.random.uniform(-0.9, 0.9, [10, 12]).astype(self.dtype)
+        out = np.arctanh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 class TestRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
@@ -1742,7 +1796,7 @@ class TestSoftReluOpError(unittest.TestCase):
 
 
 def elu(x, alpha):
-    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+    out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
 
 
@@ -1753,7 +1807,7 @@ class TestELU(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
-        alpha = 1.
+        alpha = self.get_alpha()
         out = elu(x, alpha)
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
         # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
@@ -1765,6 +1819,14 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def get_alpha(self):
+        return 1.
+
+
+class TestELUAlpha(TestELU):
+    def get_alpha(self):
+        return -0.2
 
 
 class TestELUAPI(unittest.TestCase):
@@ -1825,6 +1887,18 @@ class TestELUAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
             self.elu(x_fp16)
+
+
+class TestELUInplaceAPI(TestELUAPI):
+    # test paddle.nn.functional.elu_
+    def executed_api(self):
+        self.elu = F.elu_
+
+    def test_alpha_error(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        self.assertRaises(Exception, F.elu_, x, -0.2)
+        paddle.enable_static()
 
 
 def celu(x, alpha):
@@ -1913,12 +1987,6 @@ class TestCELUAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
             self.celu(x_fp16)
-
-
-class TestELUInplaceAPI(TestELUAPI):
-    # test paddle.nn.functional.elu_
-    def executed_api(self):
-        self.elu = F.elu_
 
 
 class TestReciprocal(TestActivation):
@@ -2801,6 +2869,9 @@ create_test_error_class('sin')
 create_test_error_class('sqrt')
 create_test_error_class('tanh')
 create_test_error_class('tan')
+create_test_error_class('acosh')
+create_test_error_class('asinh')
+create_test_error_class('atanh')
 
 
 #------------------ Test Cudnn Activation----------------------
@@ -2872,6 +2943,9 @@ create_test_act_fp16_class(TestSin)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
+create_test_act_fp16_class(TestAcosh, grad_atol=0.85)
+create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
+create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)

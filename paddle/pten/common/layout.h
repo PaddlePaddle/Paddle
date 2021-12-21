@@ -14,27 +14,26 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
-
+#include "paddle/pten/api/ext/exception.h"
 namespace paddle {
 namespace experimental {
 
 enum class DataLayout {
   UNDEFINED = 0,
-  ANY,
+  // TODO(chenweihang): keep ANY for compatibility, remove it later
+  ANY = UNDEFINED,
   NHWC,
   NCHW,
   MKLDNN,
   NUM_DATA_LAYOUTS,
+  // See Note [ Why we need ALL in baisc kernel key member? ]
+  ALL_LAYOUT = UNDEFINED,
 };
 
 inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
   switch (layout) {
     case DataLayout::UNDEFINED:
       os << "Undefined";
-      break;
-    case DataLayout::ANY:
-      os << "Any";
       break;
     case DataLayout::NHWC:
       os << "NHWC";
@@ -46,8 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
       os << "MKLDNN";
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid enum data layout type `%d`.", static_cast<int>(layout)));
+      PD_THROW(
+          "Invalid enum data layout type `", static_cast<int>(layout), "`.");
   }
   return os;
 }

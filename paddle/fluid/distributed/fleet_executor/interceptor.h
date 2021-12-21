@@ -26,11 +26,17 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+class GarbageCollector;
+}
 namespace distributed {
 
 class TaskNode;
+class Carrier;
 
 class Interceptor {
  public:
@@ -42,6 +48,8 @@ class Interceptor {
   Interceptor(int64_t interceptor_id, TaskNode* node);
 
   virtual ~Interceptor();
+
+  void Join();
 
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
@@ -58,9 +66,43 @@ class Interceptor {
   bool EnqueueRemoteInterceptorMessage(
       const InterceptorMessage& interceptor_message);
 
-  void Send(int64_t dst_id, std::unique_ptr<InterceptorMessage> msg);
+  bool Send(int64_t dst_id, InterceptorMessage& msg);  // NOLINT
+
+  void SetPlace(const platform::Place& place) { place_ = place; }
+
+  void SetRootScope(framework::Scope* scope) { root_scope_ = scope; }
+  void SetMiniBatchScope(framework::Scope* scope) { minibatch_scope_ = scope; }
+  void SetMicroBatchScope(const std::vector<framework::Scope*>& scopes) {
+    microbatch_scopes_ = scopes;
+  }
+  void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
+    gc_ = gc;
+  }
+  void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
+
+  TaskNode* GetTaskNode() const { return node_; }
 
   DISABLE_COPY_AND_ASSIGN(Interceptor);
+
+ protected:
+  // interceptor id, handed from above layer
+  int64_t interceptor_id_;
+
+  // node need to be handled by this interceptor
+  TaskNode* node_;
+
+  // for stop
+  bool stop_{false};
+  void StopCarrier();
+
+  // for runtime
+  platform::Place place_;
+  framework::Scope* root_scope_{nullptr};
+  framework::Scope* minibatch_scope_{nullptr};
+  std::vector<framework::Scope*> microbatch_scopes_{};
+  std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
+
+  Carrier* carrier_;
 
  private:
   // pool the local mailbox, parse the Message
@@ -69,12 +111,6 @@ class Interceptor {
   // fetch all Message from remote mailbox to local mailbox
   // return true if remote mailbox not empty, otherwise return false
   bool FetchRemoteMailbox();
-
-  // interceptor id, handed from above layer
-  int64_t interceptor_id_;
-
-  // node need to be handled by this interceptor
-  TaskNode* node_;
 
   // interceptor handle which process message
   MsgHandle handle_{nullptr};
@@ -96,7 +132,48 @@ class Interceptor {
   // local mailbox, written by FetchRemoteMailbox()
   // read by PoolTheMailbox()
   std::queue<InterceptorMessage> local_mailbox_;
+
+  int64_t already_run_times_{0};
+  int64_t used_slot_nums_{0};
 };
+
+class InterceptorFactory {
+ public:
+  using CreateInterceptorFunc = std::unique_ptr<Interceptor> (*)(int64_t,
+                                                                 TaskNode*);
+  using CreateInterceptorMap =
+      std::unordered_map<std::string, CreateInterceptorFunc>;
+
+  static void Register(const std::string& type, CreateInterceptorFunc func);
+
+  static std::unique_ptr<Interceptor> Create(const std::string& type,
+                                             int64_t id, TaskNode* node);
+};
+
+template <typename InterceptorClass>
+std::unique_ptr<Interceptor> CreatorInterceptor(int64_t id, TaskNode* node) {
+  return std::make_unique<InterceptorClass>(id, node);
+}
+
+#define REGISTER_INTERCEPTOR(interceptor_type, interceptor_class)          \
+  class __RegisterInterceptor_##interceptor_type {                         \
+   public:                                                                 \
+    __RegisterInterceptor_##interceptor_type() {                           \
+      InterceptorFactory::Register(#interceptor_type,                      \
+                                   CreatorInterceptor<interceptor_class>); \
+    }                                                                      \
+    void Touch() {}                                                        \
+  };                                                                       \
+  __RegisterInterceptor_##interceptor_type g_register_##interceptor_type;  \
+  int TouchRegisterInterceptor_##interceptor_type() {                      \
+    g_register_##interceptor_type.Touch();                                 \
+    return 0;                                                              \
+  }
+
+#define USE_INTERCEPTOR(interceptor_type)                   \
+  extern int TouchRegisterInterceptor_##interceptor_type(); \
+  UNUSED static int use_interceptor_##interceptor_type =    \
+      TouchRegisterInterceptor_##interceptor_type();
 
 }  // namespace distributed
 }  // namespace paddle

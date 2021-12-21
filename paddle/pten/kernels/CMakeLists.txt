@@ -1,20 +1,20 @@
-# pten basic functions called by kernels
-add_subdirectory(functions)
-# pten kernels for diff device
+# kernel primitive api
+add_subdirectory(primitive)
+# pten hybird functors and functions called by kernels
+add_subdirectory(hybird)
+
 add_subdirectory(cpu)
 if(WITH_GPU OR WITH_ROCM)
-  # TODO(chenweihang): if hip can split from cuda impl, we should add hip dir
+  # NOTE(chenweihang): if hip can split from cuda impl, we should add hip dir
   add_subdirectory(cuda)
 endif()
-# TODO(chenweihang): migrate MKLDNN Kernel in the second phase of the project
 if(WITH_MKLDNN)
-  add_subdirectory(mkldnn)
+  # mkldnn will be deprecated and use the new name dnnl
+  add_subdirectory(dnnl)
 endif()
-# TODO(chenweihang): migrate NPU Kernel in the second phase of the project
 if(WITH_ASCEND_CL)
   add_subdirectory(npu)
 endif()
-# TODO(chenweihang): migrate XPU Kernel in the second phase of the project
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()

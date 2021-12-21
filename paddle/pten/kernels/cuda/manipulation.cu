@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cuda/manipulation.h"
 #include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/hybird/cuda/cast_kernel_impl.h"
+#include "paddle/pten/kernels/hybird/general/manipulation.h"
 
 namespace pten {
 
@@ -25,7 +28,7 @@ void Flatten(const CUDAContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -40,27 +43,50 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  const auto& in_dims = x.meta().dims;
-  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    xshape_dims[i + 1] = in_dims[i];
+  general::SetXShape(x, xshape);
+}
+
+void Reshape(const CUDAContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
+  if (x.data() == out->data() && x.numel() == out->numel()) {
+    out->Resize(out_meta.dims);
+    return;
   }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  pten::Copy(dev_ctx, x, false, out);
+  out->Resize(out_meta.dims);
+  out->ResetLoD(x.lod());
+}
+
+void ReshapeWithXShape(const CUDAContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out) {
+  general::SetXShape(x, xshape);
+  Reshape(dev_ctx, x, shape, out);
+}
+
+template <typename T>
+void Cast(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                       detail::CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
+                     }));
 }
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(ManipulationCUDA);
-
 using float16 = paddle::platform::float16;
-// TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
-// architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL("flatten_contiguous_range",
+
+PT_REGISTER_KERNEL(flatten,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Flatten,
                    float,
                    float16,
@@ -69,10 +95,9 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
                    int8_t,
                    int,
                    int64_t) {}
-
-PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
+PT_REGISTER_KERNEL(flatten_with_xshape,
                    CUDA,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
                    double,
@@ -80,3 +105,33 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
+  PT_REGISTER_KERNEL(cast,                              \
+                     CUDA,                              \
+                     ALL_LAYOUT,                        \
+                     pten::Cast,                        \
+                     float,                             \
+                     double,                            \
+                     int,                               \
+                     int64_t,                           \
+                     int16_t,                           \
+                     bool,                              \
+                     uint8_t,                           \
+                     paddle::platform::float16,         \
+                     paddle::platform::complex<float>,  \
+                     paddle::platform::complex<double>, \
+                     ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                    \
+        paddle::experimental::DataType::UNDEFINED);     \
+  }
+
+#if !defined(PADDLE_WITH_HIP)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
+#else
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
+#endif
+
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, CUDA, ANY, pten::Reshape, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape_with_xshape, CUDA, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}

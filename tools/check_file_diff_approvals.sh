@@ -35,6 +35,7 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/framework.proto"
            "python/paddle/distributed/__init"
            "python/paddle/distributed/fleet/__init__.py"
+           "python/paddle/distributed/fleet/launch.py"
            "python/requirements.txt"
            "python/paddle/fluid/__init__.py"
            "python/paddle/fluid/compiler.py"
@@ -165,6 +166,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
 	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
 	      check_approval 1 35824027 38231817
+      elif [ "${API_FILE}" == "python/paddle/distributed/fleet/launch.py" ]; then
+	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
+	      check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
 	      echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
 	      check_approval 1 52485244 6836917 26922892
@@ -219,9 +223,32 @@ if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 328693 6836917 39303645
   fi
 
+HAS_MODIFIED_ALLOCATION=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/memory/allocation" || true`
+if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by zhiqiu and Shixiaowei02 for paddle/fluid/memory/allocation.\nIt is being modularized and refactored. Thanks!\n"
+    check_approval 2 6888866 39303645
+  fi
+
+ALLOCSHARED_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -E "*\.(h|cc)" || true`
+if [ "${ALLOCSHARED_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for TEST_FILE in ${ALLOCSHARED_FILE_CHANGED};
+    do
+        HAS_SKIP_CHECK_ALLOC_CI=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep "AllocShared" || true`
+        if [ "${HAS_SKIP_CHECK_ALLOC_CI}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${HAS_SKIP_CHECK_ALLOC_CI}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="memory::AllocShared is not recommended, because it is being modularized and refactored. Please use memory::Alloc here. Otherwise, please request zhiqiu and Shixiaowei02 review and approve.\n"
+        check_approval 2 6888866 39303645
+    fi
+fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
+    echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
     check_approval 1 6836917 47554610 22561442
 fi
 

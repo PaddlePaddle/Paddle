@@ -15,17 +15,14 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/linalg.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(LinalgCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(LinalgCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -65,8 +62,8 @@ TEST(API, dot) {
   auto out = paddle::experimental::dot(x, y);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 2);
-  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.dims().size(), 2);
+  ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 3);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
@@ -82,3 +79,6 @@ TEST(API, dot) {
   ASSERT_NEAR(expect_result[1], actual_result1, 1e-6f);
   ASSERT_NEAR(expect_result[2], actual_result2, 1e-6f);
 }
+
+}  // namespace tests
+}  // namespace paddle

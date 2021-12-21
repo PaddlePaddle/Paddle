@@ -44,8 +44,12 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
                     return np.zeros((1)).astype(np.float32)
-                return np.random.random(kwargs['in_shape'][1]).astype(
-                    np.float32)
+                if kwargs['data_format'] == 'NCHW':
+                    return np.random.random(kwargs['in_shape'][1]).astype(
+                        np.float32)
+                else:
+                    return np.random.random(kwargs['in_shape'][-1]).astype(
+                        np.float32)
             else:
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
@@ -57,7 +61,10 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
             inputs={"X": ["input_data"],
                     "Alpha": ["alpha_weight"]},
             outputs={"Out": ["output_data"]},
-            attrs={"mode": kwargs['mode']})
+            attrs={
+                "mode": kwargs['mode'],
+                "data_format": kwargs['data_format']
+            })
 
         program_config = ProgramConfig(
             ops=[prelu_op],
@@ -82,6 +89,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
 
     @given(
         mode=st.sampled_from(['all', 'channel', 'element']),
+        data_format=st.sampled_from(['NCHW', 'NHWC']),
         in_shape=st.lists(
             st.integers(
                 min_value=1, max_value=32), min_size=1, max_size=4))

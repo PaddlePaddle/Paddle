@@ -222,7 +222,10 @@ class VarBase {
 
   const platform::Place Place() const { return var_->Place(); }
 
-  void ClearGradient();
+  void ClearGradient(bool set_to_zero = true);
+
+  void _GradientSetEmpty(bool is_empty = true);
+  bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
@@ -276,16 +279,6 @@ class VarBase {
   mutable size_t copied_counter_ = 0;
 
   static ThreadSafeNameSet name_set_;
-};
-
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual std::vector<std::shared_ptr<VarBase>> Forward(
-      const std::vector<std::shared_ptr<VarBase>>& inputs) {
-    return {};
-  }
 };
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(

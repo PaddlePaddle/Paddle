@@ -112,16 +112,23 @@ class CastOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-REGISTER_OPERATOR(cast, ops::CastOp,
-                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpProtoMaker);
-REGISTER_OP_CPU_KERNEL(
-    cast, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>,
-    ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,
-    ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int16_t>,
-    ops::CastOpKernel<CPU, bool>, ops::CastOpKernel<CPU, uint8_t>,
-    ops::CastOpKernel<CPU, paddle::platform::float16>,
-    ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
-    ops::CastOpKernel<CPU, paddle::platform::complex<float>>,
-    ops::CastOpKernel<CPU, paddle::platform::complex<double>>);
+#define REGISTER_CAST_CPU_BASE(op_name, ...)                                  \
+  REGISTER_OPERATOR(op_name, ops::CastOp,                                     \
+                    ops::CastOpGradMaker<paddle::framework::OpDesc>,          \
+                    ops::CastOpGradMaker<paddle::imperative::OpBase>,         \
+                    ops::CastOpProtoMaker);                                   \
+  REGISTER_OP_CPU_KERNEL(                                                     \
+      op_name, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>, \
+      ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,           \
+      ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int16_t>,           \
+      ops::CastOpKernel<CPU, bool>, ops::CastOpKernel<CPU, uint8_t>,          \
+      ops::CastOpKernel<CPU, paddle::platform::float16>,                      \
+      ops::CastOpKernel<CPU, paddle::platform::bfloat16>,                     \
+      ops::CastOpKernel<CPU, paddle::platform::complex<float>>,               \
+      ops::CastOpKernel<CPU, paddle::platform::complex<double>>);
+
+REGISTER_CAST_CPU_BASE(cast)
+// [ why register transfer_dtype_op alias with cast_op? ]
+// In case of InterpreterCore, if we reuse cast_op, we cannot distinguish
+// which cast_op is inserted by new executor when we do profiling.
+REGISTER_CAST_CPU_BASE(transfer_dtype)

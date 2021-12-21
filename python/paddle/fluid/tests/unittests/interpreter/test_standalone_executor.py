@@ -130,6 +130,10 @@ class MultiStreamModelTestCase(unittest.TestCase):
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])
 
+        res_sequential = self.run_new_executor_sequential()
+        for gt, out in zip(ground_truths, res_sequential):
+            self.assertEqual(gt[0], out[0])
+
     def run_raw_executor(self):
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
@@ -157,6 +161,12 @@ class MultiStreamModelTestCase(unittest.TestCase):
             outs.append(
                 np.array(inter_core.run({}, fetch_list)._move_to_list()[0]))
         return outs
+
+    def run_new_executor_sequential(self):
+        os.environ['FLAGS_new_executor_sequential_run'] = '1'
+        res = self.run_new_executor()
+        del os.environ['FLAGS_new_executor_sequential_run']
+        return res
 
 
 class SwitchExecutorInterfaceTestCase(MultiStreamModelTestCase):
@@ -195,7 +205,12 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         return main_program, startup_program, [c]
 
-    def _run(self, feed, use_str=False, is_double=False, add_wrong_fetch=False):
+    def _run(self,
+             feed,
+             use_str=False,
+             is_double=False,
+             add_wrong_fetch=False,
+             use_compiled=False):
         paddle.seed(2020)
 
         main_program, startup_program, fetch_vars = self.build_program(
@@ -203,6 +218,11 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
+
+        if use_compiled:
+            main_program = paddle.static.CompiledProgram(
+                main_program).with_data_parallel(
+                    fetch_vars[0].name, places=[self.place])
 
         if use_str:  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]
@@ -216,17 +236,19 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         return outs
 
-    def run_raw_executor(self, feed):
+    def run_raw_executor(self, feed, use_compiled=False):
         # run construct program 1
-        out1 = self._run(feed, use_str=False, is_double=False)
+        out1 = self._run(
+            feed, use_str=False, is_double=False, use_compiled=use_compiled)
         # run construct program 2 with same executor
-        out2 = self._run(feed, use_str=True, is_double=True)
+        out2 = self._run(
+            feed, use_str=True, is_double=True, use_compiled=use_compiled)
 
         return [out1, out2]
 
-    def run_new_executor(self, feed):
+    def run_new_executor(self, feed, use_compiled=False):
         os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        out = self.run_raw_executor(feed)
+        out = self.run_raw_executor(feed, use_compiled=use_compiled)
         del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
         return out
 
@@ -247,10 +269,20 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
             self._run(feed[0], add_wrong_fetch=True)
             del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
 
+    def test_compiled_program(self):
+        data = np.ones([2, 2], dtype="float32")
+        feed = {"a": data}
+
+        res = self.run_new_executor(feed, use_compiled=True)
+        gt = self.run_raw_executor(feed, use_compiled=True)
+        for x, y in zip(gt, res):
+            self.assertTrue(np.array_equal(x, y))
+
 
 class TestException(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CPUPlace()
+        self.fetch_vars = None
 
     def build_program(self):
         main_program = paddle.static.Program()
@@ -275,7 +307,8 @@ class TestException(unittest.TestCase):
 
         for feed in feeds:
             out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)
-        print(out)
+        print(main_program)
+        self.fetch_vars = fetch_vars
         return out
 
     def run_new_executor(self, feed):
@@ -287,10 +320,10 @@ class TestException(unittest.TestCase):
     def test_exception(self):
         feed = [{
             'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
-            'data': np.array([1, 2, 3, 4]).astype(np.float32),
+            'data': np.array([1, 2, 3]).astype(np.float32),
         }, {
             'id': np.array([1, 2, 3, 4, 11]).astype(np.int64),
-            'data': np.array([1, 2, 3, 4]).astype(np.float32),
+            'data': np.array([1, 2, 3]).astype(np.float32),
         }]
         self.assertRaises(ValueError, self.run_new_executor, feed)
 
@@ -306,6 +339,18 @@ class TestException(unittest.TestCase):
         }]
         feed[1]['data'][0] = np.nan
         self.assertRaises(RuntimeError, self.run_new_executor, feed)
+
+    def test_scope_find_temp_var(self):
+        feed = [{
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([1, 2, 3]).astype(np.float32),
+        }, {
+            'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
+            'data': np.array([2, 2, 2]).astype(np.float32),
+        }]
+        self.run_new_executor(feed)
+        self.assertIsNone(paddle.static.global_scope().find_var(
+            self.fetch_vars.name))
 
 
 if __name__ == "__main__":

@@ -347,11 +347,6 @@ class HeterPipelineTrainer : public TrainerBase {
   int thread_num_;
   std::vector<std::thread> threads_;
 
-  std::vector<std::string> need_merge_var_names_;
-#ifdef PADDLE_WITH_HETERPS
-  std::vector<platform::Place> places_;
-#endif
-
   int num_microbatches_;
   platform::Place place_;
   TrainerDesc trainer_desc_;

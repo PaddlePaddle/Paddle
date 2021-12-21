@@ -14,9 +14,12 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/cuda/math.h"
 
-#include "paddle/pten/kernels/functions/eigen/mean.h"
-#include "paddle/pten/kernels/functions/eigen/scale.h"
-#include "paddle/pten/kernels/functions/eigen/sign.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
+#include "paddle/pten/kernels/hybird/eigen/sign.h"
+#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
+#include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -26,6 +29,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -59,99 +63,103 @@ void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 template <typename T>
-void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  auto size_prob = x.numel();
-  const T* x_data = x.data<T>();
-  T* out_data = out->mutable_data<T>();
-  auto stream = dev_ctx.stream();
-
-  DivideFunctor<T> transformer(size_prob);
-  cub::TransformInputIterator<T, DivideFunctor<T>, const T*> trans_x(
-      x_data, transformer);
-  size_t temp_storage_bytes = 0;
-
-  auto err = cub::DeviceReduce::Sum(
-      nullptr, temp_storage_bytes, trans_x, out_data, size_prob, stream);
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
-
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-      dev_ctx.GetPlace());
-  pten::DenseTensor tmp(
-      alloc,
-      DenseTensorMeta(x.data_type(),
-                      paddle::framework::make_ddim(
-                          {static_cast<int64_t>(temp_storage_bytes)}),
-                      x.layout()));
-  void* temp_storage = tmp.mutable_data<T>();
-  err = cub::DeviceReduce::Sum(static_cast<uint8_t*>(temp_storage),
-                               temp_storage_bytes,
-                               trans_x,
-                               out_data,
-                               size_prob,
-                               stream);
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
+void Mean(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          const std::vector<int64_t>& dims,
+          bool keep_dim,
+          bool reduce_all,
+          DenseTensor* out) {
+  auto out_dtype = x.dtype();
+  pten::Reduce<T, paddle::operators::CustomMean>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
-template <typename T>
-void Scale(const CUDAContext& dev_ctx,
-           const DenseTensor& x,
-           float scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
-  eigen::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
+// Create the definition of Add
+DEFINE_CUDA_ELEMENTWISE_OP(Add)
+// Create the definition of Subtract
+DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
+// Create the definition of Multiply
+DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+// Create the definition of Divide
+DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 template <typename T>
-void ScaleHost(const CUDAContext& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& scale,
-               float bias,
-               bool bias_after_scale,
-               DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(scale.place()),
-                    false,
-                    paddle::platform::errors::InvalidArgument(
-                        "Scale argument isn't a host tensor."));
-  eigen::Scale<CUDAContext, T>(dev_ctx,
-                               x,
-                               static_cast<float>(*scale.data<T>()),
-                               bias,
-                               bias_after_scale,
-                               out);
+void Sum(const CUDAContext& dev_ctx,
+         const DenseTensor& x,
+         const std::vector<int64_t>& dims,
+         bool keep_dim,
+         bool reduce_all,
+         DataType out_dtype,
+         DenseTensor* out) {
+  pten::Reduce<T, paddle::operators::CustomSum>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(MathCUDA);
-
 using float16 = paddle::platform::float16;
-PT_REGISTER_KERNEL("sign", CUDA, ANY, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL("mean", CUDA, ANY, pten::Mean, float, double, float16) {}
-PT_REGISTER_KERNEL("scale",
+using complex64 = ::paddle::platform::complex<float>;
+using complex128 = ::paddle::platform::complex<double>;
+
+PT_REGISTER_KERNEL(sign, CUDA, ALL_LAYOUT, pten::Sign, float, double, float16) {
+}
+PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(add,
                    CUDA,
-                   ANY,
-                   pten::Scale,
+                   ALL_LAYOUT,
+                   pten::Add,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(subtract,
+                   CUDA,
+                   ALL_LAYOUT,
+                   pten::Subtract,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(divide,
+                   CUDA,
+                   ALL_LAYOUT,
+                   pten::Divide,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(multiply,
+                   CUDA,
+                   ALL_LAYOUT,
+                   pten::Multiply,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   float16,
+                   complex64,
+                   complex128) {}
+PT_REGISTER_KERNEL(sum,
+                   CUDA,
+                   ALL_LAYOUT,
+                   pten::Sum,
+                   bool,
                    float,
                    double,
                    float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
                    int,
-                   int64_t) {}
-PT_REGISTER_KERNEL("scale.host",
-                   CUDA,
-                   ANY,
-                   pten::ScaleHost,
-                   float,
-                   double,
-                   float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pten::Backend::CPU);
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
