@@ -22,11 +22,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -37,15 +33,13 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
 namespace paddle {
 namespace operators {
 
 #define MAX_INPUT_NUM 2
-
-namespace kps = paddle::operators::kernel_primitives;
 
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;

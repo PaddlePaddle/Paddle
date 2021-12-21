@@ -88,12 +88,17 @@ paddle::framework::FetchList InterpreterCore::Run(
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
-paddle::framework::FetchList InterpreterCore::Run() {
+paddle::framework::FetchList InterpreterCore::Run(
+    const std::vector<std::string>& feed_names) {
   if (!is_build_) {
     if (create_local_scope_ &&
         global_scope_->GetMutableLocalScope() !=
@@ -113,6 +118,7 @@ paddle::framework::FetchList InterpreterCore::Run() {
     paddle::framework::interpreter::build_op_func_list(
         place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
     is_build_ = true;
+    SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
 
@@ -120,9 +126,26 @@ paddle::framework::FetchList InterpreterCore::Run() {
     ExecuteInstructionList(vec_instruction_);
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
-  return *(fetch_var->GetMutable<framework::FetchList>());
+  return std::move(*fetch_var->GetMutable<framework::FetchList>());
+}
+
+// At the end of each step, the holder of Tensor in LoDTensorArray is null.
+// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
+// will occur in the next step
+void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
+  auto vars = local_scope_->LocalVars();
+  for (auto var : vars) {
+    if (var->IsType<LoDTensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+      lod_tensor_arr->clear();
+    }
+  }
 }
 
 void InterpreterCore::BuildOperatorDependences() {
@@ -260,6 +283,13 @@ void InterpreterCore::BuildInplace() {
     for (auto& pair : in_to_outs) {
       auto iter = inputs.find(pair.first);
       if (iter != inputs.end() && !iter->second.empty()) {
+        auto in_var_desc = global_scope_->VarDesc(iter->second[0]);
+        if (in_var_desc && in_var_desc->Persistable()) {
+          continue;
+        }
+        if (global_scope_->GetVarSikpInplace(iter->second[0])) {
+          continue;
+        }
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
           if (iterout != outputs.end() && !iterout->second.empty()) {
@@ -334,7 +364,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   Scope* local_scope = create_local_scope_
                            ? global_scope_->GetMutableLocalScope()
                            : global_scope_->GetMutableScope();
-
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     platform::RecordEvent infershape_event("InferShape");
@@ -345,8 +374,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (op_with_kernel != nullptr &&
       FLAGS_new_executor_use_inplace) {  // TODO(xiongkun03) Does operator
-                                         // base support
-                                         // inplace ?
+                                         // base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
       const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
       auto* out =
@@ -370,13 +398,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     instr_node.DeviceContext().Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op->Type()
-            << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op->Type()
             << "): context wait and get last error";
 #endif
@@ -411,6 +434,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(4) << "Exception caught " << exception_holder_.Type();
+    async_work_queue_->Cancel();
     exception_holder_.ReThrow();
   }
 
@@ -486,7 +510,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(op->Type());
+    platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
 
     try {
@@ -578,6 +602,7 @@ void InterpreterCore::Prepare(
     paddle::framework::interpreter::build_op_func_list(
         place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
     is_build_ = true;
+    SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
   }
@@ -601,7 +626,18 @@ interpreter::CostInfo InterpreterCore::DryRun(
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
   return cost_info;
+}
+
+void InterpreterCore::SetFeedVarsInplaceSkip(
+    const std::vector<std::string>& feed_names) {
+  for (auto& feed_name : feed_names) {
+    global_scope_->SetVarSikpInplace(feed_name, true);
+  }
 }
 
 }  // namespace framework

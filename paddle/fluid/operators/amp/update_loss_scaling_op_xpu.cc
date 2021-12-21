@@ -42,8 +42,10 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     const bool* found_inf_data = found_inf->data<bool>();
     bool cpu_found_inf_data = false;
     if (platform::is_xpu_place(found_inf->place())) {
-      xpu_memcpy(&cpu_found_inf_data, found_inf_data, sizeof(bool),
-                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&cpu_found_inf_data),
+                   BOOST_GET_CONST(platform::XPUPlace, found_inf->place()),
+                   static_cast<const void*>(found_inf_data), sizeof(bool));
     } else {
       cpu_found_inf_data = (*found_inf_data);
     }
@@ -94,22 +96,26 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     int cpu_good_in_data;
     MPDType cpu_pre_loss_scaling_data;
     if (platform::is_xpu_place(bad_in->place())) {
-      xpu_memcpy(&cpu_bad_in_data, bad_in_data, sizeof(int),
-                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_bad_in_data),
+                   BOOST_GET_CONST(platform::XPUPlace, bad_in->place()),
+                   static_cast<const void*>(bad_in_data), sizeof(int));
     } else {
       cpu_bad_in_data = (*bad_in_data);
     }
 
     if (platform::is_xpu_place(good_in->place())) {
-      xpu_memcpy(&cpu_good_in_data, good_in_data, sizeof(int),
-                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_good_in_data),
+                   BOOST_GET_CONST(platform::XPUPlace, good_in->place()),
+                   static_cast<const void*>(good_in_data), sizeof(int));
     } else {
       cpu_good_in_data = (*good_in_data);
     }
 
     if (platform::is_xpu_place(pre_loss_scaling->place())) {
-      xpu_memcpy(&cpu_pre_loss_scaling_data, pre_loss_scaling_data,
-                 sizeof(MPDType), XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+      memory::Copy(
+          platform::CPUPlace(), static_cast<void*>(&cpu_pre_loss_scaling_data),
+          BOOST_GET_CONST(platform::XPUPlace, pre_loss_scaling->place()),
+          static_cast<const void*>(pre_loss_scaling_data), sizeof(MPDType));
     } else {
       cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
     }

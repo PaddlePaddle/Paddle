@@ -28,7 +28,6 @@ ExternalProject_Add(
     URL             ${DGC_URL}
     URL_MD5         "94e6fa1bc97169d0e1aad44570fe3251"
     PREFIX          "${DGC_PREFIX_DIR}"
-    SOURCE_DIR      "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND make -j $(nproc)
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc

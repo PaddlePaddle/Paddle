@@ -43,11 +43,11 @@ void HeterServer::StartHeterService() {
 
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
+    stoped_ = false;
     ready_ = 1;
   }
   condition_ready_.notify_all();
   std::unique_lock<std::mutex> running_lock(mutex_);
-  stoped_ = false;
   cv_.wait(running_lock, [&] {
     VLOG(1) << "Heter Server is Stop? " << stoped_;
     return stoped_;

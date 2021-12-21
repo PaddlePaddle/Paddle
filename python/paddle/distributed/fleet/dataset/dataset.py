@@ -784,6 +784,12 @@ class InMemoryDataset(DatasetBase):
         if self.use_ps_gpu and core._is_compiled_with_heterps():
             self.psgpu.set_date(year, month, day)
 
+    def tdm_sample(self, tree_name, tree_path, tdm_layer_counts,
+                   start_sample_layer, with_hierachy, seed, id_slot):
+        self.dataset.tdm_sample(tree_name, tree_path, tdm_layer_counts,
+                                start_sample_layer, with_hierachy, seed,
+                                id_slot)
+
     def load_into_memory(self, is_shuffle=False):
         """
         :api_attr: Static Graph

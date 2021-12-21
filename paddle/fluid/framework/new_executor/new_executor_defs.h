@@ -86,10 +86,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override;
+      const std::string& name) const override;
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override;
+      const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;
 
@@ -145,6 +145,7 @@ struct OpKernelFunc {
 struct VariableMetaInfo {
   int var_ref_count_{0};
   framework::VarDesc* var_desc_{nullptr};
+  bool sikp_inplace_{false};
 
   VariableMetaInfo() {}
   VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
@@ -227,6 +228,10 @@ class VariableScope : public ScopeBase {
   const std::shared_ptr<VariableScopeListener>& Listener() const {
     return listener_;
   }
+
+  void SetVarSikpInplace(const std::string& name, bool skip);
+
+  bool GetVarSikpInplace(int id) const;
 
   friend class VariableScopeListener;
 
@@ -369,6 +374,7 @@ class Instruction {
 namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+static constexpr char kFetchVarName[] = "fetch";
 
 static bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;

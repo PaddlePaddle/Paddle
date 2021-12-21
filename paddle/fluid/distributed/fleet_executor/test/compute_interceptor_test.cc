@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -25,50 +26,61 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-class StopInterceptor : public Interceptor {
+class StartInterceptor : public Interceptor {
  public:
-  StopInterceptor(int64_t interceptor_id, TaskNode* node)
+  StartInterceptor(int64_t interceptor_id, TaskNode* node)
       : Interceptor(interceptor_id, node) {
-    RegisterMsgHandle([this](const InterceptorMessage& msg) { Stop(msg); });
+    RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
   }
 
-  void Stop(const InterceptorMessage& msg) {
+  void NOP(const InterceptorMessage& msg) {
+    if (msg.message_type() == STOP) {
+      stop_ = true;
+      InterceptorMessage stop;
+      stop.set_message_type(STOP);
+      Send(1, stop);  // stop 1, compute
+      return;
+    }
     std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
               << std::endl;
-    InterceptorMessage stop;
-    stop.set_message_type(STOP);
-    Send(0, stop);
-    Send(1, stop);
-    Send(2, stop);
   }
 };
 
 TEST(ComputeInterceptor, Compute) {
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
+  Carrier& carrier = FleetExecutor::GetCarrier();
 
-  Carrier& carrier = Carrier::Instance();
+  auto msg_bus = std::make_shared<MessageBus>();
+  msg_bus->Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "");
+  carrier.SetMsgBus(msg_bus);
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* node_a = new TaskNode(0, 0, 0, 0, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 0, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 0, 0);
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
 
   // a->b->c
-  node_a->AddDownstreamTask(1);
-  node_b->AddUpstreamTask(0);
+  node_a->AddDownstreamTask(1, 3);
+  node_b->AddUpstreamTask(0, 3);
   node_b->AddDownstreamTask(2);
+  node_c->AddUpstreamTask(1);
 
-  Interceptor* a = carrier.SetInterceptor(
-      0, InterceptorFactory::Create("Compute", 0, node_a));
+  Interceptor* a =
+      carrier.SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
   carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier.SetInterceptor(2, std::make_unique<StopInterceptor>(2, node_c));
+  carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
 
   carrier.SetCreatingFlag(false);
 
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
+  // test run three times
   a->Send(1, msg);
+  a->Send(1, msg);
+  a->Send(1, msg);
+
+  carrier.Wait();
+  carrier.Release();
 }
 
 }  // namespace distributed

@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 
 namespace paddle {
 namespace framework {
@@ -37,12 +38,16 @@ class LoDTensor;
 }  // namespace framework
 }  // namespace paddle
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_info.h"
-#include "paddle/fluid/platform/xpu/xpu_op_list.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 DECLARE_bool(benchmark);
@@ -226,6 +231,16 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
       platform::SetNPUDeviceId(dev_id);
+#endif
+    } else if (platform::is_mlu_place(place)) {
+#ifndef PADDLE_WITH_MLU
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with MLU support.",
+          place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::MLUPlace, place).device;
+      platform::SetMLUDeviceId(dev_id);
 #endif
     }
 
@@ -477,10 +492,6 @@ void OperatorBase::GenerateTemporaryNames() {
       }
     }
   }
-}
-
-static bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
@@ -874,7 +885,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(vars.size());
@@ -883,7 +894,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
+      const std::string& name) const override {
     const std::vector<Variable*>& vars = OutputVars(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(vars.size());
@@ -1068,8 +1079,9 @@ bool OperatorWithKernel::SupportsMKLDNN(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  bool use_mkldnn_ctx =
-      ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
+  bool use_mkldnn_ctx = ctx.HasAttr("use_mkldnn") &&
+                        ctx.Attr<bool>("use_mkldnn") &&
+                        platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
@@ -1183,9 +1195,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
       BuildPtenKernelContext(*runtime_ctx, dev_ctx);
       (*pt_kernel_)(pt_kernel_context_.get());
-
       WriteBackToOutputs(runtime_ctx);
-
       pt_kernel_context_->ClearData();
     } else {
       (*kernel_func_)(
@@ -1216,14 +1226,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#if defined(PADDLE_WITH_CUDA) || defined(PADLDE_WITH_ROCM)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
 #endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
-#endif
   }
 
   if (FLAGS_check_nan_inf) {
@@ -1283,7 +1289,7 @@ void OperatorWithKernel::ChoosePtenKernel(const ExecutionContext& ctx) const {
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pten::KernelName(pt_kernel_signature_->name);
+  auto pt_kernel_name = pt_kernel_signature_->name;
   auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(
       new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
@@ -1340,6 +1346,16 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (kernel_iter == kernels.end() &&
       is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (kernel_iter == kernels.end() &&
+      is_mlu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing MLU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -1768,7 +1784,8 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
-  return KernelSignatureMap::Instance().Get(Type());
+  return KernelSignatureMap::Instance().Get(
+      pten::TransToPtenKernelName(Type()));
 }
 
 void OperatorWithKernel::BuildPtenKernelContext(
@@ -1816,45 +1833,31 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
+    auto current_vector_size = pt_kernel_context_->InputsSize();
 
-    // The current size of input/output in pt_kernel_context_ is at least equal
-    // the start_idx. For the reason of reusing the allocted of inputs or
-    // outputs in pt_kernel_context_, the current size of input/output can be
-    // greater then the index of which the tensort wanted to set to, so it will
-    // use ReMakePtenDenseTensorFromVar to make pten tensor.
-    if (pt_kernel_context_->InputsSize() == start_idx) {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_inputs;
-      for (auto* var : ins_vector) {
-        tmp_inputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(*var, in_def));
-      }
-      pt_kernel_context_->EmplaceBackInputs(std::move(tmp_inputs));
-    } else if (pt_kernel_context_->InputsSize() > start_idx) {
-      size_t input_size = pt_kernel_context_->InputsSize();
-      for (size_t j = 0; j < ins_vector.size(); ++j) {
-        if (input_size > start_idx + j) {
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      if (current_vector_size > start_idx + offset) {
+        auto& input_ptr =
+            pt_kernel_context_->MutableInputPtrAt(start_idx + offset);
+        if (input_ptr == nullptr) {
+          input_ptr = experimental::MakePtenTensorBaseFromVar(
+              *ins_vector[offset], in_def);
+        } else {
           experimental::ReMakePtenDenseTensorFromVar(
-              *ins_vector[j], in_def,
+              *ins_vector[offset], in_def,
               pt_kernel_context_->MutableInputAt<pten::DenseTensor>(start_idx +
-                                                                    j));
-          // TODO(chentianyu03): When multi input kernel, open this code
-          /*
-          } else {
-            pt_kernel_context_->EmplaceBackInputWithoutSetRange(
-                experimental::MakePtenTensorBaseFromVar(*ins_vector[j],
-          in_def));
-          */
+                                                                    offset));
         }
+      } else {
+        pt_kernel_context_->EmplaceBackInputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(*ins_vector[offset],
+                                                    in_def));
       }
-      pt_kernel_context_->MutableInputRangeAt(i) =
-          std::make_pair(start_idx, end_idx);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Error start index when trying to set new tensor to inputs, start "
-          "index is `%d`, but current pt_kernel_context_.inputs.size() is "
-          "`%d`.",
-          start_idx, pt_kernel_context_->InputsSize()));
     }
+    pt_kernel_context_->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -1864,69 +1867,85 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context_->OutputRangeAt(i - 1).second);
     size_t end_idx = start_idx + outs_vector.size();
+    auto current_vector_size = pt_kernel_context_->OutputsSize();
 
-    // The current size of input/output in pt_kernel_context_ is at least equal
-    // the start_idx. For the reason of reusing the allocted of inputs or
-    // outputs in pt_kernel_context_, the current size of input/output can be
-    // greater then the index of which the tensort wanted to set to, so it will
-    // use ReMakePtenDenseTensorFromVar to make pten tensor.
-    if (pt_kernel_context_->OutputsSize() == start_idx) {
-      paddle::SmallVector<std::shared_ptr<pten::TensorBase>> tmp_outputs;
-      for (auto* var : outs_vector) {
-        tmp_outputs.emplace_back(
-            experimental::MakePtenTensorBaseFromVar(var, out_def));
+    // If the memory needed is less than the current memory allocated, we will
+    // reuse the current memory by using ReMakePtenDenseTensorFromVar.
+    // Otherwise，we will create new storage.
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (current_vector_size > start_idx + offset) {
+        experimental::ReMakePtenDenseTensorFromVar(
+            outs_vector[offset], out_def,
+            pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
+                                                                   offset));
+      } else {
+        pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
+            experimental::MakePtenTensorBaseFromVar(outs_vector[offset],
+                                                    out_def));
       }
-      pt_kernel_context_->EmplaceBackOutputs(std::move(tmp_outputs));
-    } else if (pt_kernel_context_->OutputsSize() > start_idx) {
-      size_t output_size = pt_kernel_context_->OutputsSize();
-      for (size_t j = 0; j < outs_vector.size(); ++j) {
-        if (output_size > start_idx + j) {
-          experimental::ReMakePtenDenseTensorFromVar(
-              outs_vector[j], out_def,
-              pt_kernel_context_->MutableOutputAt<pten::DenseTensor>(start_idx +
-                                                                     j));
-
-          // TODO(chentianyu03): When multi output kernel, open this code
-          /*
-          } else {
-            pt_kernel_context_->EmplaceBackOutputWithoutSetRange(
-                experimental::MakePtenTensorBaseFromVar(outs_vector[j],
-          out_def));
-              */
-        }
-      }
-      pt_kernel_context_->MutableOutputRangeAt(i) =
-          std::make_pair(start_idx, end_idx);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Error start index when trying to set new tensor to inputs, start "
-          "index is `%d`, but current pt_kernel_context_.outputs.size() is "
-          "`%d`.",
-          start_idx, pt_kernel_context_->OutputsSize()));
     }
+    pt_kernel_context_->AssignOutputRange(std::make_pair(start_idx, end_idx),
+                                          i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    auto& attr = Attrs().at(attr_names[i]);
-    if (attr_defs[i].type_index == std::type_index(typeid(pten::Scalar))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      auto attr_iter = Attrs().find(attr_names[i]);
+      if (attr_iter != Attrs().end()) {  // shape is in the attribute
+        if (std::type_index(attr_iter->second.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(
+              BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          pt_kernel_context_->EmplaceBackAttr(std::move(pten::ScalarArray(
+              BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to ScalarArray when "
+              "construct KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ctx.inputs.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          pt_kernel_context_->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVar(*ins_vector.front())));
+        } else {  // ShapeTensorList
+          pt_kernel_context_->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVarList(ins_vector)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
-      if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-        pt_kernel_context_->EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::string))) {
-        pt_kernel_context_->EmplaceBackAttr(
-            std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+      auto attr_iter = Attrs().find(attr_names[i]);
+      if (attr_iter != Attrs().end()) {  // scalar is in the attribute
+        auto& attr = Attrs().at(attr_names[i]);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          pt_kernel_context_->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          pt_kernel_context_->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "KernelContext.",
+              attr_names[i]));
+        }
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "unsupported cast op attribute `%s` to Scalar when construct "
-            "KernelContext.",
-            attr_names[i]));
+        auto& ins_vector = ctx.inputs.at(attr_names[i]);
+        pt_kernel_context_->EmplaceBackAttr(std::move(
+            experimental::MakePtenScalarFromVar(*ins_vector.front())));
       }
+
     } else {
       // TODO(chenweihang): support other attrs later
+      auto& attr = Attrs().at(attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         pt_kernel_context_->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
@@ -1953,7 +1972,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
 
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "unsupported cast op attribute `%s` when construct "
+            "Unsupported cast op attribute `%s` when construct "
             "KernelContext.",
             attr_names[i]));
       }
