@@ -49,9 +49,7 @@ HeterListenAndServOp::~HeterListenAndServOp() { Stop(); }
 
 void HeterListenAndServOp::Stop() {}
 
-void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
-                                        framework::ProgramDesc *program,
-                                        framework::Scope *recv_scope) const {
+void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
       Attr<std::vector<std::string>>("message_to_block_id");
@@ -90,28 +88,6 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
   }
-  auto optimize_prepared = executor->Prepare(*program, block_list);
-  // execute global block if needed, block id 1 in the program is global
-  // block if it's not bind to a grad var for it's update.
-  if (block_list[0] == 1 &&
-      message_to_block_id.find_value(static_cast<int32_t>(1)) ==
-          message_to_block_id.end()) {
-    executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
-  }
-
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      message_to_prepared_ctx;
-  for (size_t i = 0; i < block_list.size(); ++i) {
-    auto blkid = block_list[i];
-    auto it = message_to_block_id.find_value(blkid);
-    if (it != message_to_block_id.end()) {
-      message_to_prepared_ctx[it->first] = optimize_prepared[i];
-    }
-  }
-
-  request_send_and_recv_handler_->SetGradToPreparedCtx(
-      &message_to_prepared_ctx);
 
   for (size_t i = 0; i < block_list.size(); ++i) {
     auto blkid = block_list[i];
@@ -125,7 +101,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   }
 
   while (true) {
-    if (rpc_service_->IsExit()) {
+    if (rpc_service_->IsExit() || rpc_service_->IsStop()) {
       rpc_service_->Stop();
       VLOG(0) << "get exit. rpc_processor stop!";
       break;
@@ -145,7 +121,6 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
-  framework::Scope &recv_scope = scope.NewScope();
 
   auto pserver_id = Attr<int>("pserver_id");
   auto fan_in = Attr<int>("fanin");
@@ -154,8 +129,8 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
                     platform::errors::PreconditionNotMet(
                         "RPC service has been created unexpectedly."));
-  std::string endpoint = Attr<std::string>("endpoint");
 
+  std::string endpoint = Attr<std::string>("endpoint");
   VLOG(4) << "pserver_id: " << pserver_id << ", end_point:" << endpoint;
 
   rpc_service_ = distributed::HeterServer::GetInstance();
@@ -168,15 +143,14 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                     platform::errors::PreconditionNotMet(
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
+
   auto *program = optimize_blocks[0]->Program();
-  framework::Executor executor(dev_place);
 
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
-  request_send_and_recv_handler_->SetScope(&recv_scope);
+  request_send_and_recv_handler_->SetScope(&scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
-  request_send_and_recv_handler_->SetProgram(program);
-  request_send_and_recv_handler_->SetExecutor(&executor);
+  rpc_service_->SetRequestHandler(request_send_and_recv_handler_);
 
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
@@ -186,7 +160,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
-  RunAsyncLoop(&executor, program, &recv_scope);
+  RunAsyncLoop(program);
   VLOG(3) << "Wait for Server_thread_ stop";
   (server_thread_.get())->join();
   VLOG(3) << "Server_thread_ stop";

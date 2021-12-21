@@ -17,14 +17,12 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void Flatten(const CUDAContext& dev_ctx,
@@ -32,6 +30,24 @@ void Flatten(const CUDAContext& dev_ctx,
              int start_axis,
              int stop_axis,
              DenseTensor* out);
+
+template <typename T>
+void Cast(const CUDAContext& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out);
+
+void Reshape(const CUDAContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out);
+
+void ReshapeWithXShape(const CUDAContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out);
 
 }  // namespace pten
 

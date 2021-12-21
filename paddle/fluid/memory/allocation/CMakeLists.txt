@@ -15,15 +15,22 @@ endif()
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
-  nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
   nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
+  nv_library(stream_safe_cuda_allocator SRCS stream_safe_cuda_allocator.cc DEPS allocator)
+  nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
+
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
+  if(CUDA_VERSION GREATER_EQUAL 10.2)
+    nv_library(cuda_virtual_mem_allocator SRCS cuda_virtual_mem_allocator.cc DEPS dynload_cuda)
+  endif()
 endif()
 
 if (WITH_ROCM)
   hip_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
-  hip_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
   hip_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
+  hip_library(stream_safe_cuda_allocator SRCS stream_safe_cuda_allocator.cc DEPS allocator)
+  hip_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
+  
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
 endif()
 
@@ -35,9 +42,14 @@ endif()
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 if (WITH_GPU OR WITH_ROCM)
-    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator)
+    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator stream_safe_cuda_allocator device_context)
+    if(CUDA_VERSION GREATER_EQUAL 10.2)
+      list(APPEND AllocatorFacadeDeps cuda_virtual_mem_allocator)
+    endif()
 elseif(WITH_XPU)
     set(AllocatorFacadeDeps xpu_info)
+elseif(WITH_IPU)
+    set(AllocatorFacadeDeps ipu_info)
 elseif(WITH_ASCEND)
     set(AllocatorFacadeDeps ascend_npu_info)
 else ()
@@ -72,7 +84,7 @@ else()
                 cpu_allocator)
 endif()
 
-list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator best_fit_allocator)
+list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator virtual_memory_auto_growth_best_fit_allocator best_fit_allocator)
 
 if (WITH_ASCEND_CL)
     list(APPEND AllocatorFacadeDeps npu_pinned_allocator)
@@ -107,7 +119,16 @@ cc_library(auto_growth_best_fit_allocator SRCS auto_growth_best_fit_allocator.cc
 cc_test(auto_growth_best_fit_allocator_facade_test SRCS auto_growth_best_fit_allocator_facade_test.cc DEPS cpu_allocator auto_growth_best_fit_allocator)
 cc_test(auto_growth_best_fit_allocator_test SRCS auto_growth_best_fit_allocator_test.cc DEPS auto_growth_best_fit_allocator)
 
+cc_library(virtual_memory_auto_growth_best_fit_allocator SRCS virtual_memory_auto_growth_best_fit_allocator.cc DEPS allocator aligned_allocator)
+
 if(NOT WIN32)
   cc_library(mmap_allocator SRCS mmap_allocator.cc DEPS allocator)
   cc_test(mmap_allocator_test SRCS mmap_allocator_test.cc DEPS mmap_allocator allocator)
 endif(NOT WIN32)
+
+if(WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")       
+  nv_test(base_ptr_test SRCS base_ptr_test.cu DEPS malloc gpu_info)
+  set_tests_properties(base_ptr_test PROPERTIES 
+                       ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;
+                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+endif()

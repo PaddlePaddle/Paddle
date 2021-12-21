@@ -140,6 +140,8 @@ class Cifar10(Dataset):
             names = (each_item.name for each_item in f
                      if self.flag in each_item.name)
 
+            names = sorted(list(names))
+
             for name in names:
                 batch = pickle.load(f.extractfile(name), encoding='bytes')
 

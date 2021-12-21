@@ -13,21 +13,42 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
-namespace framework {
-class ProgramDesc;
-}
-
 namespace distributed {
+class TaskNode;
 
 class RuntimeGraph final {
  public:
   RuntimeGraph() = default;
-  explicit RuntimeGraph(const paddle::framework::ProgramDesc &program) {}
   ~RuntimeGraph() = default;
+  const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node() const {
+    return intercepter_id_to_node_;
+  }
+  const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank() const {
+    return intercepter_id_to_rank_;
+  }
+  void SetInterceptorIdToRank(
+      const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank) {
+    intercepter_id_to_rank_ = intercepter_id_to_rank;
+  }
+  void SetInterceptorIdToNode(
+      const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node) {
+    intercepter_id_to_node_ = intercepter_id_to_node;
+  }
+  std::string DebugString() const;
 
+ private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
+  std::unordered_map<int64_t, TaskNode*> intercepter_id_to_node_;
+  std::unordered_map<int64_t, int64_t> intercepter_id_to_rank_;
 };
 
 }  // namespace distributed

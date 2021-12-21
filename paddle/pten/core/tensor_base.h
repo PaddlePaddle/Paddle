@@ -43,7 +43,7 @@ class TensorBase {
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  virtual DataType data_type() const = 0;
+  virtual DataType dtype() const = 0;
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.

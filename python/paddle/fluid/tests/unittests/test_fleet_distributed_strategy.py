@@ -255,6 +255,32 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.a_sync_configs = configs
         self.assertEqual(strategy.a_sync_configs["k_steps"], 1000)
 
+    def test_sparse_table_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {
+            "table_parameters.emb.accessor.embed_sgd_param.adagrad.learning_rate":
+            0.05,
+            "table_parameters.emb.accessor.table_accessor_save_param.num": 2,
+            "table_parameters.emb.accessor.table_accessor_save_param.param":
+            [1, 2]
+        }
+        strategy.sparse_table_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.learning_rate, 0.05)
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.table_accessor_save_param[0].param, 1)
+
+        strategy.adam_d2sum = True
+        self.assertEqual(strategy.adam_d2sum, True)
+        strategy.fs_client_param = {
+            "uri": "123",
+            "user": "456",
+            "passwd": "789",
+            "hadoop_bin": "hadoop"
+        }
+        self.assertEqual(strategy.fs_client_param.user, "456")
+
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {

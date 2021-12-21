@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/xpu/manipulation.h"
-#include "paddle/pten/infershape/unary.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/hybird/general/manipulation.h"
 #include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {
@@ -25,7 +26,7 @@ void Flatten(const XPUContext& dev_ctx,
              int stop_axis,
              DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, out);
+  pten::Copy(dev_ctx, x, false, out);
   out->Resize(out_dims);
 }
 
@@ -47,19 +48,37 @@ void FlattenWithXShape(const XPUContext& dev_ctx,
     xshape_dims[i + 1] = in_dims[i];
   }
   xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->set_lod(x.lod());
+  xshape->ResetLoD(x.lod());
+}
+
+void Reshape(const XPUContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
+  if (x.data() == out->data() && x.numel() == out->numel()) {
+    out->Resize(out_meta.dims);
+    return;
+  }
+  pten::Copy(dev_ctx, x, false, out);
+  out->Resize(out_meta.dims);
+  out->ResetLoD(x.lod());
+}
+
+void ReshapeWithXShape(const XPUContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out) {
+  general::SetXShape(x, xshape);
+  Reshape(dev_ctx, x, shape, out);
 }
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(ManipulationXPU);
-
-// TODO(yuanrisheng): "flatten_contiguous_range" is compatible with old kernel
-// architecture, kernel_name should be "flatten".
-PT_REGISTER_KERNEL("flatten_contiguous_range",
+PT_REGISTER_KERNEL(flatten,
                    XPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Flatten,
                    float,
                    paddle::platform::float16,
@@ -69,9 +88,9 @@ PT_REGISTER_KERNEL("flatten_contiguous_range",
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
+PT_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
                    paddle::platform::float16,
@@ -80,3 +99,6 @@ PT_REGISTER_KERNEL("flatten_contiguous_range.mid",
                    int8_t,
                    int,
                    int64_t) {}
+
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape, XPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}

@@ -15,7 +15,13 @@
 syntax = "proto2";
 package paddle.distributed;
 
+message RankInfo {
+  required int64 rank = 1;
+  required string ip_port = 2;
+}
+
 message FleetExecutorDesc {
-  optional string grain = 1 [ default = "coarse" ];
-  repeated string addrs = 2; // "ip:port" of all ranks
+  optional int64 cur_rank = 1 [ default = 0 ]; // Rank id of current processor
+  repeated RankInfo cluster_info = 2;
+  optional int64 num_micro_batches = 3 [ default = 1 ];
 }

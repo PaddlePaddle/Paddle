@@ -60,11 +60,39 @@ def global_scatter(x,
                    group=None,
                    use_calc_stream=True):
     """
-    Scatter data in x which has been put together belong to one expert 
-    to n_expert * world_size exeperts according to local_count and receive tensors 
-    from n_expert * world_size experts according
-    to global_count.
+    The global_scatter operator distributes the data of x to n_expert * world_size experts according to local_count, 
+    and then receives data according to global_count. The expert refers to a user-defined expert network, 
+    n_expert refers to the number of expert networks owned by each card, and world_size refers to the number of graphics cards running the network.
     
+    As shown below, the value of the world size is 2, n_expert 2, the batch size of the x 4 and local_count is [2, 0, 2, 0].
+    The global_count of the rank 0 is [2, 0, , ], rank 1 is [2, 0, ,](Due to the limited space, only the data calculated on rank 0 is shown here).
+    In the global_scatter operator, local_count[i] represents sending local_count[i] data to the (i % n_expert)th expert of the (i // n_expert)th card,
+    global_count[i] represents receiving global_count[i] data from the (i // n_expert)th card to the (i % n_expert)th expert of this card. The rank in the
+    figure respresent the rank of the current card in all cards.
+
+    The process of global_scatter sending data is as follows:
+
+    local_count[0] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 0th card;
+
+    local_count[1] represents taking out 0 batches from x and sending 0 batches to the 1th expert of the 0th card;
+
+    local_count[2] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 1th card;
+
+    local_count[3] represents taking out 0 batches from x and sending 0 batches to the 1th expert of the 1th card;
+
+    Therefore, the global_count[0] of the 0th card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
+
+    the global_count[1] of the 0th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert;
+
+    the global_count[0] of the 1th card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
+
+    the global_count[1] of the 1th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
+        :width: 800
+        :alt: global_scatter_gather
+        :align: center
+
     Args:
         x (Tensor): Tensor. The tensor data type should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
@@ -154,9 +182,30 @@ def global_gather(x,
                   group=None,
                   use_calc_stream=True):
     """
-    Gather data in x to n_expert * world_size exeperts according to
-    local_count and receive tensors from n_expert * world_size experts according
-    to global_count.
+    The global_gather operator gathers the data of x into n_expert * world_size experts according to global_count, and then receives data according to local_count.
+    The expert refers to a user-defined expert network, n_expert refers to the number of expert networks owned by each card, and world_size refers to the number of graphics cards running the network.
+
+    As shown below, the value of the world size is 2, n_expert 2, the batch size of the x 4 and local_count is [2, 0, 2, 0].
+    The global_count of the rank 0 is [2, 0, , ], rank 1 is [2, 0, ,](Due to the limited space, only the data calculated on rank 0 is shown here).
+    In the global_gather operator, the meaning of the global_count and local_count is opposed to global_scatter, global_count[i] represents sending global_count[i] data to the (i % n_expert)th expert of the (i // n_expert)th card,
+    local_count[i] represents receiving local_count[i] data from the (i // n_expert)th card to the (i % n_expert)th expert of this card. The data sent will be arranged according to the experts of each card.
+    The rank in the figure respresent the rank of the current card in all cards.
+
+    The process of global_gather sending data is as follows:
+
+    The global_count[0] of the 0th card represents sending 2 data to the 0th expert of the 0th card;
+    
+    The global_count[1] of the 0th card represents sending 0 data to the 1th expert of the 0th card;
+    
+    The global_count[0] of the 1th card represents sending 2 data to the 0th expert of the 0th card;
+    
+    The global_count[1] of the 1th card represents sending 0 data to the 1th expert of the 0th card.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
+        :width: 800
+        :alt: global_scatter_gather
+        :align: center
+
 
     Args:
         x (Tensor): Tensor. Tensor whose data type should be float16, float32, float64, int32 or int64.

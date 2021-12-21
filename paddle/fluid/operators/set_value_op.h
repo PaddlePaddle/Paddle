@@ -260,6 +260,9 @@ class SetValueKernel : public framework::OpKernel<T> {
       starts_indices[axis_index] = starts[i];
       ends_indices[axis_index] = ends[i];
       strides_indices[axis_index] = steps[i];
+      if (starts[i] == ends[i]) {  // slice is empty, data will not be changed
+        return;
+      }
     }
 
     out_e.stridedSlice(starts_indices, ends_indices, strides_indices)

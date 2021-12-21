@@ -21,6 +21,8 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_factory.h"
@@ -34,6 +36,18 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::LoDTensor& src);
 
+pten::Scalar MakePtenScalar(const paddle::framework::LoDTensor& src);
+
+pten::ScalarArray MakePtenScalarArray(const paddle::framework::LoDTensor& src);
+
+pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable);
+
+pten::ScalarArray MakePtenScalarArrayFromVar(
+    const framework::Variable& variable);
+
+pten::ScalarArray MakePtenScalarArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list);
+
 std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
     const framework::Variable& variable, const pten::TensorArgDef& arg_def);
 
@@ -43,6 +57,42 @@ std::unique_ptr<pten::TensorBase> MakePtenTensorBaseFromVar(
 void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
+
+void MovesSharedStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
+
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::LoDTensor* dst);
+
+/**
+ * In order to improve the compatibility state performance, some tricky tool
+ * functions are added.
+ *
+ * The ReMake** function takes out the LoDTensor information and directly
+ * replaces it with the corresponding member of the DenseTensor to avoid
+ * the overhead caused by frequent construction and destruction of the
+ * DenseTensor.
+ */
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
+                           const pten::TensorArgDef& arg_def,
+                           pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           const pten::TensorArgDef& arg_def,
+                           pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
+                                  const pten::TensorArgDef& arg_def,
+                                  pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensorFromVar(framework::Variable* variable,
+                                  const pten::TensorArgDef& arg_def,
+                                  pten::DenseTensor* dst);
+
+void MakeVariableFromPtenTensor(pten::DenseTensor* src,
+                                framework::Variable* variable);
 
 }  // namespace experimental
 }  // namespace paddle

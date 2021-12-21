@@ -352,12 +352,12 @@ HOSTDEVICE inline bool operator>=(const complex<T>& a, const complex<T>& b) {
 }
 
 template <typename T>
-HOSTDEVICE inline complex<T> max(const complex<T>& a, const complex<T>& b) {
+HOSTDEVICE inline complex<T>(max)(const complex<T>& a, const complex<T>& b) {
   return (a.real >= b.real) ? a : b;
 }
 
 template <typename T>
-HOSTDEVICE inline complex<T> min(const complex<T>& a, const complex<T>& b) {
+HOSTDEVICE inline complex<T>(min)(const complex<T>& a, const complex<T>& b) {
   return (a.real < b.real) ? a : b;
 }
 
@@ -398,6 +398,16 @@ HOSTDEVICE inline T abs(const complex<T>& a) {
   return thrust::abs(thrust::complex<T>(a));
 #else
   return std::abs(std::complex<T>(a));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline T arg(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return thrust::arg(thrust::complex<T>(a));
+#else
+  return std::arg(std::complex<T>(a));
 #endif
 }
 
@@ -507,13 +517,13 @@ struct numeric_limits<paddle::platform::complex<T>> {
   static const bool traps = false;
   static const bool tinyness_before = false;
 
-  static paddle::platform::complex<T> min() {
+  static paddle::platform::complex<T>(min)() {
     return paddle::platform::complex<T>(0.0, 0.0);
   }
   static paddle::platform::complex<T> lowest() {
     return paddle::platform::complex<T>(0.0, 0.0);
   }
-  static paddle::platform::complex<T> max() {
+  static paddle::platform::complex<T>(max)() {
     return paddle::platform::complex<T>(0.0, 0.0);
   }
   static paddle::platform::complex<T> epsilon() {

@@ -19,11 +19,20 @@ limitations under the License. */
 
 namespace pten {
 
-void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst) {
+// NOTE(chenweihang): blocking is useless in cpu kernel
+void Copy(const CPUContext& dev_ctx,
+          const DenseTensor& src,
+          bool blocking,
+          DenseTensor* dst) {
   auto* src_ptr = src.data();
-  auto* dst_ptr = dst->mutable_data();
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
+
+  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+          << dst_place;
+
+  dst->Resize(src.dims());
+  auto* dst_ptr = dst->mutable_data();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -31,13 +40,10 @@ void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst) {
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
-  dst->Resize(src.dims());
   CHECK(dst->layout() == src.layout());
-  auto size = src.numel() * paddle::framework::SizeOfType(
-                                TransToProtoVarType(src.data_type()));
+
+  auto size = src.numel() *
+              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_cpu_place(src_place) &&
       paddle::platform::is_cpu_place(dst_place)) {
@@ -51,7 +57,4 @@ void Copy(const CPUContext& dev_ctx, const DenseTensor& src, DenseTensor* dst) {
 
 }  // namespace pten
 
-// TODO(chenweihang): replace by better impl
-PT_REGISTER_MODULE(UtilsCPU);
-
-PT_REGISTER_KERNEL_WITH_NO_TYPE("copy", CPU, ANY, pten::Copy) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, CPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}
