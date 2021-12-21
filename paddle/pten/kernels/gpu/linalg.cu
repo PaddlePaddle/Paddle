@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/cuda/linalg.h"
+#include "paddle/pten/kernels/gpu/linalg.h"
 
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/hybird/eigen/dot.h"
@@ -24,15 +24,15 @@
 namespace pten {
 
 template <typename T>
-void Dot(const CUDAContext& dev_ctx,
+void Dot(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out) {
-  eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
+  eigen::Dot<GPUContext, T>(dev_ctx, x, y, out);
 }
 
 template <typename T>
-void Matmul(const CUDAContext& dev_ctx,
+void Matmul(const GPUContext& dev_ctx,
             const DenseTensor& x,
             const DenseTensor& y,
             bool transpose_x,
@@ -48,7 +48,7 @@ void Matmul(const CUDAContext& dev_ctx,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(Y) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  math::MatMulFunction<CUDAContext, T>(
+  math::MatMulFunction<GPUContext, T>(
       dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 
@@ -59,7 +59,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL(dot,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Dot,
                    float,
@@ -70,7 +70,7 @@ PT_REGISTER_KERNEL(dot,
                    complex128) {}
 
 PT_REGISTER_KERNEL(matmul,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Matmul,
                    float,
