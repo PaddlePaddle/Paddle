@@ -30,7 +30,7 @@ TEST(Backend, OStream) {
   EXPECT_EQ(oss.str(), "CPU");
   oss.str("");
   oss << pten::Backend::GPU;
-  EXPECT_EQ(oss.str(), "CUDA");
+  EXPECT_EQ(oss.str(), "GPU");
   oss.str("");
   oss << pten::Backend::XPU;
   EXPECT_EQ(oss.str(), "XPU");

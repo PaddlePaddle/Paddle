@@ -100,7 +100,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "CPU";
       break;
     case Backend::GPU:
-      os << "CUDA";
+      os << "GPU";
       break;
     case Backend::XPU:
       os << "XPU";
