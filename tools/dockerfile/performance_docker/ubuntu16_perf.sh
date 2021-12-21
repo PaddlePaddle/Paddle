@@ -58,21 +58,9 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-10.2/targets/x86_64-linux/lib/:${LD_LIBRARY_
 # wrong code, bash file
 function install_nccl2(){
   if [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
-      sed -i 's#<install_nccl2>#DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb" \
-URL="http://nccl2-deb.cdn.bcebos.com/$DEB" \
-DIR="/nccl2" \
-mkdir -p $DIR \
-wget -q -O $DIR/$DEB $URL \
-cd $DIR \&\& ar x $DEB \&\& tar xf data.tar.xz \
-DEBS=$(find ./var/ -name "*.deb") \
-for sub_deb in $DEBS; do \
-  echo $sub_deb \
-  ar x $sub_deb \&\& tar xf data.tar.xz \
-done \
-mv -f usr/include/nccl.h /usr/local/include/ \
-mv -f usr/lib/x86_64-linux-gnu/libnccl* /usr/local/lib/ \
-rm /usr/include/nccl.h \
-rm -rf $DIR #g' Dockerfile.tmp
+      sed -i 's#<install_nccl2>#COPY tools/dockerfile/performance_docker/install_nccl2.sh / \\
+RUN bash /install_nccl2.sh \\
+RUN rm -rf /install_nccl2.sh #g' Dockerfile.tmp
   else
       sed -i 's#<install_nccl2># #g' Dockerfile.tmp
   fi
@@ -81,13 +69,9 @@ rm -rf $DIR #g' Dockerfile.tmp
 
 function install_dali(){
   if [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
-      sed -i 's#<install_dali>#RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl \&\& \\ \
-    pip install nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl \&\& \\ \
-    rm -f nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl #g' Dockerfile.tmp
+      sed -i 's#<install_dali>#RUN python3.7 -m pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda110 #g' Dockerfile.tmp
   elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
-      sed -i 's#<install_dali>#RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl \&\& \\ \
-    pip install nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl \&\& \\ \
-    rm -f nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl #g' Dockerfile.tmp
+      sed -i 's#<install_dali>#RUN python3.7 -m pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 #g' Dockerfile.tmp
   fi
 }
 
