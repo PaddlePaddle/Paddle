@@ -61,7 +61,7 @@ void Reduce(const CUDAContext& dev_ctx,
 
   gpuStream_t stream = dev_ctx.stream();
 
-  if (out_dtype != pten::DataType::UNDEFINED) {
+  if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
     PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         out_dtype, "TensorReduceFunctorImpl", ([&] {
           pten::detail::TensorReduceFunctorImpl<T, data_t, ReduceFunctor>(
