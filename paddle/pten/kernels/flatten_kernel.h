@@ -14,9 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/backends/cuda/cuda_context.h"
-#include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
