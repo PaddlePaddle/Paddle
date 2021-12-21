@@ -31,16 +31,11 @@ class TakeAlongAxisOpKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
 
     auto input = ctx.Input<Tensor>("Input");
-    VLOG(3) << " input:" << *(input->data<T>());
     auto axis = ctx.Attr<int>("Axis");
     auto index = ctx.Input<Tensor>("Index");
     auto result = ctx.Output<Tensor>("Result");
     result->Resize(index->dims());
     result->mutable_data<T>(ctx.GetPlace());
-    // // resize_output(result, index.sizes());
-    // // check_no_internal_overlap(self, result);
-    // // check_no_partial_overlap(result, index);
-    // VLOG(3) << "000000000";
 
     const auto &index_type = index->type();
     if (index_type == framework::proto::VarType::INT32) {
@@ -50,7 +45,6 @@ class TakeAlongAxisOpKernel : public framework::OpKernel<T> {
       cpu_gather_kernel<T, int64_t>(*input, axis, *index, *result,
                                     ctx.device_context());
     }
-    VLOG(3) << "<<<< Done Compute <<<<<";
   }
 };
 
@@ -62,39 +56,28 @@ class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
         platform::is_cpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
 
-    auto input_d = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    VLOG(3) << " grad 111111:";
-    // VLOG(3) << " input grad:" << *(input_d->data<T>());
+    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto index = ctx.Input<Tensor>("Index");
-    auto result_d = ctx.Input<Tensor>(framework::GradVarName("Result"));
-    VLOG(3) << " index grad:" << *(index->data<int>());
-    VLOG(3) << " result_d grad:" << *(result_d->data<T>());
-    VLOG(3) << " grad 22222222:";
+    auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
-    VLOG(3) << " grad 3333333:";
-    VLOG(3) << " index->dims: " << sizeof(index->dims());
-    input_d->Resize(index->dims());
-    VLOG(3) << " grad 4444444:";
-    input_d->mutable_data<T>(ctx.GetPlace());
-    VLOG(3) << " grad 5555555:";
-    // // resize_output(result, index.sizes());
-    // // check_no_internal_overlap(self, result);
-    // // check_no_partial_overlap(result, index);
-    // VLOG(3) << "000000000";
-
+    // We need know the shape of input matrix to determine the shape of grad
+    // matrix of input.
+    auto input = ctx.Input<Tensor>("Input");
+    input_grad->Resize(input->dims());
+    input_grad->mutable_data<T>(ctx.GetPlace());
+    auto input_grad_data = input_grad->data<T>();
+    for (int64_t i = 0; i < input_grad->numel(); ++i) {
+      *(input_grad_data + i) = 0;
+    }
     const auto &index_type = index->type();
-    VLOG(3) << " grad 666666:";
     if (index_type == framework::proto::VarType::INT32) {
-      VLOG(3) << " grad 77777:";
-      cpu_scatter_assign_kernel<T, int32_t>(
-          *input_d, axis, *index, *result_d,
+      cpu_scatter_add_kernel<T, int32_t>(
+          *input_grad, axis, *index, *result_grad,
           ctx.device_context());  // the gradient of gather is scatter
     } else if (index_type == framework::proto::VarType::INT64) {
-      VLOG(3) << " grad 88888:";
-      cpu_scatter_assign_kernel<T, int64_t>(*input_d, axis, *index, *result_d,
-                                            ctx.device_context());
+      cpu_scatter_add_kernel<T, int64_t>(*input_grad, axis, *index,
+                                         *result_grad, ctx.device_context());
     }
-    VLOG(3) << "<<<< Done Compute <<<<<";
   }
 };
 

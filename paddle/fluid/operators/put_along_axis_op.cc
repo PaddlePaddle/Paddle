@@ -115,7 +115,6 @@ class PutAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("put_along_axis_grad");
     op->SetInput("Index", this->Input("Index"));
     op->SetInput("Input", this->Input("Input"));
-    op->SetInput("Value", this->Input("Value"));
 
     op->SetInput(framework::GradVarName("Result"), this->OutputGrad("Result"));
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
@@ -130,7 +129,9 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
                   ops::PutAlongAxisGradOpMaker<paddle::framework::OpDesc>,
                   ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp)
+
+REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp);
+
 REGISTER_OP_CPU_KERNEL(put_along_axis, ops::PutAlongAxisOpKernel<float>,
                        ops::PutAlongAxisOpKernel<double>,
                        ops::PutAlongAxisOpKernel<int>,

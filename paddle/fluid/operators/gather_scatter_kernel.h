@@ -35,8 +35,6 @@ namespace operators {
                                         const Tensor& index, Tensor result, \
                                         const platform::DeviceContext& ctx);
 
-// static TensorMultiply tensor_multiply;
-
 using Tensor = framework::Tensor;
 
 template <typename tensor_t, typename index_t>

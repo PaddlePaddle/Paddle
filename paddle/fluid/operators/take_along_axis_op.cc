@@ -125,7 +125,9 @@ REGISTER_OPERATOR(take_along_axis, ops::TakeAlongAxisOp,
                   ops::TakeAlongAxisOpMaker,
                   ops::TakeAlongAxisGradOpMaker<paddle::framework::OpDesc>,
                   ops::TakeAlongAxisGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(take_along_axis_grad, ops::TakeAlongAxisGradOp)
+
+REGISTER_OPERATOR(take_along_axis_grad, ops::TakeAlongAxisGradOp);
+
 REGISTER_OP_CPU_KERNEL(take_along_axis, ops::TakeAlongAxisOpKernel<float>,
                        ops::TakeAlongAxisOpKernel<double>,
                        ops::TakeAlongAxisOpKernel<int>,
