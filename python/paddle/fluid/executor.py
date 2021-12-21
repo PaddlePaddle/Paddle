@@ -2059,8 +2059,6 @@ class Executor(object):
                 # only insert feed ops into the first task node,
                 # then insert fetch ops into the last task node.
 
-                # FIXME: need a better strategy to locate the task node needs feed/fetch
-
                 # Insert feed ops
                 feed_task = fleet_opt['tasks'][0]
                 print("Inserting feed ops for task", feed_task.task_id())
