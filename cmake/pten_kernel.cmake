@@ -14,21 +14,17 @@
 
 # call kernel_declare need to make sure the target of input is exists
 function(kernel_declare TARGET_LIST)
-    message(STATUS "TARGET_LIST: ${TARGET_LIST}")
     foreach(kernel_path ${TARGET_LIST})
-        message(STATUS "kernel_path: ${kernel_path}")
         file(READ ${kernel_path} kernel_impl)
         # TODO(chenweihang): rename PT_REGISTER_CTX_KERNEL to PT_REGISTER_KERNEL
         # NOTE(chenweihang): now we don't recommend to use digit in kernel name
         string(REGEX MATCH "PT_REGISTER_CTX_KERNEL\\([ \t\r\n]*[a-z_]*," first_registry "${kernel_impl}")
-        message(STATUS "first_registry in ${kernel_path}: ${first_registry}")
         if (NOT first_registry STREQUAL "")
             # parse the first kernel name
             string(REPLACE "PT_REGISTER_CTX_KERNEL(" "" kernel_name "${first_registry}")
             string(REPLACE "," "" kernel_name "${kernel_name}")
             string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
             # append kernel declare into declarations.h
-            message(STATUS "parse kernel name: ${kernel_name}")
             # TODO(chenweihang): default declare ALL_LAYOUT for each kernel
             if (${kernel_path} MATCHES "./cpu\/")
                 file(APPEND ${kernel_declare_file} "PT_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
@@ -87,9 +83,6 @@ function(kernel_library TARGET)
         # TODO(chenweihang): impl compile by source later
     endif()
 
-    message(STATUS "cpu_srcs: ${cpu_srcs}")
-    message(STATUS "gpu_srcs: ${gpu_srcs}")
-
     list(LENGTH common_srcs common_srcs_len)
     list(LENGTH cpu_srcs cpu_srcs_len)
     list(LENGTH gpu_srcs gpu_srcs_len)
@@ -107,7 +100,6 @@ function(kernel_library TARGET)
         else()
             cc_library(${TARGET} SRCS ${common_srcs} DEPS ${kernel_library_DEPS})
         endif()
-        kernel_declare(${common_srcs})
     else()
         # If the kernel has a header file declaration, but no corresponding
         # implementation can be found, this is not allowed
@@ -118,24 +110,36 @@ function(kernel_library TARGET)
             if (WITH_GPU)
                 if (${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0)
                     nv_library(${TARGET} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS})
-                    kernel_declare(${cpu_srcs})
-                    kernel_declare(${gpu_srcs})
                 endif()
             elseif (WITH_ROCM)
                 if (${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0)
                     hip_library(${TARGET} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS})
-                    kernel_declare(${cpu_srcs})
-                    kernel_declare(${gpu_srcs})
                 endif()
             else()
                 if (${cpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR ${npu_srcs_len} GREATER 0)
                     cc_library(${TARGET} SRCS ${cpu_srcs} ${xpu_srcs} ${npu_srcs} DEPS ${kernel_library_DEPS})
-                    kernel_declare(${cpu_srcs})
-                    kernel_declare(${xpu_srcs})
-                    kernel_declare(${npu_srcs})
                 endif()
             endif()
         endif()
+    endif()
+
+    # parse kernel name and auto generate kernel declaration
+    # here, we don't need to check WITH_XXX, because if not WITH_XXX, the
+    # xxx_srcs_len will be equal to 0
+    if (${common_srcs_len} GREATER 0)
+        kernel_declare(${common_srcs})
+    endif()
+    if (${cpu_srcs_len} GREATER 0)
+        kernel_declare(${cpu_srcs})
+    endif()
+    if (${gpu_srcs_len} GREATER 0)
+        kernel_declare(${gpu_srcs})
+    endif()
+    if (${xpu_srcs_len} GREATER 0)
+        kernel_declare(${xpu_srcs})
+    endif()
+    if (${npu_srcs_len} GREATER 0)
+        kernel_declare(${npu_srcs})
     endif()
 endfunction()
 
@@ -147,7 +151,6 @@ function(register_kernels)
         "{multiValueArgs}" ${ARGN})
 
     file(GLOB KERNELS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_kernel.h")
-    message(STATUS "KERNELS: ${KERNELS}")
     string(REPLACE ".h" "" KERNELS "${KERNELS}")
     list(LENGTH register_kernels_DEPS register_kernels_DEPS_len)
 
@@ -162,7 +165,6 @@ function(register_kernels)
             # append target into PTEN_KERNELS property
             get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
             set(pten_kernels ${pten_kernels} ${target})
-            message(STATUS "pten_kernels: ${pten_kernels}, target: ${target}")
             set_property(GLOBAL PROPERTY PTEN_KERNELS ${pten_kernels})
         endif()
     endforeach()
