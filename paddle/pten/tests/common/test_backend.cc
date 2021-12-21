@@ -29,7 +29,7 @@ TEST(Backend, OStream) {
   oss << pten::Backend::CPU;
   EXPECT_EQ(oss.str(), "CPU");
   oss.str("");
-  oss << pten::Backend::CUDA;
+  oss << pten::Backend::GPU;
   EXPECT_EQ(oss.str(), "CUDA");
   oss.str("");
   oss << pten::Backend::XPU;

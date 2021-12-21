@@ -22,7 +22,7 @@
 namespace pten {
 
 template <typename T>
-void Flatten(const CUDAContext& dev_ctx,
+void Flatten(const GPUContext& dev_ctx,
              const DenseTensor& x,
              int start_axis,
              int stop_axis,
@@ -36,7 +36,7 @@ void Flatten(const CUDAContext& dev_ctx,
 // Output Tensor，
 // is there a more flexible way to deal with this case?
 template <typename T>
-void FlattenWithXShape(const CUDAContext& dev_ctx,
+void FlattenWithXShape(const GPUContext& dev_ctx,
                        const DenseTensor& x,
                        int start_axis,
                        int stop_axis,
@@ -46,7 +46,7 @@ void FlattenWithXShape(const CUDAContext& dev_ctx,
   general::SetXShape(x, xshape);
 }
 
-void Reshape(const CUDAContext& dev_ctx,
+void Reshape(const GPUContext& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,
              DenseTensor* out) {
@@ -60,7 +60,7 @@ void Reshape(const CUDAContext& dev_ctx,
   out->ResetLoD(x.lod());
 }
 
-void ReshapeWithXShape(const CUDAContext& dev_ctx,
+void ReshapeWithXShape(const GPUContext& dev_ctx,
                        const DenseTensor& x,
                        const ScalarArray& shape,
                        DenseTensor* xshape,
@@ -70,7 +70,7 @@ void ReshapeWithXShape(const CUDAContext& dev_ctx,
 }
 
 template <typename T>
-void Cast(const CUDAContext& dev_ctx,
+void Cast(const GPUContext& dev_ctx,
           const DenseTensor& x,
           DataType out_dtype,
           DataType in_dtype,
@@ -85,7 +85,7 @@ void Cast(const CUDAContext& dev_ctx,
 using float16 = paddle::platform::float16;
 
 PT_REGISTER_KERNEL(flatten,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Flatten,
                    float,
@@ -96,7 +96,7 @@ PT_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 PT_REGISTER_KERNEL(flatten_with_xshape,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
@@ -108,7 +108,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
   PT_REGISTER_KERNEL(cast,                              \
-                     CUDA,                              \
+                     GPU,                               \
                      ALL_LAYOUT,                        \
                      pten::Cast,                        \
                      float,                             \
@@ -132,6 +132,6 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, CUDA, ANY, pten::Reshape, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, GPU, ANY, pten::Reshape, ALL_DTYPE) {}
 PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_with_xshape, CUDA, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}
+    reshape_with_xshape, GPU, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}

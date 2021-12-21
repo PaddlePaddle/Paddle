@@ -43,7 +43,7 @@ enum class Backend : uint8_t {
   CPU,
 
   // various acceleration devices' backends
-  CUDA,
+  GPU,
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
 
@@ -99,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::CPU:
       os << "CPU";
       break;
-    case Backend::CUDA:
+    case Backend::GPU:
       os << "CUDA";
       break;
     case Backend::XPU:

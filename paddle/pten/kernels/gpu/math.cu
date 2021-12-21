@@ -58,12 +58,12 @@ struct DivideFunctor {
  */
 
 template <typename T>
-void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  eigen::Sign<CUDAContext, T>(dev_ctx, x, out);
+void Sign(const GPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  eigen::Sign<GPUContext, T>(dev_ctx, x, out);
 }
 
 template <typename T>
-void Mean(const CUDAContext& dev_ctx,
+void Mean(const GPUContext& dev_ctx,
           const DenseTensor& x,
           const std::vector<int64_t>& dims,
           bool keep_dim,
@@ -84,7 +84,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 template <typename T>
-void Sum(const CUDAContext& dev_ctx,
+void Sum(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const std::vector<int64_t>& dims,
          bool keep_dim,
@@ -101,11 +101,10 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(sign, CUDA, ALL_LAYOUT, pten::Sign, float, double, float16) {
-}
-PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(sign, GPU, ALL_LAYOUT, pten::Sign, float, double, float16) {}
+PT_REGISTER_KERNEL(mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL(add,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Add,
                    float,
@@ -116,7 +115,7 @@ PT_REGISTER_KERNEL(add,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Subtract,
                    float,
@@ -127,7 +126,7 @@ PT_REGISTER_KERNEL(subtract,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(divide,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Divide,
                    float,
@@ -138,7 +137,7 @@ PT_REGISTER_KERNEL(divide,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(multiply,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Multiply,
                    float,
@@ -150,7 +149,7 @@ PT_REGISTER_KERNEL(multiply,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(sum,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Sum,
                    bool,

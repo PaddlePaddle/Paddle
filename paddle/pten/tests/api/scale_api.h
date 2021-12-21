@@ -143,7 +143,7 @@ static void ScaleCPU(DataType kernel_dtype,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static void ScaleCUDA(DataType kernel_dtype,
-                      const pten::CUDAContext& dev_ctx,
+                      const pten::GPUContext& dev_ctx,
                       const pten::DenseTensor& x,
                       const Scalar& scale,
                       float bias,
@@ -255,9 +255,9 @@ Tensor scale_switch_case(const Tensor& x,
                dense_out.get());
       break;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case Backend::CUDA:
+    case Backend::GPU:
       ScaleCUDA(kernel_data_type,
-                static_cast<const pten::CUDAContext&>(*dev_ctx),
+                static_cast<const pten::GPUContext&>(*dev_ctx),
                 *dense_x,
                 scale,
                 bias,

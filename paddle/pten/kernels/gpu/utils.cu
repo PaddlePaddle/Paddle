@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace pten {
 
-void Copy(const CUDAContext& dev_ctx,
+void Copy(const GPUContext& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst) {
@@ -234,4 +234,4 @@ void Copy(const CUDAContext& dev_ctx,
 }
 }  // namespace pten
 
-PT_REGISTER_NO_TEMPLATE_KERNEL(copy, CUDA, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, GPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}

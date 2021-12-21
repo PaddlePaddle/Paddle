@@ -820,7 +820,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
       y->Resize(out_dims);
     } else {
       PD_VISIT_ALL_TYPES(y->dtype(), "CastKernelImpl", ([&] {
-                           pten::math::CastKernelImpl<CUDAContext, Tx, data_t>(
+                           pten::math::CastKernelImpl<GPUContext, Tx, data_t>(
                                *dev_ctx, x, y);
                          }));
     }

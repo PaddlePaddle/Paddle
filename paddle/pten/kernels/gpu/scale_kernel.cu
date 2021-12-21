@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/scale_kernel.h"
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/impl/scale_kernel_impl.h"
 
@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 PT_REGISTER_CTX_KERNEL(scale,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Scale,
                        float,
