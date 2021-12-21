@@ -57,12 +57,13 @@ class TaskNode:
             self.node = core.TaskNode(role, ops, cur_rank,
                                       int(task_id), max_run_times,
                                       max_slot_times)
-            print("Creating task node with role:",
-                  self.role(), "and with id:", self.task_id())
+            print("Creating task node by ops. The role is:",
+                  self.role(), "and the id is:", self.task_id())
         else:
             self.program = program
             self.node = core.TaskNode(program.desc, cur_rank, max_run_times,
                                       max_slot_times)
+            print("Creating task node by program. The id is:", self.task_id())
         self.node.set_type(node_type)
 
     def set_type(self, interceptor_type):
@@ -70,6 +71,9 @@ class TaskNode:
 
     def task_node(self):
         if hasattr(self, 'program'):
+            print(
+                "The task node has been instantiated by program, calling init before passing to fleet executor."
+            )
             self.node.init()
         return self.node
 
