@@ -150,10 +150,10 @@ void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
                               "StreamSafeCUDAAllocation*",
                               allocation));
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   if (stream_safe_cuda_allocation->CanBeFreed()) {
     delete stream_safe_cuda_allocation;
   } else {
-    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
     unfreed_allocations_.emplace_back(stream_safe_cuda_allocation);
   }
 }
