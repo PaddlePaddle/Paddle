@@ -1573,7 +1573,7 @@ def svd(x, full_matrices=False, name=None):
         outputs={'U': u,
                  'VH': vh,
                  'S': s},
-        attr=attrs, )
+        attrs=attrs, )
     return u, s, vh
 
 
