@@ -64,14 +64,14 @@ def is_floating_point(x):
     Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.arange(1., 5., dtype='float32')
-        y = paddle.arange(1, 5, dtype='int32')
-        print(paddle.is_floating_point(x))
-        # True
-        print(paddle.is_floating_point(y))
-        # False
+            x = paddle.arange(1., 5., dtype='float32')
+            y = paddle.arange(1, 5, dtype='int32')
+            print(paddle.is_floating_point(x))
+            # True
+            print(paddle.is_floating_point(y))
+            # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
         raise TypeError("Expected Tensor, but received type of x: {}".format(
