@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
-#include "paddle/pten/kernels/cuda/elementwise_impl.cu.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/elementwise_kernel.h"
 #include "paddle/pten/kernels/functions/elementwise_functor.h"
+#include "paddle/pten/kernels/gpu/elementwise_impl.cu.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -67,7 +67,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_CTX_KERNEL(add,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Add,
                        float,
@@ -78,7 +78,7 @@ PT_REGISTER_CTX_KERNEL(add,
                        complex64,
                        complex128) {}
 PT_REGISTER_CTX_KERNEL(subtract,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Subtract,
                        float,
@@ -89,7 +89,7 @@ PT_REGISTER_CTX_KERNEL(subtract,
                        complex64,
                        complex128) {}
 PT_REGISTER_CTX_KERNEL(divide,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Divide,
                        float,
@@ -100,7 +100,7 @@ PT_REGISTER_CTX_KERNEL(divide,
                        complex64,
                        complex128) {}
 PT_REGISTER_CTX_KERNEL(multiply,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Multiply,
                        float,
