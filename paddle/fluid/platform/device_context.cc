@@ -849,6 +849,15 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   return num_entries;
 }
 
+// TODO(jczaja): Replace with C++20 equivalents when applicable
+#ifdef _WIN32
+#define likely(expr) (expr)
+#define unlikely(expr) (expr)
+#else
+#define likely(expr) (__builtin_expect(!!(expr), 1))
+#define unlikely(expr) (__builtin_expect(!!(expr), 0))
+#endif
+
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
@@ -861,10 +870,10 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find ShapeBlob for current mkldnn session id firstly
   auto map_it = pMap->find(sid);
-  // (jczaja): In most cases we have data cached
-//  if (map_it == pMap->end()) {
-    if(__builtin_expect( map_it == pMap->end(), 0)) {
-
+  // (jczaja): After first iteration of model's execution we
+  // should have all elements cached (mostly) so failures are unlikely (less
+  // likely for dynamic shapes)
+  if (unlikely(map_it == pMap->end())) {
     VLOG(2) << "GetBlob: sid=" << sid << ", miss sid\n";
     return nullptr;
   }
@@ -872,8 +881,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current input shape secondly
   auto sBlob_it = sBlob->find(tls().cur_input_shape_str);
-  //if (sBlob_it == sBlob->end()) {
-  if(__builtin_expect( sBlob_it == sBlob->end(), 0)) {
+  if (unlikely(sBlob_it == sBlob->end())) {
     VLOG(2) << "GetBlob: sid=" << tls().cur_input_shape_str
             << ", miss input_shape_str\n";
     return nullptr;
@@ -883,8 +891,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   // Find Blob via name
   auto key_it = pBlob->find(name);
 
-//  if (key_it == pBlob->end()) {
-  if(__builtin_expect( key_it == pBlob->end(), 0)) {
+  if (unlikely(key_it == pBlob->end())) {
     VLOG(2) << "GetBlob sid=" << sid << ", miss blob=" << name << "\n";
     return nullptr;
   }
