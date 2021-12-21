@@ -44,7 +44,7 @@ TEST(DEV_API, fill_any_like) {
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto out = pten::FillAnyLike<float>(
+  auto out = pten::FullLike<float>(
       *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
       dense_x,
       val);

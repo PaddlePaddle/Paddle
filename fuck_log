@@ -1,0 +1,1349 @@
+[INFO] Checking merge-conflict files only.
+CRLF end-lines remover...............................(no files to check)Skipped
+yapf.................................................(no files to check)Skipped
+Check for added large files..............................................Passed
+Check for merge conflicts................................................Passed
+Check for broken symlinks................................................Passed
+Detect Private Key...................................(no files to check)Skipped
+Fix End of Files.........................................................Passed
+clang-format.............................................................Passed
+cpplint..................................................................Failed
+hookid: cpplint-cpp-source
+
+Done processing CMakeLists.txt
+Done processing cmake/configure.cmake
+Done processing cmake/external/cinn.cmake
+Done processing cmake/external/concurrentqueue.cmake
+Done processing cmake/external/cryptopp.cmake
+Done processing cmake/external/gtest.cmake
+Done processing cmake/external/llvm.cmake
+Done processing cmake/external/mkldnn.cmake
+Done processing cmake/inference_lib.cmake
+Done processing cmake/infrt_lib.cmake
+Done processing cmake/neuware.cmake
+Done processing cmake/operators.cmake
+Done processing cmake/pten.cmake
+Done processing cmake/third_party.cmake
+Done processing paddle/CMakeLists.txt
+Done processing paddle/fluid/distributed/common/cost_timer.h
+Done processing paddle/fluid/distributed/fleet.cc
+Done processing paddle/fluid/distributed/fleet_executor/CMakeLists.txt
+Done processing paddle/fluid/distributed/fleet_executor/carrier.cc
+Done processing paddle/fluid/distributed/fleet_executor/carrier.h
+Done processing paddle/fluid/distributed/fleet_executor/compute_interceptor.cc
+Done processing paddle/fluid/distributed/fleet_executor/compute_interceptor.h
+Done processing paddle/fluid/distributed/fleet_executor/fleet_executor.cc
+Done processing paddle/fluid/distributed/fleet_executor/fleet_executor.h
+Done processing paddle/fluid/distributed/fleet_executor/fleet_executor_desc.proto
+Done processing paddle/fluid/distributed/fleet_executor/interceptor.cc
+Done processing paddle/fluid/distributed/fleet_executor/interceptor.h
+Done processing paddle/fluid/distributed/fleet_executor/interceptor_message_service.cc
+Done processing paddle/fluid/distributed/fleet_executor/message_bus.cc
+Done processing paddle/fluid/distributed/fleet_executor/message_bus.h
+Done processing paddle/fluid/distributed/fleet_executor/runtime_graph.cc
+Done processing paddle/fluid/distributed/fleet_executor/runtime_graph.h
+Done processing paddle/fluid/distributed/fleet_executor/task_node.cc
+Done processing paddle/fluid/distributed/fleet_executor/task_node.h
+Done processing paddle/fluid/distributed/fleet_executor/test/compute_interceptor_run_op_test.cc
+Done processing paddle/fluid/distributed/fleet_executor/test/compute_interceptor_test.cc
+Done processing paddle/fluid/distributed/fleet_executor/test/interceptor_ping_pong_test.cc
+Done processing paddle/fluid/distributed/fleet_executor/test/interceptor_ping_pong_with_brpc_test.cc
+Done processing paddle/fluid/distributed/fleet_executor/test/interceptor_pipeline_long_path_test.cc
+Done processing paddle/fluid/distributed/fleet_executor/test/interceptor_pipeline_short_path_test.cc
+Done processing paddle/fluid/distributed/service/communicator.cc
+Done processing paddle/fluid/distributed/service/heter_server.h
+Done processing paddle/fluid/eager/accumulation/gradient_accumulation.cc
+Done processing paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.cc
+Done processing paddle/fluid/eager/api/utils/CMakeLists.txt
+Done processing paddle/fluid/eager/api/utils/global_utils.h
+Done processing paddle/fluid/eager/auto_code_generator/CMakeLists.txt
+Done processing paddle/fluid/eager/auto_code_generator/eager_generator.cc
+Done processing paddle/fluid/eager/backward.cc
+Done processing paddle/fluid/eager/eager_tensor.h
+Done processing paddle/fluid/eager/legacy/amp_auto_cast.cc
+Done processing paddle/fluid/eager/legacy/amp_auto_cast.h
+Done processing paddle/fluid/eager/legacy/infer_shape_context.h
+Done processing paddle/fluid/eager/legacy/op_runner.cc
+Done processing paddle/fluid/eager/tests/performance_tests/CMakeLists.txt
+Done processing paddle/fluid/eager/utils.cc
+Done processing paddle/fluid/eager/utils.h
+Done processing paddle/fluid/framework/custom_operator.cc
+Done processing paddle/fluid/framework/details/nan_inf_utils_detail.cc
+Done processing paddle/fluid/framework/distributed_strategy.proto
+Done processing paddle/fluid/framework/dlpack_tensor.cc
+Done processing paddle/fluid/framework/executor.cc
+Done processing paddle/fluid/framework/fleet/box_wrapper.cu
+Done processing paddle/fluid/framework/fleet/box_wrapper_impl.h
+Done processing paddle/fluid/framework/fleet/heter_ps/heter_comm.h
+Done processing paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h
+Done processing paddle/fluid/framework/fleet/ps_gpu_wrapper.cc
+Done processing paddle/fluid/framework/fleet/ps_gpu_wrapper.cu
+Done processing paddle/fluid/framework/garbage_collector.cc
+Done processing paddle/fluid/framework/garbage_collector.h
+Done processing paddle/fluid/framework/heter_pipeline_trainer_test.cc
+Done processing paddle/fluid/framework/heter_section_worker.cc
+Done processing paddle/fluid/framework/ir/CMakeLists.txt
+Done processing paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/conv_bn_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/fc_elementwise_layernorm_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/graph_pattern_detector.cc
+Done processing paddle/fluid/framework/ir/graph_pattern_detector.h
+Done processing paddle/fluid/framework/ir/ipu/avg_shard_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/avg_shard_pass.h
+Done processing paddle/fluid/framework/ir/ipu/forward_graph_extract_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/forward_graph_extract_pass.h
+Done processing paddle/fluid/framework/ir/ipu/infer_shape_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/infer_shape_pass.h
+Done processing paddle/fluid/framework/ir/ipu/inference_postprocess_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/inference_postprocess_pass.h
+Done processing paddle/fluid/framework/ir/ipu/inference_process_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/inference_process_pass.h
+Done processing paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.h
+Done processing paddle/fluid/framework/ir/ipu/ipu_inplace_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/ipu_inplace_pass.h
+Done processing paddle/fluid/framework/ir/ipu/ipu_pass_base.cc
+Done processing paddle/fluid/framework/ir/ipu/ipu_pass_base.h
+Done processing paddle/fluid/framework/ir/ipu/ipu_runtime_replacer_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/ipu_runtime_replacer_pass.h
+Done processing paddle/fluid/framework/ir/ipu/optimizer_extract_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/optimizer_extract_pass.h
+Done processing paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.h
+Done processing paddle/fluid/framework/ir/ipu/popart_canonicalization_pass.cc
+Done processing paddle/fluid/framework/ir/ipu/popart_canonicalization_pass.h
+Done processing paddle/fluid/framework/ir/layer_norm_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/matmul_scale_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/matmul_scale_fuse_pass.h
+Done processing paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h
+Done processing paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/conv_concat_relu_mkldnn_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_placement_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_placement_pass.h
+Done processing paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h
+Done processing paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass_tester.cc
+Done processing paddle/fluid/framework/ir/mkldnn/depthwise_conv_mkldnn_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h
+Done processing paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
+Done processing paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.cc
+Done processing paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.h
+Done processing paddle/fluid/framework/ir/pass_tester_helper.h
+Done processing paddle/fluid/framework/ir/shuffle_channel_detect_pass.cc
+Done processing paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.cc
+Done processing paddle/fluid/framework/library_type.h
+Done processing paddle/fluid/framework/new_executor/CMakeLists.txt
+Done processing paddle/fluid/framework/new_executor/interpretercore_garbage_collector.cc
+Done processing paddle/fluid/framework/new_executor/new_executor_defs.cc
+Done processing paddle/fluid/framework/new_executor/new_executor_defs.h
+Done processing paddle/fluid/framework/new_executor/standalone_executor_test.cc
+Done processing paddle/fluid/framework/op_desc.cc
+Done processing paddle/fluid/framework/op_registry.h
+Done processing paddle/fluid/framework/operator.cc
+Done processing paddle/fluid/framework/operator.h
+Done processing paddle/fluid/framework/paddle2cinn/CMakeLists.txt
+Done processing paddle/fluid/framework/paddle2cinn/build_cinn_pass.cc
+Done processing paddle/fluid/framework/paddle2cinn/build_cinn_pass_test.cc
+Done processing paddle/fluid/framework/paddle2cinn/cinn_cache_key.cc
+Done processing paddle/fluid/framework/paddle2cinn/cinn_cache_key.h
+Done processing paddle/fluid/framework/paddle2cinn/cinn_cache_key_test.cc
+Done processing paddle/fluid/framework/paddle2cinn/cinn_compiler.cc
+Done processing paddle/fluid/framework/paddle2cinn/cinn_compiler.h
+Done processing paddle/fluid/framework/paddle2cinn/cinn_compiler_test.cc
+Done processing paddle/fluid/framework/parallel_executor.cc
+Done processing paddle/fluid/framework/ps_gpu_trainer.cc
+Done processing paddle/fluid/framework/ps_gpu_worker.cc
+Done processing paddle/fluid/framework/pten_utils.cc
+Done processing paddle/fluid/framework/shape_inference.h
+Done processing paddle/fluid/framework/tensor.cc
+Done processing paddle/fluid/framework/tensor.h
+Done processing paddle/fluid/framework/tensor_util.cc
+Done processing paddle/fluid/framework/tensor_util.h
+Done processing paddle/fluid/framework/variable.h
+Done processing paddle/fluid/imperative/basic_engine.cc
+Done processing paddle/fluid/imperative/dygraph_grad_maker.h
+Done processing paddle/fluid/imperative/gradient_accumulator.cc
+Done processing paddle/fluid/imperative/heter_ccl_context.cc
+Done processing paddle/fluid/imperative/infer_shape_context.h
+Done processing paddle/fluid/imperative/prepared_operator.cc
+Done processing paddle/fluid/imperative/py_layer_fwd.h
+Done processing paddle/fluid/imperative/reducer.cc
+Done processing paddle/fluid/imperative/tracer.cc
+Done processing paddle/fluid/imperative/variable_wrapper.h
+Done processing paddle/fluid/inference/CMakeLists.txt
+Done processing paddle/fluid/inference/analysis/argument.h
+Done processing paddle/fluid/inference/analysis/passes/ir_graph_build_pass.cc
+Done processing paddle/fluid/inference/analysis/passes/memory_optimize_pass.cc
+Done processing paddle/fluid/inference/analysis/passes/memory_optimize_pass.h
+Done processing paddle/fluid/inference/api/analysis_config.cc
+Done processing paddle/fluid/inference/api/analysis_predictor.cc
+Done processing paddle/fluid/inference/api/demo_ci/run.sh
+Done processing paddle/fluid/inference/api/details/zero_copy_tensor.cc
+Done processing paddle/fluid/inference/api/mkldnn_quantizer.cc
+Done processing paddle/fluid/inference/api/mkldnn_quantizer_config.cc
+Done processing paddle/fluid/inference/api/paddle_analysis_config.h
+Done processing paddle/fluid/inference/api/paddle_pass_builder.cc
+Done processing paddle/fluid/inference/api/paddle_pass_builder.h
+Done processing paddle/fluid/inference/tensorrt/convert/elementwise_op.cc
+Done processing paddle/fluid/inference/tensorrt/convert/pool2d_op.cc
+Done processing paddle/fluid/inference/tensorrt/engine.cc
+Done processing paddle/fluid/inference/tensorrt/engine.h
+Done processing paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.cu
+Done processing paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.cu
+Done processing paddle/fluid/inference/tensorrt/plugin/skip_layernorm_op_plugin.cu
+Done processing paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.cu
+Done processing paddle/fluid/inference/tests/api/CMakeLists.txt
+Done processing paddle/fluid/inference/tests/api/analyzer_ernie_int8_tester.cc
+Done processing paddle/fluid/inference/tests/api/analyzer_ernie_tester.cc
+Done processing paddle/fluid/inference/tests/api/analyzer_ernie_tester.h
+Done processing paddle/fluid/inference/tests/api/ipu_resnet50_test.cc
+Done processing paddle/fluid/inference/tests/api/trt_dynamic_shape_ernie_test.cc
+Done processing paddle/fluid/memory/CMakeLists.txt
+Done processing paddle/fluid/memory/allocation/CMakeLists.txt
+Done processing paddle/fluid/memory/allocation/aligned_allocator.cc
+Done processing paddle/fluid/memory/allocation/allocator.h
+Done processing paddle/fluid/memory/allocation/allocator_facade.cc
+Done processing paddle/fluid/memory/allocation/allocator_facade.h
+Done processing paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h
+Done processing paddle/fluid/memory/allocation/base_ptr_test.cu
+Done processing paddle/fluid/memory/allocation/cuda_device_context_allocator.h
+Done processing paddle/fluid/memory/allocation/naive_best_fit_allocator.cc
+Done processing paddle/fluid/memory/allocation/naive_best_fit_allocator_test.cc
+Done processing paddle/fluid/memory/allocation/stream_safe_cuda_allocator.cc
+Done processing paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h
+Done processing paddle/fluid/memory/detail/CMakeLists.txt
+Done processing paddle/fluid/memory/detail/buddy_allocator.cc
+Done processing paddle/fluid/memory/detail/buddy_allocator_test.cc
+Done processing paddle/fluid/memory/detail/system_allocator.cc
+Done processing paddle/fluid/memory/detail/system_allocator.h
+Done processing paddle/fluid/memory/detail/system_allocator_test.cc
+Done processing paddle/fluid/memory/malloc.cc
+Done processing paddle/fluid/memory/malloc.h
+Done processing paddle/fluid/memory/memcpy.cc
+Done processing paddle/fluid/memory/memcpy.h
+Done processing paddle/fluid/memory/stream_safe_cuda_alloc_test.cu
+Done processing paddle/fluid/operators/CMakeLists.txt
+Done processing paddle/fluid/operators/activation_op.cc
+Done processing paddle/fluid/operators/activation_op.cu
+Done processing paddle/fluid/operators/activation_op.h
+Done processing paddle/fluid/operators/activation_op_mlu.cc
+Done processing paddle/fluid/operators/amp/check_finite_and_unscale_op_xpu.cc
+Done processing paddle/fluid/operators/amp/update_loss_scaling_op_xpu.cc
+Done processing paddle/fluid/operators/broadcast_tensors_op.cu
+Done processing paddle/fluid/operators/cast_op.cu
+Done processing paddle/fluid/operators/cinn/CMakeLists.txt
+Done processing paddle/fluid/operators/cinn/cinn_launch_context.cc
+Done processing paddle/fluid/operators/cinn/cinn_launch_context.h
+Done processing paddle/fluid/operators/cinn/cinn_launch_context_test.cc
+Done processing paddle/fluid/operators/cinn/cinn_launch_op.cc
+Done processing paddle/fluid/operators/cinn/cinn_launch_op.h
+Done processing paddle/fluid/operators/class_center_sample_op.cu
+Done processing paddle/fluid/operators/clip_by_norm_op.cu
+Done processing paddle/fluid/operators/compat/gelu.pbtxt
+Done processing paddle/fluid/operators/compat/matmul_v2.pbtxt
+Done processing paddle/fluid/operators/complex_op.cc
+Done processing paddle/fluid/operators/complex_op.cu
+Done processing paddle/fluid/operators/complex_op.h
+Done processing paddle/fluid/operators/complex_view_op.cc
+Done processing paddle/fluid/operators/complex_view_op.cu
+Done processing paddle/fluid/operators/complex_view_op.h
+Done processing paddle/fluid/operators/conj_op.h
+Done processing paddle/fluid/operators/controlflow/compare_all_op.cu
+Done processing paddle/fluid/operators/detection/generate_proposals_op.cc
+Done processing paddle/fluid/operators/elementwise/elementwise_add_op.cu
+Done processing paddle/fluid/operators/elementwise/elementwise_add_op.h
+Done processing paddle/fluid/operators/elementwise/elementwise_div_op.h
+Done processing paddle/fluid/operators/elementwise/elementwise_functor.h
+Done processing paddle/fluid/operators/elementwise/elementwise_max_op.cc
+Done processing paddle/fluid/operators/elementwise/elementwise_max_op.cu
+Done processing paddle/fluid/operators/elementwise/elementwise_max_op.h
+Done processing paddle/fluid/operators/elementwise/elementwise_min_op.cc
+Done processing paddle/fluid/operators/elementwise/elementwise_min_op.cu
+Done processing paddle/fluid/operators/elementwise/elementwise_min_op.h
+Done processing paddle/fluid/operators/elementwise/elementwise_mul_op.cu
+Done processing paddle/fluid/operators/elementwise/elementwise_mul_op.h
+Done processing paddle/fluid/operators/elementwise/elementwise_op.h
+Done processing paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h
+Done processing paddle/fluid/operators/elementwise/elementwise_op_function.h
+Done processing paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h
+Done processing paddle/fluid/operators/elementwise/elementwise_sub_op.cu
+Done processing paddle/fluid/operators/elementwise/elementwise_sub_op.h
+Done processing paddle/fluid/operators/fill_any_like_op.cc
+Done processing paddle/fluid/operators/fill_any_like_op.h
+Done processing paddle/fluid/operators/fill_constant_op.cc
+Done processing paddle/fluid/operators/filter_by_instag_op.h
+Done processing paddle/fluid/operators/flatten_op.cc
+Done processing paddle/fluid/operators/flip_op.cu
+Done processing paddle/fluid/operators/fused/attn_bias_add.cu.h
+Done processing paddle/fluid/operators/fused/attn_gemm.h
+Done processing paddle/fluid/operators/ipu_runtime_op.cc
+Done processing paddle/fluid/operators/ipu_runtime_op.h
+Done processing paddle/fluid/operators/kernel_primitives/functor_primitives.h
+Done processing paddle/fluid/operators/kron_op.h
+Done processing paddle/fluid/operators/label_smooth_op.cu
+Done processing paddle/fluid/operators/layer_norm_kernel.cu.h
+Done processing paddle/fluid/operators/layer_norm_op.cc
+Done processing paddle/fluid/operators/layer_norm_op.cu
+Done processing paddle/fluid/operators/lerp_op.cc
+Done processing paddle/fluid/operators/lerp_op.cu
+Done processing paddle/fluid/operators/lerp_op.h
+Done processing paddle/fluid/operators/margin_cross_entropy_op.cu
+Done processing paddle/fluid/operators/masked_select_op_xpu.cc
+Done processing paddle/fluid/operators/math/concat_and_split.cu
+Done processing paddle/fluid/operators/math/math_function.cc
+Done processing paddle/fluid/operators/math/math_function.cu
+Done processing paddle/fluid/operators/math/segment_pooling.cu
+Done processing paddle/fluid/operators/matmul_v2_op.cc
+Done processing paddle/fluid/operators/matmul_v2_op.h
+Done processing paddle/fluid/operators/mean_op.cu
+Done processing paddle/fluid/operators/mkldnn/conv_mkldnn_op.cc
+Done processing paddle/fluid/operators/mkldnn/fc_mkldnn_op.cc
+Done processing paddle/fluid/operators/mkldnn/matmul_mkldnn_op.cc
+Done processing paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h
+Done processing paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc
+Total errors found: 8
+Done processing paddle/fluid/operators/mkldnn/slice_mkldnn_op.cc
+Done processing paddle/fluid/operators/mlu/CMakeLists.txt
+Done processing paddle/fluid/operators/mlu/activation_op_mlu_test.cc
+Done processing paddle/fluid/operators/mlu/mlu_baseop.cc
+Done processing paddle/fluid/operators/mlu/mlu_baseop.h
+Done processing paddle/fluid/operators/optimizers/lamb_op.cc
+Done processing paddle/fluid/operators/optimizers/lamb_op.cu
+Done processing paddle/fluid/operators/optimizers/lamb_op.h
+Done processing paddle/fluid/operators/p_norm_op.cu
+Done processing paddle/fluid/operators/pool_op.h
+Done processing paddle/fluid/operators/prelu_op.cu
+Done processing paddle/fluid/operators/pscore/send_op.cc
+Done processing paddle/fluid/operators/py_layer_op.cc
+Done processing paddle/fluid/operators/py_layer_op.h
+Done processing paddle/fluid/operators/range_op_xpu.cc
+Done processing paddle/fluid/operators/reduce_ops/check_reduce_rank_test.cu
+Done processing paddle/fluid/operators/reduce_ops/frobenius_norm_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_all_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_any_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_functor_op.h
+Done processing paddle/fluid/operators/reduce_ops/reduce_max_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_mean_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_mean_op.h
+Done processing paddle/fluid/operators/reduce_ops/reduce_mean_op.part.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_min_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_op.cu.h
+Done processing paddle/fluid/operators/reduce_ops/reduce_op.h
+Done processing paddle/fluid/operators/reduce_ops/reduce_prod_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_sum_op.cu
+Done processing paddle/fluid/operators/reduce_ops/reduce_sum_op.part.cu
+Done processing paddle/fluid/operators/repeat_interleave_op.cc
+Done processing paddle/fluid/operators/repeat_interleave_op.cu
+Done processing paddle/fluid/operators/repeat_interleave_op.h
+Done processing paddle/fluid/operators/reshape_op.cc
+Done processing paddle/fluid/operators/roi_align_op.cu
+Done processing paddle/fluid/operators/roi_align_op.h
+Total errors found: 4
+Done processing paddle/fluid/operators/scale_op.h
+Done processing paddle/fluid/operators/scatter_op.cu
+Done processing paddle/fluid/operators/slice_op.cc
+Done processing paddle/fluid/operators/softmax_cudnn_op.cu.h
+Done processing paddle/fluid/operators/softmax_with_cross_entropy_op.cu
+Done processing paddle/fluid/operators/solve_op.h
+Done processing paddle/fluid/operators/sparse_attention_op.cc
+Done processing paddle/fluid/operators/sparse_attention_op.cu
+Done processing paddle/fluid/operators/spectral_op.cu
+Done processing paddle/fluid/operators/tensor_formatter.h
+Done processing paddle/fluid/operators/trace_op.cu
+Done processing paddle/fluid/operators/triangular_solve_op.cu
+Done processing paddle/fluid/operators/unity_build_rule.cmake
+Done processing paddle/fluid/operators/where_index_op_xpu.cc
+Done processing paddle/fluid/platform/CMakeLists.txt
+Done processing paddle/fluid/platform/cuda_graph_with_memory_pool.h
+Done processing paddle/fluid/platform/device/CMakeLists.txt
+Done processing paddle/fluid/platform/device/gpu/cuda/cuda_graph.cc
+Done processing paddle/fluid/platform/device/gpu/cuda/cuda_graph.h
+Done processing paddle/fluid/platform/device/gpu/gpu_info.cc
+Done processing paddle/fluid/platform/device/gpu/gpu_info.h
+Done processing paddle/fluid/platform/device/gpu/gpu_primitives.h
+Done processing paddle/fluid/platform/device/ipu/CMakeLists.txt
+Done processing paddle/fluid/platform/device/ipu/device.cc
+Done processing paddle/fluid/platform/device/ipu/ipu_info.cc
+Done processing paddle/fluid/platform/device/ipu/ipu_info.h
+Done processing paddle/fluid/platform/device/ipu/ipu_optimizer.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/activation_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/elementwise_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/logic_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/math_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/nn_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/op_builder.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/op_builder.h
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/reduce_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/search_ops.cc
+Done processing paddle/fluid/platform/device/ipu/popart_canonicalization/tensor_ops.cc
+Done processing paddle/fluid/platform/device/ipu/supported_ops_autogen.h
+Done processing paddle/fluid/platform/device/mlu/CMakeLists.txt
+Done processing paddle/fluid/platform/device/mlu/device_context.cc
+Done processing paddle/fluid/platform/device/mlu/device_context.h
+Done processing paddle/fluid/platform/device/mlu/device_context_allocator.h
+Done processing paddle/fluid/platform/device/mlu/device_context_test.cc
+Done processing paddle/fluid/platform/device/mlu/enforce.h
+Done processing paddle/fluid/platform/device/mlu/enforce_test.cc
+Done processing paddle/fluid/platform/device/mlu/mlu_info.cc
+Done processing paddle/fluid/platform/device/mlu/mlu_info.h
+Done processing paddle/fluid/platform/device/mlu/mlu_stream.cc
+Done processing paddle/fluid/platform/device/mlu/mlu_stream.h
+Done processing paddle/fluid/platform/device/xpu/xpu1_op_list.h
+Done processing paddle/fluid/platform/device/xpu/xpu2_op_list.h
+Done processing paddle/fluid/platform/device_context.cc
+Done processing paddle/fluid/platform/device_context.h
+Done processing paddle/fluid/platform/device_tracer.cc
+Done processing paddle/fluid/platform/device_tracer.h
+Done processing paddle/fluid/platform/event.h
+Done processing paddle/fluid/platform/flags.cc
+Done processing paddle/fluid/platform/init.cc
+Done processing paddle/fluid/platform/init_test.cc
+Done processing paddle/fluid/platform/lodtensor_printer.cc
+Done processing paddle/fluid/platform/monitor.cc
+Done processing paddle/fluid/platform/monitor.h
+Done processing paddle/fluid/platform/os_info.cc
+Done processing paddle/fluid/platform/os_info.h
+Done processing paddle/fluid/platform/place.cc
+Done processing paddle/fluid/platform/place.h
+Done processing paddle/fluid/platform/place_test.cc
+Done processing paddle/fluid/platform/profiler.cc
+Done processing paddle/fluid/platform/profiler.h
+Done processing paddle/fluid/platform/profiler_helper.h
+Done processing paddle/fluid/platform/stream_callback_manager.cc
+Done processing paddle/fluid/pybind/.gitignore
+Done processing paddle/fluid/pybind/CMakeLists.txt
+Done processing paddle/fluid/pybind/bind_fleet_executor.cc
+Done processing paddle/fluid/pybind/eager.cc
+Done processing paddle/fluid/pybind/eager_functions.cc
+Done processing paddle/fluid/pybind/eager_method.cc
+Done processing paddle/fluid/pybind/eager_op_function_generator.cc
+Done processing paddle/fluid/pybind/eager_properties.cc
+Done processing paddle/fluid/pybind/eager_utils.cc
+Done processing paddle/fluid/pybind/eager_utils.h
+Done processing paddle/fluid/pybind/exception.h
+Done processing paddle/fluid/pybind/imperative.cc
+Done processing paddle/fluid/pybind/op_function.h
+Done processing paddle/fluid/pybind/op_function_common.cc
+Done processing paddle/fluid/pybind/op_function_common.h
+Done processing paddle/fluid/pybind/op_function_generator.cc
+Done processing paddle/fluid/pybind/op_function_generator.h
+Done processing paddle/fluid/pybind/pybind.cc
+Done processing paddle/fluid/pybind/reader_py.cc
+Done processing paddle/fluid/pybind/tensor_py.h
+Done processing paddle/infrt/CMakeLists.txt
+Done processing paddle/infrt/api/CMakeLists.txt
+Done processing paddle/infrt/api/infrt_api.cc
+Done processing paddle/infrt/api/infrt_api.h
+Done processing paddle/infrt/api/infrt_api_test.cc
+Done processing paddle/infrt/common/CMakeLists.txt
+Done processing paddle/infrt/common/buffer.cc
+Done processing paddle/infrt/common/buffer.h
+Done processing paddle/infrt/common/common.h
+Done processing paddle/infrt/common/dtype.cc
+Done processing paddle/infrt/common/dtype.def
+Done processing paddle/infrt/common/dtype.h
+Done processing paddle/infrt/common/global.cc
+Done processing paddle/infrt/common/global.h
+Done processing paddle/infrt/common/macros.h
+Done processing paddle/infrt/common/memory.cc
+Done processing paddle/infrt/common/memory.h
+Done processing paddle/infrt/common/object.cc
+Done processing paddle/infrt/common/object.h
+Done processing paddle/infrt/common/shared.cc
+Done processing paddle/infrt/common/shared.h
+Done processing paddle/infrt/common/string.cc
+Done processing paddle/infrt/common/string.h
+Done processing paddle/infrt/common/target.cc
+Done processing paddle/infrt/common/target.h
+Done processing paddle/infrt/common/type.cc
+Done processing paddle/infrt/common/type.h
+Done processing paddle/infrt/dialect/CMakeLists.txt
+Done processing paddle/infrt/dialect/basic_kernels.cc
+Done processing paddle/infrt/dialect/basic_kernels.h
+Done processing paddle/infrt/dialect/basic_kernels.td
+Done processing paddle/infrt/dialect/dense_tensor.cc
+Done processing paddle/infrt/dialect/dense_tensor.h
+Done processing paddle/infrt/dialect/dense_tensor.td
+Done processing paddle/infrt/dialect/diagnostic_utils.cc
+Done processing paddle/infrt/dialect/diagnostic_utils.h
+Done processing paddle/infrt/dialect/dialect.cc
+Done processing paddle/infrt/dialect/infrt_base.cc
+Done processing paddle/infrt/dialect/infrt_base.h
+Done processing paddle/infrt/dialect/infrt_base.td
+Done processing paddle/infrt/dialect/init_infrt_dialects.cc
+Done processing paddle/infrt/dialect/init_infrt_dialects.h
+Done processing paddle/infrt/dialect/mlir_loader.cc
+Done processing paddle/infrt/dialect/mlir_loader.h
+Done processing paddle/infrt/dialect/mlir_loader_test.cc
+Done processing paddle/infrt/dialect/mlir_tests/basic.mlir
+Done processing paddle/infrt/dialect/mlir_tests/benchmark.mlir
+Done processing paddle/infrt/dialect/mlir_tests/dense_tensor.mlir
+Done processing paddle/infrt/dialect/mlir_tests/paddle_ops.mlir
+Done processing paddle/infrt/dialect/mlir_tests/rewrite.mlir
+Done processing paddle/infrt/dialect/mlir_tests/rewrite_conv_bn.mlir
+Done processing paddle/infrt/dialect/mlir_tests/tensor_map.mlir
+Done processing paddle/infrt/dialect/mlir_tests/tensor_shape.mlir
+Done processing paddle/infrt/dialect/mlir_tests/tensor_type.mlir
+Done processing paddle/infrt/dialect/ops.td
+Done processing paddle/infrt/dialect/opt.cc
+Done processing paddle/infrt/dialect/pd_op_base.td
+Done processing paddle/infrt/dialect/pd_ops.cc
+Done processing paddle/infrt/dialect/pd_ops.h
+Done processing paddle/infrt/dialect/pd_ops.td
+Done processing paddle/infrt/dialect/pd_types.cc
+Done processing paddle/infrt/dialect/pd_types.h
+Done processing paddle/infrt/dialect/print_ir.cc
+Done processing paddle/infrt/dialect/rewrite.td
+Done processing paddle/infrt/dialect/tensor_shape.cc
+Done processing paddle/infrt/dialect/tensor_shape.h
+Done processing paddle/infrt/dialect/tensor_shape.td
+Done processing paddle/infrt/dialect/tensor_shape_base.td
+Done processing paddle/infrt/dialect/test_kernels.cc
+Done processing paddle/infrt/dialect/test_kernels.h
+Done processing paddle/infrt/dialect/test_kernels.td
+Done processing paddle/infrt/dialect/types.cc
+Done processing paddle/infrt/dialect/types.h
+Done processing paddle/infrt/external_kernels/CMakeLists.txt
+Done processing paddle/infrt/external_kernels/basic.mlir
+Done processing paddle/infrt/external_kernels/basic_kernels.cc
+Done processing paddle/infrt/external_kernels/fc.mlir
+Done processing paddle/infrt/external_kernels/paddle.mlir
+Done processing paddle/infrt/gtest_main.cc
+Done processing paddle/infrt/host_context/CMakeLists.txt
+Done processing paddle/infrt/host_context/core_runtime.cc
+Done processing paddle/infrt/host_context/core_runtime.h
+Done processing paddle/infrt/host_context/core_runtime_test.cc
+Done processing paddle/infrt/host_context/function.cc
+Done processing paddle/infrt/host_context/function.h
+Done processing paddle/infrt/host_context/kernel_frame.cc
+Done processing paddle/infrt/host_context/kernel_frame.h
+Done processing paddle/infrt/host_context/kernel_registry.cc
+Done processing paddle/infrt/host_context/kernel_registry.h
+Done processing paddle/infrt/host_context/kernel_registry_test.cc
+Done processing paddle/infrt/host_context/kernel_utils.cc
+Done processing paddle/infrt/host_context/kernel_utils.h
+Done processing paddle/infrt/host_context/kernel_utils_test.cc
+Done processing paddle/infrt/host_context/mlir_exec.cc
+Done processing paddle/infrt/host_context/mlir_function_executable.cc
+Done processing paddle/infrt/host_context/mlir_function_executable.h
+Done processing paddle/infrt/host_context/mlir_program_executor.cc
+Done processing paddle/infrt/host_context/mlir_program_executor.h
+Done processing paddle/infrt/host_context/mlir_tests/basic.mlir
+Done processing paddle/infrt/host_context/mlir_tests/dense_tensor.mlir
+Done processing paddle/infrt/host_context/mlir_tests/shape.mlir
+Done processing paddle/infrt/host_context/mlir_to_runtime_translate.cc
+Done processing paddle/infrt/host_context/mlir_to_runtime_translate.h
+Done processing paddle/infrt/host_context/mlir_to_runtime_translate_test.cc
+Done processing paddle/infrt/host_context/op_executable.cc
+Done processing paddle/infrt/host_context/op_executable.h
+Done processing paddle/infrt/host_context/op_executable_test.cc
+Done processing paddle/infrt/host_context/symbol_table.cc
+Done processing paddle/infrt/host_context/symbol_table.h
+Done processing paddle/infrt/host_context/value.cc
+Done processing paddle/infrt/host_context/value.h
+Done processing paddle/infrt/host_context/value_test.cc
+Done processing paddle/infrt/kernel/CMakeLists.txt
+Done processing paddle/infrt/kernel/basic_kernels.cc
+Done processing paddle/infrt/kernel/basic_kernels.h
+Done processing paddle/infrt/kernel/control_flow_kernels.cc
+Done processing paddle/infrt/kernel/control_flow_kernels.h
+Done processing paddle/infrt/kernel/tensor_kernels.cc
+Done processing paddle/infrt/kernel/tensor_kernels.h
+Done processing paddle/infrt/kernel/tensor_shape_kernels.cc
+Done processing paddle/infrt/kernel/tensor_shape_kernels.h
+Done processing paddle/infrt/kernel/test_kernels.cc
+Done processing paddle/infrt/kernel/test_kernels.h
+Done processing paddle/infrt/paddle/CMakeLists.txt
+Done processing paddle/infrt/paddle/cpp/CMakeLists.txt
+Done processing paddle/infrt/paddle/cpp/desc_api.h
+Done processing paddle/infrt/paddle/framework.proto
+Done processing paddle/infrt/paddle/model_parser.cc
+Done processing paddle/infrt/paddle/model_parser.h
+Done processing paddle/infrt/paddle/pb/CMakeLists.txt
+Done processing paddle/infrt/paddle/pb/block_desc.cc
+Done processing paddle/infrt/paddle/pb/block_desc.h
+Done processing paddle/infrt/paddle/pb/op_desc.cc
+Done processing paddle/infrt/paddle/pb/op_desc.h
+Done processing paddle/infrt/paddle/pb/program_desc.cc
+Done processing paddle/infrt/paddle/pb/program_desc.h
+Done processing paddle/infrt/paddle/pb/var_desc.cc
+Done processing paddle/infrt/paddle/pb/var_desc.h
+Done processing paddle/infrt/paddle/scope.cc
+Done processing paddle/infrt/paddle/scope.h
+Done processing paddle/infrt/paddle/tensor.cc
+Done processing paddle/infrt/paddle/tensor.h
+Done processing paddle/infrt/support/CMakeLists.txt
+Done processing paddle/infrt/support/type_traits.h
+Done processing paddle/infrt/support/variant.h
+Done processing paddle/infrt/tensor/CMakeLists.txt
+Done processing paddle/infrt/tensor/dense_host_tensor.cc
+Done processing paddle/infrt/tensor/dense_host_tensor.h
+Done processing paddle/infrt/tensor/dense_tensor_view.cc
+Done processing paddle/infrt/tensor/dense_tensor_view.h
+Done processing paddle/infrt/tensor/tensor_map.cc
+Done processing paddle/infrt/tensor/tensor_map.h
+Done processing paddle/infrt/tensor/tensor_metadata.cc
+Done processing paddle/infrt/tensor/tensor_metadata.h
+Done processing paddle/infrt/tensor/tensor_shape.cc
+Done processing paddle/infrt/tensor/tensor_shape.h
+Done processing paddle/pten/CMakeLists.txt
+Done processing paddle/pten/api/all.h
+Done processing paddle/pten/api/ext/dll_decl.h
+Done processing paddle/pten/api/ext/op_meta_info.h
+Done processing paddle/pten/api/ext/tensor_compat.h
+Done processing paddle/pten/api/include/kernel_signature.h
+Done processing paddle/pten/api/include/tensor.h
+Done processing paddle/pten/api/include/utils.h
+Done processing paddle/pten/api/lib/CMakeLists.txt
+Done processing paddle/pten/api/lib/api_registry.h
+Done processing paddle/pten/api/lib/kernel_declare.h
+Done processing paddle/pten/api/lib/kernel_dispatch.cc
+Done processing paddle/pten/api/lib/kernel_dispatch.h
+Done processing paddle/pten/api/lib/tensor.cc
+Done processing paddle/pten/api/lib/utils.cc
+Done processing paddle/pten/api/lib/utils/tensor_utils.cc
+Done processing paddle/pten/api/lib/utils/tensor_utils.h
+Done processing paddle/pten/backends/CMakeLists.txt
+Done processing paddle/pten/backends/all_context.cc
+Done processing paddle/pten/backends/all_context.h
+Done processing paddle/pten/backends/cpu/cpu_context.h
+Done processing paddle/pten/backends/npu/npu_context.h
+Done processing paddle/pten/backends/xpu/xpu_context.h
+Done processing paddle/pten/common/backend.h
+Done processing paddle/pten/common/data_type.h
+Done processing paddle/pten/common/layout.h
+Done processing paddle/pten/common/scalar_array.h
+Done processing paddle/pten/core/CMakeLists.txt
+Done processing paddle/pten/core/convert_utils.cc
+Done processing paddle/pten/core/convert_utils.h
+Done processing paddle/pten/core/kernel_alias_name.h
+Done processing paddle/pten/core/kernel_context.cc
+Done processing paddle/pten/core/kernel_context.h
+Done processing paddle/pten/core/kernel_factory.cc
+Done processing paddle/pten/core/kernel_factory.h
+Done processing paddle/pten/core/kernel_registry.h
+Done processing paddle/pten/core/kernel_utils.h
+Done processing paddle/pten/include/creation.h
+Done processing paddle/pten/include/linalg.h
+Done processing paddle/pten/include/manipulation.h
+Done processing paddle/pten/include/math.h
+Done processing paddle/pten/infermeta/binary.cc
+Done processing paddle/pten/infermeta/unary.cc
+Done processing paddle/pten/infermeta/unary.h
+Done processing paddle/pten/kernels/CMakeLists.txt
+Done processing paddle/pten/kernels/cpu/CMakeLists.txt
+Done processing paddle/pten/kernels/cpu/conj_kernel.h
+Done processing paddle/pten/kernels/cpu/full_kernel.cc
+Done processing paddle/pten/kernels/cpu/linalg.cc
+Done processing paddle/pten/kernels/cpu/linalg.h
+Done processing paddle/pten/kernels/cpu/manipulation.cc
+Done processing paddle/pten/kernels/cpu/manipulation.h
+Done processing paddle/pten/kernels/cpu/math.cc
+Done processing paddle/pten/kernels/cpu/math.h
+Done processing paddle/pten/kernels/cpu/scale_kernel.cc
+Done processing paddle/pten/kernels/cpu/utils.cc
+Done processing paddle/pten/kernels/cpu/utils.h
+Done processing paddle/pten/kernels/cuda/CMakeLists.txt
+Done processing paddle/pten/kernels/cuda/conj_kernel.cu
+Done processing paddle/pten/kernels/cuda/conj_kernel.h
+Done processing paddle/pten/kernels/cuda/full_kernel.cu
+Done processing paddle/pten/kernels/cuda/linalg.cu
+Done processing paddle/pten/kernels/cuda/linalg.h
+Done processing paddle/pten/kernels/cuda/manipulation.cu
+Done processing paddle/pten/kernels/cuda/manipulation.h
+Done processing paddle/pten/kernels/cuda/math.cu
+Done processing paddle/pten/kernels/cuda/math.h
+Done processing paddle/pten/kernels/cuda/scale_kernel.cu
+Done processing paddle/pten/kernels/cuda/utils.cu
+Done processing paddle/pten/kernels/cuda/utils.h
+Done processing paddle/pten/kernels/hybird/CMakeLists.txt
+Done processing paddle/pten/kernels/hybird/math/conj_impl.h
+Done processing paddle/pten/kernels/impl/full_kernel_impl.h
+Done processing paddle/pten/kernels/primitive/CMakeLists.txt
+Done processing paddle/pten/kernels/scale_kernel.h
+Done processing paddle/pten/kernels/xpu/manipulation.cc
+Done processing paddle/pten/kernels/xpu/manipulation.h
+Done processing paddle/pten/kernels/xpu/utils.cc
+Done processing paddle/pten/ops/CMakeLists.txt
+Done processing paddle/pten/tests/api/CMakeLists.txt
+Done processing paddle/pten/tests/api/scale_api.h
+Done processing paddle/pten/tests/api/test_conj_api.cc
+Done processing paddle/pten/tests/api/test_pten_tensor.cc
+Done processing paddle/pten/tests/api/test_reshape_api.cc
+Done processing paddle/pten/tests/api/test_scale_api.cc
+Done processing paddle/pten/tests/api/test_scale_benchmark.cc
+Done processing paddle/pten/tests/api/test_sum_api.cc
+Done processing paddle/pten/tests/common/test_data_layout.cc
+Done processing paddle/pten/tests/core/test_kernel_factory.cc
+Done processing paddle/pten/tests/kernels/CMakeLists.txt
+Done processing paddle/pten/tests/kernels/test_conj_dev_api.cc
+Done processing paddle/pten/tests/kernels/test_fill_dev_api.cc
+Done processing paddle/scripts/docker/root/.bashrc
+Done processing paddle/scripts/infrt_build.sh
+Done processing paddle/scripts/paddle_build.bat
+Done processing paddle/scripts/paddle_build.sh
+Done processing python/paddle/_C_ops.py
+Done processing python/paddle/__init__.py
+Done processing python/paddle/device/__init__.py
+Done processing python/paddle/distributed/auto_parallel/cluster.py
+Done processing python/paddle/distributed/auto_parallel/cost_model.py
+Done processing python/paddle/distributed/auto_parallel/mapper.py
+Done processing python/paddle/distributed/auto_parallel/operators/common.py
+Done processing python/paddle/distributed/auto_parallel/operators/dist_embedding.py
+Done processing python/paddle/distributed/auto_parallel/operators/dist_matmul.py
+Done processing python/paddle/distributed/auto_parallel/operators/dist_reshape.py
+Done processing python/paddle/distributed/auto_parallel/operators/dist_softmax.py
+Done processing python/paddle/distributed/auto_parallel/operators/dist_transpose.py
+Done processing python/paddle/distributed/auto_parallel/parallelizer.py
+Done processing python/paddle/distributed/auto_parallel/planner.py
+Done processing python/paddle/distributed/auto_parallel/process_group.py
+Done processing python/paddle/distributed/auto_parallel/utils.py
+Done processing python/paddle/distributed/collective.py
+Done processing python/paddle/distributed/fleet/base/distributed_strategy.py
+Done processing python/paddle/distributed/fleet/base/fleet_base.py
+Done processing python/paddle/distributed/fleet/base/private_helper_function.py
+Done processing python/paddle/distributed/fleet/fleet_executor_utils.py
+Done processing python/paddle/distributed/fleet/launch.py
+Done processing python/paddle/distributed/fleet/launch_utils.py
+Done processing python/paddle/distributed/fleet/meta_optimizers/dygraph_optimizer/sharding_optimizer_stage2.py
+Done processing python/paddle/distributed/fleet/meta_parallel/sharding/sharding_stage2.py
+Done processing python/paddle/distributed/fleet/meta_parallel/sharding/sharding_utils.py
+Done processing python/paddle/distributed/fleet/runtime/the_one_ps.py
+Done processing python/paddle/distributed/fleet/utils/internal_storage.py
+Done processing python/paddle/distributed/passes/pass_base.py
+Done processing python/paddle/distribution.py
+Done processing python/paddle/fluid/__init__.py
+Done processing python/paddle/fluid/clip.py
+Done processing python/paddle/fluid/contrib/mixed_precision/decorator.py
+Done processing python/paddle/fluid/contrib/mixed_precision/fp16_lists.py
+Done processing python/paddle/fluid/contrib/mixed_precision/fp16_utils.py
+Done processing python/paddle/fluid/contrib/slim/quantization/imperative/qat.py
+Done processing python/paddle/fluid/contrib/slim/quantization/post_training_quantization.py
+Done processing python/paddle/fluid/contrib/slim/quantization/quant2_int8_mkldnn_pass.py
+Done processing python/paddle/fluid/contrib/slim/tests/CMakeLists.txt
+Done processing python/paddle/fluid/contrib/slim/tests/test_post_training_quantization_while.py
+Done processing python/paddle/fluid/contrib/tests/test_amp_list.py
+Done processing python/paddle/fluid/core.py
+Done processing python/paddle/fluid/dataloader/dataloader_iter.py
+Done processing python/paddle/fluid/dygraph/amp/auto_cast.py
+Done processing python/paddle/fluid/dygraph/dygraph_to_static/call_transformer.py
+Done processing python/paddle/fluid/dygraph/dygraph_to_static/convert_call_func.py
+Done processing python/paddle/fluid/dygraph/dygraph_to_static/convert_operators.py
+Done processing python/paddle/fluid/dygraph/dygraph_to_static/tensor_shape_transformer.py
+Done processing python/paddle/fluid/dygraph/dygraph_to_static/utils.py
+Done processing python/paddle/fluid/dygraph/io.py
+Done processing python/paddle/fluid/dygraph/layers.py
+Done processing python/paddle/fluid/dygraph/varbase_patch_methods.py
+Done processing python/paddle/fluid/eager/eager_tensor_patch_methods.py
+Done processing python/paddle/fluid/executor.py
+Done processing python/paddle/fluid/framework.py
+Done processing python/paddle/fluid/incubate/fleet/parameter_server/ir/trainer_pass.py
+Done processing python/paddle/fluid/layers/control_flow.py
+Done processing python/paddle/fluid/layers/ops.py
+Done processing python/paddle/fluid/layers/tensor.py
+Done processing python/paddle/fluid/optimizer.py
+Done processing python/paddle/fluid/reader.py
+Done processing python/paddle/fluid/tests/custom_op/attr_test_op.cc
+Done processing python/paddle/fluid/tests/unittests/CMakeLists.txt
+Done processing python/paddle/fluid/tests/unittests/auto_parallel/CMakeLists.txt
+Done processing python/paddle/fluid/tests/unittests/auto_parallel/auto_parallel_relaunch_model.py
+Done processing python/paddle/fluid/tests/unittests/auto_parallel/auto_parallel_relaunch_with_planner.py
+Done processing python/paddle/fluid/tests/unittests/auto_parallel/launch.py
+Done processing python/paddle/fluid/tests/unittests/auto_parallel/test_auto_parallel_relaunch.py
+Done processing python/paddle/fluid/tests/unittests/auto_parallel/test_relaunch_with_planner.py
+Done processing python/paddle/fluid/tests/unittests/auto_parallel_gpt_model.py
+Done processing python/paddle/fluid/tests/unittests/distributed_passes/check_pass_conflict_example.py
+Done processing python/paddle/fluid/tests/unittests/distributed_passes/dist_pass_test_base.py
+Done processing python/paddle/fluid/tests/unittests/distributed_passes/model_zoo.py
+Done processing python/paddle/fluid/tests/unittests/distributed_passes/pass_run_main.py
+Done processing python/paddle/fluid/tests/unittests/distributed_passes/test_dist_fuse_all_reduce_pass.py
+Done processing python/paddle/fluid/tests/unittests/distributed_passes/test_white_lists.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_sharding_optimizer_stage2.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_sharding_stage2.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_sharding_stage2_offload.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_to_static/ifelse_simple_func.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_to_static/test_for_enumerate.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_to_static/test_ifelse.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_to_static/test_mnist_pure_fp16.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_to_static/test_program_translator.py
+Done processing python/paddle/fluid/tests/unittests/dygraph_to_static/test_tensor_shape.py
+Done processing python/paddle/fluid/tests/unittests/ipu/ernie_training.py
+Done processing python/paddle/fluid/tests/unittests/ipu/op_test_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_activation_x_op.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_avg_shard_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_batch_norm_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_cast_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_concat_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_conv_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_cross_entropy2_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_dropout_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_elemetwise_x_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_equal_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_expand_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_fill_constant_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_gather_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_gelu_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_groupnorm_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_instancenorm_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_batchs_per_step_simple.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_fp16_support.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_inference_model_io.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_model_pipeline.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_pipeline.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_place.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_shard.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_ipu_strategy.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_layernorm_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_log_softmax_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_lookuptable_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_lr_sheduelr.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_matmul_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_mean_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_mul_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_pool_avg_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_pool_max_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_pow_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_reduce_x_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_reshape_inplace_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_reshape_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_save_load.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_scale_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_set_batch_size_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_sgd_optimizer.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_slice_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_softmax_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_squeeze_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_stack_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_sum_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_topk_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_transpose_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_unsqueeze_op_ipu.py
+Done processing python/paddle/fluid/tests/unittests/ipu/test_varname_inplace.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/CMakeLists.txt
+Done processing python/paddle/fluid/tests/unittests/ir/inference/auto_scan_test.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/program_config.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_adaptive_pool2d_convert_global_pass_autoscan.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_act_mkldnn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_affine_channel_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_bias_mkldnn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_bn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_elementwise_add2_act_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_elementwise_add_act_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_elementwise_add_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_eltwiseadd_affine_channel_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_eltwiseadd_bn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_transpose_bn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_conv_transpose_eltwiseadd_bn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_fc_elementwise_layernorm_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_layer_norm_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_matmul_scale_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_matmul_v2_scale_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv3d_bias_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv_concat_relu_mkldnn_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv_gelu_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv_transpose_bias_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_depthwise_conv_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_reshape_transpose_matmul_v2_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_scale_matmul_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_repeated_fc_relu_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_simplify_with_basic_ops_pass_autoscan.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_transpose_flatten_concat_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_trt_convert_elementwise.py
+Done processing python/paddle/fluid/tests/unittests/ir/inference/test_unsqueeze2_eltwise_fuse_pass.py
+Done processing python/paddle/fluid/tests/unittests/mkldnn/test_matmul_mkldnn_op.py
+Done processing python/paddle/fluid/tests/unittests/mkldnn/test_matmul_v2_mkldnn_op.py
+Done processing python/paddle/fluid/tests/unittests/npu/test_collective_base_npu.py
+Done processing python/paddle/fluid/tests/unittests/npu/test_sync_batch_norm_base_npu.py
+Done processing python/paddle/fluid/tests/unittests/test_activation_op.py
+Done processing python/paddle/fluid/tests/unittests/test_assign_op.py
+Done processing python/paddle/fluid/tests/unittests/test_auto_parallel_cluster.py
+Done processing python/paddle/fluid/tests/unittests/test_auto_parallel_cost_model.py
+Done processing python/paddle/fluid/tests/unittests/test_auto_parallel_mapper.py
+Done processing python/paddle/fluid/tests/unittests/test_auto_parallel_searcher.py
+Done processing python/paddle/fluid/tests/unittests/test_auto_search_dist_matmul_op.py
+Done processing python/paddle/fluid/tests/unittests/test_auto_search_dist_op.py
+Done processing python/paddle/fluid/tests/unittests/test_base_layer.py
+Done processing python/paddle/fluid/tests/unittests/test_collective_base.py
+Done processing python/paddle/fluid/tests/unittests/test_complex_op.py
+Done processing python/paddle/fluid/tests/unittests/test_complex_view_op.py
+Done processing python/paddle/fluid/tests/unittests/test_cuda_graph.py
+Done processing python/paddle/fluid/tests/unittests/test_dist_fleet_ps2.py
+Done processing python/paddle/fluid/tests/unittests/test_distribution.py
+Done processing python/paddle/fluid/tests/unittests/test_dygraph_sharding_stage2.py
+Done processing python/paddle/fluid/tests/unittests/test_egr_code_generate_api.py
+Done processing python/paddle/fluid/tests/unittests/test_egr_python_api.py
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_min_op.py
+Done processing python/paddle/fluid/tests/unittests/test_fleet_distributed_strategy.py
+Done processing python/paddle/fluid/tests/unittests/test_fleet_executor.py
+Done processing python/paddle/fluid/tests/unittests/test_fleet_executor_multi_devices.py
+Done processing python/paddle/fluid/tests/unittests/test_fleet_executor_origin_scheduler.py
+Done processing python/paddle/fluid/tests/unittests/test_fmax_op.py
+Done processing python/paddle/fluid/tests/unittests/test_fmin_op.py
+Done processing python/paddle/fluid/tests/unittests/test_gcd.py
+Done processing python/paddle/fluid/tests/unittests/test_gradient_clip.py
+Done processing python/paddle/fluid/tests/unittests/test_hinge_embedding_loss.py
+Done processing python/paddle/fluid/tests/unittests/test_imperative_optimizer.py
+Done processing python/paddle/fluid/tests/unittests/test_imperative_optimizer_v2.py
+Done processing python/paddle/fluid/tests/unittests/test_imperative_transformer_sorted_gradient.py
+Done processing python/paddle/fluid/tests/unittests/test_is_complex.py
+Done processing python/paddle/fluid/tests/unittests/test_is_integer.py
+Done processing python/paddle/fluid/tests/unittests/test_lambv2_op.py
+Done processing python/paddle/fluid/tests/unittests/test_layer_norm_op.py
+Done processing python/paddle/fluid/tests/unittests/test_lcm.py
+Done processing python/paddle/fluid/tests/unittests/test_lerp_op.py
+Done processing python/paddle/fluid/tests/unittests/test_logit_op.py
+Done processing python/paddle/fluid/tests/unittests/test_math_op_patch_var_base.py
+Done processing python/paddle/fluid/tests/unittests/test_max_op.py
+Done processing python/paddle/fluid/tests/unittests/test_mean_op.py
+Done processing python/paddle/fluid/tests/unittests/test_momentum_op.py
+Done processing python/paddle/fluid/tests/unittests/test_pylayer_op.py
+Done processing python/paddle/fluid/tests/unittests/test_repeat_interleave_op.py
+Done processing python/paddle/fluid/tests/unittests/test_reset_grad_inplace_version.py
+Done processing python/paddle/fluid/tests/unittests/test_rot90_op.py
+Done processing python/paddle/fluid/tests/unittests/test_scatter_op.py
+Done processing python/paddle/fluid/tests/unittests/test_set_value_op.py
+Done processing python/paddle/fluid/tests/unittests/test_sparse_attention_op.py
+Done processing python/paddle/fluid/tests/unittests/test_translated_layer.py
+Done processing python/paddle/fluid/tests/unittests/test_transpose_op.py
+Done processing python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py
+Done processing python/paddle/fluid/transpiler/details/checkport.py
+Done processing python/paddle/framework/__init__.py
+Done processing python/paddle/nn/__init__.py
+Done processing python/paddle/nn/functional/__init__.py
+Done processing python/paddle/nn/functional/loss.py
+Done processing python/paddle/nn/functional/sparse_attention.py
+Done processing python/paddle/nn/layer/__init__.py
+Done processing python/paddle/nn/layer/loss.py
+Done processing python/paddle/nn/layer/pooling.py
+Done processing python/paddle/nn/layer/transformer.py
+Done processing python/paddle/optimizer/lamb.py
+Done processing python/paddle/optimizer/momentum.py
+Done processing python/paddle/optimizer/optimizer.py
+Done processing python/paddle/tensor/__init__.py
+Done processing python/paddle/tensor/attribute.py
+Done processing python/paddle/tensor/creation.py
+Done processing python/paddle/tensor/manipulation.py
+Done processing python/paddle/tensor/math.py
+Done processing python/paddle/tensor/stat.py
+Done processing python/paddle/utils/code_gen/api.yaml
+Done processing python/paddle/utils/code_gen/api_gen.py
+Done processing python/paddle/utils/cpp_extension/cpp_extension.py
+Done processing python/paddle/utils/cpp_extension/extension_utils.py
+Done processing python/requirements.txt
+Done processing python/setup.py.in
+Done processing python/unittest_py/requirements.txt
+Done processing tools/check_file_diff_approvals.sh
+Done processing tools/coverage/paddle_coverage.sh
+Done processing tools/dockerfile/Dockerfile.ipu
+Done processing tools/dockerfile/ci_dockerfile.sh
+Done processing tools/parallel_UT_rule.py
+Done processing tools/static_mode_white_list.py
+Done processing tools/windows/run_unittests.sh
+Ignoring CMakeLists.txt; not a valid file name (cuh, h++, hpp, c++, cc, c, hh, cpp, cu, hxx, cxx, h)
+Ignoring cmake/configure.cmake; not a valid file name (cuh, cpp, c++, h, c, hxx, cu, cxx, hpp, hh, h++, cc)
+Ignoring cmake/external/cinn.cmake; not a valid file name (h, cxx, cu, hxx, hpp, c, h++, hh, cuh, c++, cc, cpp)
+Ignoring cmake/external/concurrentqueue.cmake; not a valid file name (h++, c++, hxx, hh, hpp, cxx, cuh, cu, cpp, h, cc, c)
+Ignoring cmake/external/cryptopp.cmake; not a valid file name (h, h++, cuh, cu, c++, hpp, hh, hxx, cxx, cc, cpp, c)
+Ignoring cmake/external/gtest.cmake; not a valid file name (h++, hpp, cpp, c++, hh, cuh, cc, cu, cxx, h, hxx, c)
+Ignoring cmake/external/llvm.cmake; not a valid file name (cc, hpp, h++, hxx, cpp, cu, h, hh, cuh, c, cxx, c++)
+Ignoring cmake/external/mkldnn.cmake; not a valid file name (hpp, cpp, hxx, c++, hh, cuh, h, cc, c, cu, cxx, h++)
+Ignoring cmake/inference_lib.cmake; not a valid file name (c, hh, hxx, hpp, cc, h++, c++, cuh, cu, h, cxx, cpp)
+Ignoring cmake/infrt_lib.cmake; not a valid file name (cxx, h, cc, hxx, c++, cu, cuh, hh, cpp, hpp, c, h++)
+Ignoring cmake/neuware.cmake; not a valid file name (cc, c++, c, hh, hpp, cpp, cu, cxx, cuh, h++, hxx, h)
+Ignoring cmake/operators.cmake; not a valid file name (hpp, c, cuh, cxx, h++, c++, cu, cc, cpp, h, hh, hxx)
+Ignoring cmake/pten.cmake; not a valid file name (c++, cxx, cpp, hxx, h, c, h++, cc, cuh, hh, hpp, cu)
+Ignoring cmake/third_party.cmake; not a valid file name (hpp, c, cc, h++, cpp, cuh, c++, cxx, hh, cu, h, hxx)
+Ignoring paddle/CMakeLists.txt; not a valid file name (cu, cxx, h++, h, c++, hh, cuh, hxx, hpp, cpp, c, cc)
+Ignoring paddle/fluid/distributed/fleet_executor/CMakeLists.txt; not a valid file name (cc, h++, hpp, cxx, cu, c++, hxx, c, h, cuh, cpp, hh)
+Ignoring paddle/fluid/distributed/fleet_executor/fleet_executor_desc.proto; not a valid file name (c++, hh, hxx, cu, cc, cuh, h++, c, hpp, cxx, cpp, h)
+Ignoring paddle/fluid/eager/api/utils/CMakeLists.txt; not a valid file name (cxx, hpp, h, hh, cpp, hxx, h++, cc, cu, cuh, c++, c)
+Ignoring paddle/fluid/eager/auto_code_generator/CMakeLists.txt; not a valid file name (cuh, cpp, h++, c, cc, c++, cxx, cu, h, hxx, hpp, hh)
+Ignoring paddle/fluid/eager/tests/performance_tests/CMakeLists.txt; not a valid file name (hh, cuh, h++, hxx, cu, c++, cc, cxx, c, hpp, cpp, h)
+Ignoring paddle/fluid/framework/distributed_strategy.proto; not a valid file name (cpp, h, cuh, cu, h++, hpp, hh, c, c++, hxx, cc, cxx)
+Ignoring paddle/fluid/framework/ir/CMakeLists.txt; not a valid file name (cc, hh, cuh, h++, hxx, cxx, c, hpp, c++, cpp, cu, h)
+Ignoring paddle/fluid/framework/new_executor/CMakeLists.txt; not a valid file name (hpp, h++, hh, hxx, cpp, cuh, cc, h, c, cu, c++, cxx)
+Ignoring paddle/fluid/framework/paddle2cinn/CMakeLists.txt; not a valid file name (cu, hpp, hh, cxx, cc, h++, cpp, c++, cuh, c, h, hxx)
+Ignoring paddle/fluid/inference/CMakeLists.txt; not a valid file name (c, cpp, hh, c++, cc, cxx, h++, cuh, hpp, h, cu, hxx)
+Ignoring paddle/fluid/inference/api/demo_ci/run.sh; not a valid file name (hxx, cpp, h++, cu, hh, c, h, cuh, c++, cxx, cc, hpp)
+Ignoring paddle/fluid/inference/tests/api/CMakeLists.txt; not a valid file name (cc, h++, cpp, c++, c, h, cu, cxx, hh, hxx, hpp, cuh)
+Ignoring paddle/fluid/memory/CMakeLists.txt; not a valid file name (cuh, c++, h++, hh, hxx, h, hpp, c, cu, cc, cxx, cpp)
+Ignoring paddle/fluid/memory/allocation/CMakeLists.txt; not a valid file name (h, hpp, cpp, cuh, hh, c++, cu, hxx, cc, c, h++, cxx)
+Ignoring paddle/fluid/memory/detail/CMakeLists.txt; not a valid file name (hxx, hpp, c++, h++, cu, cc, cuh, cxx, hh, cpp, c, h)
+Ignoring paddle/fluid/operators/CMakeLists.txt; not a valid file name (c, hpp, h++, cc, hxx, cxx, cuh, cpp, hh, c++, cu, h)
+Ignoring paddle/fluid/operators/cinn/CMakeLists.txt; not a valid file name (hh, cuh, c, cc, cpp, cu, c++, hxx, hpp, cxx, h, h++)
+Skipping input 'paddle/fluid/operators/cinn_launch_op.cu.cc': Can't open for reading
+Skipping input 'paddle/fluid/operators/cinn_launch_op_test.cc': Can't open for reading
+Ignoring paddle/fluid/operators/compat/gelu.pbtxt; not a valid file name (hh, h++, hxx, cc, hpp, cuh, c, cpp, h, cxx, c++, cu)
+Ignoring paddle/fluid/operators/compat/matmul_v2.pbtxt; not a valid file name (c++, c, cc, hpp, cxx, hh, cu, hxx, h++, h, cuh, cpp)
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:237:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& x_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:238:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& y_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:239:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& out_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:288:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& x_bd_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:289:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& y_bd_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:290:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& out_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:367:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& dx_bd_dims  [runtime/references] [2]
+paddle/fluid/operators/mkldnn/matmul_v2_mkldnn_op.cc:368:  Is this a non-const reference? If so, make const or use a pointer: std::vector<int64_t>& dy_bd_dims  [runtime/references] [2]
+Ignoring paddle/fluid/operators/mlu/CMakeLists.txt; not a valid file name (cpp, cuh, c++, h++, cu, hxx, hpp, cxx, hh, cc, c, h)
+paddle/fluid/operators/roi_align_op.h:26:  Do not use unnamed namespaces in header files.  See https://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#Namespaces for more information.  [build/namespaces_headers] [4]
+paddle/fluid/operators/roi_align_op.h:44:  You don't need a ; after a }  [readability/braces] [4]
+paddle/fluid/operators/roi_align_op.h:134:  Is this a non-const reference? If so, make const or use a pointer: std::vector<T>& interpolated_values  [runtime/references] [2]
+paddle/fluid/operators/roi_align_op.h:170:  Anonymous namespace should be terminated with "// namespace"  [readability/namespace] [5]
+Ignoring paddle/fluid/operators/unity_build_rule.cmake; not a valid file name (cu, cxx, hpp, hh, cuh, cc, c++, c, h, hxx, h++, cpp)
+Ignoring paddle/fluid/platform/CMakeLists.txt; not a valid file name (hxx, cc, c, h++, cu, c++, hpp, cpp, h, cxx, hh, cuh)
+Ignoring paddle/fluid/platform/device/CMakeLists.txt; not a valid file name (c, c++, cpp, cuh, hh, cxx, h, hpp, h++, cu, cc, hxx)
+Ignoring paddle/fluid/platform/device/ipu/CMakeLists.txt; not a valid file name (cxx, hxx, h++, cpp, c++, cuh, cc, cu, hh, hpp, c, h)
+Ignoring paddle/fluid/platform/device/mlu/CMakeLists.txt; not a valid file name (hh, c++, hpp, cu, hxx, h++, cpp, cxx, cc, c, h, cuh)
+Ignoring paddle/fluid/pybind/.gitignore; not a valid file name (cpp, cu, hxx, h, hpp, h++, cc, hh, c, cuh, cxx, c++)
+Ignoring paddle/fluid/pybind/CMakeLists.txt; not a valid file name (h, cpp, cxx, h++, c++, hpp, c, cc, hh, cu, hxx, cuh)
+Ignoring paddle/infrt/CMakeLists.txt; not a valid file name (hpp, c, cpp, cu, c++, cuh, h++, cxx, hh, hxx, h, cc)
+Ignoring paddle/infrt/api/CMakeLists.txt; not a valid file name (hxx, cc, hh, c++, cxx, h++, cpp, cu, cuh, c, hpp, h)
+Ignoring paddle/infrt/common/CMakeLists.txt; not a valid file name (h, cu, hxx, c++, hpp, cxx, c, cc, cuh, cpp, h++, hh)
+Ignoring paddle/infrt/common/dtype.def; not a valid file name (c, hxx, h, cc, c++, hpp, cuh, hh, cxx, cu, h++, cpp)
+Ignoring paddle/infrt/dialect/CMakeLists.txt; not a valid file name (c, h, cuh, cpp, cxx, cu, cc, hpp, hh, hxx, h++, c++)
+Ignoring paddle/infrt/dialect/basic_kernels.td; not a valid file name (h++, cxx, c++, cpp, cc, h, hpp, hxx, cu, hh, c, cuh)
+Ignoring paddle/infrt/dialect/dense_tensor.td; not a valid file name (cu, hh, cpp, cxx, c, h++, hpp, h, cuh, cc, c++, hxx)
+Ignoring paddle/infrt/dialect/infrt_base.td; not a valid file name (cuh, cxx, hxx, h, hh, hpp, h++, c++, cpp, cu, cc, c)
+Ignoring paddle/infrt/dialect/mlir_tests/basic.mlir; not a valid file name (h, cxx, cc, cuh, cu, h++, hxx, cpp, hh, c, hpp, c++)
+Ignoring paddle/infrt/dialect/mlir_tests/benchmark.mlir; not a valid file name (c++, c, hxx, cuh, cxx, h, hh, hpp, h++, cc, cu, cpp)
+Ignoring paddle/infrt/dialect/mlir_tests/dense_tensor.mlir; not a valid file name (cpp, h, hpp, cuh, c, cu, hxx, c++, cxx, h++, cc, hh)
+Ignoring paddle/infrt/dialect/mlir_tests/paddle_ops.mlir; not a valid file name (c++, h, cc, cxx, cu, hpp, cpp, h++, c, cuh, hxx, hh)
+Ignoring paddle/infrt/dialect/mlir_tests/rewrite.mlir; not a valid file name (c, c++, hpp, h, cpp, cxx, h++, cc, cuh, hh, hxx, cu)
+Ignoring paddle/infrt/dialect/mlir_tests/rewrite_conv_bn.mlir; not a valid file name (hh, hpp, h++, cu, c, cuh, c++, hxx, cpp, h, cxx, cc)
+Ignoring paddle/infrt/dialect/mlir_tests/tensor_map.mlir; not a valid file name (cxx, hxx, h, hpp, cu, cc, c++, cpp, c, cuh, h++, hh)
+Ignoring paddle/infrt/dialect/mlir_tests/tensor_shape.mlir; not a valid file name (hxx, hh, cc, hpp, cpp, h++, h, cu, c++, cxx, c, cuh)
+Ignoring paddle/infrt/dialect/mlir_tests/tensor_type.mlir; not a valid file name (cuh, cc, cpp, h++, c, h, c++, hh, hxx, cu, cxx, hpp)
+Ignoring paddle/infrt/dialect/ops.td; not a valid file name (h++, cu, hh, cc, c++, hpp, cxx, cpp, cuh, hxx, h, c)
+Ignoring paddle/infrt/dialect/pd_op_base.td; not a valid file name (c++, h++, cu, hh, h, hpp, cuh, cpp, c, cc, hxx, cxx)
+Ignoring paddle/infrt/dialect/pd_ops.td; not a valid file name (cxx, h, h++, hh, cc, c++, cuh, cu, cpp, hpp, hxx, c)
+Ignoring paddle/infrt/dialect/rewrite.td; not a valid file name (c++, c, cxx, h, cc, hpp, cuh, h++, cpp, hh, cu, hxx)
+Ignoring paddle/infrt/dialect/tensor_shape.td; not a valid file name (hxx, h, h++, c, hpp, c++, cuh, cpp, cc, cxx, hh, cu)
+Ignoring paddle/infrt/dialect/tensor_shape_base.td; not a valid file name (h, cc, cpp, cuh, cu, c, hxx, cxx, hpp, c++, h++, hh)
+Ignoring paddle/infrt/dialect/test_kernels.td; not a valid file name (cpp, hpp, cxx, cc, h++, cuh, h, hh, cu, hxx, c++, c)
+Ignoring paddle/infrt/external_kernels/CMakeLists.txt; not a valid file name (c, cxx, cu, hpp, c++, hxx, cpp, hh, h++, cc, cuh, h)
+Ignoring paddle/infrt/external_kernels/basic.mlir; not a valid file name (cu, h, cuh, hpp, hh, h++, c, cxx, hxx, c++, cc, cpp)
+Ignoring paddle/infrt/external_kernels/fc.mlir; not a valid file name (h, c, cpp, cu, c++, hpp, h++, hh, hxx, cuh, cxx, cc)
+Ignoring paddle/infrt/external_kernels/paddle.mlir; not a valid file name (h, c++, cc, cxx, cuh, hxx, h++, cu, hh, cpp, hpp, c)
+Ignoring paddle/infrt/host_context/CMakeLists.txt; not a valid file name (hh, hxx, cc, c, h++, cxx, hpp, cpp, cu, cuh, c++, h)
+Ignoring paddle/infrt/host_context/mlir_tests/basic.mlir; not a valid file name (cc, h, cpp, c++, hpp, cxx, cuh, hxx, h++, hh, c, cu)
+Ignoring paddle/infrt/host_context/mlir_tests/dense_tensor.mlir; not a valid file name (hxx, hpp, cpp, hh, cc, cuh, cu, c, h++, c++, h, cxx)
+Ignoring paddle/infrt/host_context/mlir_tests/shape.mlir; not a valid file name (hh, h++, cu, cpp, cxx, hxx, cuh, c++, c, hpp, cc, h)
+Ignoring paddle/infrt/kernel/CMakeLists.txt; not a valid file name (hxx, hpp, cuh, c, cc, c++, h++, cpp, cxx, cu, h, hh)
+Ignoring paddle/infrt/paddle/CMakeLists.txt; not a valid file name (cuh, c++, h, hpp, c, h++, cpp, hxx, cu, hh, cxx, cc)
+Ignoring paddle/infrt/paddle/cpp/CMakeLists.txt; not a valid file name (cuh, h, cxx, cu, hxx, cpp, hpp, h++, hh, c++, cc, c)
+Ignoring paddle/infrt/paddle/framework.proto; not a valid file name (c++, h++, hpp, cpp, cxx, hxx, cuh, cc, c, cu, hh, h)
+Ignoring paddle/infrt/paddle/pb/CMakeLists.txt; not a valid file name (cuh, hxx, c, cu, h++, cxx, cc, cpp, c++, h, hpp, hh)
+Ignoring paddle/infrt/support/CMakeLists.txt; not a valid file name (cu, c++, h, cxx, c, cpp, cuh, hpp, cc, hh, h++, hxx)
+Ignoring paddle/infrt/tensor/CMakeLists.txt; not a valid file name (c++, cxx, cu, h, hh, cuh, c, cc, h++, hxx, hpp, cpp)
+Ignoring paddle/pten/CMakeLists.txt; not a valid file name (cpp, hxx, hh, cu, cxx, hpp, c, h, c++, cuh, h++, cc)
+Ignoring paddle/pten/api/lib/CMakeLists.txt; not a valid file name (hpp, cc, cuh, hh, cxx, h, cu, c, h++, cpp, c++, hxx)
+Ignoring paddle/pten/backends/CMakeLists.txt; not a valid file name (cc, hh, c++, cu, c, hxx, cpp, cxx, cuh, h++, hpp, h)
+Skipping input 'paddle/pten/kernels/functions/eigen/fill.h': Can't open for reading
+Ignoring paddle/pten/core/CMakeLists.txt; not a valid file name (cpp, h, h++, c, cxx, hxx, cc, hpp, c++, cuh, hh, cu)
+Ignoring paddle/pten/kernels/CMakeLists.txt; not a valid file name (hxx, cc, h++, c++, hh, cxx, c, cpp, cuh, cu, h, hpp)
+Ignoring paddle/pten/kernels/cpu/CMakeLists.txt; not a valid file name (cu, cpp, c++, cc, hxx, cuh, hpp, h++, cxx, hh, h, c)
+Skipping input 'paddle/pten/kernels/cuda/creation.h': Can't open for reading
+Ignoring paddle/pten/kernels/cuda/CMakeLists.txt; not a valid file name (c, h, hpp, hxx, c++, cpp, cu, cxx, cuh, cc, hh, h++)
+Skipping input 'paddle/pten/kernels/functions/blas/CMakeLists.txt': Can't open for reading
+Skipping input 'paddle/pten/kernels/cpu/creation.h': Can't open for reading
+Ignoring paddle/pten/kernels/hybird/CMakeLists.txt; not a valid file name (h, h++, hxx, c++, c, cxx, cu, hpp, cuh, cpp, hh, cc)
+Skipping input 'paddle/pten/kernels/functions/cpu/CMakeLists.txt': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/blas/elementwise.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/CMakeLists.txt': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cpu/elementwise.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/CMakeLists.txt': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/cast_kernel_impl.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/elementwise/elementwise.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/elementwise/elementwise_broadcast.cu.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/elementwise/elementwise_common.cu.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/elementwise/elementwise_no_broadcast.cu.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/reduce/reduce.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/cuda/reduce/reduce_cuda_impl.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/general/CMakeLists.txt': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/common.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/dot.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/elementwise.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/reduce.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/sign.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/mkldnn/CMakeLists.txt': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/general/elementwise_base.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/general/elementwise_functor.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/general/manipulation.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/general/reduce_impl.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/math/cast_func.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/math/matmul_func.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/math/cpu/transpose.cc': Can't open for reading
+Skipping input 'paddle/pten/kernels/math/cuda/transpose.cu': Can't open for reading
+Skipping input 'paddle/pten/kernels/math/transpose.h': Can't open for reading
+Skipping input 'paddle/pten/kernels/functions/eigen/scale.h': Can't open for reading
+Ignoring paddle/pten/kernels/primitive/CMakeLists.txt; not a valid file name (hxx, cxx, cpp, h++, c++, c, hpp, h, hh, cc, cuh, cu)
+Ignoring paddle/pten/ops/CMakeLists.txt; not a valid file name (h++, c, hpp, cxx, cc, hh, h, c++, cu, cpp, cuh, hxx)
+Ignoring paddle/pten/tests/api/CMakeLists.txt; not a valid file name (c, hxx, c++, cu, h++, hh, hpp, cuh, cxx, h, cc, cpp)
+Ignoring paddle/pten/tests/kernels/CMakeLists.txt; not a valid file name (hxx, h, cuh, hh, hpp, c++, cxx, c, cu, cpp, h++, cc)
+Ignoring paddle/scripts/docker/root/.bashrc; not a valid file name (cu, h, hpp, h++, c++, cuh, c, cpp, hxx, cc, hh, cxx)
+Ignoring paddle/scripts/infrt_build.sh; not a valid file name (hh, c++, cc, hxx, h, cxx, cu, hpp, cuh, cpp, c, h++)
+Ignoring paddle/scripts/paddle_build.bat; not a valid file name (hh, cpp, hpp, c++, cc, c, cuh, hxx, cxx, cu, h, h++)
+Ignoring paddle/scripts/paddle_build.sh; not a valid file name (hpp, cxx, cuh, h, hxx, h++, c++, c, cc, hh, cu, cpp)
+Ignoring python/paddle/_C_ops.py; not a valid file name (cxx, cu, cpp, h, hh, hpp, hxx, c++, h++, cc, cuh, c)
+Ignoring python/paddle/__init__.py; not a valid file name (cxx, hpp, c, h, c++, cc, cpp, cu, hxx, cuh, h++, hh)
+Ignoring python/paddle/device/__init__.py; not a valid file name (hxx, c++, cxx, c, cpp, cuh, hpp, h++, h, cu, hh, cc)
+Ignoring python/paddle/distributed/auto_parallel/cluster.py; not a valid file name (c++, hh, hpp, cpp, cxx, cuh, cu, h++, hxx, h, c, cc)
+Ignoring python/paddle/distributed/auto_parallel/cost_model.py; not a valid file name (c, h++, hxx, hpp, h, cc, hh, cpp, cuh, cu, c++, cxx)
+Ignoring python/paddle/distributed/auto_parallel/mapper.py; not a valid file name (cpp, h++, hh, h, hxx, c++, c, cu, hpp, cuh, cxx, cc)
+Ignoring python/paddle/distributed/auto_parallel/operators/common.py; not a valid file name (hh, hpp, c, cuh, h++, cpp, cxx, cc, h, c++, hxx, cu)
+Ignoring python/paddle/distributed/auto_parallel/operators/dist_embedding.py; not a valid file name (h, hh, cpp, cc, hxx, c++, c, cuh, cu, hpp, h++, cxx)
+Ignoring python/paddle/distributed/auto_parallel/operators/dist_matmul.py; not a valid file name (c++, cc, c, cxx, h++, hxx, cuh, hpp, cpp, h, hh, cu)
+Ignoring python/paddle/distributed/auto_parallel/operators/dist_reshape.py; not a valid file name (h++, c, cxx, hpp, cpp, cuh, c++, cu, hh, hxx, h, cc)
+Ignoring python/paddle/distributed/auto_parallel/operators/dist_softmax.py; not a valid file name (hpp, hh, cpp, c++, h++, cxx, cuh, c, h, cc, hxx, cu)
+Ignoring python/paddle/distributed/auto_parallel/operators/dist_transpose.py; not a valid file name (hh, h, c++, cu, cuh, cxx, hpp, c, hxx, cpp, cc, h++)
+Ignoring python/paddle/distributed/auto_parallel/parallelizer.py; not a valid file name (c++, h, cxx, hxx, c, cpp, cu, cc, cuh, h++, hpp, hh)
+Ignoring python/paddle/distributed/auto_parallel/planner.py; not a valid file name (hh, hxx, cpp, h++, c++, hpp, c, h, cu, cxx, cuh, cc)
+Ignoring python/paddle/distributed/auto_parallel/process_group.py; not a valid file name (cuh, h, hxx, cpp, h++, hpp, hh, c++, cxx, c, cu, cc)
+Ignoring python/paddle/distributed/auto_parallel/utils.py; not a valid file name (h, cuh, cu, cc, cpp, h++, c, cxx, hpp, c++, hxx, hh)
+Ignoring python/paddle/distributed/collective.py; not a valid file name (hh, c++, c, hpp, h++, h, cpp, cc, cxx, cu, hxx, cuh)
+Ignoring python/paddle/distributed/fleet/base/distributed_strategy.py; not a valid file name (hxx, cuh, c++, cxx, h++, hpp, cpp, c, h, cu, hh, cc)
+Ignoring python/paddle/distributed/fleet/base/fleet_base.py; not a valid file name (cc, cuh, hxx, cxx, c, cu, hh, cpp, hpp, h, c++, h++)
+Ignoring python/paddle/distributed/fleet/base/private_helper_function.py; not a valid file name (cxx, h, hh, c, cuh, cpp, cc, h++, cu, hxx, hpp, c++)
+Ignoring python/paddle/distributed/fleet/fleet_executor_utils.py; not a valid file name (hpp, cc, h, h++, c++, cxx, cuh, cpp, hh, cu, c, hxx)
+Ignoring python/paddle/distributed/fleet/launch.py; not a valid file name (cuh, cu, hxx, h, cpp, h++, c, hh, hpp, c++, cxx, cc)
+Ignoring python/paddle/distributed/fleet/launch_utils.py; not a valid file name (hpp, h++, hxx, h, c, cxx, cuh, cc, cu, hh, cpp, c++)
+Ignoring python/paddle/distributed/fleet/meta_optimizers/dygraph_optimizer/sharding_optimizer_stage2.py; not a valid file name (cu, hpp, h++, hh, hxx, c, cuh, cxx, cpp, cc, h, c++)
+Ignoring python/paddle/distributed/fleet/meta_parallel/sharding/sharding_stage2.py; not a valid file name (cuh, cxx, hpp, hxx, cpp, cu, c++, h, hh, h++, cc, c)
+Ignoring python/paddle/distributed/fleet/meta_parallel/sharding/sharding_utils.py; not a valid file name (cpp, cc, hpp, hxx, hh, h++, cxx, cu, h, c++, c, cuh)
+Ignoring python/paddle/distributed/fleet/runtime/the_one_ps.py; not a valid file name (c, h, hxx, cc, cpp, cu, hh, cxx, h++, hpp, c++, cuh)
+Ignoring python/paddle/distributed/fleet/utils/internal_storage.py; not a valid file name (cpp, hh, h++, cxx, cc, c++, c, cuh, h, hpp, cu, hxx)
+Ignoring python/paddle/distributed/passes/pass_base.py; not a valid file name (hxx, cxx, h++, cuh, c++, cpp, h, hpp, cu, cc, c, hh)
+Ignoring python/paddle/distribution.py; not a valid file name (hxx, c++, hpp, cxx, cc, c, cu, h, h++, cpp, hh, cuh)
+Ignoring python/paddle/fluid/__init__.py; not a valid file name (hh, cuh, h++, c++, h, cpp, cxx, hxx, cu, cc, hpp, c)
+Ignoring python/paddle/fluid/clip.py; not a valid file name (c++, h, h++, cu, cc, hh, c, cxx, cpp, hxx, cuh, hpp)
+Ignoring python/paddle/fluid/contrib/mixed_precision/decorator.py; not a valid file name (cuh, c, hpp, hxx, cu, cpp, cxx, c++, hh, h, cc, h++)
+Ignoring python/paddle/fluid/contrib/mixed_precision/fp16_lists.py; not a valid file name (cpp, hxx, c, cxx, cu, hh, cc, h, cuh, c++, hpp, h++)
+Ignoring python/paddle/fluid/contrib/mixed_precision/fp16_utils.py; not a valid file name (c++, cxx, cpp, cuh, hxx, h++, h, hh, cu, hpp, c, cc)
+Ignoring python/paddle/fluid/contrib/slim/quantization/imperative/qat.py; not a valid file name (hxx, h, c++, hpp, h++, hh, cuh, cxx, cu, cpp, cc, c)
+Ignoring python/paddle/fluid/contrib/slim/quantization/post_training_quantization.py; not a valid file name (c++, cpp, c, h++, hpp, h, cuh, cc, hxx, cu, hh, cxx)
+Ignoring python/paddle/fluid/contrib/slim/quantization/quant2_int8_mkldnn_pass.py; not a valid file name (c, hxx, cuh, h++, hh, cpp, h, c++, cc, cu, cxx, hpp)
+Ignoring python/paddle/fluid/contrib/slim/tests/CMakeLists.txt; not a valid file name (hxx, h++, cuh, cxx, hpp, h, cc, hh, c++, cu, c, cpp)
+Ignoring python/paddle/fluid/contrib/slim/tests/test_post_training_quantization_while.py; not a valid file name (c++, cpp, cuh, cxx, hh, hxx, cc, c, h++, h, cu, hpp)
+Ignoring python/paddle/fluid/contrib/tests/test_amp_list.py; not a valid file name (h++, cc, hh, cpp, cuh, hpp, c, hxx, c++, cxx, cu, h)
+Ignoring python/paddle/fluid/core.py; not a valid file name (h, hh, h++, c, cpp, cu, cuh, hpp, hxx, c++, cc, cxx)
+Ignoring python/paddle/fluid/dataloader/dataloader_iter.py; not a valid file name (hh, h++, hxx, h, c, cc, c++, hpp, cu, cpp, cxx, cuh)
+Ignoring python/paddle/fluid/dygraph/amp/auto_cast.py; not a valid file name (hxx, cu, h, cpp, hpp, cxx, c, h++, c++, cc, hh, cuh)
+Ignoring python/paddle/fluid/dygraph/dygraph_to_static/call_transformer.py; not a valid file name (cuh, cpp, h++, cxx, hpp, hh, hxx, c, cu, h, cc, c++)
+Ignoring python/paddle/fluid/dygraph/dygraph_to_static/convert_call_func.py; not a valid file name (hpp, cxx, h, hh, cpp, hxx, c++, cc, cu, c, cuh, h++)
+Ignoring python/paddle/fluid/dygraph/dygraph_to_static/convert_operators.py; not a valid file name (cpp, hh, c, h, cc, cuh, c++, cu, h++, hpp, cxx, hxx)
+Ignoring python/paddle/fluid/dygraph/dygraph_to_static/tensor_shape_transformer.py; not a valid file name (hpp, cc, cpp, c++, cu, h, cuh, cxx, hxx, hh, h++, c)
+Ignoring python/paddle/fluid/dygraph/dygraph_to_static/utils.py; not a valid file name (cpp, c++, hxx, cuh, hpp, c, cu, h++, cc, h, cxx, hh)
+Ignoring python/paddle/fluid/dygraph/io.py; not a valid file name (h++, hxx, cu, cxx, hh, hpp, cuh, c++, cpp, cc, h, c)
+Ignoring python/paddle/fluid/dygraph/layers.py; not a valid file name (cu, hxx, c, cuh, hh, h, hpp, h++, cpp, cc, cxx, c++)
+Ignoring python/paddle/fluid/dygraph/varbase_patch_methods.py; not a valid file name (hxx, hh, hpp, cuh, cc, cpp, cxx, c, c++, cu, h, h++)
+Ignoring python/paddle/fluid/eager/eager_tensor_patch_methods.py; not a valid file name (cpp, c, cu, cc, hxx, hpp, hh, h++, cuh, h, c++, cxx)
+Ignoring python/paddle/fluid/executor.py; not a valid file name (hpp, hxx, hh, cc, cxx, h++, cuh, cu, h, c++, c, cpp)
+Ignoring python/paddle/fluid/framework.py; not a valid file name (c++, hpp, cu, h++, hh, hxx, cuh, cc, c, h, cpp, cxx)
+Ignoring python/paddle/fluid/incubate/fleet/parameter_server/ir/trainer_pass.py; not a valid file name (cc, c++, cpp, cu, c, hxx, cuh, hh, cxx, hpp, h, h++)
+Ignoring python/paddle/fluid/layers/control_flow.py; not a valid file name (hpp, hh, h++, h, cu, c, c++, cuh, cpp, cxx, hxx, cc)
+Ignoring python/paddle/fluid/layers/ops.py; not a valid file name (hh, cc, h, c, h++, hxx, cu, hpp, cuh, c++, cxx, cpp)
+Ignoring python/paddle/fluid/layers/tensor.py; not a valid file name (c, c++, cc, cpp, hxx, cxx, h, hh, hpp, cuh, h++, cu)
+Ignoring python/paddle/fluid/optimizer.py; not a valid file name (c++, cc, cpp, c, cxx, h++, cuh, hpp, hh, h, cu, hxx)
+Ignoring python/paddle/fluid/reader.py; not a valid file name (c++, c, h++, cuh, cc, hxx, h, hpp, cu, cxx, hh, cpp)
+Ignoring python/paddle/fluid/tests/unittests/CMakeLists.txt; not a valid file name (hh, cu, c, cxx, cuh, c++, hpp, hxx, h++, h, cc, cpp)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel/CMakeLists.txt; not a valid file name (cc, c++, cpp, cuh, hxx, h++, hpp, h, cxx, cu, hh, c)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel/auto_parallel_relaunch_model.py; not a valid file name (cuh, h, cc, cpp, hh, cxx, h++, c, hpp, c++, cu, hxx)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel/auto_parallel_relaunch_with_planner.py; not a valid file name (hh, hpp, cc, cu, cuh, c, c++, h, cpp, hxx, cxx, h++)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel/launch.py; not a valid file name (h, cxx, cu, c++, hh, c, cc, cuh, hxx, hpp, h++, cpp)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel/test_auto_parallel_relaunch.py; not a valid file name (cuh, cxx, c, h++, h, hh, cu, hxx, cpp, c++, cc, hpp)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel/test_relaunch_with_planner.py; not a valid file name (hxx, hh, c++, hpp, cpp, c, cuh, cxx, h, cu, cc, h++)
+Ignoring python/paddle/fluid/tests/unittests/auto_parallel_gpt_model.py; not a valid file name (cpp, h++, hpp, hxx, h, c, c++, cxx, cc, cu, hh, cuh)
+Ignoring python/paddle/fluid/tests/unittests/distributed_passes/check_pass_conflict_example.py; not a valid file name (h, hxx, c, c++, cc, h++, hpp, cu, cuh, hh, cpp, cxx)
+Ignoring python/paddle/fluid/tests/unittests/distributed_passes/dist_pass_test_base.py; not a valid file name (cc, hh, c++, cu, cxx, hxx, hpp, cuh, cpp, h, c, h++)
+Ignoring python/paddle/fluid/tests/unittests/distributed_passes/model_zoo.py; not a valid file name (hpp, c++, h, hxx, cu, c, cpp, hh, h++, cxx, cuh, cc)
+Ignoring python/paddle/fluid/tests/unittests/distributed_passes/pass_run_main.py; not a valid file name (cu, hpp, cpp, hxx, cc, c++, cxx, c, h++, h, hh, cuh)
+Ignoring python/paddle/fluid/tests/unittests/distributed_passes/test_dist_fuse_all_reduce_pass.py; not a valid file name (cc, hxx, h++, cpp, cxx, hh, cu, c++, hpp, cuh, c, h)
+Ignoring python/paddle/fluid/tests/unittests/distributed_passes/test_white_lists.py; not a valid file name (hpp, cpp, cc, c, cxx, hh, h, h++, c++, cu, hxx, cuh)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_sharding_optimizer_stage2.py; not a valid file name (hh, cxx, h++, h, cuh, hpp, cpp, hxx, c, cc, cu, c++)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_sharding_stage2.py; not a valid file name (c, h++, cc, hpp, h, cu, hxx, cuh, c++, hh, cpp, cxx)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_sharding_stage2_offload.py; not a valid file name (cc, h++, h, cxx, hxx, c++, hh, cuh, c, hpp, cpp, cu)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_to_static/ifelse_simple_func.py; not a valid file name (hxx, cpp, cu, hh, cuh, cc, hpp, h, c, cxx, c++, h++)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_to_static/test_for_enumerate.py; not a valid file name (cxx, cc, hxx, hh, cuh, hpp, cpp, h++, c, cu, c++, h)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_to_static/test_ifelse.py; not a valid file name (hpp, cpp, hh, c, h, cuh, cxx, cc, c++, h++, hxx, cu)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_to_static/test_mnist_pure_fp16.py; not a valid file name (h, h++, hh, hxx, c, cu, c++, cxx, hpp, cpp, cc, cuh)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_to_static/test_program_translator.py; not a valid file name (hpp, hxx, hh, cpp, h++, c++, cc, h, cu, cxx, c, cuh)
+Ignoring python/paddle/fluid/tests/unittests/dygraph_to_static/test_tensor_shape.py; not a valid file name (hxx, h++, cuh, cc, h, c++, cxx, cu, cpp, hpp, c, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/ernie_training.py; not a valid file name (cu, c++, h, hh, h++, hpp, cc, c, cuh, hxx, cpp, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/op_test_ipu.py; not a valid file name (cxx, h++, hh, cuh, c, hpp, c++, cpp, hxx, cu, h, cc)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_activation_x_op.py; not a valid file name (h++, h, cuh, c++, c, cu, cxx, cpp, cc, hxx, hpp, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_avg_shard_ipu.py; not a valid file name (hh, cu, c, c++, cxx, h++, hpp, cpp, cc, hxx, h, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_batch_norm_op_ipu.py; not a valid file name (cuh, cu, h++, hxx, h, c, c++, hh, cc, cpp, hpp, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_cast_op_ipu.py; not a valid file name (hpp, c, c++, hxx, cc, h++, hh, cuh, cxx, cu, cpp, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_concat_op_ipu.py; not a valid file name (c++, cpp, cxx, cu, h++, hpp, hxx, h, cc, c, cuh, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_conv_op_ipu.py; not a valid file name (c, cpp, h, hpp, cxx, cuh, hxx, hh, h++, cc, c++, cu)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_cross_entropy2_op_ipu.py; not a valid file name (cxx, cc, hh, cuh, hxx, cpp, cu, hpp, h++, c++, h, c)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_dropout_op_ipu.py; not a valid file name (cxx, c++, h, cpp, h++, cuh, c, cu, hpp, hh, cc, hxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_elemetwise_x_op_ipu.py; not a valid file name (cxx, cuh, c++, hpp, hh, c, h, h++, cu, cc, hxx, cpp)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_equal_op_ipu.py; not a valid file name (c++, h, cc, hxx, cu, hh, cxx, cpp, h++, hpp, c, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_expand_op_ipu.py; not a valid file name (hxx, cpp, hpp, cc, c++, hh, h, cuh, c, cu, cxx, h++)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_fill_constant_op_ipu.py; not a valid file name (h, hh, hpp, cuh, h++, c, cxx, cc, hxx, cpp, c++, cu)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_gather_op_ipu.py; not a valid file name (c++, cxx, cc, cpp, cuh, hh, h++, c, hpp, hxx, cu, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_gelu_op_ipu.py; not a valid file name (hpp, cuh, hh, cpp, cxx, cu, hxx, h, h++, c++, c, cc)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_groupnorm_op_ipu.py; not a valid file name (cpp, hpp, cxx, h, hxx, cuh, cu, cc, hh, c++, h++, c)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_instancenorm_op_ipu.py; not a valid file name (cxx, cu, cc, hxx, h, c, cpp, cuh, h++, hpp, c++, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_batchs_per_step_simple.py; not a valid file name (c, cu, h, hh, cpp, hpp, hxx, c++, cuh, h++, cc, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_fp16_support.py; not a valid file name (h++, hh, cuh, cpp, h, c, cu, cc, hxx, c++, hpp, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_inference_model_io.py; not a valid file name (hh, cc, h++, h, cpp, c++, c, hpp, cuh, hxx, cu, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_model_pipeline.py; not a valid file name (cuh, cc, hh, cxx, h, c++, hpp, c, cpp, h++, hxx, cu)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_pipeline.py; not a valid file name (cc, h++, hxx, cuh, hpp, cpp, c, cu, cxx, c++, h, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_place.py; not a valid file name (cpp, h++, hh, cuh, cxx, hpp, h, hxx, cc, c, c++, cu)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_shard.py; not a valid file name (c++, cu, h++, cuh, c, cpp, hpp, cc, hxx, h, cxx, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_ipu_strategy.py; not a valid file name (hh, h++, hxx, c++, hpp, cc, cpp, cuh, cu, cxx, c, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_layernorm_op_ipu.py; not a valid file name (cc, hh, h++, cxx, c++, hxx, c, h, cu, cpp, cuh, hpp)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_log_softmax_op_ipu.py; not a valid file name (cuh, hxx, cpp, cu, cxx, c, c++, h, hh, hpp, h++, cc)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_lookuptable_op_ipu.py; not a valid file name (hpp, h, cc, cpp, cuh, hxx, c++, h++, cu, hh, c, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_lr_sheduelr.py; not a valid file name (cpp, hpp, c, cu, c++, cxx, h++, hh, cuh, cc, h, hxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_matmul_op_ipu.py; not a valid file name (hxx, h++, cxx, hpp, cu, c++, cuh, cc, h, c, cpp, hh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_mean_op_ipu.py; not a valid file name (h++, h, hh, cpp, hxx, c++, c, cuh, hpp, cc, cu, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_mul_op_ipu.py; not a valid file name (cxx, hh, c++, hpp, h, cpp, hxx, h++, c, cc, cuh, cu)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_pool_avg_op_ipu.py; not a valid file name (cuh, hh, c++, cc, cxx, c, hpp, cpp, h++, cu, hxx, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_pool_max_op_ipu.py; not a valid file name (hh, cc, cu, cxx, cpp, c, c++, h++, cuh, hpp, hxx, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_pow_op_ipu.py; not a valid file name (cc, h++, cuh, cu, cpp, cxx, hxx, h, c, hpp, hh, c++)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_reduce_x_op_ipu.py; not a valid file name (cc, h, hxx, hh, h++, cpp, hpp, c++, cuh, cu, c, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_reshape_inplace_op_ipu.py; not a valid file name (hpp, cxx, h++, h, hh, cu, c++, c, hxx, cc, cpp, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_reshape_op_ipu.py; not a valid file name (hpp, hh, c++, cc, c, h++, hxx, cu, cuh, cpp, h, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_save_load.py; not a valid file name (cuh, hxx, c, h, cu, cxx, cc, hh, h++, c++, hpp, cpp)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_scale_op_ipu.py; not a valid file name (hpp, c++, c, hh, cc, hxx, h++, cu, h, cxx, cpp, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_set_batch_size_ipu.py; not a valid file name (c++, cuh, hpp, cc, cu, h++, h, cxx, hxx, c, hh, cpp)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_sgd_optimizer.py; not a valid file name (cc, hh, c++, hpp, cxx, cuh, cu, hxx, h++, cpp, h, c)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_slice_op_ipu.py; not a valid file name (c, hh, cpp, cc, hxx, c++, hpp, cu, cxx, h++, cuh, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_softmax_op_ipu.py; not a valid file name (hpp, cc, h++, cpp, cu, cxx, hxx, h, cuh, c, hh, c++)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_squeeze_op_ipu.py; not a valid file name (hxx, c++, cu, cuh, h++, cxx, cpp, hpp, hh, cc, c, h)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_stack_op_ipu.py; not a valid file name (h++, c, hxx, cxx, cuh, cpp, c++, hh, cc, hpp, h, cu)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_sum_op_ipu.py; not a valid file name (hpp, c, cxx, hxx, cu, h, cc, h++, hh, cpp, c++, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_topk_op_ipu.py; not a valid file name (cu, cuh, h, c++, hpp, cxx, hh, hxx, h++, c, cpp, cc)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_transpose_op_ipu.py; not a valid file name (h++, cpp, cuh, hh, c, hpp, cu, cc, cxx, c++, h, hxx)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_unsqueeze_op_ipu.py; not a valid file name (hh, c++, cpp, c, h, cxx, cc, hxx, cuh, cu, hpp, h++)
+Ignoring python/paddle/fluid/tests/unittests/ipu/test_varname_inplace.py; not a valid file name (cpp, hxx, hh, cc, cxx, cu, h++, c++, hpp, h, c, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/CMakeLists.txt; not a valid file name (c, hpp, hh, h++, cxx, cu, cpp, h, cc, cuh, c++, hxx)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/auto_scan_test.py; not a valid file name (hh, hxx, cu, hpp, h, cc, c++, cpp, c, h++, cxx, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/program_config.py; not a valid file name (c, cc, cu, cuh, hpp, cpp, hh, h, hxx, c++, cxx, h++)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_adaptive_pool2d_convert_global_pass_autoscan.py; not a valid file name (cuh, cc, c, c++, cu, h, hxx, hpp, cpp, h++, cxx, hh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_act_mkldnn_fuse_pass.py; not a valid file name (h, cuh, cpp, c, c++, h++, hpp, hxx, cu, cc, hh, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_affine_channel_fuse_pass.py; not a valid file name (c, hh, hxx, hpp, cxx, c++, h, cu, cc, cpp, h++, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_bias_mkldnn_fuse_pass.py; not a valid file name (hh, cxx, cpp, c++, hxx, h++, cu, cc, cuh, c, hpp, h)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_bn_fuse_pass.py; not a valid file name (c++, h, c, cpp, hpp, cc, cu, hxx, hh, cuh, cxx, h++)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_elementwise_add2_act_fuse_pass.py; not a valid file name (cpp, cu, c++, h++, hpp, c, cuh, cxx, hxx, cc, h, hh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_elementwise_add_act_fuse_pass.py; not a valid file name (h, hxx, c, cc, cu, cuh, hpp, h++, cpp, cxx, c++, hh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_elementwise_add_fuse_pass.py; not a valid file name (h, cxx, hh, cuh, cu, c++, hpp, cpp, h++, cc, hxx, c)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_eltwiseadd_affine_channel_fuse_pass.py; not a valid file name (hh, c++, cu, cuh, hpp, hxx, cpp, h, h++, c, cc, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_eltwiseadd_bn_fuse_pass.py; not a valid file name (hxx, h++, cuh, cxx, c, cc, hh, c++, cpp, h, cu, hpp)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_transpose_bn_fuse_pass.py; not a valid file name (cu, hh, c, cxx, c++, h++, cpp, hpp, h, hxx, cc, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_conv_transpose_eltwiseadd_bn_fuse_pass.py; not a valid file name (cuh, cxx, cpp, cc, h++, hxx, h, c++, c, cu, hh, hpp)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_fc_elementwise_layernorm_fuse_pass.py; not a valid file name (hpp, cxx, hxx, cu, h, c, cuh, cc, c++, h++, cpp, hh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_layer_norm_fuse_pass.py; not a valid file name (hpp, hh, h++, cu, hxx, c, cxx, c++, cpp, cuh, h, cc)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_matmul_scale_fuse_pass.py; not a valid file name (cuh, cc, h++, c++, h, cu, hh, hxx, cxx, hpp, cpp, c)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_matmul_v2_scale_fuse_pass.py; not a valid file name (c++, c, hpp, cu, cpp, hxx, h++, cuh, cc, hh, h, cxx)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv3d_bias_fuse_pass.py; not a valid file name (c, cc, cu, hh, cxx, h++, cpp, hxx, hpp, c++, h, cuh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv_concat_relu_mkldnn_fuse_pass.py; not a valid file name (cu, cc, h++, hxx, c++, cxx, hh, h, c, cuh, hpp, cpp)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv_gelu_fuse_pass.py; not a valid file name (h++, hh, cu, cuh, cpp, c, hpp, c++, cxx, h, cc, hxx)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_conv_transpose_bias_fuse_pass.py; not a valid file name (cxx, cpp, hpp, cu, c++, cc, h, cuh, hxx, hh, c, h++)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_depthwise_conv_pass.py; not a valid file name (h++, c, cuh, hxx, cpp, hh, cc, hpp, c++, h, cxx, cu)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_reshape_transpose_matmul_v2_fuse_pass.py; not a valid file name (cpp, cuh, hpp, hxx, hh, cc, h++, h, cxx, cu, c++, c)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_scale_matmul_fuse_pass.py; not a valid file name (hpp, cc, cu, hh, cxx, cuh, hxx, cpp, c++, h++, h, c)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_repeated_fc_relu_fuse_pass.py; not a valid file name (cpp, cc, h++, cuh, c, c++, hpp, cu, h, cxx, hxx, hh)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_simplify_with_basic_ops_pass_autoscan.py; not a valid file name (h, h++, hh, cu, cxx, cuh, cpp, cc, c++, hpp, hxx, c)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_transpose_flatten_concat_fuse_pass.py; not a valid file name (cu, cc, hpp, h, hh, cpp, c++, cuh, h++, hxx, cxx, c)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_trt_convert_elementwise.py; not a valid file name (hpp, cxx, hxx, c++, h++, h, hh, cpp, cu, c, cuh, cc)
+Ignoring python/paddle/fluid/tests/unittests/ir/inference/test_unsqueeze2_eltwise_fuse_pass.py; not a valid file name (c++, hxx, h, cpp, cc, hh, cxx, c, h++, cu, cuh, hpp)
+Ignoring python/paddle/fluid/tests/unittests/mkldnn/test_matmul_mkldnn_op.py; not a valid file name (hh, cpp, hpp, c, cuh, c++, h++, hxx, h, cc, cu, cxx)
+Ignoring python/paddle/fluid/tests/unittests/mkldnn/test_matmul_v2_mkldnn_op.py; not a valid file name (cpp, cxx, h, c++, cu, hpp, hxx, cc, cuh, h++, c, hh)
+Ignoring python/paddle/fluid/tests/unittests/npu/test_collective_base_npu.py; not a valid file name (h++, h, cu, c++, cxx, cuh, c, cc, hpp, cpp, hxx, hh)
+Ignoring python/paddle/fluid/tests/unittests/npu/test_sync_batch_norm_base_npu.py; not a valid file name (cc, cpp, hpp, c++, h++, cxx, c, h, hh, hxx, cu, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_activation_op.py; not a valid file name (cuh, hxx, cxx, cc, c++, c, hpp, h++, cu, h, cpp, hh)
+Ignoring python/paddle/fluid/tests/unittests/test_assign_op.py; not a valid file name (c++, cu, hh, hxx, h, cuh, cc, cpp, c, hpp, h++, cxx)
+Ignoring python/paddle/fluid/tests/unittests/test_auto_parallel_cluster.py; not a valid file name (hpp, hh, h++, cpp, cuh, cu, cc, h, c, cxx, c++, hxx)
+Ignoring python/paddle/fluid/tests/unittests/test_auto_parallel_cost_model.py; not a valid file name (h++, cc, cxx, h, hh, cpp, hxx, c++, cuh, c, cu, hpp)
+Ignoring python/paddle/fluid/tests/unittests/test_auto_parallel_mapper.py; not a valid file name (c, hpp, cuh, h++, c++, h, hxx, cxx, cpp, hh, cu, cc)
+Ignoring python/paddle/fluid/tests/unittests/test_auto_parallel_searcher.py; not a valid file name (cxx, cc, hh, hpp, c++, cu, h++, cuh, hxx, h, cpp, c)
+Ignoring python/paddle/fluid/tests/unittests/test_auto_search_dist_matmul_op.py; not a valid file name (h, c, cc, h++, hh, cuh, c++, cu, cxx, cpp, hxx, hpp)
+Ignoring python/paddle/fluid/tests/unittests/test_auto_search_dist_op.py; not a valid file name (c++, cxx, hpp, hh, cuh, cc, h++, cu, hxx, c, cpp, h)
+Ignoring python/paddle/fluid/tests/unittests/test_base_layer.py; not a valid file name (h++, cxx, c, hh, cpp, c++, hpp, h, hxx, cu, cuh, cc)
+Ignoring python/paddle/fluid/tests/unittests/test_collective_base.py; not a valid file name (c++, cc, h, c, hh, cpp, cu, h++, cxx, cuh, hpp, hxx)
+Ignoring python/paddle/fluid/tests/unittests/test_complex_op.py; not a valid file name (c, cxx, cc, cuh, cpp, c++, hpp, h, hxx, h++, cu, hh)
+Ignoring python/paddle/fluid/tests/unittests/test_complex_view_op.py; not a valid file name (hxx, cc, cxx, hh, h, c, cpp, cuh, c++, hpp, h++, cu)
+Ignoring python/paddle/fluid/tests/unittests/test_cuda_graph.py; not a valid file name (cc, hh, hpp, cpp, h++, hxx, cxx, c, cuh, h, c++, cu)
+Ignoring python/paddle/fluid/tests/unittests/test_dist_fleet_ps2.py; not a valid file name (cpp, cuh, hpp, hh, h, hxx, c, cc, h++, cu, c++, cxx)
+Ignoring python/paddle/fluid/tests/unittests/test_distribution.py; not a valid file name (hxx, cpp, cxx, cc, hpp, h, hh, h++, c, cu, cuh, c++)
+Ignoring python/paddle/fluid/tests/unittests/test_dygraph_sharding_stage2.py; not a valid file name (cc, cpp, hh, h++, cu, cuh, c, h, hpp, hxx, c++, cxx)
+Ignoring python/paddle/fluid/tests/unittests/test_egr_code_generate_api.py; not a valid file name (c, hh, c++, hpp, hxx, cc, h, h++, cxx, cu, cpp, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_egr_python_api.py; not a valid file name (hh, cc, hxx, cpp, h, c++, h++, hpp, cuh, cxx, cu, c)
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_min_op.py; not a valid file name (hpp, cpp, h++, cuh, cu, h, c, cc, cxx, hxx, hh, c++)
+Ignoring python/paddle/fluid/tests/unittests/test_fleet_distributed_strategy.py; not a valid file name (c, cuh, hpp, cpp, h++, hh, h, hxx, cc, c++, cxx, cu)
+Ignoring python/paddle/fluid/tests/unittests/test_fleet_executor.py; not a valid file name (hxx, c++, hh, cu, h, cc, cxx, cpp, h++, hpp, c, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_fleet_executor_multi_devices.py; not a valid file name (h++, c, cu, h, hxx, cpp, c++, hpp, cuh, cc, cxx, hh)
+Ignoring python/paddle/fluid/tests/unittests/test_fleet_executor_origin_scheduler.py; not a valid file name (cc, hh, hxx, hpp, c, h, cuh, c++, cxx, cpp, cu, h++)
+Ignoring python/paddle/fluid/tests/unittests/test_fmax_op.py; not a valid file name (hpp, hh, cuh, h, cpp, cc, cxx, hxx, cu, c++, h++, c)
+Ignoring python/paddle/fluid/tests/unittests/test_fmin_op.py; not a valid file name (hh, cu, cc, hxx, h++, cuh, cxx, c, cpp, c++, hpp, h)
+Ignoring python/paddle/fluid/tests/unittests/test_gcd.py; not a valid file name (cc, h++, hxx, cu, c++, cpp, hh, h, hpp, cxx, c, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_gradient_clip.py; not a valid file name (h, hpp, c++, hh, cu, h++, c, cpp, cxx, cc, cuh, hxx)
+Ignoring python/paddle/fluid/tests/unittests/test_hinge_embedding_loss.py; not a valid file name (cc, hxx, cxx, h, h++, cpp, c, c++, cu, hpp, hh, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_imperative_optimizer.py; not a valid file name (cxx, cc, hh, cu, cuh, c++, hpp, hxx, h++, cpp, h, c)
+Ignoring python/paddle/fluid/tests/unittests/test_imperative_optimizer_v2.py; not a valid file name (cuh, cu, hxx, cpp, h, hh, c++, cxx, cc, c, h++, hpp)
+Ignoring python/paddle/fluid/tests/unittests/test_imperative_transformer_sorted_gradient.py; not a valid file name (h, cu, hxx, hh, c++, cuh, cc, c, h++, cpp, hpp, cxx)
+Ignoring python/paddle/fluid/tests/unittests/test_is_complex.py; not a valid file name (cpp, c, hxx, cxx, h, cc, cuh, hpp, h++, c++, hh, cu)
+Ignoring python/paddle/fluid/tests/unittests/test_is_integer.py; not a valid file name (cu, c, hxx, cuh, hh, cc, hpp, h++, cpp, h, c++, cxx)
+Ignoring python/paddle/fluid/tests/unittests/test_lambv2_op.py; not a valid file name (hxx, c++, hpp, cxx, h, c, cc, cpp, h++, cu, cuh, hh)
+Ignoring python/paddle/fluid/tests/unittests/test_layer_norm_op.py; not a valid file name (hh, c++, h, h++, cxx, cu, hpp, cpp, cc, c, hxx, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_lcm.py; not a valid file name (c, hh, hpp, h++, cxx, cpp, h, cc, hxx, cu, c++, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_lerp_op.py; not a valid file name (c++, cc, cuh, hxx, cu, c, h, cpp, cxx, hpp, hh, h++)
+Ignoring python/paddle/fluid/tests/unittests/test_logit_op.py; not a valid file name (hpp, c++, cpp, c, h++, h, cuh, cxx, cc, cu, hxx, hh)
+Ignoring python/paddle/fluid/tests/unittests/test_math_op_patch_var_base.py; not a valid file name (cuh, hxx, cpp, c, hpp, cxx, h++, cc, hh, cu, h, c++)
+Ignoring python/paddle/fluid/tests/unittests/test_max_op.py; not a valid file name (cu, cc, hh, h, cpp, cuh, h++, c, hpp, c++, hxx, cxx)
+Ignoring python/paddle/fluid/tests/unittests/test_mean_op.py; not a valid file name (cxx, hh, cuh, hpp, h++, cc, hxx, c, cpp, h, c++, cu)
+Ignoring python/paddle/fluid/tests/unittests/test_momentum_op.py; not a valid file name (cxx, h++, cc, h, cpp, hh, cu, c++, hxx, hpp, cuh, c)
+Ignoring python/paddle/fluid/tests/unittests/test_pylayer_op.py; not a valid file name (hxx, hh, c, cuh, cxx, hpp, h++, h, c++, cu, cc, cpp)
+Ignoring python/paddle/fluid/tests/unittests/test_repeat_interleave_op.py; not a valid file name (cpp, cxx, hxx, hpp, h++, cu, c++, h, hh, c, cc, cuh)
+Ignoring python/paddle/fluid/tests/unittests/test_reset_grad_inplace_version.py; not a valid file name (hh, cc, h++, cuh, cpp, hxx, cu, cxx, c++, h, c, hpp)
+Ignoring python/paddle/fluid/tests/unittests/test_rot90_op.py; not a valid file name (cc, c++, h++, h, hpp, hxx, cuh, cu, cxx, cpp, c, hh)
+Ignoring python/paddle/fluid/tests/unittests/test_scatter_op.py; not a valid file name (hh, hpp, h, hxx, c++, cc, cxx, h++, cu, cuh, c, cpp)
+Ignoring python/paddle/fluid/tests/unittests/test_set_value_op.py; not a valid file name (cxx, h++, cu, cpp, c++, hh, hpp, cc, h, cuh, hxx, c)
+Ignoring python/paddle/fluid/tests/unittests/test_sparse_attention_op.py; not a valid file name (cc, hxx, h, cuh, hh, cpp, cu, c++, c, hpp, cxx, h++)
+Ignoring python/paddle/fluid/tests/unittests/test_translated_layer.py; not a valid file name (cu, hh, cpp, cxx, h++, hpp, c++, cuh, c, h, hxx, cc)
+Ignoring python/paddle/fluid/tests/unittests/test_transpose_op.py; not a valid file name (cc, c, hpp, cuh, cu, h, cpp, hh, cxx, c++, h++, hxx)
+Ignoring python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py; not a valid file name (cxx, cu, c++, hpp, h, cpp, hh, cuh, c, h++, hxx, cc)
+Ignoring python/paddle/fluid/transpiler/details/checkport.py; not a valid file name (cpp, cuh, hxx, c, cc, hh, cxx, c++, cu, h, h++, hpp)
+Ignoring python/paddle/framework/__init__.py; not a valid file name (cuh, c++, hpp, cu, h++, h, hh, cc, c, cpp, cxx, hxx)
+Ignoring python/paddle/nn/__init__.py; not a valid file name (cu, h, c, h++, cpp, hh, hxx, hpp, cc, c++, cuh, cxx)
+Ignoring python/paddle/nn/functional/__init__.py; not a valid file name (cxx, cu, hh, c++, cuh, c, cpp, hxx, h++, hpp, cc, h)
+Ignoring python/paddle/nn/functional/loss.py; not a valid file name (cxx, cuh, hxx, cc, hpp, c, cpp, c++, h++, h, hh, cu)
+Ignoring python/paddle/nn/functional/sparse_attention.py; not a valid file name (hxx, cuh, cxx, hpp, h++, h, cu, cpp, cc, hh, c++, c)
+Ignoring python/paddle/nn/layer/__init__.py; not a valid file name (h++, cxx, hxx, hpp, c, cu, c++, h, hh, cc, cpp, cuh)
+Ignoring python/paddle/nn/layer/loss.py; not a valid file name (c++, hh, cpp, cc, hpp, cu, cxx, h++, hxx, c, cuh, h)
+Ignoring python/paddle/nn/layer/pooling.py; not a valid file name (hh, hxx, cuh, c++, hpp, h, cc, cxx, cpp, h++, cu, c)
+Ignoring python/paddle/nn/layer/transformer.py; not a valid file name (hpp, cuh, h++, hxx, cc, h, hh, c, cpp, c++, cu, cxx)
+Ignoring python/paddle/optimizer/lamb.py; not a valid file name (cuh, c, hh, h, h++, cxx, cpp, c++, cu, cc, hpp, hxx)
+Ignoring python/paddle/optimizer/momentum.py; not a valid file name (hxx, cc, cxx, c++, cuh, h++, h, cu, cpp, hh, hpp, c)
+Ignoring python/paddle/optimizer/optimizer.py; not a valid file name (h++, c, cc, h, hpp, cxx, cuh, cpp, hxx, cu, c++, hh)
+Ignoring python/paddle/tensor/__init__.py; not a valid file name (cuh, hh, cpp, c, cc, cu, h, hpp, h++, hxx, cxx, c++)
+Ignoring python/paddle/tensor/attribute.py; not a valid file name (c, cc, cxx, hh, cu, h++, hpp, cuh, cpp, hxx, c++, h)
+Ignoring python/paddle/tensor/creation.py; not a valid file name (hh, hxx, h, h++, cc, cxx, c++, cuh, c, hpp, cpp, cu)
+Ignoring python/paddle/tensor/manipulation.py; not a valid file name (cc, hh, cuh, cxx, cpp, h++, cu, c++, h, c, hpp, hxx)
+Ignoring python/paddle/tensor/math.py; not a valid file name (hpp, h, cuh, c++, cxx, cpp, hxx, hh, h++, c, cc, cu)
+Ignoring python/paddle/tensor/stat.py; not a valid file name (cc, hh, cu, h, c, c++, cpp, hxx, h++, cuh, hpp, cxx)
+Ignoring python/paddle/utils/code_gen/api.yaml; not a valid file name (hh, c, hxx, h++, cpp, cuh, cxx, h, c++, cu, hpp, cc)
+Ignoring python/paddle/utils/code_gen/api_gen.py; not a valid file name (cuh, hxx, cpp, hh, cxx, c, c++, h++, hpp, cu, cc, h)
+Ignoring python/paddle/utils/cpp_extension/cpp_extension.py; not a valid file name (cc, hxx, cu, hpp, cuh, h, hh, h++, c, cxx, c++, cpp)
+Ignoring python/paddle/utils/cpp_extension/extension_utils.py; not a valid file name (cxx, cuh, h++, hxx, cc, h, c++, hh, c, hpp, cu, cpp)
+Ignoring python/requirements.txt; not a valid file name (c, hh, cu, hpp, c++, cc, cxx, cpp, hxx, h, cuh, h++)
+Ignoring python/setup.py.in; not a valid file name (c, cu, cxx, cc, cuh, h++, hh, cpp, hxx, hpp, h, c++)
+Ignoring python/unittest_py/requirements.txt; not a valid file name (c++, hpp, cpp, hh, cuh, cxx, h++, hxx, h, cu, c, cc)
+Ignoring tools/check_file_diff_approvals.sh; not a valid file name (h, cpp, hxx, cc, hpp, cxx, h++, c, cu, hh, c++, cuh)
+Ignoring tools/coverage/paddle_coverage.sh; not a valid file name (cu, hpp, hh, hxx, cpp, h++, h, c, cc, cxx, c++, cuh)
+Ignoring tools/dockerfile/Dockerfile.ipu; not a valid file name (c++, c, cu, cc, hxx, cpp, cuh, h, hh, cxx, h++, hpp)
+Ignoring tools/dockerfile/ci_dockerfile.sh; not a valid file name (cc, cu, h++, h, cuh, cpp, c, cxx, hh, hpp, hxx, c++)
+Ignoring tools/parallel_UT_rule.py; not a valid file name (c, c++, cu, cpp, cuh, h, hh, hxx, hpp, cxx, cc, h++)
+Ignoring tools/static_mode_white_list.py; not a valid file name (h, cuh, c, cc, hh, cxx, cpp, hxx, cu, hpp, h++, c++)
+Ignoring tools/windows/run_unittests.sh; not a valid file name (h++, cuh, h, hpp, cc, hh, cxx, c++, hxx, c, cu, cpp)
+
+pylint...............................................(no files to check)Skipped
+copyright_checker........................................................Passed

@@ -50,10 +50,16 @@ uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream) {
   return allocation::AllocatorFacade::Instance().Release(place, stream);
 }
 
-void RecordStream(Allocation* allocation, const gpuStream_t& stream) {
+void RecordStream(std::shared_ptr<Allocation> allocation,
+                  const gpuStream_t& stream) {
   return allocation::AllocatorFacade::Instance().RecordStream(allocation,
                                                               stream);
 }
+
+const gpuStream_t& GetStream(const std::shared_ptr<Allocation>& allocation) {
+  return allocation::AllocatorFacade::Instance().GetStream(allocation);
+}
+
 #endif
 }  // namespace memory
 }  // namespace paddle

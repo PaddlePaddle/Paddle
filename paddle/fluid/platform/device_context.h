@@ -62,6 +62,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/device.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -99,8 +102,10 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+  IPU = 4,
+  MLU = 5,
 
-  MAX_DEVICE_TYPES = 4,
+  MAX_DEVICE_TYPES = 6,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -109,6 +114,8 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
+constexpr DeviceType kIPU = DeviceType::IPU;
+constexpr DeviceType kMLU = DeviceType::MLU;
 
 class DeviceContext {
  public:
@@ -139,6 +146,36 @@ template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
+
+// Graphcore IPU
+#ifdef PADDLE_WITH_IPU
+class IPUDeviceContext : public DeviceContext {
+ public:
+  IPUDeviceContext() = delete;
+  explicit IPUDeviceContext(IPUPlace place);
+  virtual ~IPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+  int DeviceId() const { return device_.getId(); }
+
+ private:
+  IPUPlace place_;
+  platform::ipu::Device device_;
+};
+template <>
+struct DefaultDeviceContextType<platform::IPUPlace> {
+  using TYPE = IPUDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+class MLUDeviceContext;
+
+template <>
+struct DefaultDeviceContextType<platform::MLUPlace>;
+#endif
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
