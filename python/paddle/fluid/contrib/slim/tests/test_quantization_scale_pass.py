@@ -173,7 +173,7 @@ class TestQuantizationScalePass(unittest.TestCase):
                 'quant_scale_model' + dev_name, ['image', 'label'], [loss],
                 exe,
                 server_program,
-                clip_extra=True)
+                clip_extra=False)
 
     def test_quant_scale_cuda(self):
         if fluid.core.is_compiled_with_cuda():
