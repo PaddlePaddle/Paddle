@@ -482,6 +482,7 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
+           'poisson',
            'sinh',
            'round',
            'DataParallel',
