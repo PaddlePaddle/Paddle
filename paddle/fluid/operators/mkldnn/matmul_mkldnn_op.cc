@@ -151,8 +151,7 @@ class MatMulMKLDNNHandler
   MatMulMKLDNNHandler(const dnnl::engine engine, const ExecutionContext& ctx,
                       float scale)
       : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(
-            engine, ctx.GetPlace()),
-        matmul_dims_(GetMatmulDims(ctx)) {
+            engine, ctx.GetPlace()) {
     dnnl::primitive_attr attr;
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
@@ -160,6 +159,7 @@ class MatMulMKLDNNHandler
       attr.set_output_scales(tensor_wide_scale, {scale_out});
     }
 
+    auto matmul_dims_ = GetMatmulDims(ctx);
     auto x_md = memory::desc(matmul_dims_.x_dims, MKLDNNGetDataType<XT>(),
                              matmul_dims_.x_strides);
     auto y_md = memory::desc(matmul_dims_.y_dims, MKLDNNGetDataType<YT>(),
@@ -419,7 +419,6 @@ class MatMulMKLDNNHandler
   }
 
  private:
-  MatMulDims matmul_dims_;
   uint32_t x_offset_;
   uint32_t y_offset_;
   uint32_t out_offset_;

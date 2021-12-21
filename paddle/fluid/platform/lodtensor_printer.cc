@@ -39,23 +39,37 @@ void PrintVar(framework::Scope* scope, const std::string& var_name,
             << " does not exist in your scope";
     return;
   }
+  if (!tensor->IsInitialized()) {
+    VLOG(0) << "tensor of variable " << var_name
+            << " does not initialized in your scope";
+    return;
+  }
 
-  *sstream << print_info << ": ";
+  *sstream << print_info;
 
-#define PrintTensorCallback(cpp_type, proto_type) \
-  do {                                            \
-    if (tensor->type() == proto_type) {           \
-      *sstream << "[";                            \
-      auto* data = tensor->data<cpp_type>();      \
-      auto element_num = tensor->numel();         \
-      if (element_num > 0) {                      \
-        *sstream << data[0];                      \
-        for (int j = 1; j < element_num; ++j) {   \
-          *sstream << " " << data[j];             \
-        }                                         \
-      }                                           \
-      *sstream << "]";                            \
-    }                                             \
+#define PrintTensorCallback(cpp_type, proto_type)    \
+  do {                                               \
+    if (tensor->type() == proto_type) {              \
+      *sstream << "[";                               \
+      const cpp_type* data = nullptr;                \
+      framework::LoDTensor cpu_tensor;               \
+      if (is_cpu_place(tensor->place())) {           \
+        data = tensor->data<cpp_type>();             \
+      } else {                                       \
+        platform::CPUPlace cpu_place;                \
+        TensorCopy(*tensor, cpu_place, &cpu_tensor); \
+        data = cpu_tensor.data<cpp_type>();          \
+      }                                              \
+      auto element_num = tensor->numel();            \
+      *sstream << element_num << "]:[";              \
+      if (element_num > 0) {                         \
+        *sstream << data[0];                         \
+        for (int j = 1; j < element_num; ++j) {      \
+          *sstream << " " << data[j];                \
+        }                                            \
+      }                                              \
+      *sstream << "]";                               \
+    }                                                \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);
