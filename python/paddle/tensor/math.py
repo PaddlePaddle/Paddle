@@ -812,13 +812,15 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             # x is a Tensor with following elements:
             #    [[nan, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, -nan, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = paddle.to_tensor([[nan, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, -nan, 0.7]])
+            x = np.array([[float('nan'), 0.3, 0.5, 0.9],
+                            [0.1, 0.2, float('-nan'), 0.7]]).astype(np.float32)
+            x = paddle.to_tensor(x)
             out1 = paddle.nansum(x)  # [2.7]
             out2 = paddle.nansum(x, axis=0)  # [0.1, 0.5, 0.5, 1.6]
             out3 = paddle.nansum(x, axis=-1)  # [1.7, 1.0]
@@ -828,8 +830,9 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, nan], [3, 4]],
             #      [[5, 6], [-nan, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = paddle.to_tensor([[[1, nan], [3, 4]], 
-                                  [[5, 6], [-nan, 8]]])
+            y = np.array([[[1, float('nan')], [3, 4]], 
+                            [[5, 6], [float('-nan'), 8]]])
+            y = paddle.to_tensor(y)
             out5 = paddle.nansum(y, axis=[1, 2]) # [8, 19]
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
