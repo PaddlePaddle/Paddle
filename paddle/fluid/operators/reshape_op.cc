@@ -392,7 +392,9 @@ class ReshapeKernel {
             ctx.GetPlace()),
         std::move(meta));
     pten::DenseTensor *pt_out = nullptr;
-    if (in == out) {
+    if (in != nullptr && out != nullptr && in->Holder() != nullptr &&
+        out->Holder() != nullptr &&
+        in->Holder()->ptr() == out->Holder()->ptr()) {
       pt_out = pt_x.get();
     } else {
       pt_out = pt_out_tmp.get();

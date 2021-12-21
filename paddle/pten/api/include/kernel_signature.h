@@ -105,4 +105,8 @@ using subtract_kernel = void (*)(const DeviceContext&,
                                  int,
                                  DenseTensor*);
 
+using conj_kernel = void (*)(const DeviceContext&,
+                             const DenseTensor&,
+                             DenseTensor*);
+
 }  // namespace pten
