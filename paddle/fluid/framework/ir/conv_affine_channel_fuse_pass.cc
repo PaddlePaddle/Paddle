@@ -306,7 +306,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
