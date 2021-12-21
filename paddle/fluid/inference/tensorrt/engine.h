@@ -584,6 +584,7 @@ class TensorRTEngine {
 
   int device_id_;
   int max_profile_num_{1};
+  int profile_num_{0};
   std::unordered_map<std::thread::id, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
