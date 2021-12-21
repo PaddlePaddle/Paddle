@@ -28,8 +28,7 @@ endif()
 # pten depends all pten kernel targets
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
-set(COMMON_KERNEL_DEPS dense_tensor)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} kernel_context kernel_factory)
+set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory enforce)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
 
 # auto build kernel targets by cmake
