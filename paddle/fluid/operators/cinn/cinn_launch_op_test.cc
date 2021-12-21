@@ -130,8 +130,9 @@ TEST(CinnLaunchOpTest, TestElementwiseAddPass) {
     scope.Var(test_out_name)->GetMutable<LoDTensor>();
     scope.Var(expected_out_name)->GetMutable<LoDTensor>();
 
-    cinn_launch_op->Run(scope, place);
-    elementwise_add_op->Run(scope, place);
+    platform::Place run_place(place);
+    cinn_launch_op->Run(scope, run_place);
+    elementwise_add_op->Run(scope, run_place);
 
     LoDTensor test_out, expected_out;
     TensorCopySync(scope.Var(test_out_name)->Get<LoDTensor>(),

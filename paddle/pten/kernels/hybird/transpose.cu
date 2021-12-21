@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/hybird/math/cast_func.h"
 #include "paddle/pten/kernels/hybird/transpose.h"
@@ -21,13 +22,11 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace pten {
 
 namespace math {
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 #define REINTERPRET(T, DST_PTR, SRC_PTR) \
   T* DST_PTR = reinterpret_cast<T*>(SRC_PTR)
@@ -70,8 +69,8 @@ struct TransposeNormal<CUDAContext, T> {
         BOOST_GET_CONST(paddle::platform::CUDAPlace, dev_ctx.GetPlace());
     paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = paddle::memory::AllocShared(cpu_place, size);
-    auto cuda_buf_holder = paddle::memory::AllocShared(cuda_place, size);
+    auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
+    auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {

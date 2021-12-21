@@ -51,61 +51,6 @@ class KernelContext;
 
 using KernelFn = void (*)(KernelContext* ctx);
 
-class KernelName final {
- public:
-  KernelName(std::string name, std::string overload_name)
-      : name_(std::move(name)), overload_name_(std::move(overload_name)) {}
-
-  KernelName(const std::string& kernel_name) {
-    ParseNameAndOverloadNameFromString(kernel_name);
-  }
-
-  KernelName(const char* kernel_name) {
-    std::string kernel_name_str(kernel_name);
-    ParseNameAndOverloadNameFromString(kernel_name_str);
-  }
-
-  const std::string& name() const { return name_; }
-  const std::string& overload_name() const { return overload_name_; }
-
-  struct Hash {
-    size_t operator()(const KernelName& kernel_name) const {
-      return std::hash<std::string>()(kernel_name.name()) ^
-             (std::hash<std::string>()(kernel_name.overload_name()) << 1);
-    }
-  };
-
-  size_t hash_value() const { return Hash()(*this); }
-
-  bool operator<(const KernelName& kernel_name) const {
-    return hash_value() < kernel_name.hash_value();
-  }
-
-  bool operator==(const KernelName& kernel_name) const {
-    return hash_value() == kernel_name.hash_value();
-  }
-
-  bool operator!=(const KernelName& kernel_name) const {
-    return hash_value() != kernel_name.hash_value();
-  }
-
- private:
-  void ParseNameAndOverloadNameFromString(const std::string& kernel_name) {
-    size_t pos = kernel_name.find_first_of('.');
-    if (pos == std::string::npos) {
-      name_ = kernel_name;
-      overload_name_ = "";
-    } else {
-      name_ = kernel_name.substr(0, pos);
-      overload_name_ = kernel_name.substr(pos + 1, kernel_name.size());
-    }
-  }
-
-  // TODO(chenweihang): use string_view to improve performance later
-  std::string name_;
-  std::string overload_name_;
-};
-
 class KernelKey {
  public:
   KernelKey() = default;
@@ -228,9 +173,16 @@ class Kernel {
   // for map element contruct
   Kernel() = default;
 
-  explicit Kernel(KernelFn fn) : fn_(fn) {}
+  explicit Kernel(KernelFn fn, void* variadic_fn)
+      : fn_(fn), variadic_fn_(variadic_fn) {}
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
+
+  template <typename Fn>
+  Fn GetVariadicKernelFn() const {
+    auto* func = reinterpret_cast<Fn>(variadic_fn_);
+    return func;
+  }
 
   KernelArgsDef* mutable_args_def() { return &args_def_; }
 
@@ -244,6 +196,7 @@ class Kernel {
 
  private:
   KernelFn fn_{nullptr};
+  void* variadic_fn_ = nullptr;
   KernelArgsDef args_def_;
 };
 
@@ -257,53 +210,33 @@ class KernelFactory {
  public:
   // replaced by paddle::flat_hash_map later
   using KernelMap = paddle::flat_hash_map<
-      KernelName,
-      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>,
-      KernelName::Hash>;
+      std::string,
+      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>>;
 
   static KernelFactory& Instance();
 
   KernelMap& kernels() { return kernels_; }
 
-  void InsertCompatibleOpType(const std::string& op_type) {
-    compatible_op_types_.insert(op_type);
-  }
-
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return compatible_op_types_.count(TransToPtenKernelName(op_type)) > 0;
+    return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
   }
 
-  const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
+  const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
                                          const KernelKey& kernel_key) const;
 
-  const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
+  const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
                                          Backend backend,
                                          DataLayout layout,
                                          DataType dtype) const;
 
-  Kernel SelectKernel(const KernelName& kernel_name,
+  Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 
  private:
   KernelFactory() = default;
 
   KernelMap kernels_;
-  // Used to be compatible with the original execution system and
-  // quickly confirm whether the new kernel can be called
-  std::unordered_set<std::string> compatible_op_types_;
 };
-
-/** operator << overload **/
-
-inline std::ostream& operator<<(std::ostream& os,
-                                const KernelName& kernel_name) {
-  if (kernel_name.overload_name().empty()) {
-    os << kernel_name.name();
-  } else {
-    os << kernel_name.name() << "." << kernel_name.overload_name();
-  }
-  return os;
-}
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
   os << "(" << kernel_key.backend() << ", " << kernel_key.layout() << ", "

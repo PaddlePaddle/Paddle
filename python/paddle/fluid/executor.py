@@ -401,7 +401,17 @@ def _is_enable_standalone_executor():
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key. 
+    def _get_varname_from_block(block):
+        block_str = []
+        for var_name in list(block.vars.keys()):
+            block_str.append(var_name)
+        return "\n".join(block_str)
+
+    inner_program = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    return _get_varname_from_block(inner_program.blocks[0]) + str(id(
+        program)) + _get_program_cache_key(feed, fetch_list)
 
 
 def _get_program_cache_key(feed, fetch_list):
@@ -1954,25 +1964,49 @@ class Executor(object):
         trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
         trainer_endpoints = trainer_endpoints_str.split(',')
         fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
-        fleet_exe_desc.cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        fleet_exe_desc.cur_rank = cur_rank
         nrank = len(trainer_endpoints)
         for rank, endpoint in enumerate(trainer_endpoints):
             rank_info = fleet_executor_desc_pb2.RankInfo()
             rank_info.rank = rank
             rank_info.ip_port = endpoint
             fleet_exe_desc.cluster_info.append(rank_info)
-        if "dist_strategy" in fleet_opt:
-            fleet_exe_desc.dp_degree = fleet_opt["dist_strategy"]["dp_degree"]
-            fleet_exe_desc.mp_degree = fleet_opt["dist_strategy"]["mp_degree"]
-            fleet_exe_desc.pp_degree = fleet_opt["dist_strategy"]["pp_degree"]
         if "num_micro_batches" in fleet_opt:
             fleet_exe_desc.num_micro_batches = fleet_opt["num_micro_batches"]
-        num_of_gpu = fleet_exe_desc.dp_degree * fleet_exe_desc.mp_degree * fleet_exe_desc.pp_degree
-        assert nrank == num_of_gpu, "The number of rank is not equal to the number of gpu."
+        assert 'scheduler' in fleet_opt, \
+            "Fleet executor need configuration for scheduler, you can choose from 1F1B or Origin."
+        scheduler = fleet_opt['scheduler']
+        if scheduler == '1F1B':
+            from paddle.distributed.fleet.fleet_executor_utils import run1f1b
+            if "dist_strategy" not in fleet_opt or \
+               "pp_degree" not in fleet_opt["dist_strategy"] or \
+               fleet_opt["dist_strategy"]["pp_degree"] == 1:
+                warnings.warn("Using 1F1B scheduler with pp_degree == 1.")
+            tasks, task_id_to_rank = run1f1b(
+                program, cur_rank,
+                fleet_opt.get('num_micro_batches', 1),
+                fleet_opt.get('dist_strategy', {}), nrank)
+        elif scheduler == 'Origin':
+            from paddle.distributed.fleet.fleet_executor_utils import origin
+            if "dist_strategy" in fleet_opt and \
+               "pp_degree" in fleet_opt["dist_strategy"]:
+                assert fleet_opt["dist_strategy"]["pp_degree"] == 1, \
+                    "For pipeline mode, the scheduler should be 1F1B instead of Origin."
+            if "num_micro_batches" in fleet_opt:
+                assert fleet_opt["num_micro_batches"] == 1, \
+                    "For origin scheduler mode, the num micro batches should be 1."
+            tasks, task_id_to_rank = origin(program, cur_rank)
+        else:
+            raise "Fleet_executor only supports 1F1B and Origin scheduler, " \
+                  "but received " + str(scheduler) + "."
+        # NOTE: have to hold these vars, otherwise will be destructed
+        fleet_opt['tasks'] = tasks
+        fleet_opt['task_id_to_rank'] = task_id_to_rank
         fleet_exe = core.FleetExecutor(fleet_exe_desc.SerializeToString())
         place = core.Place()
         place.set_place(self.place)
-        fleet_exe.init(program.desc, scope, place)
+        fleet_exe.init(program.desc, scope, place, tasks, task_id_to_rank)
         return fleet_exe
 
     def _run_using_fleet_executor(self,

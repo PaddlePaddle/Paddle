@@ -28,6 +28,10 @@ class ScalarArrayBase {
 
   ScalarArrayBase(const std::vector<int64_t>& vec) : array_(vec) {}  // NOLINT
 
+  ScalarArrayBase(const std::vector<int32_t>& vec) {  // NOLINT
+    array_.insert(array_.begin(), vec.begin(), vec.end());
+  }
+
   ScalarArrayBase(std::initializer_list<int64_t> array_list)
       : array_(array_list) {}
 
@@ -43,7 +47,7 @@ class ScalarArrayBase {
   ScalarArrayBase(const T& tensor) {  // NOLINT
     size_t n = tensor.numel();
     array_.reserve(n);
-    switch (tensor.type()) {
+    switch (tensor.dtype()) {
       case DataType::INT32:
         AssignData(tensor.template data<int32_t>(), n);
         break;
@@ -55,7 +59,7 @@ class ScalarArrayBase {
             "Data type error. Currently, The data type of ScalarArrayBase "
             "only supports Tensor with int32 and int64, "
             "but now received `",
-            tensor.type(),
+            tensor.dtype(),
             "`.");
     }
   }

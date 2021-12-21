@@ -55,6 +55,9 @@ __unary_func__ = [
     'reciprocal',
     'square',
     'lgamma',
+    'acosh',
+    'asinh',
+    'atanh',
 ]
 
 __inplace_unary_func__ = [
@@ -369,6 +372,45 @@ Examples:
         out = paddle.sinh(x)
         print(out)
         # [-0.41075233 -0.201336    0.10016675  0.30452029]
+
+""")
+
+add_sample_code(globals()["asinh"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.asinh(x)
+        print(out)
+        # [-0.39003533, -0.19869010,  0.09983408,  0.29567307]
+
+""")
+
+add_sample_code(globals()["acosh"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1., 3., 4., 5.])
+        out = paddle.acosh(x)
+        print(out)
+        # [0.        , 1.76274729, 2.06343699, 2.29243159]
+
+""")
+
+add_sample_code(globals()["atanh"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.atanh(x)
+        print(out)
+        # [-0.42364895, -0.20273256,  0.10033535,  0.30951962]
 
 """)
 
