@@ -6366,7 +6366,7 @@ class EagerParamBase(_core_eager_eagertensor):
     def _copy_to(self, device, blocking):
         state = copy.deepcopy(self.__dict__)
         new_param = EagerParamBase(self.shape, self.dtype, **state)
-        core.eager.eager_tensor_copy(self, new_param, device, blocking)
+        core.eager.tensor_copy(self, new_param, device, blocking)
         return new_param
 
     __repr__ = __str__

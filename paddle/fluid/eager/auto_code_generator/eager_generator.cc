@@ -999,7 +999,7 @@ static std::string GenerateGradNodeCreationContent(
           input_position);
 
       const char* ADD_EDGES_TEMPLATE =
-          "    if(%s) grad_node->AddEdges(*%s, %d);\n";
+          "    if(%s) grad_node->AddEdges(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
@@ -1013,7 +1013,7 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
-      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(%s, %d);\n";
+      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
@@ -1197,7 +1197,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (op_passing_outs_map[op_type].count(output_name)) {
       const std::string output_var_name = output_name + "Var";
 
-      // Pass Output from function argument,
+      // Pass Output from function argument(EagerTensor*/vector<EagerTensor*>&),
       // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
@@ -1317,6 +1317,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += "\n";
     VLOG(6) << "Generated GradNode Creation codes";
   }
+
+  // [Generation] Call RetainGradForTensor
+  for (const proto::OpProto::Var& input : in_vars) {
+    const std::string& input_name = input.name();
+    generated_function_body +=
+        "  egr::EagerUtils::CheckAndRetainGrad(" + input_name + ");\n";
+  }
+  VLOG(6) << "Generated Call RetainGradForTensor";
 
   // [Generation] Handle return: Tuple/Vector/Tensor
   generated_function_body += "\n";

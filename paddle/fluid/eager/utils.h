@@ -165,6 +165,9 @@ class EagerUtils {
   static std::vector<egr::EagerTensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerTensor>>& outs);
   static egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& outs);
+
+  static void CheckAndRetainGrad(const egr::EagerTensor& tensor);
+  static void CheckAndRetainGrad(const std::vector<egr::EagerTensor>& tensors);
 };
 
 }  // namespace egr
