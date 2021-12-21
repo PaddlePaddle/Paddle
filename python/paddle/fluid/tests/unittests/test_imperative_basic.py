@@ -259,7 +259,7 @@ class TestImperative(unittest.TestCase):
             self.func_isinstance()
         self.func_isinstance()
 
-    def test_create_VarBase(self):
+    def func_test_create_VarBase(self):
         x = np.ones([2, 2], np.float32)
         y = np.zeros([3, 3], np.float32)
         t = fluid.Tensor()
@@ -279,7 +279,12 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
             self.assertTrue(np.array_equal(x, tmp6.numpy()))
 
-    def test_no_grad_guard(self):
+    # def test_create_VarBase(self):
+    #     with _test_eager_guard():
+    #         self.func_test_create_VarBase()
+    #     self.func_test_create_VarBase()
+
+    def func_test_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
@@ -296,6 +301,11 @@ class TestImperative(unittest.TestCase):
 
             self.assertTrue(tmp._grad_ivar() is None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
+
+    def test_no_grad_guard(self):
+        with _test_eager_guard():
+            self.func_test_no_grad_guard()
+        self.func_test_no_grad_guard()
 
     def test_paddle_imperative_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')

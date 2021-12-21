@@ -604,7 +604,7 @@ class XavierInitializer(Initializer):
         if framework.in_dygraph_mode():
             if self._uniform:
                 limit = np.sqrt(6.0 / float(fan_in + fan_out))
-                out_var = _C_ops.uniform_random('shape', var.shape, 'min',
+                out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype', out_dtype)
             else:

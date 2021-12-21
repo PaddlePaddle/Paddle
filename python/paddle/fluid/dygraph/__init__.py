@@ -57,6 +57,7 @@ from . import amp
 from .amp import *
 
 from .math_op_patch import monkey_patch_math_varbase
+from .math_op_patch import monkey_patch_math_eagertensor
 
 from .inplace_utils import inplace_apis_in_dygraph_only
 

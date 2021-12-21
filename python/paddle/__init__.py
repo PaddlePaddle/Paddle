@@ -24,8 +24,10 @@ except ImportError:
 from .batch import batch  # noqa: F401
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
+from .fluid.dygraph import monkey_patch_math_eagertensor
 monkey_patch_variable()
 monkey_patch_math_varbase()
+monkey_patch_math_eagertensor()
 from .framework.dtype import dtype as dtype  # noqa: F401
 from paddle.framework.dtype import uint8  # noqa: F401
 from paddle.framework.dtype import int8  # noqa: F401

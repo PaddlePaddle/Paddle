@@ -120,13 +120,18 @@ static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
   egr::EagerTensor src_tensor =
       CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+
+  if (!self->eager_tensor.defined()) {
+    egr::EagerUtils::autograd_meta(&(self->eager_tensor))
+        ->SetStopGradient(
+            egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
+    egr::EagerUtils::autograd_meta(&(self->eager_tensor))
+        ->SetPersistable(
+            egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+  }
+
   self->eager_tensor.copy_(src_tensor, blocking);
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))
-      ->SetStopGradient(
-          egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL

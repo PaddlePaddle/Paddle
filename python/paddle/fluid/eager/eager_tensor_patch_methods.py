@@ -15,6 +15,7 @@
 from .. import core as core
 from .. import framework as framework
 from ..dygraph.parallel import scale_loss
+from ..dygraph.math_op_patch import monkey_patch_math_eagertensor
 import numpy as np
 
 
@@ -128,7 +129,16 @@ def monkey_patch_eagertensor():
         # TODO(wanghuancoder) support SELECTED_ROWS
         return self.grad.numpy()
 
+    @framework.dygraph_only
+    def _grad_ivar(self):
+        if self.grad._is_initialized():
+            return self.grad
+        else:
+            return None
+
     if hasattr(core, "eager"):
         setattr(core.eager.EagerTensor, "__str__", __str__)
         setattr(core.eager.EagerTensor, "backward", backward)
         setattr(core.eager.EagerTensor, "gradient", gradient)
+        setattr(core.eager.EagerTensor, "_grad_ivar", _grad_ivar)
+        monkey_patch_math_eagertensor()

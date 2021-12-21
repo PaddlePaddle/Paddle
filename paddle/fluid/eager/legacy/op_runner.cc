@@ -37,6 +37,16 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
                const paddle::framework::AttributeMap& attrs,
                const paddle::framework::AttributeMap& default_attrs,
                const paddle::platform::Place& place) {
+  // Initialize output tensor
+  for (auto& tensor_pair : outs) {
+    for (auto& tensor : tensor_pair.second) {
+      if (tensor && tensor.get() && (!tensor->Var().IsInitialized())) {
+        InitializeVariable(tensor->MutableVar(),
+                           paddle::framework::proto::VarType::LOD_TENSOR);
+      }
+    }
+  }
+
   auto* op_kernel =
       dynamic_cast<const paddle::framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
@@ -47,16 +57,6 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
     egr::legacy::TensorRuntimeInferVarTypeContext infer_var_type_ctx(
         ins, outs, attrs, default_attrs);
     info.infer_var_type_(&infer_var_type_ctx);
-  }
-
-  // Initialize output tensor
-  for (auto& tensor_pair : outs) {
-    for (auto& tensor : tensor_pair.second) {
-      if (tensor && tensor.get() && (!tensor->Var().IsInitialized())) {
-        InitializeVariable(tensor->MutableVar(),
-                           paddle::framework::proto::VarType::LOD_TENSOR);
-      }
-    }
   }
 
   /**
