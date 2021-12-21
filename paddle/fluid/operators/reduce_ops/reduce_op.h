@@ -703,7 +703,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     std::vector<int> reduce_dims =
         GetReduceDim(dims, input->dims().size(), reduce_all);
     int reduce_num = 1;
-    for (int i = 0; i < input->dims().size(); i++) {
+    for (auto i : reduce_dims) {
       reduce_num *= (input->dims())[i];
     }
     gpuStream_t stream = context.cuda_device_context().stream();
@@ -713,8 +713,10 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
           TensorReduceFunc<T, ReduceOp, TransformOp>(
               *input, output, reduce_dims, reduce_num, stream));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, T>>(
-          *input, output, TransformOp<T, T>(reduce_num), reduce_dims, stream);
+      using MPType = typename details::MPTypeTrait<T>::Type;
+      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+          *input, output, TransformOp<T, MPType>(reduce_num), reduce_dims,
+          stream);
     }
   }
 };
