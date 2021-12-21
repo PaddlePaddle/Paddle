@@ -227,9 +227,10 @@ def _convert_to_place(device):
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
         avaliable_npu_device = re.match(r'npu:\d+', lower_device)
-        if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device:
+        avaliable_mlu_device = re.match(r'mlu:\d+', lower_device)
+        if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device and not avaliable_mlu_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x', 'npu', 'npu:x' or ipu"
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x', 'mlu', 'mlu:x', 'npu', 'npu:x' or ipu"
             )
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
@@ -272,14 +273,14 @@ def _convert_to_place(device):
 
 def set_device(device):
     """
-    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
+    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU, MLU and IPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
-            where ``x`` is the index of the GPUs, XPUs or NPUs.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``mlu``, ``gpu:x``, ``xpu:x``, ``npu:x``, ``mlu:x`` and ``ipu``,
+            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs.
 
     Examples:
 
@@ -300,7 +301,7 @@ def set_device(device):
 def get_device():
     """
     This funciton can get the current global device of the program is running.
-    It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
+    It's a string which is like 'cpu', 'gpu:x', 'xpu:x', 'mlu:x' and 'npu:x'. if the global device is not
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it 
     will return a string which is 'cpu' when cuda is not avaliable.
 
