@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES  // use M_2_SQRTPI on Windows
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
