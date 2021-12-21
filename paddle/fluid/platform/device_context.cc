@@ -861,7 +861,10 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find ShapeBlob for current mkldnn session id firstly
   auto map_it = pMap->find(sid);
-  if (map_it == pMap->end()) {
+  // (jczaja): In most cases we have data cached
+//  if (map_it == pMap->end()) {
+    if(__builtin_expect( map_it == pMap->end(), 0)) {
+
     VLOG(2) << "GetBlob: sid=" << sid << ", miss sid\n";
     return nullptr;
   }
@@ -869,7 +872,8 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current input shape secondly
   auto sBlob_it = sBlob->find(tls().cur_input_shape_str);
-  if (sBlob_it == sBlob->end()) {
+  //if (sBlob_it == sBlob->end()) {
+  if(__builtin_expect( sBlob_it == sBlob->end(), 0)) {
     VLOG(2) << "GetBlob: sid=" << tls().cur_input_shape_str
             << ", miss input_shape_str\n";
     return nullptr;
@@ -879,7 +883,8 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   // Find Blob via name
   auto key_it = pBlob->find(name);
 
-  if (key_it == pBlob->end()) {
+//  if (key_it == pBlob->end()) {
+  if(__builtin_expect( key_it == pBlob->end(), 0)) {
     VLOG(2) << "GetBlob sid=" << sid << ", miss blob=" << name << "\n";
     return nullptr;
   }
