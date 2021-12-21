@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
@@ -122,6 +123,19 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     platform::Store<MaskType, VecSize>(mask_val, &mask[i]);
   }
 }
+
+template <typename T, typename MaskType>
+struct CudaDropoutGradFunctor {
+  explicit CudaDropoutGradFunctor(const T factor) : factor_(factor) {}
+
+  __device__ __forceinline__ T operator()(const T& dout,
+                                          const MaskType& mask) const {
+    return dout * static_cast<T>(mask) * factor_;
+  }
+
+ private:
+  T factor_;
+};
 
 template <typename T, typename MaskType, int VecSize>
 __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
@@ -263,6 +277,7 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
         if (vec_size == 4 && size % 4 == 0) {
           auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
           auto stream = dev_ctx.stream();
+          /*
           platform::GpuLaunchConfig config =
               platform::GetGpuLaunchConfig1D(dev_ctx, size, vec_size);
           DropoutGradCUDAKernel<
@@ -270,6 +285,12 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
               4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
               grad_y.data<T>(), mask.data<uint8_t>(), factor, size,
               grad_x->data<T>());
+          */
+          std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
+          std::vector<framework::Tensor*> outs = {grad_x};
+          auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
+          LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+              dev_ctx, ins, &outs, functor);
         } else {
           dX.device(place) =
               dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
