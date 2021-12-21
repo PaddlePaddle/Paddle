@@ -924,6 +924,7 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
   seqconv_input->assert_is_op_input("sequence_conv", "X");
   auto *seqconv_op = pattern->NewNode(seqconv_repr())
                          ->assert_is_op("sequence_conv")
+                         ->assert_has_n_inputs(2)
                          ->assert_op_attr<bool>("paddingTrainable", false)
                          ->assert_op_attr<int>("contextStride", 1);
 
