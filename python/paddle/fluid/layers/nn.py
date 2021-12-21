@@ -665,10 +665,10 @@ def _pull_sparse_v2(input,
     return outs
 
 def _pull_gpups_sparse(input,
-                     size,
-                     dtype='float32',
-                     is_distributed=False,
-                     is_sparse=False):
+                       size,
+                       dtype='float32',
+                       is_distributed=False,
+                       is_sparse=False):
     r"""
     **Pull GpuPS Sparse Layer**
 
@@ -725,6 +725,7 @@ def _pull_gpups_sparse(input,
     if len(outs) == 1:
         return outs[0]
     return outs
+
 
 def _pull_box_sparse(input,
                      size,
