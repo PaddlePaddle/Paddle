@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.cc"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
@@ -77,9 +77,9 @@ class ComplexOp : public framework::OperatorWithKernel {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
-      details::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                                      y_dims_array.data(),
-                                      out_dims_array.data(), max_dim, axis);
+      GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
+                             y_dims_array.data(), out_dims_array.data(),
+                             max_dim, axis);
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
     }
   }
