@@ -2593,13 +2593,18 @@ def repeat_interleave(x, repeats, axis=None, name=None):
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
         repeats (Tensor or int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
-        axis (int, optional): The dimension in which we manipulate. Default: if None, the output tensor is flatten.
+        axis (int, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor with same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
 
             x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             repeats  = paddle.to_tensor([3, 2, 1], dtype='int32')
