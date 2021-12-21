@@ -15,10 +15,8 @@ limitations under the License. */
 #include "paddle/pten/kernels/cuda/math.h"
 
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
 #include "paddle/pten/kernels/hybird/eigen/sign.h"
-#include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
@@ -74,15 +72,6 @@ void Mean(const CUDAContext& dev_ctx,
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
-// Create the definition of Add
-DEFINE_CUDA_ELEMENTWISE_OP(Add)
-// Create the definition of Subtract
-DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
-// Create the definition of Multiply
-DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
-// Create the definition of Divide
-DEFINE_CUDA_ELEMENTWISE_OP(Divide)
-
 template <typename T>
 void Sum(const CUDAContext& dev_ctx,
          const DenseTensor& x,
@@ -104,51 +93,7 @@ using complex128 = ::paddle::platform::complex<double>;
 PT_REGISTER_KERNEL(sign, CUDA, ALL_LAYOUT, pten::Sign, float, double, float16) {
 }
 PT_REGISTER_KERNEL(mean, CUDA, ALL_LAYOUT, pten::Mean, float, double, bool) {}
-PT_REGISTER_KERNEL(add,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::Add,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   float16,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(subtract,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::Subtract,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   float16,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(divide,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::Divide,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   float16,
-                   complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(multiply,
-                   CUDA,
-                   ALL_LAYOUT,
-                   pten::Multiply,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   float16,
-                   complex64,
-                   complex128) {}
+
 PT_REGISTER_KERNEL(sum,
                    CUDA,
                    ALL_LAYOUT,

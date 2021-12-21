@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/cpu/math.h"
 #include "paddle/pten/kernels/cuda/conj_kernel.h"
 #include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/elementwise_kernel.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
