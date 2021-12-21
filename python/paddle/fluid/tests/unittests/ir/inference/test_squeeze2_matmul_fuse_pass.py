@@ -48,15 +48,15 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
 
         # TRT
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=10,
-            workspace_size=10240,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False)
-        yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
+        # config = self.create_trt_inference_config()
+        # config.enable_tensorrt_engine(
+        #     max_batch_size=10,
+        #     workspace_size=10240,
+        #     min_subgraph_size=0,
+        #     precision_mode=paddle_infer.PrecisionType.Float32,
+        #     use_static=False,
+        #     use_calib_mode=False)
+        # yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
@@ -178,7 +178,7 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=50,
             max_duration=1000,
             passes=["squeeze2_matmul_fuse_pass"])
 

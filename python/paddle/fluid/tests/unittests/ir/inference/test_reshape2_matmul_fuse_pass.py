@@ -40,15 +40,15 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # TRT
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=10,
-            workspace_size=102400,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False)
-        yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
+        # config = self.create_trt_inference_config()
+        # config.enable_tensorrt_engine(
+        #     max_batch_size=10,
+        #     workspace_size=102400,
+        #     min_subgraph_size=0,
+        #     precision_mode=paddle_infer.PrecisionType.Float32,
+        #     use_static=False,
+        #     use_calib_mode=False)
+        # yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
 
         # cpu
         config = self.create_inference_config(use_gpu=False)
@@ -170,7 +170,7 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=50,
             max_duration=1000,
             passes=["reshape2_matmul_fuse_pass"])
 
