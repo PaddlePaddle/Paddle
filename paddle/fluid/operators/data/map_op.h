@@ -44,9 +44,9 @@ static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capa
             "LoDTensorBlockingQueueHolder type"));
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
       if (queue == nullptr) {
-        LOG(ERROR) << "MapOpKernel init queue";
         auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
         holder->InitOnce(capacity);
+        LOG(ERROR) << "MapOpKernel init queue" << holder->GetQueue();
       }
     } else {
       VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;

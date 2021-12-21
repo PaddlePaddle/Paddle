@@ -95,12 +95,11 @@ def map(map_func, inputs):
         "input_var_names": input_var_names,
         "output_var_names": output_var_names
     }
-    print(stream_id, "attr: ", attrs)
+    print("stream id: ", stream_id, "attr: ", attrs)
 
     # stream_id = _generate_stream_id()
     for idx in range(map_block.desc.op_size()):
         map_block.desc.op(idx)._set_attr('stream_id', stream_id)
-        print("map_block", stream_id, map_block.desc.op(idx).type())
 
     import sys
     sys.stdout.flush()
