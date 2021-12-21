@@ -23,7 +23,7 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
-    return Backend::CUDA;
+    return Backend::GPU;
   } else {
     return Backend::UNDEFINED;
   }
@@ -84,7 +84,7 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
     case pten::Backend::CPU:
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDA:
+    case pten::Backend::GPU:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif

@@ -17,13 +17,16 @@ limitations under the License. */
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
 
-template <typename T>
-void Conj(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
+void Copy(const GPUContext& dev_ctx,
+          const DenseTensor& src,
+          bool blocking,
+          DenseTensor* dst);
 
 }  // namespace pten
 

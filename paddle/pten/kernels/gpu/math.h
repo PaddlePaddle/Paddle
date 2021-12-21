@@ -17,17 +17,17 @@ limitations under the License. */
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
 template <typename T>
-void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
+void Sign(const GPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 template <typename T>
-void Mean(const CUDAContext& dev_ctx,
+void Mean(const GPUContext& dev_ctx,
           const DenseTensor& x,
           const std::vector<int64_t>& dims,
           bool keep_dim,
@@ -35,35 +35,35 @@ void Mean(const CUDAContext& dev_ctx,
           DenseTensor* out);
 
 template <typename T>
-void Add(const CUDAContext& dev_ctx,
+void Add(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          int axis,
          DenseTensor* out);
 
 template <typename T>
-void Subtract(const CUDAContext& dev_ctx,
+void Subtract(const GPUContext& dev_ctx,
               const DenseTensor& x,
               const DenseTensor& y,
               int axis,
               DenseTensor* out);
 
 template <typename T>
-void Divide(const CUDAContext& dev_ctx,
+void Divide(const GPUContext& dev_ctx,
             const DenseTensor& x,
             const DenseTensor& y,
             int axis,
             DenseTensor* out);
 
 template <typename T>
-void Multiply(const CUDAContext& dev_ctx,
+void Multiply(const GPUContext& dev_ctx,
               const DenseTensor& x,
               const DenseTensor& y,
               int axis,
               DenseTensor* out);
 
 template <typename T>
-void Sum(const CUDAContext& dev_ctx,
+void Sum(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const std::vector<int64_t>& dims,
          bool keep_dim,
@@ -75,7 +75,7 @@ void Sum(const CUDAContext& dev_ctx,
 
 #define DEFINE_CUDA_ELEMENTWISE_OP(name)                               \
   template <typename T>                                                \
-  void name(const CUDAContext& dev_ctx,                                \
+  void name(const GPUContext& dev_ctx,                                 \
             const DenseTensor& x,                                      \
             const DenseTensor& y,                                      \
             int axis,                                                  \
