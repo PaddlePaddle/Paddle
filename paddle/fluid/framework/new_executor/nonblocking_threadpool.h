@@ -15,39 +15,10 @@
 #include "paddle/fluid/framework/new_executor/event_count.h"
 #include "paddle/fluid/framework/new_executor/run_queue.h"
 #include "paddle/fluid/framework/new_executor/thread_environment.h"
+#include "paddle/fluid/platform/os_info.h"
 
 namespace paddle {
 namespace framework {
-
-template <typename Notifier>
-class TaskTracker {
- public:
-  TaskTracker() = default;
-
-  explicit TaskTracker(Notifier& notifier) : notifier_(&notifier) {}
-
-  TaskTracker(const TaskTracker&) = delete;
-
-  TaskTracker& operator=(const TaskTracker&) = delete;
-
-  ~TaskTracker() = default;
-
-  void AddCounter() { num_tasks_.fetch_add(1, std::memory_order_relaxed); }
-
-  void SubCounter() {
-    if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
-      if (notifier_ != nullptr) {
-        notifier_->NotifyEvent();
-      }
-    }
-  }
-
-  uint64_t PendingTaskNum() { return num_tasks_.load(); }
-
- private:
-  alignas(64) std::atomic<uint64_t> num_tasks_{0};
-  Notifier* notifier_{nullptr};
-};
 
 template <typename Environment>
 class ThreadPoolTempl {

@@ -21,10 +21,10 @@ class WorkQueueImpl : public WorkQueue {
     if (options_.track_task && options.queue_empty_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
       TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      auto notifier = options.queue_empty_waiter->RegisterEvent(
+      notifier_ = options.queue_empty_waiter->RegisterEvent(
           kQueueEmptyEvent,
           [tracker]() { return tracker->PendingTaskNum() == 0; });
-      tracker_ = new (storage) TaskTracker(*notifier.get());
+      tracker_ = new (storage) TaskTracker(*notifier_.get());
     }
     queue_ = new NonblockingThreadPool(options_.num_threads,
                                        options_.allow_spinning);
@@ -34,6 +34,7 @@ class WorkQueueImpl : public WorkQueue {
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
       AlignedFree(tracker_);
+      notifier_->UnregisterEvent();
     }
     delete queue_;
   }
@@ -59,6 +60,7 @@ class WorkQueueImpl : public WorkQueue {
  private:
   NonblockingThreadPool* queue_{nullptr};
   TaskTracker* tracker_{nullptr};
+  std::shared_ptr<EventsWaiter::EventNotifier> notifier_;
 };
 
 class WorkQueueGroupImpl : public WorkQueueGroup {
@@ -80,6 +82,7 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
   std::vector<NonblockingThreadPool*> queues_;
   NonblockingThreadPool* queues_storage_;
   TaskTracker* tracker_;
+  std::shared_ptr<EventsWaiter::EventNotifier> notifier_;
 };
 
 WorkQueueGroupImpl::WorkQueueGroupImpl(
@@ -97,10 +100,10 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
         options.queue_empty_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
       TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      auto notifier = options.queue_empty_waiter->RegisterEvent(
+      notifier_ = options.queue_empty_waiter->RegisterEvent(
           kQueueEmptyEvent,
           [tracker]() { return tracker->PendingTaskNum() == 0; });
-      tracker_ = new (storage) TaskTracker(*notifier.get());
+      tracker_ = new (storage) TaskTracker(*notifier_.get());
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.num_threads, options.allow_spinning);
@@ -114,6 +117,7 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
   if (tracker_ != nullptr) {
     tracker_->~TaskTracker();
     AlignedFree(tracker_);
+    notifier_->UnregisterEvent();
   }
   free(queues_storage_);
 }

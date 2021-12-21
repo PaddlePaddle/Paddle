@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/new_executor/event_count.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -71,53 +72,106 @@ void AlignedFree(void* memory_ptr);
 
 // A multiplexing waiter, be able to wait multi events simultaneously.
 // Blocking the calling thread to wait any of the registered events.
-// Non-thread-safe.
 class EventsWaiter {
  public:
-  using EventId = int64_t;
+  using EventId = std::size_t;
 
   using EventChecker = std::function<bool()>;
 
+  // Make sure EventsWaiter has a longer lifetime than EventNotifier.
   class EventNotifier {
    public:
-    void NotifyEvent();
+    void NotifyEvent() { waiter_.TriggerEvent(id_); }
+
+    void UnregisterEvent() { waiter_.UnregisterEvent(id_); }
 
     EventId GetEventId() { return id_; }
 
-    std::string GetEventName();
+    // return "Unregistered" if the corresponding event was unregistered.
+    std::string GetEventName() { return waiter_.GetEventName(id_); }
 
    private:
     friend EventsWaiter;
     EventNotifier(EventId id, EventsWaiter* waiter)
         : id_(id), waiter_(*waiter) {}
+    EventNotifier(const EventNotifier&) = delete;
+    void operator=(const EventNotifier&) = delete;
 
     EventId id_;
     EventsWaiter& waiter_;
   };
 
   EventsWaiter();
-
   EventsWaiter(const EventsWaiter&) = delete;
-
   EventsWaiter& operator=(const EventsWaiter&) = delete;
 
-  // All the RegisterEvent functions must be called before any WaitEvent
+  // Register a level-triggered event. If the checker returns true or
+  // EventNotifier::NotifyEvent is called, the corresponding event will be
+  // distributed.
   std::shared_ptr<EventNotifier> RegisterEvent(const std::string& name,
                                                EventChecker checker);
+
+  // Register an edge-triggered event. The corresponding event will be
+  // distributed when EventNotifier::NotifyEvent is called.
+  std::shared_ptr<EventNotifier> RegisterEvent(const std::string& name);
+
+  void UnregisterEvent(const EventId& id);
 
   // Wait any of the registered events
   std::string WaitEvent();
 
  private:
   friend EventNotifier;
-  void SetTriggerEvent(const EventId& id);
 
-  std::vector<std::string> names_;
-  std::vector<EventChecker> checkers_;
-  std::vector<std::shared_ptr<EventNotifier>> notifiers_;
-  std::atomic<EventId> trigger_event_;
+  enum class TriggerType { LevelTriggered, EdgeTriggered };
+
+  struct EventInfo {
+    EventId id;
+    std::string name;
+    TriggerType type;
+    EventChecker checker;
+  };
+
+  void TriggerEvent(const EventId& id);
+
+  std::string GetEventName(const EventId& id);
+
+  std::unordered_map<EventId, EventInfo> events_;
+  paddle::memory::SpinLock events_lock_;
+  std::atomic<std::string*> trigger_event_;
+  std::atomic<uint64_t> counter_;
   std::atomic<bool> waiting_;
   EventCount cv_;
+};
+
+template <typename Notifier>
+class TaskTracker {
+ public:
+  TaskTracker() = default;
+
+  explicit TaskTracker(Notifier& notifier) : notifier_(&notifier) {}
+
+  TaskTracker(const TaskTracker&) = delete;
+
+  TaskTracker& operator=(const TaskTracker&) = delete;
+
+  ~TaskTracker() = default;
+
+  void AddCounter() { num_tasks_.fetch_add(1, std::memory_order_relaxed); }
+
+  void SubCounter() {
+    if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
+      if (notifier_ != nullptr) {
+        notifier_->NotifyEvent();
+      }
+    }
+  }
+
+  uint64_t PendingTaskNum() { return num_tasks_.load(); }
+
+ private:
+  alignas(64) std::atomic<uint64_t> num_tasks_{0};
+  Notifier* notifier_{nullptr};
 };
 
 }  // namespace framework
