@@ -539,10 +539,57 @@ class HookRemoveHelper(object):
         self._hook = hook
 
     def remove(self):
-        remove_save_pre_hook(self._hook)
+        _remove_save_pre_hook(self._hook)
 
 
 def register_save_pre_hook(hook):
+    """
+    Register a save pre-hook for `paddle.jit.save`.
+    This hook will be executed before `save` function has been invoked.
+
+    hook(layer, input_spec, configs) -> None
+    - layer (Layer|function): This argument is corresponding to `layer` in `paddle.jit.save`.
+    - input_spec (list or tuple[InputSpec|Tensor|Python built-in variable]): This argument is corresponding to `input_spec` in `paddle.jit.save`.
+    - configs (dict): This argument is corresponding to `configs` in `paddle.jit.save`.
+
+    Args:
+        hook(function): a function registered as a save pre-hook
+
+    Returns:
+        HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()`.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            IMAGE_SIZE = 256
+            CLASS_NUM = 10
+
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+                def forward(self, x):
+                    return self._linear(x)
+
+            saving_count = 0
+            def save_pre_hook(layer, input_spec, configs):
+                global saving_count
+                saving_count += 1
+
+            remove_handler = paddle.jit.register_save_pre_hook(save_pre_hook)
+
+            layer = LinearNet()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 1
+
+            remove_handler.remove()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 1
+    """
     global _save_pre_hooks_lock
     global _save_pre_hooks
     _save_pre_hooks_lock.acquire()
@@ -552,20 +599,58 @@ def register_save_pre_hook(hook):
     return HookRemoveHelper(hook)
 
 
-def remove_save_pre_hook(hook):
+def clear_save_pre_hooks():
+    """
+    Clear all save pre-hooks for `paddle.jit.save`.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            IMAGE_SIZE = 256
+            CLASS_NUM = 10
+
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+                def forward(self, x):
+                    return self._linear(x)
+
+            saving_count = 0
+            def save_pre_hook(layer, input_spec, configs):
+                global saving_count
+                saving_count += 1
+
+            remove_handler = paddle.jit.register_save_pre_hook(save_pre_hook)
+
+            layer = LinearNet()
+            paddle.jit.clear_save_pre_hooks()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 0
+    """
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    _save_pre_hooks.clear()
+    _save_pre_hooks_lock.release()
+
+
+def _remove_save_pre_hook(hook):
     global _save_pre_hooks_lock
     global _save_pre_hooks
     _save_pre_hooks_lock.acquire()
     if hook in _save_pre_hooks:
         _save_pre_hooks.remove(hook)
-    _save_pre_hooks_lock.release()
-
-
-def clear_save_pre_hooks():
-    global _save_pre_hooks_lock
-    global _save_pre_hooks
-    _save_pre_hooks_lock.acquire()
-    _save_pre_hooks.clear()
     _save_pre_hooks_lock.release()
 
 
