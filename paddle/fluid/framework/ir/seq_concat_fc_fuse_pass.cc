@@ -156,7 +156,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
       },
       "add_out");
 
-  std::set<std::string> acts({"sigmoid", "tanh", "relu", "identity"});
+  std::set<std::string> acts({"sigmoid", "tanh"});
   PDNode* act = pattern->NewNode(
       [=](Node* x) { return x && x->IsOp() && acts.count(x->Op()->Type()); },
       "act");

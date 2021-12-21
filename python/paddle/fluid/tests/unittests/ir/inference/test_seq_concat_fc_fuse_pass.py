@@ -38,7 +38,7 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         axis2 = draw(st.sampled_from([1]))
         use_cudnn = False
         use_mkldnn = False
-        act_type = draw(st.sampled_from(["relu", "tanh", "sigmoid"]))
+        act_type = draw(st.sampled_from(["tanh", "sigmoid"]))
         batch_size = draw(st.integers(min_value=1, max_value=1))
         dim = draw(st.integers(min_value=1, max_value=1000))
 
@@ -122,20 +122,8 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         config = self.create_inference_config()
         yield config, ["fusion_seqexpand_concat_fc"], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        def teller1(program_config, predictor_config):
-            return True
-
-        self.add_ignore_check_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
-                                   "The output has diff!")
-
     def test(self):
-        self.run_and_statis(
-            # If the output diff problem has been fixed,
-            # min_success_num=0 should be deleted!
-            min_success_num=0,
-            quant=False,
-            passes=["seq_concat_fc_fuse_pass"])
+        self.run_and_statis(quant=False, passes=["seq_concat_fc_fuse_pass"])
 
 
 if __name__ == "__main__":
