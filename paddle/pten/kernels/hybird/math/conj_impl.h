@@ -14,23 +14,21 @@
 
 #pragma once
 
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace pten {
 
-using CPUContext = paddle::platform::CPUDeviceContext;
+template <typename T, typename ContextT>
+void ConjImpl(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  auto numel = x.numel();
+  auto* x_data = x.data<T>();
+  auto* out_data = out->mutable_data<T>();
 
-template <typename T>
-void FullLike(const CPUContext& dev_ctx, const Scalar& val, DenseTensor* out);
-
-template <typename T>
-void Full(const CPUContext& dev_ctx,
-          const ScalarArray& shape,
-          const Scalar& val,
-          DenseTensor* out);
+  paddle::platform::ForRange<ContextT> for_range(dev_ctx, numel);
+  paddle::operators::math::ConjFunctor<T> functor(x_data, numel, out_data);
+  for_range(functor);
+}
 
 }  // namespace pten
