@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace egr {
+namespace legacy {
 
 void InitializeVariable(paddle::framework::Variable *var,
                         paddle::framework::proto::VarType::Type var_type) {
@@ -108,4 +109,6 @@ const paddle::platform::Place &GetPlaceFromVar(
         paddle::framework::ToTypeName(var.Type())));
   }
 }
+
+}  // namespace legacy
 }  // namespace egr

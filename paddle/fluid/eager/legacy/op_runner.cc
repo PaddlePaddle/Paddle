@@ -30,6 +30,7 @@ DECLARE_string(tracer_mkldnn_ops_on);
 DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace egr {
+namespace legacy {
 
 void OpRunImpl(const paddle::framework::OperatorBase& op,
                const NameTensorMap& ins, const NameTensorMap& outs,
@@ -43,8 +44,8 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
                      "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    egr::TensorRuntimeInferVarTypeContext infer_var_type_ctx(ins, outs, attrs,
-                                                             default_attrs);
+    egr::legacy::TensorRuntimeInferVarTypeContext infer_var_type_ctx(
+        ins, outs, attrs, default_attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
@@ -76,10 +77,10 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op = egr::PreparedOp::Prepare(ins, outs, *op_kernel, place,
-                                              attrs, default_attrs);
+  auto prepared_op = egr::legacy::PreparedOp::Prepare(
+      ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =
-      egr::PrepareData(*op_kernel, ins, prepared_op.kernel_type());
+      egr::legacy::PrepareData(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
@@ -130,10 +131,10 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
 
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
   NameTensorMap new_ins = ins;
-  if (amp_level == 1) {
+  if (amp_level == paddle::imperative::AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (amp_level == 2) {
+  } else if (amp_level == paddle::imperative::AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }
@@ -188,4 +189,6 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
   //   program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
   // }
 }
+
+}  // namespace legacy
 }  // namespace egr

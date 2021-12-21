@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
@@ -39,19 +39,17 @@ void Interceptor::Join() {
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
-  if (handle_) {
-    handle_(msg);
-  } else {
-    VLOG(3) << "Interceptor is using default message handler. This handler is "
-               "only used for test purpose. Check whether you init interceptor "
-               "in the proper way.";
-    if (msg.message_type() == DATA_IS_READY) {
-      VLOG(3) << "Fake handler is sending stop message to it self.";
-      InterceptorMessage msg;
-      msg.set_message_type(STOP);
-      Send(interceptor_id_, msg);
-    }
-  }
+  PADDLE_ENFORCE_NOT_NULL(handle_, platform::errors::PreconditionNotMet(
+                                       "Message handle is not registered."));
+  handle_(msg);
+}
+
+void Interceptor::StopCarrier() {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
+  std::condition_variable& cond_var = carrier_->GetCondVar();
+  // probably double notify, but ok for ut
+  cond_var.notify_all();
 }
 
 std::condition_variable& Interceptor::GetCondVar() {
@@ -75,13 +73,12 @@ bool Interceptor::EnqueueRemoteInterceptorMessage(
 }
 
 bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
   msg.set_src_id(interceptor_id_);
   msg.set_dst_id(dst_id);
-  return MessageBus::Instance().Send(msg);
+  return carrier_->Send(msg);
 }
-
-// maybe need a better method for interceptor base
-void Interceptor::HandleStop(const InterceptorMessage& msg) { stop_ = true; }
 
 void Interceptor::PoolTheMailbox() {
   // pool the local mailbox, parse the Message
@@ -101,11 +98,7 @@ void Interceptor::PoolTheMailbox() {
             << " from interceptor " << interceptor_message.src_id()
             << " with message: " << message_type << ".";
 
-    if (message_type == STOP) {
-      HandleStop(interceptor_message);
-    } else {
-      Handle(interceptor_message);
-    }
+    Handle(interceptor_message);
 
     if (stop_) {
       // break the pooling thread

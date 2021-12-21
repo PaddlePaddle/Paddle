@@ -58,6 +58,11 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
 
+void MovesSharedStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
+
+void MovesSharedStorage(pten::DenseTensor* src,
+                        paddle::framework::LoDTensor* dst);
+
 /**
  * In order to improve the compatibility state performance, some tricky tool
  * functions are added.
@@ -67,6 +72,8 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
  * the overhead caused by frequent construction and destruction of the
  * DenseTensor.
  */
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            const pten::TensorArgDef& arg_def,

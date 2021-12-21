@@ -31,10 +31,12 @@
 namespace paddle {
 namespace framework {
 class Scope;
+class GarbageCollector;
 }
 namespace distributed {
 
 class TaskNode;
+class Carrier;
 
 class Interceptor {
  public:
@@ -51,8 +53,6 @@ class Interceptor {
 
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
-
-  virtual void HandleStop(const InterceptorMessage& msg);
 
   void Handle(const InterceptorMessage& msg);
 
@@ -75,6 +75,10 @@ class Interceptor {
   void SetMicroBatchScope(const std::vector<framework::Scope*>& scopes) {
     microbatch_scopes_ = scopes;
   }
+  void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
+    gc_ = gc;
+  }
+  void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
 
   TaskNode* GetTaskNode() const { return node_; }
 
@@ -89,12 +93,16 @@ class Interceptor {
 
   // for stop
   bool stop_{false};
+  void StopCarrier();
 
   // for runtime
   platform::Place place_;
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
+  std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
+
+  Carrier* carrier_;
 
  private:
   // pool the local mailbox, parse the Message

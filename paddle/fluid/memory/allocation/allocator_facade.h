@@ -19,7 +19,7 @@
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/place.h"
 
@@ -64,7 +64,10 @@ class AllocatorFacade {
   AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
                       const gpuStream_t& stream);
   uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
-  void RecordStream(Allocation* allocation, const gpuStream_t& stream);
+  void RecordStream(std::shared_ptr<Allocation> allocation,
+                    const gpuStream_t& stream);
+  const gpuStream_t& GetStream(
+      const std::shared_ptr<Allocation>& allocation) const;
 #ifdef PADDLE_WITH_CUDA
   void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
   void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);

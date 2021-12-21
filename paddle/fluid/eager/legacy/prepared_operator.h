@@ -40,6 +40,7 @@ class DeviceContext;
 }  // namespace paddle
 
 namespace egr {
+namespace legacy {
 
 const paddle::framework::Tensor* GetTensorFromVar(
     const paddle::framework::Variable& var);
@@ -79,4 +80,5 @@ class PreparedOp {
   paddle::platform::DeviceContext* dev_ctx_;
 };
 
+}  // namespace legacy
 }  // namespace egr

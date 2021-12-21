@@ -87,6 +87,20 @@ struct DivideFunctor {
 };
 
 /**
+ * @brief Default inverse functor
+ */
+template <typename Tx, typename Ty = Tx>
+struct InverseFunctor {
+  HOSTDEVICE inline InverseFunctor() {}
+
+  HOSTDEVICE explicit inline InverseFunctor(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(-x);
+  }
+};
+
+/**
  * @brief Default unary square functor
  */
 template <typename Tx, typename Ty = Tx>

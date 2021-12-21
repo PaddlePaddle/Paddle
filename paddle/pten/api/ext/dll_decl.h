@@ -15,13 +15,13 @@
 #pragma once
 
 #if defined(_WIN32)
-#ifndef PD_DLL_DECL
+#ifndef PADDLE_API
 #ifdef PADDLE_DLL_EXPORT
-#define PD_DLL_DECL __declspec(dllexport)
+#define PADDLE_API __declspec(dllexport)
 #else
-#define PD_DLL_DECL __declspec(dllimport)
+#define PADDLE_API __declspec(dllimport)
 #endif  // PADDLE_DLL_EXPORT
-#endif  // PD_DLL_DECL
+#endif  // PADDLE_API
 #else
-#define PD_DLL_DECL
+#define PADDLE_API
 #endif  // _WIN32

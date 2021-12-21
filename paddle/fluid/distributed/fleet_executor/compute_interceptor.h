@@ -25,27 +25,29 @@ class ComputeInterceptor : public Interceptor {
  public:
   ComputeInterceptor(int64_t interceptor_id, TaskNode* node);
 
+ protected:
+  virtual void RunOps();
+  virtual void SendDataReadyToDownStream();
+  virtual void ReplyCompletedToUpStream();
+
+  int64_t step_{0};
+
+ private:
   void PrepareDeps();
 
   void IncreaseReady(int64_t up_id);
   void DecreaseBuff(int64_t down_id);
   bool IsInputReady();
   bool CanWriteOutput();
-  bool ShouldReset();
-
-  void SendDataReadyToDownStream();
-  void ReplyCompletedToUpStream();
 
   void Run();
   void Compute(const InterceptorMessage& msg);
 
-  void HandleStop(const InterceptorMessage& msg) override;
   void ReceivedStop(int64_t up_id);
   void TryStop();
 
- private:
   bool is_source_{false};
-  int64_t step_{0};
+  bool is_last_{false};
 
   // upstream_id-->(max_ready_size, ready_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
