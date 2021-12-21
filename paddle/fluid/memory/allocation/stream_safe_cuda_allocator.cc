@@ -20,8 +20,9 @@ namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
     AllocationPtr underlying_allocation, gpuStream_t owning_stream)
-    : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
-                 underlying_allocation->place()),
+    : Allocation(underlying_allocation->ptr(),
+                 underlying_allocation->base_ptr(),
+                 underlying_allocation->size(), underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)) {}
 
@@ -149,10 +150,10 @@ void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
                               "StreamSafeCUDAAllocation*",
                               allocation));
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   if (stream_safe_cuda_allocation->CanBeFreed()) {
     delete stream_safe_cuda_allocation;
   } else {
-    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
     unfreed_allocations_.emplace_back(stream_safe_cuda_allocation);
   }
 }

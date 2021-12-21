@@ -33,31 +33,31 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
                                 pten::DenseTensor* dense_out) {
   switch (dense_tensor.dtype()) {
     case pten::DataType::FLOAT64: {
-      pten::Scale<double>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
-                          bias /* bias */,
-                          bias_after_scale /* bias_after_scale */,
-                          dense_out /* out tensor */);
+      pten::Scale<double, DeviceContext>(
+          dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+          bias /* bias */, bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     case pten::DataType::FLOAT32: {
-      pten::Scale<float>(dev_ctx, dense_tensor /* tensor */, scale /* scale */,
-                         bias /* bias */,
-                         bias_after_scale /* bias_after_scale */,
-                         dense_out /* out tensor */);
+      pten::Scale<float, DeviceContext>(dev_ctx, dense_tensor /* tensor */,
+                                        scale /* scale */, bias /* bias */,
+                                        bias_after_scale /* bias_after_scale */,
+                                        dense_out /* out tensor */);
       break;
     }
     case pten::DataType::INT64: {
-      pten::Scale<int64_t>(dev_ctx, dense_tensor /* tensor */,
-                           scale /* scale */, bias /* bias */,
-                           bias_after_scale /* bias_after_scale */,
-                           dense_out /* out tensor */);
+      pten::Scale<int64_t, DeviceContext>(
+          dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+          bias /* bias */, bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     case pten::DataType::INT32: {
-      pten::Scale<int32_t>(dev_ctx, dense_tensor /* tensor */,
-                           scale /* scale */, bias /* bias */,
-                           bias_after_scale /* bias_after_scale */,
-                           dense_out /* out tensor */);
+      pten::Scale<int32_t, DeviceContext>(
+          dev_ctx, dense_tensor /* tensor */, scale /* scale */,
+          bias /* bias */, bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     default: {
