@@ -116,6 +116,22 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
+#ifdef PADDLE_WITH_MLU
+  void operator()(const paddle::platform::MLUPlace& place) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const paddle::platform::MLUPlace& place) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
 #ifdef PADDLE_WITH_IPU
   void operator()(const paddle::platform::IPUPlace& place) {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(

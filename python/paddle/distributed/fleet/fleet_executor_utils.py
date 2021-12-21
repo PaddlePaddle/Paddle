@@ -89,7 +89,7 @@ def is_backward_op(op_role):
            (op_role == (int(OpRole.Backward) ^ int(OpRole.Loss)))
 
 
-def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
+def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
     """
     Split the program to support 1f1b pipeline scheduler.
     This funct will split the program based on the op_role.
@@ -201,3 +201,20 @@ def one_f_one_b(program, cur_rank, max_run_times, dist_opt, nrank):
         for j in range(num_of_functionality):
             task_id_to_rank[int(i * num_of_functionality + j)] = i
     return task_nodes, task_id_to_rank
+
+
+def origin(program, cur_rank):
+    """
+    Origin scheduler for fleet executor, supports non-pp mode
+    :param program: The origin program.
+    :param cur_rank: Current rank (can be got from fleet.worker_index()).
+    :return:
+        task_nodes (list): four task nodes for current rank
+        task_id_to_rank (dict): a fake dict, since there is no upstream or downstream, this dict won't be used
+    """
+    print("fleet executor will use python side origin scheduler.")
+    task_node = core.TaskNode(program.desc, cur_rank, 1, 1)
+    task_node.set_type("Compute")
+    task_id = task_node.task_id()
+    task_id_to_rank = {task_id: cur_rank}
+    return [task_node], task_id_to_rank

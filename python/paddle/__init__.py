@@ -66,6 +66,8 @@ import paddle.vision  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 
+from .tensor.attribute import is_complex  # noqa: F401
+from .tensor.attribute import is_integer  # noqa: F401
 from .tensor.attribute import rank  # noqa: F401
 from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
@@ -88,6 +90,7 @@ from .tensor.creation import meshgrid  # noqa: F401
 from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
+from .tensor.creation import complex  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -378,6 +381,8 @@ __all__ = [  # noqa
            'equal',
            'equal_all',
            'is_tensor',
+           'is_complex',
+           'is_integer',
            'cross',
            'where',
            'log1p',
@@ -446,6 +451,7 @@ __all__ = [  # noqa
            'shape',
            'real',
            'imag',
+           'complex',
            'reciprocal',
            'rand',
            'less_equal',

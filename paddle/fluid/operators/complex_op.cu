@@ -12,22 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/complex_op.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
+namespace ops = paddle::operators;
 
-namespace pten {
+REGISTER_OP_CUDA_KERNEL(
+    complex, ops::ComplexKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ComplexKernel<paddle::platform::CUDADeviceContext, double>);
 
-template <typename T>
-void FullLike(const CPUContext& dev_ctx, const Scalar& val, DenseTensor* out);
-
-template <typename T>
-void Full(const CPUContext& dev_ctx,
-          const ScalarArray& shape,
-          const Scalar& val,
-          DenseTensor* out);
-
-}  // namespace pten
+REGISTER_OP_CUDA_KERNEL(
+    complex_grad,
+    ops::ComplexGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ComplexGradKernel<paddle::platform::CUDADeviceContext, double>);

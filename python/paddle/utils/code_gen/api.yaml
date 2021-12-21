@@ -154,3 +154,11 @@
 #   backend : [place, x]
 #   layout : []
 #   InferMeta : UnchangedInferMeta(x)
+
+- api : conj
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : conj
