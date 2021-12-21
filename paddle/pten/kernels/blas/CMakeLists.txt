@@ -1,7 +1,0 @@
-if(WITH_GPU)
-  nv_library(matmul_kernel_blas SRCS matmul_kernel.cc matmul_kernel.cu DEPS dense_tensor)
-elseif(WITH_ROCM)
-  hip_library(matmul_kernel_blas SRCS matmul_kernel.cc matmul_kernel.cu DEPS dense_tensor)
-else()
-  cc_library(matmul_kernel_blas SRCS matmul_kernel.cc DEPS dense_tensor)
-endif()

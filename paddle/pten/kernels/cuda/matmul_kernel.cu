@@ -12,36 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/full_kernel.h"
-#include "paddle/pten/kernels/eigen/full.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
+#include "paddle/pten/backends/cuda/cuda_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/pten/backends/all_context.h"
+#include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
-PT_REGISTER_CTX_KERNEL(full,
-                       CPU,
+PT_REGISTER_CTX_KERNEL(matmul,
+                       CUDA,
                        ALL_LAYOUT,
-                       pten::Full,
+                       pten::Matmul,
                        float,
                        double,
-                       uint8_t,
-                       int16_t,
-                       int,
-                       int64_t,
-                       bool,
                        paddle::platform::float16,
-                       paddle::platform::bfloat16,
                        paddle::platform::complex<float>,
                        paddle::platform::complex<double>) {}
-
-PT_REGISTER_CTX_KERNEL(full_like,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::FullLike,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       bool,
-                       paddle::platform::float16) {}

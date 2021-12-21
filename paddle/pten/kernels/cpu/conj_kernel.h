@@ -12,18 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/blas/matmul_func.h"
-#include "paddle/pten/kernels/matmul_kernel.h"
+#pragma once
 
-#include "paddle/pten/backends/all_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/dense_tensor.h"
 
-PT_REGISTER_CTX_KERNEL(matmul,
-                       CUDA,
-                       ALL_LAYOUT,
-                       pten::Matmul,
-                       float,
-                       double,
-                       paddle::platform::float16,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+namespace pten {
+
+template <typename T>
+void Conj(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
+
+}  // namespace pten
