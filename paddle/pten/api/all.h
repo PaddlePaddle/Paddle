@@ -42,3 +42,4 @@ limitations under the License. */
 #include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/ext/place.h"
+#include "paddle/pten/api/ext/tensor_compat.h"

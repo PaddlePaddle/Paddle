@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/pten/include/linalg.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
 
 namespace paddle {
@@ -39,24 +39,14 @@ namespace operators {
 
 using framework::Tensor;
 
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  template <typename U>
-  HOSTDEVICE inline U operator()(const U& x) const {
-    return x;
-  }
-};
-
 template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduce<T, T, cub::Sum, IdentityFunctor>(*input, output, reduce_dims,
-                                                static_cast<T>(0), cub::Sum(),
-                                                IdentityFunctor(), stream);
+  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      *input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, true, false, ctx)
