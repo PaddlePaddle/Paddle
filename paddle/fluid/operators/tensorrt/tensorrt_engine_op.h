@@ -140,7 +140,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_int8_;
   bool enable_fp16_;
   bool use_calib_mode_;
-  bool trt_use_inspector_;
+  bool use_inspector_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -176,8 +176,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
-    trt_use_inspector_ = Attr<bool>("trt_use_inspector");
-    LOG(INFO) << (trt_use_inspector_ ? "Set to True" : "Set to False");
+    use_inspector_ = Attr<bool>("use_inspector");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
@@ -271,7 +270,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
-    if (trt_use_inspector_) {
+    if (use_inspector_) {
       trt_engine->GetEngineInfo();
     }
     if (trt_engine->with_dynamic_shape()) {
@@ -497,7 +496,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "The TRT Engine OP only support float/int32_t/int64_t input."));
       }
     }
-    if (engine->with_dynamic_shape() && trt_use_inspector_) {
+    if (engine->with_dynamic_shape() && use_inspector_) {
       engine->GetEngineInfo();
     }
 

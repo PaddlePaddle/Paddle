@@ -263,8 +263,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
 
-  bool trt_use_inspector = Get<bool>("trt_use_inspector");
-  op_desc->SetAttr("trt_use_inspector", Get<bool>("trt_use_inspector"));
+  bool use_inspector = Get<bool>("use_inspector");
+  op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -419,7 +419,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     LOG(INFO) << "Save TRT Optimized Info to "
               << GetTrtEngineSerializedPath(
                      Get<std::string>("model_opt_cache_dir"), engine_key);
-    if (trt_use_inspector) {
+    if (use_inspector) {
       trt_engine->GetEngineInfo();
     }
   }

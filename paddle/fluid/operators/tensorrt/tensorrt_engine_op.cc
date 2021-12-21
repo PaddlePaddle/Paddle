@@ -37,7 +37,7 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("workspace_size", "the workspace size.");
     AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
     AddAttr<bool>("enable_int8", "whether swith to int8 mode");
-    AddAttr<bool>("trt_use_inspector", "whether to use inspector");
+    AddAttr<bool>("use_inspector", "whether to use inspector");
     AddComment("TensorRT engine operator.");
   }
 };
