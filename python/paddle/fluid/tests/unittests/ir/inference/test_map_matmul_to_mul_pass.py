@@ -42,15 +42,15 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         yield config, ["mul", ], (1e-5, 1e-5)
 
         # TRT
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=10,
-            workspace_size=10240,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False)
-        yield config, ["mul", ], (1e-5, 1e-5)
+        # config = self.create_trt_inference_config()
+        # config.enable_tensorrt_engine(
+        #     max_batch_size=10,
+        #     workspace_size=10240,
+        #     min_subgraph_size=0,
+        #     precision_mode=paddle_infer.PrecisionType.Float32,
+        #     use_static=False,
+        #     use_calib_mode=False)
+        # yield config, ["mul", ], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
