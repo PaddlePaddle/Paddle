@@ -120,10 +120,7 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
 
         flatten2_op = OpConfig(
             "flatten2",
-            inputs={
-                "X": ["flatten2_x"],
-                # "Y": ["flatten2_y"]
-            },
+            inputs={"X": ["flatten2_x"], },
             axis=flatten_axis,
             outputs={"Out": ["flatten2_out"],
                      "XShape": ["xshape"]}, )
@@ -158,10 +155,7 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
                     "matmul_y": TensorConfig(shape=y_shape),
                     "bias": TensorConfig(shape=bias_shape),
                 },
-                inputs={
-                    "flatten2_x": TensorConfig(shape=x_shape),
-                    # "flatten2_y": TensorConfig(shape=x_shape),
-                },
+                inputs={"flatten2_x": TensorConfig(shape=x_shape), },
                 outputs=ops[-1].outputs["Out"], )
         else:
             program_config = ProgramConfig(
@@ -169,7 +163,6 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
                 weights={},
                 inputs={
                     "flatten2_x": TensorConfig(shape=x_shape),
-                    # "flatten2_y": TensorConfig(shape=x_shape),
                     "matmul_y": TensorConfig(shape=y_shape),
                     "bias": TensorConfig(shape=bias_shape),
                 },
