@@ -62,11 +62,10 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
-  Carrier& carrier = FleetExecutor::GetCarrier();
+  Carrier carrier(0, {{0, 0}, {1, 0}});
 
   auto msg_bus = std::make_shared<MessageBus>();
-  msg_bus->Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "");
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
   carrier.SetMsgBus(msg_bus);
 
   // FIXME: don't delete, otherwise interceptor will use undefined node

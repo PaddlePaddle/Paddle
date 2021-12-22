@@ -30,32 +30,21 @@
 #include "mlir/Interfaces/LoopLikeInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-namespace mlir {
-namespace pd {
+namespace infrt {
+namespace trt {
 
-class PaddleDialect : public Dialect {
+class TensorRTDialect : public ::mlir::Dialect {
  public:
-  explicit PaddleDialect(MLIRContext* context);
-
-  static StringRef getDialectNamespace() { return "pd"; }
-
-  /// A hook used to materialize constant values with the given type.
-  Operation* materializeConstant(OpBuilder& builder,
-                                 Attribute value,
-                                 Type type,
-                                 Location loc) override;
-
-  Type parseType(DialectAsmParser& parser) const override {
-    return Dialect::parseType(parser);
-  }
-  void printType(Type type, DialectAsmPrinter& printer) const override {
-    Dialect::printType(type, printer);
-  }
+  explicit TensorRTDialect(::mlir::MLIRContext* context);
+  static llvm::StringRef getDialectNamespace() { return "trt"; }
 };
 
+// mlir bug。 can be removed safety when update mlir to llvm11.
+using namespace mlir;  // NOLINT
+
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_ops.hpp.inc"
+#include "dialect/tensorrt/trt_ops.hpp.inc"
 #undef GET_OP_CLASSES
 
-}  // namespace pd
-}  // namespace mlir
+}  // namespace trt
+}  // namespace infrt
