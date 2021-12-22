@@ -716,7 +716,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       auto* block = desc.Block();
       int out_size = 0;
-      if (desc.Input("OutSize").size()) {
+      if (desc.InputArgumentNames().size() > 1 &&
+          desc.Input("OutSize").size()) {
         auto x_var_name = desc.Input("OutSize")[0];
         auto* x_var_desc = block->FindVar(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
