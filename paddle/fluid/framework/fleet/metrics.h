@@ -45,10 +45,21 @@ namespace framework {
 class BasicAucCalculator {
  public:
   BasicAucCalculator() {}
+  struct WuaucRecord {
+    uint64_t uid_;
+    int label_;
+    float pred_;
+  };
+
+  struct WuaucRocData {
+    double tp_;
+    double fp_;
+    double auc_;
+  };
   void init(int table_size);
   void init_wuauc(int table_size);
   void reset();
-  void reset_map();
+  void reset_records();
   // add single data in CPU with LOCK, deprecated
   void add_unlock_data(double pred, int label);
   void add_uid_unlock_data(double pred, int label, uint64_t uid);
@@ -65,7 +76,8 @@ class BasicAucCalculator {
                     const paddle::platform::Place& place);
 
   void compute();
-  void computeWuAuc(uint64_t uid);
+  void computeWuAuc();
+  WuaucRocData computeSingelUserAuc(const std::vector<WuaucRecord>& records);
   int table_size() const { return _table_size; }
   double bucket_error() const { return _bucket_error; }
   double auc() const { return _auc; }
@@ -74,6 +86,7 @@ class BasicAucCalculator {
   double mae() const { return _mae; }
   double actual_ctr() const { return _actual_ctr; }
   double predicted_ctr() const { return _predicted_ctr; }
+  double user_cnt() const { return _user_cnt; }
   double size() const { return _size; }
   double rmse() const { return _rmse; }
   std::unordered_set<uint64_t> uid_keys() const { return _uid_keys; }
@@ -95,6 +108,7 @@ class BasicAucCalculator {
   double _actual_ctr = 0;
   double _predicted_ctr = 0;
   double _size;
+  double _user_cnt = 0;
   double _bucket_error = 0;
   std::unordered_set<uint64_t> _uid_keys;
 
@@ -108,9 +122,10 @@ class BasicAucCalculator {
   void set_table_size(int table_size) { _table_size = table_size; }
   int _table_size;
   std::vector<double> _table[2];
-  std::unordered_map<uint64_t,
-                     std::map<uint32_t, std::pair<uint64_t, uint64_t>>>
-      _uid_prob_cntmap;
+  // std::unordered_map<uint64_t,
+  //                    std::map<uint32_t, std::pair<uint64_t, uint64_t>>>
+  //     _uid_prob_cntmap;
+  std::vector<WuaucRecord> wuauc_records_;
   static constexpr double kRelativeErrorBound = 0.05;
   static constexpr double kMaxSpan = 0.01;
   std::mutex _table_mutex;
@@ -208,7 +223,6 @@ class Metric {
       uid_varname_ = uid_varname;
       metric_phase_ = metric_phase;
       calculator = new BasicAucCalculator();
-      calculator->init_wuauc(bucket_size);
     }
     virtual ~WuAucMetricMsg() {}
     void add_data(const Scope* exe_scope,
@@ -637,6 +651,7 @@ class Metric {
     PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
+    VLOG(0) << "begin GetWuAucMetricMsg";
     paddle::platform::Timer timeline;
     double total_time = 0.0;
     double compute_time = 0.0;
@@ -645,18 +660,15 @@ class Metric {
     std::vector<float> metric_return_values_(6, 0.0);
     auto* auc_cal_ = iter->second->GetCalculator();
     timeline.Start();
-    for (uint64_t uid : auc_cal_->uid_keys()) {
-      auc_cal_->computeWuAuc(uid);
-      if (auc_cal_->uauc() != 0) {  // uauc=0 means all nonclick or click
-        metric_return_values_[0] += 1;
-        metric_return_values_[1] += auc_cal_->size();
-        metric_return_values_[2] += auc_cal_->uauc();
-        metric_return_values_[3] += auc_cal_->wuauc();
-      }
-    }
+    auc_cal_->computeWuAuc();
+    metric_return_values_[0] = auc_cal_->user_cnt();
+    metric_return_values_[1] = auc_cal_->size();
+    metric_return_values_[2] = auc_cal_->uauc();
+    metric_return_values_[3] = auc_cal_->wuauc();
     timeline.Pause();
     compute_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
+
     timeline.Start();
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
     auto global_metric_return_values_ =
@@ -668,16 +680,16 @@ class Metric {
     timeline.Pause();
     allreduce_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
-    timeline.Start();
 
-    auc_cal_->reset_map();
+    timeline.Start();
+    auc_cal_->reset_records();
     timeline.Pause();
     reset_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
-    fprintf(stderr, "wuauc total time: %fs\n", total_time);
-    fprintf(stderr, "wuauc compute time: %fs\n", compute_time);
-    fprintf(stderr, "wuauc allreduce time: %fs\n", allreduce_time);
-    fprintf(stderr, "wuauc reset time: %fs\n", reset_time);
+    VLOG(0) << "wuauc total time: " << total_time << "s\n";
+    VLOG(0) << "wuauc compute time: " << compute_time << "s\n";
+    VLOG(0) << "wuauc allreduce time: " << allreduce_time << "s\n";
+    VLOG(0) << "wuauc reset time: " << reset_time << "s\n";
     return global_metric_return_values_;
   }
 

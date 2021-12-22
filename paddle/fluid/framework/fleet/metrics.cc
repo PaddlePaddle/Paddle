@@ -236,21 +236,9 @@ void BasicAucCalculator::calculate_bucket_error() {
   _bucket_error = error_count > 0 ? error_sum / error_count : 0.0;
 }
 
-void BasicAucCalculator::init_wuauc(int table_size) {
-  set_table_size(table_size);
-
-  // // init CPU memory
-  // for (int i = 0; i < 2; i++) {
-  //   _table[i] = std::vector<double>();
-  // }
-
-  // // reset
-  // reset();
-}
-
-void BasicAucCalculator::reset_map() {
-  // reset CPU counter
-  _uid_prob_cntmap.erase(_uid_prob_cntmap.begin(), _uid_prob_cntmap.end());
+void BasicAucCalculator::reset_records() {
+  // reset wuauc_records_
+  wuauc_records_.clear();
 }
 
 // add uid data
@@ -267,7 +255,7 @@ void BasicAucCalculator::add_uid_data(const float* d_pred,
 
   memcpy(h_pred.data(), d_pred, sizeof(float) * batch_size);
   memcpy(h_label.data(), d_label, sizeof(int64_t) * batch_size);
-  memcpy(h_uid.data(), d_uid, sizeof(int64_t) * batch_size);
+  memcpy(h_uid.data(), d_uid, sizeof(uint64_t) * batch_size);
 
   std::lock_guard<std::mutex> lock(_table_mutex);
   for (int i = 0; i < batch_size; ++i) {
@@ -296,74 +284,98 @@ void BasicAucCalculator::add_uid_unlock_data(double pred, int label,
       platform::errors::PreconditionNotMet(
           "pos must be less than table_size, but its value is: %d", pos));
 
-  auto it = _uid_prob_cntmap.find(uid);
-  if (it != _uid_prob_cntmap.end()) {
-    auto& probmap = it->second;
-    auto it2 = probmap.find(pos);
-    if (it2 != probmap.end()) {
-      if (label) {
-        it2->second.first++;
-      } else {
-        it2->second.second++;
+  WuaucRecord record;
+  record.uid_ = uid;
+  record.label_ = label;
+  record.pred_ = pred;
+  wuauc_records_.emplace_back(std::move(record));
+}
+
+void BasicAucCalculator::computeWuAuc() {
+  std::sort(wuauc_records_.begin(), wuauc_records_.end(),
+            [](const WuaucRecord& lhs, const WuaucRecord& rhs) {
+              if (lhs.uid_ == rhs.uid_) {
+                if (lhs.pred_ == rhs.pred_) {
+                  return lhs.label_ < rhs.label_;
+                } else {
+                  return lhs.pred_ > rhs.pred_;
+                }
+              } else {
+                return lhs.uid_ > rhs.uid_;
+              }
+            });
+
+  WuaucRocData roc_data;
+  uint64_t prev_uid = 0;
+  size_t prev_pos = 0;
+  for (size_t i = 0; i < wuauc_records_.size(); ++i) {
+    if (wuauc_records_[i].uid_ != prev_uid) {
+      std::vector<WuaucRecord> single_user_recs(
+          wuauc_records_.begin() + prev_pos, wuauc_records_.begin() + i);
+      roc_data = computeSingelUserAuc(single_user_recs);
+      if (roc_data.auc_ != -1) {
+        double ins_num = (roc_data.tp_ + roc_data.fp_);
+        _user_cnt += 1;
+        _size += ins_num;
+        _uauc += roc_data.auc_;
+        _wuauc += roc_data.auc_ * ins_num;
       }
-    } else {
-      if (label) {
-        probmap.insert(std::make_pair(pos, std::make_pair(0, 1)));
-      } else {
-        probmap.insert(std::make_pair(pos, std::make_pair(0, 1)));
-      }
-    }
-  } else {
-    std::map<uint32_t, std::pair<uint64_t, uint64_t>> _prob_cntmap;
-    if (label) {
-      std::pair<uint64_t, uint64_t> p = std::make_pair(1, 0);
-      _prob_cntmap.insert(std::make_pair(pos, p));
-      _uid_prob_cntmap.insert(std::make_pair(uid, _prob_cntmap));
-    } else {
-      std::pair<uint64_t, uint64_t> p = std::make_pair(0, 1);
-      _prob_cntmap.insert(std::make_pair(pos, p));
-      _uid_prob_cntmap.insert(std::make_pair(uid, _prob_cntmap));
+
+      prev_uid = wuauc_records_[i].uid_;
+      prev_pos = i;
     }
   }
 
-  for (auto it = _uid_prob_cntmap.begin(); it != _uid_prob_cntmap.end(); ++it) {
-    _uid_keys.insert(it->first);
+  std::vector<WuaucRecord> single_user_recs(wuauc_records_.begin() + prev_pos,
+                                            wuauc_records_.end());
+  roc_data = computeSingelUserAuc(single_user_recs);
+  if (roc_data.auc_ != -1) {
+    double ins_num = (roc_data.tp_ + roc_data.fp_);
+    _user_cnt += 1;
+    _size += ins_num;
+    _uauc += roc_data.auc_;
+    _wuauc += roc_data.auc_ * ins_num;
   }
 }
 
-void BasicAucCalculator::computeWuAuc(uint64_t uid) {
-  double area = 0;
-  double fp = 0;
-  double tp = 0;
+BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingelUserAuc(
+    const std::vector<WuaucRecord>& records) {
+  double tp = 0.0;
+  double fp = 0.0;
+  double newtp = 0.0;
+  double newfp = 0.0;
+  double area = 0.0;
+  double auc = -1;
+  size_t i = 0;
 
-  auto it = _uid_prob_cntmap.find(uid);
-  // VLOG(0) << "computeWuAuc: find uid " << uid;
-  if (it != _uid_prob_cntmap.end()) {
-    for (auto rit = it->second.rbegin(); rit != it->second.rend(); rit++) {
-      double newfp = fp + rit->second.second;
-      double newtp = tp + rit->second.first;
-      area += (newfp - fp) * (tp + newtp) / 2;
-      fp = newfp;
-      tp = newtp;
-    }
-
-    if (fp < 1e-3 || tp < 1e-3) {
-      _uauc = 0;  // which means all nonclick or click
+  while (i < records.size()) {
+    newtp = tp;
+    newfp = fp;
+    if (records[i].label_ == 1) {
+      newtp += 1;
     } else {
-      _uauc = area / (fp * tp + 1e-9);
+      newfp += 1;
     }
-
-    _size = fp + tp;
-    _wuauc = _uauc * _size;
-
-    // VLOG(0) << "computeWuAuc: uauc " << _uauc;
-    // VLOG(0) << "computeWuAuc: size " << _size << "\n";
-  } else {
-    // VLOG(0) << "computeWuAuc: not find uid  " << uid;
-    _uauc = 0;
-    _size = 0;
-    _wuauc = 0;
+    // check i+1
+    while (i < records.size() - 1 && records[i].pred_ == records[i + 1].pred_) {
+      if (records[i + 1].label_ == 1) {
+        newtp += 1;
+      } else {
+        newfp += 1;
+      }
+      i += 1;
+    }
+    area += (newfp - fp) * (tp + newtp) / 2.0;
+    tp = newtp;
+    fp = newfp;
+    i += 1;
   }
+  if (tp > 0 && fp > 0) {
+    auc = area / (fp * tp + 1e-9);
+  } else {
+    auc = -1;
+  }
+  return {tp, fp, auc};
 }
 
 }  // namespace framework
