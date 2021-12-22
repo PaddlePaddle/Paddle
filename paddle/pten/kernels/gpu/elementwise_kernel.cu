@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/elementwise_kernel.h"
-#include "paddle/pten/kernels/functions/elementwise_functor.h"
+#include "paddle/pten/kernels/funcs/elementwise_functor.h"
 #include "paddle/pten/kernels/gpu/elementwise_impl.cu.h"
 
 #ifdef __NVCC__
@@ -34,21 +34,21 @@ namespace cub = hipcub;
 
 namespace pten {
 
-#define DEFINE_CUDA_ELEMENTWISE_OP(name)                                 \
-  template <typename T, typename ContextT>                               \
-  void name(const ContextT& dev_ctx,                                     \
-            const DenseTensor& x,                                        \
-            const DenseTensor& y,                                        \
-            int axis,                                                    \
-            DenseTensor* out) {                                          \
-    std::vector<const DenseTensor*> inputs;                              \
-    std::vector<DenseTensor*> outputs;                                   \
-    inputs.emplace_back(&x);                                             \
-    inputs.emplace_back(&y);                                             \
-    outputs.emplace_back(out);                                           \
-    out->mutable_data<T>();                                              \
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(         \
-        dev_ctx, inputs, &outputs, axis, functions::name##Functor<T>()); \
+#define DEFINE_CUDA_ELEMENTWISE_OP(name)                             \
+  template <typename T, typename ContextT>                           \
+  void name(const ContextT& dev_ctx,                                 \
+            const DenseTensor& x,                                    \
+            const DenseTensor& y,                                    \
+            int axis,                                                \
+            DenseTensor* out) {                                      \
+    std::vector<const DenseTensor*> inputs;                          \
+    std::vector<DenseTensor*> outputs;                               \
+    inputs.emplace_back(&x);                                         \
+    inputs.emplace_back(&y);                                         \
+    outputs.emplace_back(out);                                       \
+    out->mutable_data<T>();                                          \
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(     \
+        dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }
 
 // Create the definition of Add
