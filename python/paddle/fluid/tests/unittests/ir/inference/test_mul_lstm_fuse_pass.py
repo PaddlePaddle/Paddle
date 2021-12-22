@@ -35,13 +35,11 @@ class TestMulLstmFusePass(PassAutoScanTest):
         y_col = draw(st.sampled_from([1]))
         use_peepholes = draw(st.booleans())
         is_reverse = draw(st.booleans())
-        gate_activation = draw(
-            st.sampled_from(["sigmoid", "tanh", "relu", "identity"]))
-        cell_activation = draw(
-            st.sampled_from(["sigmoid", "tanh", "relu", "identity"]))
+        gate_activation = draw(st.sampled_from(["sigmoid"]))
+        cell_activation = draw(st.sampled_from(["tanh", "identity"]))
         candidate_activation = draw(
-            st.sampled_from(["sigmoid", "tanh", "relu", "identity"]))
-        batch_size = draw(st.integers(min_value=1, max_value=4))
+            st.sampled_from(["tanh", "relu", "identity"]))
+        batch_size = draw(st.integers(min_value=1, max_value=40))
 
         def generate_input():
             shape = [batch_size, 128, 6, 120]
@@ -119,18 +117,8 @@ class TestMulLstmFusePass(PassAutoScanTest):
         config = self.create_inference_config()
         yield config, ["im2sequence", "fusion_lstm"], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        def teller1(program_config, predictor_config):
-            return True
-
-        self.add_ignore_check_case(teller1, SkipReasons.PASS_ACCURACY_ERROR,
-                                   "The output has diff!")
-
     def test(self):
-        # If the output diff problem has been fixed,
-        # min_success_num=0 should be deleted!
-        self.run_and_statis(
-            min_success_num=0, quant=False, passes=["mul_lstm_fuse_pass"])
+        self.run_and_statis(quant=False, passes=["mul_lstm_fuse_pass"])
 
 
 if __name__ == "__main__":

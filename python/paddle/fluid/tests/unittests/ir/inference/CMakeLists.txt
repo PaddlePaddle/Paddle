@@ -74,6 +74,7 @@ set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 100)
 set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
+set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 300)
 
 if (WITH_MKLDNN AND TENSORRT_FOUND AND WITH_GPU)
   set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT 120)
