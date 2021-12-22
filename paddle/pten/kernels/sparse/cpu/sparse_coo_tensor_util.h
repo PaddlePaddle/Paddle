@@ -14,10 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/sparse_coo_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
+namespace pten {
+
+using CPUContext = paddle::platform::CPUDeviceContext;
+
+template <typename T>
+void ToSparseCoo(const CPUContext& dev_ctx,
+                 const DenseTensor& src,
+                 const int64_t sparse_dim,
+                 SparseCooTensor* dst);
+
+}  // namespace pten

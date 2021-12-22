@@ -40,5 +40,7 @@ add_custom_command(
   VERBATIM)
 
 cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
+cc_library(sparse_coo_tensor_util_api SRCS sparse_coo_tensor_util.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(sparse_csr_tensor_utils_api SRCS sparse_csr_tensor_utils.cc DEPS pten_tensor pten kernel_dispatch)
+
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)

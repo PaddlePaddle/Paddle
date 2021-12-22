@@ -23,9 +23,10 @@ add_subdirectory(ops)
 add_subdirectory(tests)
 
 # make an unity target for compile deps
-set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context)
+set(PTEN_DEPS convert_utils dense_tensor sparse_coo_tensor sparse_csr_tensor pten_context kernel_factory kernel_context)
 set(PTEN_DEPS ${PTEN_DEPS} math_cpu linalg_cpu manipulation_cpu conj_kernel_cpu scale_kernel_cpu full_kernel_cpu)
 set(PTEN_DEPS ${PTEN_DEPS} nary unary binary)
+set(PTEN_DEPS ${PTEN_DEPS} sparse_coo_tensor_util_cpu)
 set(PTEN_DEPS ${PTEN_DEPS} sparse_csr_tensor_utils_cpu)
 if(WITH_GPU)
   set(PTEN_DEPS ${PTEN_DEPS} sparse_csr_tensor_utils_cuda)

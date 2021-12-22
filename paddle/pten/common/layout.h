@@ -25,6 +25,7 @@ enum class DataLayout {
   NHWC,
   NCHW,
   MKLDNN,
+  SPARSE_COO,
   SPARSE_CSR,
   NUM_DATA_LAYOUTS,
   // See Note [ Why we need ALL in baisc kernel key member? ]
