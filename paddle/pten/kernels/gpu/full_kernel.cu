@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/eigen/full.h"
 #include "paddle/pten/kernels/full_kernel.h"
 
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-
-#include "paddle/pten/backends/all_context.h"
+#include "paddle/pten/kernels/impl/full_kernel_impl.h"
 
 PT_REGISTER_CTX_KERNEL(full,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Full,
                        float,
@@ -35,7 +34,7 @@ PT_REGISTER_CTX_KERNEL(full,
                        paddle::platform::complex<double>) {}
 
 PT_REGISTER_CTX_KERNEL(full_like,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::FullLike,
                        float,
