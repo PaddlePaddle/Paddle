@@ -18,24 +18,34 @@ using TaskTracker = TaskTracker<EventsWaiter::EventNotifier>;
 class WorkQueueImpl : public WorkQueue {
  public:
   explicit WorkQueueImpl(const WorkQueueOptions& options) : WorkQueue(options) {
-    if (options_.track_task && options.queue_empty_waiter != nullptr) {
+    if (options_.track_task && options.events_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
       TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      notifier_ = options.queue_empty_waiter->RegisterEvent(
+      empty_notifier_ = options.events_waiter->RegisterEvent(
           kQueueEmptyEvent,
           [tracker]() { return tracker->PendingTaskNum() == 0; });
-      tracker_ = new (storage) TaskTracker(*notifier_.get());
+      tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
+    }
+    if (options_.detached == false && options.events_waiter != nullptr) {
+      destruct_notifier_ =
+          options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queue_ = new NonblockingThreadPool(options_.num_threads,
                                        options_.allow_spinning);
   }
 
   virtual ~WorkQueueImpl() {
+    if (empty_notifier_) {
+      empty_notifier_->UnregisterEvent();
+    }
     delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
       AlignedFree(tracker_);
-      notifier_->UnregisterEvent();
+    }
+    if (destruct_notifier_) {
+      destruct_notifier_->NotifyEvent();
+      destruct_notifier_->UnregisterEvent();
     }
   }
 
@@ -60,7 +70,8 @@ class WorkQueueImpl : public WorkQueue {
  private:
   NonblockingThreadPool* queue_{nullptr};
   TaskTracker* tracker_{nullptr};
-  std::shared_ptr<EventsWaiter::EventNotifier> notifier_;
+  std::shared_ptr<EventsWaiter::EventNotifier> empty_notifier_;
+  std::shared_ptr<EventsWaiter::EventNotifier> destruct_notifier_;
 };
 
 class WorkQueueGroupImpl : public WorkQueueGroup {
@@ -82,7 +93,8 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
   std::vector<NonblockingThreadPool*> queues_;
   NonblockingThreadPool* queues_storage_;
   TaskTracker* tracker_;
-  std::shared_ptr<EventsWaiter::EventNotifier> notifier_;
+  std::shared_ptr<EventsWaiter::EventNotifier> empty_notifier_;
+  std::shared_ptr<EventsWaiter::EventNotifier> destruct_notifier_;
 };
 
 WorkQueueGroupImpl::WorkQueueGroupImpl(
@@ -97,13 +109,17 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
   for (size_t idx = 0; idx < num_queues; ++idx) {
     const auto& options = queues_options_[idx];
     if (options.track_task && tracker_ == nullptr &&
-        options.queue_empty_waiter != nullptr) {
+        options.events_waiter != nullptr) {
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
       TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      notifier_ = options.queue_empty_waiter->RegisterEvent(
+      empty_notifier_ = options.events_waiter->RegisterEvent(
           kQueueEmptyEvent,
           [tracker]() { return tracker->PendingTaskNum() == 0; });
-      tracker_ = new (storage) TaskTracker(*notifier_.get());
+      tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
+    }
+    if (options.detached == false && options.events_waiter != nullptr) {
+      destruct_notifier_ =
+          options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.num_threads, options.allow_spinning);
@@ -111,15 +127,21 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
 }
 
 WorkQueueGroupImpl::~WorkQueueGroupImpl() {
+  if (empty_notifier_) {
+    empty_notifier_->UnregisterEvent();
+  }
   for (auto queue : queues_) {
     queue->~NonblockingThreadPool();
   }
   if (tracker_ != nullptr) {
     tracker_->~TaskTracker();
     AlignedFree(tracker_);
-    notifier_->UnregisterEvent();
   }
   free(queues_storage_);
+  if (destruct_notifier_) {
+    destruct_notifier_->NotifyEvent();
+    destruct_notifier_->UnregisterEvent();
+  }
 }
 
 void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {

@@ -45,7 +45,8 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   // CreateSingleThreadedWorkQueue
   EventsWaiter events_waiter;
   WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
-                           /*track_task*/ true, &events_waiter);
+                           /*track_task*/ true, /*detached*/ true,
+                           &events_waiter);
   auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 1u);
@@ -78,7 +79,8 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   // CreateMultiThreadedWorkQueue
   EventsWaiter events_waiter;
   WorkQueueOptions options(/*num_threads*/ 10, /*allow_spinning*/ true,
-                           /*track_task*/ true, &events_waiter);
+                           /*track_task*/ true, /*detached*/ false,
+                           &events_waiter);
   auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 10u);
@@ -95,11 +97,13 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   }
   // WaitQueueEmpty
   EXPECT_EQ(finished.load(), false);
-  events_waiter.WaitEvent();
+  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueEmptyEvent);
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
   // Cancel
   work_queue->Cancel();
+  work_queue.reset();
+  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
@@ -114,9 +118,11 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   // ThreadedWorkQueueGroup
   EventsWaiter events_waiter;
   WorkQueueOptions sq_options(/*num_threads*/ 1, /*allow_spinning*/ true,
-                              /*track_task*/ true, &events_waiter);
+                              /*track_task*/ true, /*detached*/ false,
+                              &events_waiter);
   WorkQueueOptions mq_options(/*num_threads*/ 10, /*allow_spinning*/ true,
-                              /*track_task*/ true, &events_waiter);
+                              /*track_task*/ true, /*detached*/ false,
+                              &events_waiter);
   auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
   // NumThreads
   EXPECT_EQ(queue_group->QueueNumThreads(0), 1u);
@@ -141,4 +147,7 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
   // Cancel
   queue_group->Cancel();
+  events_waiter.WaitEvent();
+  queue_group.reset();
+  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
 }
