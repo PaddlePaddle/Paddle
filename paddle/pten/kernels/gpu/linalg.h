@@ -17,13 +17,13 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
 template <typename T>
-void Dot(const CUDAContext& dev_ctx,
+void Dot(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out);

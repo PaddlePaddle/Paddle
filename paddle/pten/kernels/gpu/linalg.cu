@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/cuda/linalg.h"
+#include "paddle/pten/kernels/gpu/linalg.h"
 
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/hybird/eigen/dot.h"
@@ -23,11 +23,11 @@
 namespace pten {
 
 template <typename T>
-void Dot(const CUDAContext& dev_ctx,
+void Dot(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out) {
-  eigen::Dot<CUDAContext, T>(dev_ctx, x, y, out);
+  eigen::Dot<GPUContext, T>(dev_ctx, x, y, out);
 }
 
 }  // namespace pten
@@ -37,7 +37,7 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL(dot,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Dot,
                    float,

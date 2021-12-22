@@ -17,8 +17,6 @@
 #include <set>
 #include <thread>
 
-#include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
@@ -26,15 +24,24 @@ namespace paddle {
 namespace distributed {
 
 void MessageBus::Init(
-    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-    const std::unordered_map<int64_t, std::string>& rank_to_addr,
+    int64_t rank, const std::unordered_map<int64_t, std::string>& rank_to_addr,
     const std::string& addr) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "MessageBus is already init."));
+  rank_ = rank;
   is_init_ = true;
-  interceptor_id_to_rank_ = interceptor_id_to_rank;
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
+
+  if (addr_ != "") {
+    const auto& addr = GetAddr(rank_);
+    PADDLE_ENFORCE_EQ(addr, addr_,
+                      platform::errors::Fatal(
+                          "The current rank's addr is %s, while the "
+                          "message bus's addr is %s, which are different. "
+                          "Init error.",
+                          addr, addr_));
+  }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
@@ -65,41 +72,55 @@ MessageBus::~MessageBus() {
 #endif
 }
 
-bool MessageBus::Send(const InterceptorMessage& interceptor_message) {
-  // called by Interceptor, send InterceptorMessage to dst
-  int64_t src_id = interceptor_message.src_id();
-  int64_t dst_id = interceptor_message.dst_id();
-  if (IsSameRank(src_id, dst_id)) {
-    VLOG(3) << "Send a message from interceptor " << src_id
-            << " to interceptor " << dst_id << ", which are in the same ranks.";
-    return SendIntraRank(interceptor_message);
-  } else {
-    VLOG(3) << "Send a message from interceptor " << src_id
-            << " to interceptor " << dst_id
-            << ", which are in different ranks.";
+const std::string& MessageBus::GetAddr(int64_t rank) const {
+  PADDLE_ENFORCE_NE(
+      rank_to_addr_.find(rank), rank_to_addr_.end(),
+      platform::errors::NotFound("Cannot find addr rank id %lld.", rank));
+  return rank_to_addr_.at(rank);
+}
+
+bool MessageBus::Send(int64_t dst_rank,
+                      const InterceptorMessage& interceptor_message) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-    int retry_time = 0;  // message bus will retry sending for 10 times
-    while (retry_time < 10) {
-      ++retry_time;
-      if (SendInterRank(interceptor_message)) {
-        VLOG(3) << "Message bus sends inter rank successfully with "
-                << retry_time << " times retries.";
-        return true;
-      }
-      VLOG(3) << "Message bus sends failed, retry after 1 seconds.";
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  int retry_time = 0;  // message bus will retry sending for 10 times
+  while (retry_time < 10) {
+    ++retry_time;
+    if (SendInterRank(dst_rank, interceptor_message)) {
+      VLOG(3) << "Message bus sends inter rank successfully with " << retry_time
+              << " times retries.";
+      return true;
     }
-    VLOG(3) << "Message bus sends inter rank fail after 10 times retries.";
-    return false;
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Fleet executor does not support sending message between different "
-        "ranks when Paddle is compiled with npu or "
-        "isn't compiled with distributed for now."));
-#endif
+    VLOG(3) << "Message bus sends failed, retry after 1 seconds.";
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
+  VLOG(3) << "Message bus sends inter rank fail after 10 times retries.";
+  return false;
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Fleet executor does not support sending message between different "
+      "ranks when Paddle is compiled with npu or "
+      "isn't compiled with distributed for now."));
+#endif
   return true;
+}
+
+void MessageBus::TestConnection() {
+  InterceptorMessage ctrl_msg;
+  ctrl_msg.set_ctrl_message(true);
+  ctrl_msg.set_src_id(rank_);
+  for (const auto& dst_rank_pair : rank_to_addr_) {
+    int64_t dst_rank = dst_rank_pair.first;
+    if (dst_rank != rank_) {
+      ctrl_msg.set_dst_id(dst_rank);
+      VLOG(3) << "Send control message bus from rank " << rank_ << " to rank "
+              << dst_rank;
+      while (!Send(dst_rank, ctrl_msg)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      }
+      VLOG(3) << "Message bus has connected to rank: " << dst_rank << ".";
+    }
+  }
 }
 
 void MessageBus::ListenPort() {
@@ -130,30 +151,7 @@ void MessageBus::ListenPort() {
     interval += 500;
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
-
-  std::set<int64_t> visit;
-  InterceptorMessage tmp_msg;
-  tmp_msg.set_ctrl_message(true);
-  for (auto pair : interceptor_id_to_rank_) {
-    if (rank_to_addr_.at(pair.second) == addr_) {
-      tmp_msg.set_src_id(pair.first);
-    }
-  }
-  for (auto pair : interceptor_id_to_rank_) {
-    int64_t rank = pair.second;
-    if (rank_to_addr_.at(rank) == addr_) {
-      continue;
-    }
-    tmp_msg.set_dst_id(pair.first);
-    if (visit.find(rank) == visit.end()) {
-      VLOG(3) << "Message bus is testing connection for rank: " << rank << ".";
-      visit.insert(rank);
-      while (!Send(tmp_msg)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      }
-      VLOG(3) << "Message bus has connected to rank: " << rank << ".";
-    }
-  }
+  TestConnection();
 #else
   LOG(WARNING)
       << "Fleet executor's ListenPort() is a fake function when Paddle is "
@@ -162,53 +160,13 @@ void MessageBus::ListenPort() {
 #endif
 }
 
-bool MessageBus::IsSameRank(int64_t src_id, int64_t dst_id) {
-  // -1 is sent by carrier to source interceptor
-  if (src_id == -1) src_id = dst_id;
-
-  // check whether the dst is the same rank or different rank with src
-  const auto& src_rank = interceptor_id_to_rank_.find(src_id);
-  const auto& dst_rank = interceptor_id_to_rank_.find(dst_id);
-  PADDLE_ENFORCE_NE(
-      src_rank, interceptor_id_to_rank_.end(),
-      platform::errors::NotFound(
-          "Cannot find rank for src interceptor id %lld. Init error.", src_id));
-  PADDLE_ENFORCE_NE(
-      dst_rank, interceptor_id_to_rank_.end(),
-      platform::errors::NotFound(
-          "Cannot find rank for dst interceptor id %lld. Init error.", dst_id));
-  if (addr_ == "") {
-    // single card training, must be same rank
-    return true;
-  }
-  const auto& src_ip = rank_to_addr_.find(src_rank->second);
-  PADDLE_ENFORCE_NE(src_ip, rank_to_addr_.end(),
-                    platform::errors::NotFound(
-                        "Cannot find addr for src rank id %lld. Init error.",
-                        src_rank->second));
-  PADDLE_ENFORCE_EQ(
-      src_ip->second, addr_,
-      platform::errors::Fatal("The src interceptor's addr is %s, while the "
-                              "message bus's addr is %s, which are different. "
-                              "Init error.",
-                              src_ip->second, addr_));
-  return src_rank->second == dst_rank->second;
-}
-
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
-  // send the message inter rank (dst is different rank with src)
-  int64_t dst_id = interceptor_message.dst_id();
-  int64_t dst_rank = interceptor_id_to_rank_[dst_id];
-  auto dst_ip = rank_to_addr_.find(dst_rank);
-  PADDLE_ENFORCE_NE(dst_ip, rank_to_addr_.end(),
-                    platform::errors::InvalidArgument(
-                        "Cannot find rank for dst interceptor id %lld. "
-                        "Init error.",
-                        dst_id));
-  VLOG(3) << "Message bus sending to addr: " << dst_ip->second;
-  const char* dst_ip_for_brpc = dst_ip->second.c_str();
+bool MessageBus::SendInterRank(int64_t dst_rank,
+                               const InterceptorMessage& interceptor_message) {
+  const auto& dst_addr = GetAddr(dst_rank);
+  VLOG(3) << "Message bus sending to addr: " << dst_addr;
+  const char* dst_addr_for_brpc = dst_addr.c_str();
   brpc::Channel channel;
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
@@ -216,7 +174,7 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   options.timeout_ms = 1000;
   options.max_retry = 5;
   PADDLE_ENFORCE_EQ(
-      channel.Init(dst_ip_for_brpc, &options), 0,
+      channel.Init(dst_addr_for_brpc, &options), 0,
       platform::errors::Unavailable("Message bus: init brpc channel error."));
   TheInterceptorMessageService_Stub stub(&channel);
   InterceptorResponse response;
@@ -238,12 +196,6 @@ bool MessageBus::SendInterRank(const InterceptorMessage& interceptor_message) {
   }
 }
 #endif
-
-bool MessageBus::SendIntraRank(const InterceptorMessage& interceptor_message) {
-  // send the message intra rank (dst is the same rank with src)
-  return FleetExecutor::GetCarrier().EnqueueInterceptorMessage(
-      interceptor_message);
-}
 
 }  // namespace distributed
 }  // namespace paddle
