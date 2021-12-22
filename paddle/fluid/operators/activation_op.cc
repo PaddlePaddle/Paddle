@@ -836,6 +836,24 @@ It is recommended to use the defaults for this activation.
   }
 };
 
+class MishOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Mish operator");
+    AddOutput("Out", "Output of Mish operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddComment(R"DOC(
+Mish Activation Operator.
+
+$$out = x * tanh(softplus(x)) = x * tanh(\ln(1+e^{x}))
+
+)DOC");
+  }
+};
+
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
