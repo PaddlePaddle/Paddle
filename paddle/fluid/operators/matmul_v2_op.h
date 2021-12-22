@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
+#include "paddle/fluid/platform/profiler.h"
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -124,6 +125,7 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
                     bool trans_x, bool trans_y,
                     const paddle::framework::ExecutionContext& ctx,
                     bool flag = false) {
+  platform::RecordEvent op_type_record_event("yoki: MatMulFunction");
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -380,6 +382,7 @@ template <typename DeviceContext, typename T>
 class MatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    platform::RecordEvent op_type_record_event("yoki: Compute");
     auto* X = ctx.Input<Tensor>("X");
     auto* Y = ctx.Input<Tensor>("Y");
     auto* Out = ctx.Output<Tensor>("Out");

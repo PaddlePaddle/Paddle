@@ -23,6 +23,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
+    platform::RecordEvent op_type_record_event("yoki: InferShape");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
@@ -152,6 +153,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    platform::RecordEvent op_type_record_event("yoki: ExpectedKernelType");
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
@@ -168,6 +170,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
+    platform::RecordEvent op_type_record_event("yoki: GetKernelTypeForVar");
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
@@ -182,6 +185,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
 class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    platform::RecordEvent op_type_record_event("yoki: OPMaker");
     AddInput("X", "tensor of shape (d0, d1 ... M, K)");
     AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
     AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");

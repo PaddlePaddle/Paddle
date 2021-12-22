@@ -163,10 +163,15 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       attrs["use_mkldnn"] = !is_off;
     }
   }
-  auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+  std::unique_ptr<paddle::framework::OperatorBase> op;
+  {
+    platform::RecordEvent op_type_record_event("yoki: Create OP");
+    op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+  }
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
+    platform::RecordEvent op_type_record_event("yoki: OP Checker");
     attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
   }
 
@@ -185,6 +190,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   try {
+    platform::RecordEvent op_type_record_event("yoki: Run OP");
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
