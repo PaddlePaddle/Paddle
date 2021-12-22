@@ -79,7 +79,8 @@ __global__ void add_bias_kernel(T* data, const T* bias,
                                 const int64_t batch_size, const int out_feat) {
   CUDA_KERNEL_LOOP(idx, batch_size * out_feat) {
     int col = idx % out_feat;
-    paddle::platform::CudaAtomicAdd(&data[idx], bias[col]);
+    data[idx] += bias[col];
+    // paddle::platform::CudaAtomicAdd(&data[idx], bias[col]);
   }
 }
 
