@@ -1330,6 +1330,24 @@ class TestGradientTruncated(unittest.TestCase):
             array = array[0]
 
 
+class TestSetValueInplace(unittest.TestCase):
+    def test_inplace(self):
+        paddle.disable_static()
+        with paddle.fluid.dygraph.guard():
+            paddle.seed(100)
+            a = paddle.rand(shape=[1, 4])
+            a.stop_gradient = False
+            b = a[:]
+            c = b
+            b[paddle.to_tensor(0)] = 1.0
+
+            self.assertTrue(id(b) == id(c))
+            self.assertTrue(np.array_equal(b.numpy(), c.numpy()))
+            self.assertEqual(b.inplace_version, 1)
+
+        paddle.enable_static()
+
+
 class TestSetValueInplaceLeafVar(unittest.TestCase):
     def test_inplace_var_become_leaf_var(self):
         paddle.disable_static()

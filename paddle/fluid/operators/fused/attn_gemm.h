@@ -16,11 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace paddle {
 namespace operators {
-
 // support gemm-nt and gemm-nn, which is used in fused_attention_op.
 template <typename T>
 class AttnMatMul {
@@ -165,8 +164,8 @@ class AttnMatMul {
            (input_dims[2] == output_dims[0]));
       if (support_case_1 || support_case_2) {
         gpuStream_t stream = dev_ctx_.stream();
-        TensorReduceFunctorImpl<T, T, CustomSum>(*d_output, d_bias, {0, 1},
-                                                 stream);
+        TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+            *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1}, stream);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Only support reduce when the input dims are [0,1,2,3,4] and "
