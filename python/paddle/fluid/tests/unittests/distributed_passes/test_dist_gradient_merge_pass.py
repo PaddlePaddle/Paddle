@@ -28,7 +28,7 @@ import paddle.nn.functional as F
 import paddle.distributed.auto_parallel as auto
 from paddle.fluid.initializer import NumpyArrayInitializer
 
-from paddle.distributed.passes import new_pass, PassManager
+from paddle.distributed.passes import new_pass, PassManager, PassContext
 import paddle.distributed.fleet as fleet
 from dist_pass_test_base import DistPassTestBase
 
@@ -69,7 +69,7 @@ class MLPLayer(nn.Layer):
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        print(f"input ------>input={input}")
+        #print(f"input ------>input={input}")
         out = self.norm0(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
@@ -112,15 +112,18 @@ class TestGradientMergePass(DistPassTestBase):
         self._config = {"k_steps": 4, "avg": True}
 
     def apply_passes(self, main_prog, startup_prog):
-        """
         self._config["params_grads"] = self._params_grads
+        pass_context = PassContext()
+        auto_parallel_gradient_merge_pass = new_pass(
+            "auto_parallel_gradient_merge_pass", self._config)
+        auto_parallel_gradient_merge_pass.apply([main_prog], [startup_prog],
+                                                pass_context)
 
-        pass_manager = PassManager([
-            new_pass("auto_parallel_gradient_merge_pass", self._config)
-        ])
-        pass_manager.apply([main_prog], [startup_prog])
-        """
-        pass
+    def check_results(self, no_pass_rets, pass_rets):
+        if len(no_pass_rets) != 2 and len(pass_rets) != 2:
+            return False
+
+        return super().check_results(no_pass_rets[1], pass_rets[1])
 
     def test_bs_32(self):
         self.check_main(batch_size=32)
@@ -146,8 +149,8 @@ class TestGradientMergePass(DistPassTestBase):
         startup_program = static.Program()
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
-        dist_strategy.gradient_merge = True
-        dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        #dist_strategy.gradient_merge = True
+        #dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
         fleet.init(is_collective=True, strategy=dist_strategy)
 
         with static.program_guard(train_program, startup_program), \
@@ -173,7 +176,9 @@ class TestGradientMergePass(DistPassTestBase):
                                                     1)).astype('float32')
                 yield input_data, label_data
 
-        return train_program, startup_program, [input, label], [loss], reader
+        return dist_main_prog, dist_startup_prog, [input, label], [
+            loss, dist_main_prog.global_block().var("linear_2.b_0")
+        ], reader
 
 
 if __name__ == "__main__":
