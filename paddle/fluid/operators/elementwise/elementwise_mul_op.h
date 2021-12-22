@@ -33,26 +33,6 @@ class ElementwiseMulOp : public ElementwiseOp {
   using Tensor = framework::Tensor;
   using ElementwiseOp::ElementwiseOp;
 
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    // if dims rank is larger than 5 we fallback to native kernel because oneDNN
-    // is always choosing reference implementation which is extremely slow
-    if (ctx.InputVar("X")->IsType<framework::LoDTensor>() &&
-        ctx.Input<paddle::framework::Tensor>("X")->dims().size() > 5)
-      return framework::OpKernelType(input_data_type, ctx.GetPlace());
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
