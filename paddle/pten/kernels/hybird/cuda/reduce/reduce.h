@@ -24,30 +24,6 @@
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
 namespace pten {
 
-static inline std::vector<int64_t> GetReduceDim(
-    const std::vector<int64_t>& dims, int dim_size, bool reduce_all) {
-  std::vector<int64_t> reduce_dims;
-  if (reduce_all) {
-    reduce_dims.resize(dim_size);
-    int reduce_size = reduce_dims.size();
-    for (int i = 0; i < reduce_size; ++i) {
-      reduce_dims[i] = i;
-    }
-  } else {
-    for (auto e : dims) {
-      PADDLE_ENFORCE_LT(e,
-                        dim_size,
-                        paddle::platform::errors::InvalidArgument(
-                            "ReduceOp: invalid axis, when x_dims is %d, "
-                            "axis[i] should less than x_dims, but got %d.",
-                            dim_size,
-                            e));
-      reduce_dims.push_back(e >= 0 ? e : e + dim_size);
-    }
-  }
-  return reduce_dims;
-}
-
 template <typename T,
           template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
@@ -58,10 +34,8 @@ void Reduce(const GPUContext& dev_ctx,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
-  std::vector<int64_t> reduce_dims_int64 =
-      GetReduceDim(dims, x.dims().size(), reduce_all);
-  std::vector<int> reduce_dims{reduce_dims_int64.begin(),
-                               reduce_dims_int64.end()};
+  std::vector<int> reduce_dims =
+      pten::kernels::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
   int reduce_num = 1;
   for (auto i : reduce_dims) {
