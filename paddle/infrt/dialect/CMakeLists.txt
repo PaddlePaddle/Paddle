@@ -51,3 +51,5 @@ infrt_exec_check(test_infrt_tensor_type mlir_tests/tensor_type.mlir)
 infrt_exec_check(test_infrt__basic mlir_tests/basic.mlir)
 infrt_exec_check(test_infrt_benchmark mlir_tests/benchmark.mlir)
 infrt_exec_check(test_infrt_mlir_dense_tensor mlir_tests/dense_tensor.mlir)
+
+add_subdirectory(tensorrt)
