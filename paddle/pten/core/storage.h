@@ -45,7 +45,11 @@ class Storage : public intrusive_ref_counter<Storage> {
   explicit Storage(const std::shared_ptr<paddle::memory::Allocation>& data)
       : data_(data) {}
 
-  void* data() const { return data_ ? data_->ptr() : nullptr; }
+  void* data() const {
+    return data_ ? reinterpret_cast<void*>(
+                       reinterpret_cast<uintptr_t>(data_->ptr()) + offset_)
+                 : nullptr;
+  }
 
   const std::shared_ptr<paddle::memory::Allocation> data_shared() const {
     return data_;
@@ -67,6 +71,7 @@ class Storage : public intrusive_ref_counter<Storage> {
   virtual void Realloc(size_t n) = 0;
 
  protected:
+  size_t offset_{0};
   std::shared_ptr<paddle::memory::Allocation> data_;
 };
 
@@ -78,11 +83,14 @@ class TensorStorage : public Storage {
 
   /* --------- shared_ptr<Allocation> -------- */
   TensorStorage(const std::shared_ptr<Allocator>& a, size_t size)
-      : Storage(AllocateShared(a, size)), alloc_(a), size_(size) {}
+      : Storage(AllocateShared(a, size)), alloc_(a) {
+    size_ = data_->size();
+  }
 
   void Clear() override {
     data_ = nullptr;
     size_ = 0;
+    offset_ = 0;
   }
 
   void Realloc(size_t size) override;

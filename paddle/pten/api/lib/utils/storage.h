@@ -37,6 +37,7 @@ class ExternalStorage : public pten::Storage {
   void Clear() override {
     data_ = nullptr;
     size_ = 0;
+    offset_ = 0;
   }
 
   size_t size() const noexcept override { return size_; }
@@ -62,6 +63,7 @@ class SharedStorage : public pten::Storage {
     CHECK(allocation);
     place_ = allocation->place();
     size_ = allocation->size();
+    offset_ = offset;
   }
 
   // In order to be compatible with the original Tensor design and execution
@@ -98,6 +100,7 @@ class SharedStorage : public pten::Storage {
     data_ = allocation;
     size_ = allocation->size();
     place_ = allocation->place();
+    offset_ = offset;
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
