@@ -1302,6 +1302,7 @@ def get_standalone_cost_data(distributed_programs):
         return actual_runtime
 
     import paddle.cost_model as cm
+
     cost_model = cm.CostModel()
     cost_model.static_cost_data()
     DEFAULT_MULTIPLE = 2
