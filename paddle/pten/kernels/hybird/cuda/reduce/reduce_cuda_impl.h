@@ -31,10 +31,7 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -137,7 +134,6 @@ static inline paddle::framework::Array<T, ElementCount> VectorToArray(
 
 }  // namespace details
 
-using Tensor = paddle::framework::Tensor;
 constexpr int kMaxRank = paddle::framework::DDim::kMaxRank;
 
 enum ReduceType {
@@ -295,20 +291,6 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
-  }
-
-  // when should_reduce_again is true, we need malloc temp space for temp data
-  void SetOutputData(Ty* y_data,
-                     const paddle::platform::Place& place,
-                     paddle::framework::Tensor* tmp) {
-    if (should_reduce_again) {
-      output_data = tmp->mutable_data<Ty>(
-          paddle::framework::make_ddim(
-              {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}),
-          place);
-    } else {
-      output_data = y_data;
-    }
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -1015,10 +997,15 @@ static
                             reducer,
                             reducer.initial(),
                             stream);
-  paddle::framework::Tensor tmp;
-  auto* temp_storage = tmp.mutable_data<uint8_t>(
-      paddle::framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
-      place);
+
+  pten::DenseTensor tmp = pten::DenseTensor(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      pten::DenseTensorMeta(pten::DataType::UINT8,
+                            paddle::framework::make_ddim(
+                                {static_cast<int64_t>(temp_storage_bytes)})));
+
+  auto* temp_storage = tmp.mutable_data<uint8_t>();
+
   cub::DeviceReduce::Reduce(temp_storage,
                             temp_storage_bytes,
                             trans_x,
@@ -1046,7 +1033,6 @@ static
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
-/////////////// pten  part ////////
 static void AsyncCopy(const pten::DenseTensor& src, pten::DenseTensor* dst) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
@@ -1085,7 +1071,6 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   // temp_output should be stored temp_data in output_data space or stored in
   // y_data;
 
-  // paddle::framework::Tensor tmp;
   pten::DDim tmp_ddim;
   pten::DenseTensor tmp = pten::DenseTensor(
       pten::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
@@ -1099,19 +1084,9 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   if (config.reduce_num == 1) {
     auto out_dims = y->dims();
     if (x.dtype() == y->dtype()) {
-      // paddle::framework::TensorCopy(x, y->place(), y);
       AsyncCopy(x, y);
       y->Resize(out_dims);
     } else {
-      /*
-      auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-          paddle::platform::DeviceContextPool::Instance().Get(x.place()));
-      paddle::framework::VisitDataType(
-          static_cast<framework::proto::VarType::Type>(y->type()),
-          CastOpFunctor<paddle::platform::CUDADeviceContext, Tx>(&x, y,
-      *dev_ctx));
-          */
-
       PD_VISIT_ALL_TYPES(
           y->dtype(), "CastKernelImpl", ([&] {
             pten::math::CastKernelImpl<paddle::platform::CUDADeviceContext,
