@@ -105,7 +105,6 @@ function make_ce_framework_dockcerfile(){
   sed -i 's#python setup.py install#python3.7 setup.py install#g' ${dockerfile_name}
 }
 
-
 function main() {
   make_ubuntu_dockerfile
   make_centos_dockerfile
