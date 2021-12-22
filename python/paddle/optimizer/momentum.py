@@ -380,7 +380,7 @@ class Momentum(Optimizer):
                 if isinstance(param.regularizer, L2DecayRegularizer):
                     regularization_method = "l2_decay"
                     regularization_coeff = param.regularizer._regularization_coeff
-                else:
+                elif param.regularizer is not None:
                     regularization_method = ""
                     regularization_coeff = 0.0
             if param.dtype == paddle.float32:
