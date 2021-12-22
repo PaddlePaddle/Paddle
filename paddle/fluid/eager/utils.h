@@ -116,6 +116,8 @@ class EagerUtils {
 
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* nullable_autograd_meta(const egr::EagerTensor& target);
+  static std::vector<AutogradMeta*> nullable_autograd_meta(
+      const std::vector<egr::EagerTensor>& targets);
   static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
       const std::vector<egr::EagerTensor>& targets);

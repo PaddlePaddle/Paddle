@@ -121,6 +121,8 @@ static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
   egr::EagerTensor src_tensor =
       CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
+          << self->eager_tensor.name();
   self->eager_tensor.copy_(src_tensor, blocking);
   egr::EagerUtils::autograd_meta(&(self->eager_tensor))
       ->SetStopGradient(
@@ -128,6 +130,8 @@ static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
   egr::EagerUtils::autograd_meta(&(self->eager_tensor))
       ->SetPersistable(
           egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+  VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
+          << self->eager_tensor.name();
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL

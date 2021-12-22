@@ -322,7 +322,7 @@ def scale_loss(loss):
     if not ParallelEnv().world_size > 1:
         return loss
 
-    loss_scale = to_tensor(
+    loss_scale = to_variable(
         np.array([ParallelEnv().world_size]).astype("float32"))
     loss_scale.stop_gradient = True
     scaled_loss = loss / loss_scale

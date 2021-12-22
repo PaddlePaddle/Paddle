@@ -84,6 +84,7 @@ core._disable_eager_mode()
 def _test_eager_guard():
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
+    core._switch_tracer(_dygraph_tracer_)
     try:
         yield
     finally:
@@ -939,6 +940,8 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, core.eager.EagerTensor)
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -949,6 +952,8 @@ class ParameterMetaClass(VariableMetaClass):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, EagerParamBase)
             return issubclass(t, ParamBase)
         else:
             return issubclass(t, Parameter)

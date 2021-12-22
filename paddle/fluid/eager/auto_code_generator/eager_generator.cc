@@ -888,7 +888,7 @@ static std::string GenerateGradNodeCreationContent(
     if (input.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
-          "egr::EagerUtils::unsafe_autograd_meta(%s);\n";
+          "egr::EagerUtils::nullable_autograd_meta(%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
 
@@ -902,7 +902,7 @@ static std::string GenerateGradNodeCreationContent(
     } else {
       const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
           "  egr::AutogradMeta& %s = "
-          "*egr::EagerUtils::unsafe_autograd_meta(%s);\n";
+          "*egr::EagerUtils::nullable_autograd_meta(%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_SINGLE_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
     }
@@ -1003,6 +1003,12 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
+
+      VLOG(6) << "Generated Call RetainGradForTensor";
+      const char* RETAIN_GRAD_TEMPLATE =
+          "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+      grad_node_creation_str +=
+          paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
 
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
@@ -1315,16 +1321,9 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
+    // [Generation] Call RetainGradForTensor
     VLOG(6) << "Generated GradNode Creation codes";
   }
-
-  // [Generation] Call RetainGradForTensor
-  for (const proto::OpProto::Var& input : in_vars) {
-    const std::string& input_name = input.name();
-    generated_function_body +=
-        "  egr::EagerUtils::CheckAndRetainGrad(" + input_name + ");\n";
-  }
-  VLOG(6) << "Generated Call RetainGradForTensor";
 
   // [Generation] Handle return: Tuple/Vector/Tensor
   generated_function_body += "\n";
