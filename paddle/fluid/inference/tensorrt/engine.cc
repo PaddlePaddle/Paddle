@@ -221,6 +221,7 @@ void TensorRTEngine::FreezeNetwork() {
                 << " min: " << Vec2Str(input.second)
                 << ", max: " << Vec2Str(max_input_shape_[input.first])
                 << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
+
         optim_profiles_[i]->setDimensions(
             input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
             Vec2TRT_Dims(input.second, input.first, true));
@@ -241,9 +242,7 @@ void TensorRTEngine::FreezeNetwork() {
                    "opt_shape, false /*disable_trt_plugin_fp16*/)'";
     }
 #endif
-    binding_num_ = infer_engine_->getNbBindings();
   }
-
 #if IS_TRT_VERSION_GE(8200)
   infer_builder_config_->setProfilingVerbosity(
       nvinfer1::ProfilingVerbosity::kDETAILED);
@@ -265,6 +264,8 @@ void TensorRTEngine::FreezeNetwork() {
       infer_engine_, platform::errors::Fatal(
                          "Build TensorRT cuda engine failed! Please recheck "
                          "you configurations related to paddle-TensorRT."));
+
+  binding_num_ = infer_engine_->getNbBindings();
 
   GetEngineInfo();
 }
