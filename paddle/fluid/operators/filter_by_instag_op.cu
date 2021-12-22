@@ -118,6 +118,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
     const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
+    const size_t x2_lods_size = x2_lods.size() - 1;
     // Vector, in GPU
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
