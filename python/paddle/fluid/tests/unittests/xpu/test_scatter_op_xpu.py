@@ -150,7 +150,7 @@ class TestScatterOp5(TestScatterOp):
         self.outputs = {'Out': output_np}
 
 
-class TestScatterOp5(TestScatterOp):
+class TestScatterOp6(TestScatterOp):
     def setUp(self):
         self.set_xpu()
         self.op_type = "scatter"
