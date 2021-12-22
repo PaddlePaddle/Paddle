@@ -21,7 +21,7 @@ namespace distributed {
 std::string RuntimeGraph::DebugString() const {
   std::ostringstream os;
   os << "\nRuntime Graph Debug: \n";
-  for (const auto& pair : intercepter_id_to_node_) {
+  for (const auto& pair : interceptor_id_to_node_) {
     os << pair.second->DebugString();
     os << "\n";
   }
