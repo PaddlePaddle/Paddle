@@ -52,24 +52,17 @@ void Interceptor::StopCarrier() {
   cond_var.notify_all();
 }
 
-std::condition_variable& Interceptor::GetCondVar() {
-  // get the conditional var
-  return cond_var_;
-}
-
 int64_t Interceptor::GetInterceptorId() const {
   // return the interceptor id
   return interceptor_id_;
 }
 
-bool Interceptor::EnqueueRemoteInterceptorMessage(
+void Interceptor::EnqueueRemoteInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
           << " into " << interceptor_id_ << "'s remote mailbox.";
-  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
-  remote_mailbox_.push(interceptor_message);
-  return true;
+  remote_mailbox_.Push(interceptor_message);
 }
 
 bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
@@ -92,7 +85,7 @@ void Interceptor::PoolTheMailbox() {
                             "Error encountered when fetch remote mailbox."));
     }
     const InterceptorMessage interceptor_message = local_mailbox_.front();
-    local_mailbox_.pop();
+    local_mailbox_.pop_front();
     const MessageType message_type = interceptor_message.message_type();
     VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
             << " from interceptor " << interceptor_message.src_id()
@@ -109,19 +102,8 @@ void Interceptor::PoolTheMailbox() {
 }
 
 bool Interceptor::FetchRemoteMailbox() {
-  // fetch all Message from remote mailbox to local mailbox
-  // return true if remote mailbox not empty, otherwise return false
-  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
-  cond_var_.wait(lock, [this]() { return !remote_mailbox_.empty(); });
-  if (remote_mailbox_.empty()) {
-    // the thread has been unblocked accidentally
-    return false;
-  }
-  while (!remote_mailbox_.empty()) {
-    local_mailbox_.push(std::move(remote_mailbox_.front()));
-    remote_mailbox_.pop();
-  }
-  return true;
+  remote_mailbox_.PopAll(&local_mailbox_);
+  return !local_mailbox_.empty();
 }
 
 static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {
