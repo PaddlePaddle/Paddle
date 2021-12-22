@@ -123,6 +123,14 @@ function(kernel_library TARGET)
         endif()
     endif()
 
+    if (${common_srcs_len} GREATER 0 OR ${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0 OR
+        ${xpu_srcs_len} GREATER 0 OR ${npu_srcs_len} GREATER 0)
+        # append target into PTEN_KERNELS property
+        get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
+        set(pten_kernels ${pten_kernels} ${TARGET})
+        set_property(GLOBAL PROPERTY PTEN_KERNELS ${pten_kernels})
+    endif()
+
     # parse kernel name and auto generate kernel declaration
     # here, we don't need to check WITH_XXX, because if not WITH_XXX, the
     # xxx_srcs_len will be equal to 0
@@ -162,10 +170,6 @@ function(register_kernels)
             else()
                 kernel_library(${target})
             endif()
-            # append target into PTEN_KERNELS property
-            get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
-            set(pten_kernels ${pten_kernels} ${target})
-            set_property(GLOBAL PROPERTY PTEN_KERNELS ${pten_kernels})
         endif()
     endforeach()
 endfunction()

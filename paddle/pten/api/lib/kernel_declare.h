@@ -21,17 +21,17 @@ limitations under the License. */
 // file name of the kernel, and this header file will be removed
 
 PT_DECLARE_KERNEL(dot, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(flatten, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(cast, CPU, ALL_LAYOUT);
 PT_DECLARE_KERNEL(sign, CPU, ALL_LAYOUT);
 PT_DECLARE_KERNEL(conj, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_DECLARE_KERNEL(dot, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(flatten, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(cast, GPU, ALL_LAYOUT);
 PT_DECLARE_KERNEL(sign, GPU, ALL_LAYOUT);
 PT_DECLARE_KERNEL(conj, GPU, ALL_LAYOUT);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(flatten, XPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(reshape, XPU, ALL_LAYOUT);
 #endif
