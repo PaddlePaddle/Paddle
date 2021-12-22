@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -321,6 +322,31 @@ Tensor Tensor::copy_to(Backend backend, bool blocking) const {
   return experimental::copy_to(*this, backend, blocking);
 }
 
+void Tensor::copy_(const Tensor &src, bool blocking) {
+  if (!src.is_initialized()) {
+    return;
+  }
+  VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
+  if (defined()) {
+    PADDLE_ENFORCE_EQ(dtype(),
+                      src.dtype(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s, "
+                          "Tensor Copy cannot be performed!",
+                          name(),
+                          src.name()));
+    PADDLE_ENFORCE_EQ(impl()->type_info().id(),
+                      src.impl()->type_info().id(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "Copy cannot be performed!",
+                          name(),
+                          src.name()));
+  }
+  auto copy_tensor =
+      src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
+  set_impl(copy_tensor.impl());
+}
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }

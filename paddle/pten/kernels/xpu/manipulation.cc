@@ -78,7 +78,7 @@ void ReshapeWithXShape(const XPUContext& dev_ctx,
 
 PT_REGISTER_KERNEL(flatten,
                    XPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::Flatten,
                    float,
                    paddle::platform::float16,
@@ -90,7 +90,7 @@ PT_REGISTER_KERNEL(flatten,
 
 PT_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
-                   ANY,
+                   ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
                    paddle::platform::float16,
@@ -100,4 +100,5 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL_ALL_DTYPE(reshape, XPU, ANY, pten::Reshape) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape, XPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}

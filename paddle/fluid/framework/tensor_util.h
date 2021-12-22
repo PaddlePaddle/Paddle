@@ -30,6 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -239,6 +242,14 @@ void TensorFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(dst_place)) {
+    memory::Copy(
+        BOOST_GET_CONST(platform::MLUPlace, dst_place), dst_ptr, src_place,
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 // The fully specialized function should be inline to avoid
@@ -371,6 +382,14 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
                  size, nullptr);
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 template <>
@@ -411,6 +430,14 @@ inline void TensorToVector(const Tensor& src,
     memory::Copy(dst_place, dst_ptr,
                  BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
                  size, nullptr);
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::MLUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {

@@ -20,19 +20,19 @@ limitations under the License. */
 
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
 
-PT_DECLARE_KERNEL(copy, CPU);
+PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(copy, CUDA);
+PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(copy, XPU);
+PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
@@ -62,10 +62,10 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   auto out_meta = UnchangedInferMeta(dense_x->meta());
 
   // 5. Prepare outputs
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          pten::TransToFluidPlace(backend));
-  auto dense_out = std::make_shared<pten::DenseTensor>(allocator, out_meta);
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(backend)),
+      std::move(out_meta));
   kernel_context.EmplaceBackOutput(dense_out);
   Tensor out;
   out.set_impl(dense_out);

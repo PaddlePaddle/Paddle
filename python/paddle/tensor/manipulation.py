@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+from collections import Counter
 
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -1565,7 +1566,9 @@ def scatter(x, index, updates, overwrite=True, name=None):
     if in_dygraph_mode():
         return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'float16', 'int32', 'int64'],
+        'scatter')
     check_type(overwrite, 'overwrite', bool, 'scatter')
     helper = LayerHelper('scatter', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -2578,4 +2581,171 @@ def as_real(x, name=None):
         dtype=_complex_to_real_dtype(x.dtype))
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
+
+
+def repeat_interleave(x, repeats, axis=None, name=None):
+    """
+
+    Returns a new tensor which repeats the ``x`` tensor along dimension ``axis`` using
+    the entries in ``repeats`` which is a int or a Tensor.
+
+    Args:
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+        repeats (Tensor or int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
+        axis (int, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor with same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            repeats  = paddle.to_tensor([3, 2, 1], dtype='int32')
+
+            paddle.repeat_interleave(x, repeats, 1)
+            # [[1, 1, 1, 2, 2, 3],
+            #  [4, 4, 4, 5, 5, 6]]
+
+            paddle.repeat_interleave(x, 2, 0)
+            # [[1, 2, 3], [1, 2, 3], [4, 5, 6], [4, 5, 6]]
+
+            paddle.repeat_interleave(x, 2, None)
+            # [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]
+    """
+
+    if axis is None:
+        x = paddle.flatten(x)
+        axis = 0
+
+    if in_dygraph_mode():
+        if isinstance(repeats, int):
+            return _C_ops.repeat_interleave(x, None, 'Repeats', repeats, 'dim',
+                                            axis)
+        elif isinstance(repeats, Variable):
+            return _C_ops.repeat_interleave(x, repeats, 'dim', axis)
+
+    helper = LayerHelper("repeat_interleave", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.manipulation.repeat_interleave')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    helper.append_op(
+        type='repeat_interleave',
+        inputs={
+            'X': x,
+            'RepeatsTensor': repeats if isinstance(repeats, Variable) else None
+        },
+        outputs={'Out': out},
+        attrs={
+            'dim': axis,
+            'Repeats': repeats if isinstance(repeats, int) else 0
+        })
+    return out
+
+
+def moveaxis(x, source, destination, name=None):
+    """
+    Move the axis of tensor from ``source`` position to ``destination`` position.
+
+    Other axis that have not been moved remain their original order.
+
+    Args:
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, int32, int64, float32, float64, complex64, complex128.
+        source(int|tuple|list): ``source`` position of axis that will be moved. Each element must be unique and integer.
+        destination(int|tuple|list(int)): ``destination`` position of axis that has been moved. Each element must be unique and integer.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A new tensor whose axis have been moved.
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+
+            x = paddle.ones([3, 2, 4])
+            paddle.moveaxis(x, [0, 1], [1, 2]).shape
+            # [4, 3, 2]
+
+            x = paddle.ones([2, 3])
+            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            # [3, 2]  
+    """
+    src = [source] if isinstance(source, int) else source
+    dst = [destination] if isinstance(destination, int) else destination
+
+    assert len(src) == len(
+        dst), "'source' must have the same number with 'destination'"
+
+    count = Counter(src).most_common(1)
+    if count[0][1] > 1:
+        raise ValueError("Each elemment of 'source' must be unique!")
+    count = Counter(dst).most_common(1)
+    if count[0][1] > 1:
+        raise ValueError("Each elemment of 'destination' must be unique!")
+
+    ndim = len(x.shape)
+
+    # perm is the new order after move axis
+    perm = list(range(ndim))
+    src_dims = list(range(ndim))
+    dst_dims = list(range(ndim))
+
+    for i, axis in enumerate(zip(src, dst)):
+        assert isinstance(axis[0],
+                          int), "Each elemment of 'source' must be integer."
+        if axis[0] < 0:
+            assert axis[
+                0] >= -ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+            src[i] += ndim
+        else:
+            assert axis[
+                0] < ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+
+        assert isinstance(axis[1],
+                          int), "Each elemment of 'source' must be integer."
+        if axis[1] < 0:
+            assert axis[
+                1] >= -ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+            dst[i] += ndim
+        else:
+            assert axis[
+                1] < ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+        perm[dst[i]] = src[i]
+        src_dims.remove(src[i])
+        dst_dims.remove(dst[i])
+
+    for i in range(len(src_dims)):
+        perm[dst_dims[i]] = src_dims[i]
+
+    if in_dygraph_mode():
+        out, _ = _C_ops.transpose2(x, 'axis', perm)
+        return out
+
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'moveaxis')
+
+    helper = LayerHelper('moveaxis', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='transpose2',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
+        attrs={'axis': perm})
     return out
