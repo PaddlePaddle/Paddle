@@ -37,6 +37,8 @@ paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
 
+np.set_printoptions(suppress=True)
+
 
 class MLPLayer(nn.Layer):
     def __init__(self,
@@ -69,7 +71,6 @@ class MLPLayer(nn.Layer):
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        #print(f"input ------>input={input}")
         out = self.norm0(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
@@ -110,7 +111,6 @@ class TestGradientMergePass(DistPassTestBase):
     def init(self):
         self._params_grads = None
         self._config = {"k_steps": 4, "avg": True}
-        self._max_step = 2
 
     def apply_passes(self, main_prog, startup_prog):
         self._config["params_grads"] = self._params_grads
@@ -120,15 +120,38 @@ class TestGradientMergePass(DistPassTestBase):
         auto_parallel_gradient_merge_pass.apply([main_prog], [startup_prog],
                                                 pass_context)
 
-    def check_results(self, no_pass_rets, pass_rets):
-        if len(no_pass_rets) != 2 and len(pass_rets) != 2:
-            return False
-        return True
+    def test_result(self):
+        no_pass_rets = self._distributed_launch(
+            apply_pass=False,
+            gradient_merge=False,
+            batch_size=4 * 8,
+            max_step=2)
+        pass_rets = self._distributed_launch(
+            apply_pass=True, gradient_merge=True, batch_size=8, max_step=2 * 4)
+        # avg loss for gradient_merge pass
+        avg_loss = 0
+        pass_avg_ret_list = []
+        for i, pass_ret in enumerate(pass_rets[0]):
+            if i % 4 == 3:
+                avg_loss += pass_ret[0]
+                pass_avg_ret_list.append(avg_loss / 4)
+                avg_loss = 0
+            else:
+                avg_loss += pass_ret[0]
 
-    def test_bs_32(self):
-        self.check_main(batch_size=32)
+        for no_pass_ret, pass_ret in zip(no_pass_rets[0][0], pass_avg_ret_list):
+            self.assertEqual(len(no_pass_ret), len(pass_ret))
+            for i, (out_var_no_pass,
+                    out_var_pass) in enumerate(zip(no_pass_ret, pass_ret)):
+                self.assertTrue(
+                    np.allclose(
+                        out_var_no_pass,
+                        out_var_pass,
+                        rtol=self.rtol,
+                        atol=self.atol,
+                        equal_nan=self.equal_nan))
 
-    def get_model(self, place, batch_size):
+    def get_model(self, place, gradient_merge, batch_size, max_step):
         paddle.seed(2021)
         random.seed(2021)
         np.random.seed(2021)
@@ -149,8 +172,9 @@ class TestGradientMergePass(DistPassTestBase):
         startup_program = static.Program()
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
-        #dist_strategy.gradient_merge = True
-        #dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+        #if gradient_merge:
+        #    dist_strategy.gradient_merge = True
+        #    dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
         fleet.init(is_collective=True, strategy=dist_strategy)
 
         with static.program_guard(train_program, startup_program), \
@@ -162,23 +186,22 @@ class TestGradientMergePass(DistPassTestBase):
             input.stop_gradient = False
             loss = mlp_forward(input, label, hidden_size)
 
-        #optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
+        #optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer)
         _, self._params_grads, dist_startup_prog, dist_main_prog = optimizer.minimize(
             loss, startup_program)
 
-        def reader():
-            for i in range(self._max_step):
-                input_data = np.random.random(size=(
-                    batch_size, hidden_size)).astype('float32')
-                label_data = np.random.random(size=(batch_size,
-                                                    1)).astype('float32')
-                yield input_data, label_data
+        input_data = np.random.random(size=(128, hidden_size)).astype('float32')
+        label_data = np.random.random(size=(128, 1)).astype('float32')
 
-        return dist_main_prog, dist_startup_prog, [input, label], [
-            loss, dist_main_prog.global_block().var("linear_2.b_0")
-        ], reader
+        def reader():
+            for i in range(max_step):
+                x_data = input_data[i * batch_size:(i + 1) * batch_size, :]
+                y_data = label_data[i * batch_size:(i + 1) * batch_size, :]
+                yield x_data, y_data
+
+        return dist_main_prog, dist_startup_prog, [input, label], [loss], reader
 
 
 if __name__ == "__main__":
