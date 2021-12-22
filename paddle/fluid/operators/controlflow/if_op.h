@@ -146,37 +146,16 @@ class IfBaseOp : public framework::OperatorBase {
                                           var_name));
   }
 
-  std::vector<std::string> ShareBetweenScope(
-      const std::vector<std::string> &inner_var_names,
+  std::vector<std::string> GetZeroGradName(
       const std::vector<std::string> &out_var_names,
-      const framework::Scope *local_scope, framework::Scope *outer_scope,
-      bool is_grad = false) const {
-    auto num = inner_var_names.size();
-    PADDLE_ENFORCE_EQ(out_var_names.size(), num,
-                      platform::errors::PreconditionNotMet(
-                          "Required inner_var_names.size() == "
-                          "out_var_names.size(), but received %d != %d .",
-                          num, out_var_names.size()));
-
+      framework::Scope *outer_scope) const {
     std::vector<std::string> zero_grad_names;
-    for (size_t i = 0; i < num; ++i) {
-      auto *inner_var = local_scope->FindLocalVar(inner_var_names[i]);
+    for (size_t i = 0; i < out_var_names.size(); ++i) {
       auto *out_var = outer_scope->Var(out_var_names[i]);
-      VLOG(3) << "start share " << inner_var_names[i] << " -> "
-              << out_var_names[i];
-      if (nullptr == inner_var && is_grad) {
-        zero_grad_names.push_back(inner_var_names[i]);
-        VLOG(3) << "find zero_grad_var: " << inner_var_names[i];
-        continue;
+      if (!(out_var->Get<framework::LoDTensor>().IsInitialized())) {
+        zero_grad_names.push_back(out_var_names[i]);
+        VLOG(3) << "find zero_grad_var: " << out_var_names[i];
       }
-      CheckVarStatus(inner_var, inner_var_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(
-          out_var, platform::errors::PreconditionNotMet(
-                       "%s shall not be nullptr.", out_var_names[i]));
-
-      auto *lod_tensor = out_var->GetMutable<framework::LoDTensor>();
-      lod_tensor->ShareDataWith(inner_var->Get<framework::LoDTensor>());
-      lod_tensor->set_lod(inner_var->Get<framework::LoDTensor>().lod());
     }
     return zero_grad_names;
   }

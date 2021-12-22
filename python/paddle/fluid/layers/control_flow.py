@@ -2386,7 +2386,6 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
     helper = LayerHelper('cond_v2', **locals())
     true_output, true_block = _build_sub_block(true_fn)
     false_output, false_block = _build_sub_block(false_fn)
-
     if true_output is None and false_output is None:
         return None
     # ensure output from each branch with same structure.
@@ -2409,6 +2408,17 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
 
     # TODO(Aurelius84): Considering the inplace case.
     """
+
+    def _rename_sub_block_output(sub_block, origin_outputs, if_outputs):
+        """ 
+        this function delete the origin_output and rename all origin_output to if_output.name
+        """
+        assert len(origin_outputs) == len(if_outputs), "the length of if_outputs and origin_outputs must be the same"
+        for old_var, new_var in zip(origin_outputs, if_outputs):
+            for op in sub_block.ops:
+                op._rename_output(old_var.name, new_var.name)
+            sub_block._remove_var(old_var.name)
+
     parent_block = true_block.program.block(true_block.parent_idx)
 
     def _get_in_out_var_names(branch_block):
@@ -2459,6 +2469,9 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
     step_scope = parent_block.create_var(type=core.VarDesc.VarType.STEP_SCOPES)
     true_out_names = [var.name for var in true_output]
     false_out_names = [var.name for var in false_output]
+    _rename_sub_block_output(true_block, true_output, output_vars)
+    _rename_sub_block_output(false_block, false_output, output_vars)
+    output_names = [var.name for var in output_vars]
     if_op = parent_block.append_op(
         type='if',
         inputs={
@@ -2470,13 +2483,12 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         attrs={
             'true_block': true_block,
             'false_block': false_block,
-            'true_outs': true_out_names,
-            'false_outs': false_out_names,
+            'true_outs': output_names, 
+            'false_outs': output_names,
             'is_grad': False,
             'is_scalar_condition': True,
-            'skip_eager_deletion_vars': true_out_names + false_out_names
+            'skip_eager_deletion_vars': output_names,
         })
-
     return output_vars
 
 

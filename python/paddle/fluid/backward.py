@@ -1341,9 +1341,20 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
 
+        
+
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_shape_(arg, block)
+
+    """ in this case, we want to use block 0 var as sub-block output, so we remove output var in true-block/false-block of if-op.
+    """
+    if parent_op and parent_op.type() == 'if': 
+        block._sync_with_cpp()
+        for grad_var_name in parent_op.output_arg_names():
+            if _is_grad_var_(grad_var_name) and block.has_var(grad_var_name): 
+                block._remove_var(grad_var_name)
+
 
     for op_idx in reversed(ops_to_remove):
         block.desc._remove_op(op_idx, op_idx + 1)
