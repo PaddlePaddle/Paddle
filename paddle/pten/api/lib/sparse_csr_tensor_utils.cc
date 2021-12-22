@@ -24,12 +24,11 @@ limitations under the License. */
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/include/core.h"
 
-// PT_DECLARE_MODULE(SparseCsrTensorUtilsCPU);
-PT_DECLARE_KERNEL(to_sparse_csr, CPU);
+PT_DECLARE_KERNEL(to_sparse_csr, CPU, ALL_LAYOUT);
 
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// PT_DECLARE_MODULE(SparseCooTensorUtilCUDA);
-// #endif
+#if defined(PADDLE_WITH_CUDA)
+PT_DECLARE_KERNEL(to_sparse_csr, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace experimental {
@@ -54,8 +53,17 @@ PADDLE_API Tensor to_sparse_csr(const Tensor& x) {
       std::make_shared<paddle::experimental::DefaultAllocator>(
           pten::TransToFluidPlace(kernel_key.backend()));
 
+  pten::DenseTensorMeta crows_meta, cols_meta, values_meta;
+  crows_meta.dtype = DataType::INT64;
+  cols_meta.dtype = DataType::INT64;
+  values_meta.dtype = dense_x->meta().dtype;
+  values_meta.layout = dense_x->meta().layout;
+  pten::DenseTensor crows(allocator, std::move(crows_meta));
+  pten::DenseTensor cols(allocator, std::move(cols_meta));
+  pten::DenseTensor values(allocator, std::move(values_meta));
+  auto sparse_out = std::make_shared<pten::SparseCsrTensor>(
+      crows, cols, values, dense_x->dims());
   Tensor out;
-  auto sparse_out = std::make_shared<pten::SparseCsrTensor>();
   kernel_context.EmplaceBackOutput(sparse_out);
   out.set_impl(sparse_out);
 

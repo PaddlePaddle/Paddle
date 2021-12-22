@@ -23,7 +23,6 @@ namespace pten {
 namespace tests {
 
 TEST(sparse_csr_tensor, construct) {
-  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {2.0, 0.0, 3.0}};
   auto dense_dims = paddle::framework::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
   std::vector<int64_t> crows_data = {0, 1, 1, 3};
@@ -32,31 +31,29 @@ TEST(sparse_csr_tensor, construct) {
   auto alloc = std::make_shared<FancyAllocator>();
   auto crows_dims =
       paddle::framework::make_ddim({static_cast<int>(crows_data.size())});
-  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::ANY);
-  std::unique_ptr<DenseTensor> crows_ptr(new DenseTensor(alloc, crows_meta));
-  memcpy(crows_ptr->mutable_data<int64_t>(),
+  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
+  DenseTensor crows(alloc, crows_meta);
+  memcpy(crows.mutable_data<int64_t>(),
          &crows_data[0],
          crows_data.size() * sizeof(int64_t));
 
   auto cols_dims =
       paddle::framework::make_ddim({static_cast<int>(cols_data.size())});
-  DenseTensorMeta cols_meta(DataType::INT64, cols_dims, DataLayout::ANY);
-  std::unique_ptr<DenseTensor> cols_ptr(new DenseTensor(alloc, cols_meta));
-  memcpy(cols_ptr->mutable_data<int64_t>(),
+  DenseTensorMeta cols_meta(DataType::INT64, cols_dims, DataLayout::NCHW);
+  DenseTensor cols(alloc, cols_meta);
+  memcpy(cols.mutable_data<int64_t>(),
          &cols_data[0],
          cols_data.size() * sizeof(int64_t));
 
   auto values_dims =
       paddle::framework::make_ddim({static_cast<int>(non_zero_data.size())});
-  DenseTensorMeta values_meta(DataType::FLOAT32, values_dims, DataLayout::ANY);
-  std::unique_ptr<DenseTensor> values_ptr(new DenseTensor(alloc, values_meta));
-  memcpy(
-      values_ptr->mutable_data<float>(), &dense_data[0][0], 9 * sizeof(float));
+  DenseTensorMeta values_meta(DataType::FLOAT32, values_dims, DataLayout::NCHW);
+  DenseTensor values(alloc, values_meta);
+  memcpy(values.mutable_data<float>(),
+         &non_zero_data[0],
+         non_zero_data.size() * sizeof(float));
 
-  SparseCsrTensor sparse(std::move(crows_ptr),
-                         std::move(cols_ptr),
-                         std::move(values_ptr),
-                         dense_dims);
+  SparseCsrTensor sparse(crows, cols, values, dense_dims);
 
   CHECK_EQ(sparse.nnz(), static_cast<int64_t>(non_zero_data.size()));
   CHECK_EQ(sparse.numel(), 9);

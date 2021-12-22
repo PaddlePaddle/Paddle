@@ -22,49 +22,80 @@ namespace pten {
                       2,                                                       \
                       paddle::platform::errors::InvalidArgument(               \
                           "the SparseCsrTensor only support 2-D Tensor."));    \
-    PADDLE_ENFORCE_EQ(non_zero_crows->dtype(),                                 \
+    PADDLE_ENFORCE_EQ(non_zero_crows.dtype(),                                  \
                       DataType::INT64,                                         \
                       paddle::platform::errors::InvalidArgument(               \
                           "the dtype of non_zero_crows should be int64_t."));  \
-    PADDLE_ENFORCE_EQ(non_zero_cols->dtype(),                                  \
+    PADDLE_ENFORCE_EQ(non_zero_cols.dtype(),                                   \
                       DataType::INT64,                                         \
                       paddle::platform::errors::InvalidArgument(               \
                           "the dtype of non_zero_cols should be int64_t."));   \
     PADDLE_ENFORCE_EQ(                                                         \
-        non_zero_cols->place(),                                                \
-        non_zero_crows->place(),                                               \
+        non_zero_cols.place(),                                                 \
+        non_zero_crows.place(),                                                \
         paddle::platform::errors::InvalidArgument(                             \
             "non_zero_crows and non_zero_cols must have the same place."));    \
     PADDLE_ENFORCE_EQ(                                                         \
-        non_zero_cols->place(),                                                \
-        non_zero_elements->place(),                                            \
+        non_zero_cols.place(),                                                 \
+        non_zero_elements.place(),                                             \
         paddle::platform::errors::InvalidArgument(                             \
             "non_zero_cols and non_zero_elements must have the same place.")); \
   }
 
-SparseCsrTensor::SparseCsrTensor(std::unique_ptr<DenseTensor> non_zero_crows,
-                                 std::unique_ptr<DenseTensor> non_zero_cols,
-                                 std::unique_ptr<DenseTensor> non_zero_elements,
-                                 const DDim& dims) {
-  Check(non_zero_crows, non_zero_cols, non_zero_elements, dims);
-  this->dims_ = dims;
-  this->non_zero_crows_.reset(non_zero_crows.release());
-  this->non_zero_cols_.reset(non_zero_cols.release());
-  this->non_zero_elements_.reset(non_zero_elements.release());
+SparseCsrTensor::SparseCsrTensor(const std::shared_ptr<Allocator>& a,
+                                 const DenseTensorMeta& meta) {}
+
+SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
+                                 const DenseTensor& non_zero_cols,
+                                 const DenseTensor& non_zero_elements,
+                                 const DDim& dims)
+    : non_zero_crows_(non_zero_crows),
+      non_zero_cols_(non_zero_cols),
+      non_zero_elements_(non_zero_elements),
+      dims_(dims) {
+  Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
 }
 
-int64_t SparseCsrTensor::nnz() const { return non_zero_elements_->dims()[0]; }
+SparseCsrTensor::SparseCsrTensor(DenseTensor&& non_zero_crows,
+                                 DenseTensor&& non_zero_cols,
+                                 DenseTensor&& non_zero_elements,
+                                 const DDim& dims)
+    : non_zero_crows_(std::move(non_zero_crows)),
+      non_zero_cols_(std::move(non_zero_cols)),
+      non_zero_elements_(std::move(non_zero_elements)),
+      dims_(dims) {
+  Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
+}
 
-void SparseCsrTensor::SetMemberTensor(
-    std::unique_ptr<DenseTensor> non_zero_crows,
-    std::unique_ptr<DenseTensor> non_zero_cols,
-    std::unique_ptr<DenseTensor> non_zero_elements,
-    const DDim& dims) {
+int64_t SparseCsrTensor::nnz() const { return non_zero_elements_.dims()[0]; }
+
+void SparseCsrTensor::SetMemberTensor(const DenseTensor& non_zero_crows,
+                                      const DenseTensor& non_zero_cols,
+                                      const DenseTensor& non_zero_elements,
+                                      const DDim& dims) {
   Check(non_zero_crows, non_zero_cols, non_zero_elements, dims);
   this->dims_ = dims;
-  this->non_zero_crows_.reset(non_zero_crows.release());
-  this->non_zero_cols_.reset(non_zero_cols.release());
-  this->non_zero_elements_.reset(non_zero_elements.release());
+  // need DenseTensor implementation operator=
+  // this->non_zero_crows_ = non_zero_crows;
+  // this->non_zero_cols_ = non_zero_cols;
+  // this->non_zero_elements_ = non_zero_elements;
+}
+
+void SparseCsrTensor::Resize(const DenseTensorMeta& dense_meta,
+                             const int64_t non_zero_num) {
+  const auto& dims = dense_meta.dims;
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    2,
+                    paddle::platform::errors::InvalidArgument(
+                        "the SparseCsrTensor only support 2-D Tensor."));
+  DDim crows_dims = paddle::framework::make_ddim({dims[0] + 1});
+  this->non_zero_crows_.Resize(crows_dims);
+
+  DDim nnz_dims = paddle::framework::make_ddim({non_zero_num});
+  this->non_zero_cols_.Resize(nnz_dims);
+
+  DenseTensorMeta values_meta(dense_meta.dtype, nnz_dims, dense_meta.layout);
+  this->non_zero_elements_.Resize(nnz_dims);
 }
 
 }  // namespace pten

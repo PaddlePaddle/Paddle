@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/kernels/sparse/cpu/sparse_csr_tensor_utils.h"
 #include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
 
@@ -22,7 +23,24 @@ namespace pten {
 
 template <typename T, typename ContextT>
 SparseCsrTensor ToSparseCsr(const ContextT& dev_ctx, const DenseTensor& x) {
-  SparseCsrTensor csr;
+  DenseTensorMeta crows_meta, cols_meta, values_meta;
+  crows_meta.dtype = DataType::INT64;
+  cols_meta.dtype = DataType::INT64;
+  values_meta.dtype = x.meta().dtype;
+  values_meta.layout = x.meta().layout;
+  pten::DenseTensor crows(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(crows_meta));
+  pten::DenseTensor cols(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(cols_meta));
+  pten::DenseTensor values(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(values_meta));
+  SparseCsrTensor csr(crows, cols, values, x.dims());
   ToSparseCsr<T>(dev_ctx, x, &csr);
   return csr;
 }
