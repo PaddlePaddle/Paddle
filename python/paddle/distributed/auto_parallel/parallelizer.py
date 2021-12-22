@@ -182,7 +182,6 @@ class AutoParallelizer:
         # serial forward pass
         self._apply_serial_forward_pass(completed_main_program,
                                         serial_startup_program)
-        # print("****completed_main_program: ", completed_main_program)
         # serial backward pass
         params_grads = self._generate_backward(
             completed_main_program, serial_startup_program, serial_loss,
@@ -394,13 +393,11 @@ class AutoParallelizer:
 
             return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog
 
-
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            # print(k)
             if k == "_main_program" or k == "_startup_program" or k == "_dist_context" or k == "_fleet" or k == "_loss":
                 setattr(result, k, v)
             else:
