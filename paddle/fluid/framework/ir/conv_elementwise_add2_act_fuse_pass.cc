@@ -77,7 +77,7 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NHWC", "NCHW"})
+      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

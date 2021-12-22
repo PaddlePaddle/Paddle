@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
@@ -64,32 +64,32 @@ class CUDAStream final {
 #ifdef PADDLE_WITH_HIP
   void RecordEvent(hipEvent_t ev, Callback callback) const {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
   }
 #else
   void RecordEvent(cudaEvent_t ev, Callback callback) const {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
   }
 #endif
 
 #ifdef PADDLE_WITH_HIP
   void RecordEvent(hipEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
   }
 #else
   void RecordEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
   }
 #endif
 
 #ifdef PADDLE_WITH_HIP
   void WaitEvent(hipEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
   }
 #else
   void WaitEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
   }
 #endif
 
@@ -122,17 +122,11 @@ class CUDAStream final {
     }
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
     return false;
   }
 
-  void Synchronize() const {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
-#endif
-  }
+  void Synchronize() const { platform::GpuStreamSync(stream_); }
 
   const Place& GetPlace() const { return place_; }
 

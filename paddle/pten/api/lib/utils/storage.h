@@ -63,11 +63,20 @@ class SharedStorage : public pten::Storage {
     size_ = allocation->size();
   }
 
+  // In order to be compatible with the original Tensor design and execution
+  // system, we need to allow the uninitialized SharedStorage to exist,
+  // and it can be removed after the compatibility phase is over in the future
+  explicit SharedStorage(const paddle::platform::Place& place) {
+    data_ = pten::Allocation(nullptr, place);
+  }
+
   static const char* name() { return "SharedStorage"; }
 
+  // In order to be compatible with the original Tensor design and execution
+  // system, we need to allow the SharedStorage realloc,
+  // and it can be removed after the compatibility phase is over in the future
   void Realloc(size_t n) override {
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "The external shared storage cannot be reallocated."));
+    ResetAllocation(paddle::memory::AllocShared(place(), n), 0);
   }
 
   void Clear() override {
@@ -97,8 +106,15 @@ class SharedStorage : public pten::Storage {
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
+  void ResetAllocationPlace(const paddle::platform::Place& place) {
+    data_ = pten::Allocation(nullptr, place);
+  }
+
+  // Temporary method: For compatible with fluid Tensor and improve performance
   void Reset() {
-    allocation_.reset();
+    if (allocation_ != nullptr) {
+      allocation_.reset();
+    }
     data_.Clear();
     size_ = 0;
   }

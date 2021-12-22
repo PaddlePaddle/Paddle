@@ -284,6 +284,27 @@ $$out = cosh(x)$$
 
 )DOC";
 
+UNUSED constexpr char AsinhDoc[] = R"DOC(
+Asinh Activation Operator.
+
+$$out = asinh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AcoshDoc[] = R"DOC(
+Acosh Activation Operator.
+
+$$out = acosh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AtanhDoc[] = R"DOC(
+Atanh Activation Operator.
+
+$$out = atanh(x)$$
+
+)DOC";
+
 UNUSED constexpr char RoundDoc[] = R"DOC(
 The OP rounds the values in the input to the nearest integer value.
 
@@ -568,6 +589,10 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output is a multi-dimensional Tensor which has same "
               "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 ELU Activation Operator.
 
@@ -577,6 +602,55 @@ https://arxiv.org/abs/1511.07289.
 $$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$$
 
 )DOC");
+  }
+};
+
+template <typename T>
+class ELUGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elu_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Logit operator");
+    AddOutput("Out", "Output of Logit operator");
+    AddAttr<float>("eps",
+                   "(float, default 1e-6f) the epsilon for input clamp bound")
+        .SetDefault(1e-6f);
+    AddComment(R"DOC(
+Logit Operator. 
+
+this function is defined as follow:
+$ logit=ln\left ( {\frac {x} {1-x}} \right ) $
+
+)DOC");
+  }
+};
+
+template <typename T>
+class LogitGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("logit_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -743,6 +817,10 @@ class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(6.0f);
     AddAttr<float>("offset", "The offset parameter of HardSwish operator")
         .SetDefault(3.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 HardSwish Activation Operator.
 
@@ -775,6 +853,9 @@ REGISTER_ACTIVATION_OP_MAKER(Tan, TanDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
+REGISTER_ACTIVATION_OP_MAKER(Acosh, AcoshDoc);
+REGISTER_ACTIVATION_OP_MAKER(Asinh, AsinhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Atanh, AtanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
@@ -1168,6 +1249,67 @@ DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInferer,
 DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
                            {"DDX", "D_DOut"});
 
+class LogitOp : public framework::OperatorWithKernel {
+ public:
+  LogitOp(const std::string& type, const framework::VariableNameMap& inputs,
+          const framework::VariableNameMap& outputs,
+          const framework::AttributeMap& attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of LogitOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(%s) of LogitOp should not be null.", "Out"));
+
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
+};
+
+class LogitGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::InvalidArgument(
+            "Input(%s) of LogitGradOp should not be null.", "DOut"));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of LogitGradOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::InvalidArgument(
+            "Output(%s) of LogitGradOp should not be null.", "DX"));
+    auto x_grad_name = framework::GradVarName("X");
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ x_grad_name);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
+};
+
 template <typename T>
 class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -1435,13 +1577,11 @@ REGISTER_OP_CPU_KERNEL(
 /* ========================================================================== */
 
 /* ========================    elu  register     ============================ */
-REGISTER_OPERATOR(
-    elu, ops::ActivationOp, ops::ELUOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(elu, ops::ActivationOp, ops::ELUOpMaker,
+                  ops::ActivationOpInferVarType,
+                  ops::ELUGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ELUGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
@@ -1451,7 +1591,14 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(elu,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ELUFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ELUFunctor<double>>);
+REGISTER_OP_CPU_KERNEL(
+    elu_grad, ops::ELUGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ELUGradKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                                             ops::ELUGradGradFunctor<float>>,
@@ -1460,6 +1607,20 @@ REGISTER_OP_CPU_KERNEL(
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
 
+/* ========================================================================== */
+
+/* ========================    logit  register     ============================
+ */
+REGISTER_OPERATOR(logit, ops::LogitOp, ops::LogitOpMaker,
+                  ops::LogitGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LogitGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(logit_grad, ops::LogitGradOp);
+REGISTER_OP_CPU_KERNEL(
+    logit, ops::LogitKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LogitKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    logit_grad, ops::LogitGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LogitGradKernel<paddle::platform::CPUDeviceContext, double>);
 /* ========================================================================== */
 
 /* ========================    celu  register     ============================

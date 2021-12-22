@@ -22,6 +22,9 @@
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -74,6 +77,16 @@ class CPUGarbageCollector : public GarbageCollector {
 class XPUGarbageCollector : public GarbageCollector {
  public:
   XPUGarbageCollector(const platform::XPUPlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_IPU
+class IPUGarbageCollector : public GarbageCollector {
+ public:
+  IPUGarbageCollector(const platform::IPUPlace &place, size_t max_memory_size);
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
@@ -150,6 +163,46 @@ class NPUUnsafeFastGarbageCollector : public GarbageCollector {
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+class MLUDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  MLUDefaultStreamGarbageCollector(const platform::MLUPlace &place,
+                                   size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class MLUUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  MLUUnsafeFastGarbageCollector(const platform::MLUPlace &place,
+                                size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+class MLUStreamGarbageCollector : public GarbageCollector {
+ public:
+  MLUStreamGarbageCollector(const platform::MLUPlace &place,
+                            size_t max_memory_size);
+
+  ~MLUStreamGarbageCollector();
+
+  void Wait() const override;
+
+  mluStream stream() const;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+
+ private:
+  mluStream stream_;
+  std::unique_ptr<platform::StreamCallbackManager<mluStream>> callback_manager_;
 };
 #endif
 

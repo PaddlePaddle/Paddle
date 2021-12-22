@@ -14,7 +14,7 @@
 
 from paddle.framework import core
 from paddle.fluid import unique_name
-from .pass_base import CommOptPass, register_pass
+from .pass_base import PassBase, PassType, register_pass
 from collections import OrderedDict
 import numpy as np
 
@@ -329,7 +329,7 @@ def insert_fuse_all_reduce_by_memory_size(block, groups, max_memory_size):
 
 
 @register_pass("fuse_all_reduce")
-class FuseAllReducePass(CommOptPass):
+class FuseAllReducePass(PassBase):
     def __init__(self):
         super(FuseAllReducePass, self).__init__()
         self.set_attr("max_memory_size", -1)
@@ -340,6 +340,9 @@ class FuseAllReducePass(CommOptPass):
 
     def _check_conflict(self, other_pass):
         return True
+
+    def _type(self):
+        return PassType.COMM_OPT
 
     # NOTE: why FuseAllReducePass can override apply_single_impl instead of 
     # apply_impl? AllReduce is a collective operation, so the program of each 

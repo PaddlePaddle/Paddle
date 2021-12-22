@@ -15,9 +15,9 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/grid_sampler_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

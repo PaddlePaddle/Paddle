@@ -145,7 +145,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
-            if len(program_config.weights) == 1:
+            if self.num_input == 0:
                 return True
             return False
 
@@ -153,7 +153,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                            "INPUT ScaleTensor and Shape NOT SUPPORT")
 
         def teller2(program_config, predictor_config):
-            if self.dims == 1 and self.dynamic_shape.min_input_shape == 0:
+            if self.dims == 1 and len(self.dynamic_shape.min_input_shape) == 0:
                 return True
             return False
 

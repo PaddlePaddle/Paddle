@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .pass_base import CPPPassWrapper, register_pass
+from .pass_base import PassType, CPPPassWrapper, register_pass
 
 
 @register_pass("fuse_elewise_add_act")
@@ -23,3 +23,6 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
     @property
     def cpp_name(self):
         return "fuse_elewise_add_act_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT

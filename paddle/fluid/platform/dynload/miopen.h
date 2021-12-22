@@ -25,6 +25,12 @@ limitations under the License. */
   (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 10 + \
    MIOPEN_VERSION_PATCH)  // NOLINT
 
+// MIOPEN only support NCHW, just for compatibility with CUDNN API
+typedef enum {
+  MIOPEN_TENSOR_NCHW = 0,
+  MIOPEN_TENSOR_NHWC = 1,
+} miopenTensorFormat_t;
+
 namespace paddle {
 namespace platform {
 namespace dynload {

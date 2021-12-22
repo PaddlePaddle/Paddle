@@ -144,8 +144,25 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     if (Type() == "elementwise_add") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("elementwise_add", {"X", "Y"},
-                                          {"axis"}, {"Out"});
+        return framework::KernelSignature("add", {"X", "Y"}, {"axis"}, {"Out"});
+      }
+    }
+    if (Type() == "elementwise_sub") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("subtract", {"X", "Y"}, {"axis"},
+                                          {"Out"});
+      }
+    }
+    if (Type() == "elementwise_div") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("divide", {"X", "Y"}, {"axis"},
+                                          {"Out"});
+      }
+    }
+    if (Type() == "elementwise_mul") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature("multiply", {"X", "Y"}, {"axis"},
+                                          {"Out"});
       }
     }
     return framework::KernelSignature("None", {"X"}, {}, {"Out"});
@@ -302,16 +319,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
         ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    // If broadcasting is needed, use native implementation
-    auto CanMKLDNNElementwiseGradBeUsed = [&]() {
-      auto dx_dims = ctx.Input<Tensor>("X")->dims();
-      auto dy_dims = ctx.Input<Tensor>("Y")->dims();
-      // No broadcast or broadcasting of data on inner dims is supported
-      return (dx_dims[dx_dims.size() - 1] == dy_dims[dy_dims.size() - 1]);
-    };
-
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        CanMKLDNNElementwiseGradBeUsed()) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
