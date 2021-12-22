@@ -64,7 +64,8 @@ class MatMulOpConverter : public OpConverter {
                     : nvinfer1::MatrixOperation::kNONE;
 
     if (op_desc.HasAttr("support_int8") &&
-        engine_->precision() == AnalysisConfig::Precision::kInt8) {
+        engine_->precision() == AnalysisConfig::Precision::kInt8 &&
+        platform::GetGPUComputeCapability(0) >= 75) {
       if (engine_->with_dynamic_shape()) {
         VLOG(3) << "Convert a fluid matmul_op_int8_dynamic to TensorRT "
                    "MatmulPluginLayer";
