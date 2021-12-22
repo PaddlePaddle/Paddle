@@ -21,7 +21,7 @@
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/cpu/conj_kernel.h"
-#include "paddle/pten/kernels/cuda/conj_kernel.h"
+#include "paddle/pten/kernels/gpu/conj_kernel.h"
 
 namespace paddle {
 namespace operators {

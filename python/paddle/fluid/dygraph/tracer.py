@@ -39,7 +39,13 @@ class Tracer(core.Tracer):
 
         self._train_mode = True
 
-    def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
+    def trace_op(self,
+                 type,
+                 inputs,
+                 outputs,
+                 attrs,
+                 stop_gradient=False,
+                 inplace_map=None):
         if _in_eager_mode():
             #function_ptr = core.eager.ops.__dict__[type]
             function_ptr = _C_ops.__dict__[type]
@@ -75,7 +81,7 @@ class Tracer(core.Tracer):
         else:
             self.trace(type, inputs, outputs, attrs,
                        framework._current_expected_place(), self._has_grad and
-                       not stop_gradient)
+                       not stop_gradient, inplace_map if inplace_map else {})
 
     def train_mode(self):
         self._train_mode = True

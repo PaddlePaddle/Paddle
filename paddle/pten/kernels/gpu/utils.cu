@@ -16,11 +16,11 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/gpu/utils.h"
 
 namespace pten {
 
-void Copy(const CUDAContext& dev_ctx,
+void Copy(const GPUContext& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst) {
@@ -234,4 +234,4 @@ void Copy(const CUDAContext& dev_ctx,
 }
 }  // namespace pten
 
-PT_REGISTER_NO_TEMPLATE_KERNEL(copy, CUDA, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(copy, GPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}

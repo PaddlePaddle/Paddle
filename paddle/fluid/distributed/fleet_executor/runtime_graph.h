@@ -29,26 +29,26 @@ class RuntimeGraph final {
  public:
   RuntimeGraph() = default;
   ~RuntimeGraph() = default;
-  const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node() const {
-    return intercepter_id_to_node_;
+  const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node() const {
+    return interceptor_id_to_node_;
   }
-  const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank() const {
-    return intercepter_id_to_rank_;
+  const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank() const {
+    return interceptor_id_to_rank_;
   }
   void SetInterceptorIdToRank(
-      const std::unordered_map<int64_t, int64_t>& intercepter_id_to_rank) {
-    intercepter_id_to_rank_ = intercepter_id_to_rank;
+      const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank) {
+    interceptor_id_to_rank_ = interceptor_id_to_rank;
   }
   void SetInterceptorIdToNode(
-      const std::unordered_map<int64_t, TaskNode*>& intercepter_id_to_node) {
-    intercepter_id_to_node_ = intercepter_id_to_node;
+      const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node) {
+    interceptor_id_to_node_ = interceptor_id_to_node;
   }
   std::string DebugString() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(RuntimeGraph);
-  std::unordered_map<int64_t, TaskNode*> intercepter_id_to_node_;
-  std::unordered_map<int64_t, int64_t> intercepter_id_to_rank_;
+  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;
+  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
 };
 
 }  // namespace distributed
