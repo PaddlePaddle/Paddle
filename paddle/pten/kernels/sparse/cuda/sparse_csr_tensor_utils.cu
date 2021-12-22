@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sparse.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/gpu/utils.h"
 #include "paddle/pten/kernels/hybird/sparse/cuda/sparse_utils.h"
 #include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
 
@@ -85,5 +85,4 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(to_sparse_csr, CUDA, ANY, pten::ToSparseCsr, float, double) {
-}
+PT_REGISTER_KERNEL(to_sparse_csr, GPU, ANY, pten::ToSparseCsr, float, double) {}

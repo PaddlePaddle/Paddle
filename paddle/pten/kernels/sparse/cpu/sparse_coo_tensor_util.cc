@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/sparse/cpu/sparse_coo_tensor_util.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/kernels/hybird/sparse/cpu/sparse_util.h"
+#include "paddle/pten/kernels/hybird/sparse/cpu/sparse_utils.h"
 
 namespace pten {
 
@@ -78,7 +78,5 @@ void ToSparseCoo(const CPUContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_MODULE(SparseCooTensorUtilCPU);
-
 PT_REGISTER_KERNEL(
-    "to_sparse_coo", CPU, ANY, pten::ToSparseCoo, float, double) {}
+    to_sparse_coo, CPU, ALL_LAYOUT, pten::ToSparseCoo, float, double) {}

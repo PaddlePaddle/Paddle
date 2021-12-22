@@ -74,4 +74,5 @@ void ToSparseCsr(const CPUContext& dev_ctx,
 
 // PT_REGISTER_MODULE(SparseCsrTensorUtilsCPU);
 
-PT_REGISTER_KERNEL(to_sparse_csr, CPU, ANY, pten::ToSparseCsr, float, double) {}
+PT_REGISTER_KERNEL(
+    to_sparse_csr, CPU, ALL_LAYOUT, pten::ToSparseCsr, float, double) {}

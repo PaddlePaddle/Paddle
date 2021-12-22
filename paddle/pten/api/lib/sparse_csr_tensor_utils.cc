@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/pten/include/core.h"
 
 // PT_DECLARE_MODULE(SparseCsrTensorUtilsCPU);
-PT_DECLARE_KERNEL(to_sparse_csr, CPU);
+PT_DECLARE_KERNEL(to_sparse_csr, CPU, ALL_LAYOUT);
 
 // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // PT_DECLARE_MODULE(SparseCooTensorUtilCUDA);
