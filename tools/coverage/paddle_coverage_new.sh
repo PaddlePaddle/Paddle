@@ -38,7 +38,6 @@ python3.7 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 # full html report
-
 function gen_full_html_report() {
     lcov --extract coverage.info \
         '/paddle/paddle/fluid/framework/*' \
@@ -105,21 +104,12 @@ function gen_full_html_report_npu() {
     mv -f coverage-full.tmp coverage-full.info
 }
 
-if [ ${WITH_XPU:-OFF} == "ON" ]; then
-    gen_full_html_report_xpu || true
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    gen_full_html_report_npu || true
-else
-    gen_full_html_report || true
-fi
 
 # diff html report
 
 function gen_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
-
         COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
-
         python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > git-diff.out
     fi
 
@@ -135,10 +125,22 @@ function gen_diff_html_report() {
     #genhtml -o coverage-diff -t 'Diff Coverage' --no-function-coverage --no-branch-coverage coverage-diff.info
 }
 
-gen_diff_html_report || true
+
+#clean no-changed gcda 
+if [[ -s coverage.info ]];then
+    if [ ${WITH_XPU:-OFF} == "ON" ]; then
+        gen_full_html_report_xpu || true
+    elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
+        gen_full_html_report_npu || true
+    else
+        gen_full_html_report || true
+    fi
+    gen_diff_html_report || true
+else
+    touch coverage-diff.info
+fi
 
 # python coverage
-
 export COVERAGE_FILE=/paddle/build/python-coverage.data
 
 coverage combine `$(ls python-coverage.data.*)` || NO_PYTHON_COVERAGE_DATA=1
@@ -150,7 +152,6 @@ sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
 `$(python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
 # python full html report
-#
 function gen_python_full_html_report() {
     lcov --extract python-coverage.info \
         '/paddle/python/*' \
@@ -174,7 +175,6 @@ gen_python_full_html_report || true
 function gen_python_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
         COVERAGE_DIFF_PATTERN="`python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
-
         python3.7 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
     fi
 
@@ -186,7 +186,6 @@ function gen_python_diff_html_report() {
     python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
 
     mv -f python-coverage-diff.tmp python-coverage-diff.info
-
     #genhtml -o python-coverage-diff \
     #    -t 'Python Diff Coverage' \
     #    --no-function-coverage \
@@ -196,5 +195,3 @@ function gen_python_diff_html_report() {
 }
 
 gen_python_diff_html_report || true
-
-# assert coverage lines
