@@ -169,10 +169,16 @@ __inline__ __device__ half rsqrt_(const half val) {
 }
 #endif
 
-template <typename T, typename U, int BlockDim>
-__global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
-                                 T *y, U *mean, U *var, float epsilon,
-                                 int64_t feature_size) {
+template <typename T, typename U, bool ScaleBiasWithSameTypeX>
+using LayerNormScaleBiasT =
+    typename std::conditional<ScaleBiasWithSameTypeX, T, U>::type;
+
+template <typename T, typename U, int BlockDim,
+          bool ScaleBiasWithSameTypeX = false>
+__global__ void LayerNormForward(
+    const T *x, const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias, T *y,
+    U *mean, U *var, float epsilon, int64_t feature_size) {
   __shared__ U mean_share;
   __shared__ U var_share;
   __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
@@ -212,14 +218,15 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(
-            scale[j] * (static_cast<U>(x[i]) - mean_val) * invvar + bias[j]);
+        y[i] = static_cast<T>(static_cast<U>(scale[j]) *
+                                  (static_cast<U>(x[i]) - mean_val) * invvar +
+                              static_cast<U>(bias[j]));
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(scale[j] * (static_cast<U>(x[i]) - mean_val) *
-                              invvar);
+        y[i] = static_cast<T>(static_cast<U>(scale[j]) *
+                              (static_cast<U>(x[i]) - mean_val) * invvar);
       }
     }
   } else {  // scale == nullptr
@@ -227,7 +234,7 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
-                              bias[j]);
+                              static_cast<U>(bias[j]));
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
@@ -336,12 +343,15 @@ __global__ void LayerNormBackwardPartGradGammaBeta(
   }
 }
 
-template <typename T, typename U, int BDIMX, int BDIMY>
+template <typename T, typename U, int BDIMX, int BDIMY, bool ScaleBiasSameTypeX>
 __global__ void LayerNormBackwardSumGradGammaBeta(
     const U *part_grad_gamma, const U *part_grad_beta, const int part_size,
     // const int n1, const int n2, T* grad_gamma, T* grad_beta) {
-    const int n1, const int n2, U *grad_gamma, U *grad_beta) {
+    const int n1, const int n2,
+    LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX> *grad_gamma,
+    LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX> *grad_beta) {
   // sum partial gradients for gamma and beta
+  using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX>;
   __shared__ U buf[BDIMX * BDIMY];
   int64_t i2 = blockIdx.x * BDIMX + threadIdx.x;
   if (i2 < n2) {
@@ -378,20 +388,18 @@ __global__ void LayerNormBackwardSumGradGammaBeta(
     }
     // write out fully summed gradients
     if (threadIdx.y == 0) {
-      grad_gamma[i2] = sum_gamma;
-      grad_beta[i2] = sum_beta;
+      grad_gamma[i2] = static_cast<ScaleBiasT>(sum_gamma);
+      grad_beta[i2] = static_cast<ScaleBiasT>(sum_beta);
     }
   }
 }
 
-template <typename T, typename U, int BDIMX, int BDIMY>
+template <typename T, typename U, int BDIMX, int BDIMY, bool ScaleBiasSameTypeX>
 __global__ void LayerNormBackwardComputeGradInput(
     const T *__restrict__ dout, const T *__restrict__ input, const int n1,
-    const int n2,
-    // const U* __restrict__ mean, const U* __restrict__ var, const float
-    // epsilon, const T* gamma,
-    const U *__restrict__ mean, const U *__restrict__ var, const float epsilon,
-    const U *gamma, T *grad_input) {
+    const int n2, const U *__restrict__ mean, const U *__restrict__ var,
+    const float epsilon,
+    const LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX> *gamma, T *grad_input) {
 #ifdef __HIPCC__
   for (auto i1 = hipBlockIdx_x; i1 < n1; i1 += hipGridDim_x) {
 #else
@@ -411,15 +419,17 @@ __global__ void LayerNormBackwardComputeGradInput(
         for (int k = 0; k < 4; ++k) {
           const U c_h = static_cast<U>(k_input[l + k]);
           const U c_loss = static_cast<U>(k_dout[l + k]);
-          sum_loss1 += c_loss * gamma[l + k];
-          sum_loss2 += c_loss * gamma[l + k] * (c_h - c_mean) * c_invvar;
+          sum_loss1 += c_loss * static_cast<U>(gamma[l + k]);
+          sum_loss2 +=
+              c_loss * static_cast<U>(gamma[l + k]) * (c_h - c_mean) * c_invvar;
         }
       }
       for (; l < n2; ++l) {
         const U c_h = static_cast<U>(k_input[l]);
         const U c_loss = static_cast<U>(k_dout[l]);
-        sum_loss1 += c_loss * gamma[l];
-        sum_loss2 += c_loss * gamma[l] * (c_h - c_mean) * c_invvar;
+        sum_loss1 += c_loss * static_cast<U>(gamma[l]);
+        sum_loss2 +=
+            c_loss * static_cast<U>(gamma[l]) * (c_h - c_mean) * c_invvar;
       }
     } else {
       int l = 4 * thrx;
@@ -491,7 +501,7 @@ __global__ void LayerNormBackwardComputeGradInput(
       for (int l = thrx; l < n2; l += numx) {
         const U c_h = static_cast<U>(k_input[l]);
         const U c_loss = static_cast<U>(k_dout[l]);
-        U f_grad_input = fH * c_loss * gamma[l];
+        U f_grad_input = fH * c_loss * static_cast<U>(gamma[l]);
         f_grad_input -= sum_loss1;
         f_grad_input -= (c_h - c_mean) * c_invvar * sum_loss2;
         f_grad_input *= term1;
@@ -513,11 +523,17 @@ __global__ void LayerNormBackwardComputeGradInput(
 
 // Make sure that d_scale != nullptr && d_bias != nullptr
 // Since d_scale != nullptr, scale would not be nullptr
-template <typename T, typename U, int BlockDim, bool HasDx>
+template <typename T, typename U, int BlockDim, bool HasDx,
+          bool ScaleBiasWithSameTypeX>
 __global__ void LayerNormBackwardGradientAll(
-    const T *x, const T *d_y, U *d_scale, U *d_bias, T *d_x, const U *mean,
-    const U *var, const U *scale, float epsilon, int64_t batch_size,
-    int64_t feature_size, int64_t col_offset) {
+    const T *x, const T *d_y,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_bias, T *d_x,
+    const U *mean, const U *var,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    float epsilon, int64_t batch_size, int64_t feature_size,
+    int64_t col_offset) {
+  using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
   int64_t beg_idx = threadIdx.x * feature_size + (blockIdx.x + col_offset);
   int64_t end_idx = batch_size * feature_size + (blockIdx.x + col_offset);
   int64_t stride = BlockDim * feature_size;
@@ -532,7 +548,8 @@ __global__ void LayerNormBackwardGradientAll(
     d_bias_partial += static_cast<U>(d_y[i]);
     if (HasDx) {
       d_x[i] = static_cast<T>(static_cast<U>(d_y[i]) *
-                              scale[blockIdx.x + col_offset] / var_val);
+                              static_cast<U>(scale[blockIdx.x + col_offset]) /
+                              var_val);
     }
   }
 
@@ -543,19 +560,24 @@ __global__ void LayerNormBackwardGradientAll(
   d_bias_partial = BlockReduceSum<U>(d_bias_partial, shared_bias);
 
   if (threadIdx.x == 0) {
-    d_scale[blockIdx.x + col_offset] = d_scale_partial;
-    d_bias[blockIdx.x + col_offset] = d_bias_partial;
+    d_scale[blockIdx.x + col_offset] = static_cast<ScaleBiasT>(d_scale_partial);
+    d_bias[blockIdx.x + col_offset] = static_cast<ScaleBiasT>(d_bias_partial);
   }
 }
 
 // Make sure that there is only one true expression: d_scale != nullptr
 // or d_bias != nullptr
 // Notice: scale may be nullptr
-template <typename T, typename U, int BlockDim, bool HasDx, bool HasDScale>
+template <typename T, typename U, int BlockDim, bool HasDx, bool HasDScale,
+          bool ScaleBiasWithSameTypeX>
 __global__ void LayerNormBackwardGradientScaleOrBias(
-    const T *x, const T *d_y, U *d_scale, U *d_bias, T *d_x, const U *mean,
-    const U *var, const U *scale, float epsilon, int64_t batch_size,
-    int64_t feature_size, int col_offset) {
+    const T *x, const T *d_y,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_bias, T *d_x,
+    const U *mean, const U *var,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    float epsilon, int64_t batch_size, int64_t feature_size, int col_offset) {
+  using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
   using BlockReduce = cub::BlockReduce<U, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int64_t beg_idx = threadIdx.x * feature_size + blockIdx.x + col_offset;
@@ -578,7 +600,8 @@ __global__ void LayerNormBackwardGradientScaleOrBias(
     if (HasDx) {
       if (scale != nullptr) {
         d_x[i] = static_cast<T>(static_cast<U>(d_y[i]) *
-                                scale[blockIdx.x + col_offset] / var_val);
+                                static_cast<U>(scale[blockIdx.x + col_offset]) /
+                                var_val);
       } else {
         d_x[i] = static_cast<T>(static_cast<U>(d_y[i]) / var_val);
       }
@@ -590,9 +613,11 @@ __global__ void LayerNormBackwardGradientScaleOrBias(
 
   if (threadIdx.x == 0) {
     if (HasDScale) {
-      d_scale[blockIdx.x + col_offset] = d_scale_or_d_bias_partial;
+      d_scale[blockIdx.x + col_offset] =
+          static_cast<ScaleBiasT>(d_scale_or_d_bias_partial);
     } else {
-      d_bias[blockIdx.x + col_offset] = d_scale_or_d_bias_partial;
+      d_bias[blockIdx.x + col_offset] =
+          static_cast<ScaleBiasT>(d_scale_or_d_bias_partial);
     }
   }
 }
@@ -640,12 +665,12 @@ __global__ void LayerNormBackwardPostProcessToCalculateDX(
 }
 
 // Here, we only calculate d_x
-template <typename T, typename U, int BlockDim>
-__global__ void LayerNormBackwardGradientOnlyDX(const T *x, const T *d_y,
-                                                T *d_x, const U *mean,
-                                                const U *var, const U *scale,
-                                                float epsilon,
-                                                int64_t feature_size) {
+template <typename T, typename U, int BlockDim, bool ScaleBiasWithSameTypeX>
+__global__ void LayerNormBackwardGradientOnlyDX(
+    const T *x, const T *d_y, T *d_x, const U *mean, const U *var,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    float epsilon, int64_t feature_size) {
+  using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
   using BlockReduce = cub::BlockReduce<PairForLayerNorm<U>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ U d_x_reduce_tmp[2];
@@ -660,8 +685,8 @@ __global__ void LayerNormBackwardGradientOnlyDX(const T *x, const T *d_y,
         static_cast<U>(real_sqrt(static_cast<float>(block_var) + epsilon));
     if (scale != nullptr) {
       int col_idx = i % feature_size;
-      d_x[i] =
-          static_cast<T>(static_cast<U>(d_y[i]) * scale[col_idx] / var_val);
+      d_x[i] = static_cast<T>(static_cast<U>(d_y[i]) *
+                              static_cast<U>(scale[col_idx]) / var_val);
     } else {
       d_x[i] = static_cast<T>(static_cast<U>(d_y[i]) / var_val);
     }
@@ -692,11 +717,16 @@ __global__ void LayerNormBackwardGradientOnlyDX(const T *x, const T *d_y,
   }
 }
 
-template <typename T, typename U>
+template <typename T, typename U, bool ScaleBiasWithSameTypeX>
 __global__ void LayerNormBackwardWhenBatchSizeIsOne(
-    const T *x, const T *d_y, T *d_x, U *d_scale, U *d_bias, const U *mean,
-    const U *var, const U *scale, float epsilon, int64_t feature_size) {
+    const T *x, const T *d_y, T *d_x,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_bias, const U *mean,
+    const U *var,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    float epsilon, int64_t feature_size) {
   int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
   if (idx < feature_size) {
     auto var_val =
         static_cast<U>(real_sqrt(static_cast<float>(var[0]) + epsilon));
@@ -704,26 +734,32 @@ __global__ void LayerNormBackwardWhenBatchSizeIsOne(
       if (d_scale == nullptr) {
         d_x[idx] = static_cast<T>(static_cast<U>(d_y[idx]) / var_val);
       } else {
-        d_x[idx] =
-            static_cast<T>(static_cast<U>(d_y[idx]) * scale[idx] / var_val);
+        d_x[idx] = static_cast<T>(static_cast<U>(d_y[idx]) *
+                                  static_cast<U>(scale[idx]) / var_val);
       }
     }
 
     if (d_scale != nullptr) {
-      d_scale[idx] = static_cast<U>(d_y[idx]) *
-                     (static_cast<U>(x[idx]) - mean[0]) / var_val;
+      d_scale[idx] =
+          static_cast<ScaleBiasT>(static_cast<U>(d_y[idx]) *
+                                  (static_cast<U>(x[idx]) - mean[0]) / var_val);
     }
 
-    if (d_bias != nullptr) d_bias[idx] = static_cast<U>(d_y[idx]);
+    if (d_bias != nullptr) {
+      d_bias[idx] = static_cast<ScaleBiasT>(d_y[idx]);
+    }
   }
 }
 
-template <typename T, typename U>
-static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
-                              const U *mean, const U *var, T *d_x, U *d_scale,
-                              U *d_bias, float epsilon, int64_t batch_size,
-                              int64_t feature_size,
-                              const platform::CUDADeviceContext &dev_ctx) {
+template <typename T, typename U, bool ScaleBiasWithSameTypeX = false>
+static void LayerNormBackward(
+    const T *x, const T *d_y,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const U *mean, const U *var, T *d_x,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_bias, float epsilon,
+    int64_t batch_size, int64_t feature_size,
+    const platform::CUDADeviceContext &dev_ctx) {
   auto stream = dev_ctx.stream();
 #ifdef __HIPCC__
   const int kMaxBlockDim = 256;
@@ -737,10 +773,10 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
   if (gradient_flag == 0) return;
 
   if (batch_size == 1) {
-    LayerNormBackwardWhenBatchSizeIsOne<
-        T, U><<<(feature_size + kMaxBlockDim - 1) / kMaxBlockDim, kMaxBlockDim,
-                0, stream>>>(x, d_y, d_x, d_scale, d_bias, mean, var, scale,
-                             epsilon, feature_size);
+    LayerNormBackwardWhenBatchSizeIsOne<T, U, ScaleBiasWithSameTypeX><<<
+        (feature_size + kMaxBlockDim - 1) / kMaxBlockDim, kMaxBlockDim, 0,
+        stream>>>(x, d_y, d_x, d_scale, d_bias, mean, var, scale, epsilon,
+                  feature_size);
 
     if (d_x != nullptr) {
       switch (GetDesiredBlockDim(feature_size)) {
@@ -759,8 +795,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
         FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
             feature_size, kMaxBlockNum,
             LayerNormBackwardGradientScaleOrBias<
-                T, U, kBlockDim, false,
-                false><<<block_num, kBlockDim, 0, stream>>>(
+                T, U, kBlockDim, false, false,
+                ScaleBiasWithSameTypeX><<<block_num, kBlockDim, 0, stream>>>(
                 x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
                 batch_size, feature_size, col_offset));
       }
@@ -770,8 +806,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
         FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
             feature_size, kMaxBlockNum,
             LayerNormBackwardGradientScaleOrBias<
-                T, U, kBlockDim, false,
-                true><<<block_num, kBlockDim, 0, stream>>>(
+                T, U, kBlockDim, false, true,
+                ScaleBiasWithSameTypeX><<<block_num, kBlockDim, 0, stream>>>(
                 x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
                 batch_size, feature_size, col_offset));
       }
@@ -781,7 +817,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
         FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
             feature_size, kMaxBlockNum,
             LayerNormBackwardGradientAll<
-                T, U, kBlockDim, false><<<block_num, kBlockDim, 0, stream>>>(
+                T, U, kBlockDim, false,
+                ScaleBiasWithSameTypeX><<<block_num, kBlockDim, 0, stream>>>(
                 x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
                 batch_size, feature_size, col_offset));
       }
@@ -790,7 +827,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       switch (GetDesiredBlockDim(feature_size)) {
         FIXED_BLOCK_DIM_CASE(
             LayerNormBackwardGradientOnlyDX<
-                T, U, kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
+                T, U, kBlockDim,
+                ScaleBiasWithSameTypeX><<<batch_size, kBlockDim, 0, stream>>>(
                 x, d_y, d_x, mean, var, scale, epsilon, feature_size));
       }
       break;
@@ -799,8 +837,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
         FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
             feature_size, kMaxBlockNum,
             LayerNormBackwardGradientScaleOrBias<
-                T, U, kBlockDim, true,
-                false><<<block_num, kBlockDim, 0, stream>>>(
+                T, U, kBlockDim, true, false,
+                ScaleBiasWithSameTypeX><<<block_num, kBlockDim, 0, stream>>>(
                 x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
                 batch_size, feature_size, col_offset));
       }
@@ -816,8 +854,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
         FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
             feature_size, kMaxBlockNum,
             LayerNormBackwardGradientScaleOrBias<
-                T, U, kBlockDim, true,
-                true><<<block_num, kBlockDim, 0, stream>>>(
+                T, U, kBlockDim, true, true,
+                ScaleBiasWithSameTypeX><<<block_num, kBlockDim, 0, stream>>>(
                 x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
                 batch_size, feature_size, col_offset));
       }
@@ -854,7 +892,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       dim3 threads3(BDIMX3, BDIMY3, 1);
       const dim3 blocks3((feature_size + BDIMX2 - 1) / BDIMX2, 1, 1);
       LayerNormBackwardSumGradGammaBeta<
-          T, U, BDIMX3, BDIMY3><<<blocks3, threads3, 0, stream>>>(
+          T, U, BDIMX3, BDIMY3,
+          ScaleBiasWithSameTypeX><<<blocks3, threads3, 0, stream>>>(
           part_grad_gamma, part_grad_beta, part_size, batch_size, feature_size,
           d_scale, d_bias);
 
@@ -862,7 +901,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       constexpr int BDIMY1 = 4;
       dim3 threads1(BDIMX1, BDIMY1, 1);
       LayerNormBackwardComputeGradInput<
-          T, U, BDIMX1, BDIMY1><<<batch_size, threads1, 0, stream>>>(
+          T, U, BDIMX1, BDIMY1,
+          ScaleBiasWithSameTypeX><<<batch_size, threads1, 0, stream>>>(
           d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
       break;
     }

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -22,25 +23,9 @@
 #include "paddle/pten/core/sparse_csr_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
-
-// TODO(shixiaowei): replaced by new DeviceContext later
-using CPUContext = paddle::platform::CPUDeviceContext;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using CUDAContext = paddle::platform::CUDADeviceContext;
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-using MKLDNNContext = paddle::platform::MKLDNNDeviceContext;
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUContext = paddle::platform::NPUDeviceContext;
-#endif
-#ifdef PADDLE_WITH_XPU
-using XPUContext = paddle::platform::XPUDeviceContext;
-#endif
 
 #define PT_KERNEL(...) \
   ::pten::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
@@ -197,7 +182,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CUDAContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(NPUContext);
