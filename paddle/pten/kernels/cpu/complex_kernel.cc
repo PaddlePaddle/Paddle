@@ -12,28 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/cpu/conj_kernel.h"
+#include "paddle/pten/kernels/complex_kernel.h"
+#include "paddle/pten/kernels/impl/complex_kernel_impl.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/hybird/math/conj_impl.h"
 
-namespace pten {
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/complex.h"
 
-template <typename T>
-void Conj(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  ConjImpl<T, CPUContext>(dev_ctx, x, out);
-}
-
-}  // namespace pten
-
-PT_REGISTER_KERNEL(conj,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Conj,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PT_REGISTER_CTX_KERNEL(conj,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::Conj,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>,
+                       float,
+                       double,
+                       int,
+                       int64_t) {}
