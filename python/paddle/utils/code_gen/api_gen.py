@@ -348,6 +348,7 @@ def source_include(header_file_path):
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/kernels/declarations.h"
 """
 
 
