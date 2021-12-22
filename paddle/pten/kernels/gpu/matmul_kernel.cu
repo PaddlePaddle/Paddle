@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/matmul_kernel.h"
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
 PT_REGISTER_CTX_KERNEL(matmul,
-                       CUDA,
+                       GPU,
                        ALL_LAYOUT,
                        pten::Matmul,
                        float,
