@@ -49,13 +49,7 @@ void ReshapeFromVectorVal(const CUDAContext& dev_ctx,
                           const std::vector<int>& shape,
                           DenseTensor* out) {
   auto out_meta = InferShapeFromVecValue(x.meta(), shape);
-  VLOG(3) << "yoki: x_data: " << x.data();
-  VLOG(3) << "yoki: out_data: " << out->data();
-  VLOG(3) << "yoki: x_numel: " << x.numel();
-  VLOG(3) << "yoki: out_numel: " << out->numel();
-  //if (x.data() == out->data() && x.numel() == out->numel()) {
   if (&x == out) {
-    VLOG(3) << "yoki: no need copy";
     LOG(INFO) << "out_meta dims:" << out_meta.dims;
     out->Resize(out_meta.dims);
     return;
