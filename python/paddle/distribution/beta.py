@@ -155,3 +155,10 @@ class Beta(ExponentialFamily):
             Tensor: entropy.
         """
         return self._dirichlet.entropy()
+
+    @property
+    def _natural_parameters(self):
+        return (self.alpha, self.beta)
+
+    def _log_normalizer(self, x, y):
+        return paddle.lgamma(x) + paddle.lgamma(y) - paddle.lgamma(x + y)

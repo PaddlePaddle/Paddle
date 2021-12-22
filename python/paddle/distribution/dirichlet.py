@@ -20,27 +20,38 @@ from .exponential_family import ExponentialFamily
 class Dirichlet(ExponentialFamily):
     """Dirichlet distribution with parameter concentration
 
+    The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
+    positive, lenght-k vector concentration(`k > 1`).
+    The Dirichlet is identically the Beta distribution when `k = 2`.
+
     Mathematical details
 
     The probability density function (pdf) is
 
     .. math::
 
-        pdf(x; \mu, \sigma) = \\frac{1}{Z}e^{\\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
+        f(x_1,...,x_k; \alpha_1,...,\alpha_k) = \frac{1}{B(\alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
 
-    .. math::
-
-        Z = (2 \pi \sigma^2)^{0.5}
-
-    In the above equation:
-
-    * :math:`loc = \mu`: is the mean.
-    * :math:`scale = \sigma`: is the std.
-    * :math:`Z`: is the normalization constant.
+    The normalizing constant is the multivariate beta function.
 
     Args:
         concentration (Tensor): concentration parameter of dirichlet 
         distribution
+
+    Examples:
+    .. code-block:: python
+
+        import paddle
+
+        dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1., 2., 3.]))
+
+        print(dirichlet.entropy())
+        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [-1.24434423])
+        print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
+        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #        [10.80000114])
+
     """
 
     def __init__(self, concentration):
@@ -73,10 +84,10 @@ class Dirichlet(ExponentialFamily):
             concentration0.pow(2) * (concentration0 + 1))
 
     def sample(self, shape=None):
-        """[summary]
+        """sample from dirichlet distribution.
 
         Args:
-            shape ([type], optional): [description]. Defaults to None.
+            shape (Tensor, optional): sample shape. Defaults to None.
         """
         raise NotImplementedError
 
@@ -92,10 +103,10 @@ class Dirichlet(ExponentialFamily):
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """log of probability densitiy function
+        """log of probability densitiy function.
 
         Args:
-            value ([type]): [description]
+            value (Tensor): value to be evaluated.
         """
         return ((paddle.log(value) * (self.concentration - 1.0)
                  ).sum(-1) + paddle.lgamma(self.concentration.sum(-1)) -
@@ -114,3 +125,10 @@ class Dirichlet(ExponentialFamily):
                 (k - concentration0) * paddle.digamma(concentration0) - (
                     (self.concentration - 1.0
                      ) * paddle.digamma(self.concentration)).sum(-1))
+
+    @property
+    def _natural_parameters(self):
+        return (self.concentration, )
+
+    def _log_normalizer(self, x):
+        return x.lgamma().sum(-1) - paddle.lgamma(x.sum(-1))

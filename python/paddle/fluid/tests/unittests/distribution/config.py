@@ -19,6 +19,10 @@ import numpy as np
 import paddle
 
 DEVICES = [paddle.CPUPlace()]
+if paddle.is_compiled_with_cuda():
+    DEVICES.append(paddle.CUDAPlace(0))
+
+DEFAULT_DTYPE = 'float64'
 
 TEST_CASE_NAME = 'suffix'
 # All test case will use float64 for compare percision, refs:
@@ -32,17 +36,8 @@ RTOL = {
 ATOL = {'float32': 0.0, 'complex64': 0, 'float64': 0.0, 'complex128': 0}
 
 
-def xrand(dims=1,
-          dtype='float64',
-          min_dim_len=10,
-          max_dim_len=50,
-          complex=False):
-    shape = [np.random.randint(min_dim_len, max_dim_len) for i in range(dims)]
-    if complex:
-        return np.random.randn(*shape).astype(dtype) + 1.j * np.random.randn(
-            *shape).astype(dtype)
-    else:
-        return np.random.randn(*shape).astype(dtype)
+def xrand(shape=(10, 10, 10), dtype=DEFAULT_DTYPE, min=10.0, max=100.0):
+    return ((np.random.rand(*shape).astype(dtype)) * (max - min) + min)
 
 
 def place(devices, key='place'):

@@ -14,10 +14,14 @@
 import functools
 import warnings
 
+import paddle
+
+from ..fluid.framework import in_dygraph_mode
 from .beta import Beta
 from .categorical import Categorical
 from .dirichlet import Dirichlet
 from .distribution import Distribution
+from .exponential_family import ExponentialFamily
 from .normal import Normal
 from .uniform import Uniform
 
@@ -159,5 +163,45 @@ def _kl_uniform_uniform(p, q):
     return p.kl_divergence(q)
 
 
-def _lbeta(x, y):
-    return x.lgamma() + y.lgamma() - (x + y).lgamma()
+@register_kl(ExponentialFamily, ExponentialFamily)
+def _kl_expfamily_expfamily(p, q):
+    """compute kl-divergence using `Bregman divergences` 
+    https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf
+    """
+    if not type(p) == type(q):
+        raise NotImplementedError
+
+    p_natural_params = []
+    for param in p._natural_parameters:
+        param = param.detach()
+        param.stop_gradient = False
+        p_natural_params.append(param)
+
+    q_natural_params = q._natural_parameters
+
+    p_log_norm = p._log_normalizer(*p_natural_params)
+
+    try:
+        if in_dygraph_mode():
+            p_grads = paddle.grad(
+                p_log_norm, p_natural_params, create_graph=True)
+        else:
+            p_grads = paddle.static.gradients(p_log_norm, p_natural_params)
+    except RuntimeError as e:
+        raise TypeError(
+            """Cann't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q}). """.
+            format(
+                cls_p=type(p).__name__, cls_q=type(q).__name__)) from e
+
+    kl = q._log_normalizer(*q_natural_params) - p_log_norm
+    for p_param, q_param, p_grad in zip(p_natural_params, q_natural_params,
+                                        p_grads):
+        term = (q_param - p_param) * p_grad
+        kl -= _sum_rightmost(term, len(q.event_shape))
+
+    return kl
+
+
+def _sum_rightmost(value, n):
+    """sum value along rightmost n dim"""
+    return value.reshape(value.shape[:-n] + (-1, )).sum(-1) if n > 0 else value

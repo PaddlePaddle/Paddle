@@ -19,8 +19,12 @@ import numpy as np
 import paddle
 import scipy.special
 import scipy.stats
+from paddle.distribution import kl
 
 import config
+import mock_data as mock
+
+paddle.set_default_dtype('float64')
 
 
 @config.place(config.DEVICES)
@@ -92,6 +96,22 @@ class TestDispatch(unittest.TestCase):
     def test_dispatch_with_unregister(self):
         with self.assertRaises(NotImplementedError):
             paddle.distribution.kl_divergence(self.p, self.q)
+
+
+@config.place(config.DEVICES)
+@config.parameterize(
+    (config.TEST_CASE_NAME, 'p', 'q'),
+    [('test-diff-dist', mock.Exponential(paddle.rand((100, 200, 100)) + 1.0),
+      mock.Exponential(paddle.rand((100, 200, 100)) + 2.0)),
+     ('test-same-dist', mock.Exponential(paddle.to_tensor(1.0)),
+      mock.Exponential(paddle.to_tensor(1.0)))])
+class TestKLExpfamilyExpFamily(unittest.TestCase):
+    def test_kl_expfamily_expfamily(self):
+        np.testing.assert_allclose(
+            paddle.distribution.kl_divergence(self.p, self.q),
+            kl._kl_expfamily_expfamily(self.p, self.q),
+            rtol=config.RTOL.get(config.DEFAULT_DTYPE),
+            atol=config.ATOL.get(config.DEFAULT_DTYPE))
 
 
 if __name__ == '__main__':

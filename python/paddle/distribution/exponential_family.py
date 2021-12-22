@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
+from ..fluid.framework import in_dygraph_mode
 from .distribution import Distribution
 
 
@@ -19,13 +22,39 @@ class ExponentialFamily(Distribution):
     """ Base class for exponential family distribution.
     """
 
-    def _natural_params(self):
+    @property
+    def _natural_parameters(self):
         raise NotImplementedError
 
     def _log_normalizer(self):
         raise NotImplementedError
 
-    def entropy(self):
-        """entropy
-        """
+    @property
+    def _mean_carrier_measure(self):
         raise NotImplementedError
+
+    def entropy(self):
+        """caculate entropy use `bregman divergence` 
+        https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf
+        """
+        entropy_value = -self._mean_carrier_measure
+
+        natural_parameters = []
+        for parameter in self._natural_parameters:
+            parameter = parameter.detach()
+            parameter.stop_gradient = False
+            natural_parameters.append(parameter)
+
+        log_norm = self._log_normalizer(*natural_parameters)
+
+        if in_dygraph_mode():
+            grads = paddle.grad(
+                log_norm.sum(), natural_parameters, create_graph=True)
+        else:
+            grads = paddle.static.gradients(log_norm.sum(), natural_parameters)
+
+        entropy_value += log_norm
+        for p, g in zip(natural_parameters, grads):
+            entropy_value -= p * g
+
+        return entropy_value
