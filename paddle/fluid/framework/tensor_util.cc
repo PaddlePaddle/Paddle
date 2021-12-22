@@ -594,6 +594,13 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
+                 const platform::MLUPlace& mlu) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Not supported on place (%s) ", mlu));
+    return true;
+  }
+
+  bool GetResult(const framework::Tensor& out,
                  const platform::CUDAPlace& gpu) const {
     return GetResultHelper(out, gpu);
   }
@@ -822,6 +829,10 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(const platform::NPUPlace& npu) const {
     // TODO(zhiqiu)
+  }
+
+  void VisitorImpl(const platform::MLUPlace& mlu) const {
+    PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {

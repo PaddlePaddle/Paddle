@@ -9864,7 +9864,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
         #NOTE(GuoxiaWang): support NHWC data format
         if data_format == 'NHWC':
-            alpha_shape = [1, 1, 1, x.shape[1]]
+            alpha_shape = [1, 1, 1, x.shape[-1]]
         else:
             alpha_shape = [1, x.shape[1], 1, 1]
 
