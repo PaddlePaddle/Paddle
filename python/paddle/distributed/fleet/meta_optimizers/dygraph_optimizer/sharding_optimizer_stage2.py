@@ -90,10 +90,6 @@ class ShardingOptimizerStage2(Optimizer):
                        ), "Must use optimizer with _master_weights attribute"
         self._local_params = params
         self._default_device = device
-        self._pfp16 = len(
-            list(
-                filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
-                       self._local_params))) > 0
 
         self.group = dist.new_group(_get_global_group()
                                     .ranks) if group is None else group
@@ -111,9 +107,6 @@ class ShardingOptimizerStage2(Optimizer):
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
                                                       paddle.get_device(),
                                                       self.group)
-
-        if offload:
-            assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
 
         self.offload = offload  # Using for offload
         self.offload_device = "cpu"
@@ -250,7 +243,7 @@ class ShardingOptimizerStage2(Optimizer):
                     # Merge all the trainable params in a single InternalStorage
                     trainable_params = list(
                         filter(lambda x: x.trainable, params))
-                    if self._pfp16 and dst_rank == self.rank:
+                    if dst_rank == self.rank:
                         self._generate_master_params(trainable_params)
                     if trainable_params:
                         param_storage = ParamStorage(
