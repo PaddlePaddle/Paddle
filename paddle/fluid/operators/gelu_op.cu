@@ -27,9 +27,9 @@ struct GeluWithApproximateFunctor {
     MPType x = static_cast<MPType>(arg_x);
     MPType one = static_cast<MPType>(1);
     MPType half = static_cast<MPType>(0.5);
-    MPType decimal = static_cast<MPType>(0.044715);
     MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
-    auto tanh_out = tanh(kAlpha * x * (one + decimal * x * x));
+    auto tanh_out =
+        tanh(kAlpha * x * (one + static_cast<MPType>(GELU_CONSTANT) * x * x));
     MPType out = x * half * (one + tanh_out);
     return static_cast<T>(out);
   }
@@ -81,12 +81,15 @@ struct GeluWithApproximateGradFunctor {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType one = static_cast<MPType>(1);
     MPType half = static_cast<MPType>(0.5);
-    MPType decimal = static_cast<MPType>(0.044715);
     MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
-    MPType kBeta = kAlpha * decimal * static_cast<MPType>(3);
-    auto tanh_out = tanh(kAlpha * x * (one + decimal * x * x));
-    auto temp = (one - tanh_out * tanh_out) * (kAlpha + kBeta * x * x);
-    auto ans = half * x * temp + half * (one + tanh_out);
+    MPType kBeta =
+        kAlpha * static_cast<MPType>(GELU_CONSTANT) * static_cast<MPType>(3);
+    auto cube_x = x * x * x;
+    auto tanh_out =
+        tanh(kAlpha * ((static_cast<MPType>(GELU_CONSTANT) * cube_x) + x));
+    auto ans =
+        half * (one + tanh_out +
+                (one - tanh_out * tanh_out) * (x * kAlpha + kBeta * cube_x));
     return static_cast<T>(ans * dout);
   }
 };
