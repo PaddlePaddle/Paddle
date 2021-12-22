@@ -19,8 +19,10 @@ import numpy as np
 import paddle
 import scipy.special
 import scipy.stats
+from paddle.distribution import kl
 
 import config
+import mock_data as mock
 
 paddle.enable_static()
 
@@ -139,6 +141,41 @@ class TestDispatch(unittest.TestCase):
                 out = paddle.distribution.kl_divergence(self.p, self.q)
                 self.executor.run(self.sp)
                 self.executor.run(self.mp, feed={}, fetch_list=[out])
+
+
+@config.place(config.DEVICES)
+@config.parameterize((config.TEST_CASE_NAME, 'rate1', 'rate2'),
+                     [('test-diff-dist', np.random.rand(100, 200, 100) + 1.0,
+                       np.random.rand(100, 200, 100) + 2.0),
+                      ('test-same-dist', np.array([1.0]), np.array([1.0]))])
+class TestKLExpfamilyExpFamily(unittest.TestCase):
+    def setUp(self):
+        self.mp = paddle.static.Program()
+        self.sp = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(self.mp, self.sp):
+            rate1 = paddle.static.data(
+                'rate1', shape=self.rate1.shape, dtype=self.rate1.dtype)
+            rate2 = paddle.static.data(
+                'rate2', shape=self.rate2.shape, dtype=self.rate2.dtype)
+            self.p = mock.Exponential(rate1)
+            self.q = mock.Exponential(rate2)
+            self.feeds = {'rate1': self.rate1, 'rate2': self.rate2}
+
+    def test_kl_expfamily_expfamily(self):
+        with paddle.static.program_guard(self.mp, self.sp):
+            out1 = paddle.distribution.kl_divergence(self.p, self.q)
+            out2 = kl._kl_expfamily_expfamily(self.p, self.q)
+            self.executor.run(self.sp)
+            [out1, out2] = self.executor.run(self.mp,
+                                             feed=self.feeds,
+                                             fetch_list=[out1, out2])
+
+            np.testing.assert_allclose(
+                out1,
+                out2,
+                rtol=config.RTOL.get(config.DEFAULT_DTYPE),
+                atol=config.ATOL.get(config.DEFAULT_DTYPE))
 
 
 if __name__ == '__main__':

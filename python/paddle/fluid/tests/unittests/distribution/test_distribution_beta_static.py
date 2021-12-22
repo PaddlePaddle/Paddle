@@ -27,8 +27,10 @@ paddle.enable_static()
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'alpha', 'beta'),
-    [('test-tensor', np.random.rand(5, 10) + 5, np.random.rand(5, 10) + 5),
-     ('test-broadcast', np.random.rand(2, 1), np.random.rand(2, 5) + 1)])
+    [('test-tensor', xrand((10, 10)), xrand(
+        (10, 10))), ('test-broadcast', xrand((2, 1)), xrand((2, 5))),
+     ('test-larger-data', xrand(shape=(10, 20, 30)), xrand(shape=(10, 20, 30)))]
+)
 class TestBeta(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()

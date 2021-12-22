@@ -16,6 +16,7 @@ from .beta import Beta
 from .categorical import Categorical
 from .dirichlet import Dirichlet
 from .distribution import Distribution
+from .exponential_family import ExponentialFamily
 from .kl import kl_divergence, register_kl
 from .normal import Normal
 from .uniform import Uniform
@@ -25,6 +26,7 @@ __all__ = [  # noqa
     'Categorical',
     'Dirichlet',
     'Distribution',
+    'ExponentialFamily',
     'Normal',
     'Uniform',
     'kl_divergence',
