@@ -803,9 +803,6 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
 
-    Raises:
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
-
     Examples:
         .. code-block:: python
 
