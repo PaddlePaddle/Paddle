@@ -39,12 +39,19 @@ struct AsciiToUpper {
 
 template <typename DeviceContext, typename CharConverter>
 struct AsciiCaseConverter {
-  HOSTDEVICE void operator()(const DeviceContext& dev_ctx,
-                             const pten::platform::pstring& in,
-                             pten::platform::pstring* out) const {
+  HOSTDEVICE AsciiCaseConverter(const DeviceContext& dev_ctx)
+      : dev_ctx_(dev_ctx) {}
+  HOSTDEVICE pten::platform::pstring operator()(
+      const pten::platform::pstring& in) const {
     paddle::platform::Transform<DeviceContext> trans;
-    trans(dev_ctx, in.begin(), in.end(), out->data(), CharConverter());
+    pten::platform::pstring output = in;
+
+    trans(dev_ctx_, in.begin(), in.end(), output.mdata(), CharConverter());
+    return output;
   }
+
+ private:
+  const DeviceContext& dev_ctx_;
 };
 
 struct UTF8ToLower {
@@ -61,20 +68,44 @@ struct UTF8ToUpper {
 
 template <typename DeviceContext, typename CharConverter>
 struct UTF8CaseConverter {
-  HOSTDEVICE void operator()(const DeviceContext& dev_ctx,
-                             const pten::platform::pstring& in,
-                             pten::platform::pstring* out) const {
+  HOSTDEVICE UTF8CaseConverter(const DeviceContext& dev_ctx)
+      : dev_ctx_(dev_ctx) {}
+  HOSTDEVICE pten::platform::pstring operator()(
+      const pten::platform::pstring& in) const {
     paddle::platform::Transform<DeviceContext> trans;
     std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> utf32conv;
     std::u32string unicode_in = utf32conv.from_bytes(in.begin(), in.end());
-    trans(dev_ctx,
+    trans(dev_ctx_,
           unicode_in.begin(),
           unicode_in.end(),
           unicode_in.begin(),
           CharConverter());
-    *out = utf32conv.to_bytes(unicode_in);
+    return utf32conv.to_bytes(unicode_in);
   }
+
+ private:
+  const DeviceContext& dev_ctx_;
 };
+
+template <typename DeviceContext,
+          typename AsciiConverter,
+          typename UTF8Converter>
+void StringCaseConvert(const DeviceContext& dev_ctx,
+                       const DenseTensor& x,
+                       const std::string& encoding,
+                       DenseTensor* out) {
+  AsciiConverter ascii_converter(dev_ctx);
+  UTF8Converter utf8_converter(dev_ctx);
+  auto* in_ptr = x.data<pten::platform::pstring>();
+  auto* out_ptr = out->mutable_data<pten::platform::pstring>();
+  auto num = x.numel();
+  paddle::platform::Transform<DeviceContext> trans;
+  if (encoding.empty()) {
+    trans(dev_ctx, in_ptr, in_ptr + num, out_ptr, ascii_converter);
+  } else {
+    trans(dev_ctx, in_ptr, in_ptr + num, out_ptr, utf8_converter);
+  }
+}
 
 }  // namespace strings
 }  // namespace pten

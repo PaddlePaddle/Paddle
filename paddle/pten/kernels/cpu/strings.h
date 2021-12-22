@@ -23,12 +23,6 @@ limitations under the License. */
 namespace pten {
 
 using CPUContext = paddle::platform::CPUDeviceContext;
-template <typename AsciiCoverter>
-void StringCaseConvert(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const std::string& encoding,
-                       DenseTensor* out);
-
 void StringLower(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const std::string& encoding,

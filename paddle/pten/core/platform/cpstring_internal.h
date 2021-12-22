@@ -19,6 +19,20 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __HIPCC__
+#include <hip/hip_runtime.h>
+#endif
+
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
+
 #if (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
      __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) ||                  \
     defined(_WIN32)
@@ -66,10 +80,16 @@ static inline uint32_t swap32(uint32_t host_int) {
 #define PD_le32toh(x) swap32(x)
 #endif  // PD_PSTRING_LITTLE_ENDIAN
 
-static inline size_t PD_align16(size_t i) { return (i + 0xF) & ~0xF; }
+HOSTDEVICE static inline size_t PD_align16(size_t i) {
+  return (i + 0xF) & ~0xF;
+}
 
-static inline size_t PD_max(size_t a, size_t b) { return a > b ? a : b; }
-static inline size_t PD_min(size_t a, size_t b) { return a < b ? a : b; }
+HOSTDEVICE static inline size_t PD_max(size_t a, size_t b) {
+  return a > b ? a : b;
+}
+HOSTDEVICE static inline size_t PD_min(size_t a, size_t b) {
+  return a < b ? a : b;
+}
 
 typedef enum PD_PString_Type {  // NOLINT
   PD_PSTR_SMALL = 0x00,
@@ -134,7 +154,8 @@ typedef struct PD_PString {  // NOLINT
 // _Static_assert(CHAR_BIT == 8);
 // _Static_assert(sizeof(PD_PString) == 24);
 
-static inline PD_PString_Type PD_PString_GetType(const PD_PString *str) {
+HOSTDEVICE static inline PD_PString_Type PD_PString_GetType(
+    const PD_PString *str) {
   return (PD_PString_Type)(str->u.raw.raw[0] & PD_PSTR_TYPE_MASK);  // NOLINT
 }
 
@@ -142,7 +163,7 @@ static inline PD_PString_Type PD_PString_GetType(const PD_PString *str) {
 // performant and readable by always storing the string size as little-endian
 // and always byte-swapping on big endian, resulting in a simple 'bswap'+'shr'
 // (for architectures that have a bswap op).
-static inline size_t PD_PString_ToActualSizeT(size_t size) {
+HOSTDEVICE static inline size_t PD_PString_ToActualSizeT(size_t size) {
 #if PD_PSTRING_LITTLE_ENDIAN
   return size >> 2;
 #else   // PD_PSTRING_LITTLE_ENDIAN
@@ -153,8 +174,8 @@ static inline size_t PD_PString_ToActualSizeT(size_t size) {
 #endif  // PD_PSTRING_LITTLE_ENDIAN
 }
 
-static inline size_t PD_PString_ToInternalSizeT(size_t size,
-                                                PD_PString_Type type) {
+HOSTDEVICE static inline size_t PD_PString_ToInternalSizeT(
+    size_t size, PD_PString_Type type) {
 #if PD_PSTRING_LITTLE_ENDIAN
   return (size << 2) | type;
 #else   // PD_PSTRING_LITTLE_ENDIAN
@@ -166,11 +187,11 @@ static inline size_t PD_PString_ToInternalSizeT(size_t size,
 #endif  // PD_PSTRING_LITTLE_ENDIAN
 }
 
-static inline void PD_PString_Init(PD_PString *str) {
+HOSTDEVICE static inline void PD_PString_Init(PD_PString *str) {
   memset(str->u.raw.raw, 0, sizeof(PD_PString_Raw));
 }
 
-static inline void PD_PString_Dealloc(PD_PString *str) {
+HOSTDEVICE static inline void PD_PString_Dealloc(PD_PString *str) {
   if (PD_PString_GetType(str) == PD_PSTR_LARGE &&
       str->u.large.ptr != NULL) {  // NOLINT
     free(str->u.large.ptr);
@@ -178,7 +199,7 @@ static inline void PD_PString_Dealloc(PD_PString *str) {
   }
 }
 
-static inline size_t PD_PString_GetSize(const PD_PString *str) {
+HOSTDEVICE static inline size_t PD_PString_GetSize(const PD_PString *str) {
   switch (PD_PString_GetType(str)) {
     case PD_PSTR_SMALL:
       return str->u.smll.size >> 2;
@@ -193,7 +214,7 @@ static inline size_t PD_PString_GetSize(const PD_PString *str) {
   }
 }
 
-static inline size_t PD_PString_GetCapacity(const PD_PString *str) {
+HOSTDEVICE static inline size_t PD_PString_GetCapacity(const PD_PString *str) {
   switch (PD_PString_GetType(str)) {
     case PD_PSTR_SMALL:
       return PD_PString_SmallCapacity;
@@ -206,7 +227,8 @@ static inline size_t PD_PString_GetCapacity(const PD_PString *str) {
   }
 }
 
-static inline const char *PD_PString_GetDataPointer(const PD_PString *str) {
+HOSTDEVICE static inline const char *PD_PString_GetDataPointer(
+    const PD_PString *str) {
   switch (PD_PString_GetType(str)) {
     case PD_PSTR_SMALL:
       return str->u.smll.str;
@@ -222,8 +244,8 @@ static inline const char *PD_PString_GetDataPointer(const PD_PString *str) {
   }
 }
 
-static inline char *PD_PString_ResizeUninitialized(PD_PString *str,
-                                                   size_t new_size) {
+HOSTDEVICE static inline char *PD_PString_ResizeUninitialized(PD_PString *str,
+                                                              size_t new_size) {
   size_t curr_size = PD_PString_GetSize(str);
   size_t copy_size = PD_min(new_size, curr_size);
 
@@ -281,7 +303,8 @@ static inline char *PD_PString_ResizeUninitialized(PD_PString *str,
   return str->u.large.ptr;
 }
 
-static inline char *PD_PString_GetMutableDataPointer(PD_PString *str) {
+HOSTDEVICE static inline char *PD_PString_GetMutableDataPointer(
+    PD_PString *str) {
   switch (PD_PString_GetType(str)) {
     case PD_PSTR_SMALL:
       return str->u.smll.str;
@@ -299,7 +322,8 @@ static inline char *PD_PString_GetMutableDataPointer(PD_PString *str) {
   }
 }
 
-static inline void PD_PString_Reserve(PD_PString *str, size_t new_cap) {
+HOSTDEVICE static inline void PD_PString_Reserve(PD_PString *str,
+                                                 size_t new_cap) {
   PD_PString_Type curr_type = PD_PString_GetType(str);
 
   if (new_cap <= PD_PString_SmallCapacity) {
@@ -340,17 +364,17 @@ static inline void PD_PString_Reserve(PD_PString *str, size_t new_cap) {
   str->u.large.cap = new_cap;
 }
 
-static inline void PD_PString_ReserveAmortized(PD_PString *str,
-                                               size_t new_cap) {
+HOSTDEVICE static inline void PD_PString_ReserveAmortized(PD_PString *str,
+                                                          size_t new_cap) {
   const size_t curr_cap = PD_PString_GetCapacity(str);
   if (new_cap > curr_cap) {
     PD_PString_Reserve(str, new_cap > 2 * curr_cap ? new_cap : 2 * curr_cap);
   }
 }
 
-static inline char *PD_PString_Resize(PD_PString *str,
-                                      size_t new_size,
-                                      char c) {
+HOSTDEVICE static inline char *PD_PString_Resize(PD_PString *str,
+                                                 size_t new_size,
+                                                 char c) {
   size_t curr_size = PD_PString_GetSize(str);
   char *cstr = PD_PString_ResizeUninitialized(str, new_size);
 
@@ -361,18 +385,18 @@ static inline char *PD_PString_Resize(PD_PString *str,
   return cstr;
 }
 
-static inline void PD_PString_AssignView(PD_PString *dst,
-                                         const char *src,
-                                         size_t size) {
+HOSTDEVICE static inline void PD_PString_AssignView(PD_PString *dst,
+                                                    const char *src,
+                                                    size_t size) {
   PD_PString_Dealloc(dst);
 
   dst->u.view.size = PD_PString_ToInternalSizeT(size, PD_PSTR_VIEW);
   dst->u.view.ptr = src;
 }
 
-static inline void PD_PString_AppendN(PD_PString *dst,
-                                      const char *src,
-                                      size_t src_size) {
+HOSTDEVICE static inline void PD_PString_AppendN(PD_PString *dst,
+                                                 const char *src,
+                                                 size_t src_size) {
   if (!src_size) return;
 
   size_t dst_size = PD_PString_GetSize(dst);
@@ -384,7 +408,8 @@ static inline void PD_PString_AppendN(PD_PString *dst,
   memcpy(dst_c + dst_size, src, src_size);
 }
 
-static inline void PD_PString_Append(PD_PString *dst, const PD_PString *src) {
+HOSTDEVICE static inline void PD_PString_Append(PD_PString *dst,
+                                                const PD_PString *src) {
   const char *src_c = PD_PString_GetDataPointer(src);
   size_t size = PD_PString_GetSize(src);
 
@@ -399,7 +424,8 @@ static inline void PD_PString_Copy(PD_PString *dst,
   if (size) memcpy(dst_c, src, size);
 }
 
-static inline void PD_PString_Assign(PD_PString *dst, const PD_PString *src) {
+HOSTDEVICE static inline void PD_PString_Assign(PD_PString *dst,
+                                                const PD_PString *src) {
   if (dst == src) return;
 
   PD_PString_Dealloc(dst);
@@ -428,7 +454,8 @@ static inline void PD_PString_Assign(PD_PString *dst, const PD_PString *src) {
   }
 }
 
-static inline void PD_PString_Move(PD_PString *dst, PD_PString *src) {
+HOSTDEVICE static inline void PD_PString_Move(PD_PString *dst,
+                                              PD_PString *src) {
   if (dst == src) return;
 
   PD_PString_Dealloc(dst);

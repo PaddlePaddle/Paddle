@@ -31,30 +31,13 @@ using UTF8LowerConverter =
 using UTF8UpperConverter =
     pten::strings::UTF8CaseConverter<CPUContext, pten::strings::UTF8ToUpper>;
 
-template <typename AsciiConverter, typename UTF8Converter>
-void StringCaseConvert(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const std::string& encoding,
-                       DenseTensor* out) {
-  AsciiConverter ascii_converter;
-  UTF8Converter utf8_converter;
-  const pstring* in_ptr = x.data<pstring>();
-  pstring* out_ptr = out->mutable_data<pstring>();
-  auto num = x.numel();
-  for (int64_t i = 0; i < num; ++i) {
-    if (encoding.empty()) {
-      ascii_converter(dev_ctx, in_ptr[i], out_ptr + i);
-    } else {
-      utf8_converter(dev_ctx, in_ptr[i], out_ptr + i);
-    }
-  }
-}
-
 void StringLower(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const std::string& encoding,
                  DenseTensor* out) {
-  StringCaseConvert<AsciiLowerConverter, UTF8LowerConverter>(
+  pten::strings::StringCaseConvert<CPUContext,
+                                   AsciiLowerConverter,
+                                   UTF8LowerConverter>(
       dev_ctx, x, encoding, out);
 }
 
@@ -62,7 +45,9 @@ void StringUpper(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const std::string& encoding,
                  DenseTensor* out) {
-  StringCaseConvert<AsciiUpperConverter, UTF8UpperConverter>(
+  pten::strings::StringCaseConvert<CPUContext,
+                                   AsciiUpperConverter,
+                                   UTF8UpperConverter>(
       dev_ctx, x, encoding, out);
 }
 
