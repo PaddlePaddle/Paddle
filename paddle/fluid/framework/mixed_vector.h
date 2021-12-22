@@ -32,7 +32,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Vector<T> implements the std::vector interface, and can get Data or
 // MutableData from any place. The data will be synced implicitly inside.
 template <typename T>
@@ -212,6 +211,7 @@ class Vector {
     };
 
     void CopyToCPU() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       // COPY GPU Data To CPU
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(gpu_->place()));
@@ -221,6 +221,7 @@ class Vector {
       paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
                            gpu_memory_size_, stream);
       dev_ctx->Wait();
+#endif
     }
 
     void MutableCPU() {
@@ -260,6 +261,7 @@ class Vector {
     }
 
     void CopyCPUDataToCUDA(const platform::Place &place) const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       void *src = cpu_.data();
       gpu_memory_size_ = cpu_.size() * sizeof(T);
       gpu_ = memory::Alloc(place, gpu_memory_size_);
@@ -269,6 +271,7 @@ class Vector {
       auto stream = dev_ctx->stream();
       paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
                            gpu_memory_size_, stream);
+#endif
     }
 
     void ImmutableCPU() const {
@@ -463,82 +466,6 @@ class Vector {
   // Vector is an COW object.
   mutable details::COWPtr<VectorData> m_;
 };
-
-#else  // PADDLE_WITH_CUDA
-
-template <typename T>
-class CPUVector : public std::vector<T, std::allocator<T>> {
- public:
-  CPUVector() : std::vector<T>() {}
-  CPUVector(size_t count, const T &value = T())  // NOLINT
-      : std::vector<T>(count, value) {}
-  CPUVector(std::initializer_list<T> init) : std::vector<T>(init) {}
-  CPUVector(const std::vector<T> &other) : std::vector<T>(other) {}  // NOLINT
-  CPUVector(const CPUVector<T> &other) : std::vector<T>(other) {}
-  CPUVector(CPUVector<T> &&other) : std::vector<T>(std::move(other)) {}
-  CPUVector(std::vector<T> &&other)  // NOLINT
-      : std::vector<T>(std::move(other)) {}
-  CPUVector &operator=(const CPUVector &other) {
-    this->assign(other.begin(), other.end());
-    return *this;
-  }
-  CPUVector &operator=(const std::vector<T> &other) {
-    this->assign(other.begin(), other.end());
-    return *this;
-  }
-
-  friend std::ostream &operator<<(std::ostream &os, const CPUVector<T> &other) {
-    std::stringstream ss;
-    for (auto v : other) {
-      os << v << " ";
-    }
-    return os;
-  }
-
-  T &operator[](size_t id) { return this->at(id); }
-
-  const T &operator[](size_t id) const { return this->at(id); }
-
-  template <typename D>
-  void Extend(const D &begin, const D &end) {
-    this->reserve(this->size() + size_t(end - begin));
-    this->insert(this->end(), begin, end);
-  }
-
-  const T *CUDAData(platform::Place place) const {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Vector::CUDAData() method is not supported in CPU-only version."));
-  }
-
-  T *CUDAMutableData(platform::Place place) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Vector::CUDAMutableData() method is not supported in CPU-only "
-        "version."));
-  }
-
-  const T *Data(platform::Place place) const {
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(place), true,
-        platform::errors::Unavailable(
-            "Vector::Data() method is not supported when not in CPUPlace."));
-    return this->data();
-  }
-
-  T *MutableData(platform::Place place) {
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(place), true,
-        platform::errors::Unavailable("Vector::MutableData() method is not "
-                                      "supported when not in CPUPlace."));
-    return this->data();
-  }
-
-  const void *Handle() const { return static_cast<const void *>(this); }
-};
-
-template <typename T>
-using Vector = CPUVector<T>;
-
-#endif  // PADDLE_WITH_CUDA
 
 };  // namespace framework
 }  // namespace paddle
