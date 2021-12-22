@@ -20,11 +20,6 @@
 
 namespace mlir {
 namespace pd {
-
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_ops.hpp.inc"
-#undef GET_OP_CLASSES
-
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
   addOperations<
