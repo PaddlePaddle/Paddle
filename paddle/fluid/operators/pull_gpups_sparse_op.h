@@ -38,7 +38,8 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
     auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
-    all_values[i] = output;
+    // double type is not fully supported now
+    all_values[i] = reinterpret_cast<float*>(output);
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
