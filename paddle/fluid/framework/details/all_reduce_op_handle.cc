@@ -291,13 +291,9 @@ void AllReduceOpHandle::SyncNCCLAllReduce() {
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
       auto &nccl_ctx = nccl_ctxs->at(dev_id);
       auto stream = nccl_ctx.stream();
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-#endif
+
+      platform::GpuStreamSync(stream);
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     }
   }
 }

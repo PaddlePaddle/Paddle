@@ -14,7 +14,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_pool_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
