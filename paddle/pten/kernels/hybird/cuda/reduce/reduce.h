@@ -17,11 +17,11 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
 namespace pten {
 
 static inline std::vector<int64_t> GetReduceDim(
@@ -74,15 +74,15 @@ void Reduce(const GPUContext& dev_ctx,
     PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         out_dtype, "TensorReduceFunctorImpl", ([&] {
           using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
-          paddle::operators::TensorReduceFunctorImpl<T,
-                                                     data_t,
-                                                     ReduceOp,
-                                                     TransformOp<T, MPType>>(
+          pten::kernels::TensorReduceFunctorImpl<T,
+                                                 data_t,
+                                                 ReduceOp,
+                                                 TransformOp<T, MPType>>(
               x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
         }));
   } else {
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    paddle::operators::
+    pten::kernels::
         TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
             x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
   }

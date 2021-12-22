@@ -21,10 +21,9 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 
+namespace kps = paddle::operators::kernel_primitives;
 namespace paddle {
 namespace operators {
-
-namespace kps = paddle::operators::kernel_primitives;
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMin {
