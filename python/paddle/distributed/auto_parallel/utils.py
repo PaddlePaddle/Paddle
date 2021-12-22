@@ -1301,7 +1301,8 @@ def get_standalone_cost_data(distributed_programs):
         actual_runtime = total_actual_input_size / total_static_input_size * runtime
         return actual_runtime
 
-    cost_model = paddle.cost_model.CostModel()
+    import paddle.cost_model as cm
+    cost_model = cm.CostModel()
     cost_model.static_cost_data()
     DEFAULT_MULTIPLE = 2
     OP_NAME_MAPPING = {
