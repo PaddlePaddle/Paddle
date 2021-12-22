@@ -17,32 +17,20 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
-template <typename T, typename ContextT>
-void Add(const ContextT& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         int axis,
-         DenseTensor* out);
 
 template <typename T, typename ContextT>
-void Subtract(const ContextT& dev_ctx,
-              const DenseTensor& x,
-              const DenseTensor& y,
-              int axis,
-              DenseTensor* out);
+void Flatten(const ContextT& dev_ctx,
+             const DenseTensor& x,
+             int start_axis,
+             int stop_axis,
+             DenseTensor* out);
 
 template <typename T, typename ContextT>
-void Divide(const ContextT& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            int axis,
-            DenseTensor* out);
-
-template <typename T, typename ContextT>
-void Multiply(const ContextT& dev_ctx,
-              const DenseTensor& x,
-              const DenseTensor& y,
-              int axis,
-              DenseTensor* out);
+void FlattenWithXShape(const ContextT& dev_ctx,
+                       const DenseTensor& x,
+                       int start_axis,
+                       int stop_axis,
+                       DenseTensor* out,
+                       DenseTensor* xshape);
 
 }  // namespace pten

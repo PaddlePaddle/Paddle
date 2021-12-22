@@ -16,7 +16,7 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/cpu/elementwise_impl.h"
-#include "paddle/pten/kernels/functions/elementwise_functor.h"
+#include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/math/blas.h"
@@ -199,37 +199,37 @@ void Divide(const ContextT& dev_ctx,
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<functions::DivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, functions::DivideFunctor<T>(), out);
+      ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+          dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
     } else {
-      ElementwiseCompute<functions::InverseDivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, functions::InverseDivideFunctor<T>(), out);
+      ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
+          dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
     }
   }
 }
 
-#define DEFINE_CPU_ELEMENTWISE_OP(name)                                        \
-  template <typename T, typename ContextT>                                     \
-  void name(const ContextT& dev_ctx,                                           \
-            const DenseTensor& x,                                              \
-            const DenseTensor& y,                                              \
-            int axis,                                                          \
-            DenseTensor* out) {                                                \
-    out->mutable_data<T>();                                                    \
-    if (x.dims() == y.dims()) {                                                \
-      SameDimsElementwiseCompute<SameDims##name##Functor<ContextT, T>>()(      \
-          dev_ctx, x, y, out);                                                 \
-    } else {                                                                   \
-      auto x_dims = x.dims();                                                  \
-      auto y_dims = y.dims();                                                  \
-      if (x_dims.size() >= y_dims.size()) {                                    \
-        ElementwiseCompute<functions::name##Functor<T>, T>(                    \
-            dev_ctx, x, y, axis, functions::name##Functor<T>(), out);          \
-      } else {                                                                 \
-        ElementwiseCompute<functions::Inverse##name##Functor<T>, T>(           \
-            dev_ctx, x, y, axis, functions::Inverse##name##Functor<T>(), out); \
-      }                                                                        \
-    }                                                                          \
+#define DEFINE_CPU_ELEMENTWISE_OP(name)                                    \
+  template <typename T, typename ContextT>                                 \
+  void name(const ContextT& dev_ctx,                                       \
+            const DenseTensor& x,                                          \
+            const DenseTensor& y,                                          \
+            int axis,                                                      \
+            DenseTensor* out) {                                            \
+    out->mutable_data<T>();                                                \
+    if (x.dims() == y.dims()) {                                            \
+      SameDimsElementwiseCompute<SameDims##name##Functor<ContextT, T>>()(  \
+          dev_ctx, x, y, out);                                             \
+    } else {                                                               \
+      auto x_dims = x.dims();                                              \
+      auto y_dims = y.dims();                                              \
+      if (x_dims.size() >= y_dims.size()) {                                \
+        ElementwiseCompute<funcs::name##Functor<T>, T>(                    \
+            dev_ctx, x, y, axis, funcs::name##Functor<T>(), out);          \
+      } else {                                                             \
+        ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(           \
+            dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out); \
+      }                                                                    \
+    }                                                                      \
   }
 
 // Create the definition of Add
