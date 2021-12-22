@@ -782,7 +782,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
 def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
-    Computes the sum of tensor elements over the given dimension, treating Not a Numbers (NaNs) as zero.
+    Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
@@ -802,8 +802,6 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        if `x.dtype='int32'`, it's data type is `'int64'`, 
-        otherwise it's data type is the same as `x`.
 
     Raises:
         TypeError: The type of :attr:`axis` must be int, list or tuple.
