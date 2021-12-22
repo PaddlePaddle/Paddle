@@ -30,6 +30,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import Shar
 seed = 2021
 epoch = 2
 batch_size = 32
+linear_size = 1000
 
 strategy = fleet.DistributedStrategy()
 strategy.hybrid_configs = {
@@ -45,12 +46,12 @@ paddle.seed(seed)
 
 
 class MLP(fluid.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
+    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
-        self._linear1 = Linear(10000, 10000)
-        self._linear2 = Linear(10000, 10000)
-        self._linear3 = Linear(10000, 10)
+        self._linear1 = Linear(linear_size, linear_size)
+        self._linear2 = Linear(linear_size, linear_size)
+        self._linear3 = Linear(linear_size, 10)
 
     def forward(self, inputs):
         y = self._linear1(inputs)
@@ -59,20 +60,22 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator():
+def reader_decorator(linear_size=1000):
     def __reader__():
         for _ in range(100):
-            img = np.random.rand(10000).astype('float32')
+            img = np.random.rand(linear_size).astype('float32')
             label = np.ones(1).astype('int64')
             yield img, label
 
     return __reader__
 
 
-def optimizer_setting(model, use_pure_fp16):
+def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.AdamW(
-        parameters=model.parameters(),
+        parameters=[{
+            "params": model.parameters()
+        }] if opt_group else model.parameters(),
         learning_rate=0.001,
         weight_decay=0.00001,
         grad_clip=clip,
@@ -84,27 +87,32 @@ def optimizer_setting(model, use_pure_fp16):
 def train_mlp(model,
               sharding_stage,
               use_pure_fp16=False,
-              all_test=False,
-              accumulate_grad=False):
+              accumulate_grad=False,
+              opt_group=False):
     if sharding_stage == "dp":
         hcg = fleet.get_hybrid_communicate_group()
         group = hcg.get_check_parallel_group()
     else:
         group = paddle.distributed.new_group([0, 1])
-    optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
-
-    if use_pure_fp16:
-        model = paddle.amp.decorate(
-            models=model, level='O2', save_dtype='float32')
+    if opt_group:
+        optimizer = optimizer_setting(
+            model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group)
+    else:
+        optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if sharding_stage == 2:
         optimizer = ShardingOptimizerStage2(
             params=model.parameters(), optim=optimizer, group=group)
-        if all_test:
+        if accumulate_grad:
             model = ShardingStage2(
-                model, optimizer, group=group, accumulate_grads=accumulate_grad)
+                model,
+                optimizer,
+                group=group,
+                buffer_max_size=2**21,
+                accumulate_grads=accumulate_grad)
         else:
-            model = ShardingStage2(model, optimizer, group=group)
+            model = ShardingStage2(
+                model, optimizer, group=group, buffer_max_size=2**21)
     else:
         optimizer = fleet.distributed_optimizer(optimizer)
         model = fleet.distributed_model(model)
@@ -120,6 +128,9 @@ def train_mlp(model,
         use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
 
+    if sharding_stage == 2:
+        model.to(device="gpu")
+
     for eop in range(epoch):
         model.train()
 
@@ -128,33 +139,17 @@ def train_mlp(model,
             label.stop_gradient = True
             img.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=use_pure_fp16, level='O2'):
-                out = model(img)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=out, label=label)
+            out = model(img)
+            loss = paddle.nn.functional.cross_entropy(input=out, label=label)
 
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             avg_loss.backward()
 
+            optimizer.step()
+            optimizer.clear_grad()
+
             if accumulate_grad and batch_id == 2:
-                model.grad_scale()
-                optimizer.step()
-                model.clear_gradients()
                 return model.parameters()
-
-            if not accumulate_grad:
-                optimizer.step()
-
-                if sharding_stage == 2:
-                    model.clear_gradients()
-                else:
-                    optimizer.clear_grad()
-
-            if all_test and batch_id == 2:
-                return model.parameters()
-
-    if sharding_stage == 2:
-        model.to(device="gpu")
 
     return model.parameters()
 
@@ -170,22 +165,19 @@ def test_dp_stage2():
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
-    dp_params = train_mlp(mlp1, sharding_stage="dp", use_pure_fp16=False)
-    stage2_params = train_mlp(mlp2, sharding_stage=2, use_pure_fp16=False)
+    dp_params = train_mlp(
+        mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=True)
+    stage2_params = train_mlp(
+        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=True)
     for i in range(len(dp_params)):
         for j in range(len(stage2_params)):
             if dp_params[i].name == stage2_params[j].name:
                 np.testing.assert_allclose(
                     dp_params[i].numpy(), stage2_params[j].numpy(), rtol=1e-6)
 
-    stage2_params = train_mlp(
-        mlp3, sharding_stage=2, use_pure_fp16=True, all_test=True)
+    stage2_params = train_mlp(mlp3, sharding_stage=2)
     stage2_accumulate_grad = train_mlp(
-        mlp4,
-        sharding_stage=2,
-        use_pure_fp16=True,
-        all_test=True,
-        accumulate_grad=True)
+        mlp4, sharding_stage=2, accumulate_grad=True)
     for i in range(len(stage2_params)):
         for j in range(len(stage2_accumulate_grad)):
             if stage2_params[i].name == stage2_accumulate_grad[j].name:

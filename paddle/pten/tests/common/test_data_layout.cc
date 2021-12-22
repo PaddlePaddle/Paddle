@@ -28,7 +28,7 @@ TEST(DataLayout, OStream) {
   EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
   oss << pten::DataLayout::ANY;
-  EXPECT_EQ(oss.str(), "Any");
+  EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
   oss << pten::DataLayout::NHWC;
   EXPECT_EQ(oss.str(), "NHWC");
