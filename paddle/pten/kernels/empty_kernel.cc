@@ -14,10 +14,48 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/empty_kernel.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/empty_kernel_impl.h"
 
+namespace pten {
+
+template <typename T, typename ContextT>
+void Empty(const ContextT& dev_ctx,
+           const ScalarArray& shape,
+           DenseTensor* out) {
+  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+}
+
+template <typename T, typename ContextT>
+void EmptyLike(const ContextT& dev_ctx, DenseTensor* out) {
+  out->mutable_data<T>();
+}
+
+}  // namespace pten
+
+PT_REGISTER_CTX_KERNEL(empty,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::Empty,
+                       bool,
+                       int,
+                       int64_t,
+                       float,
+                       double,
+                       paddle::platform::float16) {}
+
+PT_REGISTER_CTX_KERNEL(empty_like,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::EmptyLike,
+                       bool,
+                       int,
+                       int64_t,
+                       float,
+                       double,
+                       paddle::platform::float16) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_CTX_KERNEL(empty,
                        GPU,
                        ALL_LAYOUT,
@@ -39,3 +77,4 @@ PT_REGISTER_CTX_KERNEL(empty_like,
                        float,
                        double,
                        paddle::platform::float16) {}
+#endif

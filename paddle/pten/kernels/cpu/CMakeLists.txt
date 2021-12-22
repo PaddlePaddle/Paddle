@@ -3,4 +3,3 @@ cc_library(linalg_cpu SRCS linalg.cc DEPS dense_tensor kernel_context kernel_fac
 cc_library(utils_cpu SRCS utils.cc DEPS dense_tensor kernel_context kernel_factory memory convert_utils)
 cc_library(manipulation_cpu SRCS manipulation.cc DEPS dense_tensor kernel_context kernel_factory utils_cpu unary)
 cc_library(conj_kernel_cpu SRCS conj_kernel.cc DEPS dense_tensor kernel_context kernel_factory)
-cc_library(empty_kernel_cpu SRCS empty_kernel.cc DEPS dense_tensor kernel_context kernel_factory)
