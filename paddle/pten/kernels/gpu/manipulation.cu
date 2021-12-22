@@ -21,31 +21,6 @@
 
 namespace pten {
 
-template <typename T>
-void Flatten(const GPUContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out) {
-  auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_dims);
-}
-
-// TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
-// Output Tensor，
-// is there a more flexible way to deal with this case?
-template <typename T>
-void FlattenWithXShape(const GPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       int start_axis,
-                       int stop_axis,
-                       DenseTensor* out,
-                       DenseTensor* xshape) {
-  Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  general::SetXShape(x, xshape);
-}
-
 void Reshape(const GPUContext& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,
@@ -83,28 +58,6 @@ void Cast(const GPUContext& dev_ctx,
 }  // namespace pten
 
 using float16 = paddle::platform::float16;
-
-PT_REGISTER_KERNEL(flatten,
-                   GPU,
-                   ALL_LAYOUT,
-                   pten::Flatten,
-                   float,
-                   float16,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
-PT_REGISTER_KERNEL(flatten_with_xshape,
-                   GPU,
-                   ALL_LAYOUT,
-                   pten::FlattenWithXShape,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
   PT_REGISTER_KERNEL(cast,                              \
