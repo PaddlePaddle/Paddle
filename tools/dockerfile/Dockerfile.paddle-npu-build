@@ -2,3 +2,5 @@ FROM registry.baidubce.com/paddlepaddle/paddle-npu:latest-dev-cann5.0.2.alpha005
 RUN apt-get install pigz
 CMD ["/bin/bash"]
 EXPOSE 22
+
+
