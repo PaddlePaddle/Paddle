@@ -757,8 +757,11 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         self._visit_Call(node)
         if is_paddle_api(node):
             self.is_control_flow_num += 1
+        # Or use self.generic_visit(node) to call visit_Name?
         elif isinstance(node.func, gast.Name) and node.func.id == 'len':
-            self.is_control_flow_num += 1
+            for i_node in node.args:
+                if self._is_node_with_tensor(i_node, i_node.id):
+                    self.is_control_flow_num += 1
         return node
 
     def visit_Name(self, node):
