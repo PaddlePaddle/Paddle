@@ -45,7 +45,7 @@ void ToSparseCoo(const CPUContext& dev_ctx,
 
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
-  DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::ANY);
+  DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
   DenseTensorMeta values_meta(src.meta().dtype, values_dims, src.meta().layout);
   std::unique_ptr<DenseTensor> indices_ptr(
       new DenseTensor(allocator, indices_meta));

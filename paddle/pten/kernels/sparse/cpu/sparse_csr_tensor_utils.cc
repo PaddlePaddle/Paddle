@@ -38,10 +38,10 @@ void ToSparseCsr(const CPUContext& dev_ctx,
   auto crows_dims = paddle::framework::make_ddim({src_dims[0] + 1});
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
-  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::ANY);
+  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
   std::unique_ptr<DenseTensor> crows_ptr(
       new DenseTensor(allocator, crows_meta));
-  DenseTensorMeta cols_meta(DataType::INT64, non_zero_dims, DataLayout::ANY);
+  DenseTensorMeta cols_meta(DataType::INT64, non_zero_dims, DataLayout::NCHW);
   std::unique_ptr<DenseTensor> cols_ptr(new DenseTensor(allocator, cols_meta));
   DenseTensorMeta values_meta(src.dtype(), non_zero_dims, src.layout());
   std::unique_ptr<DenseTensor> values_ptr(

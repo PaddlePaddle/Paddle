@@ -40,7 +40,7 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
   const auto allocator =
       std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
   auto nnz_dims = paddle::framework::make_ddim({src_dims[0] + 1});
-  DenseTensorMeta nnz_meta(DataType::INT32, nnz_dims, DataLayout::ANY);
+  DenseTensorMeta nnz_meta(DataType::INT32, nnz_dims, DataLayout::NCHW);
   std::unique_ptr<DenseTensor> nnz_ptr(new DenseTensor(allocator, nnz_meta));
   std::unique_ptr<DenseTensor> cpu_nnz_ptr(
       new DenseTensor(cpu_alloc, nnz_meta));
@@ -52,10 +52,10 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
 
   auto non_zero_dims = paddle::framework::make_ddim({non_zero_num});
   auto crows_dims = paddle::framework::make_ddim({src_dims[0] + 1});
-  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::ANY);
+  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
   std::unique_ptr<DenseTensor> crows_ptr(
       new DenseTensor(allocator, crows_meta));
-  DenseTensorMeta cols_meta(DataType::INT64, non_zero_dims, DataLayout::ANY);
+  DenseTensorMeta cols_meta(DataType::INT64, non_zero_dims, DataLayout::NCHW);
   std::unique_ptr<DenseTensor> cols_ptr(new DenseTensor(allocator, cols_meta));
   DenseTensorMeta values_meta(src.dtype(), non_zero_dims, src.layout());
   std::unique_ptr<DenseTensor> values_ptr(
@@ -85,4 +85,5 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(to_sparse_csr, GPU, ANY, pten::ToSparseCsr, float, double) {}
+PT_REGISTER_KERNEL(
+    to_sparse_csr, GPU, ALL_LAYOUT, pten::ToSparseCsr, float, double) {}
