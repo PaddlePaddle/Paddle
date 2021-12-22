@@ -33,10 +33,11 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
 
     output->mutable_data<T>(ctx.GetPlace());
 
-    MLUCnnlActivationDesc act_desc(act_mode, alpha_);
+    MLUCnnlActivationDesc act_desc(act_mode, alpha);
     MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
                                  ToCnnlDataType(input->type()));
     MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
@@ -47,9 +48,6 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
                     output_desc.get(),
                     reinterpret_cast<void*>(output->data<T>()));
   }
-
- private:
-  float alpha_ = 1.0;
 };
 
 template <cnnlActivationMode_t act_mode, typename T>
@@ -59,6 +57,7 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
 
     dx->mutable_data<T>(ctx.GetPlace());
 
@@ -68,16 +67,13 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
                                ToCnnlDataType(out->type()));
     MLUCnnlTensorDesc dx_desc(*dx, CNNL_LAYOUT_ARRAY,
                               ToCnnlDataType(dx->type()));
-    MLUCnnlActivationDesc act_desc(act_mode, alpha_);
+    MLUCnnlActivationDesc act_desc(act_mode, alpha);
     MLUCnnl::ActiveGrad(
         ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,
         dout_desc.get(), reinterpret_cast<const void*>(dout->data<T>()),
         out_desc.get(), reinterpret_cast<const void*>(out->data<T>()),
         dx_desc.get(), reinterpret_cast<void*>(dx->data<T>()));
   }
-
- private:
-  float alpha_ = 1.0;
 };
 
 }  // namespace operators
