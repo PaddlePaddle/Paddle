@@ -555,8 +555,8 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
-    return core.ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
-                                            seed)
+    return _C_ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
+                                          seed)
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
