@@ -228,11 +228,11 @@ def prepare_forward(gate, num_expert, world_size, moe_group):
 class MoeLayer(nn.Layer):
     """Moe Layer
     Args:
+        d_model: (int) model dimention
+        experts: (nn.LayerList) expert networks list
         gate_config: (dict): gate network config, containing 2 keys: 
                 `type`(str) value can be: "naive", "gshard", "switch" or None, default is "gshard"
                 `top_k`(int) default value is 2
-        d_model: (int) model dimention
-        experts: (nn.LayerList) expert networks list
         moe_group: moe group for experts communication
         mp_group: mp group for mp commutication
         kwargs: other parameters
@@ -301,7 +301,10 @@ class MoeLayer(nn.Layer):
         assert isinstance(gate_config, dict), "gate config' type must be dict"
         # only support mp/dp
         self.group = moe_group
-        self.world_size = self.group.nranks
+
+        self.world_size = 1
+        if self.group is not None:
+            self.world_size = self.group.nranks
         self.num_expert = len(experts)
         self.recompute_interval = recompute_interval
         assert experts is not None
