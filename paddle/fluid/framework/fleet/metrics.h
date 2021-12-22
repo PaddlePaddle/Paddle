@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_GLOO)
@@ -636,8 +637,14 @@ class Metric {
     PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
+    paddle::platform::Timer timeline;
+    double total_time = 0.0;
+    double compute_time = 0.0;
+    double allreduce_time = 0.0;
+    double reset_time = 0.0;
     std::vector<float> metric_return_values_(6, 0.0);
     auto* auc_cal_ = iter->second->GetCalculator();
+    timeline.Start();
     for (uint64_t uid : auc_cal_->uid_keys()) {
       auc_cal_->computeWuAuc(uid);
       if (auc_cal_->uauc() != 0) {  // uauc=0 means all nonclick or click
@@ -647,6 +654,10 @@ class Metric {
         metric_return_values_[3] += auc_cal_->wuauc();
       }
     }
+    timeline.Pause();
+    compute_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+    timeline.Start();
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
     auto global_metric_return_values_ =
         gloo_wrapper->AllReduce(metric_return_values_, "sum");
@@ -654,7 +665,19 @@ class Metric {
                                       (global_metric_return_values_[0] + 1e-10);
     global_metric_return_values_[5] = global_metric_return_values_[3] /
                                       (global_metric_return_values_[1] + 1e-10);
+    timeline.Pause();
+    allreduce_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+    timeline.Start();
+
     auc_cal_->reset_map();
+    timeline.Pause();
+    reset_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+    fprintf(stderr, "wuauc total time: %fs\n", total_time);
+    fprintf(stderr, "wuauc compute time: %fs\n", compute_time);
+    fprintf(stderr, "wuauc allreduce time: %fs\n", allreduce_time);
+    fprintf(stderr, "wuauc reset time: %fs\n", reset_time);
     return global_metric_return_values_;
   }
 
