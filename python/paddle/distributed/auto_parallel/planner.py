@@ -386,14 +386,19 @@ class SearchAlgorithm:
 
 
 class MCMC(SearchAlgorithm):
-    def __init__(self, serial_program_info, max_search_times=5):
+    def __init__(self, serial_program_info, parallelizer, max_search_times=5):
         super(MCMC, self).__init__("mcmc")
         self._serial_program_info = serial_program_info
         self._max_search_times = max_search_times
+        self._parallelizer = parallelizer
 
     @property
     def serial_program_info(self):
         return self._serial_program_info
+    
+    @property
+    def parallelizer(self):
+        return self._parallelizer
 
     @property
     def max_search_times(self):
@@ -482,8 +487,8 @@ class MCMC(SearchAlgorithm):
                                         pipeline_process_meshes=None):
         cost = None
         # get all distributed programs
-        all_dist_main_program = get_all_distributed_main_program(
-            self.serial_program_info, dist_context)
+        
+        all_dist_main_program = get_all_distributed_main_program(self.serial_program_info, dist_context, self.parallelizer)
         pipeline_config = [
             process_mesh.processes for process_mesh in pipeline_process_meshes
         ] if pipeline_process_meshes is not None else None
@@ -829,8 +834,9 @@ class MCMC(SearchAlgorithm):
 
 
 class Planner:
-    def __init__(self, serial_program_info, algorithm_config=None):
+    def __init__(self, serial_program_info, parallelizer, algorithm_config=None):
         self._serial_program_info = serial_program_info
+        self._parallelizer = parallelizer
         self._algorithm_config = algorithm_config
         self._algorithm_searcher = self.create_algorithm_searcher(
             algorithm_config)
@@ -847,6 +853,10 @@ class Planner:
     def algorithm_searcher(self):
         return self._algorithm_searcher
 
+    @property
+    def parallelizer(self):
+        return self._parallelizer
+
     def create_algorithm_searcher(self, algorithm_config):
         name = algorithm_config.get("name", None)
         assert name is not None, "Invalid algorithm config."
@@ -857,6 +867,7 @@ class Planner:
             max_search_times = algorithm_config.get("max_search_times", None)
             algorithm_searcher = MCMC(
                 self.serial_program_info,
+                self.parallelizer,
                 max_search_times) if max_search_times is not None else MCMC(
                     self.serial_program_info)
         else:

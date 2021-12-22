@@ -154,7 +154,8 @@ class AutoParallelizer:
 
         else:
             with program_guard(main_program, startup_program):
-                optimize_ops = self._optimizer.apply_gradients(params_grads)
+                optimizer = copy.deepcopy(self._optimizer)
+                optimize_ops = optimizer.apply_gradients(params_grads)
 
         # update completion 
         complete_update_annotation(
@@ -164,32 +165,34 @@ class AutoParallelizer:
 
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
         completed_main_program = None
-
+        serial_main_program = self._main_program.clone()
+        serial_startup_program = self._startup_program.clone()
+        serial_loss = serial_main_program.global_block().var(self._loss.name)
         # generating serial 
         if dist_context is None:
             # Annotation completion
             self._dist_context = DistributedContext()
             _logger.info("Start annotation dist attr.")
-            completed_main_program = complete_annotation(self._main_program,
+            completed_main_program = complete_annotation(serial_main_program,
                                                          self._dist_context)
         else:
-            completed_main_program = self._main_program
+            completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)
 
         # serial forward pass
         self._apply_serial_forward_pass(completed_main_program,
-                                        self._startup_program)
-
+                                        serial_startup_program)
+        # print("****completed_main_program: ", completed_main_program)
         # serial backward pass
         params_grads = self._generate_backward(
-            completed_main_program, self._startup_program, self._loss,
+            completed_main_program, serial_startup_program, serial_loss,
             self._parameter_list, self._no_grad_set, self._callbacks)
 
         # Logical partition 
         rank = paddle.distributed.get_rank()
         partitioner = Partitioner(self._dist_context, rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
-            completed_main_program, self._startup_program, params_grads)
+            completed_main_program, serial_startup_program, params_grads)
 
         # TODO refactor the placement of optimizer
         # generate optimize program
@@ -241,6 +244,7 @@ class AutoParallelizer:
                     self._optimizer, self._cluster)
                 planner = Planner(
                     serial_program_info,
+                    self,
                     algorithm_config={"name": "mcmc",
                                       "max_search_times": 5})
                 dist_context, _ = planner.search()
@@ -347,6 +351,7 @@ class AutoParallelizer:
                         cluster=self._cluster)
                     planner = Planner(
                         serial_program_info,
+                        self,
                         algorithm_config={
                             "name": "mcmc",
                             "max_search_times": 5
@@ -388,3 +393,16 @@ class AutoParallelizer:
             self._remove_distributed_attrs(dist_main_prog)
 
             return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog
+
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            # print(k)
+            if k == "_main_program" or k == "_startup_program" or k == "_dist_context" or k == "_fleet" or k == "_loss":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
