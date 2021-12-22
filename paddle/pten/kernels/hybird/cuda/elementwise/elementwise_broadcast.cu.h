@@ -246,7 +246,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
 
 #pragma unroll 
   for (int i = 0; i < FuncNum; ++i) {
-    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+    kps::WriteData<FunctionType<Functor>, VecSize, 1, 1, IsBoundary>(
                     outs[i] + block_offset, temp[i], num);
   }
 }
@@ -312,7 +312,7 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
                   Functor func,
                   DimensionsTransform merge_dims) {
   using ReturnType = FunctionType<Functor>;
-  int numel = out->numel();
+  int numel = (*outs)[0]->numel();
   const int threads = 256;
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
 
@@ -325,8 +325,8 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
   paddle::framework::Array<ReturnType*, FuncNum> outs_data;
 
-  for (int i = 0; i < FuncNum::kSize; ++i) {
-    out_data[i] = (*out)[i]->mutable_data<ReturnType>();
+  for (int i = 0; i < FuncNum; ++i) {
+    outs_data[i] = (*outs)[i]->mutable_data<ReturnType>();
   }
 
   for (int i = 0; i < Arity; i++) {
@@ -429,18 +429,17 @@ void LaunchBroadcastElementwiseCudaKernel(
                       "Number of output shall equal to number of functions, but "
                       "number of output is %d, but number of functions is %d.", 
                       outs->size(), FuncNum));
-    for (int i = 1; i < outs->size(); ++i) {
+    for (int i = 0; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ((*outs)[i]->dims(),
                         (*outs)[0]->dims(),
                         paddle::platform::errors::InvalidArgument(
                         "The shape of each output tensor shall be identical yet, but "
                         "%dth output tensor`s shape is not.", 
                         i));
-      // out_vec_size = std::min(paddle::platform::GetVectorizedSize<ReturnType>(
-      //                         (*outs)[i]->data<ReturnType>(), out_vec_size);
+      out_vec_size = std::min(paddle::platform::GetVectorizedSize<ReturnType>((*outs)[i]->data<ReturnType>()), out_vec_size);
     }
   } else {
-    out_vec_size = paddle::platform::GetVectorizedSize<ReturnType>((*outs)[0]->data<OutT>());
+    out_vec_size = paddle::platform::GetVectorizedSize<ReturnType>((*outs)[0]->data<ReturnType>());
   }
 
   for (auto *in : ins) {
