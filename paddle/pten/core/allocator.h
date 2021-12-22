@@ -104,8 +104,9 @@ class Allocation final {
   /// safety checking.
   template <typename T>
   T* CastContext(DeleterFnPtr expected_deleter) const {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         deleter_ == expected_deleter,
+        true,
         paddle::platform::errors::InvalidArgument(
             "The deleter of the allocation does not match, so the pointer "
             "cannot be safely removed."));
