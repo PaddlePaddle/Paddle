@@ -101,6 +101,7 @@ def is_unsupported(func):
                 return True
 
     # NOTE: should be placed before `is_paddle_func`
+    # Maybe modify here
     if type(func) in PADDLE_NEED_CONVERT_APIS:
         return False
 
