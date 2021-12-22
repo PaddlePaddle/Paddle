@@ -40,9 +40,42 @@ class Tracer(core.Tracer):
         self._train_mode = True
 
     def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
-        self.trace(type, inputs, outputs, attrs,
-                   framework._current_expected_place(), self._has_grad and
-                   not stop_gradient)
+        if _in_eager_mode():
+            #function_ptr = core.eager.ops.__dict__[type]
+            function_ptr = _C_ops.__dict__[type]
+
+            core_ops_args_info = _C_ops.get_core_ops_args_info()
+            core_ops_returns_info = _C_ops.get_core_ops_returns_info()
+
+            op_args = core_ops_args_info[type]
+            op_returns = core_ops_returns_info[type]
+
+            arg_list = []
+            for arg in op_args:
+                if arg in inputs.keys():
+                    arg_list.append(inputs[arg])
+                elif arg in outputs.keys():
+                    arg_list.append(outputs[arg])
+                else:
+                    if "Num" in arg:
+                        # Remove "Num" suffix to get out_name
+                        out_name = arg[:-3]
+                        assert out_name in outputs.keys()
+                        num_outs = len(outputs[out_name])
+                        arg_list.append(num_outs)
+                    else:
+                        arg_list.append(None)
+            returns = function_ptr(*arg_list, **attrs)
+
+            for i in range(len(op_returns)):
+                retname = op_returns[i]
+                if retname in outputs.keys():
+                    # Replaced outputs by function returns
+                    outputs[retname] = returns[i]
+        else:
+            self.trace(type, inputs, outputs, attrs,
+                       framework._current_expected_place(), self._has_grad and
+                       not stop_gradient)
 
     def train_mode(self):
         self._train_mode = True
