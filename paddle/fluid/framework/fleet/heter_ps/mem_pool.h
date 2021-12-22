@@ -58,10 +58,7 @@ class MemoryPool {
 
 class HBMMemoryPool : public managed {
  public:
-  HBMMemoryPool(size_t capacity, size_t block_size) : capacity_(capacity), block_size_(block_size) {
-    cudaMalloc(&mem_, block_size * capacity);
-    cudaMemset(mem_, 0, block_size * capacity);
-  }
+  HBMMemoryPool(size_t capacity, size_t block_size) : capacity_(capacity), block_size_(block_size) {}
   HBMMemoryPool(MemoryPool* mem_pool) {
     capacity_ = mem_pool->capacity();
     block_size_ = mem_pool->block_size();
