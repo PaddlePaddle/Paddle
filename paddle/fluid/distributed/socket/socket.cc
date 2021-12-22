@@ -170,5 +170,55 @@ Socket Socket::accept() const {
   return Socket(fd);
 }
 
+template <typename T>
+void Socket::sendBytes(const T* buffer, size_t len) {
+  size_t bytesToSend = sizeof(T) * len;
+  if (bytesToSend == 0) {
+    return;
+  }
+
+  auto ptr = reinterpret_cast<const char*>(buffer);
+
+  while (bytesToSend > 0) {
+    ssize_t bytesSent;
+    bytesSent = ::send(sock_fd, ptr, bytesToSend);
+    if (bytesSend == 0) {
+      throw something;
+    }
+    bytesToSend -= bytesSent;
+    ptr += bytesSent;
+  }
+}
+
+template <typename T>
+void Socket::sendBytes(T* buffer, size_t len) {
+  ssize_t bytesToReceive = sizeof(T) * len;
+  if (bytesToReceive == 0) {
+    return;
+  }
+  auto ptr = reinterpret_cast<char*>(buffer);
+  while (bytesToReceive > 0) {
+    ssize_t bytesReceived;
+    bytesReceived = ::recv(sock_fd, ptr, bytesToReceive);
+    if (bytesReceived == 0) {
+      throw something;
+    }
+    bytesToReceive -= bytesReceived;
+    ptr += bytesReceived;
+  }
+}
+
+template <typename T>
+void Socket::sendValue(const T value) {
+  sendBytes<T>(&value, sizeof(T));
+}
+
+template <typename T>
+T Socket::recvValue() {
+  T value;
+  recvBytes(&T, sizeof(T));
+  return T;
+}
+
 }  // namespace distributed
 }  // namespace paddle

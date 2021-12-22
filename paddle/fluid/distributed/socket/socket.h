@@ -25,6 +25,10 @@ class Socket {
   explicit Socket(int sock_fd) : sock_fd(sock_fd) {}
   void listen(const std::string& host, std::uint16_t port);
   void connect(const std::string& host, std::uint16_t port);
+  template <typename T>
+  void sendValue(const T value);
+  template <typename T>
+  T recvValue();
 
   Socket accept() const;
 
@@ -37,6 +41,10 @@ class Socket {
   bool tryListen(const ::addrinfo& addr);
   bool tryConnect(const std::string& host, std::uint16_t port);
   bool tryConnect(const ::addrinfo& addr);
+  template <typename T>
+  void sendBytes(const T* buffer, size_t len);
+  template <typename T>
+  void recvBytes(T* buffer, size_t len);
 }
 
 }  // namespace distributed
