@@ -104,7 +104,8 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_KERNEL(sign, GPU, ALL_LAYOUT, pten::Sign, float, double, float16) {}
-PT_REGISTER_KERNEL(mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(
+    mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool, float16) {}
 PT_REGISTER_KERNEL(add,
                    GPU,
                    ALL_LAYOUT,

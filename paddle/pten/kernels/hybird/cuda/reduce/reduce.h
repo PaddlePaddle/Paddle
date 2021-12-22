@@ -63,7 +63,10 @@ void Reduce(const GPUContext& dev_ctx,
   std::vector<int> reduce_dims{reduce_dims_int64.begin(),
                                reduce_dims_int64.end()};
 
-  int reduce_num = x.numel();
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (x.dims())[i];
+  }
 
   gpuStream_t stream = dev_ctx.stream();
 
