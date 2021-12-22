@@ -43,6 +43,8 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
                              gpuStream_t stream) {
+  y->mutable_data<Ty>(x.place());
+
   auto pt_x = paddle::experimental::MakePtenDenseTensor(x);
   auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
 

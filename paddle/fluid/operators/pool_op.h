@@ -154,7 +154,6 @@ class PoolKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
-    out->mutable_data(context.device_context<DeviceContext>().GetPlace());
 
     std::string pooling_type = context.Attr<std::string>("pooling_type");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
