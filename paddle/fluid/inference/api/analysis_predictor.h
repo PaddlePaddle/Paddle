@@ -172,6 +172,9 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool ZeroCopyRun() override;
 
+  // Note: Can only be used under thread_local semantics.
+  bool ZeroCopyRun_Exp(const gpuStream_t stream);
+
   ///
   /// \brief Create feed fetch variables
   ///

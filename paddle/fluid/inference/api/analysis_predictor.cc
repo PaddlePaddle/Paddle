@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -1043,6 +1044,20 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
+bool AnalysisPredictor::ZeroCopyRun_Exp(const gpuStream_t stream) {
+  if (stream != nullptr) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+    dev_ctx->SetThreadLocalStream(stream);
+#endif
+  }
+  return ZeroCopyRun();
+}
+
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   if (config_.use_gpu()) {
@@ -1567,4 +1582,25 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   return preds_[idx - 1].get();
 }
 }  // namespace services
+
+namespace experimental {
+
+// Note: Can only be used under thread_local semantics.
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ZeroCopyRun_Exp(stream);
+#endif
+  return false;
+}
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ZeroCopyRun_Exp(stream);
+#endif
+  return false;
+}
+}  // namespace experimental
 }  // namespace paddle_infer
