@@ -18,6 +18,21 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 
+TEST(WorkQueueUtils, TestEventsWaiter) {
+  using paddle::framework::EventsWaiter;
+  EventsWaiter events_waiter;
+  auto notifier =
+      events_waiter.RegisterEvent("test_register_lt", []() { return true; });
+  EXPECT_EQ(events_waiter.WaitEvent(), "test_register_lt");
+  EXPECT_EQ(notifier->GetEventName(), "test_register_lt");
+  EXPECT_EQ(events_waiter.WaitEvent(), "test_register_lt");
+  notifier->UnregisterEvent();
+  EXPECT_EQ(notifier->GetEventName(), "Unregistered");
+  notifier = events_waiter.RegisterEvent("test_register_et");
+  notifier->NotifyEvent();
+  EXPECT_EQ(events_waiter.WaitEvent(), "test_register_et");
+}
+
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
   using paddle::framework::WorkQueueOptions;
