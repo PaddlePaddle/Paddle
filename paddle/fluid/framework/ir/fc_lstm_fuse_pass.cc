@@ -71,7 +71,7 @@ MulLstmFusePass::MulLstmFusePass() {
       .IsStringIn({"sigmoid"})
       .End()
       .AddAttr("cell_activation")
-      .IsStringIn({"tanh", "identity"})
+      .IsStringIn({"tanh", "relu", "identity"})
       .End()
       .AddAttr("candidate_activation")
       .IsStringIn({"tanh", "relu", "identity"})

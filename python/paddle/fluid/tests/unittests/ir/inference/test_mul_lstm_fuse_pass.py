@@ -36,7 +36,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
         use_peepholes = draw(st.booleans())
         is_reverse = draw(st.booleans())
         gate_activation = draw(st.sampled_from(["sigmoid"]))
-        cell_activation = draw(st.sampled_from(["tanh", "identity"]))
+        cell_activation = draw(st.sampled_from(["tanh", "relu", "identity"]))
         candidate_activation = draw(
             st.sampled_from(["tanh", "relu", "identity"]))
         batch_size = draw(st.integers(min_value=1, max_value=40))
