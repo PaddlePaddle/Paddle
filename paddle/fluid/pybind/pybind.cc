@@ -2049,6 +2049,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
           import paddle
+          # required: mlu
           mlu_place = paddle.MLUPlace(0)
 
         )DOC");
