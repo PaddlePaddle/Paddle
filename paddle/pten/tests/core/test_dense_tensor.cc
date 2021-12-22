@@ -122,5 +122,20 @@ TEST(dense_tensor, resize) {
   CHECK_EQ(storage->size(), 6u);
 }
 
+TEST(dense_tensor, shallow_copy) {
+  const DDim dims({1, 2});
+  const DataType dtype{DataType::INT8};
+  const DataLayout layout{DataLayout::NHWC};
+  const LoD lod{};
+  DenseTensorMeta meta(dtype, dims, layout, lod);
+
+  auto alloc = std::make_shared<FancyAllocator>();
+  DenseTensor tensor_0(alloc, meta);
+
+  DenseTensor tensor_1(tensor_0);
+  CHECK(tensor_0.meta() == tensor_1.meta());
+  CHECK(tensor_0.release() == tensor_1.release());
+}
+
 }  // namespace tests
 }  // namespace pten

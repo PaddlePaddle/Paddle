@@ -111,7 +111,7 @@ TEST(PtenUtils, VarToPtTensor) {
   pten::Backend expect_backend = pten::Backend::CPU;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  expect_backend = pten::Backend::CUDA;
+  expect_backend = pten::Backend::GPU;
 #endif
   auto tensor_def = pten::TensorArgDef(
       expect_backend, pten::DataLayout::NCHW, pten::DataType::INT32);

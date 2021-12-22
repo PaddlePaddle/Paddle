@@ -40,24 +40,16 @@ paddle.seed(seed)
 
 
 def train_mlp(model, offload=False):
-    group = paddle.distributed.new_group([0, 1])
     optimizer = optimizer_setting(model=model, use_pure_fp16=True)
 
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
-    scaler = ShardingScaler(scaler, group)
+    scaler = ShardingScaler(scaler)
 
     optimizer = ShardingOptimizerStage2(
-        params=model.parameters(),
-        optim=optimizer,
-        group=group,
-        offload=offload)
+        params=model.parameters(), optim=optimizer, offload=offload)
     model = ShardingStage2(
-        model,
-        optimizer,
-        group=group,
-        buffer_max_size=2**21,
-        accumulate_grads=True)
+        model, optimizer, buffer_max_size=2**21, accumulate_grads=True)
 
     train_reader = paddle.batch(
         reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
