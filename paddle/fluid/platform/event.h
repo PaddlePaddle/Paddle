@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <string>
+#include <utility>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
@@ -48,7 +50,7 @@ class Event {
   void set_parent(Event* parent) { parent_ = parent; }
   std::string name() const { return name_; }
   EventRole role() const { return role_; }
-  uint32_t thread_id() const { return thread_id_; }
+  uint64_t thread_id() const { return thread_id_; }
   void set_name(std::string name) { name_ = name; }
   void set_role(EventRole role) { role_ = role; }
   std::string attr() const { return attr_; }
@@ -66,7 +68,7 @@ class Event {
   EventType type_;
   std::string name_{};
   Event* parent_{nullptr};
-  uint32_t thread_id_;
+  uint64_t thread_id_;
   EventRole role_{};
   int64_t cpu_ns_;
   bool visited_status_{false};
@@ -88,6 +90,9 @@ class Event {
 #endif
 };
 
+using EventWithStartNs = std::pair<Event*, uint64_t>;
+using ThreadEvents = std::map<uint64_t, EventWithStartNs>;
+
 class MemEvent {
  public:
   MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
@@ -105,7 +110,7 @@ class MemEvent {
   uint64_t end_ns() const { return end_ns_; }
   size_t bytes() const { return bytes_; }
   Place place() const { return place_; }
-  int64_t thread_id() const { return thread_id_; }
+  uint64_t thread_id() const { return thread_id_; }
   const std::string& annotation() const { return annotation_; }
 
  private:
@@ -114,7 +119,7 @@ class MemEvent {
   uint64_t end_ns_ = 0;
   size_t bytes_;
   Place place_;
-  int64_t thread_id_;
+  uint64_t thread_id_;
   std::string annotation_;
 };
 
@@ -148,9 +153,9 @@ class CudaEvent {
 
   void Record(const paddle::platform::stream::CUDAStream& stream) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
 #endif
   }
 
@@ -172,15 +177,15 @@ class CudaEvent {
       return false;
     }
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
     return false;
   }
 
   void Synchronize() {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventSynchronize(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventSynchronize(event_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event_));
 #endif
   }
   gpuEvent_t GetRawCudaEvent() { return event_; }

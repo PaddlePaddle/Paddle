@@ -28,7 +28,6 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
-
 namespace paddle {
 namespace imperative {
 
@@ -186,7 +185,7 @@ size_t VarBase::GradOpNum() const {
   return grad_node_ ? grad_node_->size() : 0;
 }
 
-void VarBase::ClearGradient() {
+void VarBase::ClearGradient(bool set_to_zero) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
@@ -204,9 +203,13 @@ void VarBase::ClearGradient() {
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
-        auto* dev_ctx =
-            platform::DeviceContextPool::Instance().Get(grad_t->place());
-        operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+        if (set_to_zero) {
+          auto* dev_ctx =
+              platform::DeviceContextPool::Instance().Get(grad_t->place());
+          operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+        } else {
+          grad_t->clear();
+        }
 #ifdef PADDLE_WITH_MKLDNN
         if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
 #endif
@@ -217,6 +220,28 @@ void VarBase::ClearGradient() {
     // After fix this bug, function SetIsEmpty() isn't need
     grad_var_->SharedVar()->SetIsEmpty(true);
   }
+}
+
+void VarBase::_GradientSetEmpty(bool is_empty) {
+  VLOG(4) << "Set gradient " << Name() << " is_empty:" << is_empty;
+  if (grad_var_) {
+    auto share_var = grad_var_->SharedVar();
+    if (share_var) {
+      share_var->SetIsEmpty(is_empty);
+    }
+  }
+}
+
+bool VarBase::_IsGradientSetEmpty() {
+  bool res = true;
+  if (grad_var_) {
+    auto share_var = grad_var_->SharedVar();
+    if (share_var) {
+      res = share_var->is_empty_;
+      VLOG(4) << "Check gradient " << Name() << " is empty:" << res;
+    }
+  }
+  return res;
 }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
@@ -376,11 +401,8 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
     auto& src_tensor = src.Var().Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
                       platform::errors::InvalidArgument(
-                          "tensor has not been initialized", src.Name()));
+                          "Tensor %s has not been initialized", src.Name()));
     auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(grad_t->IsInitialized(), true,
-                      platform::errors::InvalidArgument(
-                          "tensor %s has not been initialized", Name()));
     auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());

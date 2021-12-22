@@ -73,9 +73,9 @@ class Allocation final {
   operator bool() const noexcept { return data_ || ctx_.Get(); }
   const Place& place() const noexcept { return place_; }
 
-  void Clear() noexcept {
-    data_ = nullptr;
+  void Clear() {
     ctx_.Clear();
+    data_ = nullptr;
   }
 
   /// \brief Statically cast the void pointer of the context object to
@@ -107,12 +107,11 @@ class Allocation final {
       swap(*this, other);
       return *this;
     }
-    ~Context() {
+    ~Context() { Clear(); }
+    void Clear() {
       if (deleter_) {
         deleter_(ctx_);
       }
-    }
-    void Clear() noexcept {
       ctx_ = nullptr;
       deleter_ = nullptr;
     }

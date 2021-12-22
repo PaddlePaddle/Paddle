@@ -1,6 +1,6 @@
 cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
-list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc cusparse.cc  nvtx.cc cufft.cc)
+list(APPEND CUDA_SRCS cublas.cc cublasLt.cc cudnn.cc curand.cc cusolver.cc cusparse.cc  nvtx.cc cufft.cc)
 
 if (NOT WITH_NV_JETSON)
     list(APPEND CUDA_SRCS nvjpeg.cc)
@@ -37,7 +37,7 @@ if(WITH_ROCM)
   hip_library(dynload_cuda SRCS ${HIP_SRCS} DEPS dynamic_loader)
   cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 elseif (WITH_ASCEND_CL)
-  cc_library(dynload_warpctc SRCS warpctc.cc hccl.cc DEPS dynamic_loader warpctc)
+  cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc npu_hccl)
 else()
   nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
   cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)

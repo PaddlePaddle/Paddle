@@ -209,28 +209,28 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
 
             # compute frobenius norm along last two dimensions.
-            out_fro = paddle.norm(x, p='fro', axis=[0,1])
+            out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
             # out_fro.numpy() [17.435596 16.911535 16.7332   16.911535]
 
             # compute 2-order vector norm along last dimension.
-            out_pnorm = paddle.norm(x, p=2, axis=-1)
+            out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
             #out_pnorm.numpy(): [[21.118711  13.190906   5.477226]
             #                    [ 3.7416575 11.224972  19.131126]]
 
             # compute 2-order  norm along [0,1] dimension.
-            out_pnorm = paddle.norm(x, p=2, axis=[0,1])
+            out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
             #out_pnorm.numpy(): [17.435596 16.911535 16.7332   16.911535]
 
             # compute inf-order  norm
-            out_pnorm = paddle.norm(x, p=np.inf)
+            out_pnorm = paddle.linalg.norm(x, p=np.inf)
             #out_pnorm.numpy()  = [12.]
-            out_pnorm = paddle.norm(x, p=np.inf, axis=0)
+            out_pnorm = paddle.linalg.norm(x, p=np.inf, axis=0)
             #out_pnorm.numpy(): [[12. 11. 10. 9.] [8. 7. 6. 7.] [8. 9. 10. 11.]]
 
             # compute -inf-order  norm
-            out_pnorm = paddle.norm(x, p=-np.inf)
+            out_pnorm = paddle.linalg.norm(x, p=-np.inf)
             #out_pnorm.numpy(): [0.]
-            out_pnorm = paddle.norm(x, p=-np.inf, axis=0)
+            out_pnorm = paddle.linalg.norm(x, p=-np.inf, axis=0)
             #out_pnorm.numpy(): [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
     """
 
@@ -1084,7 +1084,7 @@ def cholesky(x, upper=False, name=None):
             a_t = np.transpose(a, [1, 0])
             x_data = np.matmul(a, a_t) + 1e-03
             x = paddle.to_tensor(x_data)
-            out = paddle.cholesky(x, upper=False)
+            out = paddle.linalg.cholesky(x, upper=False)
             print(out)
             # [[1.190523   0.         0.        ]
             #  [0.9906703  0.27676893 0.        ]
@@ -1430,7 +1430,7 @@ def det(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.determinant(x)
+        return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
@@ -1485,7 +1485,7 @@ def slogdet(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.slogdeterminant(x)
+        return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
@@ -1573,7 +1573,7 @@ def svd(x, full_matrices=False, name=None):
         outputs={'U': u,
                  'VH': vh,
                  'S': s},
-        attr=attrs, )
+        attrs=attrs, )
     return u, s, vh
 
 
@@ -1633,7 +1633,7 @@ def matrix_power(x, n, name=None):
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
     if in_dygraph_mode():
-        return core.ops.matrix_power(x, "n", n)
+        return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
     check_type(n, 'n', int, 'matrix_power')

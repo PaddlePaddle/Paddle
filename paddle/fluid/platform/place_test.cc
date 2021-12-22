@@ -19,6 +19,7 @@ TEST(Place, Equality) {
   paddle::platform::CPUPlace cpu;
   paddle::platform::CUDAPlace g0(0), g1(1), gg0(0);
   paddle::platform::XPUPlace x0(0), x1(1), xx0(0);
+  paddle::platform::MLUPlace m0(0), m1(1), mm0(0);
 
   EXPECT_EQ(cpu, cpu);
   EXPECT_EQ(g0, g0);
@@ -27,9 +28,13 @@ TEST(Place, Equality) {
   EXPECT_EQ(x0, x0);
   EXPECT_EQ(x1, x1);
   EXPECT_EQ(x0, xx0);
+  EXPECT_EQ(m0, m0);
+  EXPECT_EQ(m1, m1);
+  EXPECT_EQ(m0, mm0);
 
   EXPECT_NE(g0, g1);
   EXPECT_NE(x0, x1);
+  EXPECT_NE(m0, m1);
 
   EXPECT_TRUE(paddle::platform::places_are_same_class(g0, gg0));
   EXPECT_TRUE(paddle::platform::places_are_same_class(x0, xx0));
@@ -43,6 +48,11 @@ TEST(Place, Print) {
     std::stringstream ss;
     ss << paddle::platform::XPUPlace(1);
     EXPECT_EQ("XPUPlace(1)", ss.str());
+  }
+  {
+    std::stringstream ss;
+    ss << paddle::platform::MLUPlace(1);
+    EXPECT_EQ("MLUPlace(1)", ss.str());
   }
   {
     std::stringstream ss;

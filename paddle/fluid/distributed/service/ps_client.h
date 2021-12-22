@@ -114,9 +114,9 @@ class PSClient {
                                                 size_t region_num,
                                                 size_t table_id) = 0;
 
-  //  virtual std::future<int32_t> push_dense(const Region *regions,
-  //                                          size_t region_num,
-  //                                          size_t table_id) = 0;
+  virtual std::future<int32_t> push_dense(const Region *regions,
+                                          size_t region_num,
+                                          size_t table_id) = 0;
   // 使用keys进行pull请求，结果填充values
   // keys和values的个数均为num个，每个value占用select_size空间
   // future结束前keys和values缓冲区不能再次使用
@@ -222,10 +222,10 @@ class PSClient {
                                                  const uint64_t *keys,
                                                  const float **update_values,
                                                  size_t num, void *done) = 0;
-  //  virtual std::future<int32_t> push_sparse(size_t table_id,
-  //                                           const uint64_t *keys,
-  //                                           const float **update_values,
-  //                                           size_t num) = 0;
+  virtual std::future<int32_t> push_sparse(size_t table_id,
+                                           const uint64_t *keys,
+                                           const float **update_values,
+                                           size_t num) = 0;
 
  protected:
   virtual int32_t initialize() = 0;

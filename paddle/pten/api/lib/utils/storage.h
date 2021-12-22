@@ -34,6 +34,11 @@ class ExternalStorage : public pten::Storage {
         "The external shared storage cannot be reallocated."));
   }
 
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
+  }
+
   size_t size() const noexcept override { return size_; }
   const paddle::platform::Place& place() const override {
     return data_.place();
@@ -41,7 +46,7 @@ class ExternalStorage : public pten::Storage {
   bool OwnsMemory() const noexcept override { return false; }
 
  private:
-  const int64_t size_{0};
+  int64_t size_{0};
 };
 
 class SharedStorage : public pten::Storage {
@@ -58,11 +63,25 @@ class SharedStorage : public pten::Storage {
     size_ = allocation->size();
   }
 
+  // In order to be compatible with the original Tensor design and execution
+  // system, we need to allow the uninitialized SharedStorage to exist,
+  // and it can be removed after the compatibility phase is over in the future
+  explicit SharedStorage(const paddle::platform::Place& place) {
+    data_ = pten::Allocation(nullptr, place);
+  }
+
   static const char* name() { return "SharedStorage"; }
 
+  // In order to be compatible with the original Tensor design and execution
+  // system, we need to allow the SharedStorage realloc,
+  // and it can be removed after the compatibility phase is over in the future
   void Realloc(size_t n) override {
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "The external shared storage cannot be reallocated."));
+    ResetAllocation(paddle::memory::AllocShared(place(), n), 0);
+  }
+
+  void Clear() override {
+    data_.Clear();
+    size_ = 0;
   }
 
   size_t size() const noexcept override { return size_; }
@@ -87,8 +106,15 @@ class SharedStorage : public pten::Storage {
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
+  void ResetAllocationPlace(const paddle::platform::Place& place) {
+    data_ = pten::Allocation(nullptr, place);
+  }
+
+  // Temporary method: For compatible with fluid Tensor and improve performance
   void Reset() {
-    allocation_.reset();
+    if (allocation_ != nullptr) {
+      allocation_.reset();
+    }
     data_.Clear();
     size_ = 0;
   }

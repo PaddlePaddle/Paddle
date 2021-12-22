@@ -15,10 +15,11 @@
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/include/infershape.h"
+#include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cpu/manipulation.h"
-#include "paddle/pten/kernels/cuda/manipulation.h"
+#include "paddle/pten/kernels/flatten_kernel.h"
+#include "paddle/pten/kernels/gpu/manipulation.h"
 #include "paddle/pten/kernels/xpu/manipulation.h"
 
 namespace pten {
@@ -28,12 +29,39 @@ DenseTensor Flatten(const ContextT& dev_ctx,
                     const DenseTensor& x,
                     int start_axis,
                     int stop_axis) {
-  auto out_meta = FlattenInferShape(x.meta(), start_axis, stop_axis);
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          dev_ctx.GetPlace());
-  pten::DenseTensor dense_out(allocator, out_meta);
-  Flatten<T>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+  auto out_meta = FlattenInferMeta(x.meta(), start_axis, stop_axis);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename ContextT>
+DenseTensor Cast(const ContextT& dev_ctx,
+                 const DenseTensor& x,
+                 DataType out_dtype,
+                 DataType in_dtype) {
+  auto out_meta = CastInferMeta(x.meta(), out_dtype);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  Cast<T>(dev_ctx, x, out_dtype, in_dtype, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename ContextT>
+DenseTensor Reshape(const ContextT& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<int64_t>& shape) {
+  auto out_meta = InferMetaFromVecValue(x.meta(), shape);
+  pten::DenseTensor dense_out(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(out_meta));
+  Reshape(dev_ctx, x, ScalarArray(shape), &dense_out);
   return dense_out;
 }
 

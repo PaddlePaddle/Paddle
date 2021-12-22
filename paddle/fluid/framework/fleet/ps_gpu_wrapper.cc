@@ -191,7 +191,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
   // get day_id: day nums from 1970
   struct std::tm b;
   b.tm_year = year_ - 1900;
@@ -454,9 +454,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
-    if (feature_keys_count[i] > 0) {
-      HeterPs_->show_one_table(i);
-    }
+    // if (feature_keys_count[i] > 0) {
+    //   HeterPs_->show_one_table(i);
+    // }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(build_func, i);
@@ -490,9 +490,8 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 
 void PSGPUWrapper::start_build_thread() {
   running_ = true;
-  VLOG(3) << "start build CPU&GPU ps thread.";
+  VLOG(3) << "start build CPU ps thread.";
   pre_build_threads_ = std::thread([this] { pre_build_thread(); });
-  build_threads_ = std::thread([this] { build_thread(); });
 }
 
 void PSGPUWrapper::pre_build_thread() {
@@ -515,30 +514,28 @@ void PSGPUWrapper::pre_build_thread() {
   VLOG(3) << "build cpu thread end";
 }
 
-void PSGPUWrapper::build_thread() {
-  // build: build_pull + build_gputask
-  while (running_) {
-    std::shared_ptr<HeterContext> gpu_task = nullptr;
-    if (!gpu_free_channel_->Get(gpu_task)) {
-      continue;
-    }
-    if (!buildcpu_ready_channel_->Get(gpu_task)) {
-      continue;
-    }
-    VLOG(3) << "thread BuildGPUTask start.";
-    platform::Timer timer;
-    timer.Start();
-    BuildPull(gpu_task);
-    timer.Pause();
-    timer.Start();
-    BuildGPUTask(gpu_task);
-    timer.Pause();
-    VLOG(1) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
-            << "s";
-
-    train_ready_channel_->Put(gpu_task);
+void PSGPUWrapper::build_task() {
+  // build_task: build_pull + build_gputask
+  std::shared_ptr<HeterContext> gpu_task = nullptr;
+  // train end, gpu free
+  if (!gpu_free_channel_->Get(gpu_task)) {
+    return;
   }
-  VLOG(3) << "build gpu thread end";
+  // ins and pre_build end
+  if (!buildcpu_ready_channel_->Get(gpu_task)) {
+    return;
+  }
+
+  VLOG(1) << "BuildPull start.";
+  platform::Timer timer;
+  timer.Start();
+  BuildPull(gpu_task);
+  BuildGPUTask(gpu_task);
+  timer.Pause();
+  VLOG(1) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
+          << "s";
+
+  current_task_ = gpu_task;
 }
 
 void PSGPUWrapper::BeginPass() {
@@ -548,11 +545,15 @@ void PSGPUWrapper::BeginPass() {
     PADDLE_THROW(
         platform::errors::Fatal("[BeginPass] current task is not ended."));
   }
-  // load+build done
-  if (!train_ready_channel_->Get(current_task_)) {
-    PADDLE_THROW(platform::errors::Fatal("train_ready_channel_ failed."));
-  }
+
+  build_task();
   timer.Pause();
+
+  if (current_task_ == nullptr) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "[BeginPass] after build_task, current task is not null."));
+  }
+
   VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
@@ -591,7 +592,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   all_timer.Start();
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf = memory::AllocShared(place, total_length * sizeof(FeatureValue));
+  auto buf = memory::Alloc(place, total_length * sizeof(FeatureValue));
   FeatureValue* total_values_gpu = reinterpret_cast<FeatureValue*>(buf->ptr());
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -609,9 +610,9 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
       slot_lengths_lod[i] += slot_lengths_lod[i - 1];
     }
-    auto buf_key = memory::AllocShared(place, keys.size() * sizeof(uint64_t*));
+    auto buf_key = memory::Alloc(place, keys.size() * sizeof(uint64_t*));
     auto buf_length =
-        memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
+        memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
     uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(buf_key->ptr());
     int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
     cudaMemcpy(gpu_keys, keys.data(), keys.size() * sizeof(uint64_t*),
@@ -659,8 +660,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   all_timer.Start();
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf =
-      memory::AllocShared(place, total_length * sizeof(FeaturePushValue));
+  auto buf = memory::Alloc(place, total_length * sizeof(FeaturePushValue));
   FeaturePushValue* total_grad_values_gpu =
       reinterpret_cast<FeaturePushValue*>(buf->ptr());
   if (platform::is_cpu_place(place)) {

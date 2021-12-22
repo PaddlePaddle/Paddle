@@ -27,6 +27,7 @@ using XPUDeviceContext = paddle::platform::XPUDeviceContext;
 
 void Copy(const XPUDeviceContext& dev_ctx,
           const DenseTensor& src,
+          bool blocking,
           DenseTensor* dst);
 
 }  // namespace pten
