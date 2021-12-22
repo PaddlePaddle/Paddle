@@ -51,7 +51,7 @@ function(kernel_library TARGET)
 
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
-    cmake_parse_arguments(op_library "${options}" "${oneValueArgs}"
+    cmake_parse_arguments(kernel_library "${options}" "${oneValueArgs}"
         "${multiValueArgs}" ${ARGN})
 
     list(LENGTH kernel_library_SRCS kernel_library_SRCS_len)
@@ -148,7 +148,7 @@ function(register_kernels)
     set(oneValueArgs "")
     set(multiValueArgs EXCLUDES DEPS)
     cmake_parse_arguments(register_kernels "${options}" "${oneValueArgs}"
-        "{multiValueArgs}" ${ARGN})
+        "${multiValueArgs}" ${ARGN})
 
     file(GLOB KERNELS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_kernel.h")
     string(REPLACE ".h" "" KERNELS "${KERNELS}")
