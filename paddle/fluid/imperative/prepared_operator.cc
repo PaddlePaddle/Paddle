@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
@@ -478,13 +479,22 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    &default_attrs, op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  {
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::EventRole::kInnerOp);
+    DygraphInferShapeContext<VarType> infer_shape_ctx(
+        &ins, &outs, &attrs, &default_attrs, op.Type());
+    static_cast<const framework::OperatorWithKernel&>(op).InferShape(
+        &infer_shape_ctx);
+  }
 
-  func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
-                                        attrs, default_attrs));
+  {
+    platform::RecordEvent record_event("compute",
+                                       platform::EventRole::kInnerOp);
+
+    func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
+                                          attrs, default_attrs));
+  }
 
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
@@ -524,16 +534,30 @@ static void PreparedOpRunPtImpl(
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
-  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    &default_attrs, op.Type());
-  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
-      &infer_shape_ctx);
+  {
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::EventRole::kInnerOp);
+    DygraphInferShapeContext<VarType> infer_shape_ctx(
+        &ins, &outs, &attrs, &default_attrs, op.Type());
+    static_cast<const framework::OperatorWithKernel&>(op).InferShape(
+        &infer_shape_ctx);
+  }
 
-  BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
-                                         outs, attrs, default_attrs, dev_ctx,
-                                         pt_kernel_context);
+  {
+    platform::RecordEvent record_event("compute",
+                                       platform::EventRole::kInnerOp);
 
-  pt_kernel(pt_kernel_context);
+    BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
+                                           outs, attrs, default_attrs, dev_ctx,
+                                           pt_kernel_context);
+
+    pt_kernel(pt_kernel_context);
+
+    WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
+
+    // Ensure that it does not affect the VarBase life cycle management
+    pt_kernel_context->ClearData();
+  }
 
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
@@ -542,11 +566,6 @@ static void PreparedOpRunPtImpl(
     VLOG(4) << "Operator(" << op.Type() << "): context wait and get last error";
 #endif
   }
-
-  WriteBackToOutputs<VarType>(pt_kernel_signature, outs, pt_kernel_context);
-
-  // Ensure that it does not affect the VarBase life cycle management
-  pt_kernel_context->ClearData();
 
   // TODO(chenweihang): add debug flags later
   // TODO(chenweihang): deal with complex cases later

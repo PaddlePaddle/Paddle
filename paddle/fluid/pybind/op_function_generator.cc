@@ -123,6 +123,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    platform::RecordEvent op_type_record_event("Pybind imperative");
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -461,6 +462,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
+                                   "\"paddle/fluid/platform/profiler.h\"",
                                    "\"pybind11/detail/common.h\"",
                                    "<Python.h>"};
 
