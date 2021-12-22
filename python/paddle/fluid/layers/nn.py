@@ -664,6 +664,7 @@ def _pull_sparse_v2(input,
         return outs[0]
     return outs
 
+
 def _pull_gpups_sparse(input,
                        size,
                        dtype='float32',
