@@ -14,26 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
-
-#include "paddle/pten/backends/xpu/xpu_context.h"
-#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
+namespace functions {
 
-void Reshape(const XPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
+inline void SetXShape(const DenseTensor& x, DenseTensor* xshape) {
+  const auto& in_dims = x.meta().dims;
+  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    xshape_dims[i + 1] = in_dims[i];
+  }
+  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
+  xshape->ResetLoD(x.meta().lod);
+}
 
-void ReshapeWithXShape(const XPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
-
+}  // namespace functions
 }  // namespace pten
-
-#endif
