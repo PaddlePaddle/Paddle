@@ -45,8 +45,11 @@ class MessageBus;
 class Carrier final {
  public:
   Carrier() = default;
+  Carrier(int64_t rank,
+          const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank)
+      : rank_(rank), interceptor_id_to_rank_(interceptor_id_to_rank) {}
   ~Carrier();
-  void Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+  void Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
             framework::Scope* root_scope, framework::Scope* minibatch_scope,
             const std::vector<framework::Scope*>& microbatch_scopes,
             const platform::Place& place);
@@ -75,7 +78,7 @@ class Carrier final {
 
   bool IsInit() const;
 
-  bool Send(const InterceptorMessage& msg) const;
+  bool Send(const InterceptorMessage& msg);
 
   // NOTE: This mutex will be used in interceptor's RunOps function.
   // This mutex is used for avoiding forward ops and backward ops run
@@ -89,6 +92,8 @@ class Carrier final {
   void CreateInterceptors();
 
   void HandleTmpMessages();
+
+  int64_t GetRank(int64_t interceptor_id) const;
 
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
@@ -111,6 +116,7 @@ class Carrier final {
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
   std::shared_ptr<RuntimeGraph> runtime_graph_;
   std::shared_ptr<MessageBus> msg_bus_;
+  int64_t rank_;
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
 };
 
