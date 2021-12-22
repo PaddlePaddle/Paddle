@@ -172,15 +172,6 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place, layout)
 
-# - api : full_like
-#   args : (const Tensor& x, const Scalar& value, DataType dtype, Backend place)->Tensor
-#   output: {Tensor : dtype}
-#   kernel : fill_any_like
-#   T : [dtype, x]
-#   backend : [place, x]
-#   layout : []
-#   InferMeta : UnchangedInferMeta(x)
-
 - api : conj
   args : (const Tensor& x)
   output : Tensor
