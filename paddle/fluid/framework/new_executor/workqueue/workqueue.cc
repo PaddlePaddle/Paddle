@@ -31,12 +31,12 @@ class WorkQueueImpl : public WorkQueue {
   }
 
   virtual ~WorkQueueImpl() {
+    delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
       AlignedFree(tracker_);
       notifier_->UnregisterEvent();
     }
-    delete queue_;
   }
 
   void AddTask(std::function<void()> fn) override {
