@@ -3,18 +3,9 @@ add_subdirectory(primitive)
 # pten hybird functors and functions called by kernels
 add_subdirectory(hybird)
 
-# pten kernels for different backends
-# NOTE(chenweihang): We need to increase the compilation option of WITH_EIGEN,
-# which will support splitting eigen at compile time on demand in the future
-add_subdirectory(eigen)
-# NOTE(chenweihang): We need to increase the compilation option of WITH_BLAS,
-# which will support splitting eigen at compile time on demand in the future,
-# and if necessary, blas can be split into openblas and cublas
-add_subdirectory(blas)
 add_subdirectory(cpu)
 if(WITH_GPU OR WITH_ROCM)
-  # NOTE(chenweihang): if hip can split from cuda impl, we should add hip dir
-  add_subdirectory(cuda)
+  add_subdirectory(gpu)
 endif()
 if(WITH_MKLDNN)
   # mkldnn will be deprecated and use the new name dnnl
@@ -25,4 +16,19 @@ if(WITH_ASCEND_CL)
 endif()
 if(WITH_XPU)
   add_subdirectory(xpu)
+endif()
+
+set(FLATTEN_DEPS dense_tensor kernel_context kernel_factory utils_cpu unary)
+if(WITH_GPU OR WITH_ROCM)
+  set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_gpu)
+elseif(WITH_XPU)
+  set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_xpu)
+endif()
+
+if(WITH_GPU)
+  nv_library(flatten SRCS flatten_kernel.cc DEPS ${FLATTEN_DEPS})
+elseif(WITH_ROCM)
+  hip_library(flatten SRCS flatten_kernel.cc DEPS ${FLATTEN_DEPS})
+else()
+  cc_library(flatten SRCS flatten_kernel.cc DEPS ${FLATTEN_DEPS})
 endif()

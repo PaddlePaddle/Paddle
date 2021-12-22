@@ -81,9 +81,9 @@ DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
   return out_meta;
 }
 
-DenseTensorMeta FullLikeInferMeta(const DenseTensorMeta& x_meta,
-                                  DataType dtype,
-                                  DataLayout layout) {
+DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
+                                    DataType dtype,
+                                    DataLayout layout) {
   return {dtype == DataType::UNDEFINED ? x_meta.dtype : dtype,
           x_meta.dims,
           layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
@@ -227,9 +227,15 @@ DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
+DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
+                                 const ScalarArray& shape) {
+  return InferMetaFromVecValue(x_meta, shape.GetData());
+}
+
 DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
                                 const std::vector<int64_t>& axis,
-                                bool keep_dim) {
+                                bool keep_dim,
+                                DataType dtype) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
@@ -263,10 +269,16 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
   }
   DDim out_dim = paddle::framework::make_ddim(out_dim_vector);
 
-  DataType out_dtype = x_meta.dtype;
-  if (x_meta.dtype == DataType::BOOL || x_meta.dtype == DataType::INT32 ||
-      x_meta.dtype == DataType::INT64) {
-    out_dtype = DataType::INT64;
+  DataType out_dtype;
+  if (dtype != DataType::UNDEFINED) {
+    out_dtype = dtype;
+  } else {
+    if (x_meta.dtype == DataType::BOOL || x_meta.dtype == DataType::INT32 ||
+        x_meta.dtype == DataType::INT64) {
+      out_dtype = DataType::INT64;
+    } else {
+      out_dtype = x_meta.dtype;
+    }
   }
 
   DenseTensorMeta return_meta(out_dtype, out_dim, x_meta.layout);

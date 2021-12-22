@@ -30,6 +30,9 @@ class CPUBfloat16PlacementPass : public Pass {
 
   void RemoveOrphanedOperators(ir::Graph* graph, int* bfloat16_operators) const;
 
+  void RemoveUnsupportedOperators(ir::Graph* graph,
+                                  int* bfloat16_operators) const;
+
   void ApplyImpl(ir::Graph* graph) const override;
 };
 

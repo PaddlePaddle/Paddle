@@ -20,7 +20,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -98,7 +97,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     size_t x1_embed_size = x1->dims()[1];
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
-
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
     // expected auto = const int64_t
     auto* x2_data = x2->data<int64_t>();
@@ -120,7 +118,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
     const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
-    const size_t x2_lods_size = x2_lods.size() - 1;
     // Vector, in GPU
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
