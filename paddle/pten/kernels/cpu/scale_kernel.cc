@@ -12,20 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-// Note: Some scenarios need to include all types of Context declarations.
-// In order to avoid including the header files of each backend in turn,
-// add this header file
-// Note: Limit the entry of DeviceContext to backends to avoid multiple include
-// path replacement after implementing pten DeviceContext
+#include "paddle/pten/kernels/scale_kernel.h"
+#include "paddle/pten/kernels/impl/scale_kernel_impl.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/backends/npu/npu_context.h"
-#include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 
-namespace pten {
-using DeviceContext = paddle::platform::DeviceContext;
-using DeviceContextPool = paddle::platform::DeviceContextPool;
-}  // namespace pten
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
+
+PT_REGISTER_CTX_KERNEL(scale,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::Scale,
+                       float,
+                       double,
+                       paddle::platform::bfloat16,
+                       uint8_t,
+                       int8_t,
+                       int16_t,
+                       int,
+                       int64_t) {}

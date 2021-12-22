@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/cuda/conj_kernel.h"
+#include "paddle/pten/kernels/gpu/conj_kernel.h"
 
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/hybird/math/conj_impl.h"
 
 namespace pten {
 
 template <typename T>
-void Conj(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  ConjImpl<T, CUDAContext>(dev_ctx, x, out);
+void Conj(const GPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  ConjImpl<T, GPUContext>(dev_ctx, x, out);
 }
 
 }  // namespace pten
 
 PT_REGISTER_KERNEL(conj,
-                   CUDA,
+                   GPU,
                    ALL_LAYOUT,
                    pten::Conj,
                    paddle::platform::complex<float>,
