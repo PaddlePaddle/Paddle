@@ -61,8 +61,7 @@ struct DenseTensorMeta {
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
-  bool ret = true;
-  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+  return (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
          (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
