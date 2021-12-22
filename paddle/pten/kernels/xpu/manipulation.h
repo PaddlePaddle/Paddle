@@ -23,13 +23,6 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename T>
-void Flatten(const XPUContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out);
-
 void Reshape(const XPUContext& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,
