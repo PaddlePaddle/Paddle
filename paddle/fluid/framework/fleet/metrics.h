@@ -652,24 +652,24 @@ class Metric {
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     VLOG(0) << "begin GetWuAucMetricMsg";
-    paddle::platform::Timer timeline;
-    double total_time = 0.0;
-    double compute_time = 0.0;
-    double allreduce_time = 0.0;
-    double reset_time = 0.0;
+    // paddle::platform::Timer timeline;
+    // double total_time = 0.0;
+    // double compute_time = 0.0;
+    // double allreduce_time = 0.0;
+    // double reset_time = 0.0;
     std::vector<float> metric_return_values_(6, 0.0);
     auto* auc_cal_ = iter->second->GetCalculator();
-    timeline.Start();
+    // timeline.Start();
     auc_cal_->computeWuAuc();
     metric_return_values_[0] = auc_cal_->user_cnt();
     metric_return_values_[1] = auc_cal_->size();
     metric_return_values_[2] = auc_cal_->uauc();
     metric_return_values_[3] = auc_cal_->wuauc();
-    timeline.Pause();
-    compute_time += timeline.ElapsedSec();
-    total_time += timeline.ElapsedSec();
+    // timeline.Pause();
+    // compute_time += timeline.ElapsedSec();
+    // total_time += timeline.ElapsedSec();
 
-    timeline.Start();
+    // timeline.Start();
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
     auto global_metric_return_values_ =
         gloo_wrapper->AllReduce(metric_return_values_, "sum");
@@ -677,19 +677,19 @@ class Metric {
                                       (global_metric_return_values_[0] + 1e-10);
     global_metric_return_values_[5] = global_metric_return_values_[3] /
                                       (global_metric_return_values_[1] + 1e-10);
-    timeline.Pause();
-    allreduce_time += timeline.ElapsedSec();
-    total_time += timeline.ElapsedSec();
+    // timeline.Pause();
+    // allreduce_time += timeline.ElapsedSec();
+    // total_time += timeline.ElapsedSec();
 
-    timeline.Start();
+    // timeline.Start();
     auc_cal_->reset_records();
-    timeline.Pause();
-    reset_time += timeline.ElapsedSec();
-    total_time += timeline.ElapsedSec();
-    VLOG(0) << "wuauc total time: " << total_time << "s\n";
-    VLOG(0) << "wuauc compute time: " << compute_time << "s\n";
-    VLOG(0) << "wuauc allreduce time: " << allreduce_time << "s\n";
-    VLOG(0) << "wuauc reset time: " << reset_time << "s\n";
+    // timeline.Pause();
+    // reset_time += timeline.ElapsedSec();
+    // total_time += timeline.ElapsedSec();
+    // VLOG(0) << "wuauc total time: " << total_time << "s\n";
+    // VLOG(0) << "wuauc compute time: " << compute_time << "s\n";
+    // VLOG(0) << "wuauc allreduce time: " << allreduce_time << "s\n";
+    // VLOG(0) << "wuauc reset time: " << reset_time << "s\n";
     return global_metric_return_values_;
   }
 

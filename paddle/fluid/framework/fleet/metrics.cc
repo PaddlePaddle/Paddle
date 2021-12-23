@@ -239,6 +239,10 @@ void BasicAucCalculator::calculate_bucket_error() {
 void BasicAucCalculator::reset_records() {
   // reset wuauc_records_
   wuauc_records_.clear();
+  _user_cnt = 0;
+  _size = 0;
+  _uauc = 0;
+  _wuauc = 0;
 }
 
 // add uid data
@@ -273,16 +277,6 @@ void BasicAucCalculator::add_uid_unlock_data(double pred, int label,
       label * label, label,
       platform::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
-  uint32_t pos = std::min(static_cast<uint32_t>(pred * _table_size),
-                          static_cast<uint32_t>(_table_size - 1));
-  PADDLE_ENFORCE_GE(
-      pos, 0,
-      platform::errors::PreconditionNotMet(
-          "pos must be equal or greater than 0, but its value is: %d", pos));
-  PADDLE_ENFORCE_LT(
-      pos, _table_size,
-      platform::errors::PreconditionNotMet(
-          "pos must be less than table_size, but its value is: %d", pos));
 
   WuaucRecord record;
   record.uid_ = uid;
