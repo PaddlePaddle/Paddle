@@ -21,24 +21,26 @@
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/pten_allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-class AutoGrowthBestFitAllocator : public Allocator {
+class AutoGrowthBestFitAllocator : public experimental::Allocator {
  public:
   AutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-      size_t chunk_size = 0, bool allow_free_idle_chunk = true);
+      const std::shared_ptr<experimental::Allocator> &underlying_allocator,
+      size_t alignment, size_t chunk_size = 0,
+      bool allow_free_idle_chunk = true);
 
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
+  pten::Allocation AllocateImpl(size_t size) override;
 
-  void FreeImpl(Allocation *allocation) override;
+  void FreeImpl(pten::Allocation *allocation) override;
 
   // Release the memory block which is not used in pool.
   uint64_t ReleaseImpl(const platform::Place &place) override {
@@ -71,18 +73,16 @@ class AutoGrowthBestFitAllocator : public Allocator {
     List<Block> blocks_;
   };
 
-  struct BlockAllocation : public Allocation {
-    explicit BlockAllocation(const List<Block>::iterator &it)
-        : Allocation(it->ptr_, it->chunk_->allocation_->base_ptr(), it->size_,
-                     it->chunk_->allocation_->place()),
+  struct BlockAllocationContext : public AllocationContext {
+    explicit BlockAllocationContext(const List<Block>::iterator &it)
+        : AllocationContext(it->chunk_->allocation_->base_ptr()),
           block_it_(it) {}
-
     List<Block>::iterator block_it_;
   };
 
   using BlockIt = List<Block>::iterator;
 
-  std::shared_ptr<Allocator> underlying_allocator_;
+  std::shared_ptr<experimental::Allocator> underlying_allocator_;
   std::map<std::pair<size_t, void *>, BlockIt> free_blocks_;
   std::list<Chunk> chunks_;
   size_t alignment_;
