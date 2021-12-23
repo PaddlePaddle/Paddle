@@ -22,7 +22,6 @@ from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_flo
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
-from math import exp
 
 class TestMKLDNNReluDim2(TestRelu):
     def setUp(self):
@@ -320,7 +319,7 @@ class TestMKLDNNMish(TestActivation):
         self.dtype = np.float32
     
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
-        out = x * np.tanh(np.log(1 + exp(x)))
+        out = x * np.tanh(np.log(1 + np.exp(x)))
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
