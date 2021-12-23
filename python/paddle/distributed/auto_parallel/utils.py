@@ -1224,40 +1224,6 @@ def get_all_distributed_main_program(serial_program_info, dist_context,
     return all_dist_main_program
 
 
-def get_specified_distributed_main_program(serial_program_info, dist_context,
-                                           rank_id):
-    "Get distributed main program by the given dist_context and rank_id."
-    from .partitioner import Partitioner
-    from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
-    from .process_group import _g_process_group_map, ProcessGroup
-
-    dist_strategy = paddle.distributed.fleet.DistributedStrategy()
-    train_program = serial_program_info.train_program
-    startup_program = serial_program_info.startup_program
-    loss = serial_program_info.loss
-    optimizer = serial_program_info.optimizer
-
-    partitioner = Partitioner(dist_context, rank_id)
-    dist_main_program, dist_startup_program = partitioner.transpile_forward(
-        train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, train_program, startup_program, dist_main_program,
-        dist_startup_program)
-    opt_ops = partitioner.apply_optimize(
-        copy.deepcopy(optimizer), dist_params_grads, dist_main_program,
-        dist_startup_program)
-    set_grad_var_shape(dist_main_program, dist_context)
-    make_data_unshard(dist_main_program, dist_startup_program, dist_context)
-    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
-    HAS_SENT.clear()
-    HAS_RECV.clear()
-    HAS_ALLGATHER.clear()
-
-    _g_process_group_map.clear()
-    _g_process_group_map[0] = ProcessGroup(0, [])
-    return dist_main_program, dist_startup_program
-
-
 class SerialProgramInfo:
     def __init__(self,
                  train_program,
