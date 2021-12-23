@@ -342,6 +342,17 @@ XPUOpMap& get_kl2_ops() {
       {"where", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                               pOpKernelType(vartype::INT64, XPUPlace()),
                               pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                              pOpKernelType(vartype::INT64, XPUPlace()),
+                              pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"not_equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                  pOpKernelType(vartype::INT64, XPUPlace()),
+                                  pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"top_k", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"top_k_v2", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"accuracy", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"uniform_random",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       // AddMore
   };
 
