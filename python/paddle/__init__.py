@@ -221,7 +221,6 @@ from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
-from .tensor.math import renorm
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
 from .tensor.math import diagonal  # noqa: F401
