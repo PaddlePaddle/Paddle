@@ -41,6 +41,10 @@
 // and won't block, or notifying thread will see state_ change and will unblock
 // the waiter, or both. But it can't happen that both threads don't see each
 // other changes, which would lead to deadlock.
+//
+// What changed by PaddlePaddle
+//   1. Allocate aligned storage for Waiters to get better performance.
+//   2. Replace Eigen utils with std utils.
 
 #pragma once
 

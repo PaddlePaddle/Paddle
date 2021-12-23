@@ -23,7 +23,7 @@
 #include <queue>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 

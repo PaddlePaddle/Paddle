@@ -1158,8 +1158,7 @@ def empty_like(x, dtype=None, name=None):
 
 def assign(x, output=None):
     """
- 
- 
+
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
@@ -1190,6 +1189,36 @@ def assign(x, output=None):
     check_type(x, 'x', (Variable, np.ndarray, list, tuple, float, int, bool),
                'assign')
     return tensor.assign(x, output)
+
+
+def clone(x, name=None):
+    """
+    Returns a copy of input Tensor. It will always have a Tensor copy. 
+    
+    In addition, This function is derivable, so gradients will flow back from the output to input.
+
+    Parameters:
+        x (Tensor): The input Tensor.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns: A Tensor copied from ``input`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones([2])
+            x.stop_gradient = False
+            clone_x = paddle.clone(x)
+
+            y = clone_x**3
+            y.backward()
+            print(clone_x.grad)          # [3]
+            print(x.grad)                # [3]
+    """
+    return x.clone()
 
 
 #NOTE(zhiqiu): not public 

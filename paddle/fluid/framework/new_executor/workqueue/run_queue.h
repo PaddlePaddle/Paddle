@@ -29,6 +29,11 @@
 // separate state variable as null/non-null pointer value would serve as state,
 // but that would require malloc/free per operation for large, complex values
 // (and this is designed to store std::function<()>).
+//
+// What changed by PaddlePaddle
+//   1. Use paddle::memory::SpinLock instead of std::mutex to protect back_.
+//   2. Make front_/back_ aligned to get better performance.
+//   3. Replace Eigen utils with std utils.
 
 #pragma once
 
@@ -37,7 +42,7 @@
 #include <cstdint>
 #include <mutex>
 #include <vector>
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 
 namespace paddle {
