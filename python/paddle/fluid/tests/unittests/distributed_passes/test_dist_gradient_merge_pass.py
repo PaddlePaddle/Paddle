@@ -37,7 +37,7 @@ paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
 
-np.set_printoptions(suppress=True)
+#np.set_printoptions(suppress=True)
 
 
 class MLPLayer(nn.Layer):
@@ -150,6 +150,9 @@ class TestGradientMergePass(DistPassTestBase):
             self.assertEqual(len(no_pass_ret), len(pass_ret))
             for i, (out_var_no_pass,
                     out_var_pass) in enumerate(zip(no_pass_ret, pass_ret)):
+                print(
+                    f"=======>out_var_no_pass={out_var_no_pass}, out_var_pass={out_var_pass}"
+                )
                 self.assertTrue(
                     np.allclose(
                         out_var_no_pass,
