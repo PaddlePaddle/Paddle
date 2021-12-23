@@ -1,0 +1,17 @@
+type: "mish"
+def {
+  inputs {
+    name: "X"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "beta"
+    type: FLOAT
+  }
+}
