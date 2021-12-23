@@ -21,8 +21,7 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/new_executor/event_count.h"
+#include "paddle/fluid/framework/new_executor/workqueue/events_waiter.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -69,55 +68,34 @@ void* AlignedMalloc(size_t size, size_t alignment);
 
 void AlignedFree(void* memory_ptr);
 
-// A multiplexing waiter, be able to wait multi events simultaneously.
-// Blocking the calling thread to wait any of the registered events.
-// Non-thread-safe.
-class EventsWaiter {
+template <typename Notifier>
+class TaskTracker {
  public:
-  using EventId = int64_t;
+  TaskTracker() = default;
 
-  using EventChecker = std::function<bool()>;
+  explicit TaskTracker(Notifier& notifier) : notifier_(&notifier) {}
 
-  class EventNotifier {
-   public:
-    void NotifyEvent();
+  TaskTracker(const TaskTracker&) = delete;
 
-    EventId GetEventId() { return id_; }
+  TaskTracker& operator=(const TaskTracker&) = delete;
 
-    std::string GetEventName();
+  ~TaskTracker() = default;
 
-   private:
-    friend EventsWaiter;
-    EventNotifier(EventId id, EventsWaiter* waiter)
-        : id_(id), waiter_(*waiter) {}
+  void AddCounter() { num_tasks_.fetch_add(1, std::memory_order_relaxed); }
 
-    EventId id_;
-    EventsWaiter& waiter_;
-  };
+  void SubCounter() {
+    if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
+      if (notifier_ != nullptr) {
+        notifier_->NotifyEvent();
+      }
+    }
+  }
 
-  EventsWaiter();
-
-  EventsWaiter(const EventsWaiter&) = delete;
-
-  EventsWaiter& operator=(const EventsWaiter&) = delete;
-
-  // All the RegisterEvent functions must be called before any WaitEvent
-  std::shared_ptr<EventNotifier> RegisterEvent(const std::string& name,
-                                               EventChecker checker);
-
-  // Wait any of the registered events
-  std::string WaitEvent();
+  uint64_t PendingTaskNum() { return num_tasks_.load(); }
 
  private:
-  friend EventNotifier;
-  void SetTriggerEvent(const EventId& id);
-
-  std::vector<std::string> names_;
-  std::vector<EventChecker> checkers_;
-  std::vector<std::shared_ptr<EventNotifier>> notifiers_;
-  std::atomic<EventId> trigger_event_;
-  std::atomic<bool> waiting_;
-  EventCount cv_;
+  alignas(64) std::atomic<uint64_t> num_tasks_{0};
+  Notifier* notifier_{nullptr};
 };
 
 }  // namespace framework

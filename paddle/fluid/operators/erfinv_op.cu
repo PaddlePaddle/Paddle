@@ -12,23 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/operators/erfinv_op.h"
 
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/for_range.h"
+REGISTER_OP_CUDA_KERNEL(
+    erfinv,
+    paddle::operators::ErfinvKernel<paddle::platform::CUDADeviceContext, float>,
+    paddle::operators::ErfinvKernel<paddle::platform::CUDADeviceContext,
+                                    double>);
 
-namespace pten {
-
-template <typename T, typename ContextT>
-void ConjImpl(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  auto numel = x.numel();
-  auto* x_data = x.data<T>();
-  auto* out_data = out->mutable_data<T>();
-
-  paddle::platform::ForRange<ContextT> for_range(dev_ctx, numel);
-  paddle::operators::math::ConjFunctor<T> functor(x_data, numel, out_data);
-  for_range(functor);
-}
-
-}  // namespace pten
+REGISTER_OP_CUDA_KERNEL(
+    erfinv_grad,
+    paddle::operators::ErfinvGradKernel<paddle::platform::CUDADeviceContext,
+                                        float>,
+    paddle::operators::ErfinvGradKernel<paddle::platform::CUDADeviceContext,
+                                        double>);

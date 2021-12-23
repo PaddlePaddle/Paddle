@@ -2860,6 +2860,51 @@ def lerp_(x, y, weight, name=None):
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
     return _C_ops.lerp_(x, y, weight)
 
+def erfinv(x, name=None):
+    r"""
+    The inverse error function of x, .
+
+    Equation:
+        .. math::
+
+            erfinv(erf(x)) = x.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.to_tensor([0, 0.5, -1.], dtype="float32")
+            out = paddle.erfinv(x)
+            # out: [0, 0.4769, -inf]
+
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+
+    if in_dygraph_mode():
+        return _C_ops.erfinv(x)
+
+    helper = LayerHelper('erfinv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def erfinv_(x, name=None):
+    r"""
+    Inplace version of ``erfinv`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_erfinv`.
+    """
+    check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    return _C_ops.erfinv_(x)
+
 def rad2deg(x, name=None):
     """
     Convert each of the elements of input x from angles in radians to degrees.

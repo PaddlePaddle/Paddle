@@ -18,6 +18,7 @@ from .attribute import rank  # noqa: F401
 from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
+from .attribute import is_floating_point  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -203,6 +204,8 @@ from .math import asinh  # noqa: F401
 from .math import atanh  # noqa: F401
 from .math import lerp  # noqa: F401
 from .math import lerp_  # noqa: F401
+from .math import erfinv  # noqa: F401
+from .math import erfinv_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
 from .math import gcd  # noqa: F401
@@ -416,6 +419,7 @@ tensor_method_func  = [ #noqa
            'shape',
            'real',
            'imag',
+           'is_floating_point',
            'digamma',
            'diagonal',
            'trunc',
@@ -441,6 +445,8 @@ tensor_method_func  = [ #noqa
            'diff',
            'lerp',
            'lerp_',
+           'erfinv',
+           'erfinv_',
            'angle',
            'moveaxis',
            'repeat_interleave',
