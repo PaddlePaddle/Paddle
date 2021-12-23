@@ -173,6 +173,11 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool ZeroCopyRun() override;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Note: Can only be used under thread_local semantics.
+  bool ExpRunWithExternalStream(const gpuStream_t stream);
+#endif
+
   ///
   /// \brief Create feed fetch variables
   ///
@@ -380,11 +385,6 @@ class AnalysisPredictor : public PaddlePredictor {
   FRIEND_TEST(AnalysisPredictor, analysis_off);
   FRIEND_TEST(AnalysisPredictor, analysis_on);
   FRIEND_TEST(AnalysisPredictor, with_gpu);
-#endif
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // Note: Can only be used under thread_local semantics.
-  bool ExpRunWithExternalStream(const gpuStream_t stream);
 #endif
 
  private:
