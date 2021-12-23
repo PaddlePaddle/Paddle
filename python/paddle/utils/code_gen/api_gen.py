@@ -43,12 +43,11 @@ class API:
             if 'data_type' not in self.kernel or len(self.kernel[
                     'data_type']) == 0:
                 self.kernel['data_type'] = None
-            if 'param' not in self.kernel or len(self.kernel['param']) == 0:
+            if 'param' not in self.kernel:
                 self.kernel['param'] = None
 
             self.infer_meta = api_item_yaml['infer_meta']
-            if 'param' not in self.infer_meta or len(self.infer_meta[
-                    'param']) == 0:
+            if 'param' not in self.infer_meta:
                 self.infer_meta['param'] = None
 
     def parse_args(self, args_str):
@@ -349,6 +348,7 @@ def source_include(header_file_path):
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/kernels/declarations.h"
 """
 
 
