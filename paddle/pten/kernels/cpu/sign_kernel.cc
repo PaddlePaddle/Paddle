@@ -12,24 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/kernels/sign_kernel.h"
+#include "paddle/pten/kernels/impl/sign_kernel_impl.h"
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-// TODO(chenweihang) After the kernel is split into a single file,
-// the kernel declare statement is automatically generated according to the
-// file name of the kernel, and this header file will be removed
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
 
-PT_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(cast, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(mean, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(cast, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(reshape, XPU, ALL_LAYOUT);
-#endif
+PT_REGISTER_CTX_KERNEL(sign, CPU, ALL_LAYOUT, pten::Sign, float, double) {}
