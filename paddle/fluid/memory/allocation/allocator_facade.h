@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -58,20 +59,22 @@ class AllocatorFacade {
   uint64_t Release(const platform::Place& place);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
+  std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size,
-                                          const gpuStream_t& stream);
-  AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+                                          const platform::Stream& stream);
+  // TODO(zhiqiu): change gpuStream_t to platform::Stream if needed.
+  AllocationPtr Alloc(const platform::Place& place, size_t size,
                       const gpuStream_t& stream);
   uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     const gpuStream_t& stream);
   const gpuStream_t& GetStream(
       const std::shared_ptr<Allocation>& allocation) const;
+#endif
+
 #ifdef PADDLE_WITH_CUDA
   void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
   void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);
-#endif
 #endif
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
