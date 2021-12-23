@@ -42,10 +42,18 @@ class FancyAllocator : public pten::Allocator {
     ::operator delete(allocation->ptr());
   }
 
+  const paddle::platform::Place& place() override { return place_; }
+
   Allocation Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    return Allocation(data, data, &Delete, paddle::platform::CPUPlace());
+    return Allocation(data,
+                      data,
+                      &Delete,
+                      BOOST_GET_CONST(paddle::platform::CPUPlace, place_));
   }
+
+ private:
+  paddle::platform::Place place_{paddle::platform::CPUPlace()};
 };
 
 template <typename T>

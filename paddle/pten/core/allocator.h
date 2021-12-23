@@ -137,6 +137,7 @@ class Allocator {
  public:
   virtual ~Allocator() = default;
   virtual Allocation Allocate(size_t bytes_size) = 0;
+  virtual const paddle::platform::Place& place() = 0;
 };
 
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
