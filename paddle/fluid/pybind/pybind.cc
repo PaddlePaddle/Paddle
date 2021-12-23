@@ -2095,6 +2095,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
            })
       .def("_type", &PlaceIndex<platform::MLUPlace>)
+#ifdef PADDLE_WITH_MLU
       .def("_equals", &IsSamePlace<platform::MLUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::MLUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::MLUPlace, platform::CPUPlace>)
@@ -2106,6 +2107,7 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::MLUPlace, platform::CUDAPinnedPlace>)
       .def("get_device_id",
            [](const platform::MLUPlace &self) { return self.GetDeviceId(); })
+#endif
       .def("__str__", string::to_string<const platform::MLUPlace &>);
 
   py::class_<platform::Place> platformplace(m, "Place");
