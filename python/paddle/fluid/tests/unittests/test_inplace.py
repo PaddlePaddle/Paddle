@@ -434,5 +434,21 @@ class TestLossIsInplaceVar(unittest.TestCase):
         self.assertTrue(np.array_equal(inplace_grad_var_a, grad_var_a))
 
 
+class TestContinuouslyInplace(unittest.TestCase):
+    def test_continuously_inplace(self):
+        paddle.disable_static()
+
+        a = paddle.rand([2, 3])
+        a.stop_gradient = False
+        b = a * 2
+
+        b.reshape_([-1])
+        b.reshape_([2, 3])
+        b.reshape_([-1])
+
+        b.backward()
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
