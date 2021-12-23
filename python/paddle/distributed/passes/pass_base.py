@@ -315,4 +315,8 @@ class PassManager:
 
     @property
     def names(self):
-        return [p.name for p in self._passes]
+        return [p.name for p in self.passes]
+
+    @property
+    def passes(self):
+        return tuple(self._passes)
