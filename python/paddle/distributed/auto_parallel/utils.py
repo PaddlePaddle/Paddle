@@ -26,6 +26,7 @@ from paddle.framework.io import _to_LodTensor
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 
+
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
         return True
@@ -1204,7 +1205,8 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
     return changed
 
 
-def get_all_distributed_main_program(serial_program_info, dist_context, parallelizer):
+def get_all_distributed_main_program(serial_program_info, dist_context,
+                                     parallelizer):
     "Get all distributed main programs by dist_context."
     from .dist_context import DistributedOperatorContext, DistributedContext
     cluster = serial_program_info.cluster
@@ -1215,7 +1217,8 @@ def get_all_distributed_main_program(serial_program_info, dist_context, parallel
     for rank_id in range(ranks):
         used_dist_context = copy.deepcopy(dist_context)
         used_dist_context._dist_op_context = DistributedOperatorContext()
-        _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(rank_id, used_dist_context)
+        _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
+            rank_id, used_dist_context)
         all_dist_main_program.append(dist_main_program)
 
     return all_dist_main_program
@@ -1234,7 +1237,7 @@ def get_specified_distributed_main_program(serial_program_info, dist_context,
     loss = serial_program_info.loss
     optimizer = serial_program_info.optimizer
 
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    partitioner = Partitioner(dist_context, rank_id)
     dist_main_program, dist_startup_program = partitioner.transpile_forward(
         train_program, startup_program)
     dist_params_grads = partitioner.apply_backward(

@@ -869,7 +869,7 @@ class Planner:
             algorithm_searcher = MCMC(
                 self.serial_program_info, self.parallelizer,
                 max_search_times) if max_search_times is not None else MCMC(
-                    self.serial_program_info)
+                    self.serial_program_info, self.parallelizer)
         else:
             raise NotImplementedError(
                 "Other search algorithms have not been supported now.")
