@@ -70,8 +70,8 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return core.ops.fill_any_(x, "value_float",
-                              float(value), "value_int", int(value))
+    return _C_ops.fill_any_(x, "value_float",
+                            float(value), "value_int", int(value))
 
 
 setattr(core.VarBase, 'fill_', fill_)
@@ -102,7 +102,7 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return core.ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 setattr(core.VarBase, 'zero_', zero_)
@@ -148,10 +148,10 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
         )
     if len(inshape) == 2:
-        return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset,
-                                       'wrap', wrap)
-    return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
-                                   True)
+        return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                     'wrap', wrap)
+    return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
+                                 True)
 
 
 setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
@@ -182,10 +182,10 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return core.ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                              'offset', offset)
-    return core.ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                         'offset', offset)
+        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
+                                            'offset', offset)
+    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
+                                       'offset', offset)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -475,7 +475,7 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
     if in_dygraph_mode():
-        return core.ops.flip(x, "axis", axis)
+        return _C_ops.flip(x, "axis", axis)
 
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
@@ -1107,7 +1107,7 @@ def unique_consecutive(x,
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
-        out, inverse, counts = core.ops.unique_consecutive(
+        out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
         outs = [out]
