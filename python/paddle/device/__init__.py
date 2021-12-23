@@ -131,6 +131,8 @@ def is_compiled_with_mlu():
     Examples:
         .. code-block:: python
 
+            # required: mlu
+
             import paddle
             support_mlu = paddle.device.is_compiled_with_mlu()
     """
