@@ -152,7 +152,8 @@ class IfBaseOp : public framework::OperatorBase {
     std::vector<std::string> zero_grad_names;
     for (size_t i = 0; i < out_var_names.size(); ++i) {
       auto *out_var = outer_scope->Var(out_var_names[i]);
-      if (!(out_var->Get<framework::LoDTensor>().IsInitialized())) {
+      if (!(out_var->IsInitialized() &&
+            out_var->Get<framework::LoDTensor>().IsInitialized())) {
         zero_grad_names.push_back(out_var_names[i]);
         VLOG(3) << "find zero_grad_var: " << out_var_names[i];
       }

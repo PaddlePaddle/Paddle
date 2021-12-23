@@ -84,7 +84,7 @@ class IfOp : public IfBaseOp {
       auto zero_grad_names =
           GetZeroGradName(out_names, const_cast<framework::Scope *>(&scope));
       AssignZeroToOutsideTensor(place, zero_grad_names, scope);
-    } 
+    }
   }
 
   void AssignZeroToOutsideTensor(const platform::Place &place,
@@ -96,13 +96,17 @@ class IfOp : public IfBaseOp {
       // NOTE(Aurelius84): how to know the ddims
       // NOTE(xiongkun03): use the GradOriginalVarName() to get the ddims.
       auto *outside_tensor = var->GetMutable<framework::LoDTensor>();
-      auto & ddim = outer_scope.FindVar(framework::GradOriginalVarName(var_name))->Get<framework::LoDTensor>().dims();
+      auto &ddim =
+          outer_scope.FindVar(framework::GradOriginalVarName(var_name))
+              ->Get<framework::LoDTensor>()
+              .dims();
       outside_tensor->Resize(ddim);
       outside_tensor->mutable_data(place, outside_tensor->saved_type());
       const platform::DeviceContext *dev_ctx =
           platform::DeviceContextPool::Instance().Get(place);
       math::set_constant(*dev_ctx, outside_tensor, 0.0f);
-      VLOG(4) << "the number of " << var_name << "is: " << outside_tensor->numel();
+      VLOG(4) << "the number of " << var_name
+              << "is: " << outside_tensor->numel();
     }
   }
 };

@@ -31,6 +31,7 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 from paddle import _C_ops
+from paddle.fluid import layers
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -2200,10 +2201,6 @@ class ConditionalBlock(object):
     def complete(self):
         self.inside_block = self.helper.main_program.current_block()
 
-        if os.environ.get("FLAGS_new_cond", None):
-            self._complete_for_if_op()
-            return
-
         parent_block = self.helper.main_program.block(
             self.inside_block.parent_idx)
 
@@ -2352,18 +2349,35 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
     """
 
     def _build_sub_block(branch_fn):
-        branch_out = None
+        """ Don't change ConditionalBlock
+        """
+
+        def _create_new_var_if_needed(block, var):
+            new_var = var
+            if var is not None and not block.desc.find_var(
+                    bytes(var.name, "ascii")):
+                new_var = layers.assign(var)
+            return new_var
+
+        outputs, block = None, None
+        is_single_var = True
         if branch_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
                     "The true_fn/false_fn in cond must be callable, but received {}".
                     format(type(branch_fn).__name__))
-            branch_sub_block = ConditionalBlock(
-                [pred], is_scalar_condition=True)
-            with branch_sub_block.block():
-                branch_sub_block.output = branch_fn()
-
-        return branch_sub_block.output, branch_sub_block.inside_block
+            branch_sub_block = BlockGuard(helper.main_program)
+            with branch_sub_block:
+                output = branch_fn()
+                block = helper.main_program.current_block()
+                outputs = [output]
+                if isinstance(output, list) or isinstance(output, tuple):
+                    outputs = output
+                    is_single_var = False
+                outputs = [
+                    _create_new_var_if_needed(block, var) for var in outputs
+                ]
+        return outputs[0] if is_single_var else output, block
 
     def _check_output(true_output, false_output):
         if true_output is None:
@@ -2409,15 +2423,39 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
     # TODO(Aurelius84): Considering the inplace case.
     """
 
-    def _rename_sub_block_output(sub_block, origin_outputs, if_outputs):
+    def _rename_sub_block_output_recursively(sub_block, origin_outputs_name,
+                                             if_outputs_name):
         """ 
         this function delete the origin_output and rename all origin_output to if_output.name
         """
-        assert len(origin_outputs) == len(if_outputs), "the length of if_outputs and origin_outputs must be the same"
-        for old_var, new_var in zip(origin_outputs, if_outputs):
+        """
+        must recursively: 
+            if --> true0 -> if -> true1
+                               -> false1
+               --> false0 -> if  -> true2
+                                 -> false2
+            if we don't recursively rename, the true1 output will reset to true0 variable. eg: generate_var_0
+            when we rename true0, generate_var_0 in true0 may be renamed to generate_var_1 in block 0.
+            so we can't find generate_var_0 any more which is used in true1.
+
+            we rename the variable recursively
+        """
+        assert len(origin_outputs_name) == len(
+            if_outputs_name
+        ), "the length of if_outputs and origin_outputs must be the same"
+        iter_list = ["true_block", "true_outs"], ["false_block", "false_outs"]
+        for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
             for op in sub_block.ops:
-                op._rename_output(old_var.name, new_var.name)
-            sub_block._remove_var(old_var.name)
+                op._rename_output(old_name, new_name)
+                if op.type == "if":
+                    for item in iter_list:
+                        _rename_sub_block_output_recursively(
+                            sub_block.program.block(
+                                op._block_attr_id(item[0])),
+                            op.attr(item[1]), op.output("Out"))
+                        op._set_attr(item[1], op.output("Out"))
+            if sub_block.has_var(old_name):
+                sub_block._remove_var(old_name)
 
     parent_block = true_block.program.block(true_block.parent_idx)
 
@@ -2457,7 +2495,16 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
 
     # create output_vars of IfOp using as placeholder
     output_vars = []
-    for var in true_output:
+
+    def _is_list_or_tuple(obj):
+        return isinstance(true_output, tuple) or isinstance(true_output, list)
+
+    true_outputs = true_output if _is_list_or_tuple(
+        true_output) else [true_output]
+    false_outputs = false_output if _is_list_or_tuple(
+        false_output) else [false_output]
+
+    for var in true_outputs:
         if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
             and parent_block._find_var_recursive(var.name):
             parent_block_var = var
@@ -2467,11 +2514,13 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         output_vars.append(parent_block_var)
 
     step_scope = parent_block.create_var(type=core.VarDesc.VarType.STEP_SCOPES)
-    true_out_names = [var.name for var in true_output]
-    false_out_names = [var.name for var in false_output]
-    _rename_sub_block_output(true_block, true_output, output_vars)
-    _rename_sub_block_output(false_block, false_output, output_vars)
+    true_out_names = [var.name for var in true_outputs]
+    false_out_names = [var.name for var in false_outputs]
     output_names = [var.name for var in output_vars]
+    _rename_sub_block_output_recursively(true_block, true_out_names,
+                                         output_names)
+    _rename_sub_block_output_recursively(false_block, false_out_names,
+                                         output_names)
     if_op = parent_block.append_op(
         type='if',
         inputs={
@@ -2483,13 +2532,13 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
         attrs={
             'true_block': true_block,
             'false_block': false_block,
-            'true_outs': output_names, 
+            'true_outs': output_names,
             'false_outs': output_names,
             'is_grad': False,
             'is_scalar_condition': True,
             'skip_eager_deletion_vars': output_names,
         })
-    return output_vars
+    return output_vars if _is_list_or_tuple(true_output) else output_vars[0]
 
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
@@ -2611,7 +2660,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
     check_type(name, "name", (str, type(None)), "fluid.layers.cond")
 
-    if os.environ.get("FLAGS_new_cond", None):
+    if os.environ.get("FLAGS_new_cond", True):
         return cond_v2(pred, true_fn, false_fn, name)
 
     helper = LayerHelper('cond', **locals())
