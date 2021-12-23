@@ -1307,6 +1307,24 @@ def inverse(x, name=None):
         type='inverse', inputs={'Input': [x] }, outputs={'Output': [out]})
     return out
 
+def _get_reduce_all_value(axis):
+    """
+    Internal function for max, min. 
+    It computes the attribute reduce_all value based on axis.
+    """
+    if axis is not None and not isinstance(axis, list):
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
+
+    reduce_all = True if axis == None or axis == [] else False
+    axis = axis if axis != None and axis != [] else [0]
+    return reduce_all, axis
+
 
 def max(x, axis=None, keepdim=False, name=None):
     """
@@ -1314,8 +1332,7 @@ def max(x, axis=None, keepdim=False, name=None):
     Computes the maximum of tensor elements over the given axis.
 
     Args:
-        x(Tensor): A tensor, the data type is float32,
-            float64, int32, int64.
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
         axis(int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
@@ -1339,47 +1356,44 @@ def max(x, axis=None, keepdim=False, name=None):
 
             # data_x is a Tensor with shape [2, 4]
             # the axis is a int element
-
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
+                                  [0.1, 0.2, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
             result1 = paddle.max(x)
-            print(result1)
-            #[0.9]
+            result1.backward()
+            print(result1, x.grad) #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
+
+            x.clear_grad()
             result2 = paddle.max(x, axis=0)
-            print(result2)
-            #[0.2 0.3 0.6 0.9]
+            result2.backward()
+            print(result2, x.grad) #[0.2, 0.3, 0.6, 0.9], [[1., 1., 0., 1.], [0., 0., 1., 0.]]
+
+            x.clear_grad()
             result3 = paddle.max(x, axis=-1)
-            print(result3)
-            #[0.9 0.7]
+            result3.backward()
+            print(result3, x.grad) #[0.9, 0.7], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
+
+            x.clear_grad()
             result4 = paddle.max(x, axis=1, keepdim=True)
-            print(result4)
-            #[[0.9]
-            # [0.7]]
+            result4.backward()
+            print(result4, x.grad) #[[0.9], [0.7]], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
-
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
-                                  [[5.0, 6.0], [7.0, 8.0]]])
+                                  [[5.0, 6.0], [7.0, 8.0]]],
+                                 dtype='float64', stop_gradient=False)
             result5 = paddle.max(y, axis=[1, 2])
-            print(result5)
-            #[4. 8.]
+            result5.backward()
+            print(result5, y.grad) #[4., 8.], [[[0., 0.], [0., 1.]], [[0., 0.], [0., 1.]]]
+
+            y.clear_grad()
             result6 = paddle.max(y, axis=[0, 1])
-            print(result6)
-            #[7. 8.]
+            result6.backward()
+            print(result6, y.grad) #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis= [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
-
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
+    reduce_all, axis = _get_reduce_all_value(axis)
     if in_dygraph_mode():
         return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
@@ -1429,46 +1443,46 @@ def min(x, axis=None, keepdim=False, name=None):
 
             import paddle
 
-            # x is a tensor with shape [2, 4]
+            # data_x is a Tensor with shape [2, 4]
             # the axis is a int element
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
+                                  [0.1, 0.2, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
             result1 = paddle.min(x)
-            print(result1)
-            #[0.1]
-            result2 = paddle.min(x, axis=0)
-            print(result2)
-            #[0.1 0.2 0.5 0.7]
-            result3 = paddle.min(x, axis=-1)
-            print(result3)
-            #[0.2 0.1]
-            result4 = paddle.min(x, axis=1, keepdim=True)
-            print(result4)
-            #[[0.2]
-            # [0.1]]
+            result1.backward()
+            print(result1, x.grad) #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
 
-            # y is a Tensor with shape [2, 2, 2]
+            x.clear_grad()
+            result2 = paddle.min(x, axis=0)
+            result2.backward()
+            print(result2, x.grad) #[0.1, 0.2, 0.5, 0.7], [[0., 0., 1., 0.], [1., 1., 0., 1.]]
+
+            x.clear_grad()
+            result3 = paddle.min(x, axis=-1)
+            result3.backward()
+            print(result3, x.grad) #[0.2, 0.1], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
+
+            x.clear_grad()
+            result4 = paddle.min(x, axis=1, keepdim=True)
+            result4.backward()
+            print(result4, x.grad) #[[0.2], [0.1]], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
+
+            # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
-                                  [[5.0, 6.0], [7.0, 8.0]]])
+                                  [[5.0, 6.0], [7.0, 8.0]]],
+                                 dtype='float64', stop_gradient=False)
             result5 = paddle.min(y, axis=[1, 2])
-            print(result5)
-            #[1. 5.]
+            result5.backward()
+            print(result5, y.grad) #[1., 5.], [[[1., 0.], [0., 0.]], [[1., 0.], [0., 0.]]]
+
+            y.clear_grad()
             result6 = paddle.min(y, axis=[0, 1])
-            print(result6)
-            #[1. 2.]
+            result6.backward()
+            print(result6, y.grad) #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis= [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
+    reduce_all, axis = _get_reduce_all_value(axis)
     if in_dygraph_mode():
         return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
@@ -1489,7 +1503,6 @@ def min(x, axis=None, keepdim=False, name=None):
             'reduce_all': reduce_all
         })
     return out
-
 
 def log1p(x, name=None):
     r"""
