@@ -31,9 +31,9 @@ class TestTakeAlongAxisOp(OpTest):
         self.op_type = "take_along_axis"
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
-        braoadcast_shape_list = list(self.x_shape)
-        braoadcast_shape_list[self.axis] = 1
-        self.braodcast_shape = tuple(braoadcast_shape_list)
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.braodcast_shape = tuple(broadcast_shape_list)
         self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape)
         self.inputs = {
             'Input': self.xnp,

@@ -25,12 +25,10 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
-
 @skip_check_grad_ci("backward calculation has wrong logic in op test")
 class TestPutAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
-        self._cpu_only = True
         self.reduce_op = "assign"
         self.dtype = 'float64'
         self.op_type = "put_along_axis"
@@ -50,7 +48,7 @@ class TestPutAlongAxisOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        pass
+        self.check_grad()
 
     def init_data(self):
         self.x_type = "float64"
@@ -61,7 +59,6 @@ class TestPutAlongAxisOp(OpTest):
         self.index = np.array([[[0]]]).astype(self.index_type)
         self.axis = 1
         self.axis_type = "int64"
-
 
 class TestPutAlongAxisAPI(unittest.TestCase):
     def setUp(self):

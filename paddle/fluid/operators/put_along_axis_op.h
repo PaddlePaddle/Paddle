@@ -68,9 +68,9 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
       }
     } else {
       platform::errors::InvalidArgument(
-          "can not suppor reduce_op: (%s) for scatter kernel : %s, only "
+          "can not suppor reduce_op: (%s) for scatter kernel, only "
           "support reduce op: 'add‘, 'assign', 'multiply', the defalut reduce "
-          "op is assign ",
+          "op is 'assign' ",
           reduce_op);
       return;
     }
@@ -90,7 +90,7 @@ class PutAlongAxisGradOpKernel : public framework::OpKernel<T> {
     auto index = ctx.Input<Tensor>("Index");
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
-    // We need know the shape of input matrix to determine the shape of grad
+    // We need to know the shape of input matrix to determine the shape of grad
     // matrix of input.
     auto input = ctx.Input<Tensor>("Input");
     input_grad->Resize(input->dims());

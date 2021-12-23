@@ -19,15 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define Instantiate_Template_Funtion(func)                              \
-  Instantiate_Template_Funtion_index_t(                                 \
-      func, int) Instantiate_Template_Funtion_index_t(func, float)      \
-      Instantiate_Template_Funtion_index_t(func, double)                \
-          Instantiate_Template_Funtion_index_t(func, int64_t)           \
-              Instantiate_Template_Funtion_index_t(func, plat::float16) \
-                  Instantiate_Template_Funtion_index_t(func, unsigned char)
+#define Instantiate_Template_Function(func)                              \
+  Instantiate_Template_Function_index_t(func, int)                       \
+  Instantiate_Template_Function_index_t(func, float)                     \
+  Instantiate_Template_Function_index_t(func, double)                    \
+  Instantiate_Template_Function_index_t(func, int64_t)                   \
+  Instantiate_Template_Function_index_t(func, platform::float16)         \
+  Instantiate_Template_Function_index_t(func, unsigned char)
 
-#define Instantiate_Template_Funtion_index_t(func, tensor_t)                \
+#define Instantiate_Template_Function_index_t(func, tensor_t)               \
   template void func<tensor_t, int>(Tensor input, int dim,                  \
                                     const Tensor& index, Tensor result,     \
                                     const platform::DeviceContext& ctx);    \

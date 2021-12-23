@@ -63,17 +63,13 @@ struct cpu_gather_scatter_functor {
     if (index.numel() == 0) {
       return;
     }
-    auto* self_data = self.data<tensor_t>();  // problem occour here
-    VLOG(3) << "self_data:" << *self_data;
+    auto* self_data = self.data<tensor_t>(); 
     auto* index_data = index.data<index_t>();
-    VLOG(3) << "index_data:" << *index_data;
     auto* src_data = src.data<tensor_t>();
     int64_t self_size = self.numel();
     int64_t index_size = index.numel();
     int64_t src_size = src.numel();
     auto self_dims = self.dims();
-    VLOG(3) << "index_size" << index_size;
-    VLOG(3) << "self_size" << self_size;
     auto index_dims = index.dims();
     auto src_dims = src.dims();
     if (self_size == 0 || src_size == 0 || index_size == 0) {
@@ -198,12 +194,10 @@ void cpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
   VLOG(3) << "<<<< Done cpu_scatter_assign_kernel <<<<<";
 }
 
-namespace plat = paddle::platform;
-
-Instantiate_Template_Funtion(cpu_gather_kernel)
-    Instantiate_Template_Funtion(cpu_scatter_assign_kernel)
-        Instantiate_Template_Funtion(cpu_scatter_add_kernel)
-            Instantiate_Template_Funtion(cpu_scatter_mul_kernel)
+Instantiate_Template_Function(cpu_gather_kernel)
+Instantiate_Template_Function(cpu_scatter_assign_kernel)
+Instantiate_Template_Function(cpu_scatter_add_kernel)
+Instantiate_Template_Function(cpu_scatter_mul_kernel)
 
 }  // namespace operators
 }  // namespace paddle

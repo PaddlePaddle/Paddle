@@ -82,14 +82,14 @@ class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
 
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto index = ctx.Input<Tensor>("Index");
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
-    // We need know the shape of input matrix to determine the shape of grad
+    // We need to know the shape of input matrix to determine the shape of grad
     // matrix of input.
     auto input = ctx.Input<Tensor>("Input");
     input_grad->Resize(input->dims());

@@ -185,10 +185,10 @@ void gpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
 }
 
 namespace plat = paddle::platform;
-Instantiate_Template_Funtion(gpu_gather_kernel)
-    Instantiate_Template_Funtion(gpu_scatter_assign_kernel)
-        Instantiate_Template_Funtion(gpu_scatter_add_kernel)
-            Instantiate_Template_Funtion(gpu_scatter_mul_kernel)
+Instantiate_Template_Function(gpu_gather_kernel)
+Instantiate_Template_Function(gpu_scatter_assign_kernel)
+Instantiate_Template_Function(gpu_scatter_add_kernel)
+Instantiate_Template_Function(gpu_scatter_mul_kernel)
 
 }  // namespace operators
 }  // namespace paddle
