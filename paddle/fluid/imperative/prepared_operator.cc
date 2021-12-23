@@ -480,7 +480,7 @@ static void PreparedOpRunImpl(
   framework::Scope scope;
 
   {
-    platform::RecordEvent record_event("infer_shape",
+    platform::RecordEvent record_event(op.Type() + " infer_shape",
                                        platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type());
@@ -489,7 +489,7 @@ static void PreparedOpRunImpl(
   }
 
   {
-    platform::RecordEvent record_event("compute",
+    platform::RecordEvent record_event(op.Type() + " compute",
                                        platform::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
@@ -535,7 +535,7 @@ static void PreparedOpRunPtImpl(
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   {
-    platform::RecordEvent record_event("infer_shape",
+    platform::RecordEvent record_event(op.Type() + " infer_shape",
                                        platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type());
@@ -544,7 +544,7 @@ static void PreparedOpRunPtImpl(
   }
 
   {
-    platform::RecordEvent record_event("compute",
+    platform::RecordEvent record_event(op.Type() + " compute",
                                        platform::EventRole::kInnerOp);
 
     BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
