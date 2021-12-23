@@ -91,7 +91,6 @@ from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
-from .eager.eager_tensor_patch_methods import monkey_patch_eagertensor
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
@@ -220,7 +219,9 @@ def __bootstrap__():
 monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
-monkey_patch_eagertensor()
+if hasattr(core, "eager"):
+    with framework._test_eager_guard():
+        monkey_patch_varbase()
 
 # NOTE(zhiqiu): register npu_finalize on the exit of Python,
 # do some clean up manually.

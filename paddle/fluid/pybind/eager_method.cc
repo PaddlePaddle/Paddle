@@ -118,11 +118,11 @@ static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
 static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
-  VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
-          << self->eager_tensor.name();
   egr::EagerTensor src_tensor =
       CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
+          << self->eager_tensor.name();
   if (!self->eager_tensor.defined()) {
     egr::EagerUtils::autograd_meta(&(self->eager_tensor))
         ->SetStopGradient(
