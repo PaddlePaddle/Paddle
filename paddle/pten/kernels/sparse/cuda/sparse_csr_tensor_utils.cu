@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/kernels/gpu/utils.h"
-#include "paddle/pten/kernels/hybird/sparse/cuda/sparse_utils.h"
 #include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
 
 namespace pten {
@@ -44,19 +43,21 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
   DenseTensor nnz_tensor(allocator, nnz_meta);
   DenseTensor cpu_nnz_tensor(cpu_alloc, nnz_meta);
 
+  auto sparse =
+      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
+                                         T>(dev_ctx);
   int* nnz = nnz_tensor.mutable_data<int32_t>();
-  get_non_zero_num<T>(dev_ctx, src, 2, nnz, nnz + 1);
+  const int M = static_cast<int>(src_dims[0]);
+  const int N = static_cast<int>(src_dims[1]);
+  sparse.nnz(M, N, src_data, nnz, nnz + 1);
   pten::Copy(dev_ctx, nnz_tensor, true, &cpu_nnz_tensor);
   const int64_t non_zero_num = cpu_nnz_tensor.data<int>()[0];
 
-  dst->Resize(src.meta(), non_zero_num);
+  dst->Resize(src_dims, non_zero_num);
 
   int64_t* crows_data = dst->mutable_non_zero_crows();
   int64_t* cols_data = dst->mutable_non_zero_cols();
   T* values_data = dst->mutable_non_zero_elements<T>();
-  auto sparse =
-      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
-                                         T>(dev_ctx);
   sparse.DenseToSparseCsr(static_cast<int>(src_dims[0]),
                           static_cast<int>(src_dims[1]),
                           src_data,
@@ -65,7 +66,36 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
                           values_data);
 }
 
+template <typename T>
+void SparseCsrToDense(const CUDAContext& dev_ctx,
+                      const SparseCsrTensor& src,
+                      DenseTensor* dst) {
+  auto sparse =
+      paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
+                                         T>(dev_ctx);
+  const auto src_dims = src.dims();
+  const int M = src_dims[0];
+  const int N = src_dims[1];
+  const DenseTensor& crows = src.non_zero_crows();
+  const DenseTensor& cols = src.non_zero_cols();
+  const DenseTensor& values = src.non_zero_elements();
+  const int64_t nnz = src.nnz();
+  sparse.SparseCsrToDense(M,
+                          N,
+                          nnz,
+                          crows.data<int64_t>(),
+                          cols.data<int64_t>(),
+                          values.data<T>(),
+                          dst->mutable_data<T>());
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(
     to_sparse_csr, GPU, ALL_LAYOUT, pten::ToSparseCsr, float, double) {}
+PT_REGISTER_KERNEL(sparse_csr_to_dense,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::SparseCsrToDense,
+                   float,
+                   double) {}

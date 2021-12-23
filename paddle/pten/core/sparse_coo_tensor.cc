@@ -18,39 +18,61 @@ namespace pten {
 
 SparseCooTensor::SparseCooTensor(const std::shared_ptr<Allocator>& a,
                                  const DenseTensorMeta& dense_meta) {
-  this->sparse_dim_ = 1;
-  this->dense_dim_ = 0;
-  auto indices_dims = paddle::framework::make_ddim({this->sparse_dim_, 1});
-  auto values_dims = paddle::framework::make_ddim({1});
-  DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::ANY);
-  DenseTensorMeta values_meta(dense_meta.dtype, values_dims, dense_meta.layout);
-  std::unique_ptr<DenseTensor> indices_ptr(new DenseTensor(a, indices_meta));
-  std::unique_ptr<DenseTensor> values_ptr(new DenseTensor(a, values_meta));
-  this->non_zero_indices_.reset(indices_ptr.release());
-  this->non_zero_elements_.reset(values_ptr.release());
+  // this->sparse_dim_ = 1;
+  // this->dense_dim_ = 0;
+  // auto indices_dims = paddle::framework::make_ddim({this->sparse_dim_, 1});
+  // auto values_dims = paddle::framework::make_ddim({1});
+  // DenseTensorMeta indices_meta(DataType::INT64, indices_dims,
+  // DataLayout::ANY);
+  // DenseTensorMeta values_meta(dense_meta.dtype, values_dims,
+  // dense_meta.layout);
+  // std::unique_ptr<DenseTensor> indices_ptr(new DenseTensor(a, indices_meta));
+  // std::unique_ptr<DenseTensor> values_ptr(new DenseTensor(a, values_meta));
+  // this->non_zero_indices_.reset(indices_ptr.release());
+  // this->non_zero_elements_.reset(values_ptr.release());
 }
 
-SparseCooTensor::SparseCooTensor(std::unique_ptr<DenseTensor> non_zero_indices,
-                                 std::unique_ptr<DenseTensor> non_zero_elements,
-                                 const DDim& dims) {
+SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
+                                 const DenseTensor& non_zero_elements,
+                                 const DDim& dims)
+    : non_zero_indices_(non_zero_indices),
+      non_zero_elements_(non_zero_elements) {
   this->coalesced_ = false;
-  this->sparse_dim_ = non_zero_indices->dims()[0];
+  this->sparse_dim_ = non_zero_indices.dims()[0];
   this->dense_dim_ =
-      non_zero_elements->dims().size() == 1 ? 0 : non_zero_elements->dims()[1];
+      non_zero_elements.dims().size() == 1 ? 0 : non_zero_elements.dims()[1];
   this->dims_ = dims;
-  this->non_zero_indices_.reset(non_zero_indices.release());
-  this->non_zero_elements_.reset(non_zero_elements.release());
 }
 
-int64_t SparseCooTensor::nnz() const { return non_zero_indices_->dims()[1]; }
+int64_t SparseCooTensor::nnz() const { return non_zero_indices_.dims()[1]; }
 
-void SparseCooTensor::SetNonZeroIndicesAndElementsUnsafe(
-    std::unique_ptr<DenseTensor> non_zero_indices,
-    std::unique_ptr<DenseTensor> non_zero_elements,
-    const DDim& dims) {
-  this->non_zero_indices_.reset(non_zero_indices.release());
-  this->non_zero_elements_.reset(non_zero_elements.release());
-  this->dims_ = dims;
+void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
+                                const DenseTensor& non_zero_elements,
+                                const DDim& dims) {
+  // this->non_zero_indices_.reset(non_zero_indices.release());
+  // this->non_zero_elements_.reset(non_zero_elements.release());
+  // this->dims_ = dims;
+}
+
+void SparseCooTensor::Resize(const DDim& dense_dims,
+                             const int64_t sparse_dim,
+                             const int64_t non_zero_num) {
+  DDim indices_dims = paddle::framework::make_ddim({sparse_dim, non_zero_num});
+  auto dense_dim = dense_dims.size() - sparse_dim;
+  DDim values_dims;
+  if (dense_dim) {
+    std::vector<int64_t> dense_dim_vec(dense_dim + 1);
+    dense_dim_vec[0] = non_zero_num;
+    memcpy(&dense_dim_vec[1],
+           dense_dims.Get() + sparse_dim,
+           dense_dim * sizeof(dense_dims[0]));
+    values_dims = paddle::framework::make_ddim(dense_dim_vec);
+  } else {
+    values_dims = paddle::framework::make_ddim({non_zero_num});
+  }
+
+  this->non_zero_indices_.Resize(indices_dims);
+  this->non_zero_elements_.Resize(values_dims);
 }
 
 int64_t SparseCooTensor::Index(const std::vector<int64_t>& indices) const {
@@ -67,7 +89,7 @@ int64_t SparseCooTensor::Index(const std::vector<int64_t>& indices) const {
           static_cast<int>(sparse_dim_)));
 
   const int64_t non_zero_num = this->nnz();
-  const int64_t* non_zero_indices = non_zero_indices_->data<int64_t>();
+  const int64_t* non_zero_indices = non_zero_indices_.data<int64_t>();
   for (int64_t i = 0; i < non_zero_num; i++) {
     bool flag = true;
     for (int64_t j = 0; j < sparse_dim_; j++) {
@@ -91,7 +113,7 @@ int64_t SparseCooTensor::Index(int64_t key) const {
                     1,
                     paddle::platform::errors::InvalidArgument(
                         "this method is only valid when sparse_dim_ = 1"));
-  const int64_t* indices = non_zero_indices_->data<int64_t>();
+  const int64_t* indices = non_zero_indices_.data<int64_t>();
   for (int64_t i = 0; i < this->nnz(); i++) {
     if (indices[i] == key) {
       return i;

@@ -31,13 +31,16 @@ class SparseCooTensor : public TensorBase,
   SparseCooTensor() = default;
   SparseCooTensor(const std::shared_ptr<Allocator>& a,
                   const DenseTensorMeta& dense_meta);
-  SparseCooTensor(std::unique_ptr<DenseTensor> non_zero_indices,
-                  std::unique_ptr<DenseTensor> non_zero_elements,
+  SparseCooTensor(const DenseTensor& non_zero_indices,
+                  const DenseTensor& non_zero_elements,
+                  const DDim& dims);
+  SparseCooTensor(DenseTensor&& non_zero_indices,
+                  DenseTensor&& non_zero_elements,
                   const DDim& dims);
   virtual ~SparseCooTensor() = default;
 
-  const DenseTensor& non_zero_indices() { return *non_zero_indices_; }
-  const DenseTensor& non_zero_elements() { return *non_zero_elements_; }
+  const DenseTensor& non_zero_indices() { return non_zero_indices_; }
+  const DenseTensor& non_zero_elements() { return non_zero_elements_; }
 
   int64_t sparse_dim() { return sparse_dim_; }
   int64_t dense_dim() { return dense_dim_; }
@@ -52,21 +55,34 @@ class SparseCooTensor : public TensorBase,
   const DDim& dims() const noexcept override { return dims_; }
 
   DataType dtype() const noexcept override {
-    return non_zero_elements_->dtype();
+    return non_zero_elements_.dtype();
   }
 
   DataLayout layout() const { return DataLayout::SPARSE_COO; }
 
-  const Place& place() const override { return non_zero_elements_->place(); }
-  bool valid() const noexcept { return non_zero_elements_->valid(); }
-  bool initialized() const override {
-    return non_zero_elements_->initialized();
-  }
+  const Place& place() const override { return non_zero_elements_.place(); }
+  bool valid() const noexcept { return non_zero_elements_.valid(); }
+  bool initialized() const override { return non_zero_elements_.initialized(); }
 
-  void SetNonZeroIndicesAndElementsUnsafe(
-      std::unique_ptr<DenseTensor> non_zero_indices,
-      std::unique_ptr<DenseTensor> non_zero_elements,
-      const DDim& dims);
+  void SetMember(const DenseTensor& non_zero_indices,
+                 const DenseTensor& non_zero_elements,
+                 const DDim& dims);
+
+  void Resize(const DDim& dense_dim,
+              const int64_t sparse_dim,
+              const int64_t non_zero_num);
+
+  void Resize(const std::shared_ptr<Allocator>& a,
+              const DenseTensorMeta& meta,
+              const int64_t non_zero_num);
+
+  int64_t* mutable_non_zero_indices() {
+    return non_zero_indices_.mutable_data<int64_t>();
+  }
+  template <typename T>
+  T* mutable_non_zero_elements() {
+    return non_zero_elements_.mutable_data<T>();
+  }
 
   int64_t Index(const std::vector<int64_t>& indices) const;
   int64_t Index(int64_t indices) const;
@@ -83,8 +99,8 @@ class SparseCooTensor : public TensorBase,
  private:
   int64_t sparse_dim_ = 0;
   int64_t dense_dim_ = 0;
-  std::unique_ptr<DenseTensor> non_zero_indices_;
-  std::unique_ptr<DenseTensor> non_zero_elements_;
+  DenseTensor non_zero_indices_;
+  DenseTensor non_zero_elements_;
   bool coalesced_ = false;
   DDim dims_;
 

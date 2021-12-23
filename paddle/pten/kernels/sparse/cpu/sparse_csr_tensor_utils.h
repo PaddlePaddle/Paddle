@@ -28,4 +28,8 @@ void ToSparseCsr(const CPUContext& dev_ctx,
                  const DenseTensor& src,
                  SparseCsrTensor* dst);
 
+template <typename T>
+void SparseCsrToDense(const CPUContext& dev_ctx,
+                      const SparseCsrTensor& src,
+                      DenseTensor* dst);
 }  // namespace pten

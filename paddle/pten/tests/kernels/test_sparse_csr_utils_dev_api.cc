@@ -8,7 +8,7 @@ You may obtain a copy of the License at
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+WITHOUT WARRANTIES OR CONDITIONS OF NCHW KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
@@ -28,7 +28,7 @@ namespace tests {
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
-TEST(DEV_API, to_sparse_csr) {
+TEST(DEV_API, to_sparse_csr_cpu) {
   // 1. create tensor
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -139,5 +139,129 @@ TEST(DEV_API, to_sparse_csr_cuda) {
     ASSERT_EQ(crows.data<int64_t>()[i], crows_data[i]);
   }
 }
+
+TEST(DEV_API, to_dense) {
+  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor h_crows(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::INT64,
+          framework::make_ddim({static_cast<int64_t>(crows_data.size())}),
+          pten::DataLayout::NCHW));
+  pten::DenseTensor h_cols(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::INT64,
+          framework::make_ddim({static_cast<int64_t>(cols_data.size())}),
+          pten::DataLayout::NCHW));
+  pten::DenseTensor h_values(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::FLOAT32,
+          framework::make_ddim({static_cast<int64_t>(non_zero_data.size())}),
+          pten::DataLayout::NCHW));
+
+  std::copy(
+      crows_data.begin(), crows_data.end(), h_crows.mutable_data<int64_t>());
+  std::copy(cols_data.begin(), cols_data.end(), h_cols.mutable_data<int64_t>());
+  std::copy(non_zero_data.begin(),
+            non_zero_data.end(),
+            h_values.mutable_data<float>());
+
+  framework::DDim dense_dim = framework::make_ddim({3, 3});
+  pten::SparseCsrTensor sparse_tensor(h_crows, h_cols, h_values, dense_dim);
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  auto dense_out = pten::SparseCsrToDense<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      sparse_tensor);
+
+  for (int i = 0; i < dense_dim[0]; i++) {
+    for (int j = 0; j < dense_dim[1]; j++) {
+      ASSERT_EQ(dense_out.data<float>()[i * dense_dim[1] + j],
+                dense_data[i][j]);
+    }
+  }
+}
+
+TEST(DEV_API, to_dense_cuda) {
+  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  const auto cuda_alloc =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CUDAPlace());
+
+  pten::DenseTensor h_crows(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::INT64,
+          framework::make_ddim({static_cast<int64_t>(crows_data.size())}),
+          pten::DataLayout::NCHW));
+  pten::DenseTensor h_cols(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::INT64,
+          framework::make_ddim({static_cast<int64_t>(cols_data.size())}),
+          pten::DataLayout::NCHW));
+  pten::DenseTensor h_values(
+      alloc,
+      pten::DenseTensorMeta(
+          pten::DataType::FLOAT32,
+          framework::make_ddim({static_cast<int64_t>(non_zero_data.size())}),
+          pten::DataLayout::NCHW));
+
+  std::copy(
+      crows_data.begin(), crows_data.end(), h_crows.mutable_data<int64_t>());
+  std::copy(cols_data.begin(), cols_data.end(), h_cols.mutable_data<int64_t>());
+  std::copy(non_zero_data.begin(),
+            non_zero_data.end(),
+            h_values.mutable_data<float>());
+
+  pten::DenseTensor d_crows(
+      cuda_alloc,
+      pten::DenseTensorMeta(h_crows.dtype(), h_crows.dims(), h_crows.layout()));
+  pten::DenseTensor d_cols(
+      cuda_alloc,
+      pten::DenseTensorMeta(h_cols.dtype(), h_cols.dims(), h_cols.layout()));
+  pten::DenseTensor d_values(
+      cuda_alloc,
+      pten::DenseTensorMeta(
+          h_values.dtype(), h_values.dims(), h_values.layout()));
+  framework::DDim dense_dim = framework::make_ddim({3, 3});
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx_cuda = pool.Get(paddle::platform::CUDAPlace());
+  auto* dev_ctx =
+      static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda);
+  pten::Copy(*dev_ctx, h_crows, true, &d_crows);
+  pten::Copy(*dev_ctx, h_cols, true, &d_cols);
+  pten::Copy(*dev_ctx, h_values, true, &d_values);
+  pten::SparseCsrTensor sparse_tensor(d_crows, d_cols, d_values, dense_dim);
+  auto dense_out = pten::SparseCsrToDense<float>(
+      *(static_cast<paddle::platform::CUDADeviceContext*>(dev_ctx_cuda)),
+      sparse_tensor);
+  pten::DenseTensor h_dense(alloc, dense_out.meta());
+  pten::Copy(*dev_ctx, dense_out, true, &h_dense);
+
+  for (int i = 0; i < dense_dim[0]; i++) {
+    for (int j = 0; j < dense_dim[1]; j++) {
+      ASSERT_EQ(h_dense.data<float>()[i * dense_dim[1] + j], dense_data[i][j]);
+    }
+  }
+}
+
 }  // namespace tests
 }  // namespace pten

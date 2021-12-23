@@ -53,10 +53,17 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim) {
       std::make_shared<paddle::experimental::DefaultAllocator>(
           pten::TransToFluidPlace(kernel_key.backend()));
 
-  Tensor out;
+  pten::DenseTensorMeta indices_meta, values_meta;
+  indices_meta.dtype = DataType::INT64;
+  values_meta.dtype = dense_x->dtype();
+  values_meta.layout = dense_x->layout();
+  pten::DenseTensor indices(allocator, std::move(indices_meta));
+  pten::DenseTensor values(allocator, std::move(values_meta));
   auto sparse_out =
-      std::make_shared<pten::SparseCooTensor>(allocator, dense_x->meta());
+      std::make_shared<pten::SparseCooTensor>(indices, values, dense_x->dims());
   kernel_context.EmplaceBackOutput(sparse_out);
+
+  Tensor out;
   out.set_impl(sparse_out);
 
   // 6. Call kernel

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note: [ How do we organize the kernel directory ]
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/kernels/sparse/cpu/sparse_csr_tensor_utils.h"
 #include "paddle/pten/kernels/sparse/cuda/sparse_csr_tensor_utils.h"
@@ -43,6 +44,20 @@ SparseCsrTensor ToSparseCsr(const ContextT& dev_ctx, const DenseTensor& x) {
   SparseCsrTensor csr(crows, cols, values, x.dims());
   ToSparseCsr<T>(dev_ctx, x, &csr);
   return csr;
+}
+
+template <typename T, typename ContextT>
+DenseTensor SparseCsrToDense(const ContextT& dev_ctx,
+                             const SparseCsrTensor& x) {
+  auto dense_meta =
+      pten::DenseTensorMeta(x.dtype(), x.dims(), pten::DataLayout::NCHW);
+
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          dev_ctx.GetPlace());
+  DenseTensor dense_out(allocator, dense_meta);
+  SparseCsrToDense<T>(dev_ctx, x, &dense_out);
+  return dense_out;
 }
 
 }  // namespace pten

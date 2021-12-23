@@ -33,7 +33,7 @@ void ToSparseCsr(const CPUContext& dev_ctx,
   const auto& src_dims = src.dims();
 
   int64_t non_zero_num = get_non_zero_num<T>(src, 2);
-  dst->Resize(src.meta(), non_zero_num);
+  dst->Resize(src_dims, non_zero_num);
 
   int64_t* crows_data = dst->mutable_non_zero_crows();
   int64_t* cols_data = dst->mutable_non_zero_cols();
@@ -54,7 +54,41 @@ void ToSparseCsr(const CPUContext& dev_ctx,
   crows_data[src_dims[0]] = non_zero_count;
 }
 
+template <typename T>
+void SparseCsrToDense(const CPUContext& dev_ctx,
+                      const SparseCsrTensor& src,
+                      DenseTensor* dst) {
+  const DenseTensor& non_zero_crows = src.non_zero_crows();
+  const DenseTensor& non_zero_cols = src.non_zero_cols();
+  const DenseTensor& non_zero_elements = src.non_zero_elements();
+
+  const auto& dense_dims = src.dims();
+
+  T* out_data = dst->mutable_data<T>();
+  memset(out_data, 0, sizeof(T) * dst->numel());
+
+  const auto rows = non_zero_crows.numel() - 1;
+  const auto cols = dense_dims[1];
+  const int64_t* crows_data = non_zero_crows.data<int64_t>();
+  const int64_t* cols_data = non_zero_cols.data<int64_t>();
+  const T* elements_data = non_zero_elements.data<T>();
+  int non_zero_num = 0;
+  for (auto row = 0; row < rows; row++) {
+    for (int64_t i = crows_data[row]; i < crows_data[row + 1]; i++) {
+      out_data[row * cols + cols_data[non_zero_num]] =
+          elements_data[non_zero_num];
+      ++non_zero_num;
+    }
+  }
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(
     to_sparse_csr, CPU, ALL_LAYOUT, pten::ToSparseCsr, float, double) {}
+PT_REGISTER_KERNEL(sparse_csr_to_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SparseCsrToDense,
+                   float,
+                   double) {}

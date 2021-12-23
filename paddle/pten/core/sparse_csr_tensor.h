@@ -81,16 +81,16 @@ class SparseCsrTensor : public TensorBase,
   /// dense tensor.
   /// \return The compressed row index of non zero elemetns in original dense
   /// tensor.
-  const DenseTensor& non_zero_crows() { return non_zero_crows_; }
+  const DenseTensor& non_zero_crows() const { return non_zero_crows_; }
 
   /// \brief Returns the column index of non zero elemetns in original dense
   /// tensor.
   /// \return The column index of non zero elemetns in original dense tensor.
-  const DenseTensor& non_zero_cols() { return non_zero_cols_; }
+  const DenseTensor& non_zero_cols() const { return non_zero_cols_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
-  const DenseTensor& non_zero_elements() { return non_zero_elements_; }
+  const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Return the number of non zero elements
   /// \return The number of non zero elements
@@ -138,13 +138,29 @@ class SparseCsrTensor : public TensorBase,
                        const DenseTensor& non_zero_elements,
                        const DDim& dims);
 
-  void Resize(const DenseTensorMeta& dense_meta, const int64_t non_zero_num);
+  void Resize(const DDim& dense_dims, const int64_t non_zero_num);
+
+  /// \brief resize sparse csr tensor.
+  /// \param dims The dims of origin dense tensor.
+  /// \param non_zero_num The number of non zero elements in origin dense tensor
+  void Resize(const std::shared_ptr<Allocator>& a,
+              const DenseTensorMeta& meta,
+              const int64_t non_zero_num);
+
+  /// \brief Get a mutable data pointer of non_zero_crows.
+  /// return a mutable data pointer of non_zero_crows.
   int64_t* mutable_non_zero_crows() {
     return non_zero_crows_.mutable_data<int64_t>();
   }
+
+  /// \brief Get a mutable data pointer of non_zero_cols.
+  /// return a mutable data pointer of non_zero_cols.
   int64_t* mutable_non_zero_cols() {
     return non_zero_cols_.mutable_data<int64_t>();
   }
+
+  /// \brief Get a mutable data pointer of non_zero_elements.
+  /// return a mutable data pointer of non_zero_elements.
   template <typename T>
   T* mutable_non_zero_elements() {
     return non_zero_elements_.mutable_data<T>();
