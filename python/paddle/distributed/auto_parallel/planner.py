@@ -216,7 +216,7 @@ class PlanSpace:
         # compose dims mapping
         composed_dims_mapping_list = list(
             product(
-                *[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+                * [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
         for composed_dims_mapping in composed_dims_mapping_list:
             op_dist_attr = OperatorDistributedAttribute()
             op_dist_attr.process_mesh = process_mesh
@@ -395,7 +395,7 @@ class MCMC(SearchAlgorithm):
     @property
     def serial_program_info(self):
         return self._serial_program_info
-    
+
     @property
     def parallelizer(self):
         return self._parallelizer
@@ -487,8 +487,8 @@ class MCMC(SearchAlgorithm):
                                         pipeline_process_meshes=None):
         cost = None
         # get all distributed programs
-        
-        all_dist_main_program = get_all_distributed_main_program(self.serial_program_info, dist_context, self.parallelizer)
+        all_dist_main_program = get_all_distributed_main_program(
+            self.serial_program_info, dist_context, self.parallelizer)
         pipeline_config = [
             process_mesh.processes for process_mesh in pipeline_process_meshes
         ] if pipeline_process_meshes is not None else None
@@ -834,7 +834,8 @@ class MCMC(SearchAlgorithm):
 
 
 class Planner:
-    def __init__(self, serial_program_info, parallelizer, algorithm_config=None):
+    def __init__(self, serial_program_info, parallelizer,
+                 algorithm_config=None):
         self._serial_program_info = serial_program_info
         self._parallelizer = parallelizer
         self._algorithm_config = algorithm_config
@@ -866,8 +867,7 @@ class Planner:
             # NOTE: Only GPU clusters are supported now.
             max_search_times = algorithm_config.get("max_search_times", None)
             algorithm_searcher = MCMC(
-                self.serial_program_info,
-                self.parallelizer,
+                self.serial_program_info, self.parallelizer,
                 max_search_times) if max_search_times is not None else MCMC(
                     self.serial_program_info)
         else:
