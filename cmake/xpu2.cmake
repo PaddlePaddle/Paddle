@@ -1,4 +1,4 @@
-if(NOT WITH_XPU2)
+if(NOT WITH_XPU_KP)
     return()
 endif()
 
@@ -77,9 +77,7 @@ macro(compile_kernel COMPILE_ARGS)
     )
 
   if(cc_depends)
-    message(STATUS "lxd_debug kernel dependencies: ${xpu_add_library_DEPENDS}")
     add_dependencies(${kernel_target} ${xpu_add_library_DEPENDS})
-    #target_link_libraries(${kernel_target} ${xpu_add_library_DEPENDS})
   endif()
 
   set(arg_device_o_extra_flags ${device_o_extra_flags})
@@ -89,12 +87,9 @@ macro(compile_kernel COMPILE_ARGS)
 
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
-  #-Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow
   set(XPU_CXX_INCLUDES  -I${CMAKE_SOURCE_DIR}/build -I${CMAKE_SOURCE_DIR}/paddle/fluid/framework/io -I${CMAKE_SOURCE_DIR}/build/third_party/install/zlib/include -I${CMAKE_SOURCE_DIR}/build/third_party/install -I${CMAKE_SOURCE_DIR}/build/third_party/install/gflags/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/glog/include -I${CMAKE_SOURCE_DIR}/build/third_party/boost/src/extern_boost -I${CMAKE_SOURCE_DIR}/build/third_party/eigen3/src/extern_eigen3 -I${CMAKE_SOURCE_DIR}/build/third_party/threadpool/src/extern_threadpool -I${CMAKE_SOURCE_DIR}/build/third_party/dlpack/src/extern_dlpack/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xxhash/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/warpctc/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/utf8proc/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/openblas/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/protobuf/include -I/usr/include/python3.7m -I/usr/local/lib/python3.7/dist-packages/numpy/core/include -I${CMAKE_SOURCE_DIR}/build/third_party/pybind/src/extern_pybind/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/gtest/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xpu/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/gloo/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xbyak/include -I${CMAKE_SOURCE_DIR}/build/third_party/install/xbyak/include/xbyak -I${CMAKE_SOURCE_DIR}/build/third_party/install/cryptopp/include -I${CMAKE_SOURCE_DIR}/build/third_party/pocketfft/src -I${CMAKE_SOURCE_DIR} -I${CMAKE_SOURCE_DIR}/paddle/fluid/platform)
-  #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -mavx -O3 -DNDEBUG )
   set(XPU_CXX_FLAGS  -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
-  #set(XPU_CXX_FLAGS -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=cast-function-type -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -O3 -DNDEBUG )
-  set(XPU_CXX_DEFINES -DHPPL_STUB_FUNC -DPADDLE_DISABLE_PROFILER -DPADDLE_DLL_EXPORT -DPADDLE_USE_OPENBLAS -DPADDLE_USE_PTHREAD_BARRIER -DPADDLE_USE_PTHREAD_SPINLOCK -DPADDLE_VERSION=0.0.0 -DPADDLE_VERSION_INTEGER=0 -DPADDLE_WITH_AVX -DPADDLE_WITH_CRYPTO -DPADDLE_WITH_POCKETFFT -DPADDLE_WITH_SSE3 -DPADDLE_WITH_TESTING -DPADDLE_WITH_XBYAK -DPADDLE_WITH_XPU2 -DPADDLE_WITH_XPU -DXBYAK64 -DXBYAK_NO_OP_NAMES)
+  set(XPU_CXX_DEFINES -DHPPL_STUB_FUNC -DPADDLE_DISABLE_PROFILER -DPADDLE_DLL_EXPORT -DPADDLE_USE_OPENBLAS -DPADDLE_USE_PTHREAD_BARRIER -DPADDLE_USE_PTHREAD_SPINLOCK -DPADDLE_VERSION=0.0.0 -DPADDLE_VERSION_INTEGER=0 -DPADDLE_WITH_AVX -DPADDLE_WITH_CRYPTO -DPADDLE_WITH_POCKETFFT -DPADDLE_WITH_SSE3 -DPADDLE_WITH_TESTING -DPADDLE_WITH_XBYAK -DPADDLE_WITH_XPU_KP -DPADDLE_WITH_XPU -DXBYAK64 -DXBYAK_NO_OP_NAMES)
 
   add_custom_command(
     OUTPUT
@@ -102,7 +97,6 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-    # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
        -I.  -o kernel_build/${kernel_name}.bin.o.sec ${kernel_path}/${kernel_name}.xpu
         --xpu-device-only -c -v 
@@ -116,7 +110,6 @@ macro(compile_kernel COMPILE_ARGS)
       kernel_build/${kernel_name}.bin.o
     VERBATIM
     )
-    # TODO attention here
     list(APPEND xpu_kernel_depends kernel_build/${kernel_name}.bin.o)
 
   add_custom_command(
@@ -125,7 +118,6 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-    # TODO(liuxiandong) xpu->kps -I${XTDK_DIR}/include -std=c++11 
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -O2 -fno-builtin -g -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
         -I.  -o kernel_build/${kernel_name}.host.o ${kernel_path}/${kernel_name}.xpu
         --xpu-host-only -c -v 
@@ -162,7 +154,6 @@ macro(xpu_add_library TARGET_NAME)
     # Distinguish .xpu file from other files
     foreach(cur_xpu_src IN LISTS xpu_srcs_lists)
       get_filename_component(language_type_name ${cur_xpu_src} EXT)
-      # TODO(liuxiandong) xpu->kps
       if(${language_type_name} STREQUAL ".xpu")
         list(APPEND xpu_kernel_lists ${cur_xpu_src})
       else()
@@ -179,10 +170,8 @@ macro(xpu_add_library TARGET_NAME)
             message(STATUS "Process ${xpu_kernel}")
             get_filename_component(kernel_name ${xpu_kernel} NAME_WE)
             get_filename_component(kernel_dir ${xpu_kernel} DIRECTORY)
-            #message(STATUS "lxd_debug PATH ${kernel_dir}")
-            #TODO(liuxiandong set default rules)
             set(kernel_rules ${kernel_dir}/${kernel_name}.rules)
-            set(kernel_name ${kernel_name}) #DIRPATH ${kernel_dir}
+            set(kernel_name ${kernel_name})
             compile_kernel( KERNEL ${xpu_kernel} DIRPATH ${kernel_dir} XNAME ${kernel_name} DEVICE ${XPU1_DEVICE_O_EXTRA_FLAGS} HOST ${XPU1_HOST_O_EXTRA_FLAGS} XPU "xpu2" DEPENDS ${cc_srcs_depends})
         endforeach()
 
@@ -191,59 +180,29 @@ macro(xpu_add_library TARGET_NAME)
                 ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS
                 ${xpu_kernel_depends}
-                #${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
+                ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
             COMMENT
                 ${xpu_target}_src
             VERBATIM
             )
 
-        # add_custom_command(
-        #     OUTPUT
-        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
-        #     COMMAND
-        #         ${HOST_AR} rcs ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a ${xpu_kernel_depends}
-        #     WORKING_DIRECTORY
-        #         ${CMAKE_CURRENT_BINARY_DIR}
-        #     DEPENDS
-        #         ${xpu_kernel_depends}
-        #     COMMENT
-        #         ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
-        #     VERBATIM
-        #     ) 
+        add_custom_command(
+            OUTPUT
+            ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
+            COMMAND
+                ${HOST_AR} rcs ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a ${xpu_kernel_depends}
+            WORKING_DIRECTORY
+                ${CMAKE_CURRENT_BINARY_DIR}
+            DEPENDS
+                ${xpu_kernel_depends}
+            COMMENT
+                ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
+            VERBATIM
+            ) 
         
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
         add_dependencies(${xpu_target} ${xpu_target}_src)
-        #target_link_libraries(${xpu_target} ${xpu_target}_src)
-        #target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a)
-
-        # TEST
-        # add_library(${xpu_target}_obj OBJECT ${cc_kernel_lists})
-        #add_dependencies(${xpu_target} ${xpu_target}_src)
-
-        # add_custom_target(${xpu_target} ALL
-        #   WORKING_DIRECTORY
-        #     ${CMAKE_CURRENT_BINARY_DIR}
-        #   DEPENDS
-        #     ${xpu_kernel_depends}
-        #     ${xpu_target}_obj
-        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a
-        #   COMMENT
-        #     ${xpu_target}
-        #   VERBATIM
-        #   )
-        # add_custom_command(
-        #   OUTPUT
-        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a
-        #   COMMAND
-        #     ${HOST_AR} rcs ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a ${xpu_kernel_depends} ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${xpu_target}.dir/*.o
-        #   WORKING_DIRECTORY
-        #     ${CMAKE_CURRENT_BINARY_DIR}
-        #   DEPENDS
-        #     ${xpuapi_wrapper_a_depends}
-        #   COMMENT
-        #     ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}.a
-        #   VERBATIM
-        #   )
+        target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a)
     else()
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
     endif()

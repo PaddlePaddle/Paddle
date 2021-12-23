@@ -11,6 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+/*
 #ifdef PADDLE_WITH_XPU
 
 #if defined(__CUDA_ARCH__)
@@ -29,9 +31,7 @@ limitations under the License. */
   #undef __NVCC__
 #endif
 
-#if defined(EIGEN_HAS_BUILTIN_INT128)
-  #undef EIGEN_HAS_BUILTIN_INT128
-#endif
+
 
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
@@ -47,6 +47,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+
 void ElementwiseAddXPU2Compute(const framework::ExecutionContext& ctx){
   std::cout<<"lxd_debug: XPU2 forward element_add !"<<std::endl;
 }
@@ -55,7 +56,9 @@ void ElementwiseAddGradXPU2Compute(const framework::ExecutionContext& ctx){
   std::cout<<"lxd_debug: XPU2 backward element_add !"<<std::endl;
 }
 
+
 }  // namespace operators
 }  // namespace paddle
 
 #endif
+*/
