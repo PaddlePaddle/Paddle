@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
+#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -39,13 +39,15 @@ DECLARE_bool(run_pten_kernel);
 
 TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 namespace paddle {
 namespace imperative {
 
 TEST(Benchmark, FluidScaleCUDA) {
   // Prepare Device Contexts
   platform::CUDAPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -98,7 +100,7 @@ TEST(Benchmark, FluidScaleCUDA) {
 TEST(Benchmark, FluidMatmulCUDA) {
   // Prepare Device Contexts
   platform::CUDAPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -161,7 +163,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
 TEST(Benchmark, FluidMLPCUDA) {
   // Prepare Device Contexts
   platform::CUDAPlace place;
-  egr::InitEnv(place);
+  eager_test::InitEnv(place);
 
   for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::platform::DeviceContextPool& pool =
@@ -252,3 +254,6 @@ USE_OP(scale);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);
 USE_OP(reduce_sum_grad);
+USE_OP(elementwise_add);
+
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

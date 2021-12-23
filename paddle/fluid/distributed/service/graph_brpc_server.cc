@@ -204,6 +204,8 @@ int32_t GraphBrpcService::initialize() {
       &GraphBrpcService::sample_neighbors_across_multi_servers;
   _service_handler_map[PS_GRAPH_USE_NEIGHBORS_SAMPLE_CACHE] =
       &GraphBrpcService::use_neighbors_sample_cache;
+  _service_handler_map[PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG] =
+      &GraphBrpcService::load_graph_split_config;
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
 
@@ -658,5 +660,20 @@ int32_t GraphBrpcService::use_neighbors_sample_cache(
   ((GraphTable *)table)->make_neighbor_sample_cache(size_limit, ttl);
   return 0;
 }
+
+int32_t GraphBrpcService::load_graph_split_config(
+    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 1) {
+    set_response_code(response, -1,
+                      "load_graph_split_configrequest requires at least 1 "
+                      "argument1[file_path]");
+    return 0;
+  }
+  ((GraphTable *)table)->load_graph_split_config(request.params(0));
+  return 0;
+}
+
 }  // namespace distributed
 }  // namespace paddle

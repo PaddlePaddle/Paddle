@@ -121,6 +121,33 @@ class TestFft(unittest.TestCase):
 
 
 @place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
+     ('test_x_complex', rand_x(
+         5, complex=True), None, -1,
+      'backward'), ('test_n_grater_input_length', rand_x(
+          5, max_dim_len=5), 11, -1,
+                    'backward'), ('test_n_smaller_than_input_length', rand_x(
+                        5, min_dim_len=5, complex=True), 3, -1, 'backward'),
+     ('test_axis_not_last', rand_x(5), None, 3, 'backward'),
+     ('test_norm_forward', rand_x(5), None, 3, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
+class TestIfft(unittest.TestCase):
+    def test_fft(self):
+        """Test ifft with norm condition
+        """
+        with paddle.fluid.dygraph.guard(self.place):
+            self.assertTrue(
+                np.allclose(
+                    scipy.fft.ifft(self.x, self.n, self.axis, self.norm),
+                    paddle.fft.ifft(
+                        paddle.to_tensor(self.x), self.n, self.axis, self.norm),
+                    rtol=RTOL.get(str(self.x.dtype)),
+                    atol=ATOL.get(str(self.x.dtype))))
+
+
+@place(DEVICES)
 @parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
     ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
     ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
@@ -225,6 +252,32 @@ class TestFftn(unittest.TestCase):
             np.testing.assert_allclose(
                 scipy.fft.fftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fftn(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)))
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
+     ('test_x_complex128', rand_x(
+         5, complex=True), None, None,
+      'backward'), ('test_n_grater_input_length', rand_x(
+          5, max_dim_len=5), (6, 6), (1, 2), 'backward'), (
+              'test_n_smaller_input_length', rand_x(
+                  5, min_dim_len=5, complex=True), (3, 3), (1, 2), 'backward'),
+     ('test_axis_not_default', rand_x(5), None, (1, 2),
+      'backward'), ('test_norm_forward', rand_x(5), None, None, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
+class TestIFftn(unittest.TestCase):
+    def test_ifftn(self):
+        """Test ifftn with norm condition
+        """
+        with paddle.fluid.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ifftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.ifftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm),
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))

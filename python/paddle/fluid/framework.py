@@ -40,6 +40,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from paddle import _C_ops
 
 __all__ = [
     'Program',
@@ -52,6 +53,7 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
@@ -75,6 +77,18 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _global_flags_ = core.globals()
+core._disable_eager_mode()
+
+
+@signature_safe_contextmanager
+def _test_eager_guard():
+    core._enable_eager_mode()
+    _C_ops.switch_to_eager_ops()
+    try:
+        yield
+    finally:
+        core._disable_eager_mode()
+        _C_ops.switch_to_core_ops()
 
 
 def require_version(min_version, max_version=None):
@@ -214,6 +228,10 @@ def in_dygraph_mode():
     return _dygraph_tracer_ is not None
 
 
+def _in_eager_mode():
+    return core._in_eager_mode() and in_dygraph_mode()
+
+
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
@@ -340,6 +358,8 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
+    if _in_eager_mode():
+        return core.eager._set_expected_place(place)
     _set_dygraph_tracer_expected_place(place)
 
 
@@ -455,6 +475,21 @@ def disable_signal_handler():
             paddle.disable_signal_handler()
     """
     core.disable_signal_handler()
+
+
+def is_compiled_with_cinn():
+    """
+    Whether this whl package can be used to run the model on CINN.
+
+    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_cinn = paddle.device.is_compiled_with_cinn()
+    """
+    return core.is_compiled_with_cinn()
 
 
 def is_compiled_with_cuda():
@@ -3227,6 +3262,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
+            inplace_map = kwargs.get("inplace_map", None)
             type = kwargs.get("type", None)
             op = Operator(
                 block=self,
@@ -3245,7 +3281,8 @@ class Block(object):
                                        kwargs.get("inputs", {}),
                                        kwargs.get("outputs", {}), attrs
                                        if attrs else {},
-                                       kwargs.get("stop_gradient", False))
+                                       kwargs.get("stop_gradient", False),
+                                       inplace_map)
         else:
             from paddle.fluid.dygraph.base import param_guard
 
@@ -6381,14 +6418,17 @@ def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
-
+    if _in_eager_mode():
+        core.eager._set_expected_place(place)
     _set_dygraph_tracer_expected_place(place)
 
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
-        _set_dygraph_tracer_expected_place(tmp_place)
+        if _in_eager_mode():
+            core.eager._set_expected_place(_global_expected_place_)
+        _set_dygraph_tracer_expected_place(_global_expected_place_)
 
 
 def switch_device(device):
