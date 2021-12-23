@@ -695,24 +695,9 @@ class MatMulOp : public framework::OperatorWithKernel {
                                             "received %d",
                                             reshape_out_size));
 
-      auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
-      if (it_zero != reshape_out.end()) {
-        for (uint64_t i = 0; i < reshape_out.size(); i++) {
-          if (reshape_out[i] == 0) {
-            PADDLE_ENFORCE_LT(
-                i, ddim_out.size(),
-                platform::errors::InvalidArgument(
-                    "The index of 0 in fused_reshape_Out ",
-                    "should be less than output dim size, ",
-                    "but the index is %d and output dim size is %d", i,
-                    ddim_out.size()));
-            reshape_out[i] = ddim_out.at(i);
-          }
-        }
-      }
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
 
       // if "-1" is present then one of reshape dims must be infered
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
@@ -745,7 +730,7 @@ class MatMulOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
+    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
