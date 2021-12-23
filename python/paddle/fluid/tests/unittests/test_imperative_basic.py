@@ -783,14 +783,19 @@ class TestImperative(unittest.TestCase):
 
 
 class TestDygraphUtils(unittest.TestCase):
-    def test_append_activation_in_dygraph_exception(self):
+    def func_append_activation_in_dygraph_exception(self):
         with new_program_scope():
             np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
             a = fluid.layers.data("a", [10, 20])
             func = dygraph_utils._append_activation_in_dygraph
             self.assertRaises(AssertionError, func, a, act="sigmoid")
 
-    def test_append_activation_in_dygraph1(self):
+    def test_append_activation_in_dygraph_exception(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph_exception()
+        self.func_append_activation_in_dygraph_exception()
+
+    def func_append_activation_in_dygraph1(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_activation_in_dygraph
         with fluid.dygraph.guard():
@@ -799,7 +804,12 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.hard_sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph2(self):
+    def test_append_activation_in_dygraph1(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph1()
+        self.func_append_activation_in_dygraph1()
+
+    def func_append_activation_in_dygraph2(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_activation_in_dygraph
         with fluid.dygraph.guard():
@@ -808,7 +818,12 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph3(self):
+    def test_append_activation_in_dygraph2(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph2()
+        self.func_append_activation_in_dygraph2()
+
+    def func_append_activation_in_dygraph3(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         helper = LayerObjectHelper(fluid.unique_name.generate("test"))
         func = helper.append_activation
@@ -818,7 +833,12 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph_use_mkldnn(self):
+    def test_append_activation_in_dygraph3(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph3()
+        self.func_append_activation_in_dygraph3()
+
+    def func_append_activation_in_dygraph_use_mkldnn(self):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(
             fluid.unique_name.generate("test"), act="relu", use_mkldnn=True)
@@ -829,7 +849,12 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.relu(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+    def test_append_activation_in_dygraph_use_mkldnn(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph_use_mkldnn()
+        self.func_append_activation_in_dygraph_use_mkldnn()
+
+    def func_append_activation_in_dygraph_global_use_mkldnn(self):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
         func = helper.append_activation
@@ -843,38 +868,67 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.relu(a)
         self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_bias_in_dygraph_exception(self):
+    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph_global_use_mkldnn()
+        self.func_append_activation_in_dygraph_global_use_mkldnn()
+
+    def func_append_bias_in_dygraph_exception(self):
         with new_program_scope():
             np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
             a = fluid.layers.data("a", [10, 20])
             func = dygraph_utils._append_bias_in_dygraph
             self.assertRaises(AssertionError, func, a)
 
-    def test_append_bias_in_dygraph(self):
+    def test_append_bias_in_dygraph_exception(self):
+        with _test_eager_guard():
+            self.func_append_bias_in_dygraph_exception()
+        self.func_append_bias_in_dygraph_exception()
+
+    def func_append_bias_in_dygraph(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_bias_in_dygraph
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, bias=a)
-            res2 = a + a
+            res2 = paddle.add(a, a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_bias_in_dygraph(self):
+        with _test_eager_guard():
+            self.func_append_bias_in_dygraph()
+        self.func_append_bias_in_dygraph()
 
 
 class TestDygraphGuardWithError(unittest.TestCase):
-    def test_without_guard(self):
+    def func_without_guard(self):
         with fluid.dygraph.guard():
             x = paddle.to_tensor(np.zeros([10, 10]))
         with self.assertRaisesRegexp(TypeError,
                                      "Please use `with fluid.dygraph.guard()"):
             y = fluid.layers.matmul(x, x)
 
+    def test_without_guard(self):
+        with _test_eager_guard():
+            self.func_without_guard()
+        self.func_without_guard()
+
 
 class TestMetaclass(unittest.TestCase):
-    def test_metaclass(self):
+    def func_metaclass(self):
         self.assertEqual(type(MyLayer).__name__, 'type')
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
-        self.assertEqual(
-            type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
+        if core._in_eager_mode():
+            self.assertEqual(
+                type(paddle.fluid.core.eager.EagerTensor).__name__, 'type')
+        else:
+            self.assertEqual(
+                type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
+
+    def test_metaclass(self):
+        with _test_eager_guard():
+            self.func_metaclass()
+        self.func_metaclass()
 
 
 if __name__ == '__main__':

@@ -84,6 +84,7 @@ core._disable_eager_mode()
 def _test_eager_guard():
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
+    core._switch_tracer(_dygraph_tracer_)
     try:
         yield
     finally:
@@ -926,7 +927,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
             list(shape) if shape else [], name, type
             if type else core.VarDesc.VarType.LOD_TENSOR, True
             if persistable else False)
-        eager_tensor.retain_grads = True
+        eager_tensor.retain_grads()
         return eager_tensor
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
@@ -939,6 +940,8 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, core.eager.EagerTensor)
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -949,6 +952,8 @@ class ParameterMetaClass(VariableMetaClass):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
+            if _in_eager_mode():
+                return issubclass(t, EagerParamBase)
             return issubclass(t, ParamBase)
         else:
             return issubclass(t, Parameter)
@@ -6285,7 +6290,7 @@ class EagerParamBase(_core_eager_eagertensor):
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape)
             if shape else [], name, core.VarDesc.VarType.LOD_TENSOR, True)
-        self.retain_grads = True
+        self.retain_grads()
 
         trainable = kwargs.get('trainable', True)
         self.stop_gradient = not trainable

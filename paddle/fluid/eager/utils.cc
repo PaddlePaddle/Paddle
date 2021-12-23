@@ -54,8 +54,9 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
     const std::vector<egr::EagerTensor>& targets) {
   std::vector<AutogradMeta*> metas;
+  metas.reserve(targets.size());
   for (const egr::EagerTensor& t : targets) {
-    metas.push_back(unsafe_autograd_meta(t));
+    metas.emplace_back(unsafe_autograd_meta(t));
   }
   return metas;
 }
@@ -66,6 +67,16 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
   if (!p_autograd_meta) return nullptr;
 
   return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const std::vector<egr::EagerTensor>& targets) {
+  std::vector<AutogradMeta*> metas;
+  metas.reserve(targets.size());
+  for (const egr::EagerTensor& t : targets) {
+    metas.emplace_back(nullable_autograd_meta(t));
+  }
+  return metas;
 }
 
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
@@ -253,6 +264,7 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
 }
 
 void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
+  VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
     egr::egr_utils_api::RetainGradForTensor(tensor);
   }
@@ -262,6 +274,7 @@ void EagerUtils::CheckAndRetainGrad(
     const std::vector<egr::EagerTensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
+      VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
     }
   }
