@@ -19,38 +19,6 @@
 
 namespace pten {
 
-template <typename T>
-void Flatten(const XPUContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out) {
-  auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_dims);
-}
-
-// TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
-// Output Tensor，
-// is there a more flexible way to deal with this case?
-template <typename T>
-void FlattenWithXShape(const XPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       int start_axis,
-                       int stop_axis,
-                       DenseTensor* out,
-                       DenseTensor* xshape) {
-  Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  const auto& in_dims = x.dims();
-  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    xshape_dims[i + 1] = in_dims[i];
-  }
-  xshape->Resize(paddle::framework::make_ddim(xshape_dims));
-  xshape->ResetLoD(x.lod());
-}
-
 void Reshape(const XPUContext& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,
@@ -75,30 +43,6 @@ void ReshapeWithXShape(const XPUContext& dev_ctx,
 }
 
 }  // namespace pten
-
-PT_REGISTER_KERNEL(flatten,
-                   XPU,
-                   ALL_LAYOUT,
-                   pten::Flatten,
-                   float,
-                   paddle::platform::float16,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
-
-PT_REGISTER_KERNEL(flatten_with_xshape,
-                   XPU,
-                   ALL_LAYOUT,
-                   pten::FlattenWithXShape,
-                   float,
-                   paddle::platform::float16,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
 
 PT_REGISTER_NO_TEMPLATE_KERNEL(
     reshape, XPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}
