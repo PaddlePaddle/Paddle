@@ -31,15 +31,18 @@ set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
 
 # auto build kernel targets by cmake
-register_kernels(EXCLUDES flatten_kernel DEPS ${COMMON_KERNEL_DEPS})
+register_kernels(EXCLUDES flatten_kernel dot_grad_kernel DEPS ${COMMON_KERNEL_DEPS})
 # TODO(chenweihang): auto parse compile deps by include headers later
 set(FLATTEN_DEPS ${COMMON_KERNEL_DEPS} utils_cpu unary)
+set(DOTGRAD_DEPS ${COMMON_KERNEL_DEPS} conj_kernel_cpu)
 if(WITH_GPU OR WITH_ROCM)
   set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_gpu)
+  set(DOTGRAD_DEPS ${DOTGRAD_DEPS} conj_kernel_gpu)
 elseif(WITH_XPU)
   set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_xpu)
 endif()
 kernel_library(flatten_kernel DEPS ${FLATTEN_DEPS})
+kernel_library(dot_grad_kernel DEPS ${DOTGRAD_DEPS})
 
 get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
 message(STATUS "PTEN_KERNELS: ${pten_kernels}")
