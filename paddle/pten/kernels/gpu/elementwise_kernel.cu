@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
-#include "paddle/pten/kernels/gpu/elementwise_impl.cu.h"
+#include "paddle/pten/kernels/gpu/elementwise_impl.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
