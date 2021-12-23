@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/prune_gate_by_capacity_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
