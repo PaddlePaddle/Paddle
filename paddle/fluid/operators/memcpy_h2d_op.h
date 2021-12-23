@@ -46,7 +46,7 @@ class MemcpyH2DFunctor {
         static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream();
     out_tensor.mutable_data(
         dev_ctx_.GetPlace(), lod_tensor.type(),
-        platform::Stream(reinterpret_cast<StreamId>(stream)));
+        platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
 
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
