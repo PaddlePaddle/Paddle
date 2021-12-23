@@ -100,7 +100,10 @@ __global__ void InitIndex(T* indices, T num_rows, T num_cols) {
 
 template <typename T>
 struct Pair {
-  __device__ __forceinline__ Pair() {}
+  __device__ __forceinline__ Pair() {
+    v = -static_cast<T>(INFINITY);
+    id = -1;
+  }
   __device__ __forceinline__ Pair(T value, int64_t id) : v(value), id(id) {}
 
   __device__ __forceinline__ void set(T value, int64_t id) {
@@ -114,18 +117,24 @@ struct Pair {
   }
 
   __device__ __forceinline__ bool operator<(const T value) const {
-    return (v < value);
+    if (isnan(value) && isnan(v)) return true;
+    return (!isnan(v) && isnan(value)) || (v < value);
   }
 
   __device__ __forceinline__ bool operator>(const T value) const {
-    return (v > value);
+    if (isnan(value) && isnan(v)) return true;
+    return (isnan(v) && !isnan(value)) || (v > value);
   }
   __device__ __forceinline__ bool operator<(const Pair<T>& in) const {
-    return (v < in.v) || ((v == in.v) && (id > in.id));
+    if (isnan(in.v) && isnan(v)) return (id > in.id);
+    return (!isnan(v) && isnan(in.v)) || (v < in.v) ||
+           ((v == in.v) && (id > in.id));
   }
 
   __device__ __forceinline__ bool operator>(const Pair<T>& in) const {
-    return (v > in.v) || ((v == in.v) && (id < in.id));
+    if (isnan(in.v) && isnan(v)) return (id < in.id);
+    return (isnan(v) && !isnan(in.v)) || (v > in.v) ||
+           ((v == in.v) && (id < in.id));
   }
 
   T v;

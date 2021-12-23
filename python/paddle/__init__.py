@@ -255,6 +255,7 @@ from .tensor.search import where  # noqa: F401
 from .tensor.search import index_select  # noqa: F401
 from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
+from .tensor.search import kthvalue  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
@@ -568,4 +569,5 @@ __all__ = [  # noqa
            'as_real',
            'diff',
            'angle',
+           'kthvalue',
 ]
