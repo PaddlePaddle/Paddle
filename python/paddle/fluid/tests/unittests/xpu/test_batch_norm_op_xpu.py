@@ -266,6 +266,7 @@ class TestXPUBatchNormOp(unittest.TestCase):
                     np.allclose(
                         outputs[name], outs[id], atol=1e-4), True)
 
+
 class TestXPUBatchNormOpUseGlobalStats(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.XPUPlace(0)]
@@ -317,6 +318,7 @@ class TestXPUBatchNormUseGlobalStatsCase3(TestXPUBatchNormOpUseGlobalStats):
     def init_test(self):
         self.use_global_stats = True
         self.trainable_statistics = True
+
 
 if __name__ == "__main__":
     unittest.main()
