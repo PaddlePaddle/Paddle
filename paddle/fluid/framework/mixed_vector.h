@@ -23,14 +23,20 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/details/cow_ptr.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace framework {
+
+inline paddle::optional<platform::CUDAPlace> OptionalCUDAPlace(
+    const paddle::memory::allocation::AllocationPtr &gpu_) {
+  return gpu_ == nullptr
+             ? paddle::none
+             : paddle::optional<platform::CUDAPlace>(
+                   BOOST_GET_CONST(platform::CUDAPlace, gpu_->place()));
+}
 
 // Vector<T> implements the std::vector interface, and can get Data or
 // MutableData from any place. The data will be synced implicitly inside.
@@ -196,10 +202,7 @@ class Vector {
     std::mutex &Mutex() const { return mtx_; }
 
     paddle::optional<platform::CUDAPlace> CUDAPlace() const {
-      return gpu_ == nullptr
-                 ? paddle::none
-                 : paddle::optional<platform::CUDAPlace>(
-                       BOOST_GET_CONST(platform::CUDAPlace, gpu_->place()));
+      return OptionalCUDAPlace(gpu_);
     }
 
    private:
@@ -210,19 +213,7 @@ class Vector {
       kDirty = 0x10
     };
 
-    void CopyToCPU() const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      // COPY GPU Data To CPU
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(gpu_->place()));
-      auto stream = dev_ctx->stream();
-      void *src = gpu_->ptr();
-      void *dst = cpu_.data();
-      paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
-                           gpu_memory_size_, stream);
-      dev_ctx->Wait();
-#endif
-    }
+    void CopyToCPU() const;
 
     void MutableCPU() {
       if (IsInCUDA() && IsDirty()) {
@@ -260,19 +251,7 @@ class Vector {
       }
     }
 
-    void CopyCPUDataToCUDA(const platform::Place &place) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      void *src = cpu_.data();
-      gpu_memory_size_ = cpu_.size() * sizeof(T);
-      gpu_ = memory::Alloc(place, gpu_memory_size_);
-      void *dst = gpu_->ptr();
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place));
-      auto stream = dev_ctx->stream();
-      paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
-                           gpu_memory_size_, stream);
-#endif
-    }
+    void CopyCPUDataToCUDA(const platform::Place &place) const;
 
     void ImmutableCPU() const {
       if (IsDirty() && !IsInCPU()) {  // If data has been changed in CUDA, or
@@ -293,7 +272,7 @@ class Vector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     mutable std::vector<T> cpu_;
-    mutable paddle::memory::AllocationPtr gpu_;
+    mutable paddle::memory::allocation::AllocationPtr gpu_;
     mutable size_t gpu_memory_size_{0};
     mutable int flag_;
 
