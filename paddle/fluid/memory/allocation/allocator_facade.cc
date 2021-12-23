@@ -879,9 +879,9 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
       ->Release(place);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, const platform::Stream& stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
       platform::errors::Unimplemented(
@@ -898,8 +898,12 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
 #endif
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
   return std::shared_ptr<Allocation>(Alloc(place, size, s));
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
+#endif
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      const gpuStream_t& stream) {
   PADDLE_ENFORCE_EQ(

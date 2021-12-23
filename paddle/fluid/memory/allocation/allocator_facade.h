@@ -58,10 +58,10 @@ class AllocatorFacade {
   // Release unused memory pool.
   uint64_t Release(const platform::Place& place);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size,
                                           const platform::Stream& stream);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to platform::Stream if needed.
   AllocationPtr Alloc(const platform::Place& place, size_t size,
                       const gpuStream_t& stream);

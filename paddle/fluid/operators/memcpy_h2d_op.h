@@ -42,8 +42,12 @@ class MemcpyH2DFunctor {
 
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto stream =
         static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream();
+#else
+    auto stream = nullptr;
+#endif
     out_tensor.mutable_data(
         dev_ctx_.GetPlace(), lod_tensor.type(),
         platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
