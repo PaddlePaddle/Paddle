@@ -1361,22 +1361,26 @@ def max(x, axis=None, keepdim=False, name=None):
                                  dtype='float64', stop_gradient=False)
             result1 = paddle.max(x)
             result1.backward()
-            print(result1, x.grad) #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
+            print(result1, x.grad) 
+            #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
 
             x.clear_grad()
             result2 = paddle.max(x, axis=0)
             result2.backward()
-            print(result2, x.grad) #[0.2, 0.3, 0.6, 0.9], [[1., 1., 0., 1.], [0., 0., 1., 0.]]
+            print(result2, x.grad) 
+            #[0.2, 0.3, 0.6, 0.9], [[1., 1., 0., 1.], [0., 0., 1., 0.]]
 
             x.clear_grad()
             result3 = paddle.max(x, axis=-1)
             result3.backward()
-            print(result3, x.grad) #[0.9, 0.7], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
+            print(result3, x.grad) 
+            #[0.9, 0.7], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
 
             x.clear_grad()
             result4 = paddle.max(x, axis=1, keepdim=True)
             result4.backward()
-            print(result4, x.grad) #[[0.9], [0.7]], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
+            print(result4, x.grad) 
+            #[[0.9], [0.7]], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
@@ -1385,12 +1389,14 @@ def max(x, axis=None, keepdim=False, name=None):
                                  dtype='float64', stop_gradient=False)
             result5 = paddle.max(y, axis=[1, 2])
             result5.backward()
-            print(result5, y.grad) #[4., 8.], [[[0., 0.], [0., 1.]], [[0., 0.], [0., 1.]]]
+            print(result5, y.grad) 
+            #[4., 8.], [[[0., 0.], [0., 1.]], [[0., 0.], [0., 1.]]]
 
             y.clear_grad()
             result6 = paddle.max(y, axis=[0, 1])
             result6.backward()
-            print(result6, y.grad) #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
+            print(result6, y.grad) 
+            #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
@@ -1450,22 +1456,26 @@ def min(x, axis=None, keepdim=False, name=None):
                                  dtype='float64', stop_gradient=False)
             result1 = paddle.min(x)
             result1.backward()
-            print(result1, x.grad) #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
+            print(result1, x.grad) 
+            #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
 
             x.clear_grad()
             result2 = paddle.min(x, axis=0)
             result2.backward()
-            print(result2, x.grad) #[0.1, 0.2, 0.5, 0.7], [[0., 0., 1., 0.], [1., 1., 0., 1.]]
+            print(result2, x.grad) 
+            #[0.1, 0.2, 0.5, 0.7], [[0., 0., 1., 0.], [1., 1., 0., 1.]]
 
             x.clear_grad()
             result3 = paddle.min(x, axis=-1)
             result3.backward()
-            print(result3, x.grad) #[0.2, 0.1], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
+            print(result3, x.grad) 
+            #[0.2, 0.1], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
 
             x.clear_grad()
             result4 = paddle.min(x, axis=1, keepdim=True)
             result4.backward()
-            print(result4, x.grad) #[[0.2], [0.1]], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
+            print(result4, x.grad) 
+            #[[0.2], [0.1]], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
@@ -1474,12 +1484,14 @@ def min(x, axis=None, keepdim=False, name=None):
                                  dtype='float64', stop_gradient=False)
             result5 = paddle.min(y, axis=[1, 2])
             result5.backward()
-            print(result5, y.grad) #[1., 5.], [[[1., 0.], [0., 0.]], [[1., 0.], [0., 0.]]]
+            print(result5, y.grad) 
+            #[1., 5.], [[[1., 0.], [0., 0.]], [[1., 0.], [0., 0.]]]
 
             y.clear_grad()
             result6 = paddle.min(y, axis=[0, 1])
             result6.backward()
-            print(result6, y.grad) #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
+            print(result6, y.grad) 
+            #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
