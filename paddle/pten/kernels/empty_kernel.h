@@ -14,19 +14,15 @@
 
 #pragma once
 
-#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
 template <typename T, typename ContextT>
-void Full(const ContextT& dev_ctx,
-          const ScalarArray& shape,
-          const Scalar& val,
-          DenseTensor* out);
+void Empty(const ContextT& dev_ctx, const ScalarArray& shape, DenseTensor* out);
 
 template <typename T, typename ContextT>
-void FullLike(const ContextT& dev_ctx, const Scalar& val, DenseTensor* out);
+void EmptyLike(const ContextT& dev_ctx, DenseTensor* out);
 
 }  // namespace pten
