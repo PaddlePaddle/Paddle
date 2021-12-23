@@ -254,8 +254,8 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
       }
     }
   } else {  // blockDim,x * NX < num
-    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int kVectorsPerThread = NX / kVectorSize;
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
     int thread_offset = threadIdx.x * kVectorsPerThread;
 
     using VecType = details::VectorType<T, kVectorSize>;
@@ -428,7 +428,9 @@ __device__ __forceinline__ void ReadDataReduce(
  * src: The register pointer, the size is NX * NY.
  * size: The current block needs to load size elements continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+
+#if defined(__NVCC__)
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
                                           int num) {
   int thread_offset = threadIdx.x * NX;
@@ -442,8 +444,7 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
 
 template <typename T, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void WriteData<T, NX, NY, BlockSize, false>(
-                                          T* dst, T* __restrict__ src, 
-                                          int num) {
+    T* dst, T* __restrict__ src, int num) {
   constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
   constexpr int kVectorsPerThread = NX / kVectorSize;
   // Vector type
@@ -457,6 +458,38 @@ __device__ __forceinline__ void WriteData<T, NX, NY, BlockSize, false>(
     vec_dst[thread_offset + idx] = vec_temp[idx];
   }
 }
+
+#else
+/* Since partial template specialization of tempalte function is not supported
+   by CI-ROCm currently, but supported by nvcc. */
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+__device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
+                                          int num) {
+  if (IsBoundary) {
+    int thread_offset = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if ((thread_offset + idx) < num) {
+        dst[thread_offset + idx] = src[idx];
+      }
+    }
+  } else {
+    // Vector type
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
+
+    int thread_offset = threadIdx.x * kVectorsPerThread;
+    using VecType = details::VectorType<T, kVectorSize>;
+    VecType* vec_dst = reinterpret_cast<VecType*>(dst);
+    VecType vec_temp[kVectorsPerThread];
+#pragma unroll
+    for (int idx = 0; idx < kVectorsPerThread; ++idx) {
+      vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
+      vec_dst[thread_offset + idx] = vec_temp[idx];
+    }
+  }
+}
+#endif
 
 /**
  * @brief Write 2D data from register to global memory according to Tx type, and
