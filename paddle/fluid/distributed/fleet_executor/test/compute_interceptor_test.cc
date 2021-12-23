@@ -47,11 +47,10 @@ class StartInterceptor : public Interceptor {
 };
 
 TEST(ComputeInterceptor, Compute) {
-  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
-  Carrier& carrier = FleetExecutor::GetCarrier();
+  Carrier carrier(0, {{0, 0}, {1, 0}, {2, 0}});
 
   auto msg_bus = std::make_shared<MessageBus>();
-  msg_bus->Init({{0, 0}, {1, 0}, {2, 0}}, {{0, "127.0.0.0:0"}}, "");
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
   carrier.SetMsgBus(msg_bus);
 
   // NOTE: don't delete, otherwise interceptor will use undefined node

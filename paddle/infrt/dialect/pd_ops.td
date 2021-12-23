@@ -6,7 +6,7 @@ include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/pd_op_base.td"
 
-def PD_FeedOp : PD_Op<"Feed", [NoSideEffect]> {
+def PD_FeedOp : PD_Op<"feed", [NoSideEffect]> {
   let summary = "Feed Op";
 
   let description = [{
@@ -19,6 +19,26 @@ def PD_FeedOp : PD_Op<"Feed", [NoSideEffect]> {
   let assemblyFormat = [{
       `(` `)` attr-dict `:` type($out)
   }];
+}
+
+def PD_FetchOp : PD_Op<"fetch", [Terminator]> {
+  let summary = "fetch Op";
+
+  let description = [{
+    Fetch tensor from the graph.
+  }];
+
+  let arguments = (ins Variadic<PD_Tensor>:$inputs);
+}
+
+def PD_GraphOp : PD_Op<"graph", [SingleBlockImplicitTerminator<"FetchOp">]> {
+  let summary = "paddle graph Op";
+  let description = [{
+    Describe a paddle graph or subgraph.
+  }];
+  let regions = (region SizedRegion<1>:$body);
+  let arguments = (ins Variadic<PD_Tensor>:$inputs);
+  let results = (outs Variadic<PD_Tensor>:$outputs);
 }
 
 def PD_ConstantOp : PD_Op<"Constant", [NoSideEffect, ConstantLike, DeclareOpInterfaceMethods<InferTypeOpInterface>, AllTypesMatch<["value", "output"]>]> {

@@ -16,8 +16,7 @@
 
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/creation.h"
-#include "paddle/pten/kernels/cuda/creation.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 namespace pten {
 
@@ -31,12 +30,12 @@ DenseTensor FullLike(
     DataType dtype = DataType::UNDEFINED,
     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
     DataLayout layout = DataLayout::UNDEFINED) {
-  auto out_meta = FullLikeInferMeta(x.meta(), dtype, layout);
+  auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
   pten::DenseTensor dense_out(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  FullLike<T>(dev_ctx, val, &dense_out);
+  FullLike<T, ContextT>(dev_ctx, val, &dense_out);
   return dense_out;
 }
 
