@@ -89,7 +89,7 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int, INT32); \
   _ForEachDataTypeHelper_(callback, int64_t, INT64);
 
-// It's only for DataParallel in HIP
+// It's only for DataParallel in HIP, bf16 not support in HIP.
 #define _ForEachDataTypeForHIP_(callback)                                \
   _ForEachDataTypeHelper_(callback, float, FP32);                        \
   _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);  \
