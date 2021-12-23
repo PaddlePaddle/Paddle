@@ -17,7 +17,8 @@ limitations under the License. */
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/enforce.h"  // import LIKELY
+#include "paddle/fluid/platform/macros.h"   // import DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/port.h"
 #ifdef _POSIX_C_SOURCE
 #include <time.h>
