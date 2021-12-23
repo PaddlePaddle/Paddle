@@ -33,7 +33,8 @@ class TestFleetExecutor(unittest.TestCase):
         strategy.pipeline_configs = {"accumulate_steps": 1}
         fleet_opt = {
             "dist_strategy": strategy.sharding_configs,
-            "num_micro_batches": strategy.pipeline_configs["accumulate_steps"]
+            "num_micro_batches": strategy.pipeline_configs["accumulate_steps"],
+            "scheduler": "1F1B"
         }
         return fleet_opt
 
@@ -47,6 +48,18 @@ class TestFleetExecutor(unittest.TestCase):
                 name='y', shape=y_data.shape, dtype=y_data.dtype)
             z = x + y
             a = 2 * x + 3 * y
+            loss = paddle.mean(a)
+            base_lr = 0.1
+            passes = [30, 60, 80, 90]
+            steps_per_pass = 10
+            bd = [steps_per_pass * p for p in passes]
+            lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+            lr_val = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=bd, values=lr)
+            opt = paddle.optimizer.AdamW(
+                learning_rate=lr_val,
+                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0))
+            opt.minimize(loss)
         # TODO: section_program will be removed in the future
         empty_program._pipeline_opt = {
             "fleet_opt": self.fake_fleet_opt(),

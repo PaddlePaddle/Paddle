@@ -32,9 +32,6 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-std::set<std::string> gen_list = {"elementwise_add", "reduce_sum", "matmul_v2",
-                                  "sigmoid"};
-
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -178,15 +175,7 @@ std::string GenerateOpFunctionsBody(
     ins_cast_str += paddle::string::Sprintf(in_cast_type, in_name, op_type,
                                             in_name, arg_idx++, dispensable);
 
-    if (input.dispensable()) {
-      const auto in_template = input.duplicable()
-                                   ? INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST
-                                   : INPUT_INITIALIZER_TEMPLATE_WITH_NULL;
-      ins_initializer_with_null +=
-          paddle::string::Sprintf(in_template, in_name, in_name, in_name);
-    } else {
-      call_api_str += in_name + ", ";
-    }
+    call_api_str += in_name + ", ";
   }
 
   if (!input_args.empty() && input_args.back() == ',') {
@@ -237,6 +226,8 @@ std::string GenerateOpFunctionsBody(
       auto dispensable = output.dispensable() ? "true" : "false";
       ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
                                               out_name, arg_idx++, dispensable);
+
+      call_api_str += out_name + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -281,11 +272,9 @@ std::string GenerateOpFunctionsBody(
         HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
-  if (outs_num == 0) {
-    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
-  } else {
-    return_str = "return ToPyObject(out);";
-  }
+
+  return_str = "return ToPyObject(out);";
+
   std::string function_args = "";
   if (input_args == "") {
     function_args = FUNCTION_ARGS_NO_INPUT;
@@ -299,6 +288,41 @@ std::string GenerateOpFunctionsBody(
       call_api_str, return_str);
 
   return op_function_str;
+}
+
+static std::string GenerateCoreOpsInfoMap() {
+  std::string result =
+      "static PyObject * eager_get_core_ops_args_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_args_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_returns_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n";
+
+  return result;
 }
 
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
@@ -320,9 +344,6 @@ GenerateOpFunctions() {
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
         !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
-      continue;
-    }
-    if (!gen_list.count(op_type)) {
       continue;
     }
     std::string func_name = "eager_api_" + op_type;
@@ -352,6 +373,8 @@ int main(int argc, char* argv[]) {
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
+      "\"paddle/fluid/eager/api/generated/fluid_generated/"
+      "dygraph_forward_api.h\"",
       "\"paddle/fluid/pybind/exception.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
@@ -365,24 +388,34 @@ int main(int argc, char* argv[]) {
   out << "\n\n";
 
   auto op_funcs = GenerateOpFunctions();
+  auto core_ops_infos = GenerateCoreOpsInfoMap();
+  std::string core_ops_infos_registry =
+      "{\"get_core_ops_args_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
+      "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
+      "  {\"get_core_ops_returns_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
+      "METH_NOARGS, \"C++ interface function for "
+      "eager_get_core_ops_returns_info.\"},\n";
 
   out << "namespace paddle {\n"
       << "namespace pybind {\n\n";
+  out << core_ops_infos;
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
   out << "static PyMethodDef ExtestMethods[] = {\n"
-      << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "\n  {nullptr,nullptr,0,nullptr}"
+      << paddle::string::join_strings(std::get<1>(op_funcs), '\n') << "\n"
+      << core_ops_infos_registry << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
   out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
+      << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  InitOpsAttrTypeMap();"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

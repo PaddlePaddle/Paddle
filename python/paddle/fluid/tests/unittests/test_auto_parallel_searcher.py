@@ -14,9 +14,9 @@
 
 from __future__ import print_function
 
-# import os
-# import copy
-# import json
+import os
+import copy
+import json
 import unittest
 
 import paddle
@@ -24,13 +24,13 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-# from paddle.distributed import fleet
+from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-# from paddle.distributed.auto_parallel.cluster import Cluster
-# from paddle.distributed.auto_parallel.utils import SerialProgramInfo
-# from paddle.distributed.auto_parallel.searcher import Checker, Enumerater
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.utils import SerialProgramInfo
+from paddle.distributed.auto_parallel.planner import PlanSpace, PlanFilter
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
-# from paddle.distributed.auto_parallel.utils import get_all_distributed_main_program
+from paddle.distributed.auto_parallel.utils import get_all_distributed_main_program
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import update_op_dims_mapping_by_default_dist_impl
@@ -118,6 +118,30 @@ def set_default_dist_attr(program, dist_context, process_mesh):
     dist_context.add_process_mesh(process_mesh)
 
 
+def check_process_meshes(processes):
+    result = PlanSpace.enum_process_mesh_topology(processes)
+    if result:
+        return True
+    return False
+
+
+def check_pipeline_enumerater(program, process_mesh_topology):
+    valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
+        program, process_mesh_topology, True)
+    if valid_dist_attr_dict and len(
+            pipeline_process_meshes) > 1 and not global_process_mesh:
+        return True
+    return False
+
+
+def check_nonpipeline_enumerater(program, process_mesh_topology):
+    valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
+        program, process_mesh_topology, False)
+    if valid_dist_attr_dict and not pipeline_process_meshes and global_process_mesh:
+        return True
+    return False
+
+
 class TestMLPSearcher(unittest.TestCase):
     def test_update(self):
         train_program = paddle.static.Program()
@@ -173,6 +197,20 @@ class TestMLPSearcher(unittest.TestCase):
                     except:
                         continue
                     self.assertTrue(changed)
+
+    def test_enumerater_and_checker(self):
+        processes = 4
+        self.assertTrue(check_process_meshes(processes))
+
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        _, train_program, startup_program = mlp_forward(train_program,
+                                                        startup_program)
+        process_mesh_topology = [4]
+        self.assertTrue(
+            check_pipeline_enumerater(train_program, process_mesh_topology))
+        self.assertTrue(
+            check_nonpipeline_enumerater(train_program, process_mesh_topology))
 
 
 if __name__ == "__main__":
