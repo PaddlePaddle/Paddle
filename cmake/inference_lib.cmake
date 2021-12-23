@@ -218,16 +218,16 @@ include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
 # copy api headers for pten & custom op
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/ext/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/include/*
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/include/*.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/include/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/all.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*.h
               ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/bfloat16.h
               ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
               ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
@@ -245,7 +245,7 @@ copy(inference_lib_dist
 # the header file of pten is copied to the experimental directory,
 # the include path of pten needs to be changed to adapt to inference api path
 add_custom_command(TARGET inference_lib_dist POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/pten.cmake"
+        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/pten_header.cmake"
         COMMENT "Change pten header include path to adapt to inference api path")
 
 # CAPI inference library for only inference

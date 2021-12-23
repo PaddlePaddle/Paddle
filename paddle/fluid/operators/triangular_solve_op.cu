@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 
@@ -44,7 +43,8 @@ struct MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
       }
     }
     gpuStream_t stream = ctx.cuda_device_context().stream();
-    TensorReduceFunctorImpl<T, T, CustomSum>(in, out, out_reduce_dims, stream);
+    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        in, out, kps::IdentityFunctor<T>(), out_reduce_dims, stream);
   }
 };
 

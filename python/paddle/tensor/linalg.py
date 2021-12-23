@@ -1430,7 +1430,7 @@ def det(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.determinant(x)
+        return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
@@ -1485,7 +1485,7 @@ def slogdet(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.slogdeterminant(x)
+        return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
@@ -1633,7 +1633,7 @@ def matrix_power(x, n, name=None):
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
     if in_dygraph_mode():
-        return core.ops.matrix_power(x, "n", n)
+        return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
     check_type(n, 'n', int, 'matrix_power')

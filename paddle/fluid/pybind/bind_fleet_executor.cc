@@ -28,6 +28,8 @@ namespace pybind {
 
 using paddle::distributed::FleetExecutor;
 using paddle::distributed::TaskNode;
+using paddle::framework::OpDesc;
+using paddle::framework::ProgramDesc;
 
 void BindFleetExecutor(py::module* m) {
   py::class_<FleetExecutor>(*m, "FleetExecutor")
@@ -37,10 +39,18 @@ void BindFleetExecutor(py::module* m) {
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<TaskNode>(*m, "TaskNode")
-      .def(py::init<const framework::ProgramDesc&, int64_t, int64_t, int64_t>())
+      .def(py::init<framework::ProgramDesc*, int64_t, int64_t, int64_t>())
+      .def(py::init<int32_t, const std::vector<framework::OpDesc*>&, int64_t,
+                    int64_t, int64_t, int64_t>())
       .def("task_id", &TaskNode::task_id)
       .def("add_upstream_task", &TaskNode::AddUpstreamTask)
-      .def("add_downstream_task", &TaskNode::AddDownstreamTask);
+      .def("add_downstream_task", &TaskNode::AddDownstreamTask)
+      .def("set_run_pre_steps", &TaskNode::SetRunPerSteps)
+      .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
+      .def("set_type", &TaskNode::SetType)
+      .def("role", &TaskNode::role)
+      .def("init", &TaskNode::Init)
+      .def("set_program", &TaskNode::SetProgram);
 }
 }  // namespace pybind
 }  // namespace paddle

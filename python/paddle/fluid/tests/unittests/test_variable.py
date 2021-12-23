@@ -63,6 +63,35 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
 
+    def test_element_size(self):
+        with fluid.program_guard(Program(), Program()):
+            x = paddle.static.data(name='x1', shape=[2], dtype='bool')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.static.data(name='x2', shape=[2], dtype='float16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.static.data(name='x3', shape=[2], dtype='float32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.static.data(name='x4', shape=[2], dtype='float64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.static.data(name='x5', shape=[2], dtype='int8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.static.data(name='x6', shape=[2], dtype='int16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.static.data(name='x7', shape=[2], dtype='int32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.static.data(name='x8', shape=[2], dtype='int64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.static.data(name='x9', shape=[2], dtype='uint8')
+            self.assertEqual(x.element_size(), 1)
+
     def test_step_scopes(self):
         prog = Program()
         b = prog.current_block()

@@ -29,9 +29,8 @@ void InterceptorMessageServiceImpl::InterceptorMessageService(
   VLOG(3) << "Interceptor Message Service receives a message from interceptor "
           << request->src_id() << " to interceptor " << request->dst_id()
           << ", with the message: " << request->message_type();
-  response->set_rst(true);
-  // call interceptor manager's method to handle the message
-  Carrier::Instance().EnqueueInterceptorMessage(*request);
+  bool flag = FleetExecutor::GetCarrier()->EnqueueInterceptorMessage(*request);
+  response->set_rst(flag);
 }
 
 }  // namespace distributed

@@ -1,6 +1,10 @@
 if (NOT WITH_INFRT)
     return()
 endif()
+set(INFRT_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/infrt" )
+set(INFRT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/infrt" )
+
+include(infrt_lib)
 
 set(infrt_src CACHE INTERNAL "" FORCE)
 
@@ -72,8 +76,10 @@ set(infrt_mlir_incs
         dense_tensor_inc
         pd_ops_inc
         rewrite_inc
+        trt_ops_inc
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 
-cc_library(infrt SRCS ${infrt_src} DEPS glog ${mlir_libs} paddle_framework_proto)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs})
