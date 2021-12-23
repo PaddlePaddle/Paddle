@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -46,7 +46,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
     if (root == comm->rank()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
@@ -59,7 +59,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
             static_cast<framework::Tensor*>(out));
       }
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
                                        dtype, root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "

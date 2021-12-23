@@ -16,10 +16,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/pooling.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
 
 #ifdef __HIPCC__
 #define POOLING_BLOCK_SIZE 256

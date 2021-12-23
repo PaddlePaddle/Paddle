@@ -217,121 +217,59 @@ void RunClient(
 }
 
 void RunGraphSplit() {
-  //   setenv("http_proxy", "", 1);
-  //   setenv("https_proxy", "", 1);
-  //   prepare_file(edge_file_name, edges);
-  //   prepare_file(node_file_name, nodes);
-  //   prepare_file(graph_split_file_name, graph_split);
-  //   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  //   host_sign_list_.push_back(ph_host.serialize_to_string());
+  setenv("http_proxy", "", 1);
+  setenv("https_proxy", "", 1);
+  prepare_file(edge_file_name, edges);
+  prepare_file(node_file_name, nodes);
+  prepare_file(graph_split_file_name, graph_split);
+  auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
+  host_sign_list_.push_back(ph_host.serialize_to_string());
 
-  //   // test-start
-  //   auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
-  //   host_sign_list_.push_back(ph_host2.serialize_to_string());
-  //   // test-end
-  //   // Srart Server
-  //   std::thread* server_thread = new std::thread(RunServer);
+  // test-start
+  auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
+  host_sign_list_.push_back(ph_host2.serialize_to_string());
+  // test-end
+  // Srart Server
+  std::thread* server_thread = new std::thread(RunServer);
 
-  //   std::thread* server_thread2 = new std::thread(RunServer2);
+  std::thread* server_thread2 = new std::thread(RunServer2);
 
-  //   sleep(2);
-  //   std::map<uint64_t, std::vector<paddle::distributed::Region>>
-  //   dense_regions;
-  //   dense_regions.insert(
-  //       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0,
-  //       {}));
-  //   auto regions = dense_regions[0];
+  sleep(2);
+  std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
+  dense_regions.insert(
+      std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
+  auto regions = dense_regions[0];
 
-  //   RunClient(dense_regions, 0, pserver_ptr_->get_service());
+  RunClient(dense_regions, 0, pserver_ptr_->get_service());
 
-  //   /*-----------------------Test Server
-  //   Init----------------------------------*/
+  /*-----------------------Test Server Init----------------------------------*/
 
-  //   auto pull_status = worker_ptr_->load_graph_split_config(
-  //       0, std::string(graph_split_file_name));
-  //   pull_status.wait();
-  //   pull_status =
-  //       worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
-  //   srand(time(0));
-  //   pull_status.wait();
-  //   std::vector<std::vector<uint64_t>> _vs;
-  //   std::vector<std::vector<float>> vs;
-  //   pull_status = worker_ptr_->batch_sample_neighbors(
-  //       0, std::vector<uint64_t>(1, 10240001024), 4, _vs, vs, true);
-  //   pull_status.wait();
-  //   ASSERT_EQ(0, _vs[0].size());
-  //   _vs.clear();
-  //   vs.clear();
-  //   pull_status = worker_ptr_->batch_sample_neighbors(
-  //       0, std::vector<uint64_t>(1, 97), 4, _vs, vs, true);
-  //   pull_status.wait();
-  //   ASSERT_EQ(3, _vs[0].size());
-  //   std::remove(edge_file_name);
-  //   std::remove(node_file_name);
-  //   std::remove(graph_split_file_name);
-  //   LOG(INFO) << "Run stop_server";
-  //   worker_ptr_->stop_server();
-  //   LOG(INFO) << "Run finalize_worker";
-  //   worker_ptr_->finalize_worker();
-  distributed::GraphPyServer server1, server2;
-  std::string ips_str = "127.0.0.1:5211;127.0.0.1:5212";
-  std::vector<std::string> edge_types = {std::string("user2item")};
-  std::vector<std::string> node_types = {std::string("user"),
-                                         std::string("item")};
-  VLOG(0) << "make 2 servers";
-  server1.set_up(ips_str, 127, node_types, edge_types, 0);
-  server2.set_up(ips_str, 127, node_types, edge_types, 1);
-
-  server1.add_table_feat_conf("user", "a", "float32", 1);
-  server1.add_table_feat_conf("user", "b", "int32", 2);
-  server1.add_table_feat_conf("user", "c", "string", 1);
-  server1.add_table_feat_conf("user", "d", "string", 1);
-  server1.add_table_feat_conf("item", "a", "float32", 1);
-
-  server2.add_table_feat_conf("user", "a", "float32", 1);
-  server2.add_table_feat_conf("user", "b", "int32", 2);
-  server2.add_table_feat_conf("user", "c", "string", 1);
-  server2.add_table_feat_conf("user", "d", "string", 1);
-  server2.add_table_feat_conf("item", "a", "float32", 1);
-
-  distributed::GraphPyClient client1, client2;
-  client1.set_up(ips_str, 127, node_types, edge_types, 0);
-  server1.start_server(false);
-  std::cout << "first server done" << std::endl;
-  server2.start_server(false);
-  std::cout << "second server done" << std::endl;
-  int ss = 5;
-  while (ss--) {
-    sleep(1);
-  }
-  client1.add_table_feat_conf("user", "a", "float32", 1);
-  client1.add_table_feat_conf("user", "b", "int32", 2);
-  client1.add_table_feat_conf("user", "c", "string", 1);
-  client1.add_table_feat_conf("user", "d", "string", 1);
-  client1.add_table_feat_conf("item", "a", "float32", 1);
-
-  client2.set_up(ips_str, 127, node_types, edge_types, 1);
-
-  client2.add_table_feat_conf("user", "a", "float32", 1);
-  client2.add_table_feat_conf("user", "b", "int32", 2);
-  client2.add_table_feat_conf("user", "c", "string", 1);
-  client2.add_table_feat_conf("user", "d", "string", 1);
-  client2.add_table_feat_conf("item", "a", "float32", 1);
-
-  client1.start_client();
-  std::cout << "first client done" << std::endl;
-  client2.start_client();
-  std::cout << "first client done" << std::endl;
-  std::cout << "started" << std::endl;
-  VLOG(0) << "come to set local server";
-  while (1) {
-    sleep(1);
-  }
+  auto pull_status = worker_ptr_->load_graph_split_config(
+      0, std::string(graph_split_file_name));
+  pull_status.wait();
+  pull_status =
+      worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
+  srand(time(0));
+  pull_status.wait();
+  std::vector<std::vector<uint64_t>> _vs;
+  std::vector<std::vector<float>> vs;
+  pull_status = worker_ptr_->batch_sample_neighbors(
+      0, std::vector<uint64_t>(1, 10240001024), 4, _vs, vs, true);
+  pull_status.wait();
+  ASSERT_EQ(0, _vs[0].size());
+  _vs.clear();
+  vs.clear();
+  pull_status = worker_ptr_->batch_sample_neighbors(
+      0, std::vector<uint64_t>(1, 97), 4, _vs, vs, true);
+  pull_status.wait();
+  ASSERT_EQ(3, _vs[0].size());
+  std::remove(edge_file_name);
+  std::remove(node_file_name);
+  std::remove(graph_split_file_name);
+  LOG(INFO) << "Run stop_server";
+  worker_ptr_->stop_server();
+  LOG(INFO) << "Run finalize_worker";
+  worker_ptr_->finalize_worker();
 }
 
-TEST(RunGraphSplit, Run) {
-  RunGraphSplit();
-  while (1) {
-    sleep(1);
-  }
-}
+TEST(RunGraphSplit, Run) { RunGraphSplit(); }

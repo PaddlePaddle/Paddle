@@ -89,4 +89,39 @@ TEST(Generated, Matmul_v2) {
   eager_test::CompareGradVariableWithValue<float>(Y, 3.0 * 4);
 }
 
+TEST(Generated, ElementwiseAdd) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
+
+  auto tracer = std::make_shared<paddle::imperative::Tracer>();
+  paddle::imperative::SetCurrentTracer(tracer);
+
+  // 1. Prepare Input
+  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  egr::EagerTensor X = egr_utils_api::CreateTensorWithValue(
+      ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 3.0, true);
+  egr_utils_api::RetainGradForTensor(X);
+
+  paddle::framework::DDim ddimY = paddle::framework::make_ddim({4, 16});
+  egr::EagerTensor Y = egr_utils_api::CreateTensorWithValue(
+      ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
+      pten::DataLayout::NCHW, 2.0, true);
+  egr_utils_api::RetainGradForTensor(Y);
+
+  auto output_tensor = elementwise_add_dygraph_function(X, Y, {});
+
+  eager_test::CompareVariableWithValue<float>(output_tensor, 5);
+
+  std::vector<egr::EagerTensor> target_tensors = {output_tensor};
+  RunBackward(target_tensors, {});
+
+  eager_test::CompareGradVariableWithValue<float>(X, 1.0);
+  eager_test::CompareGradVariableWithValue<float>(Y, 1.0);
+}
+
 }  // namespace egr
+
+USE_OP(sigmoid);
+USE_OP(elementwise_add);
+USE_OP(matmul_v2);

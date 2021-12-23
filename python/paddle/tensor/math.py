@@ -65,6 +65,9 @@ from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
 from ..fluid.layers import lgamma    # noqa: F401
+from ..fluid.layers import asinh    # noqa: F401
+from ..fluid.layers import acosh    # noqa: F401
+from ..fluid.layers import atanh    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -631,6 +634,128 @@ def minimum(x, y, name=None):
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
+def fmax(x, y, name=None):
+    """
+    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmax(x, y)
+
+    **Note**:
+    ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [[3, 4],
+            #     [7, 8]]
+
+            x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [[3, 2, 4],
+            #     [3, 2, 4]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [ 2., 3., 5.]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float32')
+            res = paddle.fmax(x, y)
+            print(res)
+            #    [  5.,   3., inf.]
+    """
+    op_type = 'elementwise_fmax'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def fmin(x, y, name=None):
+    """
+    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmin(x, y)
+
+    **Note**:
+    ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = paddle.to_tensor([[1, 2], [7, 8]])
+            y = paddle.to_tensor([[3, 4], [5, 6]])
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [[1, 2],
+            #        [5, 6]]
+
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([3, 0, 4])
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [[[1, 0, 3],
+            #         [1, 0, 3]]]
+
+            x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [ 1., 3., 5.]
+
+            x = paddle.to_tensor([5, 3, np.inf], dtype='float64')
+            y = paddle.to_tensor([1, -np.inf, 5], dtype='float64')
+            res = paddle.fmin(x, y)
+            print(res)
+            #       [   1., -inf.,    5.]
+    """
+    op_type = 'elementwise_fmin'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
 for func in [
         add,
         multiply
@@ -1069,23 +1194,49 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
 
-def renorm(input, p, dim, max_norm):
-    input_shape = input.shape
-    # check_variable_and_dtype(
-    #     dim, 'dim', ['int32', 'int64'], 'renorm')
-    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'renorm')
-    # check_variable_and_dtype(p, 'p', ['float32', 'float64'], 'renorm')
-    # check_variable_and_dtype(max_norm, 'max_norm', ['float32', 'float64'], 'renorm')
-    if not dim < len(input_shape):
-        raise ValueError("the dim:{} should be less then the shape's size {}:{}".format(dim,len(input_shape),input_shape))
-    if not dim >=0:
-        raise ValueError("the dim:{} should not be negative".format(dim))
+def renorm(x, p, axis, max_norm):
+    """
+    **renorm**
+    This operator is used to calculate the p-norm along the axis,
+    suppose the input-shape on axis dimension has the value of T, then
+    the tensor is split into T parts, the p-norm should be calculated for each
+    part, if the p-norm for part i is larger than max-norm, then each element 
+    in part i should be re-normalized at the same scale so that part-i' p-norm equals
+    max-norm exactly, otherwise part-i stays unchanged.
+    Args:
+        x (Tensor): The input Tensor
+        p (float): The power of the norm operation.
+        axis (int): the dimension to slice the tensor.
+        max-norm (float): the maximal norm limit.
+    Returns:
+        Tensor: the renorm Tensor.
+    Examples:
+        ..  code-block:: python
+            
+            import paddle
+            input = [[[2.0,2,-2],[3,0.3,3]],[[2,-8,2],[3.1,3.7,3]]]
+            x = paddle.to_tensor(input,dtype='float32')
+            y = paddle.renorm(x, 1.0, 2, 2.05)
+            print(y)        
+    #        [[[ 0.40594056,  0.29285714, -0.41000000],
+    #          [ 0.60891086,  0.04392857,  0.61500001]],
+    #         [[ 0.40594056, -1.17142856,  0.41000000],
+    #          [ 0.62920785,  0.54178572,  0.61500001]]])
+    """
+    input_shape = x.shape
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
+    if not axis < len(input_shape):
+        raise ValueError("the axis:{} should be less then the shape's size {}:{}".format(axis,len(input_shape),input_shape))
+    if not axis >=0:
+        if not axis >= -1 * len(input_shape):
+            raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
+        axis = axis + len(input_shape)
     if in_dygraph_mode():
-        out = core.ops.renorm(input, 'p',p, 'dim',dim, 'max_norm', max_norm)
+        out = core.ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
         return out
 
-    inputs = {'Input': input}
-    attrs = {'p': p, 'dim': dim, 'max_norm':max_norm}
+    inputs = {'X': x}
+    attrs = {'p': p, 'axis': axis, 'max_norm':max_norm}
 
     helper = LayerHelper("renorm", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1103,7 +1254,8 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \\log\\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32 or float64, which 
+            have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
             tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
@@ -2638,6 +2790,172 @@ def atan2(x, y, name=None):
                 type='atan2', inputs=inputs, outputs={'Out': out})
         return out
 
+def logit(x, eps=None, name=None):
+    r"""
+    This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
+
+    .. math::
+ 
+        logit(x) = ln(\frac{x}{1 - x})
+
+    where
+
+    .. math::
+
+        x_i=
+            \left\{\begin{array}{rcl}
+                x_i & &\text{if } eps == Default \\
+                eps & &\text{if } x_i < eps \\
+                x_i & &\text{if } eps <= x_i <= 1-eps \\
+                1-eps & &\text{if } x_i > 1-eps
+            \end{array}\right.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        eps (float, optional):  the epsilon for input clamp bound. Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
+            out1 = paddle.logit(x)
+            print(out1)
+            # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]  
+
+    """
+
+    if eps == None:
+        eps = 0.0
+    if in_dygraph_mode():
+        return _C_ops.logit(x, 'eps', eps)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
+    helper = LayerHelper("logit", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='logit',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'eps': eps})
+    return out
+
+def lerp(x, y, weight, name=None):
+    r"""
+    Does a linear interpolation between x and y based on weight.
+
+    Equation:
+        .. math::
+
+            lerp(x, y, weight) = x + weight * (y - x).
+
+    Args:
+        x (Tensor): An N-D Tensor with starting points, the data type is float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.arange(1., 5., dtype='float32')
+            y = paddle.empty([4], dtype='float32')
+            y.fill_(10.)
+            out = paddle.lerp(start, end, 0.5)
+            # out: [5.5., 6., 6.5, 7.]
+
+    """
+    if in_dygraph_mode():
+        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+        if isinstance(weight, float):
+            weight = paddle.to_tensor(weight, dtype=x.dtype)
+        return _C_ops.lerp(x, y, weight)
+
+    if isinstance(weight, float):
+        weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'], 'lerp')
+
+    helper = LayerHelper('lerp', **locals())
+    inputs = {'X': x, 'Y': y, 'Weight': weight}
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='lerp', inputs=inputs, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def lerp_(x, y, weight, name=None):
+    r"""
+    Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_lerp`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+    if isinstance(weight, float):
+        weight = paddle.to_tensor([weight], dtype=x.dtype)
+    elif isinstance(weight, (paddle.Tensor, Variable)):
+        out_shape = broadcast_shape(out_shape, weight.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    return _C_ops.lerp_(x, y, weight)
+
+def erfinv(x, name=None):
+    r"""
+    The inverse error function of x, .
+
+    Equation:
+        .. math::
+
+            erfinv(erf(x)) = x.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.to_tensor([0, 0.5, -1.], dtype="float32")
+            out = paddle.erfinv(x)
+            # out: [0, 0.4769, -inf]
+
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+
+    if in_dygraph_mode():
+        return _C_ops.erfinv(x)
+
+    helper = LayerHelper('erfinv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def erfinv_(x, name=None):
+    r"""
+    Inplace version of ``erfinv`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_erfinv`.
+    """
+    check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    return _C_ops.erfinv_(x)
+
 def rad2deg(x, name=None):
     """
     Convert each of the elements of input x from angles in radians to degrees.
@@ -2749,6 +3067,141 @@ def deg2rad(x, name=None):
         helper.append_op(
             type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
         return out
+
+def gcd(x, y, name=None):
+    """
+    Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
+    Both x and y must have integer types.
+    
+    Note:
+        gcd(0,0)=0, gcd(0, y)=|y|
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x1 = paddle.to_tensor(12)
+            x2 = paddle.to_tensor(20)
+            paddle.gcd(x1, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [4])
+
+            x3 = paddle.arange(6)
+            paddle.gcd(x3, x2)
+            # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [20, 1 , 2 , 1 , 4 , 5])
+
+            x4 = paddle.to_tensor(0)
+            paddle.gcd(x4, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [20])
+
+            paddle.gcd(x4, x4)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+            
+            x5 = paddle.to_tensor(-20)
+            paddle.gcd(x1, x5)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [4])
+    """
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    x = paddle.broadcast_to(x, shape)
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs(x)
+    y = paddle.abs(y)
+
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
+
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
+        # that, we change those zeros to ones. Their values don't matter because
+        # they won't be used.
+        y_not_equal_0 = (y != 0)
+        y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
+        x, y = (paddle.where(y_not_equal_0, y, x),
+                  paddle.where(y_not_equal_0, paddle.mod(x, y_safe),paddle.zeros(y.shape, y.dtype)))
+        return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
+
+    if in_dygraph_mode():
+        while _gcd_cond_fn(x, y):
+            x, y = _gcd_body_fn(x, y)
+
+        return x
+    else:
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'int8', 'int16', 'uint8'], 'gcd')
+        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
+        return out
+
+def lcm(x, y, name=None):
+    """
+    Computes the element-wise least common multiple (LCM) of input |x| and |y|.
+    Both x and y must have integer types.
+    
+    Note:
+        lcm(0,0)=0, lcm(0, y)=0
+
+        If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        y (Tensor): An N-D Tensor, the data type is int8，int16，int32，int64，uint8. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x1 = paddle.to_tensor(12)
+            x2 = paddle.to_tensor(20)
+            paddle.lcm(x1, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [60])
+
+            x3 = paddle.arange(6)
+            paddle.lcm(x3, x2)
+            # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0, 20, 20, 60, 20, 20])
+
+            x4 = paddle.to_tensor(0)
+            paddle.lcm(x4, x2)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+
+            paddle.lcm(x4, x4)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [0])
+            
+            x5 = paddle.to_tensor(-20)
+            paddle.lcm(x1, x5)
+            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [60])
+    """
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
+    # that, we change those zeros to ones. Their values don't matter because
+    # they won't be used.
+    d_equal_0 = paddle.equal(d, 0)
+    d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
+    out = paddle.where(d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe)
+    return out
 
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
@@ -2911,7 +3364,6 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
 
         return out
 
-
 def angle(x, name=None):
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while 
@@ -2927,7 +3379,7 @@ def angle(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): y (Tensor): An N-D Tensor of real data type with the same precision as that of x's data type.
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
 
     Examples:
         .. code-block:: python

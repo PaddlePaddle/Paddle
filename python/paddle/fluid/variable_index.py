@@ -665,23 +665,22 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
+    if paddle.fluid.framework.in_dygraph_mode():
+        var._bump_inplace_version()
+
     cur_block = default_main_program().current_block()
     cur_block.append_op(
-        type="set_value", inputs=inputs, outputs={'Out': var}, attrs=attrs)
+        type="set_value",
+        inputs=inputs,
+        outputs={'Out': var},
+        attrs=attrs,
+        inplace_map={"Input": "Out"})
 
     return var
 
 
 # the item is a tensor of bool 
 def set_value_for_bool_tensor(var, item, value):
-
-    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor, 
-    # so in the current version we also only support float32 and float64 tensor, 
-    # this problem will be fixed in the future.
-    if var.dtype != core.VarDesc.VarType.FP32 and var.dtype != core.VarDesc.VarType.FP64:
-        raise TypeError("Only support float and double tensor for bool index, "
-                        "but received {}.".format(var.dtype))
-
     if len(item.shape) > len(var.shape):
         raise IndexError("The dims of bool index doesn't match indexed array, "
                          "the dims of bool index except to be equal or less "

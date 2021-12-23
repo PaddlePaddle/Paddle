@@ -48,8 +48,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
   gc_.reset(new InterpreterCoreGarbageCollector());
 
-  exception_notifier_ = main_thread_blocker_.RegisterEvent(
-      kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
   if (FLAGS_new_executor_use_local_scope) {
@@ -398,13 +397,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     instr_node.DeviceContext().Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op->Type()
-            << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op->Type()
             << "): context wait and get last error";
 #endif
@@ -439,6 +433,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(4) << "Exception caught " << exception_holder_.Type();
+    async_work_queue_->Cancel();
     exception_holder_.ReThrow();
   }
 

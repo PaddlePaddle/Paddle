@@ -464,6 +464,14 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
+    } else if (platform::is_ipu_place(place_)) {
+#ifdef PADDLE_WITH_IPU
+      gc.reset(new IPUGarbageCollector(
+          BOOST_GET_CONST(platform::IPUPlace, place_), max_memory_size));
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
+#endif
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       if (IsFastEagerDeletionModeEnabled()) {
@@ -482,6 +490,19 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
+#endif
+    } else if (platform::is_mlu_place(place_)) {
+#ifdef PADDLE_WITH_MLU
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new MLUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+      } else {
+        gc.reset(new MLUDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::MLUPlace, place_), max_memory_size));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
 #endif
     }
   }

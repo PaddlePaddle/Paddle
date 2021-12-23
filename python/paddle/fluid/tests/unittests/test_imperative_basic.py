@@ -317,6 +317,13 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(tmp2._grad_ivar() is not None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
+    def test_paddle_imperative_is_grad_enabled(self):
+        with fluid.dygraph.guard():
+            with paddle.set_grad_enabled(False):
+                self.assertTrue(paddle.is_grad_enabled() is False)
+                with paddle.set_grad_enabled(True):
+                    self.assertTrue(paddle.is_grad_enabled())
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
@@ -400,8 +407,6 @@ class TestImperative(unittest.TestCase):
 
     def test_layer(self):
         with fluid.dygraph.guard():
-            cl = core.Layer()
-            cl.forward([])
             l = fluid.Layer("l")
             self.assertRaises(NotImplementedError, l.forward, [])
 

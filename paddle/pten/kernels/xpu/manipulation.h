@@ -16,37 +16,23 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
+#include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
 
-using XPUContext = paddle::platform::XPUDeviceContext;
-
-template <typename T>
-void Flatten(const XPUContext& dev_ctx,
+void Reshape(const XPUContext& dev_ctx,
              const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
+             const ScalarArray& shape,
              DenseTensor* out);
 
-void ReshapeFromDT(const XPUContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& shape,
-                   DenseTensor* out);
-
-void ReshapeFromVectorVal(const XPUContext& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int64_t>& shape,
-                          DenseTensor* out);
-
-void ReshapeFromVectorDT(const XPUContext& dev_ctx,
-                         const DenseTensor& x,
-                         const std::vector<DenseTensor>& shape,
-                         DenseTensor* out);
+void ReshapeWithXShape(const XPUContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out);
 
 }  // namespace pten
 
