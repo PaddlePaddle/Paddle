@@ -32,8 +32,8 @@
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -61,12 +61,14 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*num_threads*/ host_num_threads,
                                /*allow_spinning*/ true,
                                /*track_task*/ true,
-                               /*queue_empty_waiter*/ waiter);
+                               /*detached*/ true,
+                               /*events_waiter*/ waiter);
     // for launch device Kernel
     group_options.emplace_back(/*num_threads*/ 1,
                                /*allow_spinning*/ true,
                                /*track_task*/ true,
-                               /*queue_empty_waiter*/ waiter);
+                               /*detached*/ true,
+                               /*events_waiter*/ waiter);
     queue_group_ = CreateWorkQueueGroup(group_options);
   }
 
