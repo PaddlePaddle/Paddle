@@ -1470,9 +1470,24 @@ class Layer(object):
             for param, state in matched_param_state:
                 _set_var(param, state)
 
-    def _apply(self, func, device, dtype, blocking):
-        for layer in self.children():
-            layer._apply(func, device, dtype, blocking)
+    def to(self, device=None, dtype=None, blocking=None):
+        return self._to_impl(
+            device=device,
+            dtype=dtype,
+            blocking=blocking,
+            include_sublayers=True)
+
+    def to_1(self, device=None, dtype=None, blocking=None):
+        return self._to_impl(
+            device=device,
+            dtype=dtype,
+            blocking=blocking,
+            include_sublayers=False)
+
+    def _apply(self, func, device, dtype, blocking, include_sublayers=True):
+        if include_sublayers:
+            for layer in self.children():
+                layer._apply(func, device, dtype, blocking, include_sublayers)
 
         for key, param in self._parameters.items():
             if param is not None:
@@ -1487,7 +1502,11 @@ class Layer(object):
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
 
-    def to(self, device=None, dtype=None, blocking=None):
+    def _to_impl(self,
+                 device=None,
+                 dtype=None,
+                 blocking=None,
+                 include_sublayers=True):
         '''
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 
@@ -1610,7 +1629,7 @@ class Layer(object):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            self._apply(transform, device, dtype, blocking)
+            self._apply(transform, device, dtype, blocking, include_sublayers)
 
         self._dtype = dtype
         return self
