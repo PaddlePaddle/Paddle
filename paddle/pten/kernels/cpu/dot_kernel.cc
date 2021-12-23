@@ -12,37 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/gpu/linalg.h"
+#include "paddle/pten/kernels/dot_kernel.h"
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/hybird/eigen/dot.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
 
 namespace pten {
 
-template <typename T>
-void Dot(const GPUContext& dev_ctx,
+template <typename T, typename ContextT>
+void Dot(const ContextT& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
          DenseTensor* out) {
-  eigen::Dot<GPUContext, T>(dev_ctx, x, y, out);
+  auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
+  auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
+  auto* z = out->mutable_data<T>();
+
+  // Loop over the total N elements of both operands while sum-reducing every
+  // B pairs along the way where B is the dimension of the least ordered axis
+  auto&& d = x.dims();
+  auto const N = x.numel();
+  auto const B = d[d.size() - 1];
+
+  for (int j = 0; j < N / B; j++) {
+    T ss = 0;
+    for (int i = 0; i < B; i++) ss += (*x_ptr_++) * (*y_ptr_++);
+    z[j] = ss;
+  }
 }
 
 }  // namespace pten
 
-using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(dot,
-                   GPU,
-                   ALL_LAYOUT,
-                   pten::Dot,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
+PT_REGISTER_CTX_KERNEL(dot,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::Dot,
+                       float,
+                       double,
+                       int,
+                       int64_t,
+                       complex64,
+                       complex128) {}

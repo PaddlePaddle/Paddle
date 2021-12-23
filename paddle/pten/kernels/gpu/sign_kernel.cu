@@ -12,19 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/matmul_kernel.h"
+#include "paddle/pten/kernels/impl/sign_kernel_impl.h"
+#include "paddle/pten/kernels/sign_kernel.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/float16.h"
 
-PT_REGISTER_CTX_KERNEL(matmul,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::Matmul,
-                       float,
-                       double,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+using float16 = paddle::platform::float16;
+
+PT_REGISTER_CTX_KERNEL(
+    sign, GPU, ALL_LAYOUT, pten::Sign, float, double, float16) {}

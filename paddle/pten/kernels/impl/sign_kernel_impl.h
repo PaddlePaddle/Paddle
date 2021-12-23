@@ -21,30 +21,16 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace pten {
-namespace eigen {
 
-template <typename DevCtx, typename T>
-void Dot(const DevCtx& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out) {
+template <typename T, typename ContextT>
+void Sign(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   out->mutable_data<T>();
-  if (1 == out->dims().size()) {
-    auto eigen_out = pten::EigenScalar<T>::From(*out);
-    auto eigen_x = pten::EigenVector<T>::Flatten(x);
-    auto eigen_y = pten::EigenVector<T>::Flatten(y);
+  auto eigen_out = pten::EigenVector<T>::Flatten(*out);
+  auto eigen_x = pten::EigenVector<T>::Flatten(x);
 
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum();
-  } else {
-    auto eigen_out = pten::EigenMatrix<T>::From(*out);
-    auto eigen_x = pten::EigenMatrix<T>::From(x);
-    auto eigen_y = pten::EigenMatrix<T>::From(y);
-
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
-  }
+  auto& dev = *dev_ctx.eigen_device();
+  paddle::operators::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
+      dev, eigen_out, eigen_x);
 }
 
-}  // namespace eigen
 }  // namespace pten
