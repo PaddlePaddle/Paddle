@@ -1044,19 +1044,19 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
-bool AnalysisPredictor::ZeroCopyRun_Exp(const gpuStream_t stream) {
-  if (stream != nullptr) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
+  if (stream != nullptr) {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
     auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
     dev_ctx->SetThreadLocalStream(stream);
-#endif
   }
   return ZeroCopyRun();
 }
+#endif
 
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
@@ -1590,7 +1590,7 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
                                           cudaStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ZeroCopyRun_Exp(stream);
+  return pred->ExpRunWithExternalStream(stream);
 #endif
   return false;
 }
@@ -1598,7 +1598,7 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
                                           hipStream_t stream) {
 #ifdef PADDLE_WITH_HIP
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ZeroCopyRun_Exp(stream);
+  return pred->ExpRunWithExternalStream(stream);
 #endif
   return false;
 }
