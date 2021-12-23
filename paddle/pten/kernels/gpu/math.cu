@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/gpu/math.h"
 
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
 #include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
