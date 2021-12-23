@@ -28,7 +28,6 @@ paddle.enable_static()
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 def numpy_topk(x, k=1, axis=-1, largest=True):
-    #Get CPU result
     if axis < 0:
         axis = len(x.shape) + axis
     if largest:
@@ -44,7 +43,6 @@ def numpy_topk(x, k=1, axis=-1, largest=True):
     return value, indices
 
 
-#test case class
 class TestTopkOp(OpTest):
     def init_args(self):
         self.k = 3
@@ -73,7 +71,6 @@ class TestTopkOp(OpTest):
             self.check_grad(set(['X']), 'Out')
 
 
-#test case 1
 class TestTopkOp1(TestTopkOp):
     def init_args(self):
         self.k = 3
@@ -92,7 +89,6 @@ class TestTopkOp1(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 2
 class TestTopkOp2(TestTopkOp):
     def init_args(self):
         self.k = 3
@@ -111,7 +107,6 @@ class TestTopkOp2(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 3
 class TestTopkOp3(TestTopkOp):
     def init_args(self):
         self.k = 5
@@ -130,7 +125,6 @@ class TestTopkOp3(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 4
 class TestTopkOp4(TestTopkOp):
     def init_args(self):
         self.k = 1
@@ -149,7 +143,6 @@ class TestTopkOp4(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 5
 class TestTopkOp5(TestTopkOp):
     def init_args(self):
         self.k = 3
@@ -168,7 +161,6 @@ class TestTopkOp5(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 6
 class TestTopkOp6(TestTopkOp):
     def init_args(self):
         self.k = 5
@@ -187,7 +179,6 @@ class TestTopkOp6(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 7
 class TestTopkOp7(TestTopkOp):
     def init_args(self):
         self.k = 10
@@ -206,7 +197,6 @@ class TestTopkOp7(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-#test case 8
 class TestTopkOp8(TestTopkOp):
     def init_args(self):
         self.k = 1
