@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace distributed {
@@ -372,6 +374,7 @@ void FleetWrapper::PushDenseVarsAsync(
     const std::vector<std::string>& var_names,
     std::vector<std::future<int32_t>>* push_sparse_status, float scale_datanorm,
     int batch_size) {
+  auto push_dense_timer = std::make_shared<CostTimer>("push_dense_all");
   auto place = platform::CPUPlace();
   std::vector<paddle::distributed::Region> regions;
   for (auto& t : var_names) {
@@ -388,8 +391,12 @@ void FleetWrapper::PushDenseVarsAsync(
 
   auto* communicator =
       dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
+
+  auto call_timer = std::make_shared<CostTimer>("push_dense_call_client");
   auto push_status = communicator->_worker_ptr->push_dense(
       regions.data(), regions.size(), table_id);
+  auto postproc_timer =
+      std::make_shared<CostTimer>("push_dense_post_processing");
 
   communicator->PushDensePostProcessing();
 }
@@ -438,6 +445,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     platform::Place place, std::vector<const LoDTensor*>* inputs,
     const LoDTensor* shows, const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs) {
+  auto push_sparse_timer = std::make_shared<CostTimer>("push_sparse_all");
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
@@ -460,24 +468,26 @@ void FleetWrapper::PushSparseFromTensorAsync(
       clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
   CHECK(clk_size == batch_size || clk_size == 1);
 
-  std::vector<float> g;
-  for (framework::LoDTensor* g_tensor : *outputs) {
-    float* g_ori = g_tensor->data<float>();
-    // no cvm
-    if (batch_size_consist) {  // TODO(zhaocaibei123): add config
-                               // scale_sparse_gradient_with_batch_size_
-      Eigen::Map<
-          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-          g_mat(g_ori, g_tensor->numel() / fea_dim, fea_dim);
-      g_mat.rightCols(fea_dim) *= batch_size;
-    }
-
-    size_t origin = g.size();
-    size_t add = g_tensor->numel();
-    g.resize(origin + add);
-
-    memcpy(g.data() + origin, g_tensor->data<float>(), add * sizeof(float));
-  }
+  CHECK(outputs->size() == inputs->size());
+  //  std::vector<float> g;
+  //  for (framework::LoDTensor* g_tensor : *outputs) {
+  //    float* g_ori = g_tensor->data<float>();
+  //    // no cvm
+  //    if (batch_size_consist) {  // TODO(zhaocaibei123): add config
+  //                               // scale_sparse_gradient_with_batch_size_
+  //      Eigen::Map<
+  //          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
+  //          Eigen::RowMajor>>
+  //          g_mat(g_ori, g_tensor->numel() / fea_dim, fea_dim);
+  //      g_mat.rightCols(fea_dim) *= batch_size;
+  //    }
+  //
+  //    size_t origin = g.size();
+  //    size_t add = g_tensor->numel();
+  //    g.resize(origin + add);
+  //
+  //    memcpy(g.data() + origin, g_tensor->data<float>(), add * sizeof(float));
+  //  }
 
   std::vector<uint64_t> push_keys;
   push_keys.reserve(MAX_FEASIGN_NUM / 100);
@@ -494,15 +504,32 @@ void FleetWrapper::PushSparseFromTensorAsync(
   const int64_t* show_tensor = shows->data<int64_t>();
   const int64_t* clk_tensor = clks->data<int64_t>();
 
+  // platform::Timer timeline1;
+  // platform::Timer timeline2;
   for (size_t index = 0; index < inputs->size(); ++index) {
+    // timeline1.Start();
+    auto timer1 = std::make_shared<CostTimer>("push_sparse_for_loop");
+    framework::LoDTensor* g_tensor = outputs->at(index);
+    float* g = g_tensor->data<float>();
+    // no cvm
+    if (batch_size_consist) {  // TODO(zhaocaibei123): add config
+                               // scale_sparse_gradient_with_batch_size_
+      Eigen::Map<
+          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+          g_mat(g, g_tensor->numel() / fea_dim, fea_dim);
+      g_mat.rightCols(fea_dim) *= batch_size;
+    }
+
     const framework::LoDTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
+    output_len = 0;
 
     if (tensor->lod().size() > 0) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
         for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
+          // timeline2.Start();
           uint64_t real_id = static_cast<uint64_t>(ids[j]);
           if (real_id == padding_id) {
             continue;
@@ -519,9 +546,24 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
           float* data = push_values.back().data() + 3;
 
-          memcpy(data, g.data() + output_len, sizeof(float) * fea_dim);
+          //          push_values[push_values.size()-1][0] = 2;  //
+          //          TODO(zhaocaibei123): slot
+          //          push_values[push_values.size()-1][1] =
+          //              (i >= show_size ? 1 :
+          //              static_cast<float>(show_tensor[i]));
+          //          push_values[push_values.size()-1][2] =
+          //              (i >= clk_size ? 0 :
+          //              static_cast<float>(clk_tensor[i]));
+          //
+          //          float* data = push_values[push_values.size()-1].data() +
+          //          3;
+
+          memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
           ++input_idx;
+          // timeline2.Pause();
+          // VLOG(0) << "push_sparse_inner_for_loop cost " <<
+          // timeline2.ElapsedSec();
         }
       }
     } else {
@@ -542,14 +584,17 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
         float* data = push_values.back().data() + 3;
 
-        memcpy(data, g.data() + output_len, sizeof(float) * fea_dim);
+        memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
         ++input_idx;
       }
     }
+    CHECK(output_len == g_tensor->numel());
+    // timeline1.Pause();
+    // VLOG(0) << "push_sparse_for_loop cost " << timeline1.ElapsedSec();
   }
-  VLOG(1) << "output_len: " << output_len << " g.size(): " << g.size();
-  CHECK(output_len == g.size());
+  //  VLOG(1) << "output_len: " << output_len << " g.size(): " << g.size();
+  //  CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
 
@@ -562,6 +607,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
       communicator->Check(table_id), true,
       platform::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
+  auto call_timer = std::make_shared<CostTimer>("push_sparse_call_client");
   auto status = communicator->_worker_ptr->push_sparse(
       table_id, push_keys.data(), (const float**)push_g_vec.data(),
       push_keys.size());

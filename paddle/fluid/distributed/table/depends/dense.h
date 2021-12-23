@@ -22,6 +22,7 @@
 #include <vector>
 #include "gflags/gflags.h"
 
+#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/common/utils.h"
 
 namespace paddle {
@@ -220,6 +221,7 @@ class DAdamD2Sum : public DenseOptimizer {
 
   void update(const float* update_values, size_t num, int begin,
               int end) override {
+    CostTimer timer("pserver_update_dense");
     auto update_numel = end - begin;
     std::vector<float> grad, grad2, scale;
     grad.resize(update_numel);
@@ -251,13 +253,17 @@ class DAdamD2Sum : public DenseOptimizer {
     blas.VDIV(update_numel, ada_g2sum + begin, ada_d2sum + begin, scale_);
     ADD<float>(update_numel, scale_, ada_epsilon[0], scale_);
     DIV<float>(update_numel, 1 + ada_epsilon[0], scale_, scale_);
+    // blas.VINV(update_numel, scale_, scale_);
+    // blas.SCAL(update_numel, 1 + ada_epsilon[0], scale_);
     SQRT<float>(update_numel, scale_, scale_);
+    // blas.VPOW(update_numel, scale_, 0.5, scale_);
 
     blas.SCAL(update_numel, learning_rate[0], scale_);
 
     // TODO(zhaocaibei123): check if there exists elementwise_multiply in blas
     // TODO(zhaocaibei123): blas.VMUL
     ELE_MUL<float>(update_numel, scale_, mom_velocity + begin, scale_);
+    // blas.VMUL(update_numel, scale_, mom_velocity + begin, scale_);
 
     blas.VSUB(update_numel, param + begin, scale_, param + begin);
   }

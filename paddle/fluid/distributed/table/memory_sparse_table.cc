@@ -14,6 +14,7 @@
 
 #include <sstream>
 
+#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/table/memory_sparse_table.h"
 #include "paddle/fluid/framework/io/fs.h"
 
@@ -34,6 +35,9 @@ int32_t MemorySparseTable::initialize() {
   for (int i = 0; i < shards_task_pool_.size(); ++i) {
     shards_task_pool_[i].reset(new ::ThreadPool(1));
   }
+  auto& profiler = CostProfiler::instance();
+  profiler.register_profiler("pserver_sparse_update_all");
+  profiler.register_profiler("pserver_sparse_select_all");
   initialize_value();
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
@@ -366,6 +370,7 @@ std::pair<int64_t, int64_t> MemorySparseTable::print_table_stat() {
 
 int32_t MemorySparseTable::pull_sparse(float* pull_values,
                                        const PullSparseValue& pull_value) {
+  CostTimer timer("pserver_sparse_select_all");
   std::vector<std::future<int>> tasks(real_local_shard_num_);
 
   const size_t value_size = _value_accesor->size() / sizeof(float);
@@ -439,6 +444,7 @@ int32_t MemorySparseTable::pull_sparse_ptr(char** pull_values,
 
 int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
                                        const float* values, size_t num) {
+  CostTimer timer("pserver_sparse_update_all");
   std::vector<std::future<int>> tasks(real_local_shard_num_);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
       real_local_shard_num_);

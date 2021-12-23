@@ -68,6 +68,14 @@ class FleetWrapper {
     client2client_connect_timeout_ms_ = 10000;
     // pserver request max retry
     client2client_max_retry_ = 3;
+
+    auto& profiler = paddle::distributed::CostProfiler::instance();
+    profiler.register_profiler("push_sparse_all");
+    profiler.register_profiler("push_sparse_for_loop");
+    profiler.register_profiler("push_sparse_call_client");
+    profiler.register_profiler("push_dense_post_processing");
+    profiler.register_profiler("push_dense_all");
+    profiler.register_profiler("push_dense_call_client");
   }
 
   // set client to client communication config

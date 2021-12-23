@@ -210,6 +210,28 @@ int32_t BrpcPsClient::initialize() {
     }
   }
 
+  auto &profiler = CostProfiler::instance();
+  profiler.register_profiler("pserver_client_pull_dense");
+  profiler.register_profiler("pserver_client_pull_sparse");
+  profiler.register_profiler("pserver_client_pull_sparse_local");
+  profiler.register_profiler("pserver_client_push_sparse");
+  profiler.register_profiler("pserver_client_push_sparse_parse");
+  profiler.register_profiler("client_push_sparse_put");
+  profiler.register_profiler("push_sparse_enqueue");
+  profiler.register_profiler("pserver_client_push_sparse");
+  profiler.register_profiler("pserver_client_push_sparse_merge");
+  profiler.register_profiler("pserver_client_push_sparse_rpc");
+  profiler.register_profiler("pserver_client_push_dense");
+  profiler.register_profiler("pserver_client_push_dense_parse");
+  profiler.register_profiler("push_dense_put");
+  profiler.register_profiler("push_dense_resize");
+  profiler.register_profiler("push_dense_get_data");
+  profiler.register_profiler("push_dense_for_loop");
+  profiler.register_profiler("push_dense_enqueue");
+  profiler.register_profiler("pserver_client_push_dense_merge");
+  profiler.register_profiler("pserver_client_push_dense_rpc");
+  profiler.register_profiler("pserver_client_push_dense_send");
+
   _running = true;
   _flushing = false;
   // 启动异步push线程
@@ -588,6 +610,7 @@ std::future<int32_t> BrpcPsClient::push_sparse_param(
 std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
                                               size_t region_num,
                                               size_t table_id) {
+  auto timer = std::make_shared<CostTimer>("pserver_client_pull_dense");
   auto *accessor = table_accessor(table_id);
   size_t request_call_num = _server_channels.size();
   uint32_t num_per_shard =
@@ -643,6 +666,7 @@ std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
         }
         closure->set_promise_value(ret);
       });
+  closure->add_timer(timer);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
@@ -865,6 +889,9 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
                                                size_t table_id,
                                                const uint64_t *keys, size_t num,
                                                bool is_training) {
+  auto timer = std::make_shared<CostTimer>("pserver_client_pull_sparse");
+  auto local_timer =
+      std::make_shared<CostTimer>("pserver_client_pull_sparse_local");
   size_t request_call_num = _server_channels.size();
 
   auto shard_sorted_kvs = std::make_shared<
@@ -925,7 +952,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
         }
         closure->set_promise_value(ret);
       });
-
+  closure->add_timer(timer);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
@@ -1110,8 +1137,8 @@ std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
                                                const uint64_t *keys,
                                                const float **update_values,
                                                size_t num) {
-  auto push_timer =
-      std::make_shared<CostTimer>("pserver_client_push_sparse_parse");
+  auto push_timer = std::make_shared<CostTimer>("pserver_client_push_sparse");
+  CostTimer parse_timer("pserver_client_push_sparse_parse");
   int push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
   while (push_sparse_async_num > FLAGS_pserver_max_async_call_num) {
     // LOG(INFO) << "push_sparse Waiting for async_call_num comsume, task_num:"
@@ -1121,6 +1148,7 @@ std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
     // push_sparse_async_num = _push_sparse_task_queue_map[table_id]->size();
     push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
   }
+  auto put_timer = std::make_shared<CostTimer>("client_push_sparse_put");
   thread_local std::vector<std::vector<std::pair<uint64_t, const float *>>>
       shard_sorted_kv_list;
   auto *accessor = table_accessor(table_id);
@@ -1168,6 +1196,7 @@ std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
   }
 
   std::future<int> fut = async_task->get_future();
+  auto enqueue_timer = std::make_shared<CostTimer>("push_sparse_enqueue");
   _push_sparse_task_queue_map[table_id]->Put(std::move(async_task));
   return fut;
 }
@@ -1250,14 +1279,14 @@ void BrpcPsClient::push_sparse_task_consume() {
         for_each(task_list.begin() + 1, task_list.end(),
                  [&request_kv_num, request_call_num,
                   closure](std::shared_ptr<SparseAsyncTask> &task) {
-                   // closure->add_timer(task->timer());
+                   closure->add_timer(task->timer());
                    closure->add_promise(task->promise());
                  });
 
-        // CostTimer merge_timer("pserver_client_push_sparse_merge");
-        // auto rpc_timer =
-        // std::make_shared<CostTimer>("pserver_client_push_sparse_rpc");
-        // closure->add_timer(rpc_timer);
+        CostTimer merge_timer("pserver_client_push_sparse_merge");
+        auto rpc_timer =
+            std::make_shared<CostTimer>("pserver_client_push_sparse_rpc");
+        closure->add_timer(rpc_timer);
 
         std::vector<std::future<int>> merge_status(request_call_num);
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
@@ -1295,6 +1324,7 @@ void BrpcPsClient::push_sparse_task_consume() {
         std::vector<std::future<int>>().swap(merge_status);
       }
     }
+    timeline.Pause();
     auto wait_ms =
         FLAGS_pserver_async_push_sparse_interval_ms - (timeline.ElapsedMS());
     if (wait_ms > 0) {
@@ -1464,29 +1494,40 @@ std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
     usleep(5000);  // 5ms
     push_dense_async_num = _push_dense_task_queue_map[table_id]->Size();
   }
+  auto push_dense_timer = std::make_shared<CostTimer>("push_dense_put");
   // auto dense_data = _dense_matrix_obj_pool.get();
   auto dense_data = std::make_shared<std::vector<float>>();
+  // auto timer3 = std::make_shared<CostTimer>("push_dense_new_task");
   auto async_task = new DenseAsyncTask(dense_data, table_id, push_timer);
   size_t request_call_num = _server_channels.size();
+
+  // auto timer2 = std::make_shared<CostTimer>("push_dense_cal_dim");
   uint32_t num_per_shard =
       dense_dim_per_shard(accessor->fea_dim(), request_call_num);
+  // VLOG(0) << "push dense dims: " << num_per_shard << " " << request_call_num
+  // << " " << accessor->update_dim();
 
+  auto timer1 = std::make_shared<CostTimer>("push_dense_resize");
   // 将region数据拷贝到转置矩阵中
   async_task->data()->resize(num_per_shard * request_call_num *
                              accessor->update_dim());
+  auto timer4 = std::make_shared<CostTimer>("push_dense_get_data");
   float *data = async_task->data()->data();
   size_t data_size = async_task->data()->size();
   uint32_t pos = 0;
+  auto for_timer = std::make_shared<CostTimer>("push_dense_for_loop");
   for (size_t i = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
-    CHECK(pos + data_num <= data_size)
-        << "invalid dense size, cur pos[" << pos << "]"
-        << " data_num[" << data_num << "] size[" << data_size << "]";
+    // VLOG(0) << "region " << i << " " << data_num;
+    //    CHECK(pos + data_num <= data_size)
+    //        << "invalid dense size, cur pos[" << pos << "]"
+    //        << " data_num[" << data_num << "] size[" << data_size << "]";
     const float *region_data = (const float *)(regions[i].data);
     memcpy(data + pos, region_data, regions[i].size);
     pos += data_num;
   }
   std::future<int> fut = async_task->get_future();
+  auto enqueue_timer = std::make_shared<CostTimer>("push_dense_enqueue");
   _push_dense_task_queue_map[table_id]->Put(std::move(async_task));
   return fut;
 }
@@ -1567,6 +1608,8 @@ void BrpcPsClient::push_dense_task_consume() {
                 << total_send_data[total_send_data_size - 2]
                 << total_send_data[0] << " total_send_data[-1]"
                 << total_send_data[total_send_data_size - 1];
+
+        CostTimer gs_timer("pserver_client_push_dense_grad_scale");
         if (scale_gradient && merge_count > 1) {
           Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1,
                                           total_send_data_size);
@@ -1585,6 +1628,7 @@ void BrpcPsClient::push_dense_task_consume() {
       push_dense_raw_gradient(task_ptr, total_send_data, total_send_data_size,
                               closure);
     }
+    timeline.Pause();
     auto wait_ms =
         FLAGS_pserver_async_push_dense_interval_ms - (timeline.ElapsedMS());
     if (wait_ms > 0) {
@@ -1603,6 +1647,8 @@ void BrpcPsClient::push_dense_raw_gradient(
   closure->add_timer(timer);
   uint32_t num_per_shard =
       dense_dim_per_shard(accessor->fea_dim(), request_call_num);
+  auto send_timer =
+      std::make_shared<CostTimer>("pserver_client_push_dense_send");
   for (size_t i = 0; i < request_call_num; ++i) {
     closure->request(i)->set_cmd_id(PS_PUSH_DENSE_TABLE);
     closure->request(i)->set_table_id(task->table_id());

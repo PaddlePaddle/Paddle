@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_dense_table.h"
+#include "paddle/fluid/distributed/common/cost_timer.h"
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -44,6 +45,12 @@ int32_t CommonDenseTable::initialize() {
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
+
+  auto& profiler = CostProfiler::instance();
+  profiler.register_profiler("pserver_dense_select_all");
+  profiler.register_profiler("pserver_dense_update_all");
+  profiler.register_profiler("pserver_update_dense_shard");
+  profiler.register_profiler("pserver_update_dense");
 
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
@@ -129,6 +136,7 @@ int32_t CommonDenseTable::set_global_lr(float* lr) {
 }
 
 int32_t CommonDenseTable::pull_dense(float* pull_values, size_t num) {
+  CostTimer timer("pserver_dense_select_all");
   std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
             pull_values);
   return 0;
@@ -151,6 +159,7 @@ int32_t CommonDenseTable::pour() {
 }
 
 int32_t CommonDenseTable::push_dense(const float* values, size_t num) {
+  CostTimer timer("pserver_dense_update_all");
   if (sync) {
     std::future<int> task =
         _shards_task_pool[0]->enqueue([this, &values]() -> int {
@@ -176,8 +185,10 @@ int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
         [this, shard_id, &buckets, &values]() -> int {
+          CostTimer timer("pserver_update_dense_shard");
           auto begin = buckets[shard_id];
           auto end = buckets[shard_id + 1];
+          // VLOG(0) << "push dense begin " << begin << " end " << end;
           optimizer_->update(values, param_dim_, begin, end);
           return 0;
         });

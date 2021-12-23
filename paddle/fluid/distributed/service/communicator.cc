@@ -17,6 +17,7 @@ limitations under the License. */
 #include <google/protobuf/text_format.h>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -111,6 +112,7 @@ int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
                                 int table_id, Scope *scope) {
+  CostTimer timer1("pull_dense_comm_recv_dense");
   platform::RecordEvent record_event("Communicator->RpcRecvDense");
   std::vector<paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
@@ -135,10 +137,11 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
       regions.emplace_back(std::move(reg));
     }
   }
+  CostTimer timer2("pull_dense_comm_call_client");
   auto status =
       _worker_ptr->pull_dense(regions.data(), regions.size(), table_id);
   status.wait();
-
+  CostTimer timer3("pull_dense_comm_other");
   for (auto &t : varnames) {
     Variable *var = scope->FindVar(t);
     LoDTensor *tensor = var->GetMutable<LoDTensor>();
@@ -437,7 +440,7 @@ void AsyncCommunicator::RecvThread() {
 
   while (running_) {
     int grad_num = grad_num_.load();
-    if (grad_num > min_send_grad_num_before_recv_) {
+    if (grad_num >= min_send_grad_num_before_recv_) {
       RecvByCommunicator();
       grad_num_.store(0);
     } else {
@@ -454,6 +457,7 @@ void AsyncCommunicator::RecvByCommunicator() {
 }
 
 void AsyncCommunicator::RecvNoBarrier() {
+  CostTimer timer1("pull_dense_communicator_all");
   for (auto &iter : recv_varname_to_ctx_) {
     auto &table_id = iter.first;
     auto &varnames = iter.second;
@@ -612,6 +616,12 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     }
   }
   send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+
+  auto &profiler = CostProfiler::instance();
+  profiler.register_profiler("pull_dense_communicator_all");
+  profiler.register_profiler("pull_dense_comm_recv_dense");
+  profiler.register_profiler("pull_dense_comm_call_client");
+  profiler.register_profiler("pull_dense_comm_other");
 }
 
 AsyncCommunicator::~AsyncCommunicator() {
