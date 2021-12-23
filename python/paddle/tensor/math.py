@@ -1307,24 +1307,6 @@ def inverse(x, name=None):
         type='inverse', inputs={'Input': [x] }, outputs={'Output': [out]})
     return out
 
-def _get_reduce_all_value(axis):
-    """
-    Internal function for max, min. 
-    It computes the attribute reduce_all value based on axis.
-    """
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis= [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
-
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
-    return reduce_all, axis
-
 
 def max(x, axis=None, keepdim=False, name=None):
     """
@@ -1399,7 +1381,17 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_all_value(axis)
+    if axis is not None and not isinstance(axis, list):
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
+
+    reduce_all = True if axis == None or axis == [] else False
+    axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
         return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
@@ -1494,7 +1486,17 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_all_value(axis)
+    if axis is not None and not isinstance(axis, list):
+        if isinstance(axis, tuple):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis= [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
+
+    reduce_all = True if axis == None or axis == [] else False
+    axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
         return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
