@@ -436,8 +436,6 @@ class TestLossIsInplaceVar(unittest.TestCase):
 
 class TestContinuouslyInplace(unittest.TestCase):
     def test_continuously_inplace(self):
-        paddle.disable_static()
-
         a = paddle.rand([2, 3])
         a.stop_gradient = False
         b = a * 2
@@ -447,7 +445,6 @@ class TestContinuouslyInplace(unittest.TestCase):
         b.reshape_([-1])
 
         b.backward()
-        paddle.enable_static()
 
 
 if __name__ == '__main__':
