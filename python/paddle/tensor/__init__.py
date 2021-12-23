@@ -203,6 +203,8 @@ from .math import asinh  # noqa: F401
 from .math import atanh  # noqa: F401
 from .math import lerp  # noqa: F401
 from .math import lerp_  # noqa: F401
+from .math import erfinv  # noqa: F401
+from .math import erfinv_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
 from .math import gcd  # noqa: F401
@@ -441,6 +443,8 @@ tensor_method_func  = [ #noqa
            'diff',
            'lerp',
            'lerp_',
+           'erfinv',
+           'erfinv_',
            'angle',
            'moveaxis',
            'repeat_interleave',
