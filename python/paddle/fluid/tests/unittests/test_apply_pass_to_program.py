@@ -123,7 +123,7 @@ class TestIRPassBase(unittest.TestCase):
             if op.type != "share_buffer":
                 continue
 
-            share_dims = op.attr("share_dims")
+            share_dims = op.attr("share_dims_and_dtype")
             if share_dims:
                 for i in range(len(share_dims)):
                     self.assertEqual(share_dims[0], share_dims[i])

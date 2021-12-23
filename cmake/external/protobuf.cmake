@@ -204,23 +204,21 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
         SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
         SET(PROTOBUF_TAG         v3.8.0)
+    elseif(WITH_IPU)
+        SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
+        SET(PROTOBUF_TAG         d750fbf648256c7c631f51ffdbf67d7c18b0114e)
     else()
         SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
         SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     endif()
 
-    cache_third_party(${TARGET_NAME}
-        REPOSITORY    ${PROTOBUF_REPOSITORY}
-        TAG           ${PROTOBUF_TAG}
-        DIR           PROTOBUF_SOURCE_DIR)
-
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${PROTOBUF_DOWNLOAD_CMD}"
+        GIT_REPOSITORY  ${PROTOBUF_REPOSITORY}
+        GIT_TAG         ${PROTOBUF_TAG}
         PREFIX          ${PROTOBUF_PREFIX_DIR}
-        SOURCE_DIR      ${PROTOBUF_SOURCE_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
         CONFIGURE_COMMAND
@@ -248,6 +246,8 @@ ENDFUNCTION()
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
     SET(PROTOBUF_VERSION 3.8.0)
+elseif(WITH_IPU)
+    SET(PROTOBUF_VERSION 3.6.1)
 else()
     SET(PROTOBUF_VERSION 3.1.0)
 endif()

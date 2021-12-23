@@ -514,6 +514,42 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
   return fut;
 }
 
+std::future<int32_t> GraphBrpcClient::load_graph_split_config(
+    uint32_t table_id, std::string path) {
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      server_size, [&, server_size = this->server_size ](void *done) {
+        int ret = 0;
+        auto *closure = (DownpourBrpcClosure *)done;
+        size_t fail_num = 0;
+        for (size_t request_idx = 0; request_idx < server_size; ++request_idx) {
+          if (closure->check_response(request_idx,
+                                      PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG) != 0) {
+            ++fail_num;
+            break;
+          }
+        }
+        ret = fail_num == 0 ? 0 : -1;
+        closure->set_promise_value(ret);
+      });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  for (size_t i = 0; i < server_size; i++) {
+    int server_index = i;
+    closure->request(server_index)
+        ->set_cmd_id(PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG);
+    closure->request(server_index)->set_table_id(table_id);
+    closure->request(server_index)->set_client_id(_client_id);
+    closure->request(server_index)->add_params(path);
+    GraphPsService_Stub rpc_stub =
+        getServiceStub(get_cmd_channel(server_index));
+    closure->cntl(server_index)->set_log_id(butil::gettimeofday_ms());
+    rpc_stub.service(closure->cntl(server_index),
+                     closure->request(server_index),
+                     closure->response(server_index), closure);
+  }
+  return fut;
+}
 std::future<int32_t> GraphBrpcClient::use_neighbors_sample_cache(
     uint32_t table_id, size_t total_size_limit, size_t ttl) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(

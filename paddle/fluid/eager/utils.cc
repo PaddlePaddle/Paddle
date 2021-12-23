@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/tensor_wrapper.h"
 
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/common/layout.h"
@@ -47,12 +48,20 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
 }
 
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
-    std::vector<egr::EagerTensor>* targets) {
+    const std::vector<egr::EagerTensor>& targets) {
   std::vector<AutogradMeta*> metas;
-  for (const egr::EagerTensor& t : *targets) {
+  for (const egr::EagerTensor& t : targets) {
     metas.push_back(unsafe_autograd_meta(t));
   }
   return metas;
+}
+
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    const egr::EagerTensor& target) {
+  auto* p_autograd_meta = target.get_autograd_meta();
+  if (!p_autograd_meta) return nullptr;
+
+  return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
@@ -126,6 +135,30 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
   return res;
 }
 
+static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
+    egr::EagerTensor* tensor) {
+  if (tensor->initialized() || tensor->Var().IsInitialized()) {
+    tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
+  }
+  return std::make_shared<EagerTensor>(*tensor);
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    egr::EagerTensor* tensor) {
+  return {TrySyncToVar(tensor)};
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    std::vector<egr::EagerTensor>* tensors) {
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors->size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(TrySyncToVar(&(*tensors)[i]));
+  }
+  return res;
+}
+
 /* ---- VarBase -> Tensor ---- */
 std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToTensors(
     const egr::EagerTensor& tensor) {
@@ -186,6 +219,21 @@ egr::EagerTensor EagerUtils::GetOutput(
                      "this error may indicate output is nullptr",
                      out->name()));
   return EagerTensor((*(out.get())));
+}
+
+EagerTensor EagerUtils::RecoverTensorWrapper(
+    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
+  return tw->recover(grad_node);
+}
+
+std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
+    std::vector<TensorWrapper>* tw,
+    const std::shared_ptr<GradNodeBase>& grad_node) {
+  std::vector<EagerTensor> ret;
+  for (auto& t : *tw) {
+    ret.emplace_back(t.recover(grad_node));
+  }
+  return ret;
 }
 
 }  // namespace egr

@@ -497,6 +497,41 @@ class TestVarBase(unittest.TestCase):
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(isinstance(str(var), str))
 
+    def test_element_size(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(1, dtype='bool')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='float16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.to_tensor(1, dtype='float32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.to_tensor(1, dtype='float64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='int8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='int16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.to_tensor(1, dtype='int32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.to_tensor(1, dtype='int64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='uint8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='complex64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='complex128')
+            self.assertEqual(x.element_size(), 16)
+
     def test_backward(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
@@ -1279,13 +1314,19 @@ class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
 
 
 class TestVarBaseNumel(unittest.TestCase):
-    def test_numel(self):
+    def test_numel_normal(self):
         paddle.disable_static()
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
         x_actual_numel = x._numel()
         x_expected_numel = np.product((3, 8, 8))
         self.assertEqual(x_actual_numel, x_expected_numel)
+
+    def test_numel_without_holder(self):
+        paddle.disable_static()
+        x_without_holder = core.VarBase()
+        x_actual_numel = x_without_holder._numel()
+        self.assertEqual(x_actual_numel, 0)
 
 
 class TestVarBaseCopyGradientFrom(unittest.TestCase):

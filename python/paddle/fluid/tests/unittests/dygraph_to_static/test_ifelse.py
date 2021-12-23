@@ -365,5 +365,60 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
         self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
 
 
+class TestDy2StIfElseRetInt1(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int1
+        self.out = self.get_dy2stat_out()
+
+    def get_dy2stat_out(self):
+        ProgramTranslator().enable(True)
+        static_func = paddle.jit.to_static(self.dyfunc)
+        out = static_func(self.x)
+        ProgramTranslator().enable(False)
+        return out
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out[0], paddle.Tensor)
+        self.assertIsInstance(self.out[1], int)
+
+
+class TestDy2StIfElseRetInt2(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int2
+        self.out = self.get_dy2stat_out()
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out[0], paddle.Tensor)
+        self.assertIsInstance(self.out[1], paddle.Tensor)
+
+
+class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int3
+        self.out = self.get_dy2stat_out()
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out, paddle.Tensor)
+
+
+class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int4
+
+    def test_ast_to_func(self):
+        with self.assertRaises(TypeError):
+            ProgramTranslator().enable(True)
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
+
+    def __del__(self):
+        ProgramTranslator().enable(False)
+        super(TestDy2StIfElseRetInt4, self).__del__()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -388,10 +388,12 @@ def fused_multi_head_attention(x,
         if pre_ln_bias:
             inputs['LnBias'] = [pre_ln_bias]
         inputs['QKVW'] = [qkv_weight]
-        inputs['QKVBias'] = [qkv_bias]
+        if qkv_bias is not None:
+            inputs['QKVBias'] = [qkv_bias]
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = [linear_weight]
-        inputs['OutLinearBias'] = [linear_bias]
+        if linear_bias is not None:
+            inputs['OutLinearBias'] = [linear_bias]
         if ln_scale:
             inputs['Ln2Scale'] = [ln_scale]
         if ln_bias:

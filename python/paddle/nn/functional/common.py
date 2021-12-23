@@ -940,6 +940,8 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
+            if not in_dygraph_mode():
+                input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
@@ -949,8 +951,12 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            for i in drop_axes:
-                mask_shape[i] = input_shape[i]
+            if not in_dygraph_mode():
+                for i in drop_axes:
+                    mask_shape[i] = input_shape_tensor[i]
+            else:
+                for i in drop_axes:
+                    mask_shape[i] = input_shape[i]
 
             #get mask
             random_tensor = paddle.uniform(
@@ -1757,7 +1763,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         seed = default_main_program().random_seed
 
     if in_dygraph_mode():
-        remapped_label, sampled_class_center = core.ops.class_center_sample(
+        remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0)
