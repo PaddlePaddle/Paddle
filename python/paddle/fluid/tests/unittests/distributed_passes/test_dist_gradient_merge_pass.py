@@ -122,12 +122,14 @@ class TestGradientMergePass(DistPassTestBase):
 
     def test_result(self):
         no_pass_rets = self._distributed_launch(
+            model=None,
             apply_pass=False,
             gpus=None,
             gradient_merge=False,
             batch_size=32,
             max_step=2)
         pass_rets = self._distributed_launch(
+            model=None,
             apply_pass=True,
             gpus=None,
             gradient_merge=True,
