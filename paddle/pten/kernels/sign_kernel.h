@@ -14,28 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
 
-template <typename T>
-void Mean(const CPUContext& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out);
-
-template <typename T>
-void Sum(const CPUContext& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out);
+template <typename T, typename ContextT>
+void Sign(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 }  // namespace pten

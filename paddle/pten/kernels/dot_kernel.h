@@ -14,26 +14,14 @@
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/linalg.h"
-#include "paddle/pten/kernels/dot_kernel.h"
-#include "paddle/pten/kernels/gpu/linalg.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
 template <typename T, typename ContextT>
-DenseTensor Dot(const ContextT& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& y) {
-  auto out_meta = DotInferMeta(x.meta(), y.meta());
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  Dot<T, ContextT>(dev_ctx, x, y, &dense_out);
-  return dense_out;
-}
+void Dot(const ContextT& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& y,
+         DenseTensor* out);
 
 }  // namespace pten

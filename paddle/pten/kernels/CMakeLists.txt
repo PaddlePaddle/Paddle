@@ -28,7 +28,7 @@ endif()
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
 set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
 
 # auto build kernel targets by cmake
 register_kernels(EXCLUDES flatten_kernel DEPS ${COMMON_KERNEL_DEPS})

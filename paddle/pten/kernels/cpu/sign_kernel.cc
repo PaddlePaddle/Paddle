@@ -12,30 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/kernels/sign_kernel.h"
+#include "paddle/pten/kernels/impl/sign_kernel_impl.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-namespace pten {
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
 
-template <typename T>
-void Mean(const CPUContext& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out);
-
-template <typename T>
-void Sum(const CPUContext& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out);
-
-}  // namespace pten
+PT_REGISTER_CTX_KERNEL(sign, CPU, ALL_LAYOUT, pten::Sign, float, double) {}
