@@ -488,6 +488,26 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
 #endif
 }
 
+void CUDAContext::SetStream(gpuStream_t stream) {
+  if (stream_->raw_stream() != stream) {
+    CUDADeviceGuard guard(place_.device);
+    DestoryCuDNNContext();
+    DestoryCuBlasContext();
+#ifndef PADDLE_WITH_HIP
+    DestoryCuSolverContext();
+#endif
+
+    stream_->SetStream(stream);
+
+    InitEigenContext();
+    InitCuBlasContext();
+    InitCuDNNContext();
+#ifndef PADDLE_WITH_HIP
+    InitCuSolverContext();
+#endif
+  }
+}
+
 CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();

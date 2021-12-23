@@ -440,9 +440,7 @@ class PassAutoScanTest(AutoScanTest):
 
                 # baseline: no ir_optim run
                 base_config = self.create_inference_config(
-                    ir_optim=False,
-                    use_gpu=pred_config.use_gpu(),
-                    use_mkldnn=pred_config.mkldnn_enabled(), )
+                    ir_optim=False, use_gpu=pred_config.use_gpu())
                 try:
                     # baseline
                     base_result = self.run_test_config(
