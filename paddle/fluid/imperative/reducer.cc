@@ -48,9 +48,15 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
+#ifdef PADDLE_WITH_HIP
+    framework::VisitDataTypeForHIP(
+        dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
+                    tensor, nranks, context));
+#else
     framework::VisitDataType(dtype_,
                              DivNRanksForAllReduce<platform::CPUDeviceContext>(
                                  tensor, nranks, context));
+#endif
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL

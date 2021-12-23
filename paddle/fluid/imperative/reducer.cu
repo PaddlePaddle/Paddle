@@ -20,9 +20,15 @@ namespace imperative {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void Group::DivNRanks(framework::Tensor *tensor, int64_t nranks,
                       const platform::DeviceContext &context) {
+#ifdef PADDLE_WITH_HIP
+  framework::VisitDataTypeForHIP(
+      dtype_, DivNRanksForAllReduce<platform::CUDADeviceContext>(tensor, nranks,
+                                                                 context));
+#else
   framework::VisitDataType(
       dtype_, DivNRanksForAllReduce<platform::CUDADeviceContext>(tensor, nranks,
                                                                  context));
+#endif
 }
 #endif
 
