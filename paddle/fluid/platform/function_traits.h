@@ -40,7 +40,6 @@ struct FunctionTraits<ReturnType (ClassType::*)(Args...)>
 // An implementation for common function.
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...)> {
-  using OutType = ReturnType;
   static const size_t arity = sizeof...(Args);
   static const bool has_pointer_args =
       (arity == 1) &&

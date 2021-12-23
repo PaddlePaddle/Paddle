@@ -24,6 +24,9 @@ namespace pten {
 namespace kps = paddle::operators::kernel_primitives;
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 
+template <class T>
+using ScalarType = typename T::Type;
+
 template <typename InT,
           typename OutT,
           int VecSize,
