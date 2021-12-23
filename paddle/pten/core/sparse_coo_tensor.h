@@ -39,8 +39,8 @@ class SparseCooTensor : public TensorBase,
                   const DDim& dims);
   virtual ~SparseCooTensor() = default;
 
-  const DenseTensor& non_zero_indices() { return non_zero_indices_; }
-  const DenseTensor& non_zero_elements() { return non_zero_elements_; }
+  const DenseTensor& non_zero_indices() const { return non_zero_indices_; }
+  const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   int64_t sparse_dim() { return sparse_dim_; }
   int64_t dense_dim() { return dense_dim_; }

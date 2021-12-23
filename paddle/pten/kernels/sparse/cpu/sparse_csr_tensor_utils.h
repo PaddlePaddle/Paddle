@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/sparse_coo_tensor.h"
 #include "paddle/pten/core/sparse_csr_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -32,4 +33,9 @@ template <typename T>
 void SparseCsrToDense(const CPUContext& dev_ctx,
                       const SparseCsrTensor& src,
                       DenseTensor* dst);
+
+template <typename T>
+void SparseCooToCsr(const CPUContext& dev_ctx,
+                    const SparseCooTensor& src,
+                    SparseCsrTensor* dst);
 }  // namespace pten

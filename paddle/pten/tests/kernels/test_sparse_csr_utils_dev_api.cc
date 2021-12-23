@@ -263,5 +263,59 @@ TEST(DEV_API, to_dense_cuda) {
   }
 }
 
+TEST(DEV_API, sparse_coo_to_csr_cpu) {
+  // 1. create tensor
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  pten::DenseTensor dense_x(alloc,
+                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                                  framework::make_ddim({3, 3}),
+                                                  pten::DataLayout::NCHW));
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> non_zero_indices = {0, 1, 1, 2, 1, 0, 2, 0};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+  const int64_t non_zero_num = 4;
+
+  framework::DDim dense_dims = framework::make_ddim({3, 3});
+  pten::DenseTensorMeta indices_meta(pten::DataType::INT64,
+                                     framework::make_ddim({2, non_zero_num}),
+                                     pten::DataLayout::NCHW);
+  pten::DenseTensorMeta values_meta(pten::DataType::FLOAT32,
+                                    framework::make_ddim({non_zero_num}),
+                                    pten::DataLayout::NCHW);
+
+  pten::DenseTensor indices(alloc, indices_meta);
+  pten::DenseTensor values(alloc, values_meta);
+  memcpy(indices.mutable_data<int64_t>(),
+         non_zero_indices.data(),
+         non_zero_indices.size() * sizeof(int64_t));
+  memcpy(values.mutable_data<float>(),
+         non_zero_data.data(),
+         non_zero_data.size() * sizeof(float));
+  pten::SparseCooTensor coo(indices, values, dense_dims);
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  // 2. test API
+  auto sparse_out = pten::SparseCooToCsr<float>(
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), coo);
+  int64_t actual_non_zero_num = sparse_out.nnz();
+  ASSERT_EQ(actual_non_zero_num, non_zero_num);
+
+  const auto& crows = sparse_out.non_zero_crows();
+  const auto& cols = sparse_out.non_zero_cols();
+  const auto& non_zero_elements = sparse_out.non_zero_elements();
+  for (int64_t i = 0; i < non_zero_num; i++) {
+    ASSERT_EQ(non_zero_elements.data<float>()[i], non_zero_data[i]);
+    ASSERT_EQ(cols.data<int64_t>()[i], cols_data[i]);
+  }
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(crows.data<int64_t>()[i], crows_data[i]);
+  }
+}
+
 }  // namespace tests
 }  // namespace pten
