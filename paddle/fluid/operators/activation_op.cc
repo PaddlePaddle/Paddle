@@ -836,7 +836,6 @@ It is recommended to use the defaults for this activation.
   }
 };
 
-
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);

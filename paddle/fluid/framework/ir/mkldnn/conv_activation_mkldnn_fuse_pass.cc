@@ -237,12 +237,6 @@ Conv2DMishFusePass::Conv2DMishFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()
-      .End();
-      .AddAttr("beta")
-      .IsType<float>()
       .End();
 }
 Conv2DHardSigmoidFusePass::Conv2DHardSigmoidFusePass() {
