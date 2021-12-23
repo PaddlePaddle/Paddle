@@ -22,6 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #endif
 
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
+
 namespace paddle {
 namespace memory {
 
@@ -630,6 +634,92 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
 }
 
 #endif
+
+#ifdef PADDLE_WITH_MLU
+template <>
+void Copy<platform::CPUPlace, platform::MLUPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::MLUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  mluStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetMLUDeviceId(src_place.device);
+  if (stream) {
+    VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place << " by mlu stream(" << stream << ")";
+    platform::RecordEvent record_event("MLUMemcpyD2HAsync:MLU->CPU");
+    platform::MLUMemcpyD2HAsync(dst, src, num, stream);
+  } else {
+    VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place;
+    platform::RecordEvent record_event("MLUMemcpyD2HSync:MLU->CPU");
+    platform::MLUMemcpyD2HSync(dst, src, num);
+  }
+}
+
+template <>
+void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  mluStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetMLUDeviceId(dst_place.device);
+  if (stream) {
+    VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place << " by mlu stream(" << stream << ")";
+    platform::RecordEvent record_event("MLUMemcpyH2DAsync:CPU->MLU");
+    platform::MLUMemcpyH2DAsync(dst, src, num, stream);
+  } else {
+    VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+            << " to " << dst_place;
+    platform::RecordEvent record_event("MLUMemcpyH2DSync:CPU->MLU");
+    platform::MLUMemcpyH2DSync(dst, src, num);
+  }
+}
+
+template <>
+void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
+                                                  void* dst,
+                                                  platform::MLUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  mluStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  if (dst_place == src_place) {
+    platform::SetMLUDeviceId(dst_place.device);
+    if (stream) {
+      VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place << " by mlu stream(" << stream << ")";
+      platform::RecordEvent record_event(
+          "MLUMemcpyD2DAsync(same_mlu):MLU->MLU");
+      platform::MLUMemcpyD2DAsync(dst, src, num, stream);
+    } else {
+      VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place;
+      platform::RecordEvent record_event("MLUMemcpyD2DSync(same_mlu):MLU->MLU");
+      platform::MLUMemcpyD2DSync(dst, src, num);
+    }
+  } else {
+    if (stream) {
+      VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place << " by mlu stream(" << stream << ")";
+      platform::RecordEvent record_event("MLUMemcpyPeerAsync:MLU->MLU");
+      platform::MLUMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
+                                   num, stream);
+    } else {
+      VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
+              << " to " << dst_place;
+      platform::RecordEvent record_event("MLUMemcpyPeerSync:MLU->MLU");
+      platform::MLUMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
+                                  num);
+    }
+  }
+}
+
+#endif  // PADDLE_WITH_MLU
 
 }  // namespace memory
 }  // namespace paddle
