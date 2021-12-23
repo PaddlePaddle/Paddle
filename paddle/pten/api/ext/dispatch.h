@@ -161,7 +161,7 @@ namespace paddle {
 
 ///////// Floating and Complex and other type Dispatch Marco ///////////
 
-#define PD_DISPATCH_FLOATING_AND_COMPLEX_AND_1_SPECIFIED_TYPES(            \
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_AND_1_TYPES(                      \
     SPECIFIED_TYPE, TYPE, NAME, ...)                                       \
   [&] {                                                                    \
     const auto& __dtype__ = TYPE;                                          \
@@ -192,7 +192,7 @@ namespace paddle {
 
 ///////// Floating and Complex and 2 other type Dispatch Marco ///////////
 
-#define PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_SPECIFIED_TYPES(             \
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(                       \
     SPECIFIED_TYPE1, SPECIFIED_TYPE2, TYPE, NAME, ...)                      \
   [&] {                                                                     \
     const auto& __dtype__ = TYPE;                                           \

@@ -97,7 +97,6 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-
 PT_REGISTER_KERNEL(
     mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool, float16) {}
 PT_REGISTER_KERNEL(add,

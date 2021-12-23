@@ -45,7 +45,7 @@ void Reduce(const GPUContext& dev_ctx,
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_SPECIFIED_TYPES(
+    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(
         pten::DataType::INT32,
         pten::DataType::INT64,
         out_dtype,
