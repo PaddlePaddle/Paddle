@@ -208,8 +208,20 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
+    // TODO(baoachun): need to fix output format error when data_format
+    // is NHWC, releated issue:
+    // https://github.com/PaddlePaddle/Paddle/issues/38126
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    if (data_format != "NHWC") {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    } else {
+      LOG(WARNING) << "Conv2d_transpose op currently does not support input "
+                      "dimension NHWC when using MKLDNN, fall back to CPU "
+                      "implementation.";
+    }
   }
 #endif
 

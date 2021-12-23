@@ -181,13 +181,25 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
       this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-    customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
-            ? kConvMKLDNNINT8
-            : kConvMKLDNNFP32;
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    // TODO(baoachun): need to fix output format error when data_format
+    // is NHWC, releated issue:
+    // https://github.com/PaddlePaddle/Paddle/issues/38126
+    if (data_format != "NHWC") {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+      customized_type_value =
+          (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+           input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
+              ? kConvMKLDNNINT8
+              : kConvMKLDNNFP32;
+    } else {
+      LOG(WARNING) << "Conv2d op currently does not support input dimension "
+                      "NHWC when using MKLDNN, fall back to CPU "
+                      "implementation.";
+    }
   }
 #endif
 
