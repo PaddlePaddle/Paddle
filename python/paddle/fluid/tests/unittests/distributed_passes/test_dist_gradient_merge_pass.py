@@ -124,14 +124,14 @@ class TestGradientMergePass(DistPassTestBase):
         no_pass_rets = self._distributed_launch(
             model=None,
             apply_pass=False,
-            gpus=None,
+            gpus=[0],
             gradient_merge=False,
             batch_size=32,
             max_step=2)
         pass_rets = self._distributed_launch(
             model=None,
             apply_pass=True,
-            gpus=None,
+            gpus=[0],
             gradient_merge=True,
             batch_size=8,
             max_step=8)
@@ -140,7 +140,7 @@ class TestGradientMergePass(DistPassTestBase):
         avg_loss = 0
         pass_avg_ret_list = []
         for i, pass_ret in enumerate(pass_rets[0]):
-            if i % 4 == 3:
+            if (i + 1) % 4 == 0:
                 avg_loss += pass_ret[0]
                 pass_avg_ret_list.append([avg_loss / 4])
                 avg_loss = 0
