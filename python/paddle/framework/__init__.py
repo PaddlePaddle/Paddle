@@ -19,6 +19,7 @@ from .random import seed  # noqa: F401
 from .framework import get_default_dtype  # noqa: F401
 from .framework import set_default_dtype  # noqa: F401
 from .framework import set_grad_enabled  # noqa: F401
+from .framework import is_grad_enabled  # noqa: F401
 
 from ..fluid.param_attr import ParamAttr  # noqa: F401
 from ..fluid.layers.tensor import create_parameter  # noqa: F401

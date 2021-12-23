@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include <cstdint>
 #include <cstdlib>
 
@@ -53,63 +53,6 @@ void AlignedFree(void* mem_ptr) {
     free(*(reinterpret_cast<void**>(mem_ptr) - 1));
   }
 #endif
-}
-
-constexpr EventsWaiter::EventId kEmptyEventId = -1;
-
-EventsWaiter::EventsWaiter()
-    : trigger_event_(kEmptyEventId), waiting_(false), cv_(1) {}
-
-std::shared_ptr<EventsWaiter::EventNotifier> EventsWaiter::RegisterEvent(
-    const std::string& name, EventChecker checker) {
-  names_.emplace_back(name);
-  checkers_.emplace_back(std::move(checker));
-  EventId id = checkers_.size() - 1;
-  auto notifier = std::shared_ptr<EventNotifier>(new EventNotifier(id, this));
-  notifiers_.emplace_back(notifier);
-  return notifier;
-}
-
-std::string EventsWaiter::WaitEvent() {
-  // only one user can wait at any time
-  bool waiting = false;
-  if (!waiting_.compare_exchange_strong(waiting, true,
-                                        std::memory_order_seq_cst,
-                                        std::memory_order_relaxed)) {
-    PADDLE_THROW(
-        platform::errors::ResourceExhausted("Another thread is waiting."));
-  }
-  EventId id = kEmptyEventId;
-  auto w = cv_.GetWaiter(0);
-  cv_.Prewait();
-  int64_t event_num = checkers_.size();
-  for (int64_t i = 0; id == kEmptyEventId && i < event_num; ++i) {
-    if (checkers_[i]()) {
-      id = i;
-    }
-  }
-  if (id != kEmptyEventId) {
-    cv_.CancelWait();
-  } else {
-    cv_.CommitWait(w);
-    id = trigger_event_.load(std::memory_order_relaxed);
-  }
-  trigger_event_.store(kEmptyEventId, std::memory_order_relaxed);
-  waiting_.store(false);
-  return names_.at(id);
-}
-
-void EventsWaiter::SetTriggerEvent(const EventId& id) {
-  trigger_event_.store(id, std::memory_order_relaxed);
-  cv_.Notify(true);
-}
-
-std::string EventsWaiter::EventNotifier::GetEventName() {
-  return waiter_.names_.at(id_);
-}
-
-void EventsWaiter::EventNotifier::NotifyEvent() {
-  waiter_.SetTriggerEvent(id_);
 }
 
 }  // namespace framework

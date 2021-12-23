@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(PADDLE_INFRT_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_infrt_install_dir" CACHE STRING
+set(INFRT_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_infrt_install_dir" CACHE STRING
   "A path setting paddle infrt shared and static libraries")
   
 function(copy TARGET)
@@ -52,18 +52,17 @@ add_custom_target(infrt_lib_dist DEPENDS ${infrt_lib_deps})
 # CMakeCache Info
 copy(infrt_lib_dist
         SRCS ${CMAKE_BINARY_DIR}/CMakeCache.txt
-        DSTS ${PADDLE_INFRT_INSTALL_DIR})
+        DSTS ${INFRT_INSTALL_DIR})
 
-set(src_dir "${PADDLE_SOURCE_DIR}/paddle/infrt")
-set(paddle_infrt_lib ${PADDLE_BINARY_DIR}/paddle/infrt/libinfrt.*)
+set(infrt_lib ${INFRT_BINARY_DIR}/libinfrt.*)
 copy(infrt_lib_dist
-    SRCS  ${src_dir}/api/infrt_api.h ${paddle_infrt_lib}
-    DSTS  ${PADDLE_INFRT_INSTALL_DIR}/infrt/include ${PADDLE_INFRT_INSTALL_DIR}/infrt/lib)
+    SRCS  ${INFRT_SOURCE_DIR}/api/infrt_api.h ${infrt_lib}
+    DSTS  ${INFRT_INSTALL_DIR}/infrt/include ${INFRT_INSTALL_DIR}/infrt/lib)
 
 
 copy(infrt_lib_dist
-        SRCS  ${CMAKE_BINARY_DIR}/paddle/infrt/paddle/framework.pb.h
-        DSTS  ${PADDLE_INFRT_INSTALL_DIR}/infrt/include/internal)
+        SRCS  ${INFRT_BINARY_DIR}/paddle/framework.pb.h
+        DSTS  ${INFRT_INSTALL_DIR}/infrt/include/internal)
 
 # paddle fluid version
 function(version version_file)
@@ -74,4 +73,4 @@ function(version version_file)
     file(WRITE ${version_file}  "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n")
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
 endfunction()
-version(${PADDLE_INFRT_INSTALL_DIR}/version.txt)
+version(${INFRT_INSTALL_DIR}/version.txt)
