@@ -135,31 +135,27 @@ class TestGradientMergePass(DistPassTestBase):
             gradient_merge=True,
             batch_size=8,
             max_step=8)
+
         # avg loss for gradient_merge pass
         avg_loss = 0
         pass_avg_ret_list = []
         for i, pass_ret in enumerate(pass_rets[0]):
             if i % 4 == 3:
                 avg_loss += pass_ret[0]
-                pass_avg_ret_list.append(avg_loss / 4)
+                pass_avg_ret_list.append([avg_loss / 4])
                 avg_loss = 0
             else:
                 avg_loss += pass_ret[0]
 
-        for no_pass_ret, pass_ret in zip(no_pass_rets[0][0], pass_avg_ret_list):
-            self.assertEqual(len(no_pass_ret), len(pass_ret))
-            for i, (out_var_no_pass,
-                    out_var_pass) in enumerate(zip(no_pass_ret, pass_ret)):
-                print(
-                    f"=======>out_var_no_pass={out_var_no_pass}, out_var_pass={out_var_pass}"
-                )
-                self.assertTrue(
-                    np.allclose(
-                        out_var_no_pass,
-                        out_var_pass,
-                        rtol=self.rtol,
-                        atol=self.atol,
-                        equal_nan=self.equal_nan))
+        for no_pass_ret, pass_ret in zip(no_pass_rets[0], pass_avg_ret_list):
+            print(f"=======>no_pass_ret={no_pass_ret}, pass_ret={pass_ret}")
+            self.assertTrue(
+                np.isclose(
+                    no_pass_ret,
+                    pass_ret,
+                    rtol=self.rtol,
+                    atol=self.atol,
+                    equal_nan=self.equal_nan))
 
     def get_model(self, place, gradient_merge, batch_size, max_step):
         paddle.seed(2021)
