@@ -38,7 +38,9 @@ class HostAllocatorSample : public pten::RawAllocator {
 
 class FancyAllocator : public pten::Allocator {
  public:
-  static void Delete(void* data) { ::operator delete(data); }
+  static void Delete(Allocation* allocation) {
+    ::operator delete(allocation->ptr());
+  }
 
   Allocation Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
