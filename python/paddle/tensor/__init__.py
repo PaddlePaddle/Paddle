@@ -18,6 +18,7 @@ from .attribute import rank  # noqa: F401
 from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
+from .attribute import is_floating_point  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -418,6 +419,7 @@ tensor_method_func  = [ #noqa
            'shape',
            'real',
            'imag',
+           'is_floating_point',
            'digamma',
            'diagonal',
            'trunc',
