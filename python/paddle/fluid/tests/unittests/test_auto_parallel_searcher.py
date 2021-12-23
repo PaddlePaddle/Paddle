@@ -26,7 +26,6 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.utils import SerialProgramInfo
 from paddle.distributed.auto_parallel.planner import PlanSpace, PlanFilter
