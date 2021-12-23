@@ -322,6 +322,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"transpose", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                   pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"top_k_v2", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"unsqueeze2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -343,6 +344,7 @@ XPUOpMap& get_kl2_ops() {
       {"where", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                               pOpKernelType(vartype::INT64, XPUPlace()),
                               pOpKernelType(vartype::FP32, XPUPlace())})},
+
       // AddMore
   };
 
