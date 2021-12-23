@@ -72,6 +72,25 @@ SparseCsrTensor SparseCooToCsr(const ContextT& dev_ctx,
 }
 
 template <typename T, typename ContextT>
+SparseCooTensor SparseCsrToCoo(const ContextT& dev_ctx,
+                               const SparseCsrTensor& x) {
+  DenseTensorMeta indices_meta, values_meta;
+  indices_meta.dtype = DataType::INT64;
+  values_meta.dtype = x.dtype();
+  values_meta.layout = x.layout();
+  pten::DenseTensor indices(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(indices_meta));
+  pten::DenseTensor values(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      std::move(values_meta));
+  SparseCooTensor coo(indices, values, x.dims());
+  SparseCsrToCoo<T>(dev_ctx, x, &coo);
+  return coo;
+}
+template <typename T, typename ContextT>
 DenseTensor SparseCsrToDense(const ContextT& dev_ctx,
                              const SparseCsrTensor& x) {
   auto dense_meta =

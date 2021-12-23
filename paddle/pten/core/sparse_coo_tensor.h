@@ -37,6 +37,9 @@ class SparseCooTensor : public TensorBase,
   SparseCooTensor(DenseTensor&& non_zero_indices,
                   DenseTensor&& non_zero_elements,
                   const DDim& dims);
+  /// \brief SparseCsrTensor shallow copy constructor.
+  SparseCooTensor(const SparseCooTensor& other);
+
   virtual ~SparseCooTensor() = default;
 
   const DenseTensor& non_zero_indices() const { return non_zero_indices_; }

@@ -102,6 +102,34 @@ void SparseCooToCsr(const CPUContext& dev_ctx,
 }
 
 template <typename T>
+void SparseCsrToCoo(const CPUContext& dev_ctx,
+                    const SparseCsrTensor& src,
+                    SparseCooTensor* dst) {
+  const DDim& dense_dim = src.dims();
+  const int64_t non_zero_num = src.nnz();
+  const auto& csr_crows = src.non_zero_crows();
+  const auto& csr_cols = src.non_zero_cols();
+  const auto& csr_values = src.non_zero_elements();
+  const int64_t* csr_crows_data = csr_crows.data<int64_t>();
+  const int64_t* csr_cols_data = csr_cols.data<int64_t>();
+  const T* csr_values_data = csr_values.data<T>();
+
+  dst->Resize(src.dims(), 2, non_zero_num);
+  int64_t* coo_indices = dst->mutable_non_zero_indices();
+  int64_t* coo_rows_data = coo_indices;
+  int64_t* coo_cols_data = coo_indices + non_zero_num;
+  T* coo_values_data = dst->mutable_non_zero_elements<T>();
+
+  for (int i = 0; i < dense_dim[0]; i++) {
+    for (int j = csr_crows_data[i]; j < csr_crows_data[i + 1]; j++) {
+      coo_rows_data[j] = i;
+      coo_cols_data[j] = csr_cols_data[j];
+      coo_values_data[j] = csr_values_data[j];
+    }
+  }
+}
+
+template <typename T>
 void SparseCsrToDense(const CPUContext& dev_ctx,
                       const SparseCsrTensor& src,
                       DenseTensor* dst) {
@@ -135,6 +163,8 @@ PT_REGISTER_KERNEL(
     to_sparse_csr, CPU, ALL_LAYOUT, pten::ToSparseCsr, float, double) {}
 PT_REGISTER_KERNEL(
     sparse_coo_to_csr, CPU, ALL_LAYOUT, pten::SparseCooToCsr, float, double) {}
+PT_REGISTER_KERNEL(
+    sparse_csr_to_coo, CPU, ALL_LAYOUT, pten::SparseCsrToCoo, float, double) {}
 PT_REGISTER_KERNEL(sparse_csr_to_dense,
                    CPU,
                    ALL_LAYOUT,

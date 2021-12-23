@@ -38,4 +38,9 @@ template <typename T>
 void SparseCooToCsr(const CPUContext& dev_ctx,
                     const SparseCooTensor& src,
                     SparseCsrTensor* dst);
+
+template <typename T>
+void SparseCsrToCoo(const CPUContext& dev_ctx,
+                    const SparseCsrTensor& src,
+                    SparseCooTensor* dst);
 }  // namespace pten
