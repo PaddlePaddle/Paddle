@@ -72,11 +72,11 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     const IndexT* segment_ids = segment->data<IndexT>();
 
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
                   hipMemcpyDeviceToHost));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
                    cudaMemcpyDeviceToHost));
 #endif

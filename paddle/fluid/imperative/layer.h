@@ -281,16 +281,6 @@ class VarBase {
   static ThreadSafeNameSet name_set_;
 };
 
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual std::vector<std::shared_ptr<VarBase>> Forward(
-      const std::vector<std::shared_ptr<VarBase>>& inputs) {
-    return {};
-  }
-};
-
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,

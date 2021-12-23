@@ -2,7 +2,7 @@ set(eager_deps pten pten_api hook_utils tensor_utils utils global_utils backward
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
 set(generated_deps dygraph_function dygraph_node)
 
-if(NOT DEFINED ON_INFER)
+if(NOT ON_INFER)
     message("Performing Eager Dygraph Auto Code Generation")
     add_subdirectory(auto_code_generator)
 endif()

@@ -16,12 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -97,12 +92,12 @@ class RNNDescriptors {
     bool is_initialized = dropout_state->IsInitialized();
     if (!is_test_ && !is_initialized) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
@@ -114,19 +109,19 @@ class RNNDescriptors {
 
 // ------------------- cudnn rnn descriptors ---------------------
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
         rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
         miopenRNNlinear,
         is_bidirec_ ? miopenRNNbidirection : miopenRNNunidirection, mode_,
         miopenRNNwithBias, miopenRNNdefault, cudnn_type));
 #elif CUDNN_VERSION >= 6000
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_.desc(), hidden_size_, num_layers_,
         dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, mode_,
         CUDNN_RNN_ALGO_STANDARD, cudnn_type));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
         rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
         CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, mode_,
@@ -135,7 +130,7 @@ class RNNDescriptors {
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
 #endif
@@ -143,10 +138,10 @@ class RNNDescriptors {
     // ------------------- cudnn weights_size ---------------------
     size_t weights_size_;
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
 #endif
     PADDLE_ENFORCE_EQ(
@@ -160,18 +155,18 @@ class RNNDescriptors {
     weight_desc_.descriptor<T>(layout, dim_w);
 // ------------------- cudnn workspace, reserve size ---------------------
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenGetRNNWorkspaceSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNWorkspaceSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
         workspace_size));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenGetRNNTrainingReserveSize(
             handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
             reserve_size));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
         workspace_size));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetRNNTrainingReserveSize(
             handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
             reserve_size));
@@ -557,7 +552,7 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
 // for train
 // This interface is used when the input/output is unpadded.
 #ifdef PADDLE_WITH_HIP
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNForwardTraining(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenRNNForwardTraining(
             handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), x_data,
             rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
             rnn.weight_desc(), w_data, rnn.y_descs(), out_data,
@@ -565,7 +560,7 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
             workspace_data_.data<uint8_t>(), workspace_size, reserve_data,
             reserve_size));
 #else
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
             handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), x_data,
             rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
             rnn.weight_desc(), w_data, rnn.y_descs(), out_data,
@@ -577,15 +572,13 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
         // for train
         // This interface is used when the input/output is padded.
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::cudnnRNNForwardTrainingEx(
-                handle, rnn.rnn_desc(), rnn.x_seq_desc(), x_data,
-                rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
-                rnn.weight_desc(), w_data, rnn.y_seq_desc(), out_data,
-                rnn.last_h_desc(), last_h_data, rnn.last_c_desc(), last_c_data,
-                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-                nullptr, workspace_data_.data<uint8_t>(), workspace_size,
-                reserve_data, reserve_size));
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNForwardTrainingEx(
+            handle, rnn.rnn_desc(), rnn.x_seq_desc(), x_data, rnn.init_h_desc(),
+            init_h_data, rnn.init_c_desc(), init_c_data, rnn.weight_desc(),
+            w_data, rnn.y_seq_desc(), out_data, rnn.last_h_desc(), last_h_data,
+            rnn.last_c_desc(), last_c_data, nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, nullptr, workspace_data_.data<uint8_t>(),
+            workspace_size, reserve_data, reserve_size));
 #else
         PADDLE_THROW(platform::errors::Unavailable(
             "The padded input is supported by "
@@ -606,14 +599,14 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
 // for inference
 // This interface is used when the input/output is unpadded.
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNForwardInference(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenRNNForwardInference(
           handle, rnn->rnn_desc(), seq_length, rnn->x_descs(), x_data,
           rnn->init_h_desc(), init_h_data, rnn->init_c_desc(), init_c_data,
           rnn->weight_desc(), w_data, rnn->y_descs(), out_data,
           rnn->last_h_desc(), last_h_data, rnn->last_c_desc(), last_c_data,
           workspace_data->data<uint8_t>(), workspace_size));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNForwardInference(
           handle, rnn->rnn_desc(), seq_length, rnn->x_descs(), x_data,
           rnn->init_h_desc(), init_h_data, rnn->init_c_desc(), init_c_data,
           rnn->weight_desc(), w_data, rnn->y_descs(), out_data,
@@ -624,7 +617,7 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
       // for inference
       // This interface is used when the input/output is padded.
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInferenceEx(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNForwardInferenceEx(
           handle, rnn->rnn_desc(), rnn->x_seq_desc(), x_data,
           rnn->init_h_desc(), init_h_data, rnn->init_c_desc(), init_c_data,
           rnn->weight_desc(), w_data, rnn->y_seq_desc(), out_data,
@@ -831,7 +824,7 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
     if (!has_seq_length) {
       if (in_grad) {
 #ifdef PADDLE_WITH_HIP
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNBackwardData(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenRNNBackwardData(
             handle, rnn.rnn_desc(), seq_length, rnn.y_descs(), out_data,
             rnn.y_descs(), out_grad_data, rnn.last_h_desc(), last_h_grad_data,
             rnn.last_c_desc(), last_c_grad_data, rnn.weight_desc(), weight_data,
@@ -842,7 +835,7 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
             const_cast<uint8_t *>(reserve_data), reserve_size));
 #else
         // This interface is used when the input/output is unpadded.
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNBackwardData(
             handle, rnn.rnn_desc(), seq_length, rnn.y_descs(), out_data,
             rnn.y_descs(), out_grad_data, rnn.last_h_desc(), last_h_grad_data,
             rnn.last_c_desc(), last_c_grad_data, rnn.weight_desc(), weight_data,
@@ -855,7 +848,7 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
       }
       if (!weight_grad_list.empty()) {
 #ifdef PADDLE_WITH_HIP
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNBackwardWeights(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenRNNBackwardWeights(
             handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), input->data<T>(),
             rnn.init_h_desc(), init_h_data, rnn.y_descs(), out->data<T>(),
             rnn.weight_desc(), weight_grad_data,
@@ -865,7 +858,7 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
         tensor_to_permuted_weight<T>(place, stream, weight_grad,
                                      &weight_grad_list, rnn_mode, is_bidirec);
 #else
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
             handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), input->data<T>(),
             rnn.init_h_desc(), init_h_data, rnn.y_descs(), out->data<T>(),
             workspace_data_.data<uint8_t>(), workspace_size, rnn.weight_desc(),
@@ -878,7 +871,7 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
       // for train
       // This interface is used when the input/output is padded.
       if (in_grad) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardDataEx(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNBackwardDataEx(
             handle, rnn.rnn_desc(), rnn.y_seq_desc(), out_data,
             rnn.y_seq_desc(), out_grad_data, nullptr, nullptr,
             rnn.last_h_desc(), last_h_grad_data, rnn.last_c_desc(),
@@ -891,13 +884,12 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
       }
 
       if (!weight_grad_list.empty()) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::cudnnRNNBackwardWeightsEx(
-                handle, rnn.rnn_desc(), rnn.x_seq_desc(), input->data<T>(),
-                rnn.init_h_desc(), init_h_data, rnn.y_seq_desc(),
-                out->data<T>(), workspace_data_.data<uint8_t>(), workspace_size,
-                rnn.weight_desc(), weight_grad_data,
-                const_cast<uint8_t *>(reserve_data), reserve_size));
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnRNNBackwardWeightsEx(
+            handle, rnn.rnn_desc(), rnn.x_seq_desc(), input->data<T>(),
+            rnn.init_h_desc(), init_h_data, rnn.y_seq_desc(), out->data<T>(),
+            workspace_data_.data<uint8_t>(), workspace_size, rnn.weight_desc(),
+            weight_grad_data, const_cast<uint8_t *>(reserve_data),
+            reserve_size));
       }
 #else
       PADDLE_THROW(platform::errors::Unavailable(

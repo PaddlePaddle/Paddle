@@ -1286,9 +1286,11 @@ class TranslatedLayer(layers.Layer):
 
     def train(self):
         self._is_test = False
+        self.training = True
 
     def eval(self):
         self._is_test = True
+        self.training = False
 
     def program(self, method_name='forward'):
         """

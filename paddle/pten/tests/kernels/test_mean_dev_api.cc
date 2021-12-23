@@ -45,9 +45,14 @@ TEST(DEV_API, mean) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  std::vector<int64_t> dims = {0, 1};
   // 2. test API
   auto out = pten::Mean<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
+      dense_x,
+      dims,
+      false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);
