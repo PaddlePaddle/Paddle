@@ -41,46 +41,28 @@ void ToSparseCsr(const CUDAContext& dev_ctx,
       std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
   auto nnz_dims = paddle::framework::make_ddim({src_dims[0] + 1});
   DenseTensorMeta nnz_meta(DataType::INT32, nnz_dims, DataLayout::NCHW);
-  std::unique_ptr<DenseTensor> nnz_ptr(new DenseTensor(allocator, nnz_meta));
-  std::unique_ptr<DenseTensor> cpu_nnz_ptr(
-      new DenseTensor(cpu_alloc, nnz_meta));
+  DenseTensor nnz_tensor(allocator, nnz_meta);
+  DenseTensor cpu_nnz_tensor(cpu_alloc, nnz_meta);
 
-  int* nnz = nnz_ptr->mutable_data<int32_t>();
+  int* nnz = nnz_tensor.mutable_data<int32_t>();
   get_non_zero_num<T>(dev_ctx, src, 2, nnz, nnz + 1);
-  pten::Copy(dev_ctx, *nnz_ptr, true, cpu_nnz_ptr.get());
-  const int64_t non_zero_num = cpu_nnz_ptr->data<int>()[0];
+  pten::Copy(dev_ctx, nnz_tensor, true, &cpu_nnz_tensor);
+  const int64_t non_zero_num = cpu_nnz_tensor.data<int>()[0];
 
-  auto non_zero_dims = paddle::framework::make_ddim({non_zero_num});
-  auto crows_dims = paddle::framework::make_ddim({src_dims[0] + 1});
-  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
-  std::unique_ptr<DenseTensor> crows_ptr(
-      new DenseTensor(allocator, crows_meta));
-  DenseTensorMeta cols_meta(DataType::INT64, non_zero_dims, DataLayout::NCHW);
-  std::unique_ptr<DenseTensor> cols_ptr(new DenseTensor(allocator, cols_meta));
-  DenseTensorMeta values_meta(src.dtype(), non_zero_dims, src.layout());
-  std::unique_ptr<DenseTensor> values_ptr(
-      new DenseTensor(allocator, values_meta));
+  dst->Resize(src.meta(), non_zero_num);
 
-  int64_t* crows_data = crows_ptr->mutable_data<int64_t>();
-  int64_t* cols_data = cols_ptr->mutable_data<int64_t>();
-  T* values_data = values_ptr->mutable_data<T>();
-
+  int64_t* crows_data = dst->mutable_non_zero_crows();
+  int64_t* cols_data = dst->mutable_non_zero_cols();
+  T* values_data = dst->mutable_non_zero_elements<T>();
   auto sparse =
       paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
                                          T>(dev_ctx);
-#if defined(PADDLE_WITH_CUDA)
   sparse.DenseToSparseCsr(static_cast<int>(src_dims[0]),
                           static_cast<int>(src_dims[1]),
                           src_data,
                           crows_data,
                           cols_data,
                           values_data);
-#endif
-
-  dst->SetMemberTensor(std::move(crows_ptr),
-                       std::move(cols_ptr),
-                       std::move(values_ptr),
-                       src_dims);
 }
 
 }  // namespace pten

@@ -135,7 +135,7 @@ TEST(DEV_API, to_sparse_csr_cuda) {
     ASSERT_EQ(non_zero_elements.data<float>()[i], non_zero_data[i]);
     ASSERT_EQ(cols.data<int64_t>()[i], cols_data[i]);
   }
-  for (int i = 0; i < 4; i++) {
+  for (uint64_t i = 0; i < crows_data.size(); i++) {
     ASSERT_EQ(crows.data<int64_t>()[i], crows_data[i]);
   }
 }

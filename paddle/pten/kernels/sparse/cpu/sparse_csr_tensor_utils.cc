@@ -33,23 +33,11 @@ void ToSparseCsr(const CPUContext& dev_ctx,
   const auto& src_dims = src.dims();
 
   int64_t non_zero_num = get_non_zero_num<T>(src, 2);
+  dst->Resize(src.meta(), non_zero_num);
 
-  auto non_zero_dims = paddle::framework::make_ddim({non_zero_num});
-  auto crows_dims = paddle::framework::make_ddim({src_dims[0] + 1});
-  const auto allocator =
-      std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
-  DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
-  std::unique_ptr<DenseTensor> crows_ptr(
-      new DenseTensor(allocator, crows_meta));
-  DenseTensorMeta cols_meta(DataType::INT64, non_zero_dims, DataLayout::NCHW);
-  std::unique_ptr<DenseTensor> cols_ptr(new DenseTensor(allocator, cols_meta));
-  DenseTensorMeta values_meta(src.dtype(), non_zero_dims, src.layout());
-  std::unique_ptr<DenseTensor> values_ptr(
-      new DenseTensor(allocator, values_meta));
-
-  int64_t* crows_data = crows_ptr->mutable_data<int64_t>();
-  int64_t* cols_data = cols_ptr->mutable_data<int64_t>();
-  T* values_data = values_ptr->mutable_data<T>();
+  int64_t* crows_data = dst->mutable_non_zero_crows();
+  int64_t* cols_data = dst->mutable_non_zero_cols();
+  T* values_data = dst->mutable_non_zero_elements<T>();
 
   int non_zero_count = 0;
   for (int i = 0; i < src_dims[0]; i++) {
@@ -64,15 +52,9 @@ void ToSparseCsr(const CPUContext& dev_ctx,
     }
   }
   crows_data[src_dims[0]] = non_zero_count;
-  dst->SetMemberTensor(std::move(crows_ptr),
-                       std::move(cols_ptr),
-                       std::move(values_ptr),
-                       src_dims);
 }
 
 }  // namespace pten
-
-// PT_REGISTER_MODULE(SparseCsrTensorUtilsCPU);
 
 PT_REGISTER_KERNEL(
     to_sparse_csr, CPU, ALL_LAYOUT, pten::ToSparseCsr, float, double) {}

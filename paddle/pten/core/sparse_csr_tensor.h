@@ -39,14 +39,19 @@ class SparseCsrTensor : public TensorBase,
   /// the default constructor is not practical.
   SparseCsrTensor() = default;
 
+  /// \brief Construct a sparse csr tensor and allocate space.
+  /// \param a The allocator used to allocate space.
+  /// \param meta The meta data of origin dense tensor.
+  SparseCsrTensor(const std::shared_ptr<Allocator>& a,
+                  const DenseTensorMeta& meta);
+
   /// \brief Because sparse csr tensor is a resource handle, we provide a
   /// default
   /// move constructor to support move semantics.
   SparseCsrTensor(SparseCsrTensor&& other) = default;
 
-  /// \brief We do not recommend deep copy of sparse csr tensor because of its
-  /// efficiency and complexity across devices. The operation is disabled here.
-  SparseCsrTensor(const SparseCsrTensor& other) = delete;
+  /// \brief SparseCsrTensor shallow copy constructor.
+  SparseCsrTensor(const SparseCsrTensor& other);
 
   /// \brief Set the member tensor of the sparse csr tensor.
   /// \param non_zero_crows The compresessed row index of non zero elements in
@@ -55,9 +60,13 @@ class SparseCsrTensor : public TensorBase,
   /// dense tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
-  SparseCsrTensor(std::unique_ptr<DenseTensor> non_zero_crows,
-                  std::unique_ptr<DenseTensor> non_zero_cols,
-                  std::unique_ptr<DenseTensor> non_zero_elements,
+  SparseCsrTensor(const DenseTensor& non_zero_crows,
+                  const DenseTensor& non_zero_cols,
+                  const DenseTensor& non_zero_elements,
+                  const DDim& dims);
+  SparseCsrTensor(DenseTensor&& non_zero_crows,
+                  DenseTensor&& non_zero_cols,
+                  DenseTensor&& non_zero_elements,
                   const DDim& dims);
 
   /// \brief Destroy the tensor object and release exclusive resources.
@@ -72,16 +81,16 @@ class SparseCsrTensor : public TensorBase,
   /// dense tensor.
   /// \return The compressed row index of non zero elemetns in original dense
   /// tensor.
-  const DenseTensor& non_zero_crows() { return *non_zero_crows_; }
+  const DenseTensor& non_zero_crows() { return non_zero_crows_; }
 
   /// \brief Returns the column index of non zero elemetns in original dense
   /// tensor.
   /// \return The column index of non zero elemetns in original dense tensor.
-  const DenseTensor& non_zero_cols() { return *non_zero_cols_; }
+  const DenseTensor& non_zero_cols() { return non_zero_cols_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
-  const DenseTensor& non_zero_elements() { return *non_zero_elements_; }
+  const DenseTensor& non_zero_elements() { return non_zero_elements_; }
 
   /// \brief Return the number of non zero elements
   /// \return The number of non zero elements
@@ -98,7 +107,7 @@ class SparseCsrTensor : public TensorBase,
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
   DataType dtype() const noexcept override {
-    return non_zero_elements_->dtype();
+    return non_zero_elements_.dtype();
   }
 
   /// \brief Returns the data layout of the tensor.
@@ -107,17 +116,15 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
-  const Place& place() const override { return non_zero_elements_->place(); }
+  const Place& place() const override { return non_zero_elements_.place(); }
 
   /// \brief Test whether the non_zero_elements_ metadata is valid.
   /// \return Whether the non_zero_elements_ metadata is valid.
-  bool valid() const noexcept { return non_zero_elements_->valid(); }
+  bool valid() const noexcept { return non_zero_elements_.valid(); }
 
   /// \brief Test whether the non_zero_elements_ storage is allocated.
   /// return Whether the non_zero_elements_ storage is allocated.
-  bool initialized() const override {
-    return non_zero_elements_->initialized();
-  }
+  bool initialized() const override { return non_zero_elements_.initialized(); }
 
   /// \brief Set the member tensor of the sparse csr tensor.
   /// \param non_zero_crows The compresessed row index of non zero elements in
@@ -126,15 +133,27 @@ class SparseCsrTensor : public TensorBase,
   /// dense tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
-  void SetMemberTensor(std::unique_ptr<DenseTensor> non_zero_crows,
-                       std::unique_ptr<DenseTensor> non_zero_cols,
-                       std::unique_ptr<DenseTensor> non_zero_elements,
+  void SetMemberTensor(const DenseTensor& non_zero_crows,
+                       const DenseTensor& non_zero_cols,
+                       const DenseTensor& non_zero_elements,
                        const DDim& dims);
 
+  void Resize(const DenseTensorMeta& dense_meta, const int64_t non_zero_num);
+  int64_t* mutable_non_zero_crows() {
+    return non_zero_crows_.mutable_data<int64_t>();
+  }
+  int64_t* mutable_non_zero_cols() {
+    return non_zero_cols_.mutable_data<int64_t>();
+  }
+  template <typename T>
+  T* mutable_non_zero_elements() {
+    return non_zero_elements_.mutable_data<T>();
+  }
+
  private:
-  std::unique_ptr<DenseTensor> non_zero_crows_;
-  std::unique_ptr<DenseTensor> non_zero_cols_;
-  std::unique_ptr<DenseTensor> non_zero_elements_;
+  DenseTensor non_zero_crows_;
+  DenseTensor non_zero_cols_;
+  DenseTensor non_zero_elements_;
   DDim dims_;
 };
 
