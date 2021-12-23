@@ -34,7 +34,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
@@ -42,8 +41,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/gpu/utils.h"
-#include "paddle/pten/kernels/hybird/math/cast_func.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -819,10 +818,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
       AsyncCopy(x, y);
       y->Resize(out_dims);
     } else {
-      PD_VISIT_ALL_TYPES(y->dtype(), "CastKernelImpl", ([&] {
-                           pten::math::CastKernelImpl<GPUContext, Tx, data_t>(
-                               *dev_ctx, x, y);
-                         }));
+      pten::Cast<Tx>(*dev_ctx, x, y->dtype(), x.dtype(), y);
     }
     return;
   }
