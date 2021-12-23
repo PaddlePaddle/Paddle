@@ -123,11 +123,16 @@ class TestGradientMergePass(DistPassTestBase):
     def test_result(self):
         no_pass_rets = self._distributed_launch(
             apply_pass=False,
+            gpus=None,
             gradient_merge=False,
-            batch_size=4 * 8,
+            batch_size=32,
             max_step=2)
         pass_rets = self._distributed_launch(
-            apply_pass=True, gradient_merge=True, batch_size=8, max_step=2 * 4)
+            apply_pass=True,
+            gpus=None,
+            gradient_merge=True,
+            batch_size=8,
+            max_step=8)
         # avg loss for gradient_merge pass
         avg_loss = 0
         pass_avg_ret_list = []
