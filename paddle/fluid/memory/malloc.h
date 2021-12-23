@@ -56,5 +56,13 @@ void RecordStream(std::shared_ptr<Allocation> allocation,
 
 const gpuStream_t& GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
+
+namespace experimental {
+extern std::shared_ptr<pten::Allocation> AllocShared(
+    const platform::Place& place, size_t size);
+extern pten::Allocation Alloc(const platform::Place& place, size_t size);
+extern pten::Allocation Alloc(const platform::DeviceContext& dev_ctx,
+                              size_t size);
+}  // namespace experimental
 }  // namespace memory
 }  // namespace paddle

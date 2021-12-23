@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/pten_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -34,29 +34,31 @@ namespace memory {
 namespace allocation {
 
 /**
- * CUDADeviceContextAllocation is a wrapper of the underbeneath allocation.
- * CUDADeviceContextAllocation adds a CUDA stream callback for the underbeneath
- * allocation so that CUDADeviceContextAllocation can be used in a CUDA stream
+ * CUDADeviceAllocationContext is a wrapper of the underbeneath allocation.
+ * CUDADeviceAllocationContext adds a CUDA stream callback for the underbeneath
+ * allocation so that CUDADeviceAllocationContext can be used in a CUDA stream
  * which deletes allocation in the callback.
  */
-class CUDADeviceContextAllocation : public Allocation {
+class CUDADeviceAllocationContext : public AllocationContext {
  public:
-  explicit CUDADeviceContextAllocation(AllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->base_ptr(),
-                   allocation->size(), allocation->place()),
-        underlying_allocation_(std::move(allocation)) {}
+  explicit CUDADeviceAllocationContext(pten::Allocation &&underlying_allocation)
+      : AllocationContext(
+            underlying_allocation.CastContextWithoutCheck<AllocationContext>()
+                ->base_ptr()),
+        underlying_allocation_(std::move(underlying_allocation)) {}
 
-  ~CUDADeviceContextAllocation() {
+  ~CUDADeviceAllocationContext() {
     PADDLE_ENFORCE_NOT_NULL(
         dev_ctx_,
         platform::errors::PreconditionNotMet(
             "Device context is not set for CUDADeviceContextAllocation"));
-    auto *p_allocation = underlying_allocation_.release();
+    auto *p_allocation =
+        new pten::Allocation(std::move(underlying_allocation_));
     VLOG(4) << "Adding callback to delete CUDADeviceContextAllocation at "
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
-      AllocationDeleter()(p_allocation);
+      delete p_allocation;
     });
   }
 
@@ -64,8 +66,12 @@ class CUDADeviceContextAllocation : public Allocation {
     dev_ctx_ = dev_ctx;
   }
 
+  const pten::Allocation &underlying_allocation() const {
+    return underlying_allocation_;
+  }
+
  private:
-  AllocationPtr underlying_allocation_;
+  pten::Allocation underlying_allocation_;
   const platform::CUDADeviceContext *dev_ctx_{nullptr};
 };
 
@@ -75,7 +81,7 @@ class CUDADeviceContextAllocation : public Allocation {
  * let the non-default stream be able to allocate GPU memory which will be
  * released by stream callback
  */
-class CUDADeviceContextAllocator : public Allocator {
+class CUDADeviceContextAllocator : public experimental::Allocator {
  public:
   explicit CUDADeviceContextAllocator(platform::CUDAPlace place,
                                       gpuStream_t default_stream)
@@ -102,14 +108,14 @@ class CUDADeviceContextAllocator : public Allocator {
   }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  pten::Allocation AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
         platform::errors::PreconditionNotMet(
             "Default stream is not set for CUDADeviceContextAllocator"));
     platform::CUDADeviceGuard guard(place_.device);
-    auto allocation =
-        new CUDADeviceContextAllocation(memory::Alloc(place_, size));
+    auto *allocation_ctx = new CUDADeviceAllocationContext(
+        memory::experimental::Alloc(place_, size));
 // Wait for the event on stream
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, default_stream_));
@@ -118,10 +124,12 @@ class CUDADeviceContextAllocator : public Allocator {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, default_stream_));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(default_stream_, event_, 0));
 #endif
-    return allocation;
+
+    return pten::Allocation(allocation_ctx->underlying_allocation.ptr(),
+                            allocation_ctx, AllocationContext::Deleter, place_);
   }
 
-  void FreeImpl(Allocation *allocation) override { delete allocation; }
+  void FreeImpl(pten::Allocation *allocation) override { delete allocation; }
 
  private:
   platform::CUDAPlace place_;
@@ -143,16 +151,19 @@ class CUDADeviceContextAllocatorPool {
     return pool;
   }
 
-  AllocationPtr Alloc(const platform::CUDADeviceContext &dev_ctx, size_t size) {
+  pten::Allocation Alloc(const platform::CUDADeviceContext &dev_ctx,
+                         size_t size) {
     auto iter = allocators_.find(
         BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()));
     PADDLE_ENFORCE_NE(
         iter, allocators_.end(),
         platform::errors::NotFound("No allocator found for CUDAPlace."));
     auto &allocator = iter->second;
-    AllocationPtr allocation = allocator->Allocate(size);
-    static_cast<CUDADeviceContextAllocation *>(allocation.get())
-        ->SetCUDADeviceContext(&dev_ctx);
+    pten::Allocation allocation = allocator->Allocate(size);
+    auto *ctx =
+        allocation.CastContext<AllocationContext>(AllocationContext::Deleter);
+    static_cast<CUDADeviceAllocationContext *>(ctx)->SetCUDADeviceContext(
+        &dev_ctx);
     return allocation;
   }
 

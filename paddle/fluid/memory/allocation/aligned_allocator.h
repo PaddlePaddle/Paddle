@@ -17,25 +17,27 @@
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/pten_allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-class AlignedAllocator : public Allocator {
+class AlignedAllocator : public experimental::Allocator {
  public:
-  AlignedAllocator(const std::shared_ptr<Allocator>& underlying_allocator,
-                   size_t alignment);
+  AlignedAllocator(
+      const std::shared_ptr<experimental::Allocator>& underlying_allocator,
+      size_t alignment);
 
   bool IsAllocThreadSafe() const override;
 
  protected:
-  Allocation* AllocateImpl(size_t size) override;
+  pten::Allocation AllocateImpl(size_t size) override;
 
-  void FreeImpl(Allocation* allocation) override;
+  void FreeImpl(pten::Allocation* allocation) override;
 
  private:
-  std::shared_ptr<Allocator> underlying_allocator_;
+  std::shared_ptr<experimental::Allocator> underlying_allocator_;
   size_t alignment_;
 };
 
