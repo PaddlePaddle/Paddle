@@ -146,27 +146,17 @@ inline void swap(Allocation::Context& a, Allocation::Context& b) noexcept {
 /// mainly used for general data structures such as Tensor. The raw
 /// allocator is more universal and efficient.
 class Allocator {
+  using Place = paddle::platform::Place;
+
  public:
   virtual ~Allocator() = default;
   virtual Allocation Allocate(size_t bytes_size) = 0;
-  virtual std::shared_ptr<paddle::memory::Allocation> AllocateShared(
-      size_t bytes_size) {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "AllocateShared has not been overrided by the current Allocator"));
-
-    return nullptr;
-  }
+  virtual const Place& place() = 0;
 };
 
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
   CHECK(a);
   return a->Allocate(n);
-}
-
-inline std::shared_ptr<paddle::memory::Allocation> AllocateShared(
-    const std::shared_ptr<Allocator>& a, size_t n) {
-  CHECK(a);
-  return a->AllocateShared(n);
 }
 
 }  // namespace pten

@@ -81,9 +81,8 @@ class TensorStorage : public Storage {
 
   explicit TensorStorage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
 
-  /* --------- shared_ptr<Allocation> -------- */
   TensorStorage(const std::shared_ptr<Allocator>& a, size_t size)
-      : Storage(AllocateShared(a, size)), alloc_(a) {
+      : Storage(paddle::memory::AllocShared(a->place(), size)), alloc_(a) {
     size_ = data_->size();
   }
 
@@ -95,8 +94,6 @@ class TensorStorage : public Storage {
 
   void Realloc(size_t size) override;
 
-  /* --------- shared_ptr<Allocation> -------- */
-
   ~TensorStorage() = default;
 
   static const char* name() { return "TensorStorage"; }
@@ -104,12 +101,17 @@ class TensorStorage : public Storage {
   size_t size() const noexcept override { return size_; }
 
   const Place& place() const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        data_,
-        paddle::platform::errors::Unavailable(
-            "Unable to visit place as data_ has not been initialized yet."));
-    return data_->place();
+    if (!data_ && !alloc_) {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unable to visit place: either data_ or alloc_ has to be initialized "
+          "first."));
+    }
+    if (data_) {
+      return data_->place();
+    }
+    return alloc_->place();
   }
+
   bool OwnsMemory() const noexcept override { return true; }
   const std::shared_ptr<Allocator>& allocator() const noexcept {
     return alloc_;
