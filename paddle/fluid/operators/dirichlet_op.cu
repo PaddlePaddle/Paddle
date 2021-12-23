@@ -26,6 +26,18 @@
 #include <hiprand_kernel.h>
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+using compatRandStatePhilox4_32_10_t = curandStatePhilox4_32_10_t;
+#define compat_rand_init curand_init
+#define compat_rand_uniform curand_uniform
+#define compat_rand_normal curand_normal
+#elif defined(PADDLE_WITH_HIP)
+using compatRandStatePhilox4_32_10_t = hiprandStatePhilox4_32_10_t;
+#define compat_rand_init hiprand_init
+#define compat_rand_uniform hiprand_uniform
+#define compat_rand_normal hiprand_normal
+#endif
+
 namespace paddle {
 namespace operators {
 template <typename T>
@@ -35,14 +47,14 @@ struct GammaCUDAFunctor {
 
   DEVICE void operator()(int64_t index) {
     // curand initialization
-    curandStatePhilox4_32_10_t state;
-    curand_init(/*seed=*/seed_, /*subsequence=*/index, /*offset=*/offset_,
-                &state);
+    compatRandStatePhilox4_32_10_t state;
+    compat_rand_init(/*seed=*/seed_, /*subsequence=*/index, /*offset=*/offset_,
+                     &state);
 
     // sample
-    auto uniform_lambda = [&state]() { return curand_uniform(&state); };
+    auto uniform_lambda = [&state]() { return compat_rand_uniform(&state); };
     BaseSampler<T, decltype(uniform_lambda)> standard_uniform(uniform_lambda);
-    auto normal_lambda = [&state]() { return curand_normal(&state); };
+    auto normal_lambda = [&state]() { return compat_rand_normal(&state); };
     BaseSampler<T, decltype(normal_lambda)> standard_normal(normal_lambda);
 
     auto sample =
