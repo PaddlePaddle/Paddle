@@ -1018,13 +1018,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
 
 #if IS_TRT_VERSION_LT(7000)
       if (desc.HasAttr("approximate")) {
@@ -1032,6 +1025,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
       }
 #endif
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
 
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
