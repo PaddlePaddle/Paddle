@@ -15,13 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 namespace general {
 
 using DDim = paddle::framework::DDim;
-using CPUContext = paddle::platform::CPUDeviceContext;
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -131,13 +131,12 @@ class MidWiseTransformIterator<T, CPUContext>
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using CUDAContext = paddle::platform::CUDADeviceContext;
 template <typename T>
-class RowwiseTransformIterator<T, CUDAContext>
-    : public thrust::iterator_adaptor<RowwiseTransformIterator<T, CUDAContext>,
+class RowwiseTransformIterator<T, GPUContext>
+    : public thrust::iterator_adaptor<RowwiseTransformIterator<T, GPUContext>,
                                       const T *> {
  public:
-  typedef thrust::iterator_adaptor<RowwiseTransformIterator<T, CUDAContext>,
+  typedef thrust::iterator_adaptor<RowwiseTransformIterator<T, GPUContext>,
                                    const T *>
       super_t;
   HOSTDEVICE RowwiseTransformIterator(const T *x, int n)
@@ -153,11 +152,11 @@ class RowwiseTransformIterator<T, CUDAContext>
 };
 
 template <typename T>
-class MidWiseTransformIterator<T, CUDAContext>
-    : public thrust::iterator_adaptor<MidWiseTransformIterator<T, CUDAContext>,
+class MidWiseTransformIterator<T, GPUContext>
+    : public thrust::iterator_adaptor<MidWiseTransformIterator<T, GPUContext>,
                                       const T *> {
  public:
-  typedef thrust::iterator_adaptor<MidWiseTransformIterator<T, CUDAContext>,
+  typedef thrust::iterator_adaptor<MidWiseTransformIterator<T, GPUContext>,
                                    const T *>
       super_t;
   HOSTDEVICE MidWiseTransformIterator(const T *x, int n, int post)

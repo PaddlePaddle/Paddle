@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/conj_op.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/spectral_helper.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"

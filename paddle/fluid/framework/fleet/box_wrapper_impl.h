@@ -32,7 +32,7 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
 
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf = memory::AllocShared(
+  auto buf = memory::Alloc(
       place, total_length *
                  sizeof(boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>));
   boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>* total_values_gpu =
@@ -55,9 +55,9 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
     for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
       slot_lengths_lod[i] += slot_lengths_lod[i - 1];
     }
-    auto buf_key = memory::AllocShared(place, keys.size() * sizeof(uint64_t*));
+    auto buf_key = memory::Alloc(place, keys.size() * sizeof(uint64_t*));
     auto buf_length =
-        memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
+        memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
     uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(buf_key->ptr());
     int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
 #ifdef PADDLE_WITH_HIP
@@ -118,7 +118,7 @@ void BoxWrapper::PushSparseGradCase(
   all_timer.Start();
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-  auto buf = memory::AllocShared(
+  auto buf = memory::Alloc(
       place,
       total_length *
           sizeof(boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>));

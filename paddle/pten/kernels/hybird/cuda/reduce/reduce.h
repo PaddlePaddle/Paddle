@@ -17,15 +17,12 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
 
 namespace pten {
-
-using CUDAContext = paddle::platform::CUDADeviceContext;
 
 static inline std::vector<int64_t> GetReduceDim(
     const std::vector<int64_t>& dims, int dim_size, bool reduce_all) {
@@ -52,7 +49,7 @@ static inline std::vector<int64_t> GetReduceDim(
 }
 
 template <typename T, template <typename, typename> class ReduceFunctor>
-void Reduce(const CUDAContext& dev_ctx,
+void Reduce(const GPUContext& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
@@ -64,7 +61,7 @@ void Reduce(const CUDAContext& dev_ctx,
 
   gpuStream_t stream = dev_ctx.stream();
 
-  if (out_dtype != pten::DataType::UNDEFINED) {
+  if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
     PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         out_dtype, "TensorReduceFunctorImpl", ([&] {
           pten::detail::TensorReduceFunctorImpl<T, data_t, ReduceFunctor>(
