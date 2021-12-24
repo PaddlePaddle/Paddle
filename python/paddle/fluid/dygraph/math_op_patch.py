@@ -18,6 +18,7 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
+from ..framework import _in_eager_mode
 
 import numpy as np
 import warnings
@@ -332,6 +333,7 @@ def monkey_patch_math_varbase():
     ]
 
     global _already_patch_varbase
+
     if not _already_patch_varbase:
         for method in varbase_methods:
             method_name = method[0]

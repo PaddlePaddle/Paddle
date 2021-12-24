@@ -83,11 +83,19 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
-egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
-                                        const std::string& arg_name,
-                                        PyObject* args, ssize_t arg_idx,
-                                        bool dispensable = false);
+egr::EagerTensor& GetEagerTensorFromArgs(const std::string& op_type,
+                                         const std::string& arg_name,
+                                         PyObject* args, ssize_t arg_idx,
+                                         bool dispensable = false);
 std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
+
+egr::EagerTensor* GetEagerTensorPtrFromArgs(const std::string& op_type,
+                                            const std::string& arg_name,
+                                            PyObject* args, ssize_t arg_idx,
+                                            bool dispensable = false);
+std::vector<egr::EagerTensor*> GetEagerTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
