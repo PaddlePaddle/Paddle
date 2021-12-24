@@ -77,7 +77,7 @@ struct CustomSub {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMean {
-  using Transformer = kps::DivideFunctor<Tx>;
+  using Transformer = kps::DivideFunctor<Tx, Ty>;
 
   inline Ty initial() { return static_cast<Ty>(0.0f); }
 

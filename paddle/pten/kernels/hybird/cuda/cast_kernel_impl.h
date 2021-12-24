@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/aligned_vector.h"
@@ -50,7 +50,7 @@ __global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
 }
 
 template <typename InT, typename OutT>
-void CastCUDAKernelImpl(const CUDAContext& dev_ctx,
+void CastCUDAKernelImpl(const GPUContext& dev_ctx,
                         const DenseTensor& x,
                         DenseTensor* out) {
   auto* in_data = x.data<InT>();
