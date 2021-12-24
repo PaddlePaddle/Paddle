@@ -165,6 +165,11 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         else:
             normal_params_grads = params_grads
 
+        # why to return sum_dtype?
+        # we will call `get_l2_norm_pow` twice and the precisions may be different.
+        # For example, the first dtype is float64 while the second is float32
+        # So we shuold give the first retuned dtype to the second calling to keep a higher precision.
+        # For convenience and simplification, we use sum_dtype directly instead of global_norm_var_normal.dtype
         global_norm_var_normal, sum_dtype \
             = self.get_l2_norm_pow(normal_params_grads)
         global_norm_var_moe = None
@@ -184,6 +189,11 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         elif global_norm_var_moe is None:
             global_norm_var = global_norm_var_normal
         else:
+            if global_norm_var_normal.dtype != global_norm_var_moe.dtype:
+                # compared with normal norm, moe norm is the later one,
+                # so its precision is no lower than normal norm
+                global_norm_var_normal = \
+                    global_norm_var_normal.astype(global_norm_var_moe.dtype)
             global_norm_var = global_norm_var_normal + global_norm_var_moe
 
         params_and_grads = []
