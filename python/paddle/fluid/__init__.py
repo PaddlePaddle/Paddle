@@ -55,7 +55,6 @@ from . import initializer
 from .initializer import set_global_initializer
 from . import layers
 from . import dygraph
-from . import eager
 from . import contrib
 from . import nets
 from . import optimizer
@@ -114,7 +113,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'contrib',
         'data',
         'dygraph',
-        'eager',
         'enable_dygraph',
         'disable_dygraph',
         'enable_imperative',
