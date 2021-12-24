@@ -117,12 +117,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             ) != _current_expected_place()._get_device_id():
         place = _current_expected_place()
 
-    if _in_eager_mode():
-        if dtype is None:
-            dtype = paddle.get_default_dtype()
-        return core.eager.to_tensor(data,
-                                    convert_dtype(dtype), place, stop_gradient)
-
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
@@ -172,12 +166,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    return paddle.Tensor(
-        value=data,
-        place=place,
-        persistable=False,
-        zero_copy=False,
-        stop_gradient=stop_gradient)
+    # TOOD(jiabin): Support kwargs in eager tensor constructor
+    if _in_eager_mode() and isinstance(data, np.ndarray):
+        return core.eager.EagerTensor(data, place, False, False, None,
+                                      stop_gradient)
+    else:
+        return paddle.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=False,
+            stop_gradient=stop_gradient)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
