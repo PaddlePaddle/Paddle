@@ -27,12 +27,8 @@ enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
-using ArrayType =
-    typename std::conditional_t<Num == 1, paddle::framework::Array<T, 1>, T>;
-
-/* Deducing scalar type T(float, int etc.) from type Array<T, NumOuts>.*/
-template <class T>
-using ScalarType = typename T::Type;
+using OutType =
+    typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
 
 template <typename InT,
           typename OutT,
@@ -86,14 +82,14 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
   }
 };
 
-template <typename OutT, int VecSize, int NumOuts, bool IsBoundary>
+template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
-      OutT src[VecSize],
+      paddle::framework::Array<OutT *, NumOuts> outs,
+      OutType<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
-    ScalarType<OutT> dst[NumOuts][VecSize];
+    OutT dst[NumOuts][VecSize];
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
 #pragma unroll
@@ -101,12 +97,23 @@ struct ElementwiseWriteDataCaller {
         dst[j][i] = (src[i])[j];
       }
     }
-
 #pragma unroll
     for (int i = 0; i < NumOuts; ++i) {
-      kps::WriteData<ScalarType<OutT>, VecSize, 1, 1, IsBoundary>(
+      kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
           outs[i] + block_offset, dst[i], num);
     }
+  }
+};
+
+template <typename OutT, int VecSize, bool IsBoundary>
+struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
+  __device__ __forceinline__ void operator()(
+      paddle::framework::Array<OutT *, 1> outs,
+      OutT src[VecSize],
+      int block_offset,
+      int num) {
+    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+        outs[0] + block_offset, src, num);
   }
 };
 
