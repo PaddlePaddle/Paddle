@@ -215,8 +215,6 @@ static PyObject* eager_tensor_zero_grads(EagerTensorObject* self,
   }
 
   if (grad.initialized()) {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
     grad.set_tensor(std::make_shared<paddle::experimental::Tensor>(
         paddle::experimental::zeros_like(*(grad.Tensor().get()))));
   }
