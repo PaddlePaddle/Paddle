@@ -49,10 +49,10 @@ namespace cub = hipcub;
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
+namespace kps = paddle::operators::kernel_primitives;
+
 namespace pten {
 namespace detail {
-
-namespace kps = paddle::operators::kernel_primitives;
 
 namespace details {
 

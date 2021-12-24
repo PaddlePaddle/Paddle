@@ -17,6 +17,9 @@
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/pten/core/dense_tensor.h"
 
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/pten/kernels/hybird/eigen/common.h"
+
 namespace pten {
 
 namespace math {
@@ -28,6 +31,31 @@ struct TransposeNormal {
                   const pten::DenseTensor& in,
                   pten::DenseTensor* out,
                   const std::vector<int64_t>& axis);
+};
+
+template <typename DeviceContext, typename T, int Rank>
+struct Transpose {
+  void operator()(const DeviceContext& dev_ctx,
+                  const DenseTensor& in,
+                  DenseTensor* out,
+                  const std::vector<int>& axis) {
+    Eigen::array<int, Rank> permute;
+    for (int i = 0; i < Rank; i++) {
+      permute[i] = axis[i];
+    }
+    auto eigen_in = pten::EigenTensor<T, Rank>::From(in);
+    auto eigen_out = pten::EigenTensor<T, Rank>::From(*out);
+    auto* dev = dev_ctx.eigen_device();
+    // use 32bit index to speed up computation
+    bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
+    bool is_gpu_place = platform::is_gpu_place(dev_ctx.GetPlace());
+    if (use_32bit_index && is_gpu_place) {
+      To32BitIndex(eigen_out).device(*dev) =
+          To32BitIndex(eigen_in).shuffle(permute);
+    } else {
+      eigen_out.device(*dev) = eigen_in.shuffle(permute);
+    }
+  }
 };
 
 }  // namespace math
