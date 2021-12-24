@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 
-#include "paddle/pten/kernels/cpu/conj_kernel.h"
-#include "paddle/pten/kernels/gpu/conj_kernel.h"
+#include "paddle/pten/kernels/complex_kernel.h"
 
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
@@ -54,7 +53,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dx->numel());
 
-        pten::Conj<T>(ctx, *tensor_y, tensor_dx);
+        pten::Conj<T, DeviceContext>(ctx, *tensor_y, tensor_dx);
 
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
         dx.device(dev) = dx * dout.broadcast(size);
@@ -65,7 +64,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dy->numel());
 
-        pten::Conj<T>(ctx, *tensor_x, tensor_dy);
+        pten::Conj<T, DeviceContext>(ctx, *tensor_x, tensor_dy);
 
         auto dy = EigenVector<T>::Flatten(*tensor_dy);
         dy.device(dev) = dy * dout.broadcast(size);
@@ -79,7 +78,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
 
-        pten::Conj<T>(ctx, *tensor_y, tensor_dx);
+        pten::Conj<T, DeviceContext>(ctx, *tensor_y, tensor_dx);
 
         auto dx = EigenMatrix<T>::From(*tensor_dx);
         dx.device(dev) = dx * dout.broadcast(size);
@@ -91,7 +90,7 @@ struct DotGradFunction<DeviceContext,
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
 
-        pten::Conj<T>(ctx, *tensor_x, tensor_dy);
+        pten::Conj<T, DeviceContext>(ctx, *tensor_x, tensor_dy);
 
         auto dy = EigenMatrix<T>::From(*tensor_dy);
         dy.device(dev) = dy * dout.broadcast(size);
@@ -146,18 +145,17 @@ struct DotGradFunction<DeviceContext,
 #if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == tensor_dout->dims().size()) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
-
       if (tensor_dx) {
-        auto y = EigenVector<T>::Flatten(*tensor_y);
-        auto dx = EigenVector<T>::Flatten(*tensor_dx);
+        auto y = pten::EigenVector<T>::Flatten(*tensor_y);
+        auto dx = pten::EigenVector<T>::Flatten(*tensor_dx);
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dx->numel());
         dx.device(dev) = y * dout.broadcast(size);
       }
 
       if (tensor_dy) {
-        auto x = EigenVector<T>::Flatten(*tensor_x);
-        auto dy = EigenVector<T>::Flatten(*tensor_dy);
+        auto x = pten::EigenVector<T>::Flatten(*tensor_x);
+        auto dy = pten::EigenVector<T>::Flatten(*tensor_dy);
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 1> size(tensor_dy->numel());
         dy.device(dev) = x * dout.broadcast(size);
@@ -167,8 +165,8 @@ struct DotGradFunction<DeviceContext,
 
       if (tensor_dx) {
         tensor_dx->mutable_data<T>();
-        auto y = EigenMatrix<T>::From(*tensor_y);
-        auto dx = EigenMatrix<T>::From(*tensor_dx);
+        auto y = pten::EigenMatrix<T>::From(*tensor_y);
+        auto dx = pten::EigenMatrix<T>::From(*tensor_dx);
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
         dx.device(dev) = y * dout.broadcast(size);
@@ -176,8 +174,8 @@ struct DotGradFunction<DeviceContext,
 
       if (tensor_dy) {
         tensor_dy->mutable_data<T>();
-        auto x = EigenMatrix<T>::From(*tensor_x);
-        auto dy = EigenMatrix<T>::From(*tensor_dy);
+        auto x = pten::EigenMatrix<T>::From(*tensor_x);
+        auto dy = pten::EigenMatrix<T>::From(*tensor_dy);
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
         dy.device(dev) = x * dout.broadcast(size);
@@ -216,6 +214,12 @@ void DotGrad(const ContextT& dev_ctx,
              const DenseTensor& dout,
              DenseTensor* dx,
              DenseTensor* dy) {
+  if (dx) {
+    dx->mutable_data<T>();
+  }
+  if (dy) {
+    dy->mutable_data<T>();
+  }
   DotGradFunction<ContextT, T>()(dev_ctx, &x, &y, &dout, dx, dy);
 }
 
