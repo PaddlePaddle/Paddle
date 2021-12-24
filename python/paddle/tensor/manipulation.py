@@ -2760,7 +2760,7 @@ def take_along_axis(arr, indices, axis):
         and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to take 1d slices along. 
 
-    Returns : 
+    Returns: 
         Tensor: The indexed element, same dtype with arr
     
     Examples:
