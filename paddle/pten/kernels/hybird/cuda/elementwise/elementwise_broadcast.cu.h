@@ -170,11 +170,11 @@ struct DimensionsTransform {
   }
 };
 
-template <typename T, int VecSize, int Rank, bool IsBoundary>
+template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
     T *dst,
     const T *__restrict__ src,
-    int block_offset,
+    uint32_t block_offset,
     const kps::details::BroadcastConfig<Rank> &config,
     int numel,
     int num,
@@ -199,7 +199,7 @@ template <typename InT,
           bool IsBoundary = false>
 __device__ void ElementwiseBroadcastKernelImpl(
     const paddle::framework::Array<const InT *__restrict__, Arity> &ins,
-    paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
+    paddle::framework::Array<OutT *, NumOuts> outs,
     const paddle::framework::Array<bool, Arity> &use_broadcast,
     uint32_t numel,
     const paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
@@ -208,7 +208,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
     int block_offset,
     Functor func) {
   InT args[Arity][VecSize];
-  OutT result[VecSize];
+  OutType<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -224,13 +224,13 @@ __device__ void ElementwiseBroadcastKernelImpl(
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT,
-                             OutT,
+                             OutType<OutT, NumOuts>,
                              VecSize,
                              Functor,
                              Arity,
                              kCallElementwiseAny>()(func, args, result);
 
-  ElementwiseWriteDataCaller<OutT, VecSize, NumOuts, IsBoundary>()(
+  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
       outs, result, block_offset, num);
 }
 
@@ -243,7 +243,7 @@ template <typename InT,
           int Rank>
 __global__ void ElementwiseBroadcastKernel(
     paddle::framework::Array<const InT *__restrict__, Arity> ins,
-    paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
+    paddle::framework::Array<OutT *, NumOuts> outs,
     paddle::framework::Array<bool, Arity> use_broadcast,
     uint32_t numel,
     paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
@@ -337,10 +337,10 @@ void LaunchKernel(const paddle::platform::CUDADeviceContext &ctx,
   paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
   paddle::framework::Array<bool, Arity> use_broadcast;
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs_data;
+  paddle::framework::Array<OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<ScalarType<OutT>>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
   }
 
   for (int i = 0; i < Arity; i++) {
@@ -444,10 +444,6 @@ void LaunchBroadcastElementwiseCudaKernel(
     std::vector<DenseTensor *> *outs,
     int axis,
     Functor func) {
-  /* Packing scalar type(float, int etc.) into Array<OutT, NumOuts> type
-     for supporting multiple-output feature in elementwise system. */
-  using ArrayOutT = ArrayType<OutT, NumOuts>;
-  using ScalarOutT = ScalarType<ArrayOutT>;  // Deducing the scalar type.
   using Traits = paddle::platform::FunctionTraits<Functor>;
   const int kArity =
       Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
@@ -485,13 +481,13 @@ void LaunchBroadcastElementwiseCudaKernel(
               "The shape of each output tensor shall be identical yet, but "
               "%dth output tensor`s shape is not.",
               i));
-      out_vec_size = std::min(paddle::platform::GetVectorizedSize<ScalarOutT>(
-                                  (*outs)[i]->data<ScalarOutT>()),
-                              out_vec_size);
+      out_vec_size = std::min(
+          paddle::platform::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()),
+          out_vec_size);
     }
   } else {
-    out_vec_size = paddle::platform::GetVectorizedSize<ScalarOutT>(
-        (*outs)[0]->data<ScalarOutT>());
+    out_vec_size =
+        paddle::platform::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>());
   }
 
   for (auto *in : ins) {
@@ -505,7 +501,7 @@ void LaunchBroadcastElementwiseCudaKernel(
   switch (vec_size) {
     case 4: {
       LaunchBroadcastKernelForDifferentVecSize<InT,
-                                               ArrayOutT,
+                                               OutT,
                                                Functor,
                                                kArity,
                                                NumOuts,
@@ -514,7 +510,7 @@ void LaunchBroadcastElementwiseCudaKernel(
     }
     case 2: {
       LaunchBroadcastKernelForDifferentVecSize<InT,
-                                               ArrayOutT,
+                                               OutT,
                                                Functor,
                                                kArity,
                                                NumOuts,
@@ -523,7 +519,7 @@ void LaunchBroadcastElementwiseCudaKernel(
     }
     case 1: {
       LaunchBroadcastKernelForDifferentVecSize<InT,
-                                               ArrayOutT,
+                                               OutT,
                                                Functor,
                                                kArity,
                                                NumOuts,
