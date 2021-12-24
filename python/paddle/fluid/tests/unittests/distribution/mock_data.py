@@ -40,13 +40,6 @@ class Exponential(paddle.distribution.ExponentialFamily):
         return -paddle.log(-x)
 
 
-# @paddle.distribution.register_kl(Exponential, Exponential)
-# def _kl_exponential_exponential(p, q):
-#     rate_ratio = q.rate / p.rate
-#     t1 = -rate_ratio.log()
-#     return t1 + rate_ratio - 1
-
-
 class DummyExpFamily(paddle.distribution.ExponentialFamily):
     """dummy class extend from exponential family
     """
@@ -63,3 +56,9 @@ class DummyExpFamily(paddle.distribution.ExponentialFamily):
 
     def _log_normalizer(self, x):
         return -paddle.log(-x)
+
+@paddle.distribution.register_kl(Exponential, Exponential)
+def _kl_exponential_exponential(p, q):
+    rate_ratio = q.rate / p.rate
+    t1 = -rate_ratio.log()
+    return t1 + rate_ratio - 1
