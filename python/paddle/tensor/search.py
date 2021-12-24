@@ -470,6 +470,62 @@ def sort(x, axis=-1, descending=False, name=None):
     return out
 
 
+def mode(x, axis=-1, keepdim=False, name=None):
+    """
+    This OP is used to find values and indices of the modes at the optional axis.
+
+    Args:
+        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is -1.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True,
+            the dimensions will be same as input x and with size one in the axis. Otherwise
+             the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+           import paddle
+           
+           a = np.array([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]],dtype=np.float32)
+           tensor = paddle.to_tensor(a)
+           res = paddle.mode(tensor, 2)
+           print(res)
+           # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+           #   [[2., 3.],
+           #    [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+           #   [[1, 1],
+           #    [1, 0]]))
+           
+    """
+    if in_dygraph_mode():
+        return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
+
+    helper = LayerHelper("mode", **locals())
+    inputs = {"X": [x]}
+    attrs = {}
+    attrs['axis'] = axis
+    attrs['keepdim'] = keepdim
+
+    values = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+
+    helper.append_op(
+        type="mode",
+        inputs=inputs,
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs=attrs)
+    indices.stop_gradient = True
+    return values, indices
+
+
 def where(condition, x, y, name=None):
     r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.

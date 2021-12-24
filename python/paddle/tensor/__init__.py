@@ -233,6 +233,8 @@ from .search import nonzero  # noqa: F401
 from .search import sort  # noqa: F401
 from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
+from .search import mode  # noqa: F401
+
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
@@ -444,6 +446,7 @@ tensor_method_func  = [ #noqa
            'angle',
            'moveaxis',
            'repeat_interleave',
+           "mode",
 ]
 
 #this list used in math_op_patch.py for magic_method bind
