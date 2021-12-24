@@ -31,11 +31,12 @@ _REGISTER_TABLE = {}
 
 
 def kl_divergence(p, q):
-    """Kullback-Leibler divergence between distribution p and q.
+    r"""
+    Kullback-Leibler divergence between distribution p and q.
 
     .. math::
 
-        KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x
+        KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x 
 
     Args:
         p (Distribution): ``Distribution`` object.
@@ -48,6 +49,7 @@ def kl_divergence(p, q):
         NotImplementedError: can't find register function for KL(p||Q).
 
     Examples:
+    
         .. code-block:: python
 
             import paddle

@@ -20,9 +20,8 @@ from .exponential_family import ExponentialFamily
 
 
 class Beta(ExponentialFamily):
-    """Beta distribution parameterized by alpha and beta
-
-    Mathematical details
+    r"""
+    Beta distribution parameterized by alpha and beta
 
     The probability density function (pdf) is
 
@@ -42,41 +41,42 @@ class Beta(ExponentialFamily):
         beta (float|Tensor): beta parameter of beta distribution, positive(>0).
 
     Examples:
-    .. code-block:: python
 
-        import paddle
+        .. code-block:: python
 
-        # scale input
-        beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
-        print(beta.mean)
-        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [0.50000000])
-        print(beta.variance)
-        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [0.12500000])
-        print(beta.entropy())
-        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [0.12500000])
+            import paddle
 
-        # tensor input with broadcast
-        beta = paddle.distribution.Beta(alpha=paddle.to_tensor([0.2, 0.4]), beta=0.6)
-        print(beta.mean)
-        # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [0.25000000, 0.40000001])
-        print(beta.variance)
-        # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [0.10416666, 0.12000000])
-        print(beta.entropy())
-        # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [-1.91923141, -0.38095069])
+            # scale input
+            beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
+            print(beta.mean)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [0.50000000])
+            print(beta.variance)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [0.12500000])
+            print(beta.entropy())
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [0.12500000])
+
+            # tensor input with broadcast
+            beta = paddle.distribution.Beta(alpha=paddle.to_tensor([0.2, 0.4]), beta=0.6)
+            print(beta.mean)
+            # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [0.25000000, 0.40000001])
+            print(beta.variance)
+            # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [0.10416666, 0.12000000])
+            print(beta.entropy())
+            # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [-1.91923141, -0.38095069])
     """
 
     def __init__(self, alpha, beta):
         if isinstance(alpha, numbers.Real):
-            alpha = paddle.to_tensor(alpha)
+            alpha = paddle.full(shape=[1], fill_value=alpha)
 
         if isinstance(beta, numbers.Real):
-            beta = paddle.to_tensor(beta)
+            beta = paddle.full(shape=[1], fill_value=beta)
 
         alpha, beta = paddle.broadcast_tensors([alpha, beta])
 
@@ -137,7 +137,7 @@ class Beta(ExponentialFamily):
         """
         return self._dirichlet.log_prob(paddle.stack([value, 1.0 - value], -1))
 
-    def sample(self, shape=None):
+    def sample(self, shape=()):
         """sample from beta distribution with sample shape.
 
         Args:
@@ -146,7 +146,8 @@ class Beta(ExponentialFamily):
         Returns:
             sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
-        return self._dirichlet.sample(shape).select(-1, 0)
+        shape = shape if isinstance(shape, tuple) else tuple(shape)
+        return paddle.squeeze(self._dirichlet.sample(shape)[..., 0])
 
     def entropy(self):
         """entropy of dirichlet distribution

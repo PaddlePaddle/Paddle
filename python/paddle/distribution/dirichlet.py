@@ -14,17 +14,19 @@
 
 import paddle
 
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
 from .exponential_family import ExponentialFamily
 
 
 class Dirichlet(ExponentialFamily):
-    """Dirichlet distribution with parameter concentration
+    r"""
+    Dirichlet distribution with parameter concentration
 
     The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
     positive, lenght-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
-
-    Mathematical details
 
     The probability density function (pdf) is
 
@@ -36,21 +38,22 @@ class Dirichlet(ExponentialFamily):
 
     Args:
         concentration (Tensor): concentration parameter of dirichlet 
-        distribution
+            distribution
 
     Examples:
-    .. code-block:: python
 
-        import paddle
+        .. code-block:: python
 
-        dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1., 2., 3.]))
+            import paddle
 
-        print(dirichlet.entropy())
-        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [-1.24434423])
-        print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
-        # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-        #        [10.80000114])
+            dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1., 2., 3.]))
+
+            print(dirichlet.entropy())
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [-1.24434423])
+            print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [10.80000114])
 
     """
 
@@ -83,13 +86,14 @@ class Dirichlet(ExponentialFamily):
         return (self.concentration * (concentration0 - self.concentration)) / (
             concentration0.pow(2) * (concentration0 + 1))
 
-    def sample(self, shape=None):
+    def sample(self, shape=()):
         """sample from dirichlet distribution.
 
         Args:
-            shape (Tensor, optional): sample shape. Defaults to None.
+            shape (Tensor, optional): sample shape. Defaults to empty tuple.
         """
-        raise NotImplementedError
+        shape = shape if isinstance(shape, tuple) else tuple(shape)
+        return _dirichlet(self.concentration.expand(self._extend_shape(shape)))
 
     def prob(self, value):
         """Probability density function(pdf) evaluated at value.
@@ -132,3 +136,24 @@ class Dirichlet(ExponentialFamily):
 
     def _log_normalizer(self, x):
         return x.lgamma().sum(-1) - paddle.lgamma(x.sum(-1))
+
+
+def _dirichlet(concentration, name=None):
+    op_type = 'dirichlet'
+
+    check_variable_and_dtype(concentration, 'concentration',
+                             ['float32', 'float64'], op_type)
+
+    if in_dygraph_mode():
+        return paddle._C_ops.dirichlet(concentration)
+
+    else:
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=concentration.dtype)
+        helper.append_op(
+            type=op_type,
+            inputs={"Alpha": concentration},
+            outputs={'Out': out},
+            attrs={})
+        return out

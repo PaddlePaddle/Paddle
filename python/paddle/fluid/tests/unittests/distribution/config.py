@@ -30,13 +30,13 @@ TEST_CASE_NAME = 'suffix'
 RTOL = {
     'float32': 1e-03,
     'complex64': 1e-3,
-    'float64': 1e-6,
-    'complex128': 1e-6
+    'float64': 1e-5,
+    'complex128': 1e-5
 }
 ATOL = {'float32': 0.0, 'complex64': 0, 'float64': 0.0, 'complex128': 0}
 
 
-def xrand(shape=(10, 10, 10), dtype=DEFAULT_DTYPE, min=10.0, max=100.0):
+def xrand(shape=(10, 10, 10), dtype=DEFAULT_DTYPE, min=1.0, max=10.0):
     return ((np.random.rand(*shape).astype(dtype)) * (max - min) + min)
 
 

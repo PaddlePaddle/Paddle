@@ -83,6 +83,22 @@ class TestBeta(unittest.TestCase):
                 rtol=RTOL.get(str(self._paddle_beta.alpha.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_beta.alpha.numpy().dtype)))
 
+    def test_sample_shape(self):
+        cases = [
+            {
+                'input': [],
+                'expect': [] + paddle.squeeze(self._paddle_beta.alpha).shape
+            },
+            {
+                'input': [2, 3],
+                'expect': [2, 3] + paddle.squeeze(self._paddle_beta.alpha).shape
+            },
+        ]
+        for case in cases:
+            self.assertTrue(
+                self._paddle_beta.sample(case.get('input')).shape ==
+                case.get('expect'))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -42,10 +42,10 @@ class Distribution(object):
     implemented in specific distributions.
     """
 
-    def __init__(self, batch_shape=None, event_shape=None):
+    def __init__(self, batch_shape=(), event_shape=()):
 
-        self._batch_shape = batch_shape or []
-        self._event_shape = event_shape or []
+        self._batch_shape = tuple(batch_shape)
+        self._event_shape = tuple(event_shape)
 
         super(Distribution, self).__init__()
 
@@ -67,7 +67,7 @@ class Distribution(object):
         """
         return self._event_shape
 
-    def sample(self):
+    def sample(self, shape=()):
         """Sampling from the distribution."""
         raise NotImplementedError
 

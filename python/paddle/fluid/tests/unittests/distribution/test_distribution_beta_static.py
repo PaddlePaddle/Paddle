@@ -25,12 +25,9 @@ paddle.enable_static()
 
 
 @place(DEVICES)
-@parameterize(
-    (TEST_CASE_NAME, 'alpha', 'beta'),
-    [('test-tensor', xrand((10, 10)), xrand(
-        (10, 10))), ('test-broadcast', xrand((2, 1)), xrand((2, 5))),
-     ('test-larger-data', xrand(shape=(10, 20, 30)), xrand(shape=(10, 20, 30)))]
-)
+@parameterize((TEST_CASE_NAME, 'alpha', 'beta'), [('test-tensor', xrand(
+    (10, 10)), xrand((10, 10))), ('test-broadcast', xrand((2, 1)), xrand(
+        (2, 5))), ('test-larger-data', xrand((10, 20)), xrand((10, 20)))])
 class TestBeta(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
@@ -112,6 +109,14 @@ class TestBeta(unittest.TestCase):
                 scipy.stats.beta.entropy(self.alpha, self.beta),
                 rtol=RTOL.get(str(self.alpha.dtype)),
                 atol=ATOL.get(str(self.alpha.dtype)))
+
+    def test_sample(self):
+        with paddle.static.program_guard(self.program):
+            [data] = self.executor.run(self.program,
+                                       feed=self.feeds,
+                                       fetch_list=self._paddle_beta.sample())
+            self.assertTrue(data.shape,
+                            np.broadcast_arrays(self.alpha, self.beta)[0].shape)
 
 
 if __name__ == '__main__':
