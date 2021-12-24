@@ -14,20 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
-
-using CPUContext = paddle::platform::CPUDeviceContext;
-
-template <typename T>
-void Flatten(const CPUContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out);
 
 template <typename T>
 void Cast(const CPUContext& dev_ctx,
@@ -36,37 +28,15 @@ void Cast(const CPUContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out);
 
-void ReshapeFromDT(const CPUContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& shape,
-                   DenseTensor* out);
+void Reshape(const CPUContext& dev_ctx,
+             const DenseTensor& x,
+             const ScalarArray& shape,
+             DenseTensor* out);
 
-void ReshapeFromVectorVal(const CPUContext& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int64_t>& shape,
-                          DenseTensor* out);
-
-void ReshapeFromVectorDT(const CPUContext& dev_ctx,
-                         const DenseTensor& x,
-                         const std::vector<DenseTensor>& shape,
-                         DenseTensor* out);
-
-void ReshapeFromDTWithXShape(const CPUContext& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& shape,
-                             DenseTensor* xshape,
-                             DenseTensor* out);
-
-void ReshapeFromVectorValWithXShape(const CPUContext& dev_ctx,
-                                    const DenseTensor& x,
-                                    const std::vector<int64_t>& shape,
-                                    DenseTensor* xshape,
-                                    DenseTensor* out);
-
-void ReshapeFromVectorDTWithXShape(const CPUContext& dev_ctx,
-                                   const DenseTensor& x,
-                                   const std::vector<DenseTensor>& shape,
-                                   DenseTensor* xshape,
-                                   DenseTensor* out);
+void ReshapeWithXShape(const CPUContext& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out);
 
 }  // namespace pten

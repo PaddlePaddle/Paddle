@@ -153,7 +153,8 @@ class TensorRuntimeInferVarTypeContext
 
   paddle::framework::proto::VarType::Type GetOutputType(
       const std::string& name, const int& index = 0) const override {
-    return paddle::framework::ToVarType(outputs_.at(name)[index]->Var().Type());
+    // TODO(jiabin): Support SelectedRows when we have it.
+    return paddle::framework::proto::VarType::LOD_TENSOR;
   }
 
   paddle::framework::proto::VarType::Type GetInputDataType(

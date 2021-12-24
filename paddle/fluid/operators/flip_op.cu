@@ -25,24 +25,6 @@ using Tensor = framework::Tensor;
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-__global__ void kernel_pointwise_flip_apply(const int N, const T* in_data,
-                                            T* out_data, int dim0, int stride0,
-                                            int dim1, int flip_dim) {
-  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < N;
-       idx += gridDim.x * blockDim.x) {
-    int dst_offset = 0;
-    if (flip_dim == 0) {
-      // flip 1st dim
-      dst_offset = (dim0 - 1 - idx / stride0) * stride0 + idx % stride0;
-    } else {
-      // flip last dim
-      dst_offset = idx / stride0 * stride0 + (dim1 - 1 - idx % stride0);
-    }
-    out_data[dst_offset] = in_data[idx];
-  }
-}
-
-template <typename T>
 __global__ void flip_cuda_kernel(const int N, const T* in_data, T* out_data,
                                  int64_t* x_shape, int64_t* x_stride,
                                  int* flip_dims, int flip_dims_size,
@@ -102,29 +84,6 @@ class FlipKernel<platform::CUDADeviceContext, T>
     auto x_stride = framework::stride(x_dims);
     std::vector<int64_t> x_dims_v = framework::vectorize(x_dims);
     std::vector<int64_t> x_stride_v = framework::vectorize(x_stride);
-
-    // wrap high-dims to 2-dims
-    if (flip_dims_size == 1 &&
-        (flip_dims[0] == 0 || flip_dims[0] == total_dims - 1)) {
-      int dim0 = 1, dim1 = 1;
-      int stride0 = 1;
-      if (flip_dims[0] == 0) {
-        dim0 = x_dims_v[0];
-        stride0 = x_stride_v[0];
-        for (size_t i = 1; i < total_dims; ++i) {
-          dim1 *= x_dims_v[i];
-        }
-      } else {
-        dim1 = x_dims_v[total_dims - 1];
-        for (size_t i = 0; i < total_dims - 1; ++i) {
-          dim0 *= x_dims_v[i];
-        }
-        stride0 *= x_dims_v[total_dims - 1];
-      }
-      kernel_pointwise_flip_apply<
-          T><<<dim_grid, dim_block, 0, ctx.cuda_device_context().stream()>>>(
-          N, in_data, out_data, dim0, stride0, dim1, flip_dims[0]);
-    }
 
     int bytes = total_dims * sizeof(int64_t);
     auto x_strides_array_tmp = memory::Alloc(dev_ctx, bytes);

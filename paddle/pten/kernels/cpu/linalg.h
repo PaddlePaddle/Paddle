@@ -14,20 +14,13 @@
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
-
-using CPUContext = paddle::platform::CPUDeviceContext;
-
-template <typename T>
-void Dot(const CPUContext& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out);
 
 template <typename T>
 void Matmul(const CPUContext& dev_ctx,

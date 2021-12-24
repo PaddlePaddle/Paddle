@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+from collections import Counter
 
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -34,6 +35,7 @@ from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
+from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = []
 
@@ -68,8 +70,8 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return core.ops.fill_any_(x, "value_float",
-                              float(value), "value_int", int(value))
+    return _C_ops.fill_any_(x, "value_float",
+                            float(value), "value_int", int(value))
 
 
 setattr(core.VarBase, 'fill_', fill_)
@@ -100,7 +102,7 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return core.ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 setattr(core.VarBase, 'zero_', zero_)
@@ -146,10 +148,10 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
         )
     if len(inshape) == 2:
-        return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset,
-                                       'wrap', wrap)
-    return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
-                                   True)
+        return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                     'wrap', wrap)
+    return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
+                                 True)
 
 
 setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
@@ -180,10 +182,10 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return core.ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                              'offset', offset)
-    return core.ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                         'offset', offset)
+        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
+                                            'offset', offset)
+    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
+                                       'offset', offset)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -473,7 +475,7 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
     if in_dygraph_mode():
-        return core.ops.flip(x, "axis", axis)
+        return _C_ops.flip(x, "axis", axis)
 
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
@@ -497,42 +499,54 @@ def flip(x, axis, name=None):
 
 def rot90(x, k=1, axes=[0, 1], name=None):
     """
-    Rotate a n-D tensor by 90 degrees in the plane specified by dims axis. Rotation direction is from the first towards the second axis if k > 0, and from the second towards the first for k < 0.
+    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
     Args:
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
-            should be float32, float64, int32, int64, bool.
-        k (int): Number of times to rotate
-        axes (list|tuple): Axis to rotate
+            should be float16, float32, float64, int32, int64, bool. float16 is only supported on gpu.
+        k (int, optional): Direction and number of times to rotate, default value: 1.
+        axes (list|tuple, optional): Axes to rotate, dimension must be 2. default value: [0, 1].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
 
-    Raises:
-        TypeError: If the data type of ``x`` is not Variable
-        TypeError: If the dtype of ``x`` is not float16, float32, float64, int32, int64, bool
-        TypeError: If the data type of ``dims`` is not list, tuple
-
     Examples:
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           data = paddle.arange(4)
           data = paddle.reshape(data, (2, 2))
-          print(data) ## [[0, 1],[2, 3]]
+          print(data) 
+          #[[0, 1],
+          # [2, 3]]
+
           y = paddle.rot90(data, 1, [0, 1])
-          print(y) #[[1, 3],[0, 2]]
+          print(y) 
+          #[[1, 3],
+          # [0, 2]]
+
           y= paddle.rot90(data, -1, [0, 1])
-          print(y) #[[2, 0],[3, 1]]
+          print(y) 
+          #[[2, 0],
+          # [3, 1]]
+
           data2 = paddle.arange(8)
           data2 = paddle.reshape(data2, (2,2,2))
-          print(data2) ###[[[0, 1],[2, 3]],[[4, 5],[6, 7]]]
+          print(data2) 
+          #[[[0, 1],
+          #  [2, 3]],
+          # [[4, 5],
+          #  [6, 7]]]
+
           y = paddle.rot90(data2, 1, [1, 2])
-          print(y)   ### [[[1, 3],[0, 2]],[[5, 7],[4, 6]]]
+          print(y)
+          #[[[1, 3],
+          #  [0, 2]],
+          # [[5, 7],
+          #  [4, 6]]]
     """
 
     helper = LayerHelper("rot90", **locals())
@@ -564,8 +578,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         raise ValueError("Rotation axis1 out of range, axis1 = {}".format(axes[
             1]))
 
-    ## k % 4
-    k = k % 4 if k >= 0 else 4 - (-k % 4)
+    k %= 4
     if k == 0:
         return x
     if k == 2:
@@ -1094,7 +1107,7 @@ def unique_consecutive(x,
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
-        out, inverse, counts = core.ops.unique_consecutive(
+        out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
         outs = [out]
@@ -1553,7 +1566,9 @@ def scatter(x, index, updates, overwrite=True, name=None):
     if in_dygraph_mode():
         return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'float16', 'int32', 'int64'],
+        'scatter')
     check_type(overwrite, 'overwrite', bool, 'scatter')
     helper = LayerHelper('scatter', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -2475,4 +2490,262 @@ def tensordot(x, y, axes=2, name=None):
     y = y.transpose(perm=perm_y).reshape(
         [contraction_size, not_contraction_size_y])
     out = x.matmul(y).reshape(shape_out)
+    return out
+
+
+def as_complex(x, name=None):
+    """Transform a real tensor to a complex tensor. 
+    
+    The data type of the input tensor is 'float32' or 'float64', and the data
+    type of the returned tensor is 'complex64' or 'complex128', respectively.
+
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e. 
+    the size of the last axis shoule be 2, which represent the real and imag part
+    of a complex number. The shape of the returned tensor is ``(*,)``.
+
+    Args:
+        x (Tensor): The input tensor. Data type is 'float32' or 'float64'.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            y = paddle.as_complex(x)
+            print(y.numpy())
+
+            # [[ 0. +1.j  2. +3.j  4. +5.j]
+            #  [ 6. +7.j  8. +9.j 10.+11.j]]
+    """
+    if in_dygraph_mode():
+        return paddle._C_ops.as_complex(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
+    op_type = "as_complex"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_real_to_complex_dtype(x.dtype))
+    outputs = {"Out": out}
+    attrs = {}
+    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
+
+
+def as_real(x, name=None):
+    """Transform a complex tensor to a real tensor. 
+    
+    The data type of the input tensor is 'complex64' or 'complex128', and the data 
+    type of the returned tensor is 'float32' or 'float64', respectively.
+
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
+    the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
+    the shape of the input appended by an extra ``2``.
+
+    Args:
+        x (Tensor): The input tensor. Data type is 'complex64' or 'complex128'.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output. Data type is 'float32' or 'float64', with the same precision as the input.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            y = paddle.as_complex(x)
+            z = paddle.as_real(y)
+            print(z.numpy())
+
+            # [[[ 0.  1.]
+            #   [ 2.  3.]
+            #   [ 4.  5.]]
+
+            #  [[ 6.  7.]
+            #   [ 8.  9.]
+            #   [10. 11.]]]
+    """
+    if in_dygraph_mode():
+        return paddle._C_ops.as_real(x)
+
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
+    op_type = "as_real"
+    helper = LayerHelper(op_type, **locals())
+    inputs = {"X": x}
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(x.dtype))
+    outputs = {"Out": out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
+
+
+def repeat_interleave(x, repeats, axis=None, name=None):
+    """
+
+    Returns a new tensor which repeats the ``x`` tensor along dimension ``axis`` using
+    the entries in ``repeats`` which is a int or a Tensor.
+
+    Args:
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+        repeats (Tensor or int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
+        axis (int, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor with same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            repeats  = paddle.to_tensor([3, 2, 1], dtype='int32')
+
+            paddle.repeat_interleave(x, repeats, 1)
+            # [[1, 1, 1, 2, 2, 3],
+            #  [4, 4, 4, 5, 5, 6]]
+
+            paddle.repeat_interleave(x, 2, 0)
+            # [[1, 2, 3], [1, 2, 3], [4, 5, 6], [4, 5, 6]]
+
+            paddle.repeat_interleave(x, 2, None)
+            # [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]
+    """
+
+    if axis is None:
+        x = paddle.flatten(x)
+        axis = 0
+
+    if in_dygraph_mode():
+        if isinstance(repeats, int):
+            return _C_ops.repeat_interleave(x, None, 'Repeats', repeats, 'dim',
+                                            axis)
+        elif isinstance(repeats, Variable):
+            return _C_ops.repeat_interleave(x, repeats, 'dim', axis)
+
+    helper = LayerHelper("repeat_interleave", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.manipulation.repeat_interleave')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    helper.append_op(
+        type='repeat_interleave',
+        inputs={
+            'X': x,
+            'RepeatsTensor': repeats if isinstance(repeats, Variable) else None
+        },
+        outputs={'Out': out},
+        attrs={
+            'dim': axis,
+            'Repeats': repeats if isinstance(repeats, int) else 0
+        })
+    return out
+
+
+def moveaxis(x, source, destination, name=None):
+    """
+    Move the axis of tensor from ``source`` position to ``destination`` position.
+
+    Other axis that have not been moved remain their original order.
+
+    Args:
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, int32, int64, float32, float64, complex64, complex128.
+        source(int|tuple|list): ``source`` position of axis that will be moved. Each element must be unique and integer.
+        destination(int|tuple|list(int)): ``destination`` position of axis that has been moved. Each element must be unique and integer.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A new tensor whose axis have been moved.
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+
+            x = paddle.ones([3, 2, 4])
+            paddle.moveaxis(x, [0, 1], [1, 2]).shape
+            # [4, 3, 2]
+
+            x = paddle.ones([2, 3])
+            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            # [3, 2]  
+    """
+    src = [source] if isinstance(source, int) else source
+    dst = [destination] if isinstance(destination, int) else destination
+
+    assert len(src) == len(
+        dst), "'source' must have the same number with 'destination'"
+
+    count = Counter(src).most_common(1)
+    if count[0][1] > 1:
+        raise ValueError("Each elemment of 'source' must be unique!")
+    count = Counter(dst).most_common(1)
+    if count[0][1] > 1:
+        raise ValueError("Each elemment of 'destination' must be unique!")
+
+    ndim = len(x.shape)
+
+    # perm is the new order after move axis
+    perm = list(range(ndim))
+    src_dims = list(range(ndim))
+    dst_dims = list(range(ndim))
+
+    for i, axis in enumerate(zip(src, dst)):
+        assert isinstance(axis[0],
+                          int), "Each elemment of 'source' must be integer."
+        if axis[0] < 0:
+            assert axis[
+                0] >= -ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+            src[i] += ndim
+        else:
+            assert axis[
+                0] < ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+
+        assert isinstance(axis[1],
+                          int), "Each elemment of 'source' must be integer."
+        if axis[1] < 0:
+            assert axis[
+                1] >= -ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+            dst[i] += ndim
+        else:
+            assert axis[
+                1] < ndim, "'source' must be in the range of [-{0}, {0})".format(
+                    ndim)
+        perm[dst[i]] = src[i]
+        src_dims.remove(src[i])
+        dst_dims.remove(dst[i])
+
+    for i in range(len(src_dims)):
+        perm[dst_dims[i]] = src_dims[i]
+
+    if in_dygraph_mode():
+        out, _ = _C_ops.transpose2(x, 'axis', perm)
+        return out
+
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'moveaxis')
+
+    helper = LayerHelper('moveaxis', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='transpose2',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
+        attrs={'axis': perm})
     return out

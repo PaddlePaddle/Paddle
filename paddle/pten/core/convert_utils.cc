@@ -12,9 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
-#include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/pybind/tensor_py.h"
-
+#include "paddle/pten/core/kernel_alias_name.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
@@ -25,7 +23,7 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
-    return Backend::CUDA;
+    return Backend::GPU;
   } else {
     return Backend::UNDEFINED;
   }
@@ -86,7 +84,7 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
     case pten::Backend::CPU:
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDA:
+    case pten::Backend::GPU:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif
@@ -272,36 +270,12 @@ std::string DataType2String(DataType dtype) {
   }
 }
 
-int TensorDtype2NumpyDtype(pten::DataType dtype) {
-  switch (dtype) {
-    case pten::DataType::BOOL:
-      return pybind11::detail::npy_api::NPY_BOOL_;
-    case pten::DataType::INT8:
-      return pybind11::detail::npy_api::NPY_INT8_;
-    case pten::DataType::UINT8:
-      return pybind11::detail::npy_api::NPY_UINT8_;
-    case pten::DataType::INT16:
-      return pybind11::detail::npy_api::NPY_INT16_;
-    case pten::DataType::INT32:
-      return pybind11::detail::npy_api::NPY_INT32_;
-    case pten::DataType::INT64:
-      return pybind11::detail::npy_api::NPY_INT64_;
-    case pten::DataType::FLOAT16:
-      return pybind11::detail::NPY_FLOAT16_;
-    case pten::DataType::FLOAT32:
-      return pybind11::detail::npy_api::NPY_FLOAT_;
-    case pten::DataType::FLOAT64:
-      return pybind11::detail::npy_api::NPY_DOUBLE_;
-    case pten::DataType::COMPLEX64:
-      return pybind11::detail::NPY_COMPLEX64;
-    case pten::DataType::COMPLEX128:
-      return pybind11::detail::NPY_COMPLEX128;
-    default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow pten::DataType, the int value = %d.",
-          static_cast<int>(dtype)));
-      return 0;
+const std::string& TransToPtenKernelName(const std::string& fluid_op_name) {
+  if (kernel_alias_name_map.find(fluid_op_name) !=
+      kernel_alias_name_map.end()) {
+    return kernel_alias_name_map.at(fluid_op_name);
   }
+  return fluid_op_name;
 }
 
 }  // namespace pten
