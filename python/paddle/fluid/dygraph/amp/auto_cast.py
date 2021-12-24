@@ -131,7 +131,7 @@ def pure_fp16_initialize(models):
             if (layer._dtype is 'float16') or isinstance(layer, (
                     paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                 continue
-            layer.non_sublayer_to(dtype='float16')
+            layer._to_impl(dtype='float16', include_sublayers=False)
     return models
 
 
