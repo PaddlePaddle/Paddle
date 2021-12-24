@@ -24,7 +24,7 @@ from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
 
 
 class MyLayer(fluid.Layer):
@@ -259,12 +259,28 @@ class TestImperative(unittest.TestCase):
             self.func_isinstance()
         self.func_isinstance()
 
-    def test_create_VarBase(self):
+    def func_create_varbase(self):
         x = np.ones([2, 2], np.float32)
         y = np.zeros([3, 3], np.float32)
         t = fluid.Tensor()
         t.set(x, fluid.CPUPlace())
-        with fluid.dygraph.guard():
+        if _in_eager_mode():
+            # TODO(jiabin): Support Kwargs and uncomment these tests
+            # egr_tmp = fluid.core.eager.EagerTensor(value=x, place=fluid.core.CPUPlace())
+            egr_tmp2 = fluid.core.eager.EagerTensor(y, fluid.core.CPUPlace())
+            egr_tmp3 = paddle.to_tensor(x)
+            egr_tmp4 = fluid.core.eager.EagerTensor(y)
+            # egr_tmp5 = fluid.core.eager.EagerTensor(value=x)
+            # TODO(jiabin): Support it when we merge LoDTensor with DenseTensor
+            egr_tmp6 = fluid.core.eager.EagerTensor(t)
+
+            # self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
+            self.assertTrue(np.array_equal(y, egr_tmp2.numpy()))
+            self.assertTrue(np.array_equal(x, egr_tmp3.numpy()))
+            self.assertTrue(np.array_equal(y, egr_tmp4.numpy()))
+            # self.assertTrue(np.array_equal(x, egr_tmp5.numpy()))
+            self.assertTrue(np.array_equal(x, egr_tmp6.numpy()))
+        else:
             tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
             tmp2 = fluid.core.VarBase(y, fluid.core.CPUPlace())
             tmp3 = paddle.to_tensor(x)
@@ -278,6 +294,12 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.array_equal(y, tmp4.numpy()))
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
             self.assertTrue(np.array_equal(x, tmp6.numpy()))
+
+    def test_create_varbase(self):
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                self.func_create_varbase()
+            self.func_create_varbase()
 
     def test_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')

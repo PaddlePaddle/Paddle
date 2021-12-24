@@ -758,7 +758,10 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
-
+  m.def("_set_eager_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          egr::Controller::Instance().SetCurrentTracer(tracer);
+        });
   // Dygraph DataLoader reader process & thread related functions
   m.def(
       "_convert_to_tensor_list",

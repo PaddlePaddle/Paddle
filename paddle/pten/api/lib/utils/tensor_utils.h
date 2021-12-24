@@ -76,6 +76,9 @@ void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
                            pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
+                           pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst);
 

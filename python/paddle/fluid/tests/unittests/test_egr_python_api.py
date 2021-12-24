@@ -221,6 +221,36 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor9.place._equals(place))
         self.assertTrue(np.array_equal(egr_tensor9.numpy(), arr4))
 
+        x = np.random.rand(3, 3).astype('float32')
+        t = paddle.fluid.Tensor()
+        t.set(x, paddle.fluid.CPUPlace())
+        egr_tensor10 = core.eager.EagerTensor(t, place)
+        self.assertEqual(egr_tensor10.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor10.name)
+        self.assertEqual(egr_tensor10.shape, [3, 3])
+        self.assertEqual(egr_tensor10.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor10.stop_gradient, True)
+        self.assertTrue(egr_tensor10.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor10.numpy(), x))
+
+        egr_tensor11 = core.eager.EagerTensor(t, place, "framework_constructed")
+        self.assertEqual(egr_tensor11.persistable, False)
+        self.assertTrue("framework_constructed" in egr_tensor11.name)
+        self.assertEqual(egr_tensor11.shape, [3, 3])
+        self.assertEqual(egr_tensor11.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor11.stop_gradient, True)
+        self.assertTrue(egr_tensor11.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor11.numpy(), x))
+
+        egr_tensor12 = core.eager.EagerTensor(t)
+        self.assertEqual(egr_tensor12.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor12.name)
+        self.assertEqual(egr_tensor12.shape, [3, 3])
+        self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor12.stop_gradient, True)
+        self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
+        self.assertTrue(np.array_equal(egr_tensor12.numpy(), x))
+
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):
             eager_param = EagerParamBase(shape=None, dtype="float32")
