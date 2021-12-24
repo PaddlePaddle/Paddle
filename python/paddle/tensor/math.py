@@ -1194,6 +1194,62 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
 
+def renorm(x, p, axis, max_norm):
+    """
+    **renorm**
+
+    This operator is used to calculate the p-norm along the axis,
+    suppose the input-shape on axis dimension has the value of T, then
+    the tensor is split into T parts, the p-norm should be calculated for each
+    part, if the p-norm for part i is larger than max-norm, then each element 
+    in part i should be re-normalized at the same scale so that part-i' p-norm equals
+    max-norm exactly, otherwise part-i stays unchanged.
+
+    Args:
+        x (Tensor): The input Tensor
+        p (float): The power of the norm operation.
+        axis (int): the dimension to slice the tensor.
+        max-norm (float): the maximal norm limit.
+
+    Returns:
+        Tensor: the renorm Tensor.
+
+    Examples:
+        ..  code-block:: python
+            
+            import paddle
+            input = [[[2.0,2,-2],[3,0.3,3]],[[2,-8,2],[3.1,3.7,3]]]
+            x = paddle.to_tensor(input,dtype='float32')
+            y = paddle.renorm(x, 1.0, 2, 2.05)
+            print(y)        
+    #        [[[ 0.40594056,  0.29285714, -0.41000000],
+    #          [ 0.60891086,  0.04392857,  0.61500001]],
+    #         [[ 0.40594056, -1.17142856,  0.41000000],
+    #          [ 0.62920785,  0.54178572,  0.61500001]]])
+    
+    """
+    input_shape = x.shape
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
+    if not axis < len(input_shape):
+        raise ValueError("the axis:{} should be less then the shape's size {}:{}".format(axis,len(input_shape),input_shape))
+    if not axis >=0:
+        if not axis >= -1 * len(input_shape):
+            raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
+        axis = axis + len(input_shape)
+    if in_dygraph_mode():
+        out = core.ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
+        return out
+
+    inputs = {'X': x}
+    attrs = {'p': p, 'axis': axis, 'max_norm':max_norm}
+
+    helper = LayerHelper("renorm", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    return out
+
 
 
 def inner(x, y, name=None):
