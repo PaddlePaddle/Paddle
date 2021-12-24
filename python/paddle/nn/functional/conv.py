@@ -327,16 +327,17 @@ def conv1d(x,
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
     if len(padding) == 2:
-        padding = padding + [0] * 2
+        padding = [0] * 2 + padding
     elif len(padding) == 1:
-        padding = padding + [0]
+        padding = [0] + padding
     else:
         raise ValueError(
             "The size of padding's dimension should be 1 or 2. But got padding={}".
             format(padding))
-
-    stride = convert_to_list(stride, 1, 'stride') + [1]
-    dilation = convert_to_list(dilation, 1, 'dilation') + [1]
+    # print("b_stride: ", stride)
+    # print("b_dilation: ", dilation)
+    stride = [1] + convert_to_list(stride, 1, 'stride')
+    dilation = [1] + convert_to_list(dilation, 1, 'dilation')
 
     l_type = "conv2d"
     if (num_channels == groups and num_channels != 1 and
@@ -351,15 +352,25 @@ def conv1d(x,
         else:
             l_type = 'conv2d'
 
-    squeeze_aixs = -2 if channel_last else -1
+    squeeze_aixs = -1 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
-    weight = unsqueeze(weight, axis=[-1])
+    # print(">>>>>>>>>>>")
+    # print(x.shape)
+    # weight = unsqueeze(weight, axis=[-1])
+    weight = unsqueeze(weight, axis=[squeeze_aixs])
+    # print(">>>>>>>>>>>")
+    # print(weight)
+    # print("padding: ",padding)
+    # print("dilation: ", dilation)
+    # print("stride: ", stride)
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
                  padding_algorithm, "data_format", conv2d_data_format)
         out = getattr(_C_ops, l_type)(x, weight, *attrs)
+        # print(">>>>>>>>>>>>")
+        # print(out.shape)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
