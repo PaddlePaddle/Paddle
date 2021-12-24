@@ -1319,6 +1319,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
   auto expected_kernel_key = InnerGetExpectedKernelType(ctx);
 
+  auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
