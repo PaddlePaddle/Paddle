@@ -75,7 +75,8 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             loss = paddle.mean(out)
             loss.backward()
 
-            clip = paddle.nn.ClipGradForMOEByGlobalNorm(clip_norm=1.0,None)
+            is_expert_func = lambda param: "expert_" in param.name
+            clip = paddle.nn.ClipGradForMOEByGlobalNorm(clip_norm=1.0,is_expert_func, None)
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.step()
     """
