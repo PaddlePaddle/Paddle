@@ -31,17 +31,6 @@ void Cast(const GPUContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out);
 
-void Reshape(const GPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
-
-void ReshapeWithXShape(const GPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
-
 }  // namespace pten
 
 #endif

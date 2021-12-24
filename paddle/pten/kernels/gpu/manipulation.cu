@@ -15,34 +15,9 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/gpu/manipulation.h"
-#include "paddle/pten/kernels/gpu/utils.h"
 #include "paddle/pten/kernels/hybird/cuda/cast_kernel_impl.h"
-#include "paddle/pten/kernels/hybird/general/manipulation.h"
 
 namespace pten {
-
-void Reshape(const GPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
-  if (x.data() == out->data() && x.numel() == out->numel()) {
-    out->Resize(out_meta.dims);
-    return;
-  }
-  pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_meta.dims);
-  out->ResetLoD(x.lod());
-}
-
-void ReshapeWithXShape(const GPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out) {
-  general::SetXShape(x, xshape);
-  Reshape(dev_ctx, x, shape, out);
-}
 
 template <typename T>
 void Cast(const GPUContext& dev_ctx,
@@ -84,7 +59,3 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 #else
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
-
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, GPU, ANY, pten::Reshape, ALL_DTYPE) {}
-PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_with_xshape, GPU, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}

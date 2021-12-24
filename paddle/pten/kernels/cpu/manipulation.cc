@@ -16,33 +16,9 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/cpu/utils.h"
-#include "paddle/pten/kernels/hybird/general/manipulation.h"
 #include "paddle/pten/kernels/hybird/math/cast_func.h"
 
 namespace pten {
-
-void Reshape(const CPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
-  if (x.data() == out->data() && x.numel() == out->numel()) {
-    out->Resize(out_meta.dims);
-    return;
-  }
-  pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_meta.dims);
-  out->ResetLoD(x.lod());
-}
-
-void ReshapeWithXShape(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out) {
-  general::SetXShape(x, xshape);
-  Reshape(dev_ctx, x, shape, out);
-}
 
 template <typename T>
 void Cast(const CPUContext& dev_ctx,
@@ -75,8 +51,3 @@ PT_REGISTER_KERNEL(cast,
                    paddle::platform::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
-
-PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape, CPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}
-PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_with_xshape, CPU, ALL_LAYOUT, pten::ReshapeWithXShape, ALL_DTYPE) {}

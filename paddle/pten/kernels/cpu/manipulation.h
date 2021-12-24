@@ -28,15 +28,4 @@ void Cast(const CPUContext& dev_ctx,
           DataType in_dtype,
           DenseTensor* out);
 
-void Reshape(const CPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
-
-void ReshapeWithXShape(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
-
 }  // namespace pten
