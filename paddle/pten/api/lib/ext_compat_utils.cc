@@ -56,7 +56,7 @@ Backend ConvertExtPlaceToBackend(PlaceType p) {
       return Backend::CPU;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case PlaceType::kGPU:
-      return Backend::CUDA;
+      return Backend::GPU;
 #endif
     default:
       PADDLE_THROW(

@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .attribute import is_complex  # noqa: F401
+from .attribute import is_integer  # noqa: F401
 from .attribute import rank  # noqa: F401
 from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
+from .attribute import is_floating_point  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -33,6 +36,7 @@ from .creation import tril  # noqa: F401
 from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
+from .creation import complex  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import norm  # noqa: F401
@@ -56,6 +60,7 @@ from .linalg import eigvalsh  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
+from .linalg import cholesky_solve  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -200,6 +205,8 @@ from .math import asinh  # noqa: F401
 from .math import atanh  # noqa: F401
 from .math import lerp  # noqa: F401
 from .math import lerp_  # noqa: F401
+from .math import erfinv  # noqa: F401
+from .math import erfinv_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
 from .math import gcd  # noqa: F401
@@ -219,6 +226,7 @@ from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
 from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
+from .random import poisson  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
@@ -407,10 +415,13 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'is_complex',
+           'is_integer',
            'rank',
            'shape',
            'real',
            'imag',
+           'is_floating_point',
            'digamma',
            'diagonal',
            'trunc',
@@ -423,6 +434,7 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
+           'cholesky_solve',
            'triangular_solve',
            'asinh',
            'atanh',
@@ -436,6 +448,8 @@ tensor_method_func  = [ #noqa
            'diff',
            'lerp',
            'lerp_',
+           'erfinv',
+           'erfinv_',
            'angle',
            'moveaxis',
            'repeat_interleave',

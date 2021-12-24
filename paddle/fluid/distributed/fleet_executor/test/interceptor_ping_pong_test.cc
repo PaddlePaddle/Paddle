@@ -18,7 +18,6 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
@@ -60,11 +59,9 @@ class PingPongInterceptor : public Interceptor {
 REGISTER_INTERCEPTOR(PingPong, PingPongInterceptor);
 
 TEST(InterceptorTest, PingPong) {
-  // TODO(liyurui): Remove singleton when move SendIntra into Carrier
-  Carrier& carrier = FleetExecutor::GetCarrier();
-
+  Carrier carrier(0, {{0, 0}, {1, 0}});
   auto msg_bus = std::make_shared<MessageBus>();
-  msg_bus->Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "");
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
   carrier.SetMsgBus(msg_bus);
 
   Interceptor* a = carrier.SetInterceptor(
