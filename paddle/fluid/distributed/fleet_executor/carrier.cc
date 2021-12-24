@@ -66,11 +66,6 @@ void Carrier::Release() {
     stop_msg.set_message_type(STOP);
     Send(stop_msg);
   }
-
-  // TODO(wangxi): Maybe need a better to use thread.
-  for (auto& interceptor : interceptor_idx_to_interceptor_) {
-    interceptor.second->Join();
-  }
 }
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }

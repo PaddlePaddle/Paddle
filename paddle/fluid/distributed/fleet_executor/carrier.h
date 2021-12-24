@@ -48,7 +48,11 @@ class Carrier final {
   Carrier() = default;
   Carrier(int64_t rank,
           const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank)
-      : rank_(rank), interceptor_id_to_rank_(interceptor_id_to_rank) {}
+      : rank_(rank), interceptor_id_to_rank_(interceptor_id_to_rank) {
+    thread_num_ = 1;
+    thread_pool_.SetThreadNum(thread_num_);
+    thread_pool_.Start();
+  }
   ~Carrier();
   void Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
             framework::Scope* root_scope, framework::Scope* minibatch_scope,

@@ -24,10 +24,11 @@ Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
     : interceptor_id_(interceptor_id), node_(node) {}
 
 Interceptor::~Interceptor() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  PADDLE_ENFORCE_EQ(messages_.empty(), true,
-                    platform::errors::PreconditionNotMet(
-                        "Interceptor must destruct with messages empty"));
+  // FIXME(wangxi): throw in stop function
+  // std::lock_guard<std::mutex> lock(mutex_);
+  // PADDLE_ENFORCE_EQ(messages_.empty(), true,
+  //                  platform::errors::PreconditionNotMet(
+  //                      "Interceptor must destruct with messages empty"));
 }
 
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
@@ -51,7 +52,7 @@ void Interceptor::LoopOnce() {
   for (auto& msg : tmp_messages) {
     const MessageType message_type = msg.message_type();
     VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
-            << " from interceptor " << interceptor_message.src_id()
+            << " from interceptor " << msg.src_id()
             << " with message: " << message_type << ".";
 
     Handle(msg);
@@ -75,8 +76,8 @@ void Interceptor::StopCarrier() {
 void Interceptor::EnqueueRemoteInterceptorMessage(
     const InterceptorMessage& message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
-  VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
-          << " into " << interceptor_id_ << "'s remote mailbox.";
+  VLOG(3) << "Enqueue message: " << message.message_type() << " into "
+          << interceptor_id_ << "'s remote mailbox.";
 
   bool empty = false;
   {
