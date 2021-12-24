@@ -1471,13 +1471,120 @@ class Layer(object):
                 _set_var(param, state)
 
     def to(self, device=None, dtype=None, blocking=None):
+        '''
+        Cast the parameters and buffers of Layer by the give device, dtype and blocking.
+
+        Parameters:
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
+            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+            index of the GPUs or XPUs. Default: None.
+
+            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+
+            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+            
+        Returns:
+            self
+
+        Examples:
+            .. code-block:: python
+
+                # required: skip
+                import paddle
+
+                linear=paddle.nn.Linear(2, 2)
+                linear.weight
+                #Parameter containing:
+                #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #       [[-0.32770029,  0.38653070],
+                #        [ 0.46030545,  0.08158520]])
+
+                linear.to(dtype='float64')
+                linear.weight
+                #Tenor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=False,
+                #       [[-0.32770029,  0.38653070],
+                #        [ 0.46030545,  0.08158520]])
+
+                linear.to(device='cpu')
+                linear.weight
+                #Tensor(shape=[2, 2], dtype=float64, place=CPUPlace, stop_gradient=False,
+                #       [[-0.32770029,  0.38653070],
+                #        [ 0.46030545,  0.08158520]])
+                linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
+                linear.weight
+                #Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
+                #       [[-0.04989364, -0.56889004],
+                #        [ 0.33960250,  0.96878713]])
+
+        '''
         return self._to_impl(
             device=device,
             dtype=dtype,
             blocking=blocking,
             include_sublayers=True)
 
-    def to_1(self, device=None, dtype=None, blocking=None):
+    def non_sublayer_to(self, device=None, dtype=None, blocking=None):
+        '''
+        Cast the parameters and buffers of Layer (not include sublayers) by the give device, dtype and blocking.
+
+        Parameters:
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
+            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+            index of the GPUs or XPUs. Default: None.
+
+            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+
+            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+            
+        Returns:
+            self
+
+        Examples:
+            .. code-block:: python
+
+                # required: skip
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        w_tmp = self.create_parameter([1,1])
+                        self.add_parameter("w_tmp", w_tmp)
+                    def forward(self, input):
+                        return self._linear(input)
+                
+                layer = MyLayer()
+                for name, param in layer.named_parameters():
+                    print(name, param.dtype, param.device) 
+                
+                # w_tmp Parameter containing:
+                # Tensor(shape=[1, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #     [[-0.55699259]])
+                # _linear.weight Parameter containing:
+                # Tensor(shape=[1, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #     [[-1.27518642]])
+                # _linear.bias Parameter containing:
+                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #    [0.])
+                
+                mylayer.non_sublayer_to(dtype='float64', device='cpu')
+                for name, param in layer.named_parameters():
+                    print(name, param.dtype, param.device) 
+                
+                # w_tmp Parameter containing:
+                # Tensor(shape=[1, 1], dtype=float64, place=CPUPlace, stop_gradient=False,
+                #     [[-0.55699259]])
+                # _linear.weight Parameter containing:
+                # Tensor(shape=[1, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #     [[-1.27518642]])
+                # _linear.bias Parameter containing:
+                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                    [0.])
+
+        '''
         return self._to_impl(
             device=device,
             dtype=dtype,
@@ -1519,41 +1626,12 @@ class Layer(object):
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+            
+            include_sublayers(bool|True, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
 
         Returns:
             self
-
-        Examples:
-            .. code-block:: python
-
-                # required: skip
-                import paddle
-
-                linear=paddle.nn.Linear(2, 2)
-                linear.weight
-                #Parameter containing:
-                #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-                #       [[-0.32770029,  0.38653070],
-                #        [ 0.46030545,  0.08158520]])
-
-                linear.to(dtype='float64')
-                linear.weight
-                #Tenor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=False,
-                #       [[-0.32770029,  0.38653070],
-                #        [ 0.46030545,  0.08158520]])
-
-                linear.to(device='cpu')
-                linear.weight
-                #Tensor(shape=[2, 2], dtype=float64, place=CPUPlace, stop_gradient=False,
-                #       [[-0.32770029,  0.38653070],
-                #        [ 0.46030545,  0.08158520]])
-                linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
-                linear.weight
-                #Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
-                #       [[-0.04989364, -0.56889004],
-                #        [ 0.33960250,  0.96878713]])
-
-
+            
         '''
 
         if device is None and dtype is None and blocking is None:
