@@ -20,6 +20,17 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+// CPU event tracing. A trace marks something that happens but has no duration
+// associated with it. For example, thread starts working.
+// Chrome Trace Viewer Format: Instant Event
+struct RecordInstantEvent {
+  explicit RecordInstantEvent(const char* name,
+                              const EventRole role = EventRole::kOrdinary);
+};
+
+// CPU event tracing. A trace starts when an object of this clas is created and
+// stops when the object is destroyed.
+// Chrome Trace Viewer Format: Duration Event/Complte Event
 struct RecordEvent {
   explicit RecordEvent(const std::string& name,
                        const EventRole role = EventRole::kOrdinary);

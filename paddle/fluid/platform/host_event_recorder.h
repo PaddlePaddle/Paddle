@@ -26,15 +26,15 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-struct DurationEvent {
+struct CommonEvent {
  public:
-  DurationEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-                EventRole role)
+  CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
+              EventRole role)
       : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {}
 
-  DurationEvent(std::function<void *(size_t)> &arena_allocator,
-                const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-                EventRole role, const std::string &attr_str)
+  CommonEvent(std::function<void *(size_t)> &arena_allocator,
+              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
+              EventRole role, const std::string &attr_str)
       : start_ns(start_ns), end_ns(end_ns), role(role) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
@@ -44,9 +44,9 @@ struct DurationEvent {
     attr = buf;
   }
 
-  DurationEvent(const std::function<void *(size_t)> &arena_allocator,
-                const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-                EventRole role)
+  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
+              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
+              EventRole role)
       : start_ns(start_ns), end_ns(end_ns), role(role) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
@@ -219,7 +219,7 @@ char *EventContainer<EventType>::GetStringStorage(size_t sz) {
 struct ThreadEventSection {
   std::string thread_name;
   uint64_t thread_id;
-  std::vector<DurationEvent> events;
+  std::vector<CommonEvent> events;
 };
 
 class ThreadEventRecorder {
@@ -245,7 +245,7 @@ class ThreadEventRecorder {
  private:
   uint64_t thread_id_;
   std::string thread_name_;
-  EventContainer<DurationEvent> base_evt_cntr_;
+  EventContainer<CommonEvent> base_evt_cntr_;
 };
 
 struct HostEventSection {

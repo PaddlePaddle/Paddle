@@ -177,6 +177,15 @@ RecordEvent::~RecordEvent() {
   delete attr_;
 }
 
+RecordInstantEvent::RecordInstantEvent(const char *name, const EventRole role) {
+  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+    return;
+  }
+  auto start_end_ns = PosixInNsec();
+  HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
+                                               role);
+}
+
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size) {
   if (g_state == ProfilerState::kDisabled) return;
