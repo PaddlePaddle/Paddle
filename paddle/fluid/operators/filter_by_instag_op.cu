@@ -43,7 +43,7 @@ template <typename T>
 using Vector = framework::CPUVector<T>;
 #endif
 
-#define THREADS 256
+#define THREADS 512
 
 __global__ void filter_by_instag_cuda_kernel(
     const size_t N, const size_t* x2_lods_data, const int64_t* x2_data,
