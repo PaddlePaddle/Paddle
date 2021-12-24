@@ -19,11 +19,12 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
-def p_norm(x, axis, porder, keepdims=False):
+def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
     r = []
-    if axis is None:
+    if axis is None or reduce_all:
         x = x.flatten()
         if porder == np.inf:
             r = np.amax(np.abs(x), keepdims=keepdims)
@@ -111,13 +112,14 @@ class TestPnormOp(OpTest):
         self.op_type = "p_norm"
         self.init_test_case()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
-        norm = p_norm(x, self.axis, self.porder, self.keepdim)
+        norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
         self.inputs = {'X': x}
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
             'keepdim': self.keepdim,
-            'porder': float(self.porder)
+            'porder': float(self.porder),
+            'asvector': self.asvector
         }
         self.outputs = {'Out': norm}
         self.gradient = self.calc_gradient()
@@ -135,33 +137,39 @@ class TestPnormOp(OpTest):
         self.porder = 2.0
         self.keepdim = False
         self.dtype = "float64"
+        self.asvector = False
 
     def calc_gradient(self):
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
             'keepdim': self.keepdim,
-            'porder': float(self.porder)
+            'porder': float(self.porder),
+            'asvector': self.asvector
         }
         x = self.inputs["X"]
         porder = self.attrs["porder"]
         axis = self.attrs["axis"]
+        asvector = self.attrs["asvector"]
         if porder == 0:
             grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
-            norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
+            norm = p_norm(
+                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector)
             x_abs = np.abs(x)
             grad = np.sign(x)
             grad[x_abs != norm] = 0.0
         else:
-            norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
+            norm = p_norm(
+                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector)
             grad = np.power(norm, 1 - porder) * np.power(
                 np.abs(x), porder - 1) * np.sign(x)
 
         numel = 1
         for s in x.shape:
             numel *= s
-        numel /= x.shape[axis]
+        divisor = numel if asvector else x.shape[axis]
+        numel /= divisor
         return [grad.astype(x.dtype) * 1 / numel]
 
 
@@ -173,6 +181,7 @@ class TestPnormOp2(TestPnormOp):
         self.porder = 2.0
         self.keepdim = True
         self.dtype = "float32"
+        self.asvector = False
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -186,6 +195,7 @@ class TestPnormOp3(TestPnormOp):
         self.porder = np.inf
         self.keepdim = True
         self.dtype = "float32"
+        self.asvector = False
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
@@ -199,6 +209,7 @@ class TestPnormOp4(TestPnormOp):
         self.porder = -np.inf
         self.keepdim = True
         self.dtype = "float32"
+        self.asvector = False
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
@@ -212,6 +223,21 @@ class TestPnormOp5(TestPnormOp):
         self.porder = 0
         self.keepdim = True
         self.dtype = "float32"
+        self.asvector = False
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+class TestPnormOp6(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [3, 20, 3]
+        self.axis = -1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.dtype = "float32"
+        self.asvector = True
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
