@@ -19,7 +19,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
+class MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
+ public:
   void operator()(const Tensor& in, Tensor* out,
                   const framework::ExecutionContext& ctx) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
