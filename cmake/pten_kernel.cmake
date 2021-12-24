@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# call kernel_declare need to make sure the target of input is exists
+# call kernel_declare need to make sure whether the target of input exists
 function(kernel_declare TARGET_LIST)
     foreach(kernel_path ${TARGET_LIST})
         file(READ ${kernel_path} kernel_impl)
         # TODO(chenweihang): rename PT_REGISTER_CTX_KERNEL to PT_REGISTER_KERNEL
         # NOTE(chenweihang): now we don't recommend to use digit in kernel name
-        string(REGEX MATCH "PT_REGISTER_CTX_KERNEL\\([ \t\r\n]*[a-z_]*," first_registry "${kernel_impl}")
+        string(REGEX MATCH "(PT_REGISTER_CTX_KERNEL|PT_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z_]*," first_registry "${kernel_impl}")
         if (NOT first_registry STREQUAL "")
             # parse the first kernel name
             string(REPLACE "PT_REGISTER_CTX_KERNEL(" "" kernel_name "${first_registry}")
+            string(REPLACE "PT_REGISTER_GENERAL_KERNEL(" "" kernel_name "${kernel_name}")
             string(REPLACE "," "" kernel_name "${kernel_name}")
             string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
             # append kernel declare into declarations.h
