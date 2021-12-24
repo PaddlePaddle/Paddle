@@ -60,6 +60,7 @@ from .linalg import eigvalsh  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
 from .linalg import solve  # noqa: F401
+from .linalg import cholesky_solve  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -225,6 +226,7 @@ from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
 from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
+from .random import poisson  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
@@ -432,6 +434,7 @@ tensor_method_func  = [ #noqa
            'uniform_',
            'multi_dot',
            'solve',
+           'cholesky_solve',
            'triangular_solve',
            'asinh',
            'atanh',
