@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -156,6 +157,61 @@ static PyObject* eager_tensor_retain_grads(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_tensor_clear_gradient(EagerTensorObject* self,
+                                             PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool set_to_zero = true;
+  if (args_num >= 1) {
+    set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
+
+  VLOG(4) << "ClearGradient " << self->eager_tensor.name();
+
+  egr::EagerTensor grad;
+  if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
+    // Add RetainGrad as PostHook to AccumulationNode
+    std::shared_ptr<egr::GradNodeBase> grad_node =
+        egr::EagerUtils::grad_node(self->eager_tensor);
+    PADDLE_ENFORCE(
+        grad_node.get() != nullptr,
+        paddle::platform::errors::Fatal("Detected NULL grad_node"
+                                        "Leaf tensor should have had grad_node "
+                                        "with type: GradNodeAccumulation"));
+    auto accumulation_grad_node =
+        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+    grad = accumulation_grad_node->Grad();
+  } else {
+    auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
+    grad = meta->Grad();
+  }
+
+  if (grad.initialized()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
+    if (set_to_zero) {
+      framework::AttributeMap attrs;
+      attrs["value"] = (float)0.0;  // NOLINT
+      attrs["dtype"] =
+          (int)pten::TransToProtoVarType(dense_tensor->dtype());  // NOLINT
+      auto ddim = grad.shape();
+      std::vector<int64_t> value;
+      size_t rank = static_cast<size_t>(ddim.size());
+      value.resize(rank);
+      for (size_t i = 0; i < rank; i++) {
+        value[i] = ddim[i];
+      }
+      attrs["shape"] = value;
+      fill_constant_dygraph_function(&grad, attrs);
+    } else {
+      dense_tensor->release();
+    }
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -167,6 +223,8 @@ PyMethodDef variable_methods[] = {
     {"copy_", (PyCFunction)(void (*)(void))eager_tensor_method_copy_,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grads", (PyCFunction)(void (*)(void))eager_tensor_retain_grads,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"clear_gradient", (PyCFunction)(void (*)(void))eager_tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
