@@ -78,6 +78,7 @@ bool Carrier::EnqueueInterceptorMessage(
     VLOG(3) << "Receiving control message from rank "
             << interceptor_message.src_id() << " to rank "
             << interceptor_message.dst_id();
+    msg_bus_->IncreaseBarrierCount();
   } else {
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
@@ -85,6 +86,8 @@ bool Carrier::EnqueueInterceptorMessage(
   }
   return true;
 }
+
+void Carrier::Barrier() { msg_bus_->Barrier(); }
 
 Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);

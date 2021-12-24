@@ -89,6 +89,9 @@ void FleetExecutor::Init(
   CreateCarrier();
   InitCarrier();
   InitMessageBus();
+
+  // refine this? wait all carrier ready
+  GetCarrier()->Barrier();
 }
 
 void FleetExecutor::InitCarrier() {

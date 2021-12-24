@@ -119,6 +119,8 @@ TEST(InterceptorTest, PingPong) {
       carrier->SetMsgBus(msg_bus);
       Interceptor* a = carrier->SetInterceptor(
           0, InterceptorFactory::Create("PingPong", 0, nullptr));
+      carrier->Barrier();
+
       InterceptorMessage msg;
       a->Send(1, msg);
       carrier->Wait();
@@ -131,6 +133,8 @@ TEST(InterceptorTest, PingPong) {
       carrier->SetMsgBus(msg_bus);
       carrier->SetInterceptor(
           1, InterceptorFactory::Create("PingPong", 1, nullptr));
+      carrier->Barrier();
+
       carrier->Wait();
       int status;
       int ret = waitpid(pid, &status, 0);

@@ -84,6 +84,8 @@ class Carrier final {
 
   bool Send(const InterceptorMessage& msg);
 
+  void Barrier();
+
  private:
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
