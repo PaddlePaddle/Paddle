@@ -749,6 +749,8 @@ struct KernelRegistrar {
  * layout, so the layout also need to be a part of symbol var name. If developer
  * register 2 kernel with same name, backend, layout and diff dtype, he should
  * use another register marco PT_REGISTER_KERNEL.
+ *
+ * TODO(chenweihang): remove this marco later
  */
 #define PT_REGISTER_NO_TEMPLATE_KERNEL(                                      \
     kernel_name, backend, layout, kernel_fn, dtype)                          \
@@ -771,6 +773,60 @@ struct KernelRegistrar {
   }                                                                          \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(         \
       ::pten::Kernel* kernel)
+
+/** PT_REGISTER_GENERAL_KERNEL
+ *
+ * Basic Kernel register marco, used to register a instantiated kernel function
+ * with one template argument.
+ */
+
+#define PT_REGISTER_GENERAL_KERNEL(                                          \
+    kernel_name, backend, layout, kernel_fn, dtype)                          \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      pt_register_no_t_kernel_ns_check_##kernel_name##_##backend##_##layout, \
+      "PT_REGISTER_NO_TEMPLATE_KERNEL must be called in global namespace."); \
+  _PT_REGISTER_GENERAL_KERNEL(kernel_name, backend, layout, kernel_fn, dtype)
+
+#ifndef _WIN32
+#define _PT_REGISTER_GENERAL_KERNEL(                                        \
+    kernel_name, backend, layout, kernel_fn, dtype)                         \
+  template decltype(kernel_fn) kernel_fn;                                   \
+  static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+      ::pten::Kernel*);                                                     \
+  static const ::pten::KernelRegistrar                                      \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
+          #kernel_name,                                                     \
+          BACKEND(backend),                                                 \
+          DATALAYOUT(layout),                                               \
+          ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
+          &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
+          PT_KERNEL(kernel_fn),                                             \
+          PT_VARIADIC_KERNEL(kernel_fn));                                   \
+  int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
+    return 0;                                                               \
+  }                                                                         \
+  void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
+      ::pten::Kernel* kernel)
+#else
+#define _PT_REGISTER_GENERAL_KERNEL(                                        \
+    kernel_name, backend, layout, kernel_fn, dtype)                         \
+  static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+      ::pten::Kernel*);                                                     \
+  static const ::pten::KernelRegistrar                                      \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
+          #kernel_name,                                                     \
+          BACKEND(backend),                                                 \
+          DATALAYOUT(layout),                                               \
+          ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
+          &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
+          PT_KERNEL(kernel_fn),                                             \
+          PT_VARIADIC_KERNEL(kernel_fn));                                   \
+  int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
+    return 0;                                                               \
+  }                                                                         \
+  void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
+      ::pten::Kernel* kernel)
+#endif
 
 /** PT_REGISTER_CTX_KERNEL
  *
