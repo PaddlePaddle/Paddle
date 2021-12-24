@@ -189,28 +189,6 @@ __device__ __forceinline__ void LoadData(
   }
 }
 
-template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
-__device__ __forceinline__ void WriteData(
-    paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
-    OutT src[VecSize],
-    ScalarType<OutT> (*dst)[VecSize],
-    int block_offset,
-    int num) {
-#pragma unroll
-  for (int i = 0; i < VecSize; ++i) {
-#pragma unroll
-    for (int j = 0; j < NumOuts; ++j) {
-      dst[j][i] = (src[i])[j];
-    }
-  }
-
-#pragma unroll
-  for (int i = 0; i < NumOuts; ++i) {
-    kps::WriteData<ScalarType<OutT>, VecSize, 1, 1, IsBoundary>(
-        outs[i] + block_offset, dst[i], num);
-  }
-}
-
 template <typename InT,
           typename OutT,
           typename Functor,
@@ -231,7 +209,6 @@ __device__ void ElementwiseBroadcastKernelImpl(
     Functor func) {
   InT args[Arity][VecSize];
   OutT result[VecSize];
-  ScalarType<OutT> vec_result[NumOuts][VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -253,8 +230,8 @@ __device__ void ElementwiseBroadcastKernelImpl(
                              Arity,
                              kCallElementwiseAny>()(func, args, result);
 
-  WriteData<OutT, VecSize, IsBoundary, NumOuts>(
-      outs, result, vec_result, block_offset, num);
+  ElementwiseWriteDataCaller<OutT, VecSize, NumOuts, IsBoundary>()(
+      outs, result, block_offset, num);
 }
 
 template <typename InT,
@@ -469,10 +446,7 @@ void LaunchBroadcastElementwiseCudaKernel(
     Functor func) {
   /* Packing scalar type(float, int etc.) into Array<OutT, NumOuts> type
      for supporting multiple-output feature in elementwise system. */
-  using ArrayOutT =
-      typename std::conditional_t<NumOuts == 1,
-                                  paddle::framework::Array<OutT, 1>,
-                                  OutT>;
+  using ArrayOutT = ArrayType<OutT, NumOuts>;
   using ScalarOutT = ScalarType<ArrayOutT>;  // Deducing the scalar type.
   using Traits = paddle::platform::FunctionTraits<Functor>;
   const int kArity =
@@ -491,19 +465,19 @@ void LaunchBroadcastElementwiseCudaKernel(
                         "Currently only broadcast of binary is supported and "
                         "verified, but received %d.",
                         kArity));
+  PADDLE_ENFORCE_EQ(
+      outs->size(),
+      NumOuts,
+      paddle::platform::errors::InvalidArgument(
+          "Number of outputs shall equal to number of functions, "
+          "but number of outputs is %d, number of functions is %d.",
+          outs->size(),
+          NumOuts));
 
   int in_vec_size = 4;
   int out_vec_size = 4;
   if (NumOuts > 1) {
-    PADDLE_ENFORCE_EQ(
-        outs->size(),
-        NumOuts,
-        paddle::platform::errors::InvalidArgument(
-            "Number of output shall equal to number of functions, but "
-            "number of output is %d, but number of functions is %d.",
-            outs->size(),
-            NumOuts));
-    for (int i = 0; i < outs->size(); ++i) {
+    for (int i = 0; i < NumOuts; ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),

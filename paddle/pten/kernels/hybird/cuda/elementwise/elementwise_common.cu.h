@@ -24,6 +24,13 @@ namespace pten {
 namespace kps = paddle::operators::kernel_primitives;
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 
+/* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
+   for supporting multiple-output feature in elementwise system.*/
+template <class T, int Num>
+using ArrayType =
+    typename std::conditional_t<Num == 1, paddle::framework::Array<T, 1>, T>;
+
+/* Deducing scalar type T(float, int etc.) from type Array<T, NumOuts>.*/
 template <class T>
 using ScalarType = typename T::Type;
 
@@ -76,6 +83,30 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
                                     OutT *result) {
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
         result, args[0], args[1], args[2], func);
+  }
+};
+
+template <typename OutT, int VecSize, int NumOuts, bool IsBoundary>
+struct ElementwiseWriteDataCaller {
+  __device__ __forceinline__ void operator()(
+      paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
+      OutT src[VecSize],
+      int block_offset,
+      int num) {
+    ScalarType<OutT> dst[NumOuts][VecSize];
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+#pragma unroll
+      for (int j = 0; j < NumOuts; ++j) {
+        dst[j][i] = (src[i])[j];
+      }
+    }
+
+#pragma unroll
+    for (int i = 0; i < NumOuts; ++i) {
+      kps::WriteData<ScalarType<OutT>, VecSize, 1, 1, IsBoundary>(
+          outs[i] + block_offset, dst[i], num);
+    }
   }
 };
 
