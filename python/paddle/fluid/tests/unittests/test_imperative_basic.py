@@ -359,6 +359,13 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(tmp2._grad_ivar() is not None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
+    def test_paddle_imperative_is_grad_enabled(self):
+        with fluid.dygraph.guard():
+            with paddle.set_grad_enabled(False):
+                self.assertTrue(paddle.is_grad_enabled() is False)
+                with paddle.set_grad_enabled(True):
+                    self.assertTrue(paddle.is_grad_enabled())
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
@@ -773,7 +780,7 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_grad_h2h2, static_grad_h2h))
         self.assertTrue(np.allclose(dy_grad_i2h2, static_grad_i2h))
 
-    def test_layer_attrs(self):
+    def func_layer_attrs(self):
         layer = fluid.dygraph.Layer("test")
         layer.test_attr = 1
         self.assertFalse(hasattr(layer, "whatever"))
@@ -792,6 +799,11 @@ class TestImperative(unittest.TestCase):
         self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
         my_layer.l1 = None
         self.assertEqual(len(my_layer.sublayers()), 0)
+
+    def test_layer_attrs(self):
+        with _test_eager_guard():
+            self.func_layer_attrs()
+        self.func_layer_attrs()
 
 
 class TestDygraphUtils(unittest.TestCase):
