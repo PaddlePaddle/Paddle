@@ -215,6 +215,8 @@ from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
 from .math import fmax  # noqa: F401
 from .math import fmin  # noqa: F401
+from .math import inner  # noqa: F401
+from .math import outer  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -323,6 +325,8 @@ tensor_method_func  = [ #noqa
            'fmax',
            'fmin',
            'mm',
+           'inner',
+           'outer',
            'divide',
            'floor_divide',
            'remainder',
