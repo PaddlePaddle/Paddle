@@ -48,8 +48,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
   gc_.reset(new InterpreterCoreGarbageCollector());
 
-  exception_notifier_ = main_thread_blocker_.RegisterEvent(
-      kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
   if (FLAGS_new_executor_use_local_scope) {

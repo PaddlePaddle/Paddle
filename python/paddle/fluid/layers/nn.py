@@ -665,6 +665,69 @@ def _pull_sparse_v2(input,
     return outs
 
 
+def _pull_gpups_sparse(input,
+                       size,
+                       dtype='float32',
+                       is_distributed=False,
+                       is_sparse=False):
+    r"""
+    **Pull GpuPS Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    GpuPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int|list of int): The embedding size parameter of each input, which indicates the size of
+            each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+	    float32 now.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs, whose size are indicated by size respectively.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          slots = []
+          data_1 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          slots.append(data_1)
+          data_2 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          slots.append(data_2)
+          embs = fluid.layers.pull_gpups_sparse(input=slots, size=[11, 35])
+    """
+    helper = LayerHelper('pull_gpups_sparse', **locals())
+    if dtype != 'float32':
+        raise ValueError(
+            "GpuPS only support float type embedding now, and your type is: " +
+            dtype)
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+    helper.append_op(
+        type='pull_gpups_sparse',
+        inputs={'Ids': inputs,
+                'W': w},
+        outputs={'Out': outs},
+        attrs={
+            'size': size,
+            'is_distributed': is_distributed,
+            'is_sparse': is_sparse
+        })
+    if len(outs) == 1:
+        return outs[0]
+    return outs
+
+
 def _pull_box_sparse(input,
                      size,
                      dtype='float32',
@@ -9864,7 +9927,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
         #NOTE(GuoxiaWang): support NHWC data format
         if data_format == 'NHWC':
-            alpha_shape = [1, 1, 1, x.shape[1]]
+            alpha_shape = [1, 1, 1, x.shape[-1]]
         else:
             alpha_shape = [1, x.shape[1], 1, 1]
 
