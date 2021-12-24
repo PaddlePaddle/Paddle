@@ -111,7 +111,11 @@ if(WITH_ROCM)
     hip_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu.cc DEPS selected_rows_functor math_function)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
-cc_test(cusparse_test SRCS cusparse_test.cc DEPS tensor)
+
+if(NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) 
+    cc_test(cusparse_test SRCS cusparse_test.cc DEPS tensor)
+endif()
+
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
 if(WITH_TESTING AND TEST im2col_test)
     set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)
