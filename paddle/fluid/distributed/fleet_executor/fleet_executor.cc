@@ -27,8 +27,6 @@
 namespace paddle {
 namespace distributed {
 
-std::unique_ptr<Carrier> FleetExecutor::carrier_;
-
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
   PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
@@ -41,9 +39,16 @@ FleetExecutor::~FleetExecutor() {
 }
 
 Carrier* FleetExecutor::GetCarrier() {
-  PADDLE_ENFORCE_NOT_NULL(carrier_.get(), platform::errors::NotFound(
-                                              "Carrier has not been created."));
-  return carrier_.get();
+  Carrier* carrier = GetCarrierPPtr()->get();
+  PADDLE_ENFORCE_NOT_NULL(
+      carrier, platform::errors::NotFound("Carrier has not been created."));
+  return carrier;
+}
+
+std::unique_ptr<Carrier>* FleetExecutor::GetCarrierPPtr() {
+  // TODO(liyurui): Support carrier with carrier id
+  static std::map<int64_t, std::unique_ptr<Carrier>> id_to_carrier_ptr;
+  return &id_to_carrier_ptr[0];
 }
 
 void FleetExecutor::Init(

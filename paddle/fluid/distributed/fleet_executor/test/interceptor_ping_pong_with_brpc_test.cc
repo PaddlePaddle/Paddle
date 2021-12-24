@@ -107,39 +107,27 @@ TEST(InterceptorTest, PingPong) {
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank = {{0, 0},
                                                                  {1, 1}};
 
-  int exe_pid = fork();
-  if (exe_pid == 0) {
-    int pid = fork();
-    if (pid == 0) {
-      Carrier* carrier =
-          FleetExecutor::CreateCarrier(0, interceptor_id_to_rank);
-      carrier->SetCreatingFlag(false);
-      auto msg_bus = std::make_shared<MessageBus>();
-      msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
-      carrier->SetMsgBus(msg_bus);
-      Interceptor* a = carrier->SetInterceptor(
-          0, InterceptorFactory::Create("PingPong", 0, nullptr));
-      InterceptorMessage msg;
-      a->Send(1, msg);
-      carrier->Wait();
-    } else {
-      Carrier* carrier =
-          FleetExecutor::CreateCarrier(1, interceptor_id_to_rank);
-      carrier->SetCreatingFlag(false);
-      auto msg_bus = std::make_shared<MessageBus>();
-      msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
-      carrier->SetMsgBus(msg_bus);
-      carrier->SetInterceptor(
-          1, InterceptorFactory::Create("PingPong", 1, nullptr));
-      carrier->Wait();
-      int status;
-      int ret = waitpid(pid, &status, 0);
-      CHECK_EQ(ret, pid);
-    }
+  int pid = fork();
+  if (pid == 0) {
+    Carrier* carrier = FleetExecutor::CreateCarrier(0, interceptor_id_to_rank);
+    auto msg_bus = std::make_shared<MessageBus>();
+    msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
+    carrier->SetMsgBus(msg_bus);
+    Interceptor* a = carrier->SetInterceptor(
+        0, InterceptorFactory::Create("PingPong", 0, nullptr));
+    carrier->SetCreatingFlag(false);
+    InterceptorMessage msg;
+    a->Send(1, msg);
+    carrier->Wait();
   } else {
-    int status;
-    int ret = waitpid(exe_pid, &status, 0);
-    CHECK_EQ(ret, exe_pid);
+    Carrier* carrier = FleetExecutor::CreateCarrier(1, interceptor_id_to_rank);
+    auto msg_bus = std::make_shared<MessageBus>();
+    msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
+    carrier->SetMsgBus(msg_bus);
+    carrier->SetInterceptor(1,
+                            InterceptorFactory::Create("PingPong", 1, nullptr));
+    carrier->SetCreatingFlag(false);
+    carrier->Wait();
   }
 }
 

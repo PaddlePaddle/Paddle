@@ -46,11 +46,13 @@ class FleetExecutor final {
   static Carrier* GetCarrier();
   template <typename... Args>
   static Carrier* CreateCarrier(Args&&... args) {
+    auto* carrier_ptr = GetCarrierPPtr();
     PADDLE_ENFORCE_EQ(
-        carrier_.get(), nullptr,
+        carrier_ptr->get(), nullptr,
         platform::errors::AlreadyExists("Carrier has been created already."));
-    carrier_ = std::make_unique<Carrier>(std::forward<Args>(args)...);
-    return carrier_.get();
+    Carrier* carrier = new Carrier(std::forward<Args>(args)...);
+    carrier_ptr->reset(carrier);
+    return carrier;
   }
 
  private:
@@ -58,6 +60,7 @@ class FleetExecutor final {
   void InitMessageBus();
   void InitCarrier();
   void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
+  static std::unique_ptr<Carrier>* GetCarrierPPtr();
   FleetExecutorDesc exe_desc_;
   std::shared_ptr<RuntimeGraph> runtime_graph_;
   framework::Scope* root_scope_;
@@ -67,7 +70,6 @@ class FleetExecutor final {
   // The carriers under FleetExecutor will share message bus,
   // using shared_ptr to manage lifetime and condition race.
   std::shared_ptr<MessageBus> msg_bus_;
-  static std::unique_ptr<Carrier> carrier_;
 };
 
 }  // namespace distributed
