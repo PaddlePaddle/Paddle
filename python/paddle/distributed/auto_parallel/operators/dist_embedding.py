@@ -16,14 +16,14 @@ from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
-from ..dist_attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
@@ -329,9 +329,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             rank_id = _get_corresponding_rank(ctx, dist_attr.process_mesh,
                                               rank_id)
 
-        # check if need gradient allreduce
-        need_gradient_allreduce = False
-
         assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')
         assert 'W' in kwargs, "input [{}] is not given".format('W')
         assert 'Out@GRAD' in kwargs, "input [{}] is not given".format('Out')
@@ -355,6 +352,84 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['W@GRAD'])
 
         Ids_var = main_block.var(kwargs['Ids'][0])
+        Weight_var = main_block.var(kwargs['W'][0])
+        Out_grad = main_block.var(kwargs['Out@GRAD'][0])
+        Weight_grad = main_block.var(kwargs['W@GRAD'][0])
+
+        embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
+            Weight_var.name)[0]
+        assert embedding_row_dim_mapping >= 0, "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
+            embedding_row_dim_mapping)
+        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_group = dist_attr.process_mesh.processes
+
+        # A generalized method to caculate embedding offset using cartisian product
+        relative_idx = _get_idx_in_axis(process_mesh_group, process_mesh_shape,
+                                        embedding_row_dim_mapping, rank_id)
+        per_part_size = Weight_var.shape[0]
+        relative_idx = relative_idx * per_part_size
+
+        check_variable_and_dtype(
+            Out_grad, 'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'], '_c_identity')
+
+        intermediate_var_0 = main_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_embedding", '@tmp_0@GRAD'])),
+            dtype=Out_grad.dtype,
+            shape=Out_grad.shape,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=Out_grad.stop_gradient)
+
+        # copy X_var's dist_attr to intermediate_var_0's dist_attr
+        out_grad_dist_attr = dist_attr.get_input_dist_attr(Out_grad.name)
+        assert out_grad_dist_attr is not None
+        ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                             out_grad_dist_attr)
+
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      embedding_row_dim_mapping, rank_id)
+        group = new_process_group(group_ranks)
+
+        c_identity_op = main_block.append_op(
+            type='c_identity',
+            inputs={'X': [Out_grad]},
+            outputs={'Out': intermediate_var_0},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+                OP_ROLE_KEY: OpRole.Backward,
+            })
+        check_variable_and_dtype(intermediate_var_0, 'x',
+                                 ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(intermediate_var_0.dtype, 'dtype',
+                    ['float16', 'float32', 'float64'], 'linear')
+
+        set_comm_op_dist_attr_for_program(c_identity_op, dist_attr.process_mesh,
+                                          out_grad_dist_attr, ctx)
+
+        main_block._sync_with_cpp()
+        c_embedding_grad_op_desc = main_block.desc.append_op()
+        c_embedding_grad_op_desc.set_type("c_embedding_grad")
+        c_embedding_grad_op_desc.set_input('Ids', [Ids_var.name])
+        c_embedding_grad_op_desc.set_input('W', [Weight_var.name])
+        c_embedding_grad_op_desc.set_input('Out@GRAD',
+                                           [intermediate_var_0.name])
+        c_embedding_grad_op_desc.set_output('W@GRAD', [Weight_grad.name])
+        c_embedding_grad_op_desc._set_attr('start_index', relative_idx)
+        c_embedding_grad_op_desc._set_attr(OP_ROLE_KEY, OpRole.Backward)
+        main_block._sync_with_cpp()
+
+        c_embedding_grad_op = main_block.ops[-1]
+        assert c_embedding_grad_op.type == "c_embedding_grad"
+        naive_copy_op_dist_attr_for_program(c_embedding_grad_op, backward_op,
+                                            ctx)
+
+        # check if need gradient allreduce
+        need_gradient_allreduce = False
+
         process_mesh = dist_attr.process_mesh
         var_dim_mapping = dist_attr.get_input_dims_mapping(Ids_var.name)
         mesh_shape = process_mesh.topology
