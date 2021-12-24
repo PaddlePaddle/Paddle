@@ -14,16 +14,12 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 
-template <typename T>
-void Matmul(const GPUContext& dev_ctx,
+template <typename T, typename DevCtx>
+void Matmul(const DevCtx& dev_ctx,
             const DenseTensor& x,
             const DenseTensor& y,
             bool transpose_x,
@@ -31,5 +27,3 @@ void Matmul(const GPUContext& dev_ctx,
             DenseTensor* out);
 
 }  // namespace pten
-
-#endif
