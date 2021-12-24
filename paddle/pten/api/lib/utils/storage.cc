@@ -20,13 +20,15 @@ namespace experimental {
 ExternalStorage::ExternalStorage(void* ptr,
                                  size_t size,
                                  const paddle::platform::Place& place)
-    : pten::Storage(pten::Allocation(ptr, place)), size_(size) {}
+    : pten::Storage(
+          std::make_shared<paddle::memory::Allocation>(ptr, size, place)),
+      size_(size) {}
 
 ExternalStorage::ExternalStorage(const pten::intrusive_ptr<pten::Storage>& root,
                                  size_t delta,
                                  size_t size)
-    : Storage(pten::Allocation(static_cast<uint8_t*>(root->data()) + delta,
-                               root->place())),
+    : Storage(std::make_shared<paddle::memory::Allocation>(
+          static_cast<uint8_t*>(root->data()) + delta, size, root->place())),
       size_(size) {
   PADDLE_ENFORCE_LE(static_cast<size_t>(delta + size),
                     root->size(),

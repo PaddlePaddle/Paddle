@@ -14,14 +14,14 @@
 
 #pragma once
 
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace pten {
 
 template <typename T, typename ContextT>
-void ConjImpl(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+void Conj(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = out->mutable_data<T>();
