@@ -334,6 +334,8 @@ class CUDAContext {
     return old_stream_ptr;
   }
 
+  void SetStream(gpuStream_t stream);
+
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
 #ifdef PADDLE_WITH_HIP
@@ -614,6 +616,11 @@ class CUDADeviceContext : public DeviceContext {
       return default_ctx_;
     }
     return thread_ctx_.at(this);
+  }
+
+  // Note: Can only be used under thread_local semantics.
+  void SetThreadLocalStream(const gpuStream_t stream) {
+    thread_ctx_.at(this)->SetStream(stream);
   }
 
  private:

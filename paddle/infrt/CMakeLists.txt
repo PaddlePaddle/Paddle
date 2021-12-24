@@ -1,6 +1,8 @@
 if (NOT WITH_INFRT)
     return()
 endif()
+set(INFRT_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/infrt" )
+set(INFRT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/infrt" )
 
 include(infrt_lib)
 
@@ -74,6 +76,7 @@ set(infrt_mlir_incs
         dense_tensor_inc
         pd_ops_inc
         rewrite_inc
+        trt_ops_inc
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 

@@ -50,6 +50,11 @@ using dot_kernel = void (*)(const DeviceContext&,
 using flatten_kernel =
     void (*)(const DeviceContext&, const DenseTensor&, int, int, DenseTensor*);
 
+using empty_kernel = void (*)(const DeviceContext&,
+                              const ScalarArray&,
+                              DenseTensor*);
+
+using empty_like_kernel = void (*)(const DeviceContext&, DenseTensor*);
 using full_kernel = void (*)(const DeviceContext&,
                              const ScalarArray&,
                              const Scalar&,

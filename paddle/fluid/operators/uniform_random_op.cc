@@ -27,7 +27,7 @@ namespace {
 template <typename T>
 inline void UniformRealDistribution(T *data, const int64_t &size,
                                     const float &min, const float &max,
-                                    const unsigned int &seed) {
+                                    const unsigned int seed) {
   VLOG(4) << "[CPU] UniformRandomKernel<T>";
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
                                          static_cast<T>(max));
@@ -41,8 +41,7 @@ inline void UniformRealDistribution(T *data, const int64_t &size,
 template <>
 inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
                                     const int64_t &size, const float &min,
-                                    const float &max,
-                                    const unsigned int &seed) {
+                                    const float &max, const unsigned int seed) {
   VLOG(4) << "[CPU] UniformRandomKernel<bfloat16>";
   std::uniform_real_distribution<float> dist(min, max);
   auto engine = paddle::framework::GetCPURandomEngine(seed);

@@ -1195,6 +1195,129 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     return out
 
 
+
+def inner(x, y, name=None):
+    """
+
+    Inner product of two input Tensor.
+    
+    Ordinary inner product for 1-D Tensors, in higher dimensions a sum product over the last axes.
+
+    Args:
+        x (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match y's.
+        y (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match x's.
+        name(str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The inner-product Tensor, the output shape is x.shape[:-1] + y.shape[:-1].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(1, 7).reshape((2, 3)).astype('float32')
+            y = paddle.arange(1, 10).reshape((3, 3)).astype('float32')
+            out = paddle.inner(x, y)
+            print(out)
+            #        ([[14, 32, 50],
+            #         [32, 77, 122]])
+
+
+    """
+    if x.size == 1 or y.size == 1:
+        return multiply(x, y)
+    else:
+        xshape = x.shape
+        yshape = y.shape
+        dstshape = list(xshape[:-1])+list(yshape[:-1])
+        if len(dstshape)==0:
+            dstshape = [1]
+        nx = x.reshape((-1, xshape[-1]))
+        ny = y.reshape((-1, yshape[-1]))
+
+        if in_dygraph_mode():
+            return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
+
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(val, name,
+                                        ['float16', 'float32', 'float64'], 'inner')
+            x_shape = list(xshape)
+            y_shape = list(yshape)
+
+            # check the inner 2 dimensions
+            if x_shape[-1] != y_shape[-1]:
+                if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
+                    raise ValueError(
+                        "After performing an optional transpose, Input X's last dim should be "
+                        "equal to Y's last dim for multiplication "
+                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+                        % (x_shape, y_shape))
+
+        __check_input(nx, ny)
+
+        helper = LayerHelper('inner', **locals())
+        out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+        helper.append_op(
+            type='matmul_v2', inputs={'X': nx,
+                                'Y': ny.T}, outputs={'Out': out})
+        return out.reshape(dstshape)
+
+
+def outer(x, y, name=None):
+    """
+
+    Outer product of two Tensors.
+
+    Input is flattened if not already 1-dimensional.
+
+    Args:
+        x (Tensor): An N-D Tensor or a Scalar Tensor. 
+        y (Tensor): An N-D Tensor or a Scalar Tensor. 
+        name(str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The outer-product Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.arange(1, 4).astype('float32')
+            y = paddle.arange(1, 6).astype('float32')
+            out = paddle.outer(x, y)
+            print(out)
+            #        ([[1, 2, 3, 4, 5],
+            #         [2, 4, 6, 8, 10],
+            #         [3, 6, 9, 12, 15]])
+
+
+    """
+    nx = x.reshape((-1, 1))
+    ny = y.reshape((1, -1))
+
+    if in_dygraph_mode():
+        return _C_ops.matmul_v2(nx, ny)
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(val, name,
+                                     ['float16', 'float32', 'float64'], 'inner')
+
+    __check_input(nx, ny)
+
+    helper = LayerHelper('outer', **locals())
+    out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+    helper.append_op(
+        type='matmul_v2', inputs={'X': nx,
+                               'Y': ny}, outputs={'Out': out})
+    return out
+
+
 def logsumexp(x, axis=None, keepdim=False, name=None):
     r"""
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
@@ -2859,6 +2982,51 @@ def lerp_(x, y, weight, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
     return _C_ops.lerp_(x, y, weight)
+
+def erfinv(x, name=None):
+    r"""
+    The inverse error function of x, .
+
+    Equation:
+        .. math::
+
+            erfinv(erf(x)) = x.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.to_tensor([0, 0.5, -1.], dtype="float32")
+            out = paddle.erfinv(x)
+            # out: [0, 0.4769, -inf]
+
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+
+    if in_dygraph_mode():
+        return _C_ops.erfinv(x)
+
+    helper = LayerHelper('erfinv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+@inplace_apis_in_dygraph_only
+def erfinv_(x, name=None):
+    r"""
+    Inplace version of ``erfinv`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_erfinv`.
+    """
+    check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):
     """
