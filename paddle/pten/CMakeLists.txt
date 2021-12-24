@@ -31,8 +31,5 @@ set(PTEN_DEPS ${PTEN_DEPS} nary unary binary)
 if(WITH_GPU OR WITH_ROCM)
   set(PTEN_DEPS ${PTEN_DEPS} math_gpu linalg_gpu manipulation_gpu)
 endif()
-if(WITH_XPU)
-  set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu)
-endif()
 
 cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})
