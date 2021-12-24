@@ -42,6 +42,12 @@ void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
   place_ = place;
   root_scope_ = root_scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+
+  // TODO(fleet_exe dev): thread pool
+  thread_num_ = 1;
+  thread_pool_.SetThreadNum(thread_num_);
+  thread_pool_.Start();
+
   CreateInterceptors();
   is_init_ = true;
 }
@@ -183,6 +189,13 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         "The interceptor id should be unique.",
                         interceptor_id));
   interceptor->RegisterCarrier(this);
+
+  // TODO(fleet_exe dev): get loop
+  auto* loop = thread_pool_.GetLoop(interceptor_id % thread_num_);
+  PADDLE_ENFORCE_NOT_NULL(
+      loop, platform::errors::Fatal("thread task loop must not null"));
+  interceptor->RegisterTaskLoop(loop);
+
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
