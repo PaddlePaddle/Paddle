@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace pten {
@@ -135,12 +134,9 @@ inline void swap(Allocation& a, Allocation& b) noexcept {
 /// mainly used for general data structures such as Tensor. The raw
 /// allocator is more universal and efficient.
 class Allocator {
-  using Place = paddle::platform::Place;
-
  public:
   virtual ~Allocator() = default;
   virtual Allocation Allocate(size_t bytes_size) = 0;
-  virtual const Place& place() = 0;
 };
 
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
