@@ -186,6 +186,10 @@ void GpuPassStrategy::EnableMkldnnBfloat16() {
   LOG(ERROR) << "GPU not support MKL-DNN bfloat16";
 }
 
+void GpuPassStrategy::EnableMkldnnInt8() {
+  LOG(ERROR) << "GPU not support MKL-DNN int8";
+}
+
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -301,6 +305,18 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
   use_mkldnn_bfloat16_ = true;
 #else
   use_mkldnn_bfloat16_ = false;
+#endif
+}
+
+void CpuPassStrategy::EnableMkldnnInt8() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!use_mkldnn_int8_) {
+    passes_.clear();
+    passes_.push_back("quant_dequant_mkldnn_fuse_pass");
+  }
+  use_mkldnn_int8_ = true;
+#else
+  use_mkldnn_int8_ = false;
 #endif
 }
 

@@ -372,6 +372,17 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
+void AnalysisConfig::EnableMkldnnInt8() {
+#ifdef PADDLE_WITH_MKLDNN
+  use_mkldnn_int8_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
+  use_mkldnn_int8_ = false;
+#endif
+
+  Update();
+}
+
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           platform::errors::PreconditionNotMet(
@@ -550,6 +561,12 @@ void AnalysisConfig::Update() {
   if (use_mkldnn_bfloat16_) {
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->EnableMkldnnBfloat16();
+#endif
+  }
+
+  if (use_mkldnn_int8_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnInt8();
 #endif
   }
 
