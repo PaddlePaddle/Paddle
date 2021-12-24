@@ -33,6 +33,7 @@ limitations under the License. */
 #include <cudnn.h>
 #include <cufft.h>
 #include <curand.h>
+#include <cusparse.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 #include "paddle/fluid/platform/external_error.pb.h"
@@ -707,6 +708,7 @@ DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess, CUDA);
 DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
+DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS, CUSPARSE);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
 DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
 DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS, CU);
@@ -837,6 +839,7 @@ template std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
 template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
 template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
 template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
+template std::string GetExternalErrorMsg<cusparseStatus_t>(cusparseStatus_t);
 template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
 template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
 template std::string GetExternalErrorMsg<CUresult>(CUresult);
@@ -883,7 +886,18 @@ inline bool is_error(cublasStatus_t stat) {
   return stat != CUBLAS_STATUS_SUCCESS;
 }
 
+/*************** CUSPARSE ERROR ***************/
+inline bool is_error(cusparseStatus_t stat) {
+  return stat != CUSPARSE_STATUS_SUCCESS;
+}
+
 inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
+  std::ostringstream sout;
+  sout << "CUBLAS error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
+}
+
+inline std::string build_nvidia_error_msg(cusparseStatus_t stat) {
   std::ostringstream sout;
   sout << "CUBLAS error(" << stat << "). " << GetExternalErrorMsg(stat);
   return sout.str();

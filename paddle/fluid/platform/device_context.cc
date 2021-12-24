@@ -482,6 +482,7 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
+  InitCuSparseContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
   InitCuSolverContext();
@@ -492,6 +493,7 @@ CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
+  DestoryCuSparseContext();
 #ifndef PADDLE_WITH_HIP
   DestoryCuSolverContext();
 #endif
@@ -609,6 +611,9 @@ rocblas_handle CUDADeviceContext::cublas_handle() const {
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
+}
+cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
+  return context()->CusparseHandle()->GetCusparseHandle();
 }
 #endif
 
