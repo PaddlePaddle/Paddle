@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/pten/api/include/api.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -190,19 +190,8 @@ static PyObject* eager_tensor_clear_gradient(EagerTensorObject* self,
     auto dense_tensor =
         std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
     if (set_to_zero) {
-      framework::AttributeMap attrs;
-      attrs["value"] = (float)0.0;  // NOLINT
-      attrs["dtype"] =
-          (int)pten::TransToProtoVarType(dense_tensor->dtype());  // NOLINT
-      auto ddim = grad.shape();
-      std::vector<int64_t> value;
-      size_t rank = static_cast<size_t>(ddim.size());
-      value.resize(rank);
-      for (size_t i = 0; i < rank; i++) {
-        value[i] = ddim[i];
-      }
-      attrs["shape"] = value;
-      fill_constant_dygraph_function(&grad, attrs);
+      grad.set_tensor(std::make_shared<paddle::experimental::Tensor>(
+          paddle::experimental::zeros_like(*(grad.Tensor().get()))));
     } else {
       dense_tensor->release();
     }

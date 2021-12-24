@@ -217,9 +217,6 @@ def __bootstrap__():
 monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
-if hasattr(core, "eager"):
-    with framework._test_eager_guard():
-        monkey_patch_varbase()
 
 # NOTE(zhiqiu): register npu_finalize on the exit of Python,
 # do some clean up manually.

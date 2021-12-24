@@ -24,13 +24,8 @@ except ImportError:
 from .batch import batch  # noqa: F401
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
-from .fluid import core
-from paddle.fluid.framework import _test_eager_guard
 monkey_patch_variable()
 monkey_patch_math_varbase()
-if hasattr(core, "eager"):
-    with _test_eager_guard():
-        monkey_patch_math_varbase()
 from .framework.dtype import dtype as dtype  # noqa: F401
 from paddle.framework.dtype import uint8  # noqa: F401
 from paddle.framework.dtype import int8  # noqa: F401
