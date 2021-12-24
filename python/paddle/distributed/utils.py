@@ -31,7 +31,7 @@ from distutils.util import strtobool
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-
+from paddle import _C_ops
 
 __all__ = [     #noqa
            'get_host_name_ip',
@@ -146,7 +146,7 @@ def global_scatter(x,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return core.ops.global_scatter(x, local_count, \
+        return _C_ops.global_scatter(x, local_count, \
                                     global_count,  \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
@@ -258,7 +258,7 @@ def global_gather(x,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return core.ops.global_gather(x, local_count, \
+        return _C_ops.global_gather(x, local_count, \
                                     global_count, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
