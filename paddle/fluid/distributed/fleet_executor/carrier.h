@@ -61,6 +61,7 @@ class Carrier final {
 
   void Release();
   void Wait();
+  void WakeUp();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
@@ -72,12 +73,10 @@ class Carrier final {
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
 
-  void SetCreatingFlag(bool flag);
+  void SetCreatingFlag(bool flag) {}
   void SetMsgBus(const std::shared_ptr<MessageBus>& msg_bus) {
     msg_bus_ = msg_bus;
   }
-
-  std::condition_variable& GetCondVar();
 
   void Start();
 
@@ -85,18 +84,11 @@ class Carrier final {
 
   bool Send(const InterceptorMessage& msg);
 
-  // NOTE: This mutex will be used in interceptor's RunOps function.
-  // This mutex is used for avoiding forward ops and backward ops run
-  // simultaneously, which will lead to a random hang for some sync ops.
-  std::mutex run;
-
  private:
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
   // create each Interceptor
   void CreateInterceptors();
-
-  void HandleTmpMessages();
 
   int64_t GetRank(int64_t interceptor_id) const;
 
@@ -106,10 +98,6 @@ class Carrier final {
 
   std::vector<int64_t> source_interceptor_ids_;
 
-  std::vector<InterceptorMessage> message_tmp_{};
-  std::mutex tmp_message_mutex_;
-  bool creating_interceptors_{true};
-  std::mutex creating_flag_mutex_;
   bool is_init_{false};
 
   std::mutex running_mutex_;

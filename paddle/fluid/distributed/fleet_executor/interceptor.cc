@@ -56,21 +56,18 @@ void Interceptor::LoopOnce() {
             << " with message: " << message_type << ".";
 
     Handle(msg);
-    // TODO(wangxi): unregister
-    if (stop_) {
-      // break the pooling thread
-      VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
-      break;
-    }
+    //    if (stop_) {
+    //      // break the pooling thread
+    //      VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
+    //      break;
+    //    }
   }
 }
 
 void Interceptor::StopCarrier() {
   PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
                                         "Carrier is not registered."));
-  std::condition_variable& cond_var = carrier_->GetCondVar();
-  // probably double notify, but ok for ut
-  cond_var.notify_all();
+  carrier_->WakeUp();
 }
 
 void Interceptor::EnqueueRemoteInterceptorMessage(

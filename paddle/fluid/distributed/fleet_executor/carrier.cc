@@ -56,16 +56,18 @@ void Carrier::Release() {
   // NOTE(wangxi): must join before `Derived Interceptor` destruct,
   // otherwise Derived object will be destructed before thread complete.
 
-  for (int64_t id : source_interceptor_ids_) {
-    VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
-            << ".";
-    InterceptorMessage stop_msg;
-    // source node STOP is send by carrier, so set src_id=-1
-    stop_msg.set_src_id(-1);
-    stop_msg.set_dst_id(id);
-    stop_msg.set_message_type(STOP);
-    Send(stop_msg);
-  }
+  // FIXME(wangxi): should we need stop?
+  //  for (int64_t id : source_interceptor_ids_) {
+  //    VLOG(3) << "Carrier Release is sending stop to source interceptor " <<
+  //    id
+  //            << ".";
+  //    InterceptorMessage stop_msg;
+  //    // source node STOP is send by carrier, so set src_id=-1
+  //    stop_msg.set_src_id(-1);
+  //    stop_msg.set_dst_id(id);
+  //    stop_msg.set_message_type(STOP);
+  //    Send(stop_msg);
+  //  }
 }
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
@@ -77,17 +79,6 @@ bool Carrier::EnqueueInterceptorMessage(
             << interceptor_message.src_id() << " to rank "
             << interceptor_message.dst_id();
   } else {
-    {
-      std::unique_lock<std::mutex> lock_creating(creating_flag_mutex_);
-      if (creating_interceptors_) {
-        std::unique_lock<std::mutex> lock_message(tmp_message_mutex_);
-        // Cannot handle the message to interceptor since interceptors
-        // are still under creating. Will enqueue into a tmp stack.
-        VLOG(3) << "Receiving message while creating interceptors.";
-        message_tmp_.emplace_back(interceptor_message);
-        return true;
-      }
-    }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
     dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
@@ -110,6 +101,11 @@ void Carrier::Wait() {
   cond_var_.wait(lock);
 }
 
+void Carrier::WakeUp() {
+  // probably double notify, but ok for ut
+  cond_var_.notify_all();
+}
+
 void Carrier::Start() {
   PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
@@ -127,11 +123,10 @@ void Carrier::Start() {
     start_msg.set_message_type(DATA_IS_READY);
     Send(start_msg);
   }
+  // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
 }
-
-std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
 
@@ -197,45 +192,6 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   return ptr;
 }
 
-void Carrier::SetCreatingFlag(bool flag) {
-  // set the creating flag
-  creating_flag_mutex_.lock();
-  VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
-          << " to " << flag << ".";
-  creating_interceptors_ = flag;
-  creating_flag_mutex_.unlock();
-  if (!flag) {
-    for (auto& pair : interceptor_idx_to_interceptor_) {
-      // update the source interceptor id
-      if (std::find(source_interceptor_ids_.begin(),
-                    source_interceptor_ids_.end(),
-                    pair.first) == source_interceptor_ids_.end()) {
-        auto task = pair.second->GetTaskNode();
-        if (task != nullptr && task->upstream().empty()) {
-          source_interceptor_ids_.emplace_back(pair.first);
-        }
-      }
-    }
-    // finish create interceptors outside, handle tmp messsages
-    HandleTmpMessages();
-  }
-}
-
-void Carrier::HandleTmpMessages() {
-  // NOTE: It's ok lock on the tmp_message_mutex_ here, when enter this
-  // `HandleTmpMessages` method, the creating_interceptors_ flag
-  // must be false, therefore, there won't have conflict with the
-  // lock on the tmp_message_mutex_ inside `EnqueueInterceptorMessage`
-  // on the same thread.
-  std::unique_lock<std::mutex> lock(tmp_message_mutex_);
-  VLOG(3) << "Carrier has received " << message_tmp_.size()
-          << " messages during creating interceptors.";
-  for (const auto& msg : message_tmp_) {
-    EnqueueInterceptorMessage(msg);
-  }
-  message_tmp_.clear();
-}
-
 static std::shared_ptr<framework::GarbageCollector> GetGC(
     const platform::Place& place) {
   int64_t max_memory_size = framework::GetEagerDeletionThreshold();
@@ -293,12 +249,6 @@ void Carrier::CreateInterceptors() {
       source_interceptor_ids_.emplace_back(interceptor_id);
     }
   }
-  // The carrier will be always waiting for outside initializer
-  // since there is no interceptor has been created during auto init
-  creating_flag_mutex_.lock();
-  creating_interceptors_ = false;
-  creating_flag_mutex_.unlock();
-  HandleTmpMessages();
 }
 
 }  // namespace distributed

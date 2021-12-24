@@ -51,8 +51,6 @@ class Interceptor {
 
   virtual ~Interceptor();
 
-  void Join();
-
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
