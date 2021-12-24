@@ -79,6 +79,49 @@ def bernoulli(x, name=None):
     return out
 
 
+def poisson(x, name=None):
+    """
+    This OP returns a tensor filled with random number from a Poisson Distribution.
+
+    .. math::
+
+        out_i ~ Poisson (x_i)
+
+    Args:
+        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type 
+            should be float32, float64.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns: 
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_device('gpu')
+            paddle.seed(2021)
+
+            x = paddle.uniform([2,3], min=1.0, max=5.0)
+            out = paddle.poisson(x)
+            # [[0., 5., 1.],
+            #  [4., 3., 0.]])
+
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.poisson(x)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
+
+    helper = LayerHelper("poisson", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='poisson', inputs={'X': x}, outputs={'Out': out}, attrs={})
+    return out
+
+
 def multinomial(x, num_samples=1, replacement=False, name=None):
     """
     This OP returns a Tensor filled with random values sampled from a Multinomical

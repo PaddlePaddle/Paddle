@@ -64,8 +64,6 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 
-from .tensor.random import bernoulli  # noqa: F401
-
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
 from .tensor.attribute import rank  # noqa: F401
@@ -248,6 +246,8 @@ from .tensor.math import angle  # noqa: F401
 from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
 
+from .tensor.random import bernoulli  # noqa: F401
+from .tensor.random import poisson  # noqa: F401
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
 from .tensor.random import normal  # noqa: F401
@@ -488,6 +488,7 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
+           'poisson',
            'sinh',
            'round',
            'DataParallel',
