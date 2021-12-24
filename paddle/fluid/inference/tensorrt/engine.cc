@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
@@ -54,6 +54,7 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
 #if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
+    GetEngineInfo();
 #endif
   }
   SetRuntimeBatch(batch_size);
@@ -237,6 +238,11 @@ void TensorRTEngine::FreezeNetwork() {
 #endif
   }
 
+#if IS_TRT_VERSION_GE(8200)
+  infer_builder_config_->setProfilingVerbosity(
+      nvinfer1::ProfilingVerbosity::kDETAILED);
+#endif
+
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
@@ -253,6 +259,8 @@ void TensorRTEngine::FreezeNetwork() {
       infer_engine_, platform::errors::Fatal(
                          "Build TensorRT cuda engine failed! Please recheck "
                          "you configurations related to paddle-TensorRT."));
+
+  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,

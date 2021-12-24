@@ -463,6 +463,11 @@ void DatasetImpl<T>::WaitPreLoadDone() {
 // release memory data
 template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
+  release_thread_ = new std::thread(&DatasetImpl<T>::ReleaseMemoryFun, this);
+}
+
+template <typename T>
+void DatasetImpl<T>::ReleaseMemoryFun() {
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
   if (input_channel_) {
     input_channel_->Clear();

@@ -30,19 +30,17 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-using namespace egr;  // NOLINT
-
-namespace eager_test {
+namespace egr {
 
 TEST(Backward, SingleNodeEmptyGrad) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor target_tensor = CreateTensorWithValue(
+  egr::EagerTensor target_tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
 
@@ -67,7 +65,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
 
-    egr::RetainGradForTensor(leaf_tensor);
+    egr_utils_api::RetainGradForTensor(leaf_tensor);
 
     // Connect Node0 -> AccumulationNode via Edge
     auto meta = egr::AutogradMeta();
@@ -80,26 +78,26 @@ TEST(Backward, SingleNodeEmptyGrad) {
   RunBackward(outs, {});
 
   // Check Output Value
-  CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
 }
 
 TEST(Backward, SingleNodeCustomGrad) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor tensor = CreateTensorWithValue(
+  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
   std::vector<egr::EagerTensor> grad_tensors;
   // Create Grad Tensor
-  egr::EagerTensor grad_tensor = CreateTensorWithValue(
+  egr::EagerTensor grad_tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor));
@@ -128,7 +126,7 @@ TEST(Backward, SingleNodeCustomGrad) {
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
 
-    egr::RetainGradForTensor(leaf_tensor);
+    egr_utils_api::RetainGradForTensor(leaf_tensor);
 
     // Connect Node0 -> AccumulationNode via Edge
     auto meta = egr::AutogradMeta();
@@ -141,7 +139,7 @@ TEST(Backward, SingleNodeCustomGrad) {
   RunBackward(target_tensors, grad_tensors);
 
   // Check Output Value
-  CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
 }
 
 /*
@@ -153,14 +151,14 @@ Node0
 */
 TEST(Backward, LinearNodes) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   std::vector<egr::EagerTensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor tensor = CreateTensorWithValue(
+  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
@@ -202,7 +200,7 @@ TEST(Backward, LinearNodes) {
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
 
-    egr::RetainGradForTensor(leaf_tensor);
+    egr_utils_api::RetainGradForTensor(leaf_tensor);
 
     // Connect Node1 -> AccumulationNode via Edge
     auto meta1 = egr::AutogradMeta();
@@ -215,7 +213,7 @@ TEST(Backward, LinearNodes) {
   RunBackward(target_tensors, {});
 
   // Check Output Value
-  CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
 }
 
 /*
@@ -227,17 +225,17 @@ Node0   Node1
 */
 TEST(Backward, WithAccumulation) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   std::vector<egr::EagerTensor> target_tensors;
-  egr::EagerTensor tensor0 = CreateTensorWithValue(
+  egr::EagerTensor tensor0 = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
-  egr::EagerTensor tensor1 = CreateTensorWithValue(
+  egr::EagerTensor tensor1 = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor0));
@@ -245,10 +243,10 @@ TEST(Backward, WithAccumulation) {
 
   // Create Grad Tensor
   std::vector<egr::EagerTensor> grad_tensors;
-  egr::EagerTensor grad_tensor0 = CreateTensorWithValue(
+  egr::EagerTensor grad_tensor0 = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
-  egr::EagerTensor grad_tensor1 = CreateTensorWithValue(
+  egr::EagerTensor grad_tensor1 = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor0));
@@ -303,7 +301,7 @@ TEST(Backward, WithAccumulation) {
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta2->SetSingleOutRankWithSlot(0, 0);
 
-    egr::RetainGradForTensor(leaf_tensor);
+    egr_utils_api::RetainGradForTensor(leaf_tensor);
 
     // Connect Node2 -> AccumulationNode via Edge
     auto meta2 = egr::AutogradMeta();
@@ -314,7 +312,7 @@ TEST(Backward, WithAccumulation) {
 
   RunBackward(target_tensors, grad_tensors);
 
-  CompareGradTensorWithValue<float>(leaf_tensor, 2500.0);
+  eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 2500.0);
 }
 
-}  // namespace eager_test
+}  // namespace egr

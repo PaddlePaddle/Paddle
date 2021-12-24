@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 
@@ -31,32 +31,32 @@ template <>
 struct CUBlas<float> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_sgemm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_sgemm(args...));
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_saxpy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_saxpy(args...));
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_sscal(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_sscal(args...));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_scopy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_scopy(args...));
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_sgemv(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_sgemv(args...));
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::rocblas_sgemm_strided_batched(args...));
   }
 
@@ -70,7 +70,7 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_strsm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_strsm(args...));
   }
 
   template <typename... ARGS>
@@ -102,32 +102,32 @@ template <>
 struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_dgemm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_dgemm(args...));
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_daxpy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_daxpy(args...));
   }
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_dscal(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_dscal(args...));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_dcopy(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_dcopy(args...));
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_dgemv(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_dgemv(args...));
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::rocblas_dgemm_strided_batched(args...));
   }
 
@@ -139,7 +139,7 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_dtrsm(args...));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_dtrsm(args...));
   }
 
   template <typename... ARGS>
@@ -176,7 +176,7 @@ struct CUBlas<platform::float16> {
                    const float16 *alpha, const float16 *A, int lda,
                    const float16 *B, int ldb, const float16 *beta, float16 *C,
                    int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_hgemm(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_hgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const rocblas_half *>(alpha),
         reinterpret_cast<const rocblas_half *>(A), lda,
@@ -195,14 +195,13 @@ struct CUBlas<platform::float16> {
                                  const float16 *beta, float16 *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::rocblas_hgemm_strided_batched(
-            handle, transa, transb, m, n, k,
-            reinterpret_cast<const rocblas_half *>(alpha),
-            reinterpret_cast<const rocblas_half *>(A), lda, strideA,
-            reinterpret_cast<const rocblas_half *>(B), ldb, strideB,
-            reinterpret_cast<const rocblas_half *>(beta),
-            reinterpret_cast<rocblas_half *>(C), ldc, strideC, batchCount));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_hgemm_strided_batched(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const rocblas_half *>(alpha),
+        reinterpret_cast<const rocblas_half *>(A), lda, strideA,
+        reinterpret_cast<const rocblas_half *>(B), ldb, strideB,
+        reinterpret_cast<const rocblas_half *>(beta),
+        reinterpret_cast<rocblas_half *>(C), ldc, strideC, batchCount));
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -217,7 +216,7 @@ struct CUBlas<platform::float16> {
                       rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_gemm_ex(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
     });
@@ -232,7 +231,7 @@ struct CUBlas<platform::complex<float>> {
                    const platform::complex<float> *B, int ldb,
                    const platform::complex<float> *beta,
                    platform::complex<float> *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_cgemv(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_cgemv(
         handle, transa, m, n,
         reinterpret_cast<const rocblas_float_complex *>(alpha),
         reinterpret_cast<const rocblas_float_complex *>(A), lda,
@@ -245,7 +244,7 @@ struct CUBlas<platform::complex<float>> {
                    const platform::complex<float> *alpha,
                    const platform::complex<float> *X, const int incX,
                    platform::complex<float> *Y, const int incY) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_caxpy(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_caxpy(
         handle, n, reinterpret_cast<const rocblas_float_complex *>(alpha),
         reinterpret_cast<const rocblas_float_complex *>(X), incX,
         reinterpret_cast<rocblas_float_complex *>(Y), incY));
@@ -263,15 +262,14 @@ struct CUBlas<platform::complex<float>> {
                                  platform::complex<float> *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::rocblas_cgemm_strided_batched(
-            handle, transa, transb, m, n, k,
-            reinterpret_cast<const rocblas_float_complex *>(alpha),
-            reinterpret_cast<const rocblas_float_complex *>(A), lda, strideA,
-            reinterpret_cast<const rocblas_float_complex *>(B), ldb, strideB,
-            reinterpret_cast<const rocblas_float_complex *>(beta),
-            reinterpret_cast<rocblas_float_complex *>(C), ldc, strideC,
-            batchCount));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_cgemm_strided_batched(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const rocblas_float_complex *>(alpha),
+        reinterpret_cast<const rocblas_float_complex *>(A), lda, strideA,
+        reinterpret_cast<const rocblas_float_complex *>(B), ldb, strideB,
+        reinterpret_cast<const rocblas_float_complex *>(beta),
+        reinterpret_cast<rocblas_float_complex *>(C), ldc, strideC,
+        batchCount));
   }
 
   static void GEMM(rocblas_handle handle, rocblas_operation transa,
@@ -281,7 +279,7 @@ struct CUBlas<platform::complex<float>> {
                    const platform::complex<float> *B, int ldb,
                    const platform::complex<float> *beta,
                    platform::complex<float> *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_cgemm(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_cgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const rocblas_float_complex *>(alpha),
         reinterpret_cast<const rocblas_float_complex *>(A), lda,
@@ -302,7 +300,7 @@ struct CUBlas<platform::complex<float>> {
                       rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_gemm_ex(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
     });
@@ -317,7 +315,7 @@ struct CUBlas<platform::complex<double>> {
                    const platform::complex<double> *B, int ldb,
                    const platform::complex<double> *beta,
                    platform::complex<double> *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_zgemv(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_zgemv(
         handle, transa, m, n,
         reinterpret_cast<const rocblas_double_complex *>(alpha),
         reinterpret_cast<const rocblas_double_complex *>(A), lda,
@@ -330,7 +328,7 @@ struct CUBlas<platform::complex<double>> {
                    const platform::complex<double> *alpha,
                    const platform::complex<double> *X, const int incX,
                    platform::complex<double> *Y, const int incY) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_zaxpy(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_zaxpy(
         handle, n, reinterpret_cast<const rocblas_double_complex *>(alpha),
         reinterpret_cast<const rocblas_double_complex *>(X), incX,
         reinterpret_cast<rocblas_double_complex *>(Y), incY));
@@ -348,15 +346,14 @@ struct CUBlas<platform::complex<double>> {
                                  platform::complex<double> *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::rocblas_zgemm_strided_batched(
-            handle, transa, transb, m, n, k,
-            reinterpret_cast<const rocblas_double_complex *>(alpha),
-            reinterpret_cast<const rocblas_double_complex *>(A), lda, strideA,
-            reinterpret_cast<const rocblas_double_complex *>(B), ldb, strideB,
-            reinterpret_cast<const rocblas_double_complex *>(beta),
-            reinterpret_cast<rocblas_double_complex *>(C), ldc, strideC,
-            batchCount));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_zgemm_strided_batched(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const rocblas_double_complex *>(alpha),
+        reinterpret_cast<const rocblas_double_complex *>(A), lda, strideA,
+        reinterpret_cast<const rocblas_double_complex *>(B), ldb, strideB,
+        reinterpret_cast<const rocblas_double_complex *>(beta),
+        reinterpret_cast<rocblas_double_complex *>(C), ldc, strideC,
+        batchCount));
   }
 
   static void GEMM(rocblas_handle handle, rocblas_operation transa,
@@ -366,7 +363,7 @@ struct CUBlas<platform::complex<double>> {
                    const platform::complex<double> *B, int ldb,
                    const platform::complex<double> *beta,
                    platform::complex<double> *C, int ldc) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_zgemm(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_zgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const rocblas_double_complex *>(alpha),
         reinterpret_cast<const rocblas_double_complex *>(A), lda,
@@ -387,7 +384,7 @@ struct CUBlas<platform::complex<double>> {
                       rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_gemm_ex(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
     });
