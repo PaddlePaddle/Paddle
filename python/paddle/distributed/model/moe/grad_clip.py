@@ -58,6 +58,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
     Args:
         clip_norm (float): The maximum norm value.
+        is_expert_param_func (function): a function to decide whether a param should be put into moe_params_grads
         moe_group (Group): group for moe experts communication.
         group_name (str, optional): The group name for this clip. Default value is ``default_moe_group``.
 
@@ -81,19 +82,23 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
     def __init__(self,
                  clip_norm,
+                 is_expert_param_func=None,
                  moe_group=None,
                  group_name="default_moe_group"):
         super(ClipGradForMOEByGlobalNorm, self).__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
         self.moe_group = moe_group
+        if moe_group is not None and moe_group.nranks > 1:
+            assert is_expert_param_func is not None, \
+                "When moe group size > 1, a function for selecting expert params must be specified."
+        self.is_expert_param_func = is_expert_param_func
 
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
     @staticmethod
     def get_l2_norm_pow(params_grads, sum_dtype=None):
-
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
@@ -152,7 +157,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         # seperate moe params from normal params
         if self.moe_group is not None and self.moe_group.nranks > 1:
             for p, g in params_grads:
-                if "experts_" in p.name:
+                if self.is_expert_param_func(p):
                     moe_params_grads.append((p, g))
                 else:
                     normal_params_grads.append((p, g))
