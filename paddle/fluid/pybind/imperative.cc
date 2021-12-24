@@ -2012,6 +2012,29 @@ void BindImperative(py::module *m_ptr) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              return t->numel();
            })
+      .def("element_size", &imperative::VarBase::ElementSize, R"DOC(
+        Returns the size in bytes of an element in the Tensor.
+        
+        Examples:
+          .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor(1, dtype='bool')
+            x.element_size() # 1
+
+            x = paddle.to_tensor(1, dtype='float16')
+            x.element_size() # 2
+
+            x = paddle.to_tensor(1, dtype='float32')
+            x.element_size() # 4
+
+            x = paddle.to_tensor(1, dtype='float64')
+            x.element_size() # 8
+
+            x = paddle.to_tensor(1, dtype='complex128')
+            x.element_size() # 16
+       )DOC")
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property("stop_gradient",
@@ -2019,28 +2042,40 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly(
-          "shape",
-          [](imperative::VarBase &self) {
-            if (self.Var().IsType<framework::LoDTensor>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::LoDTensor>().dims());
-            } else if (self.Var().IsType<framework::SelectedRows>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::SelectedRows>().value().dims());
-            } else if (self.Var().IsType<framework::Strings>()) {
-              return std::vector<int>{static_cast<int>(
-                  self.Var().Get<framework::Strings>().size())};
-            } else if (self.Var().IsType<framework::Vocab>()) {
-              return std::vector<int>{
-                  static_cast<int>(self.Var().Get<framework::Vocab>().size())};
-            } else {
-              VLOG(2) << "It is meaningless to get shape of "
-                         "variable type "
-                      << GetTypeName(self);
-              return std::vector<int>();
-            }
-          })
+      .def_property_readonly("shape",
+                             [](imperative::VarBase &self) {
+                               if (self.Var().IsType<framework::LoDTensor>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::LoDTensor>()
+                                         .dims());
+                               } else if (self.Var()
+                                              .IsType<
+                                                  framework::SelectedRows>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::SelectedRows>()
+                                         .value()
+                                         .dims());
+                               } else if (self.Var()
+                                              .IsType<framework::Strings>()) {
+                                 return std::vector<int>{static_cast<int>(
+                                     self.Var()
+                                         .Get<framework::Strings>()
+                                         .size())};
+                               } else if (self.Var()
+                                              .IsType<framework::Vocab>()) {
+                                 return std::vector<int>{static_cast<int>(
+                                     self.Var()
+                                         .Get<framework::Vocab>()
+                                         .size())};
+                               } else {
+                                 VLOG(2) << "It is meaningless to get shape of "
+                                            "variable type "
+                                         << GetTypeName(self);
+                                 return std::vector<int>();
+                               }
+                             })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.

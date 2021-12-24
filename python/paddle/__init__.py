@@ -77,6 +77,7 @@ from .tensor.attribute import rank  # noqa: F401
 from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
+from .tensor.attribute import is_floating_point  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -96,6 +97,7 @@ from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
+from .tensor.creation import clone  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -241,6 +243,7 @@ from .tensor.math import acosh  # noqa: F401
 from .tensor.math import asinh  # noqa: F401
 from .tensor.math import atanh  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
+from .tensor.math import erfinv  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
 from .tensor.math import gcd  # noqa: F401
@@ -288,6 +291,7 @@ from .framework import CUDAPinnedPlace  # noqa: F401
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
 from .autograd import set_grad_enabled  # noqa: F401
+from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
@@ -456,6 +460,7 @@ __all__ = [  # noqa
            'shape',
            'real',
            'imag',
+           'is_floating_point',
            'complex',
            'reciprocal',
            'rand',
@@ -471,6 +476,7 @@ __all__ = [  # noqa
            'median',
            'no_grad',
            'set_grad_enabled',
+           'is_grad_enabled',
            'mod',
            'abs',
            'tril',
@@ -497,6 +503,7 @@ __all__ = [  # noqa
            'neg',
            'lgamma',
            'lerp',
+           'erfinv',
            'square',
            'divide',
            'ceil',
@@ -592,4 +599,5 @@ __all__ = [  # noqa
            'fmin',
            'moveaxis',
            'repeat_interleave',
+           'clone',
 ]
