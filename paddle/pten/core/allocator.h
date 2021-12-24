@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace pten {
