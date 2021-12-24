@@ -315,7 +315,7 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(tmp._grad_ivar() is None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
-    def paddle_imperative_set_grad_enabled(self):
+    def test_paddle_imperative_set_grad_enabled(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
