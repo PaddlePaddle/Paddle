@@ -112,8 +112,9 @@ if(WITH_ROCM)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 
-if(NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) 
-    cc_test(cusparse_test SRCS cusparse_test.cc DEPS tensor)
+#the generic conversion APIs of dense and sparse are only supported after cuda11.2
+if(NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2) 
+    cc_test(cusparse_conversion_api_test SRCS cusparse_conversion_api_test.cc DEPS tensor)
 endif()
 
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
