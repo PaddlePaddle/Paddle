@@ -290,10 +290,6 @@ class Tensor {
     return *inplace_version_counter_;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void RecordStream(const gpuStream_t& stream);
-#endif
-
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;

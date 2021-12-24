@@ -20,7 +20,7 @@ namespace framework {
 
 InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   garbages_ = std::make_unique<GarbageQueue>();
-  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
+  max_memory_size_ = static_cast<int64_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
 }
 

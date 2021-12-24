@@ -588,7 +588,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 
     const platform::Place& place = allocation->place();
     if (platform::is_gpu_place(place)) {
-      tensor.RecordStream(stream);
+      memory::RecordStream(allocation, stream);
     } else if (platform::is_cuda_pinned_place(place)) {
       // TODO(Ruibiao): Here should do something to make sure that the tensor is
       // not freed until the H2D copies done. However, simplely launch a CUDA

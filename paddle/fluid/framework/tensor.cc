@@ -237,13 +237,5 @@ void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
 
 void Tensor::set_type(const proto::VarType::Type& type) { type_ = type; }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void Tensor::RecordStream(const gpuStream_t& stream) {
-  PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
-                                       "The tensor is not initialized."));
-  memory::RecordStream(holder_, stream);
-}
-#endif
-
 }  // namespace framework
 }  // namespace paddle
