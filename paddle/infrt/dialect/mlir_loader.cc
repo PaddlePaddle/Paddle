@@ -34,7 +34,7 @@ namespace infrt::dialect {
 
 mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
                                      const std::string& mlir_source) {
-  context->allowUnregisteredDialects();
+  // context->allowUnregisteredDialects();
   RegisterCinnDialects(context->getDialectRegistry());
   context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
 
@@ -54,7 +54,7 @@ mlir::OwningModuleRef LoadMlirSource(mlir::MLIRContext* context,
 
 mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
                                    mlir::MLIRContext* context) {
-  context->allowUnregisteredDialects();
+  // context->allowUnregisteredDialects();
   RegisterCinnDialects(context->getDialectRegistry());
   context->getDialectRegistry().insert<mlir::StandardOpsDialect>();
 

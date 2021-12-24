@@ -22,6 +22,7 @@ namespace paddle {
 namespace framework {
 
 constexpr const char* kQueueEmptyEvent = "QueueEmpty";
+constexpr const char* kQueueDestructEvent = "QueueDestruct";
 
 class EventsWaiter;
 
@@ -32,20 +33,24 @@ struct WorkQueueOptions {
         track_task(track_task) {}
 
   WorkQueueOptions(size_t num_threads, bool allow_spinning, bool track_task,
-                   EventsWaiter* waiter)
+                   bool detached, EventsWaiter* waiter)
       : num_threads(num_threads),
         allow_spinning(allow_spinning),
         track_task(track_task),
-        queue_empty_waiter(waiter) {}
+        detached(detached),
+        events_waiter(waiter) {}
 
   size_t num_threads;
   bool allow_spinning;
   // If you need to blocking the calling  thread to wait "queue empty", set
-  // track_task = true and set queue_empty_waiter. EventsWaiter::WaitEvent will
+  // track_task = true and set events_waiter. EventsWaiter::WaitEvent will
   // block the calling thread until any of events (including "queue empty")
   // occured.
   bool track_task;
-  EventsWaiter* queue_empty_waiter{nullptr};  // not owned
+  // If you need to be noticed when a WorkQueue Destruct() , set detached =
+  // false and set events_waiter.
+  bool detached{true};
+  EventsWaiter* events_waiter{nullptr};  // not owned
 };
 
 class WorkQueue {

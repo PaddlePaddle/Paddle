@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
-#include "paddle/pten/kernels/hybird/eigen/sign.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #ifdef __NVCC__
@@ -56,11 +55,6 @@ struct DivideFunctor {
  */
 
 template <typename T>
-void Sign(const GPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  eigen::Sign<GPUContext, T>(dev_ctx, x, out);
-}
-
-template <typename T>
 void Mean(const GPUContext& dev_ctx,
           const DenseTensor& x,
           const std::vector<int64_t>& dims,
@@ -90,7 +84,6 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(sign, GPU, ALL_LAYOUT, pten::Sign, float, double, float16) {}
 PT_REGISTER_KERNEL(mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
 
 PT_REGISTER_KERNEL(sum,

@@ -22,9 +22,6 @@ limitations under the License. */
 namespace pten {
 
 template <typename T>
-void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
-
-template <typename T>
 void Mean(const CPUContext& dev_ctx,
           const DenseTensor& x,
           const std::vector<int64_t>& dims,
