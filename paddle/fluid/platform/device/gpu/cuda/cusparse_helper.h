@@ -26,7 +26,7 @@ namespace platform {
 class CusparseHandleHolder {
  public:
   explicit CusparseHandleHolder(cudaStream_t stream) {
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 11000
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(&handle_));
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(handle_, stream));
 #endif
@@ -34,7 +34,7 @@ class CusparseHandleHolder {
   const cusparseHandle_t& GetCusparseHandle() const { return handle_; }
 
   ~CusparseHandleHolder() PADDLE_MAY_THROW {
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 11000
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseDestroy(handle_));
 #endif
   }
