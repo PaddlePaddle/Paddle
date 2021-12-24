@@ -157,6 +157,7 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import nansum  # noqa: F401
 from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
@@ -315,6 +316,7 @@ tensor_method_func  = [ #noqa
            'square',
            'stanh',
            'sum',
+           'nansum',
            'tanh',
            'tanh_',
            'add_n',
