@@ -204,7 +204,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x2_lods_size, x2_lods_data, x2_data, x3_data, x3->numel(), flag_data);
 
     platform::GpuStreamSync(current_stream);
-    
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods;
     out_lods.reserve(x2_lods_size + 1);
@@ -230,50 +229,38 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       map->Resize(framework::make_ddim({1, 3}));
       loss_weight->Resize(framework::make_ddim({1, 1}));
     }
-    
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
     auto* loss_weight_data =
         loss_weight->mutable_data<float>(context.GetPlace());
-
     if (out_lods.size() - 1 > 0) {
       Vector<size_t> map_lods(out_lods.size(), 0);
       //map_lods.resize(out_lods.size());
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
-
       // only one host -> device
       thrust::host_vector<int64_t> h_vec(3 * (out_lods.size() - 1));
-      
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
           h_vec[i * 3] = (int64_t)out_lods[i];
           h_vec[i * 3 + 1] = mmap_aux[(int64_t)out_lods[i]];
           h_vec[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
           map_lods[i] = i;
       }
-
       map_lods[out_lods.size() - 1] = out_lods.size() - 1;
       // only one copy
       thrust::copy(h_vec.begin(), h_vec.end(), map_data_ptr);
- 
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
-
       map->set_lod(map_lod_info);
       loss_weight->set_lod(map_lod_info);
-
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-
       thrust::device_ptr<T> out_data_ptr(out_data);
       thrust::device_ptr<const T> x1_data_ptr(x1_data);
-
       thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
-
       thrust::fill(out_data_ptr, out_data_ptr + out->numel(), 0);
       thrust::fill(loss_weight_data_ptr,
                    loss_weight_data_ptr + loss_weight->numel(), 1.0);
-
       // only one kernel launch
       size_t N = out_lods.size() - 1;
       dim3 block_dim_2(block_size);
