@@ -26,6 +26,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
@@ -44,6 +46,7 @@ using Vector = framework::CPUVector<T>;
 #endif
 
 #define THREADS 512
+#define NUM_STREAMS 30
 
 __global__ void filter_by_instag_cuda_kernel(
     const size_t N, const size_t* x2_lods_data, const int64_t* x2_data,
@@ -106,12 +109,20 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     auto* x3 = context.Input<Tensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
-    Vector<size_t> x2_lods(1, 0);
+    
+    platform::Timer timeline_;
+    std::cout << "============DEBUG=====================" <<  std::endl;
+
+    timeline_.Start();
+
+    Vector<size_t> x2_lods;
     // Vector, in GPU
     if (x2->lod().size() != 0) {  // lod_level = 1
       x2_lods = x2->lod()[0];
     } else {  // lod_level = 0
       const size_t x2_lods_size = x2->dims()[0];
+      x2_lods.reserve(x2_lods_size + 1);
+      x2_lods.push_back(0);
       const size_t instag_num_per_ins = x2->dims()[1];
       for (size_t i = 0; i < x2_lods_size; i++) {
         x2_lods.push_back(x2_lods.back() + instag_num_per_ins);
@@ -120,8 +131,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
     const size_t x2_lods_size = x2_lods.size() - 1;
     // Vector, in GPU
-    Vector<size_t> x1_lods(1, 0);
+    Vector<size_t> x1_lods;
     if (!is_x1_lod) {
+      x1_lods.reserve(x1->dims()[0] + 1);
+      x1_lods.push_back(0);
       for (int i = 0; i < x1->dims()[0]; i++) {
         x1_lods.push_back(i + 1);
       }
@@ -131,6 +144,8 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       if (x1->lod().size() != 0) {  // lod_level = 1
         x1_lods = x1->lod()[0];
       } else {  // lod_level = 0
+        x1_lods.reserve(x1->dims()[0] + 1);
+        x1_lods.push_back(0);
         const size_t feasign_num_per_ins = x1->dims()[1];
         for (int i = 0; i < x1->dims()[0]; i++) {
           x1_lods.push_back(x1_lods.back() + feasign_num_per_ins);
@@ -138,7 +153,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    const size_t* x1_lods_data = x1_lods.CUDAData(context.GetPlace());
+    // const size_t* x1_lods_data = x1_lods.CUDAData(context.GetPlace());
     auto* x1_data = x1->data<T>();
 
     // set output value
@@ -149,11 +164,15 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
+    timeline_.Pause();
+
+    std::cout << "First part cost: " << timeline_.ElapsedSec() << std::endl;
+    
+    timeline_.Start();
+
     Vector<int> flag(x2_lods_size, 0);
     int* flag_data = flag.CUDAMutableData(context.GetPlace());
 
-    // check configuration
-    // int block_size = 512;
     int block_size = THREADS;
     dim3 block_dim(block_size);
     dim3 grid_dim((x2_lods_size + block_size - 1) / block_size);
@@ -163,8 +182,18 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x2_lods_size, x2_lods_data, x2_data, x3_data, x3->numel(), flag_data);
 
     platform::GpuStreamSync(current_stream);
+    
+    timeline_.Pause();
+   
+    std::cout << "GPU kernel part cost: " << timeline_.ElapsedSec() << std::endl;
+
+    timeline_.Start();
+    
     std::unordered_map<int64_t, int64_t> mmap_aux;
-    Vector<size_t> out_lods(1, 0);
+    
+    Vector<size_t> out_lods;
+    out_lods.reserve(x2_lods_size + 1);
+    out_lods.push_back(0);
 
     int cnt = 0;
     for (auto it = flag.begin(); it != flag.end(); cnt++, it++) {
@@ -175,6 +204,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
 
+    timeline_.Pause();
+   
+    std::cout << "outlods part cost: " << timeline_.ElapsedSec() << std::endl;
+
+    timeline_.Start();
+    
     if (out_lods.size() - 1 > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
@@ -186,23 +221,47 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       map->Resize(framework::make_ddim({1, 3}));
       loss_weight->Resize(framework::make_ddim({1, 1}));
     }
+    
+    timeline_.Pause();
+    
+    std::cout << "resize part cost: " << timeline_.ElapsedSec() << std::endl;
+    
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
     auto* loss_weight_data =
         loss_weight->mutable_data<float>(context.GetPlace());
 
-    if (out_lods.size() - 1 > 0) {
-      Vector<size_t> map_lods;
-      map_lods.reserve(out_lods.size());
-      thrust::device_ptr<int64_t> map_data_ptr(map_data);
-      for (size_t i = 0; i < out_lods.size() - 1; i++) {
-        map_data_ptr[i * 3] = (int64_t)out_lods[i];
-        map_data_ptr[i * 3 + 1] = mmap_aux[(int64_t)out_lods[i]];
-        map_data_ptr[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
-        map_lods.push_back(i);
-      }
-      map_lods.push_back(out_lods.size() - 1);
 
+    timeline_.Start();
+
+    if (out_lods.size() - 1 > 0) {
+      
+      Vector<size_t> map_lods(out_lods.size(), 0);
+      //map_lods.resize(out_lods.size());
+      thrust::device_ptr<int64_t> map_data_ptr(map_data);
+
+      // only one host -> device
+      thrust::host_vector<int64_t> h_vec(3 * (out_lods.size() - 1));
+      
+      for (size_t i = 0; i < out_lods.size() - 1; i++) {
+          h_vec[i * 3] = (int64_t)out_lods[i];
+          h_vec[i * 3 + 1] = mmap_aux[(int64_t)out_lods[i]];
+          h_vec[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
+          map_lods[i] = i;
+      }
+
+      map_lods[out_lods.size() - 1] = out_lods.size() - 1;
+      // only one copy
+      thrust::copy(h_vec.begin(), h_vec.end(), map_data_ptr);
+ 
+   
+      timeline_.Pause();
+   
+      std::cout << "copy1 part cost: " << timeline_.ElapsedSec() << std::endl;
+
+
+      timeline_.Start();
+   
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
 
@@ -222,23 +281,46 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       thrust::fill(loss_weight_data_ptr,
                    loss_weight_data_ptr + loss_weight->numel(), 1.0);
 
+      // multi stream copy
+      // how to optimizer further
+      //
+      std::vector<gpuStream_t> copy_streams;
+
+      for(int i = 0; i < NUM_STREAMS; i++) {
+          cudaStream_t stream;
+          cudaStreamCreate(&stream);
+          copy_streams.push_back(stream);
+      }
+      
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
-        size_t pos = out_lods[i];
-        thrust::copy(x1_data_ptr + map_data_ptr[i * 3 + 1] * x1_embed_size,
+          auto s = copy_streams[i % NUM_STREAMS];
+          size_t pos = out_lods[i];
+          thrust::copy(thrust::cuda::par.on(s), x1_data_ptr + h_vec[i * 3 + 1] * x1_embed_size,
                      x1_data_ptr +
-                         (map_data_ptr[i * 3 + 1] + map_data_ptr[i * 3 + 2]) *
+                         (h_vec[i * 3 + 1] + h_vec[i * 3 + 2]) *
                              x1_embed_size,
                      out_data_ptr + pos * x1_embed_size);
       }
+
+      for (auto& stream : copy_streams) {
+        cudaStreamSynchronize(stream);
+        cudaStreamDestroy(stream);
+      }   
+      copy_streams.clear();
+
+      timeline_.Pause();
+      std::cout << "copy output part cost: " << timeline_.ElapsedSec() << std::endl;
+
     } else {
-      Vector<size_t> map_lods;
+
+      Vector<size_t> map_lods(3,0);
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
       map_data_ptr[0] = 0;
       map_data_ptr[1] = 1;
       map_data_ptr[2] = 1;
-      map_lods.push_back(0);
-      map_lods.push_back(1);
-      out_lods.push_back(1);
+      map_lods[0] = 0;
+      map_lods[1] = 1;
+      map_lods[1] = 1;
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
       map->set_lod(map_lod_info);
@@ -248,6 +330,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       out->set_lod(out_lod_info);
 
       thrust::device_ptr<T> out_data_ptr(out_data);
+
       // gpu kernel
       if (std::is_same<T, int32_t>::value) {
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
@@ -265,6 +348,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
       thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
       loss_weight_data_ptr[0] = 0;
+
     }
   }
 };
@@ -297,20 +381,45 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     thrust::device_ptr<T> x1_grad_data_ptr(x1_grad_data);
     thrust::device_ptr<const T> output_grad_data_ptr(output_grad_data);
     thrust::device_ptr<const int64_t> mmap_data_ptr(mmap_data);
+
+    thrust::host_vector<int64_t> h_vec(mmap->numel());
+    thrust::copy(mmap_data_ptr, mmap_data_ptr + mmap->numel(), h_vec.begin());
+
     thrust::fill(x1_grad_data_ptr,
                  x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
+
     if (loss_weight->numel() != 1 || loss_weight_data_ptr[0] != 0) {
+    
       auto output_dims = output_grad->dims();
+      // multi-stream copy
+      std::vector<gpuStream_t> copy_streams;
+      for(int i = 0; i < NUM_STREAMS; i++) {
+          cudaStream_t stream;
+          cudaStreamCreate(&stream);
+          copy_streams.push_back(stream);
+      }
+
       for (int i = 0; i < mmap->dims()[0]; i++) {
-        int src_ln = mmap_data_ptr[i * 3], dst_ln = mmap_data_ptr[i * 3 + 1];
-        int line_cnt = mmap_data_ptr[i * 3 + 2];
-        thrust::copy(
+          auto& s = copy_streams[i % NUM_STREAMS]; 
+          int src_ln = h_vec[i * 3];
+          int dst_ln = h_vec[i * 3 + 1];
+          int line_cnt = h_vec[i * 3 + 2];
+
+          thrust::copy(thrust::cuda::par.on(s),
             output_grad_data_ptr + src_ln * output_dims[1],
             output_grad_data_ptr + (src_ln + line_cnt) * output_dims[1],
             x1_grad_data_ptr + dst_ln * output_dims[1]);
+
       }
+      for (auto& stream : copy_streams) {
+        cudaStreamSynchronize(stream);
+        cudaStreamDestroy(stream);
+      }
+      copy_streams.clear();
     }
+
   }
+
 };
 
 }  // namespace operators
