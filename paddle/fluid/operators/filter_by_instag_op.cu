@@ -14,6 +14,7 @@
 
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
+#include <thrust/async/copy.h>
 #include <cstring>
 #include <random>
 #include <string>
@@ -45,9 +46,6 @@ template <typename T>
 using Vector = framework::CPUVector<T>;
 #endif
 
-#define THREADS 512
-#define NUM_STREAMS 30
-
 __global__ void filter_by_instag_cuda_kernel(
     const size_t N, const size_t* x2_lods_data, const int64_t* x2_data,
     const int64_t* x3_data, int64_t filter_tag_size, int* flag_data) {
@@ -76,6 +74,48 @@ __global__ void filter_by_instag_cuda_kernel(
     }
   }
 }
+      
+template <typename T>
+__global__ void copy_kernel(
+    const size_t N, T* out_data, const T* x1_data,
+    const int64_t* map_data, int x1_embed_size) {
+  // N is instance num
+  // one threads for one instance
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= N) {
+    return;
+  }
+
+  T* dst = out_data + map_data[idx * 3] * x1_embed_size;  
+  const T* src_start = x1_data + map_data[idx * 3 + 1] * x1_embed_size;
+  const T* src_end = x1_data + (map_data[idx * 3 + 1] + map_data[idx * 3 + 2]) * x1_embed_size;
+
+  for (const T* j = src_start; j != src_end; dst++, j++) {
+    *dst = *j;
+  }
+
+}
+
+template <typename T>
+__global__ void copy_grad_kernel(
+    const size_t N, const T* out_grad_data, T* x1_grad_data,
+    const int64_t* map_data, int x1_embed_size) {
+  // N is instance num
+  // one threads for one instance
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= N) {
+    return;
+  }
+
+  T* dst = x1_grad_data + map_data[idx * 3 + 1] * x1_embed_size;  
+  const T* src_start = out_grad_data + map_data[idx * 3];
+  const T* src_end = out_grad_data + (map_data[idx * 3] + map_data[idx * 3 + 2]) * x1_embed_size;
+
+  for (const T* j = src_start; j != src_end; dst++, j++) {
+    *dst = *j;
+  }
+
+}
 
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
@@ -84,7 +124,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
     gpuStream_t current_stream = context.cuda_device_context().stream();
-
+    auto max_thread_num_per_block = context.cuda_device_context().GetMaxThreadsPerBlock();
     // X1 is global FC output
     // Dim [batch size, embedding size]
     auto* x1 = context.Input<LoDTensor>("Ins");
@@ -108,12 +148,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
     auto* x3 = context.Input<Tensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
-
-    
-    platform::Timer timeline_;
-    std::cout << "============DEBUG=====================" <<  std::endl;
-
-    timeline_.Start();
 
     Vector<size_t> x2_lods;
     // Vector, in GPU
@@ -164,16 +198,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
-    timeline_.Pause();
-
-    std::cout << "First part cost: " << timeline_.ElapsedSec() << std::endl;
-    
-    timeline_.Start();
-
     Vector<int> flag(x2_lods_size, 0);
     int* flag_data = flag.CUDAMutableData(context.GetPlace());
 
-    int block_size = THREADS;
+    int block_size = max_thread_num_per_block;
     dim3 block_dim(block_size);
     dim3 grid_dim((x2_lods_size + block_size - 1) / block_size);
 
@@ -182,12 +210,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x2_lods_size, x2_lods_data, x2_data, x3_data, x3->numel(), flag_data);
 
     platform::GpuStreamSync(current_stream);
-    
-    timeline_.Pause();
-   
-    std::cout << "GPU kernel part cost: " << timeline_.ElapsedSec() << std::endl;
-
-    timeline_.Start();
     
     std::unordered_map<int64_t, int64_t> mmap_aux;
     
@@ -204,12 +226,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    timeline_.Pause();
-   
-    std::cout << "outlods part cost: " << timeline_.ElapsedSec() << std::endl;
-
-    timeline_.Start();
-    
     if (out_lods.size() - 1 > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
@@ -222,17 +238,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       loss_weight->Resize(framework::make_ddim({1, 1}));
     }
     
-    timeline_.Pause();
-    
-    std::cout << "resize part cost: " << timeline_.ElapsedSec() << std::endl;
-    
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
     auto* loss_weight_data =
         loss_weight->mutable_data<float>(context.GetPlace());
-
-
-    timeline_.Start();
 
     if (out_lods.size() - 1 > 0) {
       
@@ -254,14 +263,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       // only one copy
       thrust::copy(h_vec.begin(), h_vec.end(), map_data_ptr);
  
-   
-      timeline_.Pause();
-   
-      std::cout << "copy1 part cost: " << timeline_.ElapsedSec() << std::endl;
-
-
-      timeline_.Start();
-   
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
 
@@ -281,35 +282,14 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       thrust::fill(loss_weight_data_ptr,
                    loss_weight_data_ptr + loss_weight->numel(), 1.0);
 
-      // multi stream copy
-      // how to optimizer further
-      //
-      std::vector<gpuStream_t> copy_streams;
+      // only one kernel launch
+      size_t N = out_lods.size() - 1;
+      dim3 block_dim_2(block_size);
+      dim3 grid_dim_2((N + block_size - 1) / block_size);
 
-      for(int i = 0; i < NUM_STREAMS; i++) {
-          cudaStream_t stream;
-          cudaStreamCreate(&stream);
-          copy_streams.push_back(stream);
-      }
-      
-      for (size_t i = 0; i < out_lods.size() - 1; i++) {
-          auto s = copy_streams[i % NUM_STREAMS];
-          size_t pos = out_lods[i];
-          thrust::copy(thrust::cuda::par.on(s), x1_data_ptr + h_vec[i * 3 + 1] * x1_embed_size,
-                     x1_data_ptr +
-                         (h_vec[i * 3 + 1] + h_vec[i * 3 + 2]) *
-                             x1_embed_size,
-                     out_data_ptr + pos * x1_embed_size);
-      }
-
-      for (auto& stream : copy_streams) {
-        cudaStreamSynchronize(stream);
-        cudaStreamDestroy(stream);
-      }   
-      copy_streams.clear();
-
-      timeline_.Pause();
-      std::cout << "copy output part cost: " << timeline_.ElapsedSec() << std::endl;
+      copy_kernel<<<grid_dim_2, block_dim_2, 0, current_stream>>>(N, out_data, x1_data, map_data, x1_embed_size);
+    
+      cudaStreamSynchronize(current_stream);
 
     } else {
 
@@ -351,6 +331,8 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     }
   }
+
+
 };
 
 template <typename T>
@@ -359,6 +341,8 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const auto gpu_place =
         BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    gpuStream_t current_stream = context.cuda_device_context().stream();
+    auto max_thread_num_per_block = context.cuda_device_context().GetMaxThreadsPerBlock();
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
@@ -369,53 +353,31 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     x1_grad->Resize(x1->dims());
 
     auto* mmap_data = mmap->data<int64_t>();
-
     // expected auto = T
     auto* output_grad_data = output_grad->data<T>();
     auto* loss_weight_data = loss_weight->data<float>();
 
     // expected auto = T
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
-
-    thrust::device_ptr<const float> loss_weight_data_ptr(loss_weight_data);
     thrust::device_ptr<T> x1_grad_data_ptr(x1_grad_data);
-    thrust::device_ptr<const T> output_grad_data_ptr(output_grad_data);
-    thrust::device_ptr<const int64_t> mmap_data_ptr(mmap_data);
-
-    thrust::host_vector<int64_t> h_vec(mmap->numel());
-    thrust::copy(mmap_data_ptr, mmap_data_ptr + mmap->numel(), h_vec.begin());
-
+    thrust::device_ptr<const float> loss_weight_data_ptr(loss_weight_data);
     thrust::fill(x1_grad_data_ptr,
                  x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
 
     if (loss_weight->numel() != 1 || loss_weight_data_ptr[0] != 0) {
     
       auto output_dims = output_grad->dims();
-      // multi-stream copy
-      std::vector<gpuStream_t> copy_streams;
-      for(int i = 0; i < NUM_STREAMS; i++) {
-          cudaStream_t stream;
-          cudaStreamCreate(&stream);
-          copy_streams.push_back(stream);
-      }
 
-      for (int i = 0; i < mmap->dims()[0]; i++) {
-          auto& s = copy_streams[i % NUM_STREAMS]; 
-          int src_ln = h_vec[i * 3];
-          int dst_ln = h_vec[i * 3 + 1];
-          int line_cnt = h_vec[i * 3 + 2];
+      int x1_embed_size = output_dims[1];
+      int block_size = max_thread_num_per_block;
+      size_t N = mmap->dims()[0];
+      dim3 block_dim(block_size);
+      dim3 grid_dim((N + block_size - 1) / block_size);
 
-          thrust::copy(thrust::cuda::par.on(s),
-            output_grad_data_ptr + src_ln * output_dims[1],
-            output_grad_data_ptr + (src_ln + line_cnt) * output_dims[1],
-            x1_grad_data_ptr + dst_ln * output_dims[1]);
+      copy_grad_kernel<<<grid_dim, block_dim, 0, current_stream>>>(N, output_grad_data, x1_grad_data, mmap_data, x1_embed_size);
+    
+      cudaStreamSynchronize(current_stream);
 
-      }
-      for (auto& stream : copy_streams) {
-        cudaStreamSynchronize(stream);
-        cudaStreamDestroy(stream);
-      }
-      copy_streams.clear();
     }
 
   }
