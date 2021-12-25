@@ -100,7 +100,7 @@ void* Tensor::mutable_data(const platform::Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_ ||
       !(platform::is_gpu_place(place) &&
-        memory::GetStream(holder_) == stream)) {
+        memory::InSameStream(holder_, stream))) {
     holder_.reset();
     holder_ = memory::AllocShared(place, size, stream);
     offset_ = 0;

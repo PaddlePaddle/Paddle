@@ -6,8 +6,9 @@ if(WITH_GPU)
 list(APPEND INTERPRETERCORE_DEPS interpretercore_fast_garbage_collector)
 endif()
 
+add_subdirectory(workqueue)
+
 cc_library(data_transfer SRCS data_transfer.cc DEPS enforce scope glog)
-cc_library(workqueue SRCS workqueue.cc workqueue_utils.cc DEPS enforce)
 cc_library(new_executor_defs SRCS new_executor_defs.cc DEPS enforce glog scope)
 cc_library(interpretercore_garbage_collector SRCS interpretercore_garbage_collector.cc DEPS garbage_collector)
 cc_library(interpretercore_event_garbage_collector SRCS interpretercore_event_garbage_collector.cc DEPS interpretercore_garbage_collector)
@@ -16,7 +17,6 @@ cc_library(event_manager SRCS event_manager.cc DEPS ${DEVICE_EVENT_LIBS} glog ne
 cc_library(stream_analyzer SRCS stream_analyzer.cc DEPS ${DEVICE_EVENT_LIBS} glog device_context new_executor_defs)
 cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_event_garbage_collector stream_analyzer event_manager)
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
-cc_test(workqueue_test SRCS workqueue_test.cc DEPS workqueue)
 
 if(WITH_GPU OR WITH_ROCM)
     if(WITH_GPU)

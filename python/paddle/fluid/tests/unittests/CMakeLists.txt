@@ -772,6 +772,7 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(autograd)
+add_subdirectory(distribution)
 
 if (NOT WIN32 OR NOT WITH_GPU)
     add_subdirectory(fft)

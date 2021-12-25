@@ -890,6 +890,31 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
 #endif
 }
 
+bool AllocatorFacade::InSameStream(
+    const std::shared_ptr<Allocation>& allocation,
+    const platform::Stream& stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  PADDLE_ENFORCE_EQ(
+      FLAGS_use_stream_safe_cuda_allocator, true,
+      platform::errors::Unimplemented(
+          "StreamSafeCUDAAllocator is disabled, you should not call this "
+          "multi-stream 'InSameStream' function. To enable it, you can enter"
+          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
+          "terminal."));
+
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
+  }
+#endif
+  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+  return s == GetStream(allocation);
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
+#endif
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      const gpuStream_t& stream) {

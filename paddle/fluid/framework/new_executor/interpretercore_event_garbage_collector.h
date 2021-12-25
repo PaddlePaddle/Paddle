@@ -15,7 +15,7 @@
 
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 
 namespace paddle {
 namespace framework {

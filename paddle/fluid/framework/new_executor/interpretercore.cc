@@ -68,8 +68,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
 #endif
 
-  exception_notifier_ = main_thread_blocker_.RegisterEvent(
-      kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
   if (FLAGS_new_executor_use_local_scope) {
