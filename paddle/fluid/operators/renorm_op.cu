@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/renorm_op.h"
+
 #include <algorithm>
 #include <cstdio>
-
-#include "paddle/fluid/operators/renorm_op.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
