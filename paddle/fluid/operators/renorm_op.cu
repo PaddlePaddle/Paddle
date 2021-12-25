@@ -60,7 +60,7 @@ __global__ void RenormKernelFunc3(int64_t size, T* dim_value, float p,
 }
 
 template <typename T>
-__global__ void RenormKernelFunc4(T* x_data, T* out_data, int64_t size,
+__global__ void RenormKernelFunc4(const T* x_data, T* out_data, int64_t size,
                                   T* dim_value, int64_t dimension_each,
                                   int64_t dim_divisor) {
   int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
@@ -74,8 +74,8 @@ __global__ void RenormKernelFunc4(T* x_data, T* out_data, int64_t size,
 }
 
 template <typename T>
-__global__ void RenormGradKernelFunc1(T* x_data, T* dout_data, T* pow_value,
-                                      T* mul_value, int64_t size,
+__global__ void RenormGradKernelFunc1(const T* x_data, const T* dout_data,
+                                      T* pow_value, T* mul_value, int64_t size,
                                       int64_t dimension_each, float p,
                                       int64_t dim_divisor) {
   int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
@@ -87,8 +87,8 @@ __global__ void RenormGradKernelFunc1(T* x_data, T* dout_data, T* pow_value,
 }
 
 template <typename T>
-__global__ void RenormGradKernelFunc2(T* x_data, T* dout_data, T* dx_data,
-                                      int64_t size, T* dim_value,
+__global__ void RenormGradKernelFunc2(const T* x_data, const T* dout_data,
+                                      T* dx_data, int64_t size, T* dim_value,
                                       T* dim_power_sum, T* weight_derivative,
                                       int64_t dimension_each, float p,
                                       float max_norm, int64_t dim_divisor) {
@@ -121,7 +121,7 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
     auto numel = x->numel();
-    T* x_data = reinterpret_cast<T*>(x)->data<T>();
+    const T* x_data = x->data<T>();
     auto input_dims = x->dims();
     float max_norm = context.Attr<float>("max_norm");
     float p = context.Attr<float>("p");
@@ -177,8 +177,8 @@ class CUDAGradRenormKernel : public framework::OpKernel<T> {
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto numel = d_out->numel();
-    T* dout_data = reinterpret_cast<T*>(d_out)->data<T>();
-    T* x_data = reinterpret_cast<T*>(x)->data<T>();
+    const T* dout_data = d_out->data<T>();
+    const T* x_data = x->data<T>();
     auto input_dims = x->dims();
     float max_norm = ctx.Attr<float>("max_norm");
     float p = ctx.Attr<float>("p");
