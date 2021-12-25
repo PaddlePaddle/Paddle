@@ -15,7 +15,6 @@
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/renorm_op.h"
