@@ -13,15 +13,15 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cstdio>
+
+#include "paddle/fluid/operators/renorm_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-#include "paddle/fluid/operators/renorm_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "stdio.h"
 
 namespace paddle {
 namespace operators {
@@ -100,8 +100,9 @@ __global__ void RenormGradKernelFunc2(T* x_data, T* dout_data, T* dx_data,
     if (temp > max_norm) {
       dim_power_sum[i] = pow(dim_value[i], (T)(-1.0 - 1.0 / p)) * -1 * max_norm;
       dim_value[i] = max_norm / temp;
-    } else
+    } else {
       dim_value[i] = 1.0;
+    }
   }
   __syncthreads();
   if (i < size) {
@@ -120,7 +121,7 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
     auto numel = x->numel();
-    T* x_data = (T*)x->data<T>();
+    T* x_data = reinterpret_cast<T*>(x)->data<T>();
     auto input_dims = x->dims();
     float max_norm = context.Attr<float>("max_norm");
     float p = context.Attr<float>("p");
@@ -176,8 +177,8 @@ class CUDAGradRenormKernel : public framework::OpKernel<T> {
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto numel = d_out->numel();
-    T* dout_data = (T*)d_out->data<T>();
-    T* x_data = (T*)x->data<T>();
+    T* dout_data = reinterpret_cast<T*>(d_out)->data<T>();
+    T* x_data = reinterpret_cast<T*>(x)->data<T>();
     auto input_dims = x->dims();
     float max_norm = ctx.Attr<float>("max_norm");
     float p = ctx.Attr<float>("p");
