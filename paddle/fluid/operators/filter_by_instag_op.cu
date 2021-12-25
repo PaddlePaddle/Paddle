@@ -85,15 +85,12 @@ __global__ void copy_kernel(
   if (idx >= N) {
     return;
   }
-
   T* dst = out_data + map_data[idx * 3] * x1_embed_size;  
   const T* src_start = x1_data + map_data[idx * 3 + 1] * x1_embed_size;
   const T* src_end = x1_data + (map_data[idx * 3 + 1] + map_data[idx * 3 + 2]) * x1_embed_size;
-
   for (const T* j = src_start; j != src_end; dst++, j++) {
     *dst = *j;
   }
-
 }
 
 template <typename T>
@@ -106,15 +103,12 @@ __global__ void copy_grad_kernel(
   if (idx >= N) {
     return;
   }
-
   T* dst = x1_grad_data + map_data[idx * 3 + 1] * x1_embed_size;  
   const T* src_start = out_grad_data + map_data[idx * 3];
   const T* src_end = out_grad_data + (map_data[idx * 3] + map_data[idx * 3 + 2]) * x1_embed_size;
-
   for (const T* j = src_start; j != src_end; dst++, j++) {
     *dst = *j;
   }
-
 }
 
 template <typename T>
@@ -212,7 +206,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     platform::GpuStreamSync(current_stream);
     
     std::unordered_map<int64_t, int64_t> mmap_aux;
-    
     Vector<size_t> out_lods;
     out_lods.reserve(x2_lods_size + 1);
     out_lods.push_back(0);
@@ -244,7 +237,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         loss_weight->mutable_data<float>(context.GetPlace());
 
     if (out_lods.size() - 1 > 0) {
-      
       Vector<size_t> map_lods(out_lods.size(), 0);
       //map_lods.resize(out_lods.size());
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
@@ -286,13 +278,9 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       size_t N = out_lods.size() - 1;
       dim3 block_dim_2(block_size);
       dim3 grid_dim_2((N + block_size - 1) / block_size);
-
       copy_kernel<<<grid_dim_2, block_dim_2, 0, current_stream>>>(N, out_data, x1_data, map_data, x1_embed_size);
-    
       cudaStreamSynchronize(current_stream);
-
     } else {
-
       Vector<size_t> map_lods(3,0);
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
       map_data_ptr[0] = 0;
@@ -308,9 +296,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-
       thrust::device_ptr<T> out_data_ptr(out_data);
-
       // gpu kernel
       if (std::is_same<T, int32_t>::value) {
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
@@ -325,14 +311,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<double>(out_val_if_empty));
       }
-
       thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
       loss_weight_data_ptr[0] = 0;
-
     }
   }
-
-
 };
 
 template <typename T>
@@ -363,25 +345,17 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     thrust::device_ptr<const float> loss_weight_data_ptr(loss_weight_data);
     thrust::fill(x1_grad_data_ptr,
                  x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
-
     if (loss_weight->numel() != 1 || loss_weight_data_ptr[0] != 0) {
-    
       auto output_dims = output_grad->dims();
-
       int x1_embed_size = output_dims[1];
       int block_size = max_thread_num_per_block;
       size_t N = mmap->dims()[0];
       dim3 block_dim(block_size);
       dim3 grid_dim((N + block_size - 1) / block_size);
-
       copy_grad_kernel<<<grid_dim, block_dim, 0, current_stream>>>(N, output_grad_data, x1_grad_data, mmap_data, x1_embed_size);
-    
       cudaStreamSynchronize(current_stream);
-
     }
-
   }
-
 };
 
 }  // namespace operators
