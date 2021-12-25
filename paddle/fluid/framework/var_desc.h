@@ -96,6 +96,8 @@ class VarDesc {
 
   proto::VarType::Type GetDataType() const;
 
+  size_t ElementSize() const;
+
   std::vector<proto::VarType::Type> GetDataTypes() const;
 
   void SetLoDLevel(int32_t lod_level);
