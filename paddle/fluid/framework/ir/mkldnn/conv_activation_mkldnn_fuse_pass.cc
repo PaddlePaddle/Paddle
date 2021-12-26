@@ -69,7 +69,15 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     desc->SetOutput("Output",
                     std::vector<std::string>({activation_out->Name()}));
 
-    desc->SetAttr("fuse_activation", activation_type());
+    if (activation_type() == "gelu" &&
+        activation->Op()->HasAttr("approximate")) {
+      bool approximate =
+          BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"));
+      std::string type = approximate ? "_tanh" : "_erf";
+      desc->SetAttr("fuse_activation", "gelu" + type);
+    } else {
+      desc->SetAttr("fuse_activation", activation_type());
+    }
 
     // MKLDNN ops use alpha and beta as activation parameters but paddle ops are
     // not generalized
@@ -149,7 +157,7 @@ ConvActivationFusePass::ConvActivationFusePass() {
       // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
       .AddAttr("data_format")
       .IsOptional()
-      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("relu"))
@@ -193,6 +201,9 @@ Conv2DSwishFusePass::Conv2DSwishFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      .AddAttr("beta")
+      .IsType<float>()
       .End();
 }
 Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
@@ -237,6 +248,19 @@ Conv2DHardSigmoidFusePass::Conv2DHardSigmoidFusePass() {
       .AddAttr("offset")
       .IsOptional()
       .IsType<float>()
+      .End();
+}
+
+Conv2DGeluFusePass::Conv2DGeluFusePass() {
+  AddOpCompat(OpCompat("gelu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("approximate")
+      .IsType<bool>()
       .End();
 }
 
@@ -294,3 +318,11 @@ REGISTER_PASS_CAPABILITY(conv_hard_sigmoid_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .EQ("hard_sigmoid", 0));
+
+REGISTER_PASS(conv_gelu_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DGeluFusePass);
+REGISTER_PASS_CAPABILITY(conv_gelu_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("gelu", 0));

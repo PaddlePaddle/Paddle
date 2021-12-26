@@ -91,15 +91,16 @@ endif()
 cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
+cc_library(mixed_vector SRCS mixed_vector.cc DEPS device_context)
 
 if(WITH_GPU)
-  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
 elseif(WITH_ROCM)
-  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
 else()
-  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
+  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS mixed_vector place memory device_context tensor)
 endif()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim mixed_vector place tensor framework_proto version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 
@@ -247,7 +248,7 @@ if(WITH_PYTHON)
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_executor_desc_py_proto 
+    add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_proto_init fleet_executor_desc_py_proto
       COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
   else(NOT WIN32)

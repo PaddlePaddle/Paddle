@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
@@ -28,17 +28,17 @@ limitations under the License. */
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/cuda_helper.h"  // NOLINT
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"  // NOLINT
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -48,7 +48,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout.h"
-namespace mkldnn = dnnl;
 #endif
 
 #include <map>
@@ -63,11 +62,10 @@ namespace mkldnn = dnnl;
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/device.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
-
-// This aias is required for now so that namespace name changes can be made to
-// less than 20 files at a time. After all the names are changed it will be
-// removed.
 
 namespace Eigen {
 struct DefaultDevice;
@@ -104,8 +102,10 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+  IPU = 4,
+  MLU = 5,
 
-  MAX_DEVICE_TYPES = 4,
+  MAX_DEVICE_TYPES = 6,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -114,6 +114,8 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
+constexpr DeviceType kIPU = DeviceType::IPU;
+constexpr DeviceType kMLU = DeviceType::MLU;
 
 class DeviceContext {
  public:
@@ -144,6 +146,36 @@ template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
+
+// Graphcore IPU
+#ifdef PADDLE_WITH_IPU
+class IPUDeviceContext : public DeviceContext {
+ public:
+  IPUDeviceContext() = delete;
+  explicit IPUDeviceContext(IPUPlace place);
+  virtual ~IPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+  int DeviceId() const { return device_.getId(); }
+
+ private:
+  IPUPlace place_;
+  platform::ipu::Device device_;
+};
+template <>
+struct DefaultDeviceContextType<platform::IPUPlace> {
+  using TYPE = IPUDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+class MLUDeviceContext;
+
+template <>
+struct DefaultDeviceContextType<platform::MLUPlace>;
+#endif
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
@@ -302,6 +334,8 @@ class CUDAContext {
     return old_stream_ptr;
   }
 
+  void SetStream(gpuStream_t stream);
+
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
 #ifdef PADDLE_WITH_HIP
@@ -376,7 +410,7 @@ class CUDAContext {
     if (dynload::HasCUDNN()) {
 #ifdef PADDLE_WITH_HIP
       size_t miopen_major, miopen_minor, miopen_patch;
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
           &miopen_major, &miopen_minor, &miopen_patch));
       auto local_miopen_version =
           (miopen_major * 1000 + miopen_minor * 10 + miopen_patch) / 10;
@@ -393,8 +427,8 @@ class CUDAContext {
             << "Please recompile or reinstall Paddle with compatible MIOPEN "
                "version.";
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreate(&cudnn_handle_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(&cudnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::miopenSetStream(cudnn_handle_, RawStream()));
 #else
       auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
@@ -430,9 +464,9 @@ class CUDAContext {
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroy(cudnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroy(cudnn_handle_));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
 #endif
     }
     cudnn_handle_ = nullptr;
@@ -447,7 +481,7 @@ class CUDAContext {
 #ifndef PADDLE_WITH_HIP
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnDestroy(cusolver_dn_handle_));
     }
   }
@@ -582,6 +616,11 @@ class CUDADeviceContext : public DeviceContext {
       return default_ctx_;
     }
     return thread_ctx_.at(this);
+  }
+
+  // Note: Can only be used under thread_local semantics.
+  void SetThreadLocalStream(const gpuStream_t stream) {
+    thread_ctx_.at(this)->SetStream(stream);
   }
 
  private:

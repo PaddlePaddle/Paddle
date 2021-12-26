@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include <vector>
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
-    reduce_mean, ops::ReduceCudaKernel<bool, paddle::operators::CustomMean>,
-    ops::ReduceCudaKernel<float, paddle::operators::CustomMean>,
-    ops::ReduceCudaKernel<double, paddle::operators::CustomMean>);
+    reduce_mean,
+    ops::ReduceCudaKernel<bool, kps::AddFunctor, kps::DivideFunctor>,
+    ops::ReduceCudaKernel<paddle::platform::float16, kps::AddFunctor,
+                          kps::DivideFunctor>,
+    ops::ReduceCudaKernel<float, kps::AddFunctor, kps::DivideFunctor>,
+    ops::ReduceCudaKernel<double, kps::AddFunctor, kps::DivideFunctor>);

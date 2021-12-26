@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
@@ -39,24 +39,17 @@ void Interceptor::Join() {
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
-  if (handle_) {
-    handle_(msg);
-  } else {
-    VLOG(3) << "Interceptor is using default message handler. This handler is "
-               "only used for test purpose. Check whether you init interceptor "
-               "in the proper way.";
-    if (msg.message_type() == DATA_IS_READY) {
-      VLOG(3) << "Fake handler is sending stop message to it self.";
-      InterceptorMessage msg;
-      msg.set_message_type(STOP);
-      Send(interceptor_id_, msg);
-    }
-  }
+  PADDLE_ENFORCE_NOT_NULL(handle_, platform::errors::PreconditionNotMet(
+                                       "Message handle is not registered."));
+  handle_(msg);
 }
 
-std::condition_variable& Interceptor::GetCondVar() {
-  // get the conditional var
-  return cond_var_;
+void Interceptor::StopCarrier() {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
+  std::condition_variable& cond_var = carrier_->GetCondVar();
+  // probably double notify, but ok for ut
+  cond_var.notify_all();
 }
 
 int64_t Interceptor::GetInterceptorId() const {
@@ -64,24 +57,21 @@ int64_t Interceptor::GetInterceptorId() const {
   return interceptor_id_;
 }
 
-bool Interceptor::EnqueueRemoteInterceptorMessage(
+void Interceptor::EnqueueRemoteInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
           << " into " << interceptor_id_ << "'s remote mailbox.";
-  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
-  remote_mailbox_.push(interceptor_message);
-  return true;
+  remote_mailbox_.Push(interceptor_message);
 }
 
 bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
   msg.set_src_id(interceptor_id_);
   msg.set_dst_id(dst_id);
-  return MessageBus::Instance().Send(msg);
+  return carrier_->Send(msg);
 }
-
-// maybe need a better method for interceptor base
-void Interceptor::HandleStop(const InterceptorMessage& msg) { stop_ = true; }
 
 void Interceptor::PoolTheMailbox() {
   // pool the local mailbox, parse the Message
@@ -95,17 +85,13 @@ void Interceptor::PoolTheMailbox() {
                             "Error encountered when fetch remote mailbox."));
     }
     const InterceptorMessage interceptor_message = local_mailbox_.front();
-    local_mailbox_.pop();
+    local_mailbox_.pop_front();
     const MessageType message_type = interceptor_message.message_type();
     VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
             << " from interceptor " << interceptor_message.src_id()
             << " with message: " << message_type << ".";
 
-    if (message_type == STOP) {
-      HandleStop(interceptor_message);
-    } else {
-      Handle(interceptor_message);
-    }
+    Handle(interceptor_message);
 
     if (stop_) {
       // break the pooling thread
@@ -116,19 +102,8 @@ void Interceptor::PoolTheMailbox() {
 }
 
 bool Interceptor::FetchRemoteMailbox() {
-  // fetch all Message from remote mailbox to local mailbox
-  // return true if remote mailbox not empty, otherwise return false
-  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
-  cond_var_.wait(lock, [this]() { return !remote_mailbox_.empty(); });
-  if (remote_mailbox_.empty()) {
-    // the thread has been unblocked accidentally
-    return false;
-  }
-  while (!remote_mailbox_.empty()) {
-    local_mailbox_.push(std::move(remote_mailbox_.front()));
-    remote_mailbox_.pop();
-  }
-  return true;
+  remote_mailbox_.PopAll(&local_mailbox_);
+  return !local_mailbox_.empty();
 }
 
 static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {

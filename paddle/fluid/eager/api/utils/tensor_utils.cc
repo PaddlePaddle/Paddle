@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
+namespace egr_utils_api {
 
 bool IsLeafTensor(const egr::EagerTensor& target) {
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
@@ -58,4 +59,5 @@ egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
   return out;
 }
 
+}  // namespace egr_utils_api
 }  // namespace egr

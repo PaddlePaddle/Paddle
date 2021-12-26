@@ -32,6 +32,10 @@ class PingPongInterceptor : public Interceptor {
   }
 
   void PingPong(const InterceptorMessage& msg) {
+    if (msg.message_type() == STOP) {
+      stop_ = true;
+      return;
+    }
     std::cout << GetInterceptorId() << " recv msg, count=" << count_
               << std::endl;
     ++count_;
@@ -40,6 +44,7 @@ class PingPongInterceptor : public Interceptor {
       stop.set_message_type(STOP);
       Send(0, stop);
       Send(1, stop);
+      StopCarrier();
       return;
     }
 
@@ -54,10 +59,10 @@ class PingPongInterceptor : public Interceptor {
 REGISTER_INTERCEPTOR(PingPong, PingPongInterceptor);
 
 TEST(InterceptorTest, PingPong) {
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
-
-  Carrier& carrier = Carrier::Instance();
+  Carrier carrier(0, {{0, 0}, {1, 0}});
+  auto msg_bus = std::make_shared<MessageBus>();
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
+  carrier.SetMsgBus(msg_bus);
 
   Interceptor* a = carrier.SetInterceptor(
       0, InterceptorFactory::Create("PingPong", 0, nullptr));
@@ -67,6 +72,8 @@ TEST(InterceptorTest, PingPong) {
 
   InterceptorMessage msg;
   a->Send(1, msg);
+
+  carrier.Wait();
 }
 
 }  // namespace distributed
