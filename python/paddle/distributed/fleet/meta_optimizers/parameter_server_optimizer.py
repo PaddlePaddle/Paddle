@@ -332,7 +332,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 _origin_startup_program._heter_pipeline_opt = {
                     "startup_program": startup_program,
                     "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
-                    "heter_place": self.role_maker._heter_device(),
+                    "heter_place": public._get_sub_program_device(main_program),
                 }
 
                 loss.block.program._heter_pipeline_opt = {
@@ -346,7 +346,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     int(self.role_maker._get_num_stage()),
                     "section_program": main_program,
                     "num_microbatches": self.num_microbatches,
-                    "heter_place": self.role_maker._heter_device(),
+                    "heter_place": public._get_sub_program_device(main_program),
                 }
             else:
                 loss.block.program = main_program

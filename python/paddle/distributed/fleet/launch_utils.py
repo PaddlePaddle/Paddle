@@ -962,16 +962,14 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
             free_ports = [
-                x
-                for x in range(start_port, start_port + len(node_ranks[
-                    node_rank]))
+                x for x in range(start_port,
+                                 start_port + len(node_ranks[node_rank]))
             ]
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
-                x
-                for x in range(start_port, start_port + len(node_ranks[
-                    node_rank]))
+                x for x in range(start_port,
+                                 start_port + len(node_ranks[node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
@@ -1083,16 +1081,14 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
             free_ports = [
-                x
-                for x in range(start_port, start_port + len(node_ranks[
-                    node_rank]))
+                x for x in range(start_port,
+                                 start_port + len(node_ranks[node_rank]))
             ]
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
-                x
-                for x in range(start_port, start_port + len(node_ranks[
-                    node_rank]))
+                x for x in range(start_port,
+                                 start_port + len(node_ranks[node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
@@ -1129,7 +1125,6 @@ class ParameterServerLauncher(object):
         self.stage_trainer_num = []
         self.stage_heter_map = {}
         self.stage_list = []
-        self.stage_device_map = {}
         self.stage_num = 0
 
         self.get_role_endpoints(args)
@@ -1193,12 +1188,6 @@ class ParameterServerLauncher(object):
 
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:
-            assert args.heter_devices != "", "The setting of Parameter-Server heter mode must has heter_devices."
-            self.stage_device_map[1] = "cpu"  #  for cpu trainer
-            heter_devices_list = args.heter_devices.split(";")
-            for i in range(len(heter_devices_list)):
-                self.stage_device_map[i + 2] = heter_devices_list[i]
-
             self.stage_heter_map[1] = self.worker_endpoints
             if args.heter_worker_num:
                 self.stage_heter_trainer_num = args.heter_worker_num.split(";")
@@ -1571,7 +1560,6 @@ class ParameterServerLauncher(object):
                     self.stage_heter_map[2],
                     "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
                     self.heter_worker_endpoints,
-                    "HETER_DEVICE_TYPE": self.stage_device_map[1],
                     "TRAINING_ROLE": "TRAINER",
                     "POD_IP": cur_worker.endpoint.split(":")[0],
                     "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
@@ -1667,7 +1655,6 @@ class ParameterServerLauncher(object):
                 self.stage_heter_map[stage_id - 1],
                 "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
                 self.heter_worker_endpoints,
-                "HETER_DEVICE_TYPE": self.stage_device_map[stage_id],
                 "STAGE_ID": str(stage_id),
                 "STAGE_NUM": str(self.stage_num),
                 "PADDLE_PORT": cur_heter_worker.endpoint.split(":")[1],
