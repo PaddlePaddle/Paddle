@@ -46,5 +46,56 @@ struct MaxOrMinGradFunctor {
   }
 };
 
+struct AMaxOrAMinGradFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
+                  const Dim& dim, int size) {
+    auto equals = (*x) == y->broadcast(dim);
+    auto ones = dx->constant(1);
+    auto zeros = dx->constant(0);
+    auto mask = equals.select(ones, zeros);
+
+    // If there are multiple minimum or maximum elements,
+    // we evenly distribute gradient between these equal values
+    size_t x_numel = 1;
+    for (size_t i = 0; i < x->dimensions().size(); i++)
+      x_numel *= x->dimensions()[i];
+    // reduce_all
+    if (size == static_cast<int>(x_numel)) {
+      auto equal_number = mask.sum()
+                              .reshape(Eigen::array<int, 1>({1}))
+                              .broadcast(Eigen::array<int, 1>({size}));
+      dx->device(place) = dy->broadcast(dim) * mask / equal_number;
+      return;
+    }
+
+    // compute forward reduce axis_dim by dim (which is broadcast_dim)
+    std::vector<int> axis_dim;
+    for (int i = 0; i < static_cast<int>(dim.size()); i++) {
+      if (dim[i] > 1) {
+        axis_dim.push_back(i);
+      }
+    }
+    int rank = static_cast<int>(axis_dim.size());
+    switch (rank) {
+      case 1: {
+        auto axis = Eigen::array<int, 1>({axis_dim[0]});
+        dx->device(place) =
+            dy->broadcast(dim) * mask /
+            mask.sum(axis).reshape(dy->dimensions()).broadcast(dim);
+        break;
+      }
+      case 2: {
+        // auto axis_2 = Eigen::array<int, 2>({{axis_dim[0], axis_dim[1]}});
+        // auto reshape_2 = Eigen::array<int, 2>({{8, 1}});
+        // dx->device(place) = dy->broadcast(dim) * mask /
+        //  mask.sum(axis_2).reshape(dy->dimensions()).broadcast(dim);
+        break;
+      }
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
