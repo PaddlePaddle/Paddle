@@ -174,11 +174,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="",
         help="User defined heter workers in each stage ip1:port1;ip2:port2")
-    ps_group.add_argument(
-        "--heter_devices",
-        type=str,
-        default="",
-        help="User defined heter devices in each stage cpu;gpu;cpu")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
@@ -367,11 +362,11 @@ def which_distributed_mode(args):
 
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_workers', '--heter_devices', '--http_port'
+        '--workers', '--heter_workers', '--http_port'
     ]
     collective_args = ['--ips']
 
-    ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
+    ps_heter_args = ["--heter_worker_num", "--heter_workers"]
 
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
@@ -476,8 +471,6 @@ def launch():
 
         - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
         
-        - ``--heter_devices``: Type of heter_device in each stage
-
         - ``--http_port``: Gloo http Port
 
     Elastic Parameters:

@@ -1182,6 +1182,28 @@ def _get_optimize_ops(_program):
     return opt_ops
 
 
+def _get_sub_program_device(_sub_program):
+    num_blocks = _sub_program.num_blocks()
+    device = None
+    for i in range(num_blocks):
+        block = _sub_program.block(i)
+        for op in block.ops:
+            op_device = op.attr("op_device")
+            if op_device != None:
+                assert op_device in ("cpu", "gpu", "xpu"
+                                     ), "op_device should be cpu,gpu or xpu"
+                if op_device == "cpu":
+                    device = op_device
+                else:
+                    device = ":".join((op_device, "0"))
+                break
+        if device != None:
+            break
+    if device == None:
+        device = "cpu"
+    return device
+
+
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
     if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
         from paddle.optimizer.lr import LRScheduler
