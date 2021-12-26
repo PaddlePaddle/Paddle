@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/gpu/manipulation.h"
-#include "paddle/pten/kernels/gpu/utils.h"
+
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/hybird/general/manipulation.h"
 
 namespace pten {

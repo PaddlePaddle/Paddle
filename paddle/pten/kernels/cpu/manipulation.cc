@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/hybird/general/manipulation.h"
 
 namespace pten {
