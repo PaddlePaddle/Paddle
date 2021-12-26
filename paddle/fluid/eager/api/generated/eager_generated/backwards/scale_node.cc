@@ -77,7 +77,7 @@ void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
   auto dense_tensor = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
   // Init output tensor
   auto tensor_meta = pten::DenseTensorMeta(
-      dense_tensor->dtype(), dense_tensor->dims(), dense_tensor->layout());
+      dense_tensor->dtype(), dense_tensor->dims(), dense_tensor->pten_layout());
   auto place = dense_tensor->place();
   size_t bytes_size = paddle::framework::product(dense_tensor->dims()) *
                       SizeOf(dense_tensor->dtype());

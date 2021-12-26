@@ -806,7 +806,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   pten::DDim tmp_ddim;
   pten::DenseTensor tmp = pten::DenseTensor(
       pten::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
-      pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
+      pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->pten_layout()));
 
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>();
@@ -851,7 +851,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
         pten::DenseTensorMeta(pten::DataType::UINT8,
                               paddle::framework::make_ddim(
                                   {static_cast<int64_t>(temp_storage_bytes)}),
-                              x.layout()));
+                              x.pten_layout()));
     auto* temp_storage = tmp.mutable_data<uint8_t>();
     cub::DeviceReduce::Reduce(temp_storage,
                               temp_storage_bytes,

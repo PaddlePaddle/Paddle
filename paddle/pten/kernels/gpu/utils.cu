@@ -46,7 +46,7 @@ void Copy(const GPUContext& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  CHECK(dst->layout() == src.layout());
+  CHECK(dst->pten_layout() == src.pten_layout());
 
   auto size = src.numel() *
               paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));

@@ -131,7 +131,7 @@ DataType Tensor::dtype() const { return impl_->dtype(); }
 
 DataType Tensor::type() const { return impl_->dtype(); }
 
-DataLayout Tensor::layout() const { return impl_->layout(); }
+DataLayout Tensor::layout() const { return impl_->pten_layout(); }
 
 /* Part 3: Device and Backend methods */
 

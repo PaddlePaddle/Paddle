@@ -47,7 +47,7 @@ class TensorBase {
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  virtual DataLayout layout() const = 0;
+  virtual DataLayout pten_layout() const = 0;
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
