@@ -41,7 +41,7 @@ namespace cub = hipcub;
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/gpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/hybird/math/cast_func.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim

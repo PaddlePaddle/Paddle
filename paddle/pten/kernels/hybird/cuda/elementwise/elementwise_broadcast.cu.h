@@ -469,7 +469,6 @@ void LaunchBroadcastElementwiseCudaKernel(
           "but number of outputs is %d, number of functions is %d.",
           outs->size(),
           NumOuts));
-
   int in_vec_size = 4;
   int out_vec_size = 4;
   if (NumOuts > 1) {
