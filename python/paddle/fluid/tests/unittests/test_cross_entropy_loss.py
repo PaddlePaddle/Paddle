@@ -1463,7 +1463,7 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     weight=weight_data,
                     ignore_index=-100)
 
-            self.assertRaises(ValueError, test_WeightLength_NotEqual)
+            self.assertRaises(IndexError, test_WeightLength_NotEqual)
 
             def test_LabelValue_ExceedMax():
                 input_data = paddle.rand(shape=[20, 100])
@@ -1477,7 +1477,7 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     weight=weight_data,
                     ignore_index=-100)
 
-            self.assertRaises(ValueError, test_LabelValue_ExceedMax)
+            self.assertRaises(IndexError, test_LabelValue_ExceedMax)
 
             def test_LabelValue_ExceedMin():
                 input_data = paddle.rand(shape=[20, 100])
