@@ -14,8 +14,8 @@
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/gpu/manipulation.h"
-#include "paddle/pten/kernels/gpu/utils.h"
 #include "paddle/pten/kernels/hybird/cuda/cast_kernel_impl.h"
 #include "paddle/pten/kernels/hybird/general/manipulation.h"
 
@@ -85,6 +85,7 @@ PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif
 
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, GPU, ANY, pten::Reshape, ALL_DTYPE) {}
 PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_with_xshape, GPU, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}
+    reshape, GPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape_with_xshape, GPU, ALL_LAYOUT, pten::ReshapeWithXShape, ALL_DTYPE) {}
