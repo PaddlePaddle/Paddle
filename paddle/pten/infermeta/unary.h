@@ -44,9 +44,9 @@ DenseTensorMeta FlattenInferMeta(const DenseTensorMeta& x_meta,
 DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
                               const DataType out_dtype);
 
-DenseTensorMeta FullLikeInferMeta(const DenseTensorMeta& x_meta,
-                                  DataType dtype,
-                                  DataLayout layout);
+DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
+                                    DataType dtype,
+                                    DataLayout layout);
 
 DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
                                       const std::vector<int64_t>& shape);

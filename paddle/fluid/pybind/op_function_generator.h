@@ -58,6 +58,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
+    {"merged_momentum",
+     {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
@@ -77,6 +79,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Beta2Pow", "MasterParam"}},
     {"sparse_attention",
      {"Q", "K", "V", "Offset", "Columns", "KeyPaddingMask", "AttnMask"}},
+    {"sgd", {"Param", "LearningRate", "Grad", "MasterParam"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -113,6 +116,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"run_program", {"DOut"}},
@@ -122,6 +126,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"adamw",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
+    {"sgd", {"ParamOut", "MasterParamOut"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
@@ -139,7 +144,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
 //     especially in declarative mode.
 // For those OPs, we need to manually specify the outs need to pass in this map.
 std::map<std::string, std::set<std::string>> op_passing_outs_map = {
-    {"sgd", {"ParamOut"}},
+    {"sgd", {"ParamOut", "MasterParamOut"}},
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
@@ -153,6 +158,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
     {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
