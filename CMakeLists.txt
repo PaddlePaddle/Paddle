@@ -135,7 +135,10 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        
+        string(REGEX REPLACE "/diagnostics:column" "/diagnostics:classic" ${flag_var} "${${flag_var}}")
+        string(REGEX REPLACE "/external:W0" "" ${flag_var} "${${flag_var}}")
+        set(${flag_var} "${${flag_var}} /D NOMINMAX ")
+
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
         # For Visual Studio generators, /MP should be added. 
         # For other generators like Ninja, it is not need to add /MP.
@@ -145,7 +148,8 @@ if(WIN32)
         endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
-        set(${flag_var} "${${flag_var}} /w /fsanitize=address")
+        set(${flag_var} "${${flag_var}} /w")
+
     endforeach(flag_var)
 
     # Windows Remove /Zi, /ZI for Release, MinSizeRel builds
