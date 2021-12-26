@@ -757,11 +757,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         self._visit_Call(node)
         if is_paddle_api(node):
             self.is_control_flow_num += 1
-        # Handle the stmts like 'for i in range(len(x))' and x is a tensor.
-        elif isinstance(node.func, gast.Name) and node.func.id == 'len':
-            for i_node in node.args:
-                if isinstance(i_node, gast.Name):
-                    self.visit_Name(i_node)
         return node
 
     def visit_Name(self, node):
