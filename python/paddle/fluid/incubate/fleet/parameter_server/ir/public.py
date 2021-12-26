@@ -1203,7 +1203,6 @@ def _get_sub_program_device(_sub_program):
         device = "cpu"
     return device
 
-
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
     if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
         from paddle.optimizer.lr import LRScheduler
