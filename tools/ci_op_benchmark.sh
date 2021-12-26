@@ -98,7 +98,7 @@ function load_CHANGE_OP_FILES {
 # Clone benchmark repo
 function prepare_benchmark_environment {
   LOG "[INFO] Clone benchmark repo ..."
-  git clone https://github.com/PaddlePaddle/benchmark.git
+  git clone -b api/fix_nvprof_2 https://github.com/Xreki/benchmark.git
   [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
   LOG "[INFO] Collect api info ..."
   python benchmark/api/deploy/collect_api_info.py \
