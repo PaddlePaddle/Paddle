@@ -2388,6 +2388,56 @@ def triangular_solve(x,
     return out
 
 
+def cholesky_solve(x, y, upper=False, name=None):
+    r"""
+    Solves a linear system of equations A @ X = B, given A's Cholesky factor matrix u and  matrix B.
+
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
+    is also batches.
+
+    Args:
+        x (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+            zero or more batch dimensions. Its data type should be float32 or float64.
+        upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
+        name(str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The solution of the system of equations. Its data type is the same as that of `x`.
+
+    Examples:
+    .. code-block:: python
+
+        import paddle
+
+        u = paddle.to_tensor([[1, 1, 1], 
+                                [0, 2, 1],
+                                [0, 0,-1]], dtype="float64")
+        b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+        out = paddle.linalg.cholesky_solve(b, u, upper=True)
+
+        print(out)
+        # [-2.5, -7, 9.5]
+    """
+    if in_dygraph_mode():
+        return _C_ops.cholesky_solve(x, y, 'upper', upper)
+
+    helper = LayerHelper("cholesky_solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'cholesky_solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'cholesky_solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='cholesky_solve',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'upper': upper})
+    return out
+
+
 def eigvalsh(x, UPLO='L', name=None):
     """
     Computes the eigenvalues of a 
