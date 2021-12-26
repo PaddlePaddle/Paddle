@@ -27,14 +27,16 @@ namespace distributed {
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 
-void Carrier::Init(std::shared_ptr<RuntimeGraph> runtime_graph,
+void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
                    framework::Scope* root_scope,
                    framework::Scope* minibatch_scope,
                    const std::vector<framework::Scope*>& microbatch_scopes,
                    const platform::Place& place) {
   PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
                                          "Carrier is already init."));
+  rank_ = rank;
   runtime_graph_ = runtime_graph;
+  interceptor_id_to_rank_ = runtime_graph_->interceptor_id_to_rank();
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
   place_ = place;
@@ -48,11 +50,6 @@ void Carrier::Release() {
   // NOTE(wangxi): must join before `Derived Interceptor` destruct,
   // otherwise Derived object will be destructed before thread complete.
 
-  // Sending STOP msg to the source interceptor
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
-                    platform::errors::PreconditionNotMet(
-                        "Message bus has not been initialized."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
             << ".";
@@ -61,7 +58,7 @@ void Carrier::Release() {
     stop_msg.set_src_id(-1);
     stop_msg.set_dst_id(id);
     stop_msg.set_message_type(STOP);
-    msg_bus.Send(stop_msg);
+    Send(stop_msg);
   }
 
   // TODO(wangxi): Maybe need a better to use thread.
@@ -74,10 +71,10 @@ Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
-  // enqueue message to interceptor
   if (interceptor_message.ctrl_message()) {
-    // handle control message
-    return true;
+    VLOG(3) << "Receiving control message from rank "
+            << interceptor_message.src_id() << " to rank "
+            << interceptor_message.dst_id();
   } else {
     {
       std::unique_lock<std::mutex> lock_creating(creating_flag_mutex_);
@@ -92,15 +89,9 @@ bool Carrier::EnqueueInterceptorMessage(
     }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
-    bool rst =
-        dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
-    if (rst) {
-      std::condition_variable& interceptor_cond_var =
-          dst_interceptor->GetCondVar();
-      interceptor_cond_var.notify_all();
-    }
-    return rst;
+    dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
   }
+  return true;
 }
 
 Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
@@ -113,11 +104,17 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   return iter->second.get();
 }
 
+void Carrier::Wait() {
+  std::unique_lock<std::mutex> lock(running_mutex_);
+  cond_var_.wait(lock);
+}
+
 void Carrier::Start() {
-  MessageBus& msg_bus = MessageBus::Instance();
-  PADDLE_ENFORCE_EQ(msg_bus.IsInit(), true,
+  PADDLE_ENFORCE_EQ(msg_bus_->IsInit(), true,
                     platform::errors::PreconditionNotMet(
-                        "Message bus has not been initialized."));
+                        "Using message bus since it has not been initialized. "
+                        "Please invoke MessageBus::Init() before using it or "
+                        "neccessary components are not ready."));
 
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
@@ -127,17 +124,55 @@ void Carrier::Start() {
     start_msg.set_src_id(-1);
     start_msg.set_dst_id(id);
     start_msg.set_message_type(DATA_IS_READY);
-    msg_bus.Send(start_msg);
+    Send(start_msg);
   }
-
-  std::unique_lock<std::mutex> lock(running_mutex_);
-  cond_var_.wait(lock);
+  Wait();
   dev_ctx_->Wait();
 }
 
 std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
+
+int64_t Carrier::GetRank(int64_t interceptor_id) const {
+  PADDLE_ENFORCE_NE(
+      interceptor_id_to_rank_.find(interceptor_id),
+      interceptor_id_to_rank_.end(),
+      platform::errors::NotFound("Cannot find rank for interceptor id %lld.",
+                                 interceptor_id));
+  return interceptor_id_to_rank_.at(interceptor_id);
+}
+
+bool Carrier::Send(const InterceptorMessage& msg) {
+  int64_t src_id = (msg.src_id() == -1) ? msg.dst_id() : msg.src_id();
+  int64_t dst_id = msg.dst_id();
+  int64_t src_rank = GetRank(src_id);
+  int64_t dst_rank = GetRank(dst_id);
+  PADDLE_ENFORCE_EQ(
+      src_rank, rank_,
+      platform::errors::Fatal("The source rank id %lld, which is not equal to "
+                              "the carrier rank id %lld.",
+                              src_rank, rank_));
+  if (src_rank == dst_rank) {
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id << ", which are in the same ranks.";
+    return EnqueueInterceptorMessage(msg);
+  } else {
+    PADDLE_ENFORCE_NOT_NULL(
+        msg_bus_.get(),
+        platform::errors::Unavailable("Message bus is released accidently"));
+    PADDLE_ENFORCE_EQ(
+        msg_bus_->IsInit(), true,
+        platform::errors::PreconditionNotMet(
+            "Using message bus since it has not been initialized. "
+            "Please invoke MessageBus::Init() before using it or "
+            "neccessary components are not ready."));
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id
+            << ", which are in different ranks.";
+    return msg_bus_->Send(dst_rank, msg);
+  }
+}
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {
@@ -147,6 +182,7 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         "The interceptor id %lld has already been created! "
                         "The interceptor id should be unique.",
                         interceptor_id));
+  interceptor->RegisterCarrier(this);
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
@@ -211,13 +247,13 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 }
 
 void Carrier::CreateInterceptors() {
-  if (runtime_graph_->intercepter_id_to_node().empty()) return;
+  if (runtime_graph_->interceptor_id_to_node().empty()) return;
 
   auto gc = GetGC(place_);
 
   // create each Interceptor
   // no auto init since there is no config
-  for (const auto& item : runtime_graph_->intercepter_id_to_node()) {
+  for (const auto& item : runtime_graph_->interceptor_id_to_node()) {
     int64_t interceptor_id = item.first;
     TaskNode* task_node = item.second;
 
@@ -229,13 +265,12 @@ void Carrier::CreateInterceptors() {
             task_node->run_at_offset(), task_node->run_per_steps()));
 
     std::unique_ptr<Interceptor> interceptor;
-    if (task_node->type().empty()) {
-      // TODO(wangxi): delete this in future
-      interceptor.reset(new Interceptor(interceptor_id, task_node));
-    } else {
-      interceptor = InterceptorFactory::Create(task_node->type(),
-                                               interceptor_id, task_node);
-    }
+    PADDLE_ENFORCE_NE(task_node->type().empty(), true,
+                      platform::errors::NotFound(
+                          "Cannot found type for task node with id %lld",
+                          task_node->task_id()));
+    interceptor = InterceptorFactory::Create(task_node->type(), interceptor_id,
+                                             task_node);
     interceptor->SetPlace(place_);
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);

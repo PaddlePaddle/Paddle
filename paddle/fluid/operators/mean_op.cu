@@ -18,7 +18,10 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/mean_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -26,22 +29,12 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n)
-      : n_inv(static_cast<T>(1.0 / n)) {}
-
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
-
- private:
-  T n_inv;
-};
-
-template <typename T>
 __global__ void MeanRunKernel(const T* in_data, T* out_data, int N) {
+  using MT = typename details::MPTypeTrait<T>::Type;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  T data = in_data[0];
+  auto data = static_cast<MT>(in_data[0]);
   for (; idx < N; idx += blockDim.x * gridDim.x) {
-    out_data[idx] = data / (static_cast<T>(N));
+    out_data[idx] = static_cast<T>(data / (static_cast<MT>(N)));
   }
 }
 
@@ -52,27 +45,29 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
 
-    output->mutable_data<T>(context.GetPlace());
-    auto size_prob = input->numel();
     const T* in_data = input->data<T>();
     T* out_data = output->mutable_data<T>(context.GetPlace());
+    auto numel = input->numel();
+    auto rank = input->dims().size();
+    auto place = context.GetPlace();
     auto stream = context.cuda_device_context().stream();
 
-    DivideFunctor<T> transformer(size_prob);
-    cub::TransformInputIterator<T, DivideFunctor<T>, const T*> trans_x(
-        in_data, transformer);
-    size_t temp_storage_bytes = 0;
+    if (rank == 0) {  // scalar
+      auto gpu_place = BOOST_GET(platform::CUDAPlace, place);
+      memory::Copy(gpu_place, out_data, gpu_place, in_data, numel * sizeof(T),
+                   stream);
+      return;
+    }
 
-    auto err = cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, trans_x,
-                                      out_data, size_prob, stream);
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
-    framework::Tensor tmp;
-    auto* temp_storage = tmp.mutable_data<uint8_t>(
-        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
-        context.GetPlace());
-    err = cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, trans_x,
-                                 out_data, size_prob, stream);
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
+    using MT = typename details::MPTypeTrait<T>::Type;
+    using Div = kernel_primitives::DivideFunctor<T, MT>;
+    std::vector<int> reduce_dims;
+    reduce_dims.reserve(rank);
+    for (decltype(rank) i = 0; i < rank; ++i) {
+      reduce_dims.push_back(i);
+    }
+    TensorReduceFunctorImpl<T, T, kernel_primitives::AddFunctor, Div>(
+        *input, output, Div(numel), reduce_dims, stream);
   }
 };
 

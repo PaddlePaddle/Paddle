@@ -179,6 +179,8 @@ void BindVarDsec(pybind11::module *m) {
            pybind11::return_value_policy::reference)
       .def("dtype", &pd::VarDesc::GetDataType,
            pybind11::return_value_policy::reference)
+      .def("element_size", &pd::VarDesc::ElementSize,
+           pybind11::return_value_policy::reference)
       .def("dtypes", &pd::VarDesc::GetDataTypes,
            pybind11::return_value_policy::reference)
       .def("lod_level", &pd::VarDesc::GetLoDLevel)

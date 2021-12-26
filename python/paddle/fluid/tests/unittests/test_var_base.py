@@ -497,6 +497,41 @@ class TestVarBase(unittest.TestCase):
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(isinstance(str(var), str))
 
+    def test_element_size(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(1, dtype='bool')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='float16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.to_tensor(1, dtype='float32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.to_tensor(1, dtype='float64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='int8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='int16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.to_tensor(1, dtype='int32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.to_tensor(1, dtype='int64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='uint8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='complex64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='complex128')
+            self.assertEqual(x.element_size(), 16)
+
     def test_backward(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)

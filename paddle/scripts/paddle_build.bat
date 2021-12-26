@@ -742,7 +742,7 @@ for /F %%i in ("%libsize%") do (
 )
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %MSVC_STATIC_CRT%
 goto:eof
 
 :test_inference_error

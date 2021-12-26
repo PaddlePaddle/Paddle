@@ -28,6 +28,7 @@ from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.dygraph import base as imperative_base
+from paddle.distributed.collective import _get_global_group
 
 
 class Taskflow:
@@ -49,10 +50,10 @@ class Type(Enum):
 
 
 class ShardingClipGrad:
-    def __init__(self, clip, group, device):
+    def __init__(self, clip, device, group):
         self._clip = clip
-        self._group = group
         self._device = device
+        self._group = group
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
@@ -131,7 +132,7 @@ class ShardingClipGrad:
 
 
 @contextlib.contextmanager
-def device_guard(dev_id, device="cpu"):
+def device_guard(dev_id=0, device="cpu"):
     origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)
@@ -144,7 +145,7 @@ def device_guard(dev_id, device="cpu"):
 
 
 @dygraph_only
-def ShardingScaler(scaler, sharding_group):
+def ShardingScaler(scaler):
     def unscale_method(self, optimizer):
         if not self._enable:
             return
@@ -152,10 +153,10 @@ def ShardingScaler(scaler, sharding_group):
         param_grads_fp16 = []
         param_grads_fp32 = []
 
-        if getattr(optimizer, '_param_groups', None) and isinstance(
-                optimizer._param_groups[0], dict):
+        if getattr(optimizer._optim, '_param_groups', None) and isinstance(
+                optimizer._optim._param_groups[0], dict):
 
-            for group in optimizer._param_groups:
+            for group in optimizer._optim._param_groups:
                 for param in group['params']:
                     if param._grad_ivar() is not None:
                         param_grads.append(param._grad_ivar())
@@ -166,31 +167,37 @@ def ShardingScaler(scaler, sharding_group):
                             param_grads_fp32.append(param._grad_ivar())
         else:
             param_grads = [
-                param._grad_ivar() for param in optimizer._parameter_list
+                param._grad_ivar() for param in optimizer._optim._parameter_list
                 if param._grad_ivar() is not None
             ]
             param_grads_fp16 = [
-                param._grad_ivar() for param in optimizer._parameter_list
+                param._grad_ivar() for param in optimizer._optim._parameter_list
                 if (param._grad_ivar() is not None
                     ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16
                            )
             ]
             param_grads_fp32 = [
-                param._grad_ivar() for param in optimizer._parameter_list
+                param._grad_ivar() for param in optimizer._optim._parameter_list
                 if (param._grad_ivar() is not None
                     ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
                            )
             ]
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
-        if len(param_grads_fp16):
-            _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                            param_grads_fp16,
-                                            temp_found_inf_fp16)
-        if len(param_grads_fp32):
-            _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                            param_grads_fp32,
-                                            temp_found_inf_fp32)
+
+        device = "cpu" if optimizer.offload else "gpu"
+        dev_id = 0 if device == "cpu" else int(paddle.get_device().split(":")[
+            1])
+
+        with device_guard(dev_id, device):
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                param_grads_fp16,
+                                                temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                param_grads_fp32,
+                                                temp_found_inf_fp32)
 
         self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
@@ -198,7 +205,7 @@ def ShardingScaler(scaler, sharding_group):
         paddle.distributed.all_reduce(
             is_found_inf,
             op=paddle.distributed.ReduceOp.MAX,
-            group=sharding_group)
+            group=optimizer.group)
         self._found_inf = is_found_inf.numpy()[0]
 
     scaler._unscale = MethodType(unscale_method, scaler)
