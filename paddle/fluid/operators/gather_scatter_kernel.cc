@@ -37,20 +37,6 @@ class ReduceAdd {
 
 static ReduceAdd reduce_add;
 
-class ReduceMultiply {
- public:
-  template <typename tensor_t>
-  void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    *self_data *= *src_data;
-  }
-
-  void operator()(bool* self_data, bool* src_data) const {
-    *self_data = *self_data && *src_data;
-  }
-};
-
-static ReduceMultiply reduce_mul;
-
 template <typename tensor_t, typename index_t = int64_t,
           bool is_scatter_like = true>
 struct cpu_gather_scatter_functor {
@@ -155,18 +141,8 @@ void cpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
       self, dim, index, src, "scatter_add_cpu", reduce_add, ctx);
 }
 
-template <typename tensor_t, typename index_t>
-void cpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
-                            Tensor src, const platform::DeviceContext& ctx) {
-  cpu_gather_scatter_functor<tensor_t, index_t,
-                             /*is_scatter_like=*/true>()(
-      self, dim, index, src, "scatter_mul_cpu", reduce_mul, ctx);
-}
-
 Instantiate_Template_Function(cpu_gather_kernel)
-Instantiate_Template_Function(cpu_scatter_assign_kernel)
-Instantiate_Template_Function(cpu_scatter_add_kernel)
-Instantiate_Template_Function(cpu_scatter_mul_kernel)
+    Instantiate_Template_Function(cpu_scatter_add_kernel)
 
 }  // namespace operators
 }  // namespace paddle
