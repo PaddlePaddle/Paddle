@@ -1681,7 +1681,7 @@ def cross_entropy(input,
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label == True:
                 # chajchaj:
-                # weight's shape is C, where C is class num.
+                # weight's shape is C, where C is class num. 
                 # for 1d case: label's shape is [N,C], weight_gather's shape is N.
                 # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
                 weight_gather = paddle.matmul(
@@ -1697,7 +1697,7 @@ def cross_entropy(input,
 
             else:
                 valid_label = paddle.where(label == ignore_index,
-                                        paddle.zeros_like(label), label)
+                                           paddle.zeros_like(label), label)
                 # TODO: Temporarily use paddle.nonzero instead of paddle.max 
                 # to detect and find out possible illegal label values
                 if len(paddle.nonzero(valid_label < 0)) > 0:
