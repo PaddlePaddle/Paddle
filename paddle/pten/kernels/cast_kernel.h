@@ -14,22 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
-
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
 namespace pten {
 
-using XPUDeviceContext = paddle::platform::XPUDeviceContext;
-
-void Copy(const XPUDeviceContext& dev_ctx,
-          const DenseTensor& src,
-          bool blocking,
-          DenseTensor* dst);
+template <typename T, typename ContextT>
+void Cast(const ContextT& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out);
 
 }  // namespace pten
-
-#endif

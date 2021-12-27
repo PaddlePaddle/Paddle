@@ -64,7 +64,31 @@ class TestModeOp(OpTest):
         self.op_type = "mode"
         self.dtype = np.float64
         np.random.seed(666)
-        self.input_data = np.ceil(np.random.rand(2, 10, 10) * 1000)
+        self.input_data = np.ceil(np.random.rand(2, 10, 7) * 1000)
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'axis': self.axis}
+        output, indices = cal_mode(self.input_data, axis=self.axis)
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output()
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        self.check_grad(set(['X']), 'Out')
+
+
+class TestModeOpLastdim(OpTest):
+    def init_args(self):
+        self.axis = -1
+
+    def setUp(self):
+        self.op_type = "mode"
+        self.dtype = np.float64
+        np.random.seed(666)
+        self.input_data = np.ceil(np.random.rand(2, 1, 3, 2, 10) * 1000)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'axis': self.axis}
@@ -82,7 +106,7 @@ class TestModeOp(OpTest):
 
 class TestModeOpKernels(unittest.TestCase):
     def setUp(self):
-        self.axises = [2, -1, 1]
+        self.axises = [-1, 1]
         np.random.seed(666)
         self.inputs = np.ceil(np.random.rand(2, 10, 10) * 1000)
 

@@ -14,20 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <cstdint>
+#include <memory>
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
+namespace paddle {
+namespace platform {
 
-namespace pten {
+using StreamId = uint64_t;
+class Stream final {
+ public:
+  explicit Stream(StreamId id) : id_(id) {}
+  StreamId id() const { return id_; }
 
-void Copy(const GPUContext& dev_ctx,
-          const DenseTensor& src,
-          bool blocking,
-          DenseTensor* dst);
+ private:
+  StreamId id_;
+};
 
-}  // namespace pten
-
-#endif
+}  // namespace platform
+}  // namespace paddle

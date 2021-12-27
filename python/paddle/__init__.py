@@ -197,6 +197,7 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nansum  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -397,6 +398,7 @@ __all__ = [  # noqa
            'cos',
            'tan',
            'mean',
+           'mode',
            'mv',
            'in_dynamic_mode',
            'min',
@@ -525,6 +527,7 @@ __all__ = [  # noqa
            'ones',
            'not_equal',
            'sum',
+           'nansum',
            'tile',
            'greater_equal',
            'isfinite',
@@ -602,5 +605,5 @@ __all__ = [  # noqa
            'moveaxis',
            'repeat_interleave',
            'clone',
-           'mode',
+           'renorm',
 ]

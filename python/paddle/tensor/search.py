@@ -479,9 +479,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is -1.
-        keepdim(bool, optional): Whether to keep the given axis in output. If it is True,
-            the dimensions will be same as input x and with size one in the axis. Otherwise
-             the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -493,8 +491,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
 
            import paddle
            
-           a = np.array([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]],dtype=np.float32)
-           tensor = paddle.to_tensor(a)
+           tensor = paddle.to_tensor([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]], dtype=paddle.float32)
            res = paddle.mode(tensor, 2)
            print(res)
            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
