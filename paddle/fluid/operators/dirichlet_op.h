@@ -20,25 +20,25 @@
 
 // ROCM hcc doesn't work well with using std:: in kernel functions
 #if defined(PADDLE_WITH_CUDA)
-#define compat_exp exp
-#define compat_ceil ceil
-#define compat_floor floor
-#define compat_log log
-#define compat_pow pow
-#define compat_sqrt sqrt
-#define compat_tan tan
-#define compat_abs abs
-#define compat_log1p log1p
+#define COMPAT_EXP exp
+#define COMPAT_CEIL ceil
+#define COMPAT_FLOOR floor
+#define COMPAT_LOG log
+#define COMPAT_POW pow
+#define COMPAT_SQRT sqrt
+#define COMPAT_TAN tan
+#define COMPAT_ABS abs
+#define COMPAT_LOG1P log1p
 #else
-#define compat_exp std::exp
-#define compat_ceil std::ceil
-#define compat_floor std::floor
-#define compat_log std::log
-#define compat_pow std::pow
-#define compat_sqrt std::sqrt
-#define compat_tan std::tan
-#define compat_abs std::abs
-#define compat_log1p std::log1p
+#define COMPAT_EXP std::exp
+#define COMPAT_CEIL std::ceil
+#define COMPAT_FLOOR std::floor
+#define COMPAT_LOG std::log
+#define COMPAT_POW std::pow
+#define COMPAT_SQRT std::sqrt
+#define COMPAT_TAN std::tan
+#define COMPAT_ABS std::abs
+#define COMPAT_LOG1P std::log1p
 #endif
 
 namespace paddle {
@@ -46,11 +46,11 @@ namespace operators {
 template <typename DeviceContext, typename T>
 struct DirichletSampler;
 
-template <typename scalar_t, typename sampler_t>
+template <typename ScalarT, typename SamplerT>
 struct BaseSampler {
-  sampler_t sampler_;
-  HOSTDEVICE BaseSampler(const sampler_t& sampler) : sampler_(sampler) {}
-  HOSTDEVICE scalar_t sample() { return sampler_(); }
+  SamplerT sampler_;
+  HOSTDEVICE BaseSampler(const SamplerT& sampler) : sampler_(sampler) {}
+  HOSTDEVICE ScalarT sample() { return sampler_(); }
 };
 
 // `sample_gamma` is d from Numpy's distributions.c, and add support for
@@ -78,39 +78,38 @@ struct BaseSampler {
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-template <typename scalar_t, typename accscalar_t, typename uniform_sampler_t,
-          typename normal_sampler_t>
-HOSTDEVICE scalar_t
-sample_gamma(scalar_t alpha,
-             BaseSampler<accscalar_t, uniform_sampler_t> standard_uniform,
-             BaseSampler<accscalar_t, normal_sampler_t> standard_normal) {
-  accscalar_t scale = 1.0f;
+template <typename ScalarT, typename AccscalarT, typename UniformSamplerT,
+          typename NormalSamplerT>
+HOSTDEVICE ScalarT sample_gamma(
+    ScalarT alpha, BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
+    BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
+  AccscalarT scale = 1.0f;
 
   // Boost alpha for higher acceptance probability.
   if (alpha < 1.0f) {
     if (alpha == 0.f) return 0.f;
-    scale *= compat_pow(1 - standard_uniform.sample(), 1.0f / alpha);
+    scale *= COMPAT_POW(1 - standard_uniform.sample(), 1.0f / alpha);
     alpha += 1.0f;
   }
 
   // This implements the acceptance-rejection method of Marsaglia and Tsang
   // (2000)
   // doi:10.1145/358407.358414
-  const accscalar_t d = alpha - 1.0f / 3.0f;
-  const accscalar_t c = 1.0f / compat_sqrt(9.0f * d);
+  const AccscalarT d = alpha - 1.0f / 3.0f;
+  const AccscalarT c = 1.0f / COMPAT_SQRT(9.0f * d);
   for (;;) {
-    accscalar_t x, y;
+    AccscalarT x, y;
     do {
       x = standard_normal.sample();
       y = 1.0f + c * x;
     } while (y <= 0);
-    const accscalar_t v = y * y * y;
-    const accscalar_t u = 1 - standard_uniform.sample();
-    const accscalar_t xx = x * x;
+    const AccscalarT v = y * y * y;
+    const AccscalarT u = 1 - standard_uniform.sample();
+    const AccscalarT xx = x * x;
     if (u < 1.0f - 0.0331f * xx * xx)
-      return static_cast<scalar_t>(scale * d * v);
-    if (compat_log(u) < 0.5f * xx + d * (1.0f - v + compat_log(v)))
-      return static_cast<scalar_t>(scale * d * v);
+      return static_cast<ScalarT>(scale * d * v);
+    if (COMPAT_LOG(u) < 0.5f * xx + d * (1.0f - v + COMPAT_LOG(v)))
+      return static_cast<ScalarT>(scale * d * v);
   }
 }
 

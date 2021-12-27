@@ -21,23 +21,23 @@
 
 namespace paddle {
 namespace operators {
-template <typename T, typename uniform_sampler_t, typename normal_sampler_t>
+template <typename T, typename UniformSamplerT, typename NormalSamplerT>
 struct GammaCPUFunctor {
   GammaCPUFunctor(const T* alpha, T* gamma,
-                  BaseSampler<T, uniform_sampler_t> uniform,
-                  BaseSampler<T, normal_sampler_t> normal)
+                  BaseSampler<T, UniformSamplerT> uniform,
+                  BaseSampler<T, NormalSamplerT> normal)
       : alpha_(alpha), gamma_(gamma), uniform_(uniform), normal_(normal) {}
 
   HOST void operator()(int64_t index) {
-    auto sample = sample_gamma<T, T, uniform_sampler_t, normal_sampler_t>(
+    auto sample = sample_gamma<T, T, UniformSamplerT, NormalSamplerT>(
         alpha_[index], uniform_, normal_);
     gamma_[index] = std::max(std::numeric_limits<T>::min(), sample);
   }
 
   const T* alpha_;
   T* gamma_;
-  BaseSampler<T, uniform_sampler_t> uniform_;
-  BaseSampler<T, normal_sampler_t> normal_;
+  BaseSampler<T, UniformSamplerT> uniform_;
+  BaseSampler<T, NormalSamplerT> normal_;
 };
 
 template <typename T>
