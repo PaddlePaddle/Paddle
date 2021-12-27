@@ -253,7 +253,7 @@ template PADDLE_API paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>();
 
 // TODO(chenweihang): replace slice impl by API
-Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
+Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
     return Tensor(std::make_shared<pten::DenseTensor>(
         std::move(pten::CompatibleDenseTensorUtils::Slice(

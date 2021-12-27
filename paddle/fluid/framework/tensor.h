@@ -274,6 +274,7 @@ class Tensor {
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
+  void set_offset(size_t offset) { offset_ = offset; }
 
   std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
     return std::move(holder_);

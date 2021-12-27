@@ -312,6 +312,7 @@ void MovesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   std::shared_ptr<paddle::memory::allocation::Allocation> holder(
       new TensorStorage(std::move(storage)));
   dst->ResetHolderWithType(holder, pten::TransToProtoVarType(src->dtype()));
+  dst->set_offset(src->meta().offset);
 }
 
 void MovesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
@@ -333,6 +334,7 @@ void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(src));
   dst->ResetHolderWithType(storage->GetAllocation(),
                            pten::TransToProtoVarType(src->dtype()));
+  dst->set_offset(src->meta().offset);
 }
 
 void SharesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst) {
