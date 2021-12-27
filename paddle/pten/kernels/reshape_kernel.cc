@@ -16,10 +16,8 @@
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/funcs/common_shape.h"
-#include "paddle/pten/kernels/gpu/utils.h"
-#include "paddle/pten/kernels/xpu/utils.h"
 
 namespace pten {
 

@@ -18,9 +18,7 @@
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/kernels/cast_kernel.h"
-#include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/kernels/flatten_kernel.h"
-#include "paddle/pten/kernels/gpu/manipulation.h"
 #include "paddle/pten/kernels/reshape_kernel.h"
 
 namespace pten {
