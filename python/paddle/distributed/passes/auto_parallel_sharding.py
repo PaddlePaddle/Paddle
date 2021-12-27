@@ -34,7 +34,8 @@ _supported_optimizer_type = [
     "lars_momentum", "merged_momentum", "lamb", "sgd"
 ]
 
-# NOTE we add the "auto_parallel" prefix to the pass in order to 
+
+# NOTE we add the "auto_parallel" prefix to the pass in order to
 # indicate that this pass should obey some constrains by auto_parallel
 # for example all ops and vars should has dist attr before and after pass
 # should use dist op instead of custom comm op 
@@ -79,7 +80,8 @@ class ShardingPass(PassBase):
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         params_grads = self.get_attr("params_grads")
-        main_block, startup_block = main_program.global_block(), startup_program.global_block()
+        main_block, startup_block = main_program.global_block(
+        ), startup_program.global_block()
 
         self._build_sharding_groups(main_block, params_grads)
         self._shard_optimizer(main_block, startup_block, params_grads, context)
@@ -116,12 +118,17 @@ class ShardingPass(PassBase):
                 self.sharding_world_size, dp_group.nranks)
             assert self.global_rank in dp_group.ranks, "current ranks [{}] does NOT belong to the data parallel group [{}]".format(
                 self.global_rank, dp_group.ranks)
-            assert len(params_grads) >= self.sharding_world_size, "number of parameters [{}] is not enough to be shard among [{}] ranks".format(len(params_grads), self.sharding_world_size)
+            assert len(
+                params_grads
+            ) >= self.sharding_world_size, "number of parameters [{}] is not enough to be shard among [{}] ranks".format(
+                len(params_grads), self.sharding_world_size)
 
             # sharding hybrid data parallel: partial sharding param within 
             if dp_group.nranks > self.sharding_world_size:
                 self.partial_sharding = True
-                assert len(self.dp_groups) == 1, "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
+                assert len(
+                    self.dp_groups
+                ) == 1, "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
                 outer_dp_group, sharding_group = _get_dp_and_sharding_groups(
                     dp_group.ranks, self.sharding_world_size, self.global_rank)
                 sharding_group = new_process_group(sharding_group)
@@ -131,13 +138,16 @@ class ShardingPass(PassBase):
 
             # TODO when support multiple dp groups in future, should group param and bind them to corresponding dp group
             params_in_group = [p for p, g in params_grads]
-            assert len(params_in_group) == len(set(params_in_group)), "found duplicated param in params_grads"
-            sharding_info = ShardingInfo(sharding_group, self.global_rank, params_in_group)
+            assert len(params_in_group) == len(set(
+                params_in_group)), "found duplicated param in params_grads"
+            sharding_info = ShardingInfo(sharding_group, self.global_rank,
+                                         params_in_group)
             self.sharding_infos.append(sharding_info)
             for param in params_in_group:
                 self.varname_to_sharding_info[param.name] = sharding_info
 
-    def _shard_optimizer(self, main_block, startup_block, params_grads, pass_context):
+    def _shard_optimizer(self, main_block, startup_block, params_grads,
+                         pass_context):
         """
         sharding all optimizer related ops and vars, include:
         gradient clip ops & vars
@@ -353,7 +363,8 @@ class ShardingPass(PassBase):
                 main_block)
             not_used_param_nane = []
             for param_name in param_usage:
-                if param_usage[param_name] == 0 and sharding_info.get_var_rank(param_name) != sharding_info.local_rank:
+                if param_usage[param_name] == 0 and sharding_info.get_var_rank(
+                        param_name) != sharding_info.local_rank:
                     not_used_param_nane.append(param_name)
 
             for idx, op in reversed(list(enumerate(main_block.ops))):
@@ -463,14 +474,15 @@ def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
             broadcast_var_dist_attr.dims_mapping, dist_context)
     return
 
+
 def _insert_reduce_op(block,
-                     insert_idx,
-                     reduce_var,
-                     ring_id,
-                     root_id,
-                     dist_context,
-                     op_role=OpRole.Backward,
-                     use_calc_stream=True):
+                      insert_idx,
+                      reduce_var,
+                      ring_id,
+                      root_id,
+                      dist_context,
+                      op_role=OpRole.Backward,
+                      use_calc_stream=True):
     assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
         root_id)
     new_op = block._insert_op_without_sync(
@@ -490,6 +502,7 @@ def _insert_reduce_op(block,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context)
 
+
 def _get_dp_and_sharding_groups(origin_group, sharding_group_size, rank):
     dp_axis = 0
     sharding_axis = 1
@@ -500,18 +513,22 @@ def _get_dp_and_sharding_groups(origin_group, sharding_group_size, rank):
 
     return dp_group, sharding_group
 
+
 def _is_gradient_clip_op(op):
     return op.desc.has_attr("op_namescope") \
         and op.desc.attr("op_namescope").startswith("/gradient_clip")
+
 
 def _is_weight_decay_op(op):
     return op.desc.has_attr("op_namescope") \
         and op.desc.attr("op_namescope").startswith("/regularization")
 
+
 def _is_param_grad_fp32_cast_op(block, op):
     if not is_backward_op(op):
         return False
-    if not _is_desired_cast_op(block, op, core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32):
+    if not _is_desired_cast_op(block, op, core.VarDesc.VarType.FP16,
+                               core.VarDesc.VarType.FP32):
         return False
     output_name = op.desc.output_arg_names()[0]
     base_name = output_name[:output_name.find("@")]
@@ -531,11 +548,15 @@ def _is_param_fp16_cast_op(block, op, params):
         return False
     return True
 
-def _is_desired_cast_op(block, op, src_var_type = core.VarDesc.VarType.FP32, dst_var_type = core.VarDesc.VarType.FP16):
+
+def _is_desired_cast_op(block,
+                        op,
+                        src_var_type=core.VarDesc.VarType.FP32,
+                        dst_var_type=core.VarDesc.VarType.FP16):
     if op.type != "cast":
-        return False    
+        return False
     assert (len(op.desc.input_arg_names()) == 1)
-    assert (len(op.desc.output_arg_names()) == 1) 
+    assert (len(op.desc.output_arg_names()) == 1)
     input_var = block.var(op.desc.input_arg_names()[0])
     output_var = block.var(op.desc.output_arg_names()[0])
 
@@ -543,7 +564,8 @@ def _is_desired_cast_op(block, op, src_var_type = core.VarDesc.VarType.FP32, dst
         output_var.dtype != dst_var_type:
         return False
 
-    re†urn True
+    return True
+
 
 def _get_base_name_from_grad_name(grad_name):
     base_name = None
@@ -571,6 +593,7 @@ def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
 
     return block.var(base_name).is_parameter
 
+
 def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     dp_group = None
@@ -591,6 +614,7 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     return dp_group
 
+
 def shard_parameters(params, group_size):
     # TODO(JZ-LIANG) support multiple partition methods
     # method1: greedy even but unorder
@@ -608,6 +632,7 @@ def shard_parameters(params, group_size):
         sizes[rank] += numel
 
     return mapping
+
 
 class ShardingInfo(object):
     def __init__(self, group, rank, params):
@@ -668,4 +693,3 @@ class ShardingInfo(object):
                 broadcast_vars.add(param)
                 print("param [{}] use in fp32 format".format(param))
         return broadcast_vars, param_usage
-        
