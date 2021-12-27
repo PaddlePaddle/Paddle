@@ -899,7 +899,7 @@ inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
 
 inline std::string build_nvidia_error_msg(cusparseStatus_t stat) {
   std::ostringstream sout;
-  sout << "CUBLAS error(" << stat << "). " << GetExternalErrorMsg(stat);
+  sout << "CUSparse error(" << stat << "). " << GetExternalErrorMsg(stat);
   return sout.str();
 }
 

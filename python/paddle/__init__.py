@@ -91,6 +91,7 @@ from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
+from .tensor.creation import clone  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -587,4 +588,5 @@ __all__ = [  # noqa
            'fmin',
            'moveaxis',
            'repeat_interleave',
+           'clone',
 ]

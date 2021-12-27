@@ -29,6 +29,8 @@ cudaDataType_t GetGpuDataType() {
     return CUDA_R_32F;
   } else if (std::is_same<T, double>::value) {
     return CUDA_R_64F;
+  } else if (std::is_same<T, platform::float16>::value) {
+    return CUDA_R_16F;
   }
 }
 
@@ -78,52 +80,11 @@ void Sparse<platform::CUDADeviceContext>::nnz(const int M, const int N,
   });
 }
 
-template <>
 template <typename T>
-void Sparse<platform::CUDADeviceContext>::DenseToSparseCoo(
-    const int M, const int N, const T* dense, int64_t* rows, int64_t* cols,
-    T* values) const {
-  cusparseSpMatDescr_t matA, matB;
-
-  cudaDataType_t dtype = GetGpuDataType<T>();
-
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateDnMat(
-      &matA, M, N, N, dense, dtype, CUSPARSE_ORDER_ROW));
-
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCoo(
-      &matB, M, N, 0, NULL, NULL, NULL, CUSPARSE_INDEX_64I,
-      CUSPARSE_INDEX_BASE_ZERO, dtype));
-
-  size_t buffer_size = 0;
-  context_.CusparseCall([&](cusparseHandle_t handle) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cusparseDenseToSparse_bufferSize(
-            handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,
-            &buffer_size));
-  });
-  framework::Tensor buffer;
-  T* buffer_data = buffer.mutable_data<T>({buffer_size}, context_.GetPlace());
-
-  context_.CusparseCall([&](cusparseHandle_t handle) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cusparseDenseToSparse_analysis(
-            handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,
-            buffer_data));
-  });
-
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::cusparseCooSetPointers(matB, rows, cols, values));
-  context_.CusparseCall([&](cusparseHandle_t handle) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseDenseToSparse_convert(
-        handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, buffer_data));
-  });
-}
-
-template <>
-template <typename T>
-void Sparse<platform::CUDADeviceContext>::DenseToSparseCsr(
-    const int M, const int N, const T* dense, int64_t* crows, int64_t* cols,
-    T* values) const {
+inline void DenseToSparse(const platform::CUDADeviceContext& context,
+                          const int M, const int N, const T* dense,
+                          int64_t* rows, int64_t* cols, T* values,
+                          const cusparseFormat_t format) {
   cusparseSpMatDescr_t matB;
   cusparseDnMatDescr_t matA;
 
@@ -132,12 +93,22 @@ void Sparse<platform::CUDADeviceContext>::DenseToSparseCsr(
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateDnMat(
       &matA, M, N, N, const_cast<void*>(reinterpret_cast<const void*>(dense)),
       dtype, CUSPARSE_ORDER_ROW));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCsr(
-      &matB, M, N, 0, crows, nullptr, nullptr, CUSPARSE_INDEX_64I,
-      CUSPARSE_INDEX_64I, CUSPARSE_INDEX_BASE_ZERO, dtype));
+
+  if (format == CUSPARSE_FORMAT_COO) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCoo(
+        &matB, M, N, 0, nullptr, nullptr, nullptr, CUSPARSE_INDEX_64I,
+        CUSPARSE_INDEX_BASE_ZERO, dtype));
+  } else if (format == CUSPARSE_FORMAT_CSR) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCsr(
+        &matB, M, N, 0, rows, nullptr, nullptr, CUSPARSE_INDEX_64I,
+        CUSPARSE_INDEX_64I, CUSPARSE_INDEX_BASE_ZERO, dtype));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "the sparse format [%s] is not supported", format));
+  }
 
   size_t buffer_size = 0;
-  context_.CusparseCall([&](cusparseHandle_t handle) {
+  context.CusparseCall([&](cusparseHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cusparseDenseToSparse_bufferSize(
             handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,
@@ -145,43 +116,83 @@ void Sparse<platform::CUDADeviceContext>::DenseToSparseCsr(
   });
   framework::Tensor buffer;
   float* buffer_data = buffer.mutable_data<float>(
-      {static_cast<int64_t>(buffer_size)}, context_.GetPlace());
+      {static_cast<int64_t>(buffer_size)}, context.GetPlace());
 
-  context_.CusparseCall([&](cusparseHandle_t handle) {
+  context.CusparseCall([&](cusparseHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cusparseDenseToSparse_analysis(
             handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,
             buffer_data));
   });
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::cusparseCsrSetPointers(matB, crows, cols, values));
-  context_.CusparseCall([&](cusparseHandle_t handle) {
+  if (format == CUSPARSE_FORMAT_COO) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCooSetPointers(
+        matB, rows, cols, reinterpret_cast<void*>(values)));
+  } else if (format == CUSPARSE_FORMAT_CSR) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCsrSetPointers(
+        matB, rows, cols, reinterpret_cast<void*>(values)));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "the sparse format [%s] is not supported", format));
+  }
+  context.CusparseCall([&](cusparseHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseDenseToSparse_convert(
         handle, matA, matB, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT, buffer_data));
   });
 }
+template <>
+template <typename T>
+void Sparse<platform::CUDADeviceContext>::DenseToSparseCoo(
+    const int M, const int N, const T* dense, int64_t* rows, int64_t* cols,
+    T* values) const {
+  DenseToSparse<T>(context_, M, N, dense, rows, cols, values,
+                   CUSPARSE_FORMAT_COO);
+}
 
 template <>
 template <typename T>
-void Sparse<platform::CUDADeviceContext>::SparseCsrToDense(
-    const int64_t M, const int64_t N, const int64_t nnz, const int64_t* crows,
-    const int64_t* cols, const T* values, T* dense) const {
+void Sparse<platform::CUDADeviceContext>::DenseToSparseCsr(
+    const int M, const int N, const T* dense, int64_t* crows, int64_t* cols,
+    T* values) const {
+  DenseToSparse<T>(context_, M, N, dense, crows, cols, values,
+                   CUSPARSE_FORMAT_CSR);
+}
+
+template <typename T>
+void SparseToDense(const platform::CUDADeviceContext& context, const int64_t M,
+                   const int64_t N, const int64_t nnz, const int64_t* rows,
+                   const int64_t* cols, const T* values, T* dense,
+                   const cusparseFormat_t format) {
   cusparseSpMatDescr_t matA;
   cusparseDnMatDescr_t matB;
 
   cudaDataType_t dtype = GetGpuDataType<T>();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCsr(
-      &matA, M, N, nnz, const_cast<void*>(reinterpret_cast<const void*>(crows)),
-      const_cast<void*>(reinterpret_cast<const void*>(cols)),
-      const_cast<void*>(reinterpret_cast<const void*>(values)),
-      CUSPARSE_INDEX_64I, CUSPARSE_INDEX_64I, CUSPARSE_INDEX_BASE_ZERO, dtype));
+  if (format == CUSPARSE_FORMAT_COO) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCoo(
+        &matA, M, N, nnz,
+        const_cast<void*>(reinterpret_cast<const void*>(rows)),
+        const_cast<void*>(reinterpret_cast<const void*>(cols)),
+        const_cast<void*>(reinterpret_cast<const void*>(values)),
+        CUSPARSE_INDEX_64I, CUSPARSE_INDEX_BASE_ZERO, dtype));
+  } else if (format == CUSPARSE_FORMAT_CSR) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateCsr(
+        &matA, M, N, nnz,
+        const_cast<void*>(reinterpret_cast<const void*>(rows)),
+        const_cast<void*>(reinterpret_cast<const void*>(cols)),
+        const_cast<void*>(reinterpret_cast<const void*>(values)),
+        CUSPARSE_INDEX_64I, CUSPARSE_INDEX_64I, CUSPARSE_INDEX_BASE_ZERO,
+        dtype));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "the sparse format [%s] is not supported", format));
+  }
 
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseCreateDnMat(
-      &matB, M, N, N, dense, dtype, CUSPARSE_ORDER_ROW));
+      &matB, M, N, N, reinterpret_cast<void*>(dense), dtype,
+      CUSPARSE_ORDER_ROW));
 
   size_t buffer_size = 0;
-  context_.CusparseCall([&](cusparseHandle_t handle) {
+  context.CusparseCall([&](cusparseHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cusparseSparseToDense_bufferSize(
             handle, matA, matB, CUSPARSE_SPARSETODENSE_ALG_DEFAULT,
@@ -189,13 +200,32 @@ void Sparse<platform::CUDADeviceContext>::SparseCsrToDense(
   });
   framework::Tensor buffer;
   float* buffer_data = buffer.mutable_data<float>(
-      {static_cast<int64_t>(buffer_size)}, context_.GetPlace());
+      {static_cast<int64_t>(buffer_size)}, context.GetPlace());
 
-  context_.CusparseCall([&](cusparseHandle_t handle) {
+  context.CusparseCall([&](cusparseHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusparseSparseToDense(
         handle, matA, matB, CUSPARSE_SPARSETODENSE_ALG_DEFAULT, buffer_data));
   });
 }
+
+template <>
+template <typename T>
+void Sparse<platform::CUDADeviceContext>::SparseCooToDense(
+    const int64_t M, const int64_t N, const int64_t nnz, const int64_t* rows,
+    const int64_t* cols, const T* values, T* dense) const {
+  SparseToDense<T>(context_, M, N, nnz, rows, cols, values, dense,
+                   CUSPARSE_FORMAT_COO);
+}
+
+template <>
+template <typename T>
+void Sparse<platform::CUDADeviceContext>::SparseCsrToDense(
+    const int64_t M, const int64_t N, const int64_t nnz, const int64_t* crows,
+    const int64_t* cols, const T* values, T* dense) const {
+  SparseToDense<T>(context_, M, N, nnz, crows, cols, values, dense,
+                   CUSPARSE_FORMAT_CSR);
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

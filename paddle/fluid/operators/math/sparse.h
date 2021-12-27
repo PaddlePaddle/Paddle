@@ -54,6 +54,10 @@ class Sparse {
                         int64_t* crows, int64_t* cols, T* values) const;
 
   template <typename T>
+  void SparseCooToDense(const int64_t M, const int64_t N, const int64_t nnz,
+                        const int64_t* rows, const int64_t* cols,
+                        const T* values, T* dense) const;
+  template <typename T>
   void SparseCsrToDense(const int64_t M, const int64_t N, const int64_t nnz,
                         const int64_t* crows, const int64_t* cols,
                         const T* values, T* dense) const;
@@ -79,6 +83,10 @@ class SparseT : private Sparse<DeviceContext> {
   template <typename... ARGS>
   void DenseToSparseCsr(ARGS... args) const {
     Base()->template DenseToSparseCsr(args...);
+  }
+  template <typename... ARGS>
+  void SparseCooToDense(ARGS... args) const {
+    Base()->template SparseCooToDense(args...);
   }
   template <typename... ARGS>
   void SparseCsrToDense(ARGS... args) const {
@@ -107,7 +115,6 @@ inline SparseT<DeviceContext, T> GetSparse(const DeviceContext& dev_ctx) {
 }  // namespace operators
 }  // namespace paddle
 
-#include "paddle/fluid/operators/math/sparse_impl.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/math/sparse_impl.cu.h"
 #endif

@@ -41,34 +41,40 @@ extern void *cusparse_dso_handle;
   };                                                                 \
   extern DynLoad__##__name __name
 
-#if !defined(PADDLE_WITH_ARM) && !defined(_WIN32)
+#if !defined(PADDLE_WITH_ARM)
 // APIs available after CUDA 11.0
 #if CUDA_VERSION >= 11000
-#define CUSPARSE_ROUTINE_EACH(__macro)       \
-  __macro(cusparseCreate);                   \
-  __macro(cusparseSetStream);                \
-  __macro(cusparseCreateCsr);                \
-  __macro(cusparseCreateCoo);                \
-  __macro(cusparseCreateDnMat);              \
-  __macro(cusparseCreateMatDescr);           \
-  __macro(cusparseSpMM_bufferSize);          \
-  __macro(cusparseSpMM);                     \
-  __macro(cusparseDestroySpMat);             \
-  __macro(cusparseDestroyDnMat);             \
-  __macro(cusparseDestroy);                  \
-  __macro(cusparseSnnz);                     \
-  __macro(cusparseDnnz);                     \
+#define CUSPARSE_ROUTINE_EACH(__macro) \
+  __macro(cusparseCreate);             \
+  __macro(cusparseSetStream);          \
+  __macro(cusparseCreateCsr);          \
+  __macro(cusparseCreateCoo);          \
+  __macro(cusparseCreateDnMat);        \
+  __macro(cusparseCreateMatDescr);     \
+  __macro(cusparseSpMM_bufferSize);    \
+  __macro(cusparseSpMM);               \
+  __macro(cusparseDestroySpMat);       \
+  __macro(cusparseDestroyDnMat);       \
+  __macro(cusparseDestroy);            \
+  __macro(cusparseSnnz);               \
+  __macro(cusparseDnnz);               \
+  __macro(cusparseSetMatType);         \
+  __macro(cusparseSetMatIndexBase);
+
+CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
+
+// APIs available after CUDA 11.2
+#if CUDA_VERSION >= 11020
+#define CUSPARSE_ROUTINE_EACH_11020(__macro) \
+  __macro(cusparseCooSetPointers);           \
+  __macro(cusparseCsrSetPointers);           \
   __macro(cusparseDenseToSparse_bufferSize); \
   __macro(cusparseDenseToSparse_analysis);   \
   __macro(cusparseDenseToSparse_convert);    \
   __macro(cusparseSparseToDense_bufferSize); \
-  __macro(cusparseSparseToDense);            \
-  __macro(cusparseSetMatType);               \
-  __macro(cusparseCooSetPointers);           \
-  __macro(cusparseCsrSetPointers);           \
-  __macro(cusparseSetMatIndexBase);
+  __macro(cusparseSparseToDense);
 
-CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
+CUSPARSE_ROUTINE_EACH_11020(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 
 // APIs available after CUDA 11.3
 #if CUDA_VERSION >= 11030
@@ -78,6 +84,7 @@ CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
   __macro(cusparseSDDMM);
 
 CUSPARSE_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
+#endif
 #endif
 #endif
 #endif
