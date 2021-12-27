@@ -41,8 +41,8 @@ namespace cub = hipcub;
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/gpu/utils.h"
-#include "paddle/pten/kernels/hybird/math/cast_func.h"
+#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -1112,12 +1112,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
       AsyncCopy(x, y);
       y->Resize(out_dims);
     } else {
-      PD_VISIT_ALL_TYPES(
-          y->dtype(), "CastKernelImpl", ([&] {
-            pten::math::CastKernelImpl<paddle::platform::CUDADeviceContext,
-                                       Tx,
-                                       data_t>(*dev_ctx, x, y);
-          }));
+      pten::Cast<Tx>(*dev_ctx, x, y->dtype(), x.dtype(), y);
     }
     return;
   }
