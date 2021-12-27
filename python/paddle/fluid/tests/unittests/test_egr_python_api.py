@@ -202,6 +202,258 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             for p in place_list:
                 self.constructor(p)
 
+    def constructor_with_kwargs(self, place):
+        # init EagerTensor by Python array
+        arr = np.random.rand(4, 16, 16, 32).astype('float32')
+
+        egr_tensor0 = core.eager.EagerTensor(value=arr)
+        self.assertEqual(egr_tensor0.persistable, False)
+        self.assertTrue("generated" in egr_tensor0.name)
+        self.assertEqual(egr_tensor0.shape, [4, 16, 16, 32])
+        self.assertTrue(
+            egr_tensor0.place._equals(
+                paddle.fluid.framework._current_expected_place()))
+        self.assertEqual(egr_tensor0.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor0.stop_gradient, True)
+
+        egr_tensor1 = core.eager.EagerTensor(value=arr, place=place)
+        self.assertEqual(egr_tensor1.persistable, False)
+        self.assertTrue("generated" in egr_tensor1.name)
+        self.assertEqual(egr_tensor1.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor1.place._equals(place))
+        self.assertEqual(egr_tensor1.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor1.stop_gradient, True)
+
+        egr_tensor2 = core.eager.EagerTensor(arr, place=place)
+        self.assertEqual(egr_tensor2.persistable, False)
+        self.assertTrue("generated" in egr_tensor2.name)
+        self.assertEqual(egr_tensor2.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor2.place._equals(place))
+        self.assertEqual(egr_tensor2.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor2.stop_gradient, True)
+
+        egr_tensor3 = core.eager.EagerTensor(
+            arr, place=place, name="new_eager_tensor")
+        self.assertEqual(egr_tensor3.persistable, False)
+        self.assertTrue("new_eager_tensor" in egr_tensor3.name)
+        self.assertEqual(egr_tensor3.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor3.place._equals(place))
+        self.assertEqual(egr_tensor3.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor3.stop_gradient, True)
+
+        egr_tensor4 = core.eager.EagerTensor(
+            arr, place=place, persistable=True, name="new_eager_tensor")
+        self.assertEqual(egr_tensor4.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor4.name)
+        self.assertEqual(egr_tensor4.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor4.place._equals(place))
+        self.assertEqual(egr_tensor4.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor4.stop_gradient, True)
+
+        egr_tensor5 = core.eager.EagerTensor(
+            arr,
+            core.CPUPlace(),
+            persistable=True,
+            name="new_eager_tensor",
+            zero_copy=True)
+        self.assertEqual(egr_tensor5.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor5.name)
+        self.assertEqual(egr_tensor5.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor5.place.is_cpu_place())
+        self.assertEqual(egr_tensor5.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor5.stop_gradient, True)
+
+        egr_tensor6 = core.eager.EagerTensor(
+            arr,
+            place=core.CPUPlace(),
+            persistable=True,
+            name="new_eager_tensor",
+            zero_copy=True)
+        self.assertEqual(egr_tensor6.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor6.name)
+        self.assertEqual(egr_tensor6.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor6.place.is_cpu_place())
+        self.assertEqual(egr_tensor6.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor6.stop_gradient, True)
+
+        egr_tensor7 = core.eager.EagerTensor(
+            arr,
+            place=place,
+            persistable=True,
+            name="new_eager_tensor",
+            zero_copy=True)
+        self.assertEqual(egr_tensor7.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor7.name)
+        self.assertEqual(egr_tensor7.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor7.place._equals(place))
+        self.assertEqual(egr_tensor7.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor7.stop_gradient, True)
+
+        egr_tensor8 = core.eager.EagerTensor(
+            arr,
+            place=place,
+            persistable=True,
+            name="new_eager_tensor",
+            zero_copy=True,
+            stop_gradient=False)
+        self.assertEqual(egr_tensor8.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor8.name)
+        self.assertEqual(egr_tensor8.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor8.place._equals(place))
+        self.assertEqual(egr_tensor8.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor8.stop_gradient, False)
+
+        egr_tensor9 = core.eager.EagerTensor(
+            arr, place, True, True, "new_eager_tensor", stop_gradient=False)
+        self.assertEqual(egr_tensor9.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor9.name)
+        self.assertEqual(egr_tensor9.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor9.place._equals(place))
+        self.assertEqual(egr_tensor9.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor9.stop_gradient, False)
+
+        egr_tensor10 = core.eager.EagerTensor(
+            arr,
+            place,
+            True,
+            True,
+            name="new_eager_tensor",
+            stop_gradient=False)
+        self.assertEqual(egr_tensor10.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor10.name)
+        self.assertEqual(egr_tensor10.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor10.place._equals(place))
+        self.assertEqual(egr_tensor10.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor10.stop_gradient, False)
+
+        egr_tensor11 = core.eager.EagerTensor(
+            arr,
+            place,
+            True,
+            zero_copy=True,
+            name="new_eager_tensor",
+            stop_gradient=False)
+        self.assertEqual(egr_tensor11.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor11.name)
+        self.assertEqual(egr_tensor11.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor11.place._equals(place))
+        self.assertEqual(egr_tensor11.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor11.stop_gradient, False)
+
+        egr_tensor12 = core.eager.EagerTensor(
+            arr,
+            place,
+            persistable=True,
+            zero_copy=True,
+            name="new_eager_tensor",
+            stop_gradient=False)
+        self.assertEqual(egr_tensor12.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor12.name)
+        self.assertEqual(egr_tensor12.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor12.place._equals(place))
+        self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor12.stop_gradient, False)
+
+        egr_tensor13 = core.eager.EagerTensor(
+            value=arr,
+            place=place,
+            persistable=True,
+            zero_copy=True,
+            name="new_eager_tensor",
+            stop_gradient=False)
+        self.assertEqual(egr_tensor13.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor13.name)
+        self.assertEqual(egr_tensor13.shape, [4, 16, 16, 32])
+        self.assertTrue(egr_tensor13.place._equals(place))
+        self.assertEqual(egr_tensor13.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor13.stop_gradient, False)
+
+        # special case
+        egr_tensor14 = core.eager.EagerTensor(
+            dtype=core.VarDesc.VarType.FP32,
+            dims=[4, 16, 16, 32],
+            name="special_eager_tensor",
+            vtype=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=True)
+        self.assertEqual(egr_tensor14.persistable, True)
+        self.assertEqual(egr_tensor14.name, "special_eager_tensor")
+        self.assertEqual(egr_tensor14.shape, [4, 16, 16, 32])
+        self.assertEqual(egr_tensor14.dtype, core.VarDesc.VarType.FP32)
+
+        # init EagerTensor by EagerTensor
+        egr_tensor15 = core.eager.EagerTensor(value=egr_tensor14)
+        self.assertEqual(egr_tensor15.persistable, True)
+        self.assertTrue("generated" in egr_tensor15.name)
+        self.assertEqual(egr_tensor15.shape, egr_tensor14.shape)
+        self.assertEqual(egr_tensor15.dtype, egr_tensor14.dtype)
+        self.assertEqual(egr_tensor15.stop_gradient, True)
+        self.assertTrue(
+            egr_tensor15.place._equals(
+                paddle.fluid.framework._current_expected_place()))
+        self.assertTrue(
+            np.array_equal(egr_tensor15.numpy(), egr_tensor14.numpy()))
+
+        egr_tensor16 = core.eager.EagerTensor(
+            value=egr_tensor4, name="new_eager_tensor")
+        self.assertEqual(egr_tensor16.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor16.name)
+        self.assertEqual(egr_tensor16.shape, egr_tensor4.shape)
+        self.assertEqual(egr_tensor16.dtype, egr_tensor4.dtype)
+        self.assertEqual(egr_tensor16.stop_gradient, True)
+        self.assertTrue(
+            egr_tensor16.place._equals(
+                paddle.fluid.framework._current_expected_place()))
+        self.assertTrue(
+            np.array_equal(egr_tensor16.numpy(), egr_tensor4.numpy()))
+
+        egr_tensor17 = core.eager.EagerTensor(
+            value=egr_tensor4,
+            place=place,
+            name="new_eager_tensor", )
+        self.assertEqual(egr_tensor17.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor17.name)
+        self.assertEqual(egr_tensor17.shape, egr_tensor4.shape)
+        self.assertEqual(egr_tensor17.dtype, egr_tensor4.dtype)
+        self.assertEqual(egr_tensor17.stop_gradient, True)
+        self.assertTrue(egr_tensor17.place._equals(place))
+        self.assertTrue(
+            np.array_equal(egr_tensor17.numpy(), egr_tensor4.numpy()))
+
+        egr_tensor18 = core.eager.EagerTensor(
+            egr_tensor4,
+            place=place,
+            name="new_eager_tensor", )
+        self.assertEqual(egr_tensor18.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor18.name)
+        self.assertEqual(egr_tensor18.shape, egr_tensor4.shape)
+        self.assertEqual(egr_tensor18.dtype, egr_tensor4.dtype)
+        self.assertEqual(egr_tensor18.stop_gradient, True)
+        self.assertTrue(egr_tensor18.place._equals(place))
+        self.assertTrue(
+            np.array_equal(egr_tensor18.numpy(), egr_tensor4.numpy()))
+
+        egr_tensor19 = core.eager.EagerTensor(
+            egr_tensor4,
+            place,
+            name="new_eager_tensor", )
+        self.assertEqual(egr_tensor19.persistable, True)
+        self.assertTrue("new_eager_tensor" in egr_tensor19.name)
+        self.assertEqual(egr_tensor19.shape, egr_tensor4.shape)
+        self.assertEqual(egr_tensor19.dtype, egr_tensor4.dtype)
+        self.assertEqual(egr_tensor19.stop_gradient, True)
+        self.assertTrue(egr_tensor19.place._equals(place))
+        self.assertTrue(
+            np.array_equal(egr_tensor19.numpy(), egr_tensor4.numpy()))
+
+    def test_constructor_with_kwargs(self):
+        print("Test_constructor_with_kwargs")
+        place_list = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            place_list.append(core.CUDAPlace(0))
+        with _test_eager_guard():
+            for p in place_list:
+                self.constructor_with_kwargs(p)
+
     def test_copy_and_copy_to(self):
         print("Test_copy_and_copy_to")
         with _test_eager_guard():
