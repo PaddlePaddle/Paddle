@@ -84,7 +84,6 @@ template <typename T, typename ContextT>
 void Cast(const ContextT& dev_ctx,
           const DenseTensor& x,
           DataType out_dtype,
-          DataType in_dtype,
           DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
                        CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);

@@ -15,7 +15,7 @@
     func : CastInferMeta
   kernel :
     func : cast
-    param : [x, out_dtype, x.dtype()]
+    param : [x, out_dtype]
     data_type : x
 
 - api : divide

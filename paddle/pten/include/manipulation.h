@@ -42,14 +42,13 @@ DenseTensor Flatten(const ContextT& dev_ctx,
 template <typename T, typename ContextT>
 DenseTensor Cast(const ContextT& dev_ctx,
                  const DenseTensor& x,
-                 DataType out_dtype,
-                 DataType in_dtype) {
+                 DataType out_dtype) {
   auto out_meta = CastInferMeta(x.meta(), out_dtype);
   pten::DenseTensor dense_out(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Cast<T, ContextT>(dev_ctx, x, out_dtype, in_dtype, &dense_out);
+  Cast<T, ContextT>(dev_ctx, x, out_dtype, &dense_out);
   return dense_out;
 }
 
