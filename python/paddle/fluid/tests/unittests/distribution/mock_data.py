@@ -39,7 +39,6 @@ class Exponential(paddle.distribution.ExponentialFamily):
     def _log_normalizer(self, x):
         return -paddle.log(-x)
 
-
 class DummyExpFamily(paddle.distribution.ExponentialFamily):
     """dummy class extend from exponential family
     """
