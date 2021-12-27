@@ -16,6 +16,10 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -35,6 +39,9 @@ static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
 
 #if PADDLE_WITH_ASCEND_CL
         static void StreamCallbackFunc(void *user_data)
+#endif
+#if PADDLE_WITH_MLU
+            static void StreamCallbackFunc(void *user_data)
 #endif
 {
   std::unique_ptr<std::function<void()>> func(
@@ -77,12 +84,22 @@ void StreamCallbackManager<Stream>::AddCallback(
   // TODO(zhiqiu): failed to call aclrtLaunchCallback
   NPULaunchCallback(StreamCallbackFunc, func, ACL_CALLBACK_BLOCK, stream_);
 #endif
+
+#if PADDLE_WITH_MLU
+  VLOG(3) << "MLULaunchCallback at stream: " << stream_;
+  LOG(ERROR) << "failed to call MLULaunchCallback, "
+             << "because mlu not support StreamAddCallback yet. "
+             << "function: " << func;
+#endif
 }
 
 template <typename Stream>
 void StreamCallbackManager<Stream>::Wait() const {
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   platform::GpuStreamSync(stream_);
+#endif
+#ifdef PADDLE_WITH_MLU
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   NPUStreamSync(stream_);
@@ -103,6 +120,9 @@ template struct StreamCallbackManager<hipStream_t>;
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 template struct StreamCallbackManager<aclrtStream>;
+#endif
+#ifdef PADDLE_WITH_MLU
+template struct StreamCallbackManager<mluStream>;
 #endif
 
 }  // namespace platform

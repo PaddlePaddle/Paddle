@@ -127,8 +127,8 @@ def _get_group_map():
     global _group_map
     if not _group_map:
         genv = _get_global_env()
-        _group_map[0] = Group(genv.rank, genv.world_size,
-                              list(range(genv.world_size)))
+        _group_map[0] = Group(
+            genv.rank, genv.world_size, ranks=list(range(genv.world_size)))
     return _group_map
 
 

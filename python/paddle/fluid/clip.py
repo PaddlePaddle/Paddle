@@ -29,6 +29,7 @@ from .data_feeder import check_variable_and_dtype
 from .framework import in_dygraph_mode
 from .layer_helper import LayerHelper
 from .framework import default_main_program
+from paddle import _C_ops
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
@@ -47,7 +48,7 @@ def _squared_l2_norm(x):
         return sum_square
 
     if in_dygraph_mode():
-        return core.ops.squared_l2_norm(x)
+        return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
