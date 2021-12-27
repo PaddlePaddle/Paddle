@@ -27,12 +27,12 @@ namespace pten {
 //  Because functions in this file
 //  not only can infer shape, but alse need infer lod or other useful data.
 
-DenseTensorMeta FullInferMeta(const std::vector<int64_t>& shape,
-                              DataType dtype,
-                              DataLayout layout);
+DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
+                                DataType dtype,
+                                DataLayout layout);
 
-DenseTensorMeta FullInferMeta(const ScalarArray& shape,
-                              DataType dtype,
-                              DataLayout layout);
+DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
+                                DataType dtype,
+                                DataLayout layout);
 
 }  // namespace pten

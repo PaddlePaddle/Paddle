@@ -73,7 +73,8 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   struct BlockAllocation : public Allocation {
     explicit BlockAllocation(const List<Block>::iterator &it)
-        : Allocation(it->ptr_, it->size_, it->chunk_->allocation_->place()),
+        : Allocation(it->ptr_, it->chunk_->allocation_->base_ptr(), it->size_,
+                     it->chunk_->allocation_->place()),
           block_it_(it) {}
 
     List<Block>::iterator block_it_;

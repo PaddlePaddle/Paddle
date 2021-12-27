@@ -131,6 +131,15 @@ extern "C" void sgelss_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
                         int *ldb, float *s, float *rcond, int *rank,
                         float *work, int *lwork, int *info);
 
+extern "C" void zpotrs_(char *uplo, int *n, int *nrhs, std::complex<double> *a,
+                        int *lda, std::complex<double> *b, int *ldb, int *info);
+extern "C" void cpotrs_(char *uplo, int *n, int *nrhs, std::complex<float> *a,
+                        int *lda, std::complex<float> *b, int *ldb, int *info);
+extern "C" void dpotrs_(char *uplo, int *n, int *nrhs, double *a, int *lda,
+                        double *b, int *ldb, int *info);
+extern "C" void spotrs_(char *uplo, int *n, int *nrhs, float *a, int *lda,
+                        float *b, int *ldb, int *info);
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -186,7 +195,11 @@ extern void *lapack_dso_handle;
   __macro(zgelss_);                  \
   __macro(cgelss_);                  \
   __macro(dgelss_);                  \
-  __macro(sgelss_);
+  __macro(sgelss_);                  \
+  __macro(zpotrs_);                  \
+  __macro(cpotrs_);                  \
+  __macro(dpotrs_);                  \
+  __macro(spotrs_);
 
 LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 

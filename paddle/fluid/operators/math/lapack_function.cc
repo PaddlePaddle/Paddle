@@ -284,6 +284,38 @@ void lapackGelss<float>(int m, int n, int nrhs, float *a, int lda, float *b,
                         int lwork, float *rwork, int *info) {
   platform::dynload::sgelss_(&m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond, rank,
                              work, &lwork, info);
+
+template <>
+void lapackCholeskySolve<platform::complex<double>>(
+    char uplo, int n, int nrhs, platform::complex<double> *a, int lda,
+    platform::complex<double> *b, int ldb, int *info) {
+  platform::dynload::zpotrs_(
+      &uplo, &n, &nrhs, reinterpret_cast<std::complex<double> *>(a), &lda,
+      reinterpret_cast<std::complex<double> *>(b), &ldb, info);
+}
+
+template <>
+void lapackCholeskySolve<platform::complex<float>>(char uplo, int n, int nrhs,
+                                                   platform::complex<float> *a,
+                                                   int lda,
+                                                   platform::complex<float> *b,
+                                                   int ldb, int *info) {
+  platform::dynload::cpotrs_(
+      &uplo, &n, &nrhs, reinterpret_cast<std::complex<float> *>(a), &lda,
+      reinterpret_cast<std::complex<float> *>(b), &ldb, info);
+}
+
+template <>
+void lapackCholeskySolve<double>(char uplo, int n, int nrhs, double *a, int lda,
+                                 double *b, int ldb, int *info) {
+  platform::dynload::dpotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
+}
+
+template <>
+void lapackCholeskySolve<float>(char uplo, int n, int nrhs, float *a, int lda,
+                                float *b, int ldb, int *info) {
+  platform::dynload::spotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
+
 }
 
 }  // namespace math

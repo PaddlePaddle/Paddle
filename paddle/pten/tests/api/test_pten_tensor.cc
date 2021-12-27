@@ -21,9 +21,9 @@ namespace paddle {
 namespace tests {
 
 template <typename T>
-paddle::Tensor InitCPUTensorForTest() {
+experimental::Tensor InitCPUTensorForTest() {
   std::vector<int64_t> tensor_shape{5, 5};
-  auto t1 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape);
+  auto t1 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
   auto* p_data_ptr = t1.mutable_data<T>(paddle::PlaceType::kCPU);
   for (int64_t i = 0; i < t1.size(); i++) {
     p_data_ptr[i] = T(5);
@@ -57,18 +57,18 @@ void TestCopyTensor() {
 void TestAPIPlace() {
   std::vector<int64_t> tensor_shape = {5, 5};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape);
+  auto t1 = experimental::Tensor(paddle::PlaceType::kGPU, tensor_shape);
   t1.mutable_data<float>();
   CHECK((paddle::PlaceType::kGPU == t1.place()));
 #endif
-  auto t2 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape);
+  auto t2 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
   t2.mutable_data<float>();
   CHECK((paddle::PlaceType::kCPU == t2.place()));
 }
 
 void TestAPISizeAndShape() {
   std::vector<int64_t> tensor_shape = {5, 5};
-  auto t1 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape);
+  auto t1 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
   CHECK_EQ(t1.size(), 25);
   CHECK(t1.shape() == tensor_shape);
 }
@@ -79,19 +79,19 @@ void TestAPISlice() {
   std::vector<int64_t> tensor_shape_origin2 = {5, 5, 5};
   std::vector<int64_t> tensor_shape_sub2 = {1, 5, 5};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin1);
+  auto t1 = experimental::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin1);
   t1.mutable_data<float>();
   CHECK(t1.slice(0, 5).shape() == tensor_shape_origin1);
   CHECK(t1.slice(0, 3).shape() == tensor_shape_sub1);
-  auto t2 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin2);
+  auto t2 = experimental::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin2);
   t2.mutable_data<float>();
   CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
 #endif
-  auto t3 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin1);
+  auto t3 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin1);
   t3.mutable_data<float>();
   CHECK(t3.slice(0, 5).shape() == tensor_shape_origin1);
   CHECK(t3.slice(0, 3).shape() == tensor_shape_sub1);
-  auto t4 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin2);
+  auto t4 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin2);
   t4.mutable_data<float>();
   CHECK(t4.slice(4, 5).shape() == tensor_shape_sub2);
 
@@ -111,7 +111,7 @@ void TestAPISlice() {
 template <typename T>
 paddle::DataType TestDtype() {
   std::vector<int64_t> tensor_shape = {5, 5};
-  auto t1 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape);
+  auto t1 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
   t1.template mutable_data<T>();
   return t1.type();
 }
@@ -119,12 +119,12 @@ paddle::DataType TestDtype() {
 template <typename T>
 void TestCast(paddle::DataType data_type) {
   std::vector<int64_t> tensor_shape = {5, 5};
-  auto t1 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape);
+  auto t1 = experimental::Tensor(paddle::PlaceType::kCPU, tensor_shape);
   t1.template mutable_data<T>();
   auto t2 = t1.cast(data_type);
   CHECK(t2.type() == data_type);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tg1 = paddle::Tensor(paddle::PlaceType::kGPU);
+  auto tg1 = experimental::Tensor(paddle::PlaceType::kGPU);
   tg1.reshape(tensor_shape);
   tg1.template mutable_data<T>();
   auto tg2 = tg1.cast(data_type);
@@ -192,7 +192,7 @@ void GroupTestDtype() {
 }
 
 void TestInitilized() {
-  paddle::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
   CHECK(test_tensor.is_initialized() == false);
   test_tensor.mutable_data<float>();
   CHECK(test_tensor.is_initialized() == true);
@@ -203,6 +203,11 @@ void TestInitilized() {
   for (int i = 0; i < test_tensor.size(); i++) {
     CHECK(tensor_data[i] == 0.5);
   }
+}
+
+void TestJudgeTensorType() {
+  experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  CHECK(test_tensor.is_dense_tensor() == true);
 }
 
 TEST(PtenTensor, All) {
@@ -220,6 +225,8 @@ TEST(PtenTensor, All) {
   GroupTestCast();
   VLOG(2) << "TestInitilized";
   TestInitilized();
+  VLOG(2) << "TestJudgeTensorType";
+  TestJudgeTensorType();
 }
 
 }  // namespace tests
