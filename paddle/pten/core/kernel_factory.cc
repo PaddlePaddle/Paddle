@@ -43,7 +43,24 @@ Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
   if (iter == kernels_.end()) {
     return Kernel();
   }
-  auto kernel_iter = iter->second.find(kernel_key);
+
+  pten::KernelKey target_key(
+      kernel_key.backend(), kernel_key.layout(), kernel_key.dtype());
+  auto kernel_iter = iter->second.find(target_key);
+  if (kernel_iter == iter->second.end()) {
+    for (auto& key_iter : iter->second) {
+      if (key_iter.first.backend() == pten::Backend::ALL_BACKEND) {
+        target_key.set_backend(pten::Backend::ALL_BACKEND);
+      }
+      if (key_iter.first.layout() == pten::DataLayout::ALL_LAYOUT) {
+        target_key.set_layout(pten::DataLayout::ALL_LAYOUT);
+      }
+      if (key_iter.first.dtype() == pten::DataType::ALL_DTYPE) {
+        target_key.set_dtype(pten::DataType::ALL_DTYPE);
+      }
+    }
+    kernel_iter = iter->second.find(target_key);
+  }
   if (kernel_iter == iter->second.end()) {
     return Kernel();
   }
@@ -58,7 +75,23 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                     paddle::platform::errors::NotFound(
                         "The kernel `%s` is not registered.", kernel_name));
 
-  auto kernel_iter = iter->second.find(kernel_key);
+  pten::KernelKey target_key(
+      kernel_key.backend(), kernel_key.layout(), kernel_key.dtype());
+  auto kernel_iter = iter->second.find(target_key);
+  if (kernel_iter == iter->second.end()) {
+    for (auto& key_iter : iter->second) {
+      if (key_iter.first.backend() == pten::Backend::ALL_BACKEND) {
+        target_key.set_backend(pten::Backend::ALL_BACKEND);
+      }
+      if (key_iter.first.layout() == pten::DataLayout::ALL_LAYOUT) {
+        target_key.set_layout(pten::DataLayout::ALL_LAYOUT);
+      }
+      if (key_iter.first.dtype() == pten::DataType::ALL_DTYPE) {
+        target_key.set_dtype(pten::DataType::ALL_DTYPE);
+      }
+    }
+    kernel_iter = iter->second.find(target_key);
+  }
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != pten::DataLayout::ANY) {

@@ -62,6 +62,10 @@ class KernelKey {
   DataLayout layout() const { return layout_; }
   DataType dtype() const { return dtype_; }
 
+  void set_backend(Backend backend) { backend_ = backend; }
+  void set_layout(DataLayout layout) { layout_ = layout; }
+  void set_dtype(DataType dtype) { dtype_ = dtype; }
+
   struct Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,

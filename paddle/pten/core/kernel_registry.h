@@ -115,27 +115,6 @@ struct KernelRegistrar {
                     variadic_kernel_fn);
   }
 
-  KernelRegistrar(const char* kernel_name_cstr,
-                  Backend backend,
-                  DataLayout layout,
-                  KernelArgsParseFn args_parse_fn,
-                  KernelArgsDefFn args_def_fn,
-                  KernelFn kernel_fn,
-                  void* variadic_kernel_fn) {
-    for (size_t dtype = static_cast<size_t>(DataType::BOOL);
-         dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
-         dtype++) {
-      ConstructKernel(kernel_name_cstr,
-                      backend,
-                      layout,
-                      static_cast<DataType>(dtype),
-                      args_parse_fn,
-                      args_def_fn,
-                      kernel_fn,
-                      variadic_kernel_fn);
-    }
-  }
-
  private:
   void ConstructKernel(const char* kernel_name_cstr,
                        Backend backend,
@@ -764,6 +743,7 @@ struct KernelRegistrar {
           #kernel_name,                                                      \
           BACKEND(backend),                                                  \
           DATALAYOUT(layout),                                                \
+          DATATYPE(dtype),                                                   \
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,     \
           PT_KERNEL(kernel_fn),                                              \
@@ -798,6 +778,7 @@ struct KernelRegistrar {
           #kernel_name,                                                     \
           BACKEND(backend),                                                 \
           DATALAYOUT(layout),                                               \
+          DATATYPE(dtype),                                                  \
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
           &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PT_KERNEL(kernel_fn),                                             \
@@ -817,6 +798,7 @@ struct KernelRegistrar {
           #kernel_name,                                                     \
           BACKEND(backend),                                                 \
           DATALAYOUT(layout),                                               \
+          DATATYPE(dtype),                                                  \
           ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
           &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PT_KERNEL(kernel_fn),                                             \
