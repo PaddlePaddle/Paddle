@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <omp.h>
 #include <sstream>
 
 #include "paddle/fluid/distributed/common/cost_timer.h"
@@ -92,10 +93,10 @@ int32_t MemorySparseTable::load(const std::string& path,
   size_t file_start_idx = _shard_idx * avg_local_shard_num_;
 
   size_t feature_value_size = _value_accesor->size() / sizeof(float);
-  // TODO(zhaocaibei123): multi-thread
-  // int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
-  // omp_set_num_threads(thread_num);
-  // #pragma omp parallel for schedule(dynamic)
+
+  int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < real_local_shard_num_; ++i) {
     FsChannelConfig channel_config;
     channel_config.path = file_list[file_start_idx + i];
@@ -178,9 +179,9 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
 
   size_t feature_value_size = _value_accesor->size() / sizeof(float);
 
-  // int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
-  // omp_set_num_threads(thread_num);
-  // #pragma omp parallel for schedule(dynamic)
+  int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < real_local_shard_num_; ++i) {
     bool is_read_failed = false;
     int retry_num = 0;
@@ -237,14 +238,13 @@ int32_t MemorySparseTable::save(const std::string& dirname,
   std::string table_path = table_dir(dirname);
   _afs_client.remove(paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-  // int thread_num = shard_values_.size() < 20 ? shard_values_.size() : 20;
   std::atomic<uint32_t> feasign_size_all{0};
 
   size_t file_start_idx = avg_local_shard_num_ * _shard_idx;
 
-  // TODO(zhaocaibei123): openmp
-  // omp_set_num_threads(thread_num);
-  // #pragma omp parallel for schedule(dynamic)
+  int thread_num = shard_values_.size() < 20 ? shard_values_.size() : 20;
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < real_local_shard_num_; ++i) {
     FsChannelConfig channel_config;
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {

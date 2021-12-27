@@ -223,6 +223,44 @@ class DAdamD2Sum : public DenseOptimizer {
               int end) override {
     CostTimer timer("pserver_update_dense");
     auto update_numel = end - begin;
+    // VLOG(0) << "adam_d2sum update begin " << begin << " update_numel " <<
+    // update_numel;
+    Eigen::Map<Eigen::MatrixXf> mat_ada_g2sum(ada_g2sum + begin, 1,
+                                              update_numel);
+
+    Eigen::Map<Eigen::MatrixXf> mat_ada_d2sum(ada_d2sum + begin, 1,
+                                              update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_mom_velocity(mom_velocity + begin, 1,
+                                                 update_numel);
+    Eigen::Map<Eigen::MatrixXf> mat_w(param + begin, 1, update_numel);
+
+    Eigen::Map<const Eigen::MatrixXf> mat_grad(update_values + begin, 1,
+                                               update_numel);
+
+    mat_ada_d2sum = (mat_ada_d2sum * ada_decay_rate[0]).array() + 1;
+    mat_ada_g2sum =
+        (mat_ada_g2sum * ada_decay_rate[0]) + mat_grad.cwiseProduct(mat_grad);
+
+    thread_local std::vector<float> scale_vec;
+    scale_vec.resize(update_numel);
+    Eigen::Map<Eigen::MatrixXf> scale(scale_vec.data(), 1, update_numel);
+    memcpy(scale_vec.data(), mat_ada_d2sum.data(),
+           sizeof(float) * update_numel);
+
+    scale = scale.array() * ada_epsilon[0];
+    scale = (mat_ada_d2sum + scale).cwiseQuotient(mat_ada_g2sum + scale);
+    scale = scale.cwiseSqrt();
+    mat_mom_velocity =
+        (mat_mom_velocity - mat_grad) * mom_decay_rate[0] + mat_grad;
+
+    mat_w -= learning_rate[0] * mat_mom_velocity.cwiseProduct(scale);
+  }
+
+  /*
+  void update_old(const float* update_values, size_t num, int begin,
+              int end) override {
+    CostTimer timer("pserver_update_dense");
+    auto update_numel = end - begin;
     std::vector<float> grad, grad2, scale;
     grad.resize(update_numel);
     grad2.resize(update_numel);
@@ -266,7 +304,7 @@ class DAdamD2Sum : public DenseOptimizer {
     // blas.VMUL(update_numel, scale_, mom_velocity + begin, scale_);
 
     blas.VSUB(update_numel, param + begin, scale_, param + begin);
-  }
+  }*/
 
   float* learning_rate;
   float lr_hardcode;

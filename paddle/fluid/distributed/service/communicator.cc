@@ -444,7 +444,7 @@ void AsyncCommunicator::RecvThread() {
       RecvByCommunicator();
       grad_num_.store(0);
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
   }
   VLOG(1) << "communicator stopped, independent recv thread exit";
