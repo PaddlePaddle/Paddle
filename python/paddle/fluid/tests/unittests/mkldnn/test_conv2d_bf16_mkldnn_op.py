@@ -19,7 +19,7 @@ import numpy as np
 import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, OpTestTool
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2DOp
 
 
@@ -141,7 +141,7 @@ class TestConv2DBF16Op(TestConv2DOp):
     def init_fuse_residual(self):
         self.fuse_residual = True
 
-
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
     def init_fuse_relu(self):
         self.fuse_activation = None
@@ -159,7 +159,6 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         self.check_grad_with_place(
             core.CPUPlace(), ["Input", "Filter"],
             "Output",
-            max_relative_error=0.01,
             user_defined_grads=[dx, dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)])
 
@@ -173,8 +172,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         self.check_grad_with_place(
             core.CPUPlace(), ["Input"],
             "Output",
-            no_grad_set=set(['Filter']),
-            max_relative_error=0.01,
+            set(['Filter']),
             user_defined_grads=[dx],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)])
 
@@ -188,8 +186,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         self.check_grad_with_place(
             core.CPUPlace(), ["Filter"],
             "Output",
-            no_grad_set=set(['Input']),
-            max_relative_error=0.01,
+            set(['Input']),
             user_defined_grads=[dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)])
 
