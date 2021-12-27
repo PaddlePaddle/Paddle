@@ -60,13 +60,10 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.input = np.random.random(self.input_size).astype(np.float32)
         self.filter = np.random.random(self.filter_size).astype(np.float32)
 
-        self.inputs_fp32 = {
-            'Input': self.input,
-            'Filter': self.filter
-        }
+        self.inputs_fp32 = {'Input': self.input, 'Filter': self.filter}
 
-        conv_out, _, _, _, _ = conv2d_forward_naive(self.input, self.filter,
-                                                    self.groups, self.conv2d_param)
+        conv_out, _, _, _, _ = conv2d_forward_naive(
+            self.input, self.filter, self.groups, self.conv2d_param)
         self.conv_output_float = conv_out
 
         if self.fuse_residual:
@@ -79,7 +76,9 @@ class TestConv2DBF16Op(TestConv2DOp):
         elif self.force_fp32_output:
             self.outputs = {'Output': self.conv_output_float.astype(np.float32)}
         else:
-            self.outputs = {'Output': convert_float_to_uint16(self.conv_output_float)}
+            self.outputs = {
+                'Output': convert_float_to_uint16(self.conv_output_float)
+            }
 
         if self.input_type is not np.float32:
             self.input = convert_float_to_uint16(self.input)
@@ -151,51 +150,49 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         self.fuse_residual = None
 
     def test_check_grad(self):
-        self.dout = self.conv_output_float
-
+        dout = self.conv_output_float
         x = self.inputs_fp32['Input']
         w = self.inputs_fp32['Filter']
 
-        self.dx, self.dweights = conv_backward(self.dout, x, w, self.conv2d_param)
+        dx, dweights = conv_backward(dout, x, w, self.conv2d_param)
 
         self.check_grad_with_place(
             core.CPUPlace(), ["Input", "Filter"],
             "Output",
             max_relative_error=0.01,
-            user_defined_grads=[self.dx, self.dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            user_defined_grads=[dx, dweights],
+            user_defined_grad_outputs=[convert_float_to_uint16(dout)])
 
     def test_check_grad_no_filter(self):
-        self.dout = self.conv_output_float
-
+        dout = self.conv_output_float
         x = self.inputs_fp32['Input']
         w = self.inputs_fp32['Filter']
 
-        self.dx, self.dweights = conv_backward(self.dout, x, w, self.conv2d_param)
+        dx, _ = conv_backward(dout, x, w, self.conv2d_param)
 
         self.check_grad_with_place(
             core.CPUPlace(), ["Input"],
             "Output",
             no_grad_set=set(['Filter']),
             max_relative_error=0.01,
-            user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[convert_float_to_uint16(dout)])
 
     def test_check_grad_no_input(self):
-        self.dout = self.conv_output_float
-
+        dout = self.conv_output_float
         x = self.inputs_fp32['Input']
         w = self.inputs_fp32['Filter']
 
-        self.dx, self.dweights = conv_backward(self.dout, x, w, self.conv2d_param)
+        _, dweights = conv_backward(dout, x, w, self.conv2d_param)
 
         self.check_grad_with_place(
             core.CPUPlace(), ["Filter"],
             "Output",
             no_grad_set=set(['Input']),
             max_relative_error=0.01,
-            user_defined_grads=[self.dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            user_defined_grads=[dweights],
+            user_defined_grad_outputs=[convert_float_to_uint16(dout)])
+
 
 def conv_backward(dout, x, w, params):
     padding = params['pad'][0]
@@ -203,17 +200,14 @@ def conv_backward(dout, x, w, params):
 
     dx = np.zeros_like(x)
     dweights = np.zeros_like(w)
-    
+
     N, IC, H, W = x.shape
     OC, _, KH, KW = w.shape
-    _, _, H_out, W_out = dout.shape
-    
-    x_padded = np.pad(x, ((0,), (0,), (padding,), (padding, )), 'constant')
 
-    print(padding)
-    print(stride)
-    print(x.shape)
-    print(dout.shape)
+    H_out = int(1 + (H + 2 * padding - KH) / stride[0])
+    W_out = int(1 + (W + 2 * padding - KW) / stride[1])
+
+    x_padded = np.pad(x, ((0, ), (0, ), (padding, ), (padding, )), 'constant')
 
     for n in range(N):
         for oc in range(OC):
@@ -222,48 +216,48 @@ def conv_backward(dout, x, w, params):
                     for k in range(H_out):
                         for l in range(W_out):
                             for ic in range(IC):
-                                dweights[oc,ic,i,j] += x_padded[n, ic, i+k*stride[0], j+l*stride[1]] * dout[n, oc, k, l]
+                                dweights[oc, ic, i, j] += x_padded[
+                                    n, ic, i + k * stride[0], j + l * stride[
+                                        1]] * dout[n, oc, k, l]
 
-    print(dout.shape)
-    
-
-    dout_padded = np.pad(dout, ((0,), (0,), (KW-1,), (KH-1, )), 'constant')
-    dx_padded = np.pad(dx, ((0,), (0,), (padding,), (padding, )), 'constant')
+    dx_padded = np.pad(dx, ((0, ), (0, ), (padding, ), (padding, )), 'constant')
 
     w_ = np.zeros_like(w)
     for i in range(KH):
         for j in range(KW):
-            w_[:,:,i,j] = w[:,:,KH-i-1,KW-j-1]
-    
+            w_[:, :, i, j] = w[:, :, KH - i - 1, KW - j - 1]
+
     for n in range(N):
         for oc in range(OC):
-            for i in range(H+2*padding):
-                for j in range(W+2*padding):
+            for i in range(H_out):
+                for j in range(W_out):
                     for kh in range(KH):
                         for kw in range(KW):
                             for ic in range(IC):
-                                dx_padded[n,ic,i,j]
-                                dout_padded[n, oc, i+kh, j+kw]
-                                w_[oc, ic, kh, kw]
-                                dx_padded[n,ic,i,j] += dout_padded[n, oc, i+kh, j+kw] * w_[oc, ic, kh, kw]
-    
+                                dx_padded[n, ic, stride[0] * i + kh, stride[1] *
+                                          j + kw] += dout[n, oc, i, j] * w[
+                                              oc, ic, kh, kw]
+
     if padding == 0:
         dx = dx_padded
     else:
-        dx = dx_padded[:,:,padding:-padding,padding:-padding]
+        dx = dx_padded[:, :, padding:-padding, padding:-padding]
 
     return dx.astype(np.float32), dweights.astype(np.float32)
 
-# class TestConv2DBF16WithPadding(TestConv2DWithGradBF16Op):
-#     def init_test_case(self):
-#         TestConv2DWithGradBF16Op.init_test_case(self)
-#         self.pad = [1, 1]
 
-class TestConv2DBF16WithPaddings(TestConv2DWithGradBF16Op):
+class TestConv2DBF16WithPadding1(TestConv2DWithGradBF16Op):
     def init_test_case(self):
         TestConv2DWithGradBF16Op.init_test_case(self)
         self.pad = [1, 1]
-        self.stride = [2, 2]
+
+
+class TestConv2DBF16WithStride2(TestConv2DWithGradBF16Op):
+    def init_test_case(self):
+        TestConv2DWithGradBF16Op.init_test_case(self)
+        self.stride = [2, 3]
+
+
 class TestConv2D(TestConv2DBF16Op):
     def init_test_case(self):
         self.pad = [0, 0]
