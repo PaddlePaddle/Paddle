@@ -44,7 +44,7 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
                 "mul_x": [8, 128, 768],
                 "eltadd_qk_b_var": [8, 12, 128, 128]
             })
-        yield config, ['multihead_matmul'], (1e-2, 1e-5)
+        yield config, ['multihead_matmul'], (1e-1, 1e-5)
 
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
