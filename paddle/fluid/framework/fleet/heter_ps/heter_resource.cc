@@ -107,7 +107,8 @@ int HeterPsResource::total_gpu() { return dev_ids_.size(); }
 void HeterPsResource::set_multi_mf(int multi_mf_dim, int max_mf_dim) {
   multi_mf_dim_ = multi_mf_dim;
   max_mf_dim_ = max_mf_dim;
-  VLOG(3) << "heter resource set mf dim: " << multi_mf_dim_ << " max_mf_dim_: " << max_mf_dim_;
+  VLOG(3) << "heter resource set mf dim: " << multi_mf_dim_
+          << " max_mf_dim_: " << max_mf_dim_;
 }
 
 }  // end namespace framework
