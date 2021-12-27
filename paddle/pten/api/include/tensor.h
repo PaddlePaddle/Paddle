@@ -204,6 +204,14 @@ class PADDLE_API Tensor final {
    */
   DataLayout layout() const;
 
+  /**
+   * @brief Determine whether tensor is DenseTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dense_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**

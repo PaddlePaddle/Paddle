@@ -29,7 +29,6 @@ class KthvalueOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kthvalue");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "kthvalue");
     OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "kthvalue");
-
     auto input_dims = ctx->GetInputDim("X");
     const int& dim_size = input_dims.size();
     int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
@@ -38,27 +37,21 @@ class KthvalueOp : public framework::OperatorWithKernel {
         paddle::platform::errors::InvalidArgument(
             "the axis of kthvalue must be [-%d, %d), but you set axis is %d",
             dim_size, dim_size, axis));
-
     if (axis < 0) axis += dim_size;
-
     int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
-    PADDLE_ENFORCE_GE(k, 1, paddle::platform::errors::InvalidArgument(
-                                "the attribute of k in the kthvalue must >= 1,"
-                                " but received %d .",
-                                k));
-
+    PADDLE_ENFORCE_GE(
+        k, 1, paddle::platform::errors::InvalidArgument(
+                  "the k in the kthvalue must >= 1, but received %d .", k));
     PADDLE_ENFORCE_GE(input_dims.size(), 1,
                       paddle::platform::errors::InvalidArgument(
                           "input of kthvalue must have >= 1d shape"));
-
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_GE(
           input_dims[axis], k,
           paddle::platform::errors::InvalidArgument(
-              "input of kthvalue op must have >= %d columns in axis of %d", k,
+              "input of kthvalue must have >= %d columns in axis of %d", k,
               axis));
     }
-
     bool keepdim = ctx->Attrs().Get<bool>("keepdim");
     std::vector<int64_t> dimvec;
     for (int64_t i = 0; i < axis; i++) {
@@ -71,7 +64,6 @@ class KthvalueOp : public framework::OperatorWithKernel {
       dimvec.emplace_back(input_dims[i]);
     }
     framework::DDim dims = framework::make_ddim(dimvec);
-
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
     ctx->ShareLoD("X", "Out");

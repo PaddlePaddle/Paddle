@@ -22,8 +22,6 @@ import paddle.fluid as fluid
 
 
 def cal_kthvalue(x, k, axis, keepdim=False):
-    if axis is None:
-        axis = -1
     if axis < 0:
         axis = len(x.shape) + axis
     indices = np.argsort(x, axis=axis)
@@ -38,38 +36,13 @@ def cal_kthvalue(x, k, axis, keepdim=False):
 
 class TestKthvalueOp(OpTest):
     def init_args(self):
-        self.k = 2
-        self.axis = 1
-
-    def setUp(self):
-        self.op_type = "kthvalue"
-        self.dtype = np.float64
-        self.input_data = np.random.random((2, 50, 32))
-        self.init_args()
-        self.inputs = {'X': self.input_data}
-        self.attrs = {'k': self.k, 'axis': self.axis}
-        output, indices = cal_kthvalue(
-            self.input_data, k=self.k, axis=self.axis)
-        self.outputs = {'Out': output, 'Indices': indices}
-
-    def test_check_output(self):
-        paddle.enable_static()
-        self.check_output()
-
-    def test_check_grad(self):
-        paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
-
-
-class TestKthvalueOpInLastDim(OpTest):
-    def init_args(self):
         self.k = 5
         self.axis = -1
 
     def setUp(self):
         self.op_type = "kthvalue"
         self.dtype = np.float64
-        self.input_data = np.random.random((2, 3, 2, 6, 10))
+        self.input_data = np.random.random((2, 1, 2, 4, 10))
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis}
@@ -95,7 +68,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
         self.init_args()
         self.op_type = "kthvalue"
         self.dtype = np.float64
-        self.input_data = np.random.random((2, 50, 32, 1, 2))
+        self.input_data = np.random.random((1, 3, 2, 4, 10))
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': True}
         output, indices = cal_kthvalue(
@@ -113,7 +86,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
 
 class TestKthvalueOpKernels(unittest.TestCase):
     def setUp(self):
-        self.axises = [2, -1, None]
+        self.axises = [2, -1]
 
     def test_kthvalue_op(self):
         paddle.disable_static()
@@ -142,22 +115,9 @@ class TestKthvalueOpKernels(unittest.TestCase):
                 self.assertTrue(np.allclose(v.numpy(), value_expect))
                 self.assertTrue(np.allclose(inds.numpy(), indice_expect))
 
-        def test_gpu_kernel_2():
-            shape = (2, 20, 342)
-            k = 28
-            paddle.set_device('gpu')
-            inputs = np.random.random(shape)
-            tensor = paddle.to_tensor(inputs)
-            for axis in self.axises:
-                value_expect, indice_expect = cal_kthvalue(inputs, k, axis)
-                v, inds = paddle.kthvalue(tensor, k, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
-                self.assertTrue(np.allclose(inds.numpy(), indice_expect))
-
         test_cpu_kernel()
         if fluid.core.is_compiled_with_cuda():
             test_gpu_kernel()
-            test_gpu_kernel_2()
 
 
 class TestKthvalueOpWithNaN(unittest.TestCase):
@@ -182,19 +142,9 @@ class TestKthvalueOpWithNaN(unittest.TestCase):
             self.assertTrue(np.isnan(v[0, 2].numpy()[0]))
             self.assertEqual(inds[0, 2].numpy()[0], nan_position)
 
-        def test_nan_in_gpu_kernel_2():
-            paddle.set_device('gpu')
-            x = paddle.uniform([2, 20, 10], dtype='float32')
-            nan_position = 15
-            x[0, nan_position, 2] = float('nan')
-            v, inds = x.kthvalue(k=20, axis=1)
-            self.assertTrue(np.isnan(v[0, 2].numpy()[0]))
-            self.assertEqual(inds[0, 2].numpy()[0], nan_position)
-
         test_nan_in_cpu_kernel()
         if fluid.core.is_compiled_with_cuda():
             test_nan_in_gpu_kernel()
-            test_nan_in_gpu_kernel_2()
 
 
 class TestKthvalueOpErrors(unittest.TestCase):
@@ -223,8 +173,7 @@ class TestKthvalueOpErrors(unittest.TestCase):
 class TestModeOpInStatic(unittest.TestCase):
     def setUp(self):
         np.random.seed(666)
-        self.input_data = np.random.random(
-            (2, 20, 1, 2, 128)).astype(np.float64)
+        self.input_data = np.random.random((2, 20, 1, 2, 80)).astype(np.float64)
         self.k = 10
 
     def test_run_static(self):
@@ -232,8 +181,7 @@ class TestModeOpInStatic(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             input_tensor = paddle.static.data(
-                name="x", shape=[2, 20, 1, 2, 128], dtype="float64")
-
+                name="x", shape=[2, 20, 1, 2, 80], dtype="float64")
             result = paddle.kthvalue(input_tensor, self.k, axis=1)
             expect_value = cal_kthvalue(self.input_data, self.k, axis=1)[0]
             exe = paddle.static.Executor(paddle.CPUPlace())

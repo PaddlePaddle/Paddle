@@ -27,7 +27,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
-                                 const std::vector<std::vector<size_t>>& lod)
+                                 const LoD& lod)
     : dims(dims), dtype(dtype), layout(layout), lod(lod) {}
 
 bool DenseTensorMeta::valid() const noexcept {
