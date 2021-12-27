@@ -125,7 +125,7 @@ if(WIN32)
             endif()
         endforeach(flag_var)
     endif()
-
+    set(CMAKE_SYSTEM_VERSION "10.0.19041")
     # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
     add_definitions("-DNOMINMAX")
     # windows build turn off warnings, use parallel compiling.
@@ -137,7 +137,6 @@ if(WIN32)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
         string(REGEX REPLACE "/diagnostics:column" "/diagnostics:classic" ${flag_var} "${${flag_var}}")
         string(REGEX REPLACE "/external:W0" "" ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /D NOMINMAX ")
 
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
         # For Visual Studio generators, /MP should be added. 

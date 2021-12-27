@@ -334,7 +334,7 @@ echo %task_name%|findstr openblas >nul && (
 )
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
-set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64;%PATH%
 rem Use 64-bit ToolSet to compile
 set PreferredToolArchitecture=x64
 
