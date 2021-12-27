@@ -265,20 +265,12 @@ const paddle::platform::Place& DenseTensor::place() const {
       storage_,
       paddle::platform::errors::PreconditionNotMet(
           "Tensor not initialized yet when Tensor::place() is called."));
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_->data_shared(),
-      paddle::platform::errors::PreconditionNotMet(
-          "Tensor not initialized yet when Tensor::place() is called."));
-  return storage_->data_shared()->place();
+  return storage_->place();
 }
 
 paddle::framework::proto::VarType::Type DenseTensor::type() const {
   PADDLE_ENFORCE_NOT_NULL(
       storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "Tensor not initialized yet when Tensor::type() is called."));
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_->data_shared(),
       paddle::platform::errors::PreconditionNotMet(
           "Tensor not initialized yet when Tensor::type() is called."));
   return TransToProtoVarType(meta_.dtype);

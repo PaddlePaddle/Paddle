@@ -65,7 +65,7 @@ TEST(dense_tensor, meta) {
 
 TEST(dense_tensor, def_ctor) {
   DenseTensor tensor_0;
-  CHECK(!tensor_0.valid());
+  CHECK(tensor_0.valid());
 }
 
 TEST(dense_tensor, ctor) {
@@ -97,7 +97,6 @@ TEST(dense_tensor, ctor) {
   check_dense_tensor(tensor_0, meta);
 
   DenseTensor tensor_2(make_intrusive<TensorStorage>(alloc), meta);
-  CHECK(tensor_2.data<int8_t>() == nullptr);
   CHECK_NOTNULL(tensor_2.mutable_data<int8_t>());
   check_dense_tensor(tensor_2, meta);
 }

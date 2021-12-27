@@ -349,6 +349,15 @@ class DenseTensor : public TensorBase,
 
   dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
+
+  /* ------------------------------ */
+  /*   From framework::LoDTensor    */
+  /* ------------------------------ */
+  /* The following members & interfaces were copied from framework::Tensor,
+     so as to facilitate the unification of different Tensors
+
+     Will be adjusted/removed/moved in the near future
+   */
 };
 
 }  // namespace pten
