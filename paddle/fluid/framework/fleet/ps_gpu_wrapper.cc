@@ -48,7 +48,9 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   if (!multi_mf_dim_) {
     gpu_task->init(thread_keys_shard_num_, device_num);
   } else {
+#ifdef PADDLE_WITH_PSLIB
     gpu_task->init(thread_keys_shard_num_, device_num, multi_mf_dim_);
+#endif  
   }
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;

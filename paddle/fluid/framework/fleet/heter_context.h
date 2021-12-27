@@ -102,6 +102,7 @@ class HeterContext {
     }
   }
 
+#ifdef PADDLE_WITH_PSLIB
   void init(int shard_num, int device_num, int dim_num) {
     shard_num_ = shard_num;
     feature_keys_.resize(shard_num_);
@@ -136,7 +137,7 @@ class HeterContext {
     }
     multi_mf_dim_ = dim_num;
   }
-
+#endif
   void Reset() {
     if (!multi_mf_dim_) {
       for (size_t i = 0; i < feature_keys_.size(); ++i) {
@@ -152,6 +153,7 @@ class HeterContext {
         device_keys_[i].clear();
       }
     } else {
+#ifdef PADDLE_WITH_PSLIB
       VLOG(3) << "Reset gpu task with dynamic mf dimention";
       for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
         for (size_t j = 0; j < feature_dim_keys_[i].size(); j++) {
@@ -173,9 +175,8 @@ class HeterContext {
         for (size_t j = 0; j < device_dim_ptr_[i].size(); j++) {
           device_dim_ptr_[i][j].clear();
         }
-      }
+#endif
     }
-
   }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
