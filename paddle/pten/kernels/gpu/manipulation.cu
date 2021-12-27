@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/api/ext/dispatch.h"
-#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/gpu/manipulation.h"
-#include "paddle/pten/kernels/gpu/utils.h"
-#include "paddle/pten/kernels/hybird/cuda/cast_kernel_impl.h"
+
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/hybird/general/manipulation.h"
 
 namespace pten {
@@ -44,47 +43,9 @@ void ReshapeWithXShape(const GPUContext& dev_ctx,
   Reshape(dev_ctx, x, shape, out);
 }
 
-template <typename T>
-void Cast(const GPUContext& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DataType in_dtype,
-          DenseTensor* out) {
-  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                       detail::CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
-                     }));
-}
-
 }  // namespace pten
 
-using float16 = paddle::platform::float16;
-
-#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
-  PT_REGISTER_KERNEL(cast,                              \
-                     GPU,                               \
-                     ALL_LAYOUT,                        \
-                     pten::Cast,                        \
-                     float,                             \
-                     double,                            \
-                     int,                               \
-                     int64_t,                           \
-                     int16_t,                           \
-                     bool,                              \
-                     uint8_t,                           \
-                     paddle::platform::float16,         \
-                     paddle::platform::complex<float>,  \
-                     paddle::platform::complex<double>, \
-                     ##__VA_ARGS__) {                   \
-    kernel->OutputAt(0).SetDataType(                    \
-        paddle::experimental::DataType::UNDEFINED);     \
-  }
-
-#if !defined(PADDLE_WITH_HIP)
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
-#else
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
-#endif
-
-PT_REGISTER_NO_TEMPLATE_KERNEL(reshape, GPU, ANY, pten::Reshape, ALL_DTYPE) {}
 PT_REGISTER_NO_TEMPLATE_KERNEL(
-    reshape_with_xshape, GPU, ANY, pten::ReshapeWithXShape, ALL_DTYPE) {}
+    reshape, GPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}
+PT_REGISTER_NO_TEMPLATE_KERNEL(
+    reshape_with_xshape, GPU, ALL_LAYOUT, pten::ReshapeWithXShape, ALL_DTYPE) {}

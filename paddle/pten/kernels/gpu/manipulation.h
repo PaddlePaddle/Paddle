@@ -24,13 +24,6 @@
 
 namespace pten {
 
-template <typename T>
-void Cast(const GPUContext& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DataType in_dtype,
-          DenseTensor* out);
-
 void Reshape(const GPUContext& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,

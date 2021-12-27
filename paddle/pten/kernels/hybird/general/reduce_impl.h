@@ -16,8 +16,9 @@
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
-#include "paddle/pten/kernels/hybird/math/cast_func.h"
+
 namespace pten {
 namespace general {
 
@@ -57,11 +58,8 @@ void Reduce(const DeviceContext& dev_ctx,
         pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
         pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
-    // cast x tensor to out_dtype first
-    PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                         math::CastKernelImpl<DeviceContext, T, data_t>(
-                             dev_ctx, x, &tmp_tensor);
-                       }));
+    // cast x tensor to out_dtype
+    pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype, x.dtype(), &tmp_tensor);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
