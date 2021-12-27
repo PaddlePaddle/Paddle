@@ -26,7 +26,7 @@ void TestNNZ(const std::vector<T>& dense_data, const int correct_nnz,
       new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
   auto sparse =
       paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
-                                         float>(*context);
+                                         T>(*context);
 
   paddle::framework::Tensor dense, nnz_tensor;
   auto dense_dims = paddle::framework::make_ddim({rows, cols});
@@ -64,7 +64,7 @@ void TestDenseToSparse(const std::vector<T>& correct_dense_data,
   // get sparse
   auto sparse =
       paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
-                                         float>(*context);
+                                         T>(*context);
 
   // create tensor and copy vector to tensor
   paddle::framework::Tensor dense_tensor, rows_tensor, cols_tensor,

@@ -24,14 +24,6 @@ class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
-#endif
-
-#ifdef PADDLE_WITH_LIBXSMM
-#include <libxsmm.h>
-#endif
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -73,24 +65,24 @@ class SparseT : private Sparse<DeviceContext> {
 
   template <typename... ARGS>
   void nnz(ARGS... args) const {
-    Base()->template nnz(args...);
+    Base()->template nnz<T>(args...);
   }
 
   template <typename... ARGS>
   void DenseToSparseCoo(ARGS... args) const {
-    Base()->template DenseToSparseCoo(args...);
+    Base()->template DenseToSparseCoo<T>(args...);
   }
   template <typename... ARGS>
   void DenseToSparseCsr(ARGS... args) const {
-    Base()->template DenseToSparseCsr(args...);
+    Base()->template DenseToSparseCsr<T>(args...);
   }
   template <typename... ARGS>
   void SparseCooToDense(ARGS... args) const {
-    Base()->template SparseCooToDense(args...);
+    Base()->template SparseCooToDense<T>(args...);
   }
   template <typename... ARGS>
   void SparseCsrToDense(ARGS... args) const {
-    Base()->template SparseCsrToDense(args...);
+    Base()->template SparseCsrToDense<T>(args...);
   }
 
  private:
