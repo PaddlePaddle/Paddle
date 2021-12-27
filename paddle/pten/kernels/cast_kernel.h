@@ -14,13 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND_CL
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
-using NPUContext = paddle::platform::NPUDeviceContext;
-}  // namespace pten
 
-#endif  // PADDLE_WITH_ASCEND_CL
+template <typename T, typename ContextT>
+void Cast(const ContextT& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DataType in_dtype,
+          DenseTensor* out);
+
+}  // namespace pten
