@@ -535,7 +535,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
       return;
     }
 
-    unfinished_op_numer_.fetch_sub(1, std::memory_order_relaxed);
+    VLOG(4) << "unfinished_op_numer_: " << unfinished_op_numer_;
     if (UNLIKELY(unfinished_op_numer_.fetch_sub(1, std::memory_order_relaxed) ==
                  1)) {
       if (completion_notifier_ != nullptr) {
