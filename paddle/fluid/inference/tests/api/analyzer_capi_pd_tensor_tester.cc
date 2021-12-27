@@ -47,6 +47,7 @@ void PD_run() {
   int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
   float* data = new float[batch * channel * height * width];
+  memset(data, 0, batch * channel * height * width);
   PD_PaddleBufReset(buf, static_cast<void*>(data),
                     sizeof(float) * (batch * channel * height * width));
 
