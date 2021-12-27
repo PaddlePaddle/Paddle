@@ -381,17 +381,17 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor14.dtype, core.VarDesc.VarType.FP32)
 
         # init EagerTensor by EagerTensor
-        egr_tensor15 = core.eager.EagerTensor(value=egr_tensor14)
+        egr_tensor15 = core.eager.EagerTensor(value=egr_tensor4)
         self.assertEqual(egr_tensor15.persistable, True)
         self.assertTrue("generated" in egr_tensor15.name)
-        self.assertEqual(egr_tensor15.shape, egr_tensor14.shape)
-        self.assertEqual(egr_tensor15.dtype, egr_tensor14.dtype)
+        self.assertEqual(egr_tensor15.shape, egr_tensor4.shape)
+        self.assertEqual(egr_tensor15.dtype, egr_tensor4.dtype)
         self.assertEqual(egr_tensor15.stop_gradient, True)
         self.assertTrue(
             egr_tensor15.place._equals(
                 paddle.fluid.framework._current_expected_place()))
         self.assertTrue(
-            np.array_equal(egr_tensor15.numpy(), egr_tensor14.numpy()))
+            np.array_equal(egr_tensor15.numpy(), egr_tensor4.numpy()))
 
         egr_tensor16 = core.eager.EagerTensor(
             value=egr_tensor4, name="new_eager_tensor")
