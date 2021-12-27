@@ -1254,7 +1254,10 @@ class GeneratorLoader(DataLoaderBase):
     def __next__(self):
         try:
             if self._return_list:
-                return self._reader.read_next_list()
+                data = self._reader.read_next_list()
+                for i in range(len(data)):
+                    data[i] = data[i]._move_to_list()
+                return data
             else:
                 return self._reader.read_next()
         except StopIteration:

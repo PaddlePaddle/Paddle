@@ -1,4 +1,0 @@
-sigmoid
-matmul_v2
-reduce_sum
-elementwise_add
