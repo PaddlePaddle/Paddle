@@ -31,6 +31,7 @@ from .tensor.linalg import det  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import pinv  # noqa: F401
 from .tensor.linalg import triangular_solve  # noqa: F401
+from .tensor.linalg import lstsq
 
 __all__ = [
     'cholesky',  #noqa
@@ -52,4 +53,5 @@ __all__ = [
     'solve',
     'cholesky_solve',
     'triangular_solve',
+    'lstsq'
 ]
