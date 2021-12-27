@@ -128,7 +128,7 @@ class SetValueXPUKernel : public framework::OpKernel<T> {
 
     Tensor value_t(in->type());
     if (value_tensor != nullptr) {
-      value_t.ShareDataWith(*value_tensor);
+      framework::TensorCopy(*value_tensor, value_tensor->place(), &value_t);
     } else {
       auto value_dims = framework::make_ddim(shape);
       CheckIsDimsMatch(slice_dims_for_assign, value_dims);
