@@ -72,12 +72,18 @@ void SharesStorage(pten::DenseTensor* src, paddle::framework::LoDTensor* dst);
  * DenseTensor.
  */
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
-                           pten::DenseTensor* dst,
-                           pten::DataType dtype = pten::DataType::UNDEFINED);
+                           pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
-                           pten::DenseTensor* dst,
-                           pten::DataType dtype = pten::DataType::UNDEFINED);
+                           pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensorByArgDef(const paddle::framework::Tensor& src,
+                                   const pten::TensorArgDef& arg_def,
+                                   pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensorByArgDef(const paddle::framework::LoDTensor& src,
+                                   const pten::TensorArgDef& arg_def,
+                                   pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
                                   const pten::TensorArgDef& arg_def,
