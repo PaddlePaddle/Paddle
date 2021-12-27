@@ -317,7 +317,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  const gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) {
+  gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     return static_cast<platform::CUDADeviceContext*>(pool.Get(place))->stream();
   }
