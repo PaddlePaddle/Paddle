@@ -147,7 +147,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
    * 1.
    * def __init__ ()
    * 2.
-   * def __init__ ()
+   * def __init__ (
    * ** dtype: paddle::framework::proto::VarType::Type,
    * ** dims: vector<int>,
    * ** name: std::string,
@@ -202,9 +202,8 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // '|' Indicates that the remaining arguments in the Python argument list are
   // optional.
   // PyArg_ParseTupleAndKeywords can Parse the parameters of a function that
-  // takes both positional
-  // and keyword parameters into local variables, which enhance case3, case4,
-  // case5, case6.
+  // takes both positional and keyword parameters into local variables,
+  // which enhance case2, case3, case4, case5, case6.
   bool flag_ = PyArg_ParseTupleAndKeywords(
       args, kwargs, "|OOOOOOOOO", kwlist, &kw_value, &kw_place, &kw_persistable,
       &kw_zero_copy, &kw_name, &kw_stop_gradient, &kw_dims, &kw_dtype,
