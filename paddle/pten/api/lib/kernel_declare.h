@@ -20,16 +20,14 @@ limitations under the License. */
 // the kernel declare statement is automatically generated according to the
 // file name of the kernel, and this header file will be removed
 
-PT_DECLARE_KERNEL(dot, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(cast, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sign, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(conj, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(mean, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(dot, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(cast, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sign, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(conj, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
 #endif
 
 #ifdef PADDLE_WITH_XPU

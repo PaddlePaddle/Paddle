@@ -21,13 +21,6 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename T>
-void Cast(const CPUContext& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DataType in_dtype,
-          DenseTensor* out);
-
 void Reshape(const CPUContext& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,

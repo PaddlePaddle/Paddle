@@ -23,12 +23,6 @@
 namespace pten {
 
 template <typename T>
-void Dot(const GPUContext& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out);
-
-template <typename T>
 void Matmul(const GPUContext& dev_ctx,
             const DenseTensor& x,
             const DenseTensor& y,
