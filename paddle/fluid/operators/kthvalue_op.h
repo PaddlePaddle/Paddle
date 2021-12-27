@@ -76,8 +76,7 @@ static void getKthvalue(Type input_height, Type input_width, int input_dim,
 template <typename T, typename Type>
 static void kthvalueAssign(const Type& input_height, const Type& input_width,
                            const int& input_dim, const framework::Tensor* input,
-                           const framework::Tensor* indices, T* output_data,
-                           const int& k) {
+                           const framework::Tensor* indices, T* output_data) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
@@ -202,7 +201,6 @@ class KthvalueGradCPUKernel : public framework::OpKernel<T> {
     auto* x_grad =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     int axis = static_cast<int>(context.Attr<int>("axis"));
-    int k = static_cast<int>(context.Attr<int>("k"));
     bool keepdim = static_cast<bool>(context.Attr<bool>("keepdim"));
 
     auto in_dims = x->dims();
@@ -235,7 +233,7 @@ class KthvalueGradCPUKernel : public framework::OpKernel<T> {
       // Assign the output_grad to input_grad
       if (keepdim) {
         kthvalueAssign(input_height, input_width, in_dims.size(), out_grad,
-                       indices, x_grad_data, k);
+                       indices, x_grad_data);
       } else {
         auto& dev_context =
             context.template device_context<platform::CPUDeviceContext>();
@@ -250,8 +248,8 @@ class KthvalueGradCPUKernel : public framework::OpKernel<T> {
                               &indices_tmp);
         out_grad_tmp.Resize(out_dims);
         indices_tmp.Resize(out_dims);
-        kthvalueAssign(input_height, input_width, in_dims.size(), out_grad,
-                       indices, x_grad_data, k);
+        kthvalueAssign(input_height, input_width, in_dims.size(), &out_grad_tmp,
+                       &indices_tmp, x_grad_data);
       }
     } else {
       // can not assign grad to input_grad, must do the transpose
@@ -313,7 +311,7 @@ class KthvalueGradCPUKernel : public framework::OpKernel<T> {
       memset(t_out, 0, x_grad->numel() * sizeof(T));
 
       kthvalueAssign<T, int64_t>(input_height, input_width, in_dims.size(),
-                                 &trans_dO, &trans_ind, t_out, k);
+                                 &trans_dO, &trans_ind, t_out);
 
       // Transpose back
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_context, tmp_out,

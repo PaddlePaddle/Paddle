@@ -879,8 +879,8 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             # [[ 0.22954939, -0.17573971],
             #  [ 0.14745511, -0.55859774]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-               [[0, 2],
-                [1, 2]]))
+            #   [[0, 2],
+            #    [1, 2]]))
             z = paddle.kthvalue(x, 2, 1, keepdim=True)
             print(z)
             # (Tensor(shape=[2, 1, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
