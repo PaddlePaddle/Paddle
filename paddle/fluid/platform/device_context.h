@@ -563,11 +563,13 @@ class CUDADeviceContext : public DeviceContext {
     return context()->CublasCall(callback);
   }
 
+#ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   template <typename Callback>
   inline void CusparseCall(Callback&& callback) const {
     return context()->CusparseCall(callback);
   }
+#endif
 
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;

@@ -41,7 +41,7 @@ extern void *cusparse_dso_handle;
   };                                                                 \
   extern DynLoad__##__name __name
 
-#if !defined(PADDLE_WITH_ARM)
+#if !defined(PADDLE_WITH_ARM) && !defined(_WIN32)
 // APIs available after CUDA 11.0
 #if CUDA_VERSION >= 11000
 #define CUSPARSE_ROUTINE_EACH(__macro) \
