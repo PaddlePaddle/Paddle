@@ -23,7 +23,7 @@ limitations under the License. */
 PT_REGISTER_CTX_KERNEL(matmul,
                        CPU,
                        ALL_LAYOUT,
-                       pten::Matmul,
+                       pten::MatmulKernel,
                        float,
                        double,
                        paddle::platform::complex<float>,

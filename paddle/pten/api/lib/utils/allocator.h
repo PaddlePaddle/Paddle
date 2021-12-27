@@ -38,6 +38,8 @@ class DefaultAllocator : public pten::Allocator {
     return Allocation(ptr, a.release(), &Delete, place_);
   }
 
+  const paddle::platform::Place& place() override { return place_; }
+
  private:
   paddle::platform::Place place_;
   static paddle::memory::Allocator::AllocationDeleter deleter_;

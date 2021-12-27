@@ -275,7 +275,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node math_cpu utils_cpu manipulation_cpu accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)

@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise_no_broadcast.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -180,9 +181,6 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
       return;
     }
 
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(dev_ctx, size);
-
     // increment is used to set the args(offset) of curand_init, which defines
     // offset in subsequence.
     // The detail:
@@ -192,11 +190,15 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     // same as the previous calls.
     uint64_t seed_data;
     uint64_t increment;
-    int vec_size = platform::GetVectorizedSize<T>(x_data);
-    auto offset = ((x_numel - 1) / (config.block_per_grid.x *
-                                    config.thread_per_block.x * vec_size) +
-                   1) *
-                  vec_size;
+    // VectorizedRandomGenerator use curand_uniform4, so we only support
+    // vec_size is 4;
+    int vec_size = (platform::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
+    int block_size = pten::GetThreadsConfig(dev_ctx, x_numel, vec_size);
+    int grid_size =
+        ((x_numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
+
+    auto offset =
+        ((x_numel - 1) / (grid_size * block_size * vec_size) + 1) * vec_size;
 
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
@@ -204,26 +206,23 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {
       hipLaunchKernelGGL(
-          HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>),
-          config.block_per_grid, config.thread_per_block, 0, stream, size,
-          seed_data, dropout_prob, x_data, mask_data, y_data, upscale_in_train,
-          increment);
+          HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>), grid_size,
+          block_size, 0, stream, size, seed_data, dropout_prob, x_data,
+          mask_data, y_data, upscale_in_train, increment);
     } else {
       hipLaunchKernelGGL(HIP_KERNEL_NAME(RandomGenerator<T, uint8_t>),
-                         config.block_per_grid, config.thread_per_block, 0,
-                         stream, size, seed_data, dropout_prob, x_data,
-                         mask_data, y_data, upscale_in_train, increment);
+                         grid_size, block_size, 0, stream, size, seed_data,
+                         dropout_prob, x_data, mask_data, y_data,
+                         upscale_in_train, increment);
     }
 #else
     if (vec_size == 4 && size % 4 == 0) {
-      VectorizedRandomGenerator<
-          T, uint8_t,
-          4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+      VectorizedRandomGenerator<T, uint8_t,
+                                4><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     } else {
-      RandomGenerator<T, uint8_t><<<config.block_per_grid,
-                                    config.thread_per_block, 0, stream>>>(
+      RandomGenerator<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train, increment);
     }

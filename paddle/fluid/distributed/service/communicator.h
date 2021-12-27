@@ -300,6 +300,10 @@ class Communicator {
   virtual void BarrierWithTable(uint32_t barrier_type) {
     auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
     rets.wait();
+    int status = rets.get();
+    PADDLE_ENFORCE_EQ(status, 0,
+                      platform::errors::InvalidArgument(
+                          "The ret status must be 0 when barrier with table"));
   }
 
   virtual void CreateC2CConnection(int pserver_timeout_ms,
