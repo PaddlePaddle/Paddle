@@ -15,6 +15,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 namespace paddle {
 namespace tests {
@@ -30,7 +31,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
   const DDim dims({2, 1});
   const DataType dtype{DataType::FLOAT32};
   const DataLayout layout{DataLayout::NCHW};
-  const std::vector<std::vector<size_t>> lod{{0, 2}};
+  const pten::LoD lod{{0, 2}};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto alloc =
@@ -46,7 +47,7 @@ TEST(tensor_utils, dense_tensor_to_lod_tensor) {
 
   CHECK(dense_tensor.lod().size() == lod_tensor.lod().size());
   CHECK(dense_tensor.lod()[0] ==
-        static_cast<std::vector<size_t>>((lod_tensor.lod()[0])));
+        static_cast<paddle::framework::Vector<size_t>>((lod_tensor.lod()[0])));
   CHECK(dense_tensor.dtype() == pten::TransToPtenDataType(lod_tensor.type()));
   CHECK(dense_tensor.layout() ==
         pten::TransToPtenDataLayout(lod_tensor.layout()));
@@ -110,7 +111,7 @@ TEST(PtenUtils, VarToPtTensor) {
   pten::Backend expect_backend = pten::Backend::CPU;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  expect_backend = pten::Backend::CUDA;
+  expect_backend = pten::Backend::GPU;
 #endif
   auto tensor_def = pten::TensorArgDef(
       expect_backend, pten::DataLayout::NCHW, pten::DataType::INT32);

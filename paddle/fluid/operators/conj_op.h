@@ -14,11 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/platform/for_range.h"
+
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/kernels/complex_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -30,16 +32,14 @@ class ConjKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace(), size_t(x->numel() * sizeof(T)));
 
-    auto numel = x->numel();
-    auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<T>(context.GetPlace(),
-                                          size_t(x->numel() * sizeof(T)));
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::ConjFunctor<T> functor(x_data, numel, out_data);
-    for_range(functor);
+    // call new kernel
+    pten::Conj<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 

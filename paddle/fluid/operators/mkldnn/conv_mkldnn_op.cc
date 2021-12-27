@@ -806,11 +806,10 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<float>>("Scale_weights");
     const bool is_multi_channel = scale_weights_data.size() > 1;
     const int& groups = ctx.Attr<int>("groups");
-    const bool& is_test = ctx.Attr<bool>("is_test");
     int mask_reorder =
         is_multi_channel ? ((groups != 1) ? (1 << 1) + (1 << 0) : 1 << 0) : 0;
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, groups, false, is_test, scale_weights_data, mask_reorder);
+        filter, groups, false, true, scale_weights_data, mask_reorder);
 
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (fuse_residual_conn) {
@@ -842,7 +841,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
       auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
 
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-          bias, is_test, std::get<1>(*p_scales_tuple),
+          bias, true, std::get<1>(*p_scales_tuple),
           std::get<0>(*p_scales_tuple));
       args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }

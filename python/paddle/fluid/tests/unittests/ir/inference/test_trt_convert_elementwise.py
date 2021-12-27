@@ -215,11 +215,11 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                     "input_data2": [1]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [256],
+                    "input_data1": [128],
                     "input_data2": [128]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [16],
+                    "input_data1": [32],
                     "input_data2": [32]
                 }
             elif self.dims == 2:
@@ -232,7 +232,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                     "input_data2": [128, 256]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 16],
+                    "input_data1": [32, 64],
                     "input_data2": [32, 64]
                 }
             elif self.dims == 3:
@@ -241,11 +241,11 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                     "input_data2": [1, 4, 4]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [128, 256, 128],
+                    "input_data1": [128, 128, 256],
                     "input_data2": [128, 128, 256]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 32, 16],
+                    "input_data1": [2, 64, 64],
                     "input_data2": [2, 64, 64]
                 }
             elif self.dims == 4:
@@ -254,11 +254,11 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                     "input_data2": [1, 4, 4, 4]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [8, 32, 64, 64],
+                    "input_data1": [8, 128, 64, 128],
                     "input_data2": [8, 128, 64, 128]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 32, 32, 16],
+                    "input_data1": [2, 64, 32, 32],
                     "input_data2": [2, 64, 32, 32]
                 }
 
