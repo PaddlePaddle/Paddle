@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
@@ -28,7 +29,6 @@ class Scope;
 
 namespace distributed {
 class RuntimeGraph;
-class Carrier;
 class MessageBus;
 class TaskNode;
 
@@ -42,6 +42,16 @@ class FleetExecutor final {
             const std::vector<TaskNode*>& task_nodes,
             const std::unordered_map<int64_t, int64_t>& task_id_to_rank);
   void Run();
+  // TODO(liyurui): Change to use registry table for multi-carrier.
+  static Carrier* GetCarrier();
+  template <typename... Args>
+  static Carrier* CreateCarrier(Args&&... args) {
+    PADDLE_ENFORCE_EQ(
+        carrier_.get(), nullptr,
+        platform::errors::AlreadyExists("Carrier has been created already."));
+    carrier_ = std::make_unique<Carrier>(std::forward<Args>(args)...);
+    return carrier_.get();
+  }
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
@@ -54,6 +64,10 @@ class FleetExecutor final {
   framework::Scope* minibatch_scope_;
   platform::Place place_;
   std::vector<framework::Scope*> microbatch_scopes_;
+  // The carriers under FleetExecutor will share message bus,
+  // using shared_ptr to manage lifetime and condition race.
+  std::shared_ptr<MessageBus> msg_bus_;
+  static std::unique_ptr<Carrier> carrier_;
 };
 
 }  // namespace distributed

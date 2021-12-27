@@ -14,19 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-
 namespace pten {
-
-using CPUContext = paddle::platform::CPUDeviceContext;
-
-template <typename T>
-void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 template <typename T>
 void Mean(const CPUContext& dev_ctx,
@@ -34,17 +27,7 @@ void Mean(const CPUContext& dev_ctx,
           const std::vector<int64_t>& dims,
           bool keep_dim,
           bool reduce_all,
-          DataType in_dtype,
-          DataType out_dtype,
           DenseTensor* out);
-
-template <typename T>
-void Scale(const CPUContext& dev_ctx,
-           const DenseTensor& x,
-           const Scalar& scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out);
 
 template <typename T>
 void Add(const CPUContext& dev_ctx,
@@ -79,7 +62,6 @@ void Sum(const CPUContext& dev_ctx,
          const std::vector<int64_t>& dims,
          bool keep_dim,
          bool reduce_all,
-         DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out);
 

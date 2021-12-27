@@ -35,6 +35,7 @@ egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
                                                             ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
+std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
 PyObject* ToPyObject(int value);
@@ -54,6 +55,8 @@ PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const void* value);
+PyObject* ToPyObject(
+    const std::unordered_map<std::string, std::vector<std::string>>& value);
 
 template <typename Tuple, size_t N>
 struct TupleEagerTensorResult {
@@ -80,11 +83,19 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
-egr::EagerTensor GetEagerTensorFromArgs(const std::string& op_type,
-                                        const std::string& arg_name,
-                                        PyObject* args, ssize_t arg_idx,
-                                        bool dispensable = false);
+egr::EagerTensor& GetEagerTensorFromArgs(const std::string& op_type,
+                                         const std::string& arg_name,
+                                         PyObject* args, ssize_t arg_idx,
+                                         bool dispensable = false);
 std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
+
+egr::EagerTensor* GetEagerTensorPtrFromArgs(const std::string& op_type,
+                                            const std::string& arg_name,
+                                            PyObject* args, ssize_t arg_idx,
+                                            bool dispensable = false);
+std::vector<egr::EagerTensor*> GetEagerTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 

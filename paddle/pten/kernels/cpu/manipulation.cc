@@ -15,36 +15,10 @@
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/hybird/general/manipulation.h"
-#include "paddle/pten/kernels/hybird/math/cast_func.h"
 
 namespace pten {
-
-template <typename T>
-void Flatten(const CPUContext& dev_ctx,
-             const DenseTensor& x,
-             int start_axis,
-             int stop_axis,
-             DenseTensor* out) {
-  auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, false, out);
-  out->Resize(out_dims);
-}
-
-// TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
-// Output Tensor，
-// is there a more flexible way to deal with this case?
-template <typename T>
-void FlattenWithXShape(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       int start_axis,
-                       int stop_axis,
-                       DenseTensor* out,
-                       DenseTensor* xshape) {
-  Flatten<T>(dev_ctx, x, start_axis, stop_axis, out);
-  general::SetXShape(x, xshape);
-}
 
 void Reshape(const CPUContext& dev_ctx,
              const DenseTensor& x,
@@ -69,58 +43,7 @@ void ReshapeWithXShape(const CPUContext& dev_ctx,
   Reshape(dev_ctx, x, shape, out);
 }
 
-template <typename T>
-void Cast(const CPUContext& dev_ctx,
-          const DenseTensor& x,
-          DataType out_dtype,
-          DataType in_dtype,
-          DenseTensor* out) {
-  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                       math::CastKernelImpl<CPUContext, T, data_t>(
-                           dev_ctx, x, out);
-                     }));
-}
-
 }  // namespace pten
-
-PT_REGISTER_KERNEL(flatten,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Flatten,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
-PT_REGISTER_KERNEL(flatten_with_xshape,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::FlattenWithXShape,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
-
-PT_REGISTER_KERNEL(cast,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::Cast,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
 
 PT_REGISTER_NO_TEMPLATE_KERNEL(
     reshape, CPU, ALL_LAYOUT, pten::Reshape, ALL_DTYPE) {}

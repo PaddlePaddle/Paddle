@@ -66,6 +66,15 @@ extern "C" void cgeev_(char *jobvl, char *jobvr, int *n, std::complex<float> *a,
                        std::complex<float> *work, int *lwork, float *rwork,
                        int *info);
 
+extern "C" void zpotrs_(char *uplo, int *n, int *nrhs, std::complex<double> *a,
+                        int *lda, std::complex<double> *b, int *ldb, int *info);
+extern "C" void cpotrs_(char *uplo, int *n, int *nrhs, std::complex<float> *a,
+                        int *lda, std::complex<float> *b, int *ldb, int *info);
+extern "C" void dpotrs_(char *uplo, int *n, int *nrhs, double *a, int *lda,
+                        double *b, int *ldb, int *info);
+extern "C" void spotrs_(char *uplo, int *n, int *nrhs, float *a, int *lda,
+                        float *b, int *ldb, int *info);
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -105,7 +114,11 @@ extern void *lapack_dso_handle;
   __macro(dgeev_);                   \
   __macro(sgeev_);                   \
   __macro(zgeev_);                   \
-  __macro(cgeev_);
+  __macro(cgeev_);                   \
+  __macro(zpotrs_);                  \
+  __macro(cpotrs_);                  \
+  __macro(dpotrs_);                  \
+  __macro(spotrs_);
 
 LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 

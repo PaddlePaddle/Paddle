@@ -115,7 +115,21 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({1})
       .End();
 }
 
@@ -239,6 +253,7 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                     input_names.end();
+
     if (has_bias && conv->Op()->Input("Bias").size() > 0) {
       auto conv_bias_names = conv->Op()->Input("Bias");
       // add eltwise bias to existing conv bias

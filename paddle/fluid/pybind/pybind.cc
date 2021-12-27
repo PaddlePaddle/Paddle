@@ -579,6 +579,14 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("disable_signal_handler", &DisableSignalHandler);
 
+  m.def("clear_gradients",
+        [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
+           bool set_to_zero) {
+          for (auto param : param_list) {
+            param->ClearGradient(set_to_zero);
+          }
+        });
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
   m.def("gpu_memory_available", []() {
