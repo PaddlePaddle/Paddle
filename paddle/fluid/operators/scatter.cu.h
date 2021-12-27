@@ -19,12 +19,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+// #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+template <typename T>
+using CudnnDataType = platform::CudnnDataType<T>;
+template <typename T>
+using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
@@ -67,6 +73,36 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
       *(output + out_i) = *(params + i);
     } else {
       paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
+    }
+  }
+}
+
+// todo:
+template <typename IndexT = int>
+__global__ void ScatterCUDAKernel(const paddle::float16* params,
+                                  const IndexT* indices,
+                                  paddle::float16* output, size_t index_size,
+                                  size_t slice_size, bool overwrite) {
+  using U = BatchNormParamType<paddle::float16>;
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
+    int64_t indices_i = i / slice_size;
+    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
+    IndexT scatter_i = indices[indices_i];
+
+    PADDLE_ENFORCE(scatter_i >= 0,
+                   "The index is out of bounds, "
+                   "please check whether the dimensions of index and "
+                   "input meet the requirements. It should "
+                   "be greater than or equal to 0, but received [%d]",
+                   scatter_i);
+    int64_t out_i = scatter_i * slice_size + slice_i;
+    if (overwrite) {
+      *(output + out_i) = *(params + i);
+    } else {
+      U out_tmp = static_cast<U>(output[out_i]);
+      U in_tmp = static_cast<U>(params[i]);
+      paddle::platform::CudaAtomicAdd(&out_tmp, in_tmp);
+      output[out_i] = static_cast<paddle::float16>(out_tmp);
     }
   }
 }
