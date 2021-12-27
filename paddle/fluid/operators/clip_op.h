@@ -95,7 +95,7 @@ class ClipKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "max should be greater than or equal to min. "
                           "But received min = %f, max = %f",
-                          min, max));
+                          static_cast<float>(min), static_cast<float>(max)));
 
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {

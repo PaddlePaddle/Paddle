@@ -25,7 +25,7 @@ TEST(dense_tensor, meta) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   // TODO(Shixiaowei02): need to check the lod is valid.
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
 
   DenseTensorMeta meta_0;
   CHECK(!meta_0.valid());
@@ -72,7 +72,7 @@ TEST(dense_tensor, ctor) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto alloc = std::make_shared<FancyAllocator>();
@@ -106,7 +106,7 @@ TEST(dense_tensor, resize) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto alloc = std::make_shared<FancyAllocator>();
@@ -126,7 +126,7 @@ TEST(dense_tensor, shallow_copy) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const std::vector<std::vector<size_t>> lod{};
+  const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto alloc = std::make_shared<FancyAllocator>();

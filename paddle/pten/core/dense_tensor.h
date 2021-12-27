@@ -22,6 +22,12 @@ limitations under the License. */
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 
+/* @jim19930609: Move to MKLDNN_Tensor in the future
+    */
+#ifdef PADDLE_WITH_MKLDNN
+#include "dnnl.hpp"
+#endif
+
 namespace pten {
 
 class CompatibleDenseTensorUtils;
@@ -108,9 +114,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
-  const std::vector<std::vector<size_t>>& lod() const noexcept {
-    return meta_.lod;
-  }
+  const LoD& lod() const noexcept { return meta_.lod; }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.

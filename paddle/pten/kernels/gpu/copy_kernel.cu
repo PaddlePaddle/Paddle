@@ -12,15 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/pten/kernels/copy_kernel.h"
+
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/gpu/utils.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace pten {
 
-void Copy(const GPUContext& dev_ctx,
+template <typename ContextT>
+void Copy(const ContextT& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst) {
@@ -232,6 +237,8 @@ void Copy(const GPUContext& dev_ctx,
     }
   }
 }
+
 }  // namespace pten
 
-PT_REGISTER_NO_TEMPLATE_KERNEL(copy, GPU, ALL_LAYOUT, pten::Copy, ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(
+    copy, GPU, ALL_LAYOUT, pten::Copy<pten::GPUContext>, ALL_DTYPE) {}
