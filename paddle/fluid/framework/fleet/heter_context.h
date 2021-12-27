@@ -175,6 +175,7 @@ class HeterContext {
         }
       }
     }
+
   }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
@@ -235,7 +236,6 @@ class HeterContext {
       }
       VLOG(3) << "heter_context unique keys with dynamic mf dimention";
     }
-
     for (std::thread& t : threads) {
       t.join();
     }
