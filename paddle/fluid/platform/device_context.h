@@ -521,9 +521,9 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
-  std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle_;
+  std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #endif
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
