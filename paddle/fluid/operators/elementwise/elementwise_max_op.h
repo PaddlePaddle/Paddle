@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <cmath>
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 
 namespace paddle {
 namespace operators {
@@ -33,6 +35,21 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<MaxFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           MaxFunctor<T>(), z);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseFMaxKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
+
+    z->mutable_data<T>(ctx.GetPlace());
+    int axis = ctx.Attr<int>("axis");
+    ElementwiseComputeEx<FMaxFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                           FMaxFunctor<T>(), z);
   }
 };
 
@@ -66,6 +83,90 @@ class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
     ElemwiseGradCompute<DeviceContext, T, MaxGradDx<T>, MaxGradDy<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, MaxGradDx<T>(), MaxGradDy<T>());
+  }
+};
+
+template <typename T>
+struct FMaxGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>((x >= y) || isnan(y));
+  }
+};
+
+template <>
+struct FMaxGradDx<paddle::platform::float16> {
+  HOSTDEVICE paddle::platform::float16 operator()(
+      paddle::platform::float16 x, paddle::platform::float16 y,
+      paddle::platform::float16 out, paddle::platform::float16 dout) const {
+    return dout * static_cast<paddle::platform::float16>(
+                      (x >= y) || paddle::platform::isnan(y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>((x >= y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x, int64_t y, int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>((x >= y));
+  }
+};
+
+template <typename T>
+struct FMaxGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(!((x >= y) || isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<paddle::platform::float16> {
+  HOSTDEVICE paddle::platform::float16 operator()(
+      paddle::platform::float16 x, paddle::platform::float16 y,
+      paddle::platform::float16 out, paddle::platform::float16 dout) const {
+    return dout * static_cast<paddle::platform::float16>(
+                      !((x >= y) || paddle::platform::isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x, int64_t y, int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>(!((x >= y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>(!((x >= y)));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseFMaxGradKernel : public ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* out = dout;  // Fake out, not used
+    int axis = ctx.Attr<int>("axis");
+    ElemwiseGradCompute<DeviceContext, T, FMaxGradDx<T>, FMaxGradDy<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, FMaxGradDx<T>(),
+        FMaxGradDy<T>());
   }
 };
 }  // namespace operators

@@ -740,10 +740,10 @@ void FleetWrapper::PushDenseVarsAsync(
                  BOOST_GET_CONST(platform::CUDAPlace, place), g_data,
                  sizeof(float) * count, stream);
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, stream));
     hipEventSynchronize(event);
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
 #endif
 
