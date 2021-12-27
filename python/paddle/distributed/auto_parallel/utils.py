@@ -993,7 +993,9 @@ def set_grad_var_shape(program, dist_context):
     block = program.global_block()
     vars = block.vars
     for op in block.ops:
-        if op.type == "sum":
+        if op.type in [
+                "sum", "check_finite_and_unscale", "update_loss_scaling"
+        ]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -1004,15 +1006,24 @@ def set_grad_var_shape(program, dist_context):
                 forward_var_name = var_name[:var_name.find("@GRAD")]
                 if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
                     forward_var_name = op.input_arg_names[0]
+                elif op.type == "matmul_v2_grad":
+                    forward_var_name = None
+                    for output_name in op.output_names:
+                        if var_name in op.output(output_name):
+                            assert "@GRAD" in output_name
+                            input_name = output_name[:output_name.find("@GRAD")]
+                            assert len(op.input(input_name)) == 1
+                            forward_var_name = op.input(input_name)[0]
+                    assert forward_var_name is not None
 
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
                     "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad", "unsqueeze2_grad"
+                    "dropout_grad"
                 ]
                 forward_list = [
                     "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout", "unsqueeze2"
+                    "softmax", "cross_entropy2", "dropout"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
@@ -1039,6 +1050,23 @@ def set_grad_var_shape(program, dist_context):
 
                 if list(grad_var.shape) != ref_shape:
                     grad_var.desc.set_shape(ref_shape)
+
+
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
+
+def is_forward_op(op):
+    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
+    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
+    op_role = int(op.attr('op_role'))
+    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1 or
+                                             op_role == ref_role2)
+
+
+def is_backward_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
 
 
 def update_op_dims_mapping_by_default_dist_impl(dist_op):
@@ -1177,55 +1205,23 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
     return changed
 
 
-def get_all_distributed_main_program(serial_program_info, dist_context):
+def get_all_distributed_main_program(serial_program_info, dist_context,
+                                     parallelizer):
     "Get all distributed main programs by dist_context."
-    from .dist_context import DistributedOperatorContext
+    from .dist_context import DistributedOperatorContext, DistributedContext
     cluster = serial_program_info.cluster
+    copied_parallelizer = copy.deepcopy(parallelizer)
     all_dist_main_program = []
     ranks = paddle.distributed.get_world_size() if cluster is None else len(
         cluster.get_all_devices("GPU"))
     for rank_id in range(ranks):
         used_dist_context = copy.deepcopy(dist_context)
         used_dist_context._dist_op_context = DistributedOperatorContext()
-        dist_main_program, dist_startup_program = get_specified_distributed_main_program(
-            serial_program_info, used_dist_context, rank_id)
+        _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
+            rank_id, used_dist_context)
         all_dist_main_program.append(dist_main_program)
 
     return all_dist_main_program
-
-
-def get_specified_distributed_main_program(serial_program_info, dist_context,
-                                           rank_id):
-    "Get distributed main program by the given dist_context and rank_id."
-    from .partitioner import Partitioner
-    from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
-    from .process_group import _g_process_group_map, ProcessGroup
-
-    dist_strategy = paddle.distributed.fleet.DistributedStrategy()
-    train_program = serial_program_info.train_program
-    startup_program = serial_program_info.startup_program
-    loss = serial_program_info.loss
-    optimizer = serial_program_info.optimizer
-
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-    dist_main_program, dist_startup_program = partitioner.transpile_forward(
-        train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, train_program, startup_program, dist_main_program,
-        dist_startup_program)
-    opt_ops = partitioner.apply_optimize(
-        copy.deepcopy(optimizer), dist_params_grads, dist_main_program,
-        dist_startup_program)
-    set_grad_var_shape(dist_main_program, dist_context)
-    make_data_unshard(dist_main_program, dist_startup_program, dist_context)
-    reshard(dist_main_program, dist_startup_program, rank_id, dist_context)
-    HAS_SENT.clear()
-    HAS_RECV.clear()
-    HAS_ALLGATHER.clear()
-
-    _g_process_group_map.clear()
-    _g_process_group_map[0] = ProcessGroup(0, [])
-    return dist_main_program, dist_startup_program
 
 
 class SerialProgramInfo:
@@ -1286,7 +1282,6 @@ def get_standalone_cost_data(distributed_programs):
                 shape = list(map(lambda x: int(x.strip()), shape))
                 dtype_factor = 1
                 total_static_input_size += reduce(lambda x, y: x * y, shape)
-                # print(arg_name_lower)
                 if op.type == "c_embedding":
                     arg_name_lower = "w" if arg_name_lower == "weight" else "ids"
                 for arg_name in op.input_names:
@@ -1301,7 +1296,8 @@ def get_standalone_cost_data(distributed_programs):
         actual_runtime = total_actual_input_size / total_static_input_size * runtime
         return actual_runtime
 
-    cost_model = paddle.cost_model.CostModel()
+    import paddle.cost_model as cm
+    cost_model = cm.CostModel()
     cost_model.static_cost_data()
     DEFAULT_MULTIPLE = 2
     OP_NAME_MAPPING = {

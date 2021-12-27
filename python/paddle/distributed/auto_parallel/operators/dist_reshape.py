@@ -43,7 +43,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         super(DistributedReshapeImpl0, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -200,7 +200,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         super(DistributedReshapeImpl1, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
