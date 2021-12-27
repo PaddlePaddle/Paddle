@@ -455,7 +455,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
 
 class EagerGuardTestCase(unittest.TestCase):
     def test__test_eager_guard(self):
-        tracer = Tracer()
+        tracer = paddle.fluid.dygraph.tracer.Tracer()
         with _test_eager_guard(tracer):
             self.assertTrue(_in_eager_mode())
 
