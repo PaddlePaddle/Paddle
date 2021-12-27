@@ -575,7 +575,7 @@ EOF
         export http_proxy=
         export https_proxy=
         set -x
-
+        
         set +ex
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
@@ -2244,7 +2244,7 @@ EOF
     demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_ROOT_DIR:-/usr}
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     demo_ci_endTime_s=`date +%s`

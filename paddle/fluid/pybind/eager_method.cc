@@ -17,8 +17,10 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -89,11 +91,64 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
-                                                    PyObject* args,
-                                                    PyObject* kwargs) {
+static PyObject* eager_tensor_method__is_initialized(EagerTensorObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
   EAGER_SYNC_TRY
   return ToPyObject(self->eager_tensor.initialized());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_method__copy_to(EagerTensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
+  auto cp_tensor =
+      self->eager_tensor.copy_to(pten::TransToPtenBackend(place), blocking);
+  egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
+  egr::EagerUtils::autograd_meta(&cp_tensor)
+      ->SetPersistable(
+          egr::EagerUtils::autograd_meta(&(self->eager_tensor))->Persistable());
+  return ToPyObject(cp_tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
+                                           PyObject* args, PyObject* kwargs) {
+  EAGER_SYNC_TRY
+  egr::EagerTensor src_tensor =
+      CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
+          << self->eager_tensor.name();
+  self->eager_tensor.copy_(src_tensor, blocking);
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))
+      ->SetStopGradient(
+          egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))
+      ->SetPersistable(
+          egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+  VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
+          << self->eager_tensor.name();
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_tensor_retain_grads(EagerTensorObject* self,
+                                           PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  auto meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+  if (!meta->GetMutableGradNode()) {
+    VLOG(6) << "Make grad node of tensor: " << self->eager_tensor.name()
+            << "become accumulation node";
+    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+  }
+  egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
+  Py_INCREF(Py_None);
+  return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -101,7 +156,13 @@ PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_is_initialized",
-     (PyCFunction)(void (*)(void))eager_tensor_method_is_initialized,
+     (PyCFunction)(void (*)(void))eager_tensor_method__is_initialized,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_copy_to", (PyCFunction)(void (*)(void))eager_tensor_method__copy_to,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"copy_", (PyCFunction)(void (*)(void))eager_tensor_method_copy_,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"retain_grads", (PyCFunction)(void (*)(void))eager_tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
