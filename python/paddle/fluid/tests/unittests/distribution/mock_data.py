@@ -40,8 +40,26 @@ class Exponential(paddle.distribution.ExponentialFamily):
         return -paddle.log(-x)
 
 
-@paddle.distribution.register_kl(Exponential, Exponential)
-def _kl_exponential_exponential(p, q):
-    rate_ratio = q.rate / p.rate
-    t1 = -rate_ratio.log()
-    return t1 + rate_ratio - 1
+# @paddle.distribution.register_kl(Exponential, Exponential)
+# def _kl_exponential_exponential(p, q):
+#     rate_ratio = q.rate / p.rate
+#     t1 = -rate_ratio.log()
+#     return t1 + rate_ratio - 1
+
+
+class DummyExpFamily(paddle.distribution.ExponentialFamily):
+    """dummy class extend from exponential family
+    """
+
+    def __init__(self, *args):
+        pass
+
+    def entropy(self):
+        return 1.0
+
+    @property
+    def _natural_parameters(self):
+        return (1.0, )
+
+    def _log_normalizer(self, x):
+        return -paddle.log(-x)

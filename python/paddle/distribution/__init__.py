@@ -13,11 +13,16 @@
 # limitations under the License.
 
 from .categorical import Categorical
+from .dirichlet import Dirichlet
 from .distribution import Distribution
 from .exponential_family import ExponentialFamily
 from .normal import Normal
 from .uniform import Uniform
 
-__all__ = [
-    'Categorical', 'Distribution', 'Normal', 'Uniform', 'ExponentialFamily'
+__all__ = [ #noqa
+    'Categorical',
+    'Distribution',
+    'Normal', 'Uniform',
+    'ExponentialFamily',
+    'Dirichlet'
 ]

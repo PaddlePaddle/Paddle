@@ -44,8 +44,10 @@ class Distribution(object):
 
     def __init__(self, batch_shape=(), event_shape=()):
 
-        self._batch_shape = tuple(batch_shape)
-        self._event_shape = tuple(event_shape)
+        self._batch_shape = batch_shape if isinstance(
+            batch_shape, tuple) else tuple(batch_shape)
+        self._event_shape = event_shape if isinstance(
+            event_shape, tuple) else tuple(event_shape)
 
         super(Distribution, self).__init__()
 

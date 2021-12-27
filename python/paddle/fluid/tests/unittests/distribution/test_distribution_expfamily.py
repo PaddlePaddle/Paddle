@@ -22,20 +22,31 @@ import config
 import mock_data as mock
 
 
+@config.place(config.DEVICES)
+@config.parameterize(
+    (config.TEST_CASE_NAME, 'dist'), [('test-mock-exp',
+                                       mock.Exponential(rate=paddle.rand(
+                                           [100, 200, 99],
+                                           dtype=config.DEFAULT_DTYPE)))])
 class TestExponentialFamily(unittest.TestCase):
     def test_entropy(self):
-        mock_dist = mock.Exponential(rate=paddle.rand(
-            [100, 200, 99], dtype=config.DEFAULT_DTYPE))
         np.testing.assert_allclose(
-            mock_dist.entropy(),
-            paddle.distribution.ExponentialFamily.entropy(mock_dist),
+            self.dist.entropy(),
+            paddle.distribution.ExponentialFamily.entropy(self.dist),
             rtol=config.RTOL.get(config.DEFAULT_DTYPE),
             atol=config.ATOL.get(config.DEFAULT_DTYPE))
 
-    # def test_entropy_expection(self):
-    #     with self.assertRaises(NotImplementedError):
-    #         paddle.distribution.ExponentialFamily.entropy(
-    #             paddle.distribution.Beta(0.5, 0.5))
+
+@config.place(config.DEVICES)
+@config.parameterize(
+    (config.TEST_CASE_NAME, 'dist'),
+    [('test-dummy-dist', mock.DummyExpFamily(0.5, 0.5)),
+     ('test-dirichlet-dist',
+      paddle.distribution.Dirichlet(paddle.to_tensor(config.xrand())))])
+class TestExponentialFamilyException(unittest.TestCase):
+    def test_entropy_expection(self):
+        with self.assertRaises(NotImplementedError):
+            paddle.distribution.ExponentialFamily.entropy(self.dist)
 
 
 if __name__ == '__main__':
