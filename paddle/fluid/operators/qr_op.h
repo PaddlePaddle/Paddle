@@ -131,5 +131,15 @@ class QrGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+void BatchedGeqrf(const platform::CUDADeviceContext& dev_ctx, int batch_size,
+                  int m, int n, T* a, int lda, T* tau, int a_stride,
+                  int tau_stride);
+
+template <typename T>
+void BatchedOrgqr(const platform::CUDADeviceContext& dev_ctx, int batch_size,
+                  int m, int n, int k, T* a, int lda, T* tau, int a_stride,
+                  int tau_stride);
+
 }  // namespace operators
 }  // namespace paddle

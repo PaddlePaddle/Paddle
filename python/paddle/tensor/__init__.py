@@ -37,6 +37,7 @@ from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import norm  # noqa: F401
 from .linalg import cond  # noqa: F401
+from .linalg import lstsq  # noqa: F401
 from .linalg import transpose  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
@@ -235,6 +236,7 @@ tensor_method_func  = [ #noqa
            'dot',
            'norm',
            'cond',
+           'lstsq',
            'transpose',
            'dist',
            't',

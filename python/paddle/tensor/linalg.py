@@ -2453,3 +2453,35 @@ def eigvalsh(x, UPLO='L', name=None):
         attrs={'UPLO': UPLO,
                'is_test': is_test})
     return out_value
+
+
+def lstsq(x, y, rcond=0., driver=None, name=None):
+    if in_dygraph_mode():
+        solution, residuals, rank, singular_values = _C_ops.lstsq(
+            x, y, "rcond", rcond, "driver", driver)
+        return solution, residuals, rank, singular_values
+
+    helper = LayerHelper('lstsq', **locals())
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lstsq')
+    check_variable_and_dtype(
+        y, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lstsq')
+
+    solution = helper.create_variable_for_type_inference(dtype=x.dtype)
+    residuals = helper.create_variable_for_type_inference(dtype=x.dtype)
+    rank = helper.create_variable_for_type_inference(dtype=x.dtype)
+    singular_values = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='lstsq',
+        inputs={'X': x,
+                'Y': y},
+        outputs={
+            'Solution': solution,
+            'Residuals': residuals,
+            'Rank': rank,
+            'SingularValues': singular_values
+        },
+        attrs={'rcond': rcond,
+               'driver': driver})
+    return solution, residuals, rank, singular_values
