@@ -205,6 +205,11 @@ void TestInitilized() {
   }
 }
 
+void TestJudgeTensorType() {
+  experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  CHECK(test_tensor.is_dense_tensor() == true);
+}
+
 TEST(PtenTensor, All) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
@@ -220,6 +225,8 @@ TEST(PtenTensor, All) {
   GroupTestCast();
   VLOG(2) << "TestInitilized";
   TestInitilized();
+  VLOG(2) << "TestJudgeTensorType";
+  TestJudgeTensorType();
 }
 
 }  // namespace tests
