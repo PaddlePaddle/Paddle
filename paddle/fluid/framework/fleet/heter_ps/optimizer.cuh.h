@@ -101,8 +101,9 @@ class Optimizer {
     ptr->slot = grad.slot;
     ptr->show += grad.show;
     ptr->clk += grad.clk;
-    ptr->delta_score += optimizer_config::nonclk_coeff * (grad.show - grad.clk) +
-                       optimizer_config::clk_coeff * grad.clk;
+    ptr->delta_score +=
+        optimizer_config::nonclk_coeff * (grad.show - grad.clk) +
+        optimizer_config::clk_coeff * grad.clk;
 
     update_lr(ptr->lr, ptr->lr_g2sum, grad.lr_g, grad.show);
     // use MF_DIM temporarily
@@ -113,7 +114,7 @@ class Optimizer {
           optimizer_config::nonclk_coeff * (ptr->show - ptr->clk) +
               optimizer_config::clk_coeff * ptr->clk) {
         // ptr->mf_size = ptr->mf_dim + 1;
-        
+
         ptr->mf_size = MF_DIM + 1;
         ptr->mf[0] = 0;
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;

@@ -45,8 +45,7 @@ __global__ void insert_kernel(Table* table,
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
-                              size_t len, char* pool,
-                              int start_index) {
+                              size_t len, char* pool, int start_index) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
 
@@ -84,8 +83,7 @@ __global__ void dy_mf_search_kernel(Table* table,
     auto it = table->find(keys[i]);
 
     if (it != table->end()) {
-      *(FeatureValue*)(vals + i * pull_feature_value_size) =
-          *(it->second);
+      *(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
     }
   }
 }
@@ -115,11 +113,10 @@ __global__ void dy_mf_update_kernel(Table* table,
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value((it.getter())->second, *cur);
     } else {
-      printf("yxf::push miss key: %d",keys[i]);
+      printf("yxf::push miss key: %d", keys[i]);
     }
   }
 }
-
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
@@ -173,8 +170,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         char* pool,
-                                         size_t start_index,
+                                         char* pool, size_t start_index,
                                          gpuStream_t stream) {
   if (len == 0) {
     return;
@@ -253,7 +249,7 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  
+
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
 }
