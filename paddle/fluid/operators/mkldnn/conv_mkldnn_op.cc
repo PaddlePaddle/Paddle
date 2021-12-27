@@ -981,6 +981,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       input_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
     }
   }
+};
 
 }  // namespace operators
 }  // namespace paddle
