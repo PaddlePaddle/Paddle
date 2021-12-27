@@ -24,11 +24,14 @@ add_subdirectory(tests)
 
 # make an unity target for compile deps
 set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context)
-set(PTEN_DEPS ${PTEN_DEPS} scale_kernel_eigen)
-set(PTEN_DEPS ${PTEN_DEPS} math_cpu linalg_cpu creation_cpu manipulation_cpu)
+get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
+# keep this message for debug, remove it later if needless
+message(STATUS "All standard pten kernels: ${pten_kernels}")
+set(PTEN_DEPS ${PTEN_DEPS} ${pten_kernels})
+set(PTEN_DEPS ${PTEN_DEPS} math_cpu linalg_cpu manipulation_cpu)
 set(PTEN_DEPS ${PTEN_DEPS} nary unary binary)
 if(WITH_GPU OR WITH_ROCM)
-  set(PTEN_DEPS ${PTEN_DEPS} math_cuda linalg_cuda creation_cuda manipulation_cuda)
+  set(PTEN_DEPS ${PTEN_DEPS} math_gpu linalg_gpu manipulation_gpu)
 endif()
 if(WITH_XPU)
   set(PTEN_DEPS ${PTEN_DEPS} manipulation_xpu)

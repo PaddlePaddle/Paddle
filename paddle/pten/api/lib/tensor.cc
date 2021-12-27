@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -56,15 +57,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace experimental {
-
-namespace detail {
-
-inline bool IsDenseTensor(
-    const std::shared_ptr<pten::TensorBase> &tensor_impl) {
-  return tensor_impl->type_info().name() == "DenseTensor";
-}
-
-}  // namespace detail
 
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
@@ -117,7 +109,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "reason: `reshape` means changing the tensor shape without "
                   "touching underlying data, this requires the total size of "
                   "the tensor to remain constant.";
-  if (detail::IsDenseTensor(impl_)) {
+  if (is_dense_tensor()) {
     std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
         pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
   } else {
@@ -131,6 +123,10 @@ DataType Tensor::dtype() const { return impl_->dtype(); }
 DataType Tensor::type() const { return impl_->dtype(); }
 
 DataLayout Tensor::layout() const { return impl_->layout(); }
+
+bool Tensor::is_dense_tensor() const {
+  return pten::DenseTensor::classof(impl_.get());
+}
 
 /* Part 3: Device and Backend methods */
 
@@ -152,7 +148,7 @@ bool Tensor::is_cuda() const {
 
 template <typename T>
 T *Tensor::mutable_data() {
-  if (detail::IsDenseTensor(impl_)) {
+  if (is_dense_tensor()) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)
         ->mutable_data<T>();
   }
@@ -208,7 +204,7 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 
 template <typename T>
 const T *Tensor::data() const {
-  if (detail::IsDenseTensor(impl_)) {
+  if (is_dense_tensor()) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
   }
   return nullptr;
@@ -258,7 +254,7 @@ Tensor::data<paddle::platform::float16>();
 
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
-  if (detail::IsDenseTensor(impl_)) {
+  if (is_dense_tensor()) {
     return Tensor(std::make_shared<pten::DenseTensor>(
         std::move(pten::CompatibleDenseTensorUtils::Slice(
             std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get(),
@@ -321,6 +317,31 @@ Tensor Tensor::copy_to(Backend backend, bool blocking) const {
   return experimental::copy_to(*this, backend, blocking);
 }
 
+void Tensor::copy_(const Tensor &src, bool blocking) {
+  if (!src.is_initialized()) {
+    return;
+  }
+  VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
+  if (defined()) {
+    PADDLE_ENFORCE_EQ(dtype(),
+                      src.dtype(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s, "
+                          "Tensor Copy cannot be performed!",
+                          name(),
+                          src.name()));
+    PADDLE_ENFORCE_EQ(impl()->type_info().id(),
+                      src.impl()->type_info().id(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "Copy cannot be performed!",
+                          name(),
+                          src.name()));
+  }
+  auto copy_tensor =
+      src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
+  set_impl(copy_tensor.impl());
+}
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }

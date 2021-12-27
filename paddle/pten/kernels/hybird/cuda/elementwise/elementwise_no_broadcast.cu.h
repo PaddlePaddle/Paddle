@@ -60,13 +60,12 @@ template <typename InT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
     const paddle::framework::Array<const InT *__restrict__, Arity> &in,
-    paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
+    paddle::framework::Array<OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
   InT args[Arity][VecSize];
-  OutT result[VecSize];
-  ScalarType<OutT> vec_result[NumOuts][VecSize];
+  OutType<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -78,14 +77,14 @@ __device__ void VectorizedElementwiseKernelImpl(
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT,
-                             OutT,
+                             OutType<OutT, NumOuts>,
                              VecSize,
                              Functor,
                              Arity,
                              kCallElementwiseAny>()(func, args, result);
 
-  ElementwiseWriteDataCaller<OutT, VecSize, NumOuts, IsBoundary>()(
-      outs, result, vec_result, data_offset, num);
+  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, data_offset, num);
 }
 
 template <typename InT,
@@ -96,7 +95,7 @@ template <typename InT,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
     paddle::framework::Array<const InT *__restrict__, Arity> ins,
-    paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs,
+    paddle::framework::Array<OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -156,13 +155,13 @@ void ElementwiseCudaKernel(const paddle::platform::CUDADeviceContext &ctx,
       ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
   auto stream = ctx.stream();
   paddle::framework::Array<const InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<ScalarType<OutT> *, NumOuts> outs_data;
+  paddle::framework::Array<OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<ScalarType<OutT>>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
   }
 #ifdef PADDLE_WITH_XPU2
   block_size = 128;
@@ -197,8 +196,6 @@ void LaunchSameDimsElementwiseCudaKernel(
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     Functor func) {
-  using ArrayOutT = ArrayType<OutT, NumOuts>;
-  using ScalarOutT = ScalarType<ArrayOutT>;  // Deducing the scalar type.
   using Traits = paddle::platform::FunctionTraits<Functor>;
   const int kArity =
       Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
@@ -210,14 +207,13 @@ void LaunchSameDimsElementwiseCudaKernel(
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));
-  PADDLE_ENFORCE_EQ(
-      outs->size(),
-      NumOuts,
-      paddle::platform::errors::InvalidArgument(
-          "Number of output shall equal to number of functions, but "
-          "number of output is %d, but number of functions is %d.",
-          outs->size(),
-          NumOuts));
+  PADDLE_ENFORCE_EQ(outs->size(),
+                    NumOuts,
+                    paddle::platform::errors::InvalidArgument(
+                        "Number of outputs shall equal to number of functions, "
+                        "but number of outputs is %d, of functions is %d.",
+                        outs->size(),
+                        NumOuts));
 
   if (NumOuts > 1) {
     for (int i = 1; i < NumOuts; ++i) {
@@ -235,15 +231,15 @@ void LaunchSameDimsElementwiseCudaKernel(
   int vec_size = GetVectorizedSizeForTensors<InT, OutT>(ins, *outs);
   switch (vec_size) {
     case 4:
-      ElementwiseCudaKernel<InT, ArrayOutT, Functor, kArity, NumOuts, 4>(
+      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 4>(
           ctx, ins, outs, func);
       break;
     case 2:
-      ElementwiseCudaKernel<InT, ArrayOutT, Functor, kArity, NumOuts, 2>(
+      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 2>(
           ctx, ins, outs, func);
       break;
     case 1:
-      ElementwiseCudaKernel<InT, ArrayOutT, Functor, kArity, NumOuts, 1>(
+      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 1>(
           ctx, ins, outs, func);
       break;
     default: {
