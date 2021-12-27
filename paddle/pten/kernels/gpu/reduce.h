@@ -14,6 +14,9 @@
 
 #pragma once
 
+// CUDA and HIP use same api
+// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -40,6 +43,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/copy_kernel.h"
@@ -1230,4 +1234,46 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
 }
 
 }  // namespace kernels
+
+template <typename T,
+          template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
+void Reduce(const GPUContext& dev_ctx,
+            const DenseTensor& x,
+            bool reduce_all,
+            const std::vector<int64_t>& dims,
+            bool keep_dim,
+            DataType out_dtype,
+            DenseTensor* out) {
+  std::vector<int> reduce_dims =
+      pten::kernels::details::GetReduceDim(dims, x.dims().size(), reduce_all);
+
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (x.dims())[i];
+  }
+
+  gpuStream_t stream = dev_ctx.stream();
+
+  if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(
+        pten::DataType::INT32,
+        pten::DataType::INT64,
+        out_dtype,
+        "TensorReduceFunctorImpl",
+        ([&] {
+          using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
+          pten::kernels::TensorReduceFunctorImpl<T,
+                                                 data_t,
+                                                 ReduceOp,
+                                                 TransformOp<T, MPType>>(
+              x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+        }));
+  } else {
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    pten::kernels::
+        TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+            x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+  }
+}
 }  // namespace pten

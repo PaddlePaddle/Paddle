@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/complex_kernel.h"
 #include "paddle/pten/kernels/cpu/math.h"
 #include "paddle/pten/kernels/gpu/math.h"
+#include "paddle/pten/kernels/reduce_kernel.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {
@@ -46,7 +47,7 @@ DenseTensor Mean(const ContextT& dev_ctx,
           dev_ctx.GetPlace()),
       std::move(out_meta));
   bool reduce_all = false;
-  Mean<T>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
+  Mean<T, ContextT>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
   return dense_out;
 }
 
@@ -66,7 +67,8 @@ DenseTensor Sum(const ContextT& dev_ctx,
   // so use default value(false) is OK.
   bool reduce_all = false;
 
-  Sum<T>(dev_ctx, x, axis, keep_dim, reduce_all, out_meta.dtype, &dense_out);
+  Sum<T, ContextT>(
+      dev_ctx, x, axis, keep_dim, reduce_all, out_meta.dtype, &dense_out);
   return dense_out;
 }
 
