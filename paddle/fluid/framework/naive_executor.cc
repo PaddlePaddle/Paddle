@@ -151,7 +151,7 @@ void NaiveExecutor::ResetTrtOps(int num) {
               inference::tensorrt::TRTEngineManager>::Global()
               .Get(engine_name);
       if (trt_engine->with_dynamic_shape()) {
-        LOG(INFO) << "rebuild trt engine!";
+        LOG(INFO) << "rebuild trt engine, this may cost a lot of time!";
         trt_engine->ResetContext();
         trt_engine->ClearTensorMap();
         trt_engine->SetProfileNum(num);
