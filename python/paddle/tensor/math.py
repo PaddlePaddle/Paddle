@@ -1796,37 +1796,50 @@ def amax(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-
-            # data_x is a Tensor with shape [2, 4]
+            # data_x is a Tensor with shape [2, 4] with multiple maximum elements
             # the axis is a int element
 
-            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
+            x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
+                                  [0.9, 0.9, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
             result1 = paddle.amax(x)
-            print(result1)
-            #[0.9]
+            result1.backward()
+            print(result1, x.grad) 
+            #[0.9], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+
+            x.clear_grad()
             result2 = paddle.amax(x, axis=0)
-            print(result2)
-            #[0.2 0.3 0.6 0.9]
+            result2.backward()
+            print(result2, x.grad) 
+            #[0.9, 0.9, 0.9, 0.9], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
+
+            x.clear_grad()
             result3 = paddle.amax(x, axis=-1)
-            print(result3)
-            #[0.9 0.7]
+            result3.backward()
+            print(result3, x.grad) 
+            #[0.9, 0.9], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
+
+            x.clear_grad()
             result4 = paddle.amax(x, axis=1, keepdim=True)
-            print(result4)
-            #[[0.9]
-            # [0.7]]
+            result4.backward()
+            print(result4, x.grad) 
+            #[[0.9], [0.9]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
 
             # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
-
-            y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
-                                  [[5.0, 6.0], [7.0, 8.0]]])
+            y = paddle.to_tensor([[[0.1, 0.9], [0.9, 0.9]],
+                                  [[0.9, 0.9], [0.6, 0.7]]],
+                                 dtype='float64', stop_gradient=False)
             result5 = paddle.amax(y, axis=[1, 2])
-            print(result5)
-            #[4. 8.]
+            result5.backward()
+            print(result5, y.grad) 
+            #[0.9., 0.9], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
+
+            y.clear_grad()
             result6 = paddle.amax(y, axis=[0, 1])
-            print(result6)
-            #[7. 8.]
+            result6.backward()
+            print(result6, y.grad) 
+            #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
@@ -1882,35 +1895,50 @@ def amin(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-
-            # x is a tensor with shape [2, 4]
+            # data_x is a Tensor with shape [2, 4] with multiple minimum elements
             # the axis is a int element
-            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
-            result1 = paddle.amin(x)
-            print(result1)
-            #[0.1]
-            result2 = paddle.amin(x, axis=0)
-            print(result2)
-            #[0.1 0.2 0.5 0.7]
-            result3 = paddle.amin(x, axis=-1)
-            print(result3)
-            #[0.2 0.1]
-            result4 = paddle.amin(x, axis=1, keepdim=True)
-            print(result4)
-            #[[0.2]
-            # [0.1]]
 
-            # y is a Tensor with shape [2, 2, 2]
+            x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1],
+                                  [0.1, 0.1, 0.6, 0.7]], 
+                                 dtype='float64', stop_gradient=False)
+            result1 = paddle.amin(x)
+            result1.backward()
+            print(result1, x.grad) 
+            #[0.1], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+
+            x.clear_grad()
+            result2 = paddle.amin(x, axis=0)
+            result2.backward()
+            print(result2, x.grad) 
+            #[0.1, 0.1, 0.1, 0.1], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
+
+            x.clear_grad()
+            result3 = paddle.amin(x, axis=-1)
+            result3.backward()
+            print(result3, x.grad) 
+            #[0.1, 0.1], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
+
+            x.clear_grad()
+            result4 = paddle.amin(x, axis=1, keepdim=True)
+            result4.backward()
+            print(result4, x.grad) 
+            #[[0.1], [0.1]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
+
+            # data_y is a Tensor with shape [2, 2, 2]
             # the axis is list 
-            y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
-                                  [[5.0, 6.0], [7.0, 8.0]]])
+            y = paddle.to_tensor([[[0.2, 0.1], [0.1, 0.1]],
+                                  [[0.1, 0.1], [0.6, 0.7]]],
+                                 dtype='float64', stop_gradient=False)
             result5 = paddle.amin(y, axis=[1, 2])
-            print(result5)
-            #[1. 5.]
+            result5.backward()
+            print(result5, y.grad) 
+            #[0.1., 0.1], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
+
+            y.clear_grad()
             result6 = paddle.amin(y, axis=[0, 1])
-            print(result6)
-            #[1. 2.]
+            result6.backward()
+            print(result6, y.grad) 
+            #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)

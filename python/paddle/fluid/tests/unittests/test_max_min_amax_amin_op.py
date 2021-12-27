@@ -27,7 +27,6 @@ paddle.enable_static()
 
 class TestMaxMinAmaxAminAPI(unittest.TestCase):
     def setUp(self):
-        print('---------')
         self.init_case()
         self.cal_np_out_and_gradient()
         self.place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
@@ -88,26 +87,25 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         return out
 
     # We check the output between paddle API and numpy in static graph.
-    #def test_static_graph(self):
-    #    def _test_static_graph(func):
-    #        startup_program = fluid.Program()
-    #        train_program = fluid.Program()
-    #        with fluid.program_guard(startup_program, train_program):
-    #            x = fluid.data(name='input', dtype=self.dtype, shape=self.shape)
-    #            x.stop_gradient = False
-    #            out = self._choose_paddle_func(func, x)
+    def test_static_graph(self):
+        def _test_static_graph(func):
+            startup_program = fluid.Program()
+            train_program = fluid.Program()
+            with fluid.program_guard(startup_program, train_program):
+                x = fluid.data(name='input', dtype=self.dtype, shape=self.shape)
+                x.stop_gradient = False
+                out = self._choose_paddle_func(func, x)
 
-    #            exe = fluid.Executor(self.place)
-    #            res = exe.run(fluid.default_main_program(),
-    #                          feed={'input': self.x_np},
-    #                          fetch_list=[out])
-    #            self.assertTrue((np.array(res[0]) == self.np_out[func]).all())
-    #            print('static ', func, np.array(res[0]))
+                exe = fluid.Executor(self.place)
+                res = exe.run(fluid.default_main_program(),
+                              feed={'input': self.x_np},
+                              fetch_list=[out])
+                self.assertTrue((np.array(res[0]) == self.np_out[func]).all())
 
-    #    _test_static_graph('amax')
-    #    _test_static_graph('amin')
-    #    _test_static_graph('max')
-    #    _test_static_graph('min')
+        _test_static_graph('amax')
+        _test_static_graph('amin')
+        _test_static_graph('max')
+        _test_static_graph('min')
 
     # As dygraph is easy to compute gradient, we check the gradient between 
     # paddle API and numpy in dygraph.
@@ -120,16 +118,14 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
             grad_tensor = paddle.ones_like(x)
             paddle.autograd.backward([out], [grad_tensor], True)
 
-            print('dygraph :', func, out.numpy(), 'grad', x.grad, 'np.grad',
-                  self.np_grad[func])
             self.assertEqual(np.allclose(self.np_out[func], out.numpy()), True)
             self.assertEqual(np.allclose(self.np_grad[func], x.grad), True)
             paddle.enable_static()
 
         _test_dygraph('amax')
-        #_test_dygraph('amin')
-        #_test_dygraph('max')
-        #_test_dygraph('min')
+        _test_dygraph('amin')
+        _test_dygraph('max')
+        _test_dygraph('min')
 
 
     # test two minimum or maximum elements
