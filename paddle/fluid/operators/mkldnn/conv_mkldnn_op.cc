@@ -982,10 +982,6 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
     }
   }
 
- private:
-  void RunKernel(const framework::ExecutionContext& ctx) const { return; }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
