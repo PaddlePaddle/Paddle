@@ -64,7 +64,7 @@ class TestSkipLayernormFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
-            "...", )
+            "skip_layernorm", )
 
     def is_program_valid(self, prog_config):
         return True
