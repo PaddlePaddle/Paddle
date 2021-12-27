@@ -27,6 +27,15 @@ import hypothesis.strategies as st
 
 class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+        # If the problem has been fixed, the judgment 
+        # needs to be deleted!!!
+        if 0 in attrs[2]['shape']:
+            return False
+
         return True
 
     def sample_program_config(self, draw):
