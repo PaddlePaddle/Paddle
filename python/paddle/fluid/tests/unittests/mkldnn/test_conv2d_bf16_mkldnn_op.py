@@ -141,6 +141,7 @@ class TestConv2DBF16Op(TestConv2DOp):
     def init_fuse_residual(self):
         self.fuse_residual = True
 
+
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
     def init_fuse_relu(self):
