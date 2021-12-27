@@ -91,6 +91,8 @@ void FleetExecutor::Init(
   InitMessageBus();
 
   // refine this? wait all carrier ready
+  // NOTE(wangxi): must add after Carrier::SetMsgBus, for we use
+  // MessageBus::IncreaseBarrierCount when receive barrier msg.
   GetCarrier()->Barrier();
 }
 
