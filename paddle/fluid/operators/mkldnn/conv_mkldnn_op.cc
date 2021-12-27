@@ -981,6 +981,11 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       input_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
     }
   }
+
+private:
+  void RunKernel(const framework::ExecutionContext& ctx) const {
+    return;
+  }
 };
 
 }  // namespace operators
@@ -1011,6 +1016,11 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
                                     ops::ConvMKLDNNGradOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
+                                    ::paddle::platform::CPUPlace, BF16,
+                                    ops::kConvMKLDNNFP32,
+                                    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
