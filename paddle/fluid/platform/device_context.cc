@@ -482,9 +482,9 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
-  InitCuSparseContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+  InitCuSparseContext();
   InitCuSolverContext();
 #endif
 }
@@ -493,8 +493,8 @@ CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
-  DestoryCuSparseContext();
 #ifndef PADDLE_WITH_HIP
+  DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
 }
