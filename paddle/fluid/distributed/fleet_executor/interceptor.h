@@ -111,7 +111,6 @@ class Interceptor {
 
   std::mutex mutex_;
   std::deque<InterceptorMessage> messages_;
-  // std::deque<InterceptorMessage> local_messages_;
 
   int64_t already_run_times_{0};
   int64_t used_slot_nums_{0};

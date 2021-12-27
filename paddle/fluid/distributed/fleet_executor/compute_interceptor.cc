@@ -197,7 +197,7 @@ void ComputeInterceptor::Run() {
     if (is_last_ && (step_ % node_->max_run_times() == 0)) {
       VLOG(3) << "Interceptor " << GetInterceptorId()
               << " is stopping carrier.";
-      // FIXME(wangxi): with multi sink
+      // FIXME(wangxi): with multi sink interceptor
       StopCarrier();
     }
   }

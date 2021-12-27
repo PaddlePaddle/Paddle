@@ -56,11 +56,6 @@ void Interceptor::LoopOnce() {
             << " with message: " << message_type << ".";
 
     Handle(msg);
-    //    if (stop_) {
-    //      // break the pooling thread
-    //      VLOG(3) << "Interceptor " << interceptor_id_ << " is quiting.";
-    //      break;
-    //    }
   }
 }
 

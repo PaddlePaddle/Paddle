@@ -52,23 +52,7 @@ void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
   is_init_ = true;
 }
 
-void Carrier::Release() {
-  // NOTE(wangxi): must join before `Derived Interceptor` destruct,
-  // otherwise Derived object will be destructed before thread complete.
-
-  // FIXME(wangxi): should we need stop?
-  //  for (int64_t id : source_interceptor_ids_) {
-  //    VLOG(3) << "Carrier Release is sending stop to source interceptor " <<
-  //    id
-  //            << ".";
-  //    InterceptorMessage stop_msg;
-  //    // source node STOP is send by carrier, so set src_id=-1
-  //    stop_msg.set_src_id(-1);
-  //    stop_msg.set_dst_id(id);
-  //    stop_msg.set_message_type(STOP);
-  //    Send(stop_msg);
-  //  }
-}
+void Carrier::Release() {}
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
@@ -78,6 +62,7 @@ bool Carrier::EnqueueInterceptorMessage(
     VLOG(3) << "Receiving control message from rank "
             << interceptor_message.src_id() << " to rank "
             << interceptor_message.dst_id();
+    // for barrier
     msg_bus_->IncreaseBarrierCount();
   } else {
     int64_t dst_id = interceptor_message.dst_id();
