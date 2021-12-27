@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import copy
 from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
+from .common import set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -31,6 +33,20 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
+
+
+def copy_op_with_new_input_output(block, src_op, **kwargs):
+    dist_op_desc = block.desc.append_op()
+    dist_op_desc.copy_from(src_op.desc)
+    for input_name in src_op.desc.input_names():
+        assert input_name in kwargs
+        dist_op_desc.set_input(input_name, kwargs[input_name])
+    for output_name in src_op.desc.output_names():
+        assert input_name in kwargs
+        dist_op_desc.set_output(output_name, kwargs[output_name])
+
+    block._sync_with_cpp()
+    return dist_op_desc
 
 
 def _update_dims_mapping_for_matmul(dist_op):
@@ -141,15 +157,11 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     if rank_id not in dist_attr.process_mesh.processes:
         rank_id = _get_corresponding_rank(ctx, dist_attr.process_mesh, rank_id)
 
-    # check if need gradient allreduce
-    need_gradient_allreduce = False
-
     assert 'Y' in kwargs, "input [{}] is not given".format('Y')
     assert 'X' in kwargs, "input [{}] is not given".format('X')
     assert 'Out@GRAD' in kwargs, "input [{}] is not given".format('Out@GRAD')
     assert 'Y@GRAD' in kwargs, "output [{}] is not given".format('Y@GRAD')
     assert 'X@GRAD' in kwargs, "output [{}] is not given".format('X@GRAD')
-
     assert len(
         kwargs['Y']
     ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
@@ -166,14 +178,137 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         kwargs['Y@GRAD']
     ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
         kwargs['Y@GRAD'])
-    assert len(
-        kwargs['X@GRAD']
-    ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
-        kwargs['X@GRAD'])
 
     X_var = main_block.var(kwargs['X'][0])
+    Y_var = main_block.var(kwargs['Y'][0])
+    Out_grad = main_block.var(kwargs['Out@GRAD'][0])
+    Y_grad = main_block.var(kwargs['Y@GRAD'][0])
+
     assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
         X_var.name)
+
+    Y_var_dim_mapping = dist_attr.get_input_dims_mapping(Y_var.name)
+    process_mesh_shape = dist_attr.process_mesh.topology
+    process_mesh_group = dist_attr.process_mesh.processes
+    assert len(
+        Y_var_dim_mapping
+    ) == 2, "dist matmual only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
+        Y_var.name, Y_var_dim_mapping)
+    Y_var_partitioned = False
+    for dim in Y_var_dim_mapping:
+        if dim >= 0 and process_mesh_shape[dim] > 0:
+            Y_var_partitioned = True
+            break
+
+    if Y_var.is_parameter and Y_var_partitioned:
+
+        if Y_var_dim_mapping[0] >= 0:
+            # row parallel: c_identity + matmul
+            assert Y_var_dim_mapping[1] < 0
+            parallel_axis = Y_var_dim_mapping[0]
+
+            check_variable_and_dtype(
+                Out_grad, 'tensor',
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                '_c_identity')
+
+            intermediate_var_0 = main_block.create_var(
+                name=unique_name.generate_with_ignorable_key(".".join(
+                    ["c_identity", 'tmp'])) + "@GRAD",
+                dtype=Out_grad.dtype,
+                shape=Out_grad.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=Out_grad.stop_gradient)
+
+            # copy X_var's dist_attr to intermediate_var_0's dist_attr
+            out_grad_dist_attr = dist_attr.get_input_dist_attr(Out_grad.name)
+            assert out_grad_dist_attr is not None
+            ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                                 out_grad_dist_attr)
+
+            group_ranks = _get_comm_group(
+                process_mesh_group, process_mesh_shape, parallel_axis, rank_id)
+            group = new_process_group(group_ranks)
+            c_identity_op = main_block.append_op(
+                type='c_identity',
+                inputs={'X': [Out_grad]},
+                outputs={'Out': intermediate_var_0},
+                attrs={
+                    'ring_id': group.id,
+                    'use_calc_stream': True,
+                    'use_model_parallel': True,
+                    OP_ROLE_KEY: OpRole.Backward,
+                })
+            check_variable_and_dtype(intermediate_var_0, 'x',
+                                     ['float16', 'float32', 'float64'],
+                                     'linear')
+            check_dtype(intermediate_var_0.dtype, 'dtype',
+                        ['float16', 'float32', 'float64'], 'linear')
+            set_comm_op_dist_attr_for_program(
+                c_identity_op, dist_attr.process_mesh, out_grad_dist_attr, ctx)
+
+            new_kwargs = copy.deepcopy(kwargs)
+            new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
+            matmul_op_desc = copy_op_with_new_input_output(
+                main_block, backward_op, **new_kwargs)
+        else:
+            # col parallel: matmul + allreduce
+            assert Y_var_dim_mapping[0] < 0
+            parallel_axis = Y_var_dim_mapping[1]
+            new_kwargs = copy.deepcopy(kwargs)
+
+            # NOTE (JZ-LIANG) should allow left operand be empty for matmul grad
+            has_x_grad = len(kwargs['X@GRAD']) > 0
+            if has_x_grad:
+                assert len(kwargs['X@GRAD']) == 1
+                X_grad = main_block.var(kwargs['X@GRAD'][0])
+                intermediate_var_0 = main_block.create_var(
+                    name=unique_name.generate_with_ignorable_key(".".join(
+                        ["c_identity", 'tmp'])) + "@GRAD",
+                    dtype=X_grad.dtype,
+                    shape=X_grad.shape,
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    persistable=False,
+                    stop_gradient=X_grad.stop_gradient)
+
+                X_grad_dist_attr = dist_attr.get_output_dist_attr(X_grad.name)
+                assert X_grad_dist_attr is not None
+                ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
+                                                     X_grad_dist_attr)
+                new_kwargs['X@GRAD'] = [intermediate_var_0.name]
+
+            matmul_op_desc = copy_op_with_new_input_output(
+                main_block, backward_op, **new_kwargs)
+
+            # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad
+            if has_x_grad:
+                group_ranks = _get_comm_group(process_mesh_group,
+                                              process_mesh_shape, parallel_axis,
+                                              rank_id)
+                group = new_process_group(group_ranks)
+                c_allreduce_sum_op = main_block.append_op(
+                    type='c_allreduce_sum',
+                    inputs={'X': [intermediate_var_0.name]},
+                    outputs={'Out': kwargs['X@GRAD']},
+                    attrs={
+                        'ring_id': group.id,
+                        'use_calc_stream': True,
+                        'use_model_parallel': True,
+                        OP_ROLE_KEY: OpRole.Backward
+                    })
+                set_comm_op_dist_attr_for_program(c_allreduce_sum_op,
+                                                  dist_attr.process_mesh,
+                                                  X_grad_dist_attr, ctx)
+    else:
+        # replicate
+        matmul_op_desc = copy_op_with_new_input_output(main_block, backward_op,
+                                                       **kwargs)
+
+    main_block._sync_with_cpp()
+
+    # check if need gradient allreduce
+    need_gradient_allreduce = False
 
     process_mesh = dist_attr.process_mesh
     var_dim_mapping = dist_attr.get_input_dims_mapping(X_var.name)
@@ -187,7 +322,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         dp_degree = len(group_ranks)
         dp_group = new_process_group(group_ranks)
 
-    Y_var = main_block.var(kwargs['Y'][0])
     if need_gradient_allreduce and Y_var.is_parameter:
         Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
         allreduce_op = main_block.append_op(

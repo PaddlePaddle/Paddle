@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/gpu/math.h"
 
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 #include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
 #include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
@@ -34,6 +33,8 @@ namespace cub = hipcub;
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+namespace kps = paddle::operators::kernel_primitives;
 
 namespace pten {
 
@@ -64,7 +65,7 @@ void Mean(const GPUContext& dev_ctx,
           bool reduce_all,
           DenseTensor* out) {
   auto out_dtype = x.dtype();
-  pten::Reduce<T, paddle::operators::CustomMean>(
+  pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -85,7 +86,7 @@ void Sum(const GPUContext& dev_ctx,
          bool reduce_all,
          DataType out_dtype,
          DenseTensor* out) {
-  pten::Reduce<T, paddle::operators::CustomSum>(
+  pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -95,7 +96,8 @@ using float16 = paddle::platform::float16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_KERNEL(mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
+PT_REGISTER_KERNEL(
+    mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool, float16) {}
 PT_REGISTER_KERNEL(add,
                    GPU,
                    ALL_LAYOUT,
