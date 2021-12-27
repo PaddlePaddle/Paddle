@@ -605,4 +605,5 @@ __all__ = [  # noqa
            'repeat_interleave',
            'clone',
            'kthvalue',
+           'renorm',
 ]

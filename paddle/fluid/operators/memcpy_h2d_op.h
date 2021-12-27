@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 namespace platform {
@@ -42,11 +43,15 @@ class MemcpyH2DFunctor {
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    out_tensor.mutable_data(
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_.GetPlace()),
-        lod_tensor.type(),
-        static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream());
+    auto stream =
+        static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream();
+#else
+    auto stream = nullptr;
 #endif
+    out_tensor.mutable_data(
+        dev_ctx_.GetPlace(), lod_tensor.type(),
+        platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
+
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
                             &out_tensor);
