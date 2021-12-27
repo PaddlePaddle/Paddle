@@ -494,7 +494,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = layers.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+
+        # only when global_norm_var > max_global_norm, grad need clip
+        need_clip = False
         if global_norm_var > max_global_norm:
+            need_clip = True
+
+        if need_clip:
             clip_var = layers.elementwise_div(
                 x=max_global_norm, y=global_norm_var)
         for p, g in params_grads:
@@ -504,7 +510,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 params_and_grads.append((p, g))
                 continue
             # TODO(wangxi): use inplace elementwise_mul
-            if global_norm_var > max_global_norm:
+            if need_clip:
                 clip_input = (clip_var.astype('float16')
                               if g.dtype == core.VarDesc.VarType.FP16 else
                               clip_var)
