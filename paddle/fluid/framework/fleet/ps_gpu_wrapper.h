@@ -49,6 +49,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
+
 class PSGPUWrapper {
  public:
   virtual ~PSGPUWrapper() { delete HeterPs_; }
