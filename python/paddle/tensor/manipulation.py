@@ -2750,6 +2750,7 @@ def moveaxis(x, source, destination, name=None):
         attrs={'axis': perm})
     return out
 
+
 def take_along_axis(arr, indices, axis):
     """
     Take values from the input array by given indices matrix along the designated axis.
@@ -2785,10 +2786,13 @@ def take_along_axis(arr, indices, axis):
         indices = paddle.broadcast_to(indices, broadcast_shape)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
-        arr, 'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'], 'take_along_axis')
-    check_variable_and_dtype(indices, 'index', ['int32', 'int64'], 'take_along_axis')
-    indices = paddle.broadcast_to(indices, broadcast_shape) # broadcast to shape of the input array first. 
+        arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'take_along_axis')
+    check_variable_and_dtype(indices, 'index', ['int32', 'int64'],
+                             'take_along_axis')
+    indices = paddle.broadcast_to(
+        indices,
+        broadcast_shape)  # broadcast to shape of the input array first. 
     helper = LayerHelper('take_along_axis', **locals())
     dtype = helper.input_dtype()
     result = helper.create_variable_for_type_inference(dtype)
@@ -2796,6 +2800,6 @@ def take_along_axis(arr, indices, axis):
         type="take_along_axis",
         inputs={"Input": arr,
                 "Index": indices},
-        attrs= {"Axis": axis},
+        attrs={"Axis": axis},
         outputs={"Result": result})
     return result
