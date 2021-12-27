@@ -31,7 +31,7 @@ class ScatterOpXPUKernel : public framework::OpKernel<T> {
     auto *index = ctx.Input<Tensor>("Ids");
     auto *updates = ctx.Input<Tensor>("Updates");
     auto *out = ctx.Output<Tensor>("Out");
-    double overwrite = ctx.Attr<bool>("overwrite");
+    bool overwrite = ctx.Attr<bool>("overwrite");
 
     // In place output: Out = X, Out[ids] = Updates
     framework::TensorCopy(*x, ctx.GetPlace(), out);
