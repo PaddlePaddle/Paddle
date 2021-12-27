@@ -17,6 +17,7 @@
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/cpu/manipulation.h"
 #include "paddle/pten/kernels/flatten_kernel.h"
 #include "paddle/pten/kernels/gpu/manipulation.h"
@@ -48,7 +49,7 @@ DenseTensor Cast(const ContextT& dev_ctx,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(out_meta));
-  Cast<T>(dev_ctx, x, out_dtype, in_dtype, &dense_out);
+  Cast<T, ContextT>(dev_ctx, x, out_dtype, in_dtype, &dense_out);
   return dense_out;
 }
 
