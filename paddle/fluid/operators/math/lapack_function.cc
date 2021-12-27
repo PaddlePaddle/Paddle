@@ -284,6 +284,7 @@ void lapackGelss<float>(int m, int n, int nrhs, float *a, int lda, float *b,
                         int lwork, float *rwork, int *info) {
   platform::dynload::sgelss_(&m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond, rank,
                              work, &lwork, info);
+}
 
 template <>
 void lapackCholeskySolve<platform::complex<double>>(
