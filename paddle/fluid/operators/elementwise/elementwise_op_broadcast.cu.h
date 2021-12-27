@@ -162,7 +162,8 @@ struct DimensionsTransform {
   }
 };
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
+          int NumOuts = 1>
 void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
@@ -190,7 +191,7 @@ void LaunchBroadcastElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(
+  pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, 2>(
       ctx, pt_inputs, &pt_outputs, axis, func);
 }
 

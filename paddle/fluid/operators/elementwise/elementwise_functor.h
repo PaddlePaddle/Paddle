@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -131,6 +132,34 @@ struct MulGradFunctor<paddle::platform::complex<T>> {
   }
 };
 
+template <typename InT, typename OutT>
+struct DivGradXYFunctor {
+  paddle::framework::Array<OutT, 2> outs;
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(InT a, InT b,
+                                                                 InT c) {
+    // dx = dout / y
+    // dy = - dout * out / y
+    outs[0] = a / c;
+    outs[1] = -a * b / c;
+    return outs;
+  }
+};
+
+template <typename InT, typename OutT>
+struct DivGradXYFunctor<paddle::platform::complex<InT>,
+                        paddle::platform::complex<OutT>> {
+  paddle::framework::Array<paddle::platform::complex<OutT>, 2> outs;
+  inline HOSTDEVICE paddle::framework::Array<paddle::platform::complex<OutT>, 2>
+  operator()(paddle::platform::complex<InT> a, paddle::platform::complex<InT> b,
+             paddle::platform::complex<InT> c) {
+    paddle::platform::complex<InT> c_conj(c.real, -c.imag);
+    paddle::platform::complex<InT> out_div_y_conj((b / c).real, -(b / c).imag);
+    outs[0] = a / c_conj;
+    outs[1] = -a * out_div_y_conj;
+    return outs;
+  }
+};
+
 // Float div grad
 template <typename T>
 struct DivGradFunctor {
@@ -152,7 +181,7 @@ struct DivGradFunctor<paddle::platform::complex<T>> {
 template <typename T>
 struct DivGradYFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
-    return a * b / c;
+    return -a * b / c;
   }
 };
 
@@ -163,8 +192,8 @@ struct DivGradYFunctor<paddle::platform::complex<T>> {
       const paddle::platform::complex<T>& a,
       const paddle::platform::complex<T>& b,
       const paddle::platform::complex<T>& c) const {
-    paddle::platform::complex<T> c_conj(c.real, -c.imag);
-    return a * b / c_conj;
+    paddle::platform::complex<T> out_div_y_conj((b / c).real, -(b / c).imag);
+    return -a * out_div_y_conj;
   }
 };
 
