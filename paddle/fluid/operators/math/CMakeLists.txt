@@ -113,7 +113,7 @@ endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
 
 #the generic conversion APIs of dense and sparse are only supported after cuda11.2
-if(WITH_GPU AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2)) 
+if((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2)) 
     cc_test(cusparse_conversion_api_test SRCS cusparse_conversion_api_test.cc DEPS tensor)
 endif()
 
