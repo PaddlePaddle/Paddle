@@ -603,4 +603,5 @@ __all__ = [  # noqa
            'moveaxis',
            'repeat_interleave',
            'clone',
+           'renorm',
 ]

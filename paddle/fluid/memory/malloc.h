@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 
@@ -40,11 +41,11 @@ extern AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size);
 
 extern uint64_t Release(const platform::Place& place);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern std::shared_ptr<Allocation> AllocShared(const platform::CUDAPlace& place,
+extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
-                                               const gpuStream_t& stream);
+                                               const platform::Stream& stream);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
                            const gpuStream_t& stream);
 
