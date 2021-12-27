@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/pten/kernels/cast_kernel.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
