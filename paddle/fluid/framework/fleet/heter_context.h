@@ -52,7 +52,6 @@ class HeterContext {
         dim_mutex_[i].clear();
       }
     }
-    
   }
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
@@ -61,6 +60,7 @@ class HeterContext {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> value_ptr_;
   std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>> value_dim_ptr_;
+  std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>> device_dim_ptr_;
 #endif
 #ifdef PADDLE_WITH_PSCORE
   std::vector<std::vector<paddle::distributed::VALUE*>> value_ptr_;
@@ -69,7 +69,6 @@ class HeterContext {
   std::vector<std::vector<FeatureKey>> device_keys_;
   std::vector<std::vector<std::vector<FeatureKey>>> device_dim_keys_;
   std::vector<std::vector<std::vector<FeatureValue>>> device_dim_values_;
-  std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>> device_dim_ptr_;
   std::vector<std::mutex*> mutex_;
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
@@ -97,6 +96,7 @@ class HeterContext {
     }
   }
 
+#ifdef PADDLE_WITH_PSLIB
   void init(int shard_num, int device_num, int dim_num) {
     shard_num_ = shard_num;
     feature_keys_.resize(shard_num_);
@@ -128,11 +128,10 @@ class HeterContext {
       for (int j = 0; j < dim_num; j++) {
         dim_mutex_[i][j] = new std::mutex();
       }
-      
     }
     multi_mf_dim_ = dim_num;
   }
-
+#endif
   void Reset() {
     if (!multi_mf_dim_) {
       for (size_t i = 0; i < feature_keys_.size(); ++i) {
@@ -148,6 +147,7 @@ class HeterContext {
         device_keys_[i].clear();
       }
     } else {
+#ifdef PADDLE_WITH_PSLIB
       VLOG(3) << "Reset gpu task with dynamic mf dimention";
       for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
         for (size_t j = 0; j < feature_dim_keys_[i].size(); j++) {
@@ -169,9 +169,8 @@ class HeterContext {
         for (size_t j = 0; j < device_dim_ptr_[i].size(); j++) {
           device_dim_ptr_[i][j].clear();
         }
-      }
+#endif
     }
-
   }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
@@ -195,12 +194,11 @@ class HeterContext {
               feature_keys_[shard_num].begin() + idx);
   }
 
-  void batch_add_keys(int shard_num,
-                      int dim_id,
+  void batch_add_keys(int shard_num, int dim_id,
                       const robin_hood::unordered_set<uint64_t>& shard_keys) {
     int idx = feature_dim_keys_[shard_num][dim_id].size();
-    feature_dim_keys_[shard_num][dim_id].resize(feature_dim_keys_[shard_num][dim_id].size() +
-                                    shard_keys.size());
+    feature_dim_keys_[shard_num][dim_id].resize(
+        feature_dim_keys_[shard_num][dim_id].size() + shard_keys.size());
     std::copy(shard_keys.begin(), shard_keys.end(),
               feature_dim_keys_[shard_num][dim_id].begin() + idx);
   }
@@ -233,7 +231,7 @@ class HeterContext {
       }
       VLOG(3) << "heter_context unique keys with dynamic mf dimention";
     }
-    
+
     for (std::thread& t : threads) {
       t.join();
     }

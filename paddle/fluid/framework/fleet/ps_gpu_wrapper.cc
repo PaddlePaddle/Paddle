@@ -48,7 +48,9 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   if (!multi_mf_dim_) {
     gpu_task->init(thread_keys_shard_num_, device_num);
   } else {
+#ifdef PADDLE_WITH_PSLIB
     gpu_task->init(thread_keys_shard_num_, device_num, multi_mf_dim_);
+#endif  
   }
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
@@ -103,13 +105,10 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     };
     auto gen_dynamic_mf_func = [this](const std::deque<SlotRecord>& total_data,
                                       int begin_index, int end_index, int i) {
-      
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
         const auto& ins = *iter;
         const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
-
-        
         const auto& slot_offset = ins->slot_uint64_feasigns_.slot_offsets;
         for (size_t slot_idx = 0; slot_idx < slot_offset_vector_.size();
              slot_idx++) {
@@ -132,7 +131,6 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
         }
       }
       */
-      
     };
     for (int i = 0; i < thread_keys_thread_num_; i++) {
       if (!multi_mf_dim_) {
@@ -146,9 +144,6 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
             std::thread(gen_dynamic_mf_func, std::ref(vec_data), begin,
                         begin + len_per_thread + (i < remain ? 1 : 0), i));
       }
-
-
-      
       begin += len_per_thread + (i < remain ? 1 : 0);
     }
     for (std::thread& t : threads) {
