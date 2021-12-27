@@ -453,5 +453,12 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         self.assertTrue(np.array_equal(res3, res4))
 
 
+class EagerGuardTestCase(unittest.TestCase):
+    def test__test_eager_guard(self):
+        tracer = Tracer()
+        with _test_eager_guard(tracer):
+            self.assertTrue(_in_eager_mode())
+
+
 if __name__ == "__main__":
     unittest.main()
