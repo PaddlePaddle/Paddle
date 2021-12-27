@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -150,10 +151,8 @@ class Tensor {
 
   void* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void* mutable_data(const platform::CUDAPlace& place,
-                     proto::VarType::Type type, const gpuStream_t& stream);
-#endif
+  void* mutable_data(const platform::Place& place, proto::VarType::Type type,
+                     const platform::Stream& stream);
 
   /**
    * @brief     Return a pointer to mutable memory block.

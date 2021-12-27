@@ -85,7 +85,7 @@ def poisson(x, name=None):
 
     .. math::
 
-        out_i ~ Poisson (x_i)
+        out_i \sim Poisson (lambda = x_i)
 
     Args:
         x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type 
@@ -101,12 +101,12 @@ def poisson(x, name=None):
 
             import paddle
             paddle.set_device('cpu')
-            paddle.seed(2021)
+            paddle.seed(100)
 
             x = paddle.uniform([2,3], min=1.0, max=5.0)
             out = paddle.poisson(x)
-            # [[2., 1., 4.],
-            #  [4., 5., 1.]]
+            #[[2., 5., 0.],
+            # [5., 1., 3.]]
 
     """
 
@@ -994,7 +994,7 @@ def exponential_(x, lam=1.0, name=None):
 
     Args:
         x(Tensor):  Input tensor. The data type should be float32, float64.
-        lam(float): :math:`\lambda` parameter of Exponential Distribution.
+        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
