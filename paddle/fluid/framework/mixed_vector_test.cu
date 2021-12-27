@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 
 template <typename T>
 using vec = paddle::framework::Vector<T>;

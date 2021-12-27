@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cuda/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 
 namespace paddle {
 namespace tests {

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -64,7 +66,7 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id) {
 
   // source node has no upstream, data_is_ready is send by carrier or others
   if (is_source_ && up_id == -1) {
-    it->second.second = GetTaskNode()->max_run_times();
+    it->second.second += GetTaskNode()->max_run_times();
     return;
   }
 
@@ -121,16 +123,6 @@ bool ComputeInterceptor::CanWriteOutput() {
   return true;
 }
 
-// only source node need reset
-bool ComputeInterceptor::ShouldReset() {
-  if (is_source_ && step_ == node_->max_run_times()) {
-    VLOG(3) << "Interceptor " << GetInterceptorId()
-            << " should reset for step: " << step_ << ".";
-    return true;
-  }
-  return false;
-}
-
 void ComputeInterceptor::SendDataReadyToDownStream() {
   for (auto& outs : out_buffs_) {
     auto down_id = outs.first;
@@ -178,32 +170,21 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
+  std::unique_lock<std::mutex> lock(carrier_->run);
   VLOG(3) << "ComputeInterceptor " << interceptor_id_ << " running ops for the "
           << step_ + 1 << " time.";
   for (auto op : node_->ops()) {
     op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
+    if (gc_) {
+      framework::DeleteUnusedTensors(
+          *microbatch_scopes_[step_ % node_->max_run_times()], op,
+          node_->unused_vars(), gc_.get());
+    }
   }
 }
 
 void ComputeInterceptor::Run() {
-  // If there is no limit, source interceptor can be executed
-  // an unlimited number of times.
-  // Now source node can only run max_run_times.
-  if (ShouldReset()) {
-    for (auto& out_buff : out_buffs_) {
-      // buffer is using
-      if (out_buff.second.second != 0) {
-        VLOG(3) << "Interceptor " << GetInterceptorId()
-                << " out buffer for downstream: " << out_buff.first
-                << "'s counter is: " << out_buff.second.second
-                << ". Cannot be reset.";
-        return;
-      }
-    }
-    step_ = 0;  // reset
-  }
-
-  while (IsInputReady() && CanWriteOutput() && !ShouldReset()) {
+  while (IsInputReady() && CanWriteOutput()) {
     VLOG(3) << "id=" << GetInterceptorId() << " ComputeInterceptor running";
 
     RunOps();

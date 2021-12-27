@@ -38,12 +38,13 @@ from .process_group import get_world_process_groups
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
+from .utils import SerialProgramInfo
 from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from .cluster import Cluster
 from .mapper import mapping
-from .auto_search import auto_search
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
+from .planner import Planner
 
 _logger = get_logger(logging.INFO)
 
@@ -77,13 +78,10 @@ class AutoParallelizer:
             self._enable_auto_mapping = False
         else:
             self._enable_auto_mapping = True
-        # TODO enable pass
-        # self._pass_context = PassContext()
-        self._pass_context = None
-
         self._need_rank_mapping = os.getenv("PADDLE_NEED_RANK_MAPPING")
         self._need_rank_mapping = True if self._need_rank_mapping and \
             self._need_rank_mapping.lower() == 'true' else False
+        self._pass_context = None
 
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
@@ -203,7 +201,6 @@ class AutoParallelizer:
         # serial forward pass
         self._apply_serial_forward_pass(completed_main_program,
                                         serial_startup_program)
-
         # serial backward pass
         params_grads = self._generate_backward(
             completed_main_program, serial_startup_program, serial_loss,
@@ -259,20 +256,23 @@ class AutoParallelizer:
             dist_programs = {}
             world_process_group = get_world_process_groups()
             dist_context = None
-            # auto_search
+            # auto search
             if self._dist_strategy.auto_search:
-                _logger.info("Start search dist attr.")
-                dist_context, _ = auto_search(
-                    self._main_program,
-                    self._startup_program,
-                    loss,
-                    self._optimizer,
-                    cluster=self._cluster)
-                _logger.info("End search dist attr.")
+                logging.info("Start searching dist attr.")
+                serial_program_info = SerialProgramInfo(
+                    self._main_program, self._startup_program, self._loss,
+                    self._optimizer, self._cluster)
+                planner = Planner(
+                    serial_program_info,
+                    self,
+                    algorithm_config={"name": "mcmc",
+                                      "max_search_times": 5})
+                dist_context, _ = planner.search()
+                logging.info("End searching dist attr.")
 
-            # serialize the dist_context by planner
+            # serialize the dist context by planner
             if dist_context is not None:
-                _logger.info("Start serialize searched dist attr")
+                logging.info("Start serialize searched dist attr")
                 cwd = pathlib.Path().resolve()
                 searched_dist_context_path = os.path.join(
                     cwd, f"searched_dist_context_{time.time()}.pkl")
@@ -293,9 +293,10 @@ class AutoParallelizer:
                     pickle.dump(saved_dist_context, dist_context_file)
                     os.environ[
                         'PADDLE_SEARCHED_DIST_CONTEXT_PATH'] = searched_dist_context_path
-                    _logger.info(
+                    logging.info(
                         f"End serialize searched dist attr to {searched_dist_context_path}"
                     )
+
             for rank in world_process_group.ranks:
                 dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map = self._get_dist_program(
                     rank, dist_context)
@@ -362,22 +363,39 @@ class AutoParallelizer:
 
             else:
                 if self._dist_strategy.auto_search:
-                    _logger.info("Start search dist attr.")
-                    dist_context, _ = auto_search(
+                    serial_program_info = SerialProgramInfo(
                         self._main_program,
                         self._startup_program,
-                        loss,
+                        self._loss,
                         self._optimizer,
                         cluster=self._cluster)
-                    _logger.info("End search dist attr.")
+                    planner = Planner(
+                        serial_program_info,
+                        self,
+                        algorithm_config={
+                            "name": "mcmc",
+                            "max_search_times": 5
+                        })
+                    dist_context, _ = planner.search()
 
+            # rebuild g_process_group
             if dist_context is not None:
                 pg0 = get_process_group(0)
                 for process_mesh in dist_context._process_meshes:
                     pg0.add_ranks(process_mesh.processes)
-
             dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, _ = self._get_dist_program(
                 rank, dist_context, relaunch_phase=True)
+
+            # NOTE: This is a trick to fix hang in pipeline mode when dist context is searched by planner
+            if self._dist_strategy.auto_search:
+                is_pipeline = False
+                for op in dist_main_prog.global_block().ops:
+                    if op.type == "send_v2" or op.type == "recv_v2":
+                        is_pipeline = True
+                        break
+                if is_pipeline:
+                    with paddle.static.program_guard(dist_main_prog):
+                        paddle.distributed.barrier()
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
@@ -395,3 +413,14 @@ class AutoParallelizer:
             self._remove_distributed_attrs(dist_main_prog)
 
             return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == "_main_program" or k == "_startup_program" or k == "_dist_context" or k == "_fleet" or k == "_loss":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result

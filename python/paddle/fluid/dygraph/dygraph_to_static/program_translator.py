@@ -43,7 +43,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import input_specs_compatible
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec, _hash_spec_names
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
@@ -147,7 +147,7 @@ class CacheKey(object):
     """
     __slots__ = [
         'function_spec', 'input_args_with_spec', 'input_kwargs_with_spec',
-        'class_instance', 'kwargs'
+        'class_instance', 'kwargs', '_spec_names_id'
     ]
 
     def __init__(self, function_spec, input_args_with_spec,
@@ -168,6 +168,8 @@ class CacheKey(object):
         self.class_instance = class_instance
         # NOTE: `kwargs` is usually not considered as basic member for `__hash__`
         self.kwargs = kwargs
+        self._spec_names_id = _hash_spec_names(input_args_with_spec,
+                                               input_kwargs_with_spec)
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -197,7 +199,7 @@ class CacheKey(object):
         return hash((id(self.function_spec),
                      make_hashable(self.input_args_with_spec, error_msg),
                      make_hashable(self.input_kwargs_with_spec, error_msg),
-                     self.class_instance))
+                     self._spec_names_id, self.class_instance))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -703,6 +705,7 @@ class ProgramCache(object):
     """
 
     def __init__(self):
+        # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
 
     def _build_once(self, cache_key):
@@ -718,9 +721,9 @@ class ProgramCache(object):
         if not isinstance(item, CacheKey):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
-
-        if item not in self._caches:
-            self._caches[item] = self._build_once(item)
+        item_id = hash(item)
+        if item_id not in self._caches:
+            self._caches[item_id] = self._build_once(item)
             # Note: raise warnings if number of traced program is more than `max_tracing_count`
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
@@ -729,18 +732,19 @@ class ProgramCache(object):
                     "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
                     format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
 
-        return self._caches[item]
+        return self._caches[item_id]
 
     def get_program(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
                 "Input item's type should be FunctionSpec, but received %s" %
                 type_name(item))
-        if item not in self._caches:
+        item_id = hash(item)
+        if item_id not in self._caches:
             raise RuntimeError(
                 "Failed to find program for input item, please decorate input function by `@paddle.jit.to_static`."
             )
-        return self._caches[item]
+        return self._caches[item_id]
 
     def last(self):
         assert len(

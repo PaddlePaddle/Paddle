@@ -34,7 +34,8 @@ class TestCUDAGraph(unittest.TestCase):
             paddle.set_flags({
                 'FLAGS_allocator_strategy': 'auto_growth',
                 'FLAGS_sync_nccl_allreduce': False,
-                'FLAGS_cudnn_deterministic': True
+                'FLAGS_cudnn_deterministic': True,
+                'FLAGS_use_stream_safe_cuda_allocator': False,
             })
 
     def random_tensor(self, shape):
@@ -186,6 +187,48 @@ class TestCUDAGraph(unittest.TestCase):
             self.assertTrue(sub_msg in msg)
         finally:
             graph.reset()
+
+    def test_dataloader(self):
+        if not can_use_cuda_graph():
+            return
+
+        class AutoIncDataset(paddle.io.Dataset):
+            def __init__(self, n, dtype):
+                self.n = n
+                self.dtype = dtype
+
+            def __len__(self):
+                return self.n
+
+            def __getitem__(self, idx):
+                return np.array([idx]).astype(self.dtype)
+
+        n = 100
+        dtype = 'int64'
+        dataset = AutoIncDataset(n, dtype)
+        data_loader = paddle.io.DataLoader(
+            dataset, batch_size=1, num_workers=2, use_buffer_reader=True)
+        x = None
+        y = None
+
+        graph = None
+        for i, data in enumerate(data_loader):
+            if graph is None:
+                x = data
+                x = x.cuda()
+                graph = CUDAGraph()
+                graph.capture_begin()
+                y = x * x
+                graph.capture_end()
+            else:
+                x.copy_(data, False)
+                x = x.cuda()
+
+            graph.replay()
+            actual_x = np.array([[i]]).astype(dtype)
+            actual_y = np.array([[i * i]]).astype(dtype)
+            self.assertTrue(np.array_equal(actual_x, x.numpy()))
+            self.assertTrue(np.array_equal(actual_y, y.numpy()))
 
 
 if __name__ == "__main__":
