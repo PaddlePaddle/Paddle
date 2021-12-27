@@ -14,19 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
 
-void Reshape(const CPUContext& dev_ctx,
+template <typename ContextT>
+void Reshape(const ContextT& dev_ctx,
              const DenseTensor& x,
              const ScalarArray& shape,
              DenseTensor* out);
 
-void ReshapeWithXShape(const CPUContext& dev_ctx,
+template <typename ContextT>
+void ReshapeWithXShape(const ContextT& dev_ctx,
                        const DenseTensor& x,
                        const ScalarArray& shape,
                        DenseTensor* xshape,
