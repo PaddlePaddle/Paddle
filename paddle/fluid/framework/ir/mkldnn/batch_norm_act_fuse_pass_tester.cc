@@ -65,9 +65,9 @@ TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_TRUE(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                     "act_y", removed_nodes_count));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}}));
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
@@ -123,9 +123,9 @@ TEST(FuseBatchNormActOneDNNPass, ThrowTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_TRUE(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                     "act_y", removed_nodes_count));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}}));
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
@@ -149,9 +149,9 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_TRUE(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                     "act_y", removed_nodes_count));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}}));
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
@@ -176,9 +176,9 @@ TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_TRUE(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                     "act_y", removed_nodes_count));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}}));
+  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
+                                      "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, pass_op_version_check) {

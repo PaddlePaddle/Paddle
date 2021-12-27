@@ -157,6 +157,7 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import nansum  # noqa: F401
 from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
@@ -215,6 +216,8 @@ from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
 from .math import fmax  # noqa: F401
 from .math import fmin  # noqa: F401
+from .math import inner  # noqa: F401
+from .math import outer  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -227,6 +230,7 @@ from .random import randint  # noqa: F401
 from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
 from .random import poisson  # noqa: F401
+from .random import exponential_  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
@@ -312,6 +316,7 @@ tensor_method_func  = [ #noqa
            'square',
            'stanh',
            'sum',
+           'nansum',
            'tanh',
            'tanh_',
            'add_n',
@@ -322,6 +327,8 @@ tensor_method_func  = [ #noqa
            'fmax',
            'fmin',
            'mm',
+           'inner',
+           'outer',
            'divide',
            'floor_divide',
            'remainder',
@@ -453,6 +460,7 @@ tensor_method_func  = [ #noqa
            'angle',
            'moveaxis',
            'repeat_interleave',
+           'exponential_',
 ]
 
 #this list used in math_op_patch.py for magic_method bind
