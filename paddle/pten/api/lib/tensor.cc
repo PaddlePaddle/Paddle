@@ -257,7 +257,7 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
   if (is_dense_tensor()) {
     return Tensor(std::make_shared<pten::DenseTensor>(
         std::move(pten::CompatibleDenseTensorUtils::Slice(
-            std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get(),
+            *(std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get()),
             begin_idx,
             end_idx))));
   } else {
