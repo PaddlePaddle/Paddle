@@ -94,7 +94,7 @@ class ShardingPass(PassBase):
         for op in main_block.ops:
             if op.type in _skip_ops:
                 continue
-            group = inference_data_parallel_group_for_operator(
+            group = _inference_data_parallel_group_for_operator(
                 self.global_rank, op, self._dist_context)
             if group is not None:
                 self.dp_groups.add(group)
@@ -122,7 +122,7 @@ class ShardingPass(PassBase):
             if dp_group.nranks > self.sharding_world_size:
                 self.partial_sharding = True
                 assert len(self.dp_groups) == 1, "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
-                outer_dp_group, sharding_group = get_dp_and_sharding_groups(
+                outer_dp_group, sharding_group = _get_dp_and_sharding_groups(
                     dp_group.ranks, self.sharding_world_size, self.global_rank)
                 sharding_group = new_process_group(sharding_group)
                 self.outer_dp_group = new_process_group(outer_dp_group)
@@ -328,11 +328,11 @@ class ShardingPass(PassBase):
 
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
-            if is_param_grad_allreduce_op(op, main_block, dp_ring_ids):
+            if _is_param_grad_allreduce_op(op, main_block, dp_ring_ids):
                 input_name = op.input_arg_names[0]
-                base_name = get_base_name_from_grad_name(input_name)
+                base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
-                insert_reduce_op(
+                _insert_reduce_op(
                     main_block, idx, input_name, sharding_info.group.id,
                     sharding_info.get_var_rank(base_name), self._dist_context)
                 if not self.partial_sharding:
@@ -353,8 +353,7 @@ class ShardingPass(PassBase):
                 main_block)
             not_used_param_nane = []
             for param_name in param_usage:
-                if param_usage[param_name] == 0 and sharding_info.get_var_rank(
-                        param_name) != sharding_info.local_rank:
+                if param_usage[param_name] == 0 and sharding_info.get_var_rank(param_name) != sharding_info.local_rank:
                     not_used_param_nane.append(param_name)
 
             for idx, op in reversed(list(enumerate(main_block.ops))):
@@ -464,7 +463,34 @@ def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
             broadcast_var_dist_attr.dims_mapping, dist_context)
     return
 
-def get_dp_and_sharding_groups(origin_group, sharding_group_size, rank):
+def _insert_reduce_op(block,
+                     insert_idx,
+                     reduce_var,
+                     ring_id,
+                     root_id,
+                     dist_context,
+                     op_role=OpRole.Backward,
+                     use_calc_stream=True):
+    assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
+        root_id)
+    new_op = block._insert_op_without_sync(
+        insert_idx,
+        type='c_reduce_sum',
+        inputs={'X': [reduce_var]},
+        outputs={'Out': [reduce_var]},
+        attrs={
+            'ring_id': ring_id,
+            'root_id': root_id,
+            'use_calc_stream': use_calc_stream,
+            OP_ROLE_KEY: op_role
+        })
+
+    dist_attr = dist_context.get_tensor_dist_attr_for_program(
+        block.var(reduce_var))
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context)
+
+def _get_dp_and_sharding_groups(origin_group, sharding_group_size, rank):
     dp_axis = 0
     sharding_axis = 1
     shape = [len(origin_group) // sharding_group_size, sharding_group_size]
@@ -518,6 +544,70 @@ def _is_desired_cast_op(block, op, src_var_type = core.VarDesc.VarType.FP32, dst
         return False
 
     re†urn True
+
+def _get_base_name_from_grad_name(grad_name):
+    base_name = None
+    if ".cast_fp16@GRAD" in grad_name:
+        base_name = grad_name[:grad_name.find(".cast_fp16@GRAD")]
+    elif "@GRAD" in grad_name:
+        base_name = grad_name[:grad_name.find("@GRAD")]
+    return base_name
+
+
+def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
+
+    if not is_backward_op(op):
+        return False
+    if op.type != "c_allreduce_sum":
+        return False
+    if op.attr('ring_id') not in dp_ring_ids:
+        return False
+
+    output_name = op.output_arg_names[0]
+    base_name = _get_base_name_from_grad_name(output_name)
+
+    if not block.has_var(base_name):
+        return False
+
+    return block.var(base_name).is_parameter
+
+def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
+
+    dp_group = None
+    for input_name in op.input_arg_names:
+        if not is_parameter_related(input_name, op.block):
+            dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            process_mesh = dist_attr.process_mesh
+            input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
+            mesh_shape = process_mesh.topology
+            # TODO replace with specific batch size dimension
+            batch_size_axis = input_dim_mapping[0]
+            if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                group_ranks = _get_comm_group(process_mesh.processes,
+                                              process_mesh.topology,
+                                              batch_size_axis, rank_id)
+                dp_group = new_process_group(group_ranks)
+                break
+
+    return dp_group
+
+def shard_parameters(params, group_size):
+    # TODO(JZ-LIANG) support multiple partition methods
+    # method1: greedy even but unorder
+    # method2: roughly even with oreder
+    mapping = {}
+    for rank_ in range(group_size):
+        mapping[rank_] = []
+    sizes = [0] * group_size
+    for param in params:
+        rank = sizes.index(min(sizes))
+        mapping[rank].append(param)
+        numel = reduce(lambda x, y: x * y, param.shape)
+        assert numel > 0, "param [{}] should larger than 0, but it is [{}]".format(
+            param.name, numel)
+        sizes[rank] += numel
+
+    return mapping
 
 class ShardingInfo(object):
     def __init__(self, group, rank, params):
@@ -578,95 +668,4 @@ class ShardingInfo(object):
                 broadcast_vars.add(param)
                 print("param [{}] use in fp32 format".format(param))
         return broadcast_vars, param_usage
-
-def shard_parameters(params, group_size):
-    # TODO(JZ-LIANG) support multiple partition methods
-    # method1: greedy even but unorder
-    # method2: roughly even with oreder
-    mapping = {}
-    for rank_ in range(group_size):
-        mapping[rank_] = []
-    sizes = [0] * group_size
-    for param in params:
-        rank = sizes.index(min(sizes))
-        mapping[rank].append(param)
-        numel = reduce(lambda x, y: x * y, param.shape)
-        assert numel > 0, "param [{}] should larger than 0, but it is [{}]".format(
-            param.name, numel)
-        sizes[rank] += numel
-
-    return mapping
-
-
-def get_base_name_from_grad_name(grad_name):
-    base_name = None
-    if ".cast_fp16@GRAD" in grad_name:
-        base_name = grad_name[:grad_name.find(".cast_fp16@GRAD")]
-    elif "@GRAD" in grad_name:
-        base_name = grad_name[:grad_name.find("@GRAD")]
-    return base_name
-
-
-def is_param_grad_allreduce_op(op, block, dp_ring_ids):
-
-    if not is_backward_op(op):
-        return False
-    if op.type != "c_allreduce_sum":
-        return False
-    if op.attr('ring_id') not in dp_ring_ids:
-        return False
-
-    output_name = op.output_arg_names[0]
-    base_name = get_base_name_from_grad_name(output_name)
-
-    if not block.has_var(base_name):
-        return False
-
-    return block.var(base_name).is_parameter
-
-def insert_reduce_op(block,
-                     insert_idx,
-                     reduce_var,
-                     ring_id,
-                     root_id,
-                     dist_context,
-                     op_role=OpRole.Backward,
-                     use_calc_stream=True):
-    assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
-        root_id)
-    new_op = block._insert_op_without_sync(
-        insert_idx,
-        type='c_reduce_sum',
-        inputs={'X': [reduce_var]},
-        outputs={'Out': [reduce_var]},
-        attrs={
-            'ring_id': ring_id,
-            'root_id': root_id,
-            'use_calc_stream': use_calc_stream,
-            OP_ROLE_KEY: op_role
-        })
-
-    dist_attr = dist_context.get_tensor_dist_attr_for_program(
-        block.var(reduce_var))
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-        new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context)
-
-def inference_data_parallel_group_for_operator(rank_id, op, dist_context):
-
-    dp_group = None
-    for input_name in op.input_arg_names:
-        if not is_parameter_related(input_name, op.block):
-            dist_attr = dist_context.get_op_dist_attr_for_program(op)
-            process_mesh = dist_attr.process_mesh
-            input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
-            mesh_shape = process_mesh.topology
-            # TODO replace with specific batch size dimension
-            batch_size_axis = input_dim_mapping[0]
-            if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-                group_ranks = _get_comm_group(process_mesh.processes,
-                                              process_mesh.topology,
-                                              batch_size_axis, rank_id)
-                dp_group = new_process_group(group_ranks)
-                break
-
-    return dp_group
+        
