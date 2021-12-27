@@ -39,7 +39,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         super(DistributedTranspose2Impl, self).__init__()
         self._name = name
         self._forward_implemented = False
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         return True

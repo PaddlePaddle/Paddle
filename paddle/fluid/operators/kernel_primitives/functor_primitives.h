@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/eigen_ext.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -74,16 +77,20 @@ struct IdentityFunctor {
  */
 template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
-  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
+ private:
+  using MPType = typename ::paddle::operators::details::MPTypeTrait<Tx>::Type;
 
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((Tx)(1.0 / n)) {}
+ public:
+  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<MPType>(1.0f); }
+
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((MPType)(1.0 / n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x * n_inv);
+    return static_cast<Ty>(static_cast<MPType>(x) * n_inv);
   }
 
  private:
-  Tx n_inv;
+  MPType n_inv;
 };
 
 /**
