@@ -260,9 +260,10 @@ void CpuPassStrategy::EnableMKLDNN() {
              "reshape_transpose_matmul_v2_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",            //
              "matmul_v2_transpose_reshape_fuse_pass",         //
-             "fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass",
-             "batch_norm_act_fuse_pass",              //
-             "softplus_activation_mkldnn_fuse_pass",  //
+             "fc_mkldnn_pass",                                //
+             "fc_act_mkldnn_fuse_pass",                       //
+             "batch_norm_act_fuse_pass",                      //
+             "softplus_activation_mkldnn_fuse_pass",          //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
