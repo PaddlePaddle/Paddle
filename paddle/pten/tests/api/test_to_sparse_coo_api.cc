@@ -96,5 +96,78 @@ TEST(API, to_sparse_coo_hybird) {
     ASSERT_EQ(indices.data<int64_t>()[i], indices_data[i]);
   }
 }
+
+TEST(API, sparse_coo_to_dense) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  auto dense_dims = framework::make_ddim({3, 3});
+  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
+  std::vector<float> non_zero_elements = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> non_zero_indices = {0, 1, 1, 2, 1, 0, 2, 0};
+  auto indices =
+      pten::DenseTensor(alloc,
+                        pten::DenseTensorMeta(pten::DataType::INT64,
+                                              framework::make_ddim({2, 4}),
+                                              pten::DataLayout::NCHW));
+  auto values =
+      pten::DenseTensor(alloc,
+                        pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                              framework::make_ddim({4}),
+                                              pten::DataLayout::NCHW));
+  std::copy(non_zero_indices.data(),
+            non_zero_indices.data() + 8,
+            indices.mutable_data<int64_t>());
+  std::copy(non_zero_elements.data(),
+            non_zero_elements.data() + 4,
+            values.mutable_data<float>());
+  auto sparse_coo_x =
+      std::make_shared<pten::SparseCooTensor>(indices, values, dense_dims);
+  paddle::experimental::Tensor x(sparse_coo_x);
+  auto out = paddle::experimental::sparse_coo_to_dense(x);
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      ASSERT_EQ(dense_out->data<float>()[i * 3 + j], dense_data[i][j]);
+    }
+  }
+}
+
+TEST(API, sparse_coo_to_dense_hybird) {
+  auto dense_dims = framework::make_ddim({5, 2});
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+  float dense_data[5][2] = {
+      {0.0, 1.0}, {0.0, 0.0}, {2.0, 0.0}, {3.0, 3.2}, {0.0, 0.0}};
+  std::vector<float> non_zero_elements = {0.0, 1.0, 2.0, 0.0, 3.0, 3.2};
+  std::vector<int64_t> non_zero_indices = {0, 2, 3};
+
+  auto indices =
+      pten::DenseTensor(alloc,
+                        pten::DenseTensorMeta(pten::DataType::INT64,
+                                              framework::make_ddim({3}),
+                                              pten::DataLayout::NCHW));
+  auto values =
+      pten::DenseTensor(alloc,
+                        pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                              framework::make_ddim({3, 2}),
+                                              pten::DataLayout::NCHW));
+  std::copy(non_zero_indices.data(),
+            non_zero_indices.data() + 3,
+            indices.mutable_data<int64_t>());
+  std::copy(non_zero_elements.data(),
+            non_zero_elements.data() + 6,
+            values.mutable_data<float>());
+  auto sparse_coo_x =
+      std::make_shared<pten::SparseCooTensor>(indices, values, dense_dims);
+  paddle::experimental::Tensor x(sparse_coo_x);
+  auto out = paddle::experimental::sparse_coo_to_dense(x);
+  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < 2; j++) {
+      ASSERT_EQ(dense_out->data<float>()[i * 2 + j], dense_data[i][j]);
+    }
+  }
+}
+
 }  // namespace tests
 }  // namespace paddle

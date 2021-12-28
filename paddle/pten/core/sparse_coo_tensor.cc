@@ -44,7 +44,13 @@ SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
   this->dims_ = dims;
 }
 
-int64_t SparseCooTensor::nnz() const { return non_zero_indices_.dims()[1]; }
+int64_t SparseCooTensor::nnz() const {
+  const auto indices_dims = non_zero_indices_.dims();
+  if (indices_dims.size() == 1) {
+    return indices_dims[0];
+  }
+  return indices_dims[1];
+}
 
 void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
                                 const DenseTensor& non_zero_elements,

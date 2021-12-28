@@ -71,6 +71,42 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim) {
 
   return out;
 }
+
+PADDLE_API Tensor sparse_coo_to_dense(const Tensor& x) {
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "sparse_coo_to_dense", kernel_key);
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  auto sparse_coo_x =
+      std::dynamic_pointer_cast<pten::SparseCooTensor>(x.impl());
+  kernel_context.EmplaceBackInput(sparse_coo_x);
+
+  // 4. Prepare outputs
+  const auto allocator =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          pten::TransToFluidPlace(kernel_key.backend()));
+
+  pten::DenseTensorMeta dense_meta(
+      sparse_coo_x->dtype(), sparse_coo_x->dims(), sparse_coo_x->layout());
+  auto dense_out =
+      std::make_shared<pten::DenseTensor>(allocator, std::move(dense_meta));
+  kernel_context.EmplaceBackOutput(dense_out);
+
+  Tensor out;
+  out.set_impl(dense_out);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
 }  // namespace experimental
 }  // namespace paddle
 

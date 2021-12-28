@@ -30,4 +30,9 @@ void ToSparseCoo(const CPUContext& dev_ctx,
                  const int64_t sparse_dim,
                  SparseCooTensor* dst);
 
+template <typename T>
+void SparseCooToDense(const CPUContext& dev_ctx,
+                      const SparseCooTensor& src,
+                      DenseTensor* dst);
+
 }  // namespace pten

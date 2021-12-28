@@ -20,6 +20,7 @@ namespace paddle {
 namespace experimental {
 
 PADDLE_API Tensor to_sparse_coo(const Tensor& x, const int64_t sparse_dim);
+PADDLE_API Tensor sparse_coo_to_dense(const Tensor& x);
 
 }  // namespace experimental
 }  // namespace paddle

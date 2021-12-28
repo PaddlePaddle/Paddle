@@ -29,35 +29,7 @@ void ToSparseCoo(const CPUContext& dev_ctx,
 
   int64_t non_zero_num = get_non_zero_num<T>(src, sparse_dim);
 
-  // auto dense_dim = src_dims.size() - sparse_dim;
-  // auto indices_dims = paddle::framework::make_ddim({sparse_dim,
-  // non_zero_num});
   dst->Resize(src_dims, sparse_dim, non_zero_num);
-  // DDim values_dims;
-  // if (dense_dim) {
-  //  std::vector<int64_t> dense_dims(dense_dim + 1);
-  //  dense_dims[0] = non_zero_num;
-  //  memcpy(&dense_dims[1],
-  //         src_dims.Get() + sparse_dim,
-  //         dense_dim * sizeof(src_dims[0]));
-  //  values_dims = paddle::framework::make_ddim(dense_dims);
-  //} else {
-  //  values_dims = paddle::framework::make_ddim({non_zero_num});
-  //}
-
-  // const auto allocator =
-  //    std::make_shared<paddle::experimental::DefaultAllocator>(src.place());
-  // DenseTensorMeta indices_meta(DataType::INT64, indices_dims,
-  // DataLayout::NCHW);
-  // DenseTensorMeta values_meta(src.meta().dtype, values_dims,
-  // src.meta().layout);
-  // std::unique_ptr<DenseTensor> indices_ptr(
-  //    new DenseTensor(allocator, indices_meta));
-  // std::unique_ptr<DenseTensor> values_ptr(
-  //    new DenseTensor(allocator, values_meta));
-
-  // int64_t* indices_data = indices_ptr->mutable_data<int64_t>();
-  // T* values_data = values_ptr->mutable_data<T>();
 
   int64_t* indices_data = dst->mutable_non_zero_indices();
   T* values_data = dst->mutable_non_zero_elements<T>();
@@ -80,7 +52,55 @@ void ToSparseCoo(const CPUContext& dev_ctx,
   }
 }
 
+template <typename T>
+void SparseCooToDense(const CPUContext& dev_ctx,
+                      const SparseCooTensor& src,
+                      DenseTensor* dst) {
+  const auto non_zero_num = src.nnz();
+  const auto dense_dims = src.dims();
+  const auto indices = src.non_zero_indices();
+  const auto values = src.non_zero_elements();
+  const auto indices_dims = indices.dims();
+  int64_t sparse_dim = indices_dims[0];
+  if (indices_dims.size() == 1) {
+    sparse_dim = 1;
+  }
+  const int64_t dense_dim = values.dims().size() - 1;
+
+  const T* src_data = values.data<T>();
+  T* dst_data = dst->mutable_data<T>();
+  int64_t base_offset = 1;
+  for (int64_t i = 0; i < dense_dim; i++) {
+    base_offset *= dense_dims[sparse_dim + i];
+  }
+  std::vector<int64_t> sparse_offsets(sparse_dim);
+  int64_t offset = 1;
+  for (int i = sparse_dim - 1; i >= 0; i--) {
+    sparse_offsets[i] = offset;
+    offset *= dense_dims[i];
+  }
+
+  memset(dst_data, 0, sizeof(T) * dst->numel());
+  for (auto i = 0; i < non_zero_num; i++) {
+    int64_t index = 0;
+    for (int j = 0; j < sparse_dim; j++) {
+      index +=
+          indices.data<int64_t>()[j * non_zero_num + i] * sparse_offsets[j];
+    }
+
+    for (int j = 0; j < base_offset; j++) {
+      dst_data[index * base_offset + j] = src_data[i * base_offset + j];
+    }
+  }
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(
     to_sparse_coo, CPU, ALL_LAYOUT, pten::ToSparseCoo, float, double) {}
+PT_REGISTER_KERNEL(sparse_coo_to_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SparseCooToDense,
+                   float,
+                   double) {}
