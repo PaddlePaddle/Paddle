@@ -14,22 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include <cstdint>
+#include <memory>
 
-namespace pten {
+namespace paddle {
+namespace platform {
 
-void Reshape(const CPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
+using StreamId = uint64_t;
+class Stream final {
+ public:
+  explicit Stream(StreamId id) : id_(id) {}
+  StreamId id() const { return id_; }
 
-void ReshapeWithXShape(const CPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
+ private:
+  StreamId id_;
+};
 
-}  // namespace pten
+}  // namespace platform
+}  // namespace paddle
