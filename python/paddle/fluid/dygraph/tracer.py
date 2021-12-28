@@ -19,6 +19,7 @@ import six
 from collections import defaultdict
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle import _C_ops
 
 
 class Tracer(core.Tracer):
@@ -46,8 +47,7 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        if _in_eager_mode():
-            #function_ptr = core.eager.ops.__dict__[type]
+        if framework._in_eager_mode():
             function_ptr = _C_ops.__dict__[type]
 
             core_ops_args_info = _C_ops.get_core_ops_args_info()
