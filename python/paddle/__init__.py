@@ -56,6 +56,7 @@ import paddle.device  # noqa: F401
 
 import paddle.jit  # noqa: F401
 import paddle.amp  # noqa: F401
+import paddle.sparsity  # noqa: F401
 import paddle.dataset  # noqa: F401
 import paddle.inference  # noqa: F401
 import paddle.io  # noqa: F401

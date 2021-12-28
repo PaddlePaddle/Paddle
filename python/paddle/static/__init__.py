@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from . import amp  # noqa: F401
-from . import sparsity  # noqa: F401
 from . import nn  # noqa: F401
 from .io import save_inference_model  # noqa: F401
 from .io import load_inference_model  # noqa: F401
