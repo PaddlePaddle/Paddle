@@ -780,7 +780,9 @@ class MatMulV2MKLDNNHandler
                         paddle::platform::Place cpu_place,
                         const std::vector<int64_t>& x_org_dims, bool trans_x,
                         const std::vector<int64_t>& y_org_dims, bool trans_y,
-                        bool is_output_fused)
+                        bool is_output_fused,
+                        const std::vector<int64_t>& x_strides_override,
+                        const std::vector<int64_t>& y_strides_override)
       : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
                                                                    cpu_place) {
     // M X K * K X N
@@ -807,16 +809,24 @@ class MatMulV2MKLDNNHandler
     y_strides.reserve(x_dims.size());
     out_strides.reserve(x_dims.size());
 
-    if (!trans_x) {
-      x_strides.insert(x_strides.end(), {M * K, K, 1});
+    if (!x_strides_override.empty()) {
+      x_strides = x_strides_override;
     } else {
-      x_strides.insert(x_strides.end(), {M * K, 1, M});
+      if (!trans_x) {
+        x_strides.insert(x_strides.end(), {M * K, K, 1});
+      } else {
+        x_strides.insert(x_strides.end(), {M * K, 1, M});
+      }
     }
 
-    if (!trans_y) {
-      y_strides.insert(y_strides.end(), {N * K, N, 1});
+    if (!y_strides_override.empty()) {
+      y_strides = y_strides_override;
     } else {
-      y_strides.insert(y_strides.end(), {N * K, 1, K});
+      if (!trans_y) {
+        y_strides.insert(y_strides.end(), {N * K, N, 1});
+      } else {
+        y_strides.insert(y_strides.end(), {N * K, 1, K});
+      }
     }
 
     out_strides.insert(out_strides.end(), {M * N, N, 1});
@@ -825,8 +835,12 @@ class MatMulV2MKLDNNHandler
 
     for (int i = x_dims.size() - 4; i >= 0; --i) {
       out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-      x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
-      y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
+      if (x_strides_override.empty()) {
+        x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
+      }
+      if (y_strides_override.empty()) {
+        y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
+      }
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
     }
 

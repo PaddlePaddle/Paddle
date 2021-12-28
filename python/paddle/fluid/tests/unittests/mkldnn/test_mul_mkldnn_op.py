@@ -18,19 +18,31 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 class TestMulOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.init_dtype_type()
-        self.inputs = {
-            'X': np.random.random((20, 5)).astype(self.dtype),
-            'Y': np.random.random((5, 21)).astype(self.dtype)
-        }
-        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
-
         self.attrs = {'use_mkldnn': True}
+        self.init_dtype_type()
+        self.init_shapes_and_attrs()
+
+        self.inputs = {
+            'X': np.random.random(self.x_shape).astype(self.dtype),
+            'Y': np.random.random(self.y_shape).astype(self.dtype)
+        }
+
+        output = np.dot(np.reshape(self.inputs['X'], self.np_x_shape), np.reshape(self.inputs['Y'], self.np_y_shape))
+        self.outputs = {'Out': np.reshape(output, self.out_shape)}
+
+    def init_shapes_and_attrs(self):
+        self.x_shape = (20, 5)
+        self.y_shape = (5, 21)
+
+        self.np_x_shape = (20, 5)
+        self.np_y_shape = (5, 21)
+
+        self.out_shape = (20, 21)
 
     def init_dtype_type(self):
         self.dtype = np.float32
@@ -48,6 +60,43 @@ class TestMulOneDNNOp(OpTest):
     # def test_check_grad_ingore_y(self):
     #     self.check_grad(
     #         ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+class TestMulXNumColDims2OneDNNOp(TestMulOneDNNOp):
+    def init_shapes_and_attrs(self):
+        self.x_shape = (6, 7, 5)
+        self.y_shape = (5, 21)
+
+        self.np_x_shape = (42, 5)
+        self.np_y_shape = (5, 21)
+
+        self.out_shape = (6, 7, 21)
+
+        self.attrs["x_num_col_dims"] = 2
+
+class TestMulYNumColDims2OneDNNOp(TestMulOneDNNOp):
+    def init_shapes_and_attrs(self):
+        self.x_shape = (20, 6)
+        self.y_shape = (2, 3, 21)
+
+        self.np_x_shape = (20, 6)
+        self.np_y_shape = (6, 21)
+
+        self.out_shape = (20, 21)
+
+        self.attrs["y_num_col_dims"] = 2
+
+class TestMulYAndXNumColDims2OneDNNOp(TestMulOneDNNOp):
+    def init_shapes_and_attrs(self):
+        self.x_shape = (10, 5, 6)
+        self.y_shape = (2, 3, 21)
+
+        self.np_x_shape = (50, 6)
+        self.np_y_shape = (6, 21)
+
+        self.out_shape = (10, 5, 21)
+
+        self.attrs["x_num_col_dims"] = 2
+        self.attrs["y_num_col_dims"] = 2
 
 if __name__ == "__main__":
     paddle.enable_static()

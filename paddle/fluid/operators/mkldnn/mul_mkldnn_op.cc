@@ -80,9 +80,11 @@ class MulMKLDNNKernel
     x_dims[1] = x_matrix.dims()[0];
     x_dims[2] = x_matrix.dims()[1];
 
+    static const std::vector<int64_t> vec_placeholder;
+
     MatMulV2MKLDNNHandler<XT> handler(onednn_engine, ctx.GetPlace(), x_dims,
                                      false, y_dims, false,
-                                     false);
+                                     false, vec_placeholder, vec_placeholder);
 
     const auto src_memory_p = handler.AcquireSrcMemory(&x_matrix);
     const auto weights_memory_p = handler.AcquireWeightsMemory(&y_matrix);
@@ -141,9 +143,11 @@ class MulGradMKLDNNKernel
     x_dims[1] = x_matrix.dims()[0];
     x_dims[2] = x_matrix.dims()[1];
 
+    static const std::vector<int64_t> vec_placeholder;
+
     MatMulV2MKLDNNHandler<XT> handler(onednn_engine, ctx.GetPlace(), x_dims,
                                      false, y_dims, false,
-                                     false);
+                                     false, vec_placeholder, vec_placeholder);
 
     const auto src_memory_p = handler.AcquireSrcMemory(&x_matrix);
     const auto weights_memory_p = handler.AcquireWeightsMemory(&y_matrix);
