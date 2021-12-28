@@ -216,6 +216,8 @@ class DenseTensor : public TensorBase,
      Will be adjusted/removed/moved in the near future
    */
  public:
+  /* @jim19930609: Remove following friend classes after Tensor Unification
+   */
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
 
@@ -225,8 +227,14 @@ class DenseTensor : public TensorBase,
   template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
 
+  /* @jim19930609: The way default constructor handles allocator might change,
+     according to
+                   the final design of Allocation - Allocator.
+   */
   DenseTensor();
 
+  /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
+   */
   explicit DenseTensor(const paddle::framework::proto::VarType::Type& dtype);
 
   inline bool IsInitialized() const {
@@ -264,8 +272,12 @@ class DenseTensor : public TensorBase,
 
   std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
 
+  /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
+   */
   paddle::framework::proto::VarType::Type type() const;
 
+  /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
+   */
   paddle::framework::proto::VarType::Type saved_type() const;
 
   // memory size returns the holding memory size in byte.
