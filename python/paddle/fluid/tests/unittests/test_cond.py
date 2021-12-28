@@ -159,8 +159,8 @@ class TestCondInputOutput(unittest.TestCase):
             i = fluid.data(name="i", shape=[1], dtype='int32')
             pred = ((i % 2) == 0)
             out1 = layers.cond(pred, true_func, false_func)
-            #out2 = layers.cond(pred, None, false_func)
-            #out3 = layers.cond(pred, true_func, None)
+            out2 = layers.cond(pred, None, false_func)
+            out3 = layers.cond(pred, true_func, None)
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -168,8 +168,8 @@ class TestCondInputOutput(unittest.TestCase):
             # Test that output is None is runnable
             exe.run(main_program, feed={'i': np.full((1), feed_i, np.int32)})
             self.assertIsNone(out1)
-            #self.assertIsNone(out2)
-            #self.assertIsNone(out3)
+            self.assertIsNone(out2)
+            self.assertIsNone(out3)
 
     def test_wrong_structure_exception(self):
         """

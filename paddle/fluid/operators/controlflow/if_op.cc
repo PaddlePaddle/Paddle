@@ -145,6 +145,7 @@ class IfGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput(IfBaseOp::kCondition, this->Input(IfBaseOp::kCondition));
     // [x, y, out1, out2, out1@GRAD, out2@GRAD]
     auto input_names = this->Input(IfBaseOp::kInputs);
+    auto input_names_copy = input_names;
     auto out_names = this->Output(IfBaseOp::kOutputs);
     auto out_grad_name = this->OutputGrad(IfBaseOp::kOutputs);
     input_names.insert(input_names.end(), out_names.begin(), out_names.end());
@@ -160,19 +161,15 @@ class IfGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));
     grad_op->SetAttr("is_grad", true);
-    std::vector<std::string> true_out_grad_names;
-    std::for_each(input_names.begin(), input_names.end(),
-                  [&](std::string &name) {
-                    true_out_grad_names.emplace_back(name + "@GRAD");
-                  });
-    grad_op->SetAttr(IfBaseOp::kTrueOutVars, true_out_grad_names);
 
     std::vector<std::string> false_out_grad_names;
-    std::for_each(input_names.begin(), input_names.end(),
-                  [&](std::string &name) {
+    std::for_each(input_names_copy.begin(), input_names_copy.end(),
+                  [&false_out_grad_names](std::string &name) {
                     false_out_grad_names.emplace_back(name + "@GRAD");
                   });
-    grad_op->SetAttr(IfBaseOp::kFalseOutVars, false_out_grad_names);
+    std::vector<std::string> true_out_grad_names = false_out_grad_names;
+    grad_op->SetAttr(IfBaseOp::kTrueOutVars, false_out_grad_names); // the same
+    grad_op->SetAttr(IfBaseOp::kFalseOutVars, true_out_grad_names);
     grad_op->SetAttr(IfBaseOp::kSkipEagerDeletionVars,
                      this->InputGrad(IfBaseOp::kInputs, false));
   }

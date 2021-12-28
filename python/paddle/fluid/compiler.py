@@ -81,6 +81,11 @@ def _has_optimizer_in_control_flow(program):
             sub_block = program.block(op._block_attr_id("sub_block"))
             if _has_optimize_op(sub_block):
                 return True
+        if op.type == "if":
+            true_block = program.block(op._block_attr_id("true_block"))
+            false_block = program.block(op._block_attr_id("false_block"))
+            if _has_optimize_op(true_block) or _has_optimize_op(false_block):
+                return True
 
     return False
 

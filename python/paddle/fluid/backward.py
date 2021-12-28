@@ -1052,7 +1052,6 @@ def _is_grad_op_(op):
 def _rename_grad_name_(name, grad_order):
     return 'grad/' * grad_order + name
 
-
 def _append_backward_ops_(block,
                           ops,
                           target_block,
@@ -1154,7 +1153,6 @@ def _append_backward_ops_(block,
                             name, program._appending_grad_times)
                         op_desc._rename_output(name, new_name)
                         rename_var_map[name] = new_name
-
                         if name in op_grad_to_var:
                             op_grad_to_var[new_name] = op_grad_to_var[name]
                             op_grad_to_var.pop(name)
@@ -1241,6 +1239,44 @@ def _find_parent_op_(sub_block):
     # sub_block may not be found.
     return None
 
+def _adjust_backward_vars_for_if_op(block):
+    """ 
+    NOTE(xiongkun) _append_backward_ops_ will rename inputs and outputs of ops. this will
+    make if op unconsistent. for example, if(output=param_x@GRAD) -> 
+    if(output=param_x@GRAD@RENAME@1), but this rename don't change the sub block: 
+    the output of true_block is also param_x@GRAD. 
+
+    this function renames the sub block according to output and true_outputs.
+    true_outputs can be regards as the original output.
+    """
+    def _rename_sub_block_output_recursively(sub_block, origin_outputs_name,
+                                             if_outputs_name):
+        assert len(origin_outputs_name) == len(
+            if_outputs_name
+        ), "the length of if_outputs and origin_outputs must be the same"
+        iter_list = ["true_block", "true_outs"], ["false_block", "false_outs"]
+        for old_name, new_name in zip(origin_outputs_name, if_outputs_name):
+            for op in sub_block.ops:
+                op._rename_output(old_name, new_name)
+                if op.type == "if":
+                    for item in iter_list:
+                        _rename_sub_block_output_recursively(
+                            sub_block.program.block(
+                                op._block_attr_id(item[0])),
+                            op.attr(item[1]), op.output("Out"))
+                        op._set_attr(item[1], op.output("Out"))
+            if sub_block.has_var(old_name):
+                sub_block._remove_var(old_name)
+
+    for op in block.ops: 
+        if op.type == 'if':
+            if_outputs = op.output("Out")
+            original_outputs = [name1 for name1, name2 in zip(op.attr('true_outs'), if_outputs) if name2 != core.empty_var_name()] # true_outs is the same with false_outs
+            if_outputs = [name for name in if_outputs if name != core.empty_var_name()]
+            _rename_sub_block_output_recursively(block.program.block(op._block_attr_id("true_block")), original_outputs, if_outputs)
+            _rename_sub_block_output_recursively(block.program.block(op._block_attr_id("false_block")), original_outputs, if_outputs)
+
+    block.program._sync_with_cpp()
 
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
@@ -1354,7 +1390,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         for grad_var_name in parent_op.output_arg_names():
             if _is_grad_var_(grad_var_name) and block.has_var(grad_var_name): 
                 block._remove_var(grad_var_name)
-
 
     for op_idx in reversed(ops_to_remove):
         block.desc._remove_op(op_idx, op_idx + 1)
@@ -1668,6 +1703,8 @@ def append_backward(loss,
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
+
+    _adjust_backward_vars_for_if_op(block)
 
     if parameter_list is not None:
         check_type(parameter_list, 'parameter_list', (list, tuple, set),
@@ -2008,7 +2045,10 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
+
     prog._sync_with_cpp()
+
+    _adjust_backward_vars_for_if_op(block)
 
     grad_vars = []
     for input_var in inputs:

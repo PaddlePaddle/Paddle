@@ -435,7 +435,6 @@ class BlockGuard(object):
             return False  # re-raise exception
         return True
 
-
 class BlockGuardWithCompletion(BlockGuard):
     """
     BlockGuardWithCompletion class.
@@ -2155,7 +2154,6 @@ class ConditionalBlockGuard(BlockGuard):
         return super(ConditionalBlockGuard, self).__exit__(exc_type, exc_val,
                                                            exc_tb)
 
-
 class ConditionalBlock(object):
     '''
     **ConditionalBlock**
@@ -2267,26 +2265,7 @@ class ConditionalBlock(object):
 
         grad_sub_block_idx = inside_block.backward_block_idx
         grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
-
-        intermediate = set()
-        params = set()
-
-        for each_op in grad_sub_block.ops:
-            assert isinstance(each_op, Operator)
-            for iname in each_op.input_names:
-                for in_var_name in each_op.input(iname):
-                    if in_var_name not in intermediate:
-                        params.add(in_var_name)
-
-            for oname in each_op.output_names:
-                for out_var_name in each_op.output(oname):
-                    intermediate.add(out_var_name)
-
-        param_list = []
-        for inner_input_name in params:
-            inner_var = parent_block._find_var_recursive(inner_input_name)
-            if inner_var:
-                param_list.append(cpt.to_text(inner_var.name))
+        param_list = get_param_list_from_grad_block(grad_sub_block, parent_block)
 
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             conditional_block_op.desc,
@@ -2324,6 +2303,30 @@ class ConditionalBlock(object):
 
         self.helper.main_program._sync_with_cpp()
 
+def get_param_list_from_grad_block(grad_block, parent_block):
+    """ get the param list from grad_block.
+    """
+    intermediate = set()
+    params = set()
+
+    for each_op in grad_block.ops:
+        assert isinstance(each_op, Operator)
+        for iname in each_op.input_names:
+            for in_var_name in each_op.input(iname):
+                if in_var_name not in intermediate:
+                    params.add(in_var_name)
+
+        for oname in each_op.output_names:
+            for out_var_name in each_op.output(oname):
+                intermediate.add(out_var_name)
+
+    param_list = []
+    for inner_input_name in params:
+        inner_var = parent_block._find_var_recursive(inner_input_name)
+        if inner_var:
+            param_list.append(cpt.to_text(inner_var.name))
+
+    return param_list
 
 def copy_var_to_parent_block(var, layer_helper):
     if not isinstance(var, Variable):
@@ -2359,9 +2362,9 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
                 new_var = layers.assign(var)
             return new_var
 
-        outputs, block = None, None
-        is_single_var = True
         if branch_fn is not None:
+            outputs, block = None, None
+            is_single_var = True
             if not callable(true_fn):
                 raise TypeError(
                     "The true_fn/false_fn in cond must be callable, but received {}".
@@ -2377,7 +2380,10 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
                 outputs = [
                     _create_new_var_if_needed(block, var) for var in outputs
                 ]
-        return outputs[0] if is_single_var else output, block
+            return outputs[0] if is_single_var else output, block
+
+        else:
+            return None, None
 
     def _check_output(true_output, false_output):
         if true_output is None:
@@ -2397,17 +2403,30 @@ def cond_v2(pred, true_fn=None, false_fn=None, name=None):
                 "Incompatible return values of true_fn and false_fn in cond: {}".
                 format(e))
 
+    def _empty_fn():
+        pass
+
+    #NOTE(xiongkun) a lot of unittest with true_fn/false_fn == None)
+    if true_fn is None: true_fn = _empty_fn
+    if false_fn is None: false_fn = _empty_fn
+
     helper = LayerHelper('cond_v2', **locals())
     true_output, true_block = _build_sub_block(true_fn)
     false_output, false_block = _build_sub_block(false_fn)
+
+    all_none = False # indicate whether the true_fn and false_fn is both None.
     if true_output is None and false_output is None:
-        return None
+        # if true_output and false output is None, we can't do nothing. 
+        # because the grad op must be run. for example: just opt.minimize() in true/false fn.
+        all_none = True
+        true_output = false_output = []
+
     # ensure output from each branch with same structure.
     _check_output(true_output, false_output)
 
-    return _build_if(pred, true_output, true_block, false_output, false_block,
+    ret =  _build_if(pred, true_output, true_block, false_output, false_block,
                      helper)
-
+    return ret if not all_none else None
 
 def _build_if(pred, true_output, true_block, false_output, false_block, helper):
     """
@@ -2538,6 +2557,64 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
             'is_scalar_condition': True,
             'skip_eager_deletion_vars': output_names,
         })
+    def _need_append_grad(true_block, false_block):
+        true_bwd = true_block.backward_block_idx
+        false_bwd = false_block.backward_block_idx
+        return (true_bwd != true_block.idx and 
+                true_bwd != -1 and 
+                false_bwd != -1 and 
+                false_bwd != false_block.idx)
+
+    def _append_if_grad(target_block, true_block, false_block):
+        """ TODO (xiongkun) reuse the logic in cond block op
+        """
+        true_grad_block = target_block.program.block(true_block.backward_block_idx)
+        false_grad_block = target_block.program.block(false_block.backward_block_idx)
+
+        param_list = get_param_list_from_grad_block(true_grad_block, target_block)
+        param_list += get_param_list_from_grad_block(true_grad_block, target_block)
+        param_list = list(set(param_list))
+        output_names = [param + "@GRAD" for param in param_list]
+
+        if_bwd_op = target_block.append_op(
+            type='if',
+            inputs={"Input": [],
+                'Cond': [pred],
+            },
+            outputs={'Out': [], 'Scope': [step_scope]},
+            attrs={
+                'true_block': true_grad_block,
+                'false_block': false_grad_block,
+                'is_grad': True,
+                'is_scalar_condition': True,
+            })
+        if_bwd_op.desc._set_attr("skip_eager_deletion_vars", output_names)
+        if_bwd_op.desc._set_attr("true_outs", output_names)
+        if_bwd_op.desc._set_attr("false_outs", output_names)
+        if_bwd_op.desc.set_input("Input", param_list)
+        if_bwd_op.desc.set_output("Out", output_names)
+        for grad_block in [true_grad_block, false_grad_block]:
+            new_vars = set()
+            for grad_var_name in output_names + [step_scope.name]:
+                if grad_block.desc.has_var_recursive(
+                        cpt.to_bytes(grad_var_name)
+                ) or grad_var_name == core.empty_var_name():
+                    continue
+                grad_block.desc.var(cpt.to_bytes(grad_var_name))
+                new_vars.add(grad_var_name)
+
+            if_bwd_op.desc.infer_var_type(grad_block.desc)
+            if_bwd_op.desc.infer_shape(grad_block.desc)
+
+            for arg in if_bwd_op.desc.output_arg_names():
+                if arg in new_vars:
+                    _infer_var_data_type_shape_(arg, grad_block)
+
+        return if_bwd_op
+
+    if _need_append_grad(true_block, false_block):
+        _append_if_grad(parent_block, true_block, false_block)
+        
     return output_vars if _is_list_or_tuple(true_output) else output_vars[0]
 
 
