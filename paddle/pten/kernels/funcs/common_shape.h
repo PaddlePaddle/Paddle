@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
-namespace functions {
+namespace funcs {
 
 inline void SetXShape(const DenseTensor& x, DenseTensor* xshape) {
   const auto& in_dims = x.meta().dims;
@@ -30,5 +30,5 @@ inline void SetXShape(const DenseTensor& x, DenseTensor* xshape) {
   xshape->ResetLoD(x.meta().lod);
 }
 
-}  // namespace functions
+}  // namespace funcs
 }  // namespace pten

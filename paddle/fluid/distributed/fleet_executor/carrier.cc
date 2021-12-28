@@ -42,30 +42,17 @@ void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
   place_ = place;
   root_scope_ = root_scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+
+  // TODO(fleet_exe dev): thread pool
+  thread_num_ = 1;
+  thread_pool_.SetThreadNum(thread_num_);
+  thread_pool_.Start();
+
   CreateInterceptors();
   is_init_ = true;
 }
 
-void Carrier::Release() {
-  // NOTE(wangxi): must join before `Derived Interceptor` destruct,
-  // otherwise Derived object will be destructed before thread complete.
-
-  for (int64_t id : source_interceptor_ids_) {
-    VLOG(3) << "Carrier Release is sending stop to source interceptor " << id
-            << ".";
-    InterceptorMessage stop_msg;
-    // source node STOP is send by carrier, so set src_id=-1
-    stop_msg.set_src_id(-1);
-    stop_msg.set_dst_id(id);
-    stop_msg.set_message_type(STOP);
-    Send(stop_msg);
-  }
-
-  // TODO(wangxi): Maybe need a better to use thread.
-  for (auto& interceptor : interceptor_idx_to_interceptor_) {
-    interceptor.second->Join();
-  }
-}
+void Carrier::Release() {}
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
@@ -75,24 +62,17 @@ bool Carrier::EnqueueInterceptorMessage(
     VLOG(3) << "Receiving control message from rank "
             << interceptor_message.src_id() << " to rank "
             << interceptor_message.dst_id();
+    // for barrier
+    msg_bus_->IncreaseBarrierCount();
   } else {
-    {
-      std::unique_lock<std::mutex> lock_creating(creating_flag_mutex_);
-      if (creating_interceptors_) {
-        std::unique_lock<std::mutex> lock_message(tmp_message_mutex_);
-        // Cannot handle the message to interceptor since interceptors
-        // are still under creating. Will enqueue into a tmp stack.
-        VLOG(3) << "Receiving message while creating interceptors.";
-        message_tmp_.emplace_back(interceptor_message);
-        return true;
-      }
-    }
     int64_t dst_id = interceptor_message.dst_id();
     Interceptor* dst_interceptor = GetInterceptor(dst_id);
     dst_interceptor->EnqueueRemoteInterceptorMessage(interceptor_message);
   }
   return true;
 }
+
+void Carrier::Barrier() { msg_bus_->Barrier(); }
 
 Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
@@ -107,6 +87,11 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
 void Carrier::Wait() {
   std::unique_lock<std::mutex> lock(running_mutex_);
   cond_var_.wait(lock);
+}
+
+void Carrier::WakeUp() {
+  // probably double notify, but ok for ut
+  cond_var_.notify_all();
 }
 
 void Carrier::Start() {
@@ -126,11 +111,10 @@ void Carrier::Start() {
     start_msg.set_message_type(DATA_IS_READY);
     Send(start_msg);
   }
+  // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
 }
-
-std::condition_variable& Carrier::GetCondVar() { return cond_var_; }
 
 bool Carrier::IsInit() const { return is_init_; }
 
@@ -183,49 +167,17 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                         "The interceptor id should be unique.",
                         interceptor_id));
   interceptor->RegisterCarrier(this);
+
+  // TODO(fleet_exe dev): get loop
+  auto* loop = thread_pool_.GetLoop(interceptor_id % thread_num_);
+  PADDLE_ENFORCE_NOT_NULL(
+      loop, platform::errors::Fatal("thread task loop must not null"));
+  interceptor->RegisterTaskLoop(loop);
+
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
   return ptr;
-}
-
-void Carrier::SetCreatingFlag(bool flag) {
-  // set the creating flag
-  creating_flag_mutex_.lock();
-  VLOG(3) << "Carrier is set the creating flag from " << creating_interceptors_
-          << " to " << flag << ".";
-  creating_interceptors_ = flag;
-  creating_flag_mutex_.unlock();
-  if (!flag) {
-    for (auto& pair : interceptor_idx_to_interceptor_) {
-      // update the source interceptor id
-      if (std::find(source_interceptor_ids_.begin(),
-                    source_interceptor_ids_.end(),
-                    pair.first) == source_interceptor_ids_.end()) {
-        auto task = pair.second->GetTaskNode();
-        if (task != nullptr && task->upstream().empty()) {
-          source_interceptor_ids_.emplace_back(pair.first);
-        }
-      }
-    }
-    // finish create interceptors outside, handle tmp messsages
-    HandleTmpMessages();
-  }
-}
-
-void Carrier::HandleTmpMessages() {
-  // NOTE: It's ok lock on the tmp_message_mutex_ here, when enter this
-  // `HandleTmpMessages` method, the creating_interceptors_ flag
-  // must be false, therefore, there won't have conflict with the
-  // lock on the tmp_message_mutex_ inside `EnqueueInterceptorMessage`
-  // on the same thread.
-  std::unique_lock<std::mutex> lock(tmp_message_mutex_);
-  VLOG(3) << "Carrier has received " << message_tmp_.size()
-          << " messages during creating interceptors.";
-  for (const auto& msg : message_tmp_) {
-    EnqueueInterceptorMessage(msg);
-  }
-  message_tmp_.clear();
 }
 
 static std::shared_ptr<framework::GarbageCollector> GetGC(
@@ -285,12 +237,6 @@ void Carrier::CreateInterceptors() {
       source_interceptor_ids_.emplace_back(interceptor_id);
     }
   }
-  // The carrier will be always waiting for outside initializer
-  // since there is no interceptor has been created during auto init
-  creating_flag_mutex_.lock();
-  creating_interceptors_ = false;
-  creating_flag_mutex_.unlock();
-  HandleTmpMessages();
 }
 
 }  // namespace distributed

@@ -126,13 +126,24 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
+
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
 
 SGD operator
