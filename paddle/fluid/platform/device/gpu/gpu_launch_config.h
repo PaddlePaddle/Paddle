@@ -35,15 +35,6 @@ namespace platform {
 
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 
-static inline int GetLastPow2(int n) {
-  n |= (n >> 1);
-  n |= (n >> 2);
-  n |= (n >> 4);
-  n |= (n >> 8);
-  n |= (n >> 16);
-  return std::max(1, n - (n >> 1));
-}
-
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
@@ -147,16 +138,6 @@ inline GpuLaunchConfig GetCpuLaunchConfig3D(
   int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
   int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
 
-  // int num_elem = num_img * height * width;
-  // int block_x = num_elem <= max_threads_per_block ? width :
-  // std::min(GetLastPow2(width), max_threads);
-  // int block_y = num_elem <= max_threads_per_block ? height :
-  // std::min(GetLastPow2(height), max_threads / block_x);
-  // int block_z = num_elem <= max_threads_per_block ? num_img :
-  // std::min(num_img, max_threads / block_x / block_y);
-
-  // int block_x = std::min(GetLastPow2(width), max_threads);
-  // int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_x = std::min(width, max_threads);
   int block_y = std::min(height, max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
