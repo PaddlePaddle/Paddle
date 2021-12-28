@@ -95,16 +95,22 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
+    ctx->ShareLoD("Input", /*-->*/ framework::GradVarName("Input"));
   }
-  return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                     ctx, framework::GradVarName("Result")),
-                                 ctx.device_context());
-} framework::OpKernelType GetKernelTypeForVar(
-    const std::string& var_name, const framework::Tensor& tensor,
-    const framework::OpKernelType& expected_kernel_type) const override {
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
-}
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Result")),
+                                   ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 template <typename T>

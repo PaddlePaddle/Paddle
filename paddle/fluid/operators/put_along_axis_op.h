@@ -87,26 +87,39 @@ class PutAlongAxisGradOpKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
 
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto value_grad = ctx.Output<Tensor>(framework::GradVarName("Value"));
     auto index = ctx.Input<Tensor>("Index");
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
     // We need to know the shape of input matrix to determine the shape of grad
-    // matrix of input.
+    // matrix of value.
     auto input = ctx.Input<Tensor>("Input");
-    input_grad->Resize(input->dims());
-    input_grad->mutable_data<T>(ctx.GetPlace());
-    auto input_grad_data = input_grad->data<T>();
-    for (int64_t i = 0; i < input_grad->numel(); ++i) {
-      *(input_grad_data + i) = 0;
-    }
     const auto &index_type = index->type();
-    if (index_type == framework::proto::VarType::INT32) {
-      cpu_gather_kernel<T, int32_t>(
-          *result_grad, axis, *index, *input_grad,
-          ctx.device_context());  // the gradient of scatter is gather
-    } else if (index_type == framework::proto::VarType::INT64) {
-      cpu_gather_kernel<T, int64_t>(*result_grad, axis, *index, *input_grad,
-                                    ctx.device_context());
+
+    if (input_grad) {
+      framework::TensorCopy(*result_grad, ctx.GetPlace(), input_grad);
+      if (index_type == framework::proto::VarType::INT32) {
+        cpu_scatter_input_grad_kernel<T, int32_t>(
+            *result_grad, axis, *index, *input_grad, ctx.device_context());
+      } else {
+        cpu_scatter_input_grad_kernel<T, int64_t>(
+            *result_grad, axis, *index, *input_grad, ctx.device_context());
+      }
+    }
+
+    if (value_grad) {
+      value_grad->Resize(input->dims());
+      value_grad->mutable_data<T>(ctx.GetPlace());
+      if (index_type == framework::proto::VarType::INT32) {
+        cpu_gather_kernel<T, int32_t>(
+            // Here passing an unused argument *result_grad, because it's
+            // convenient to instantiate a bunch of template function with the
+            // same arguments list.
+            *result_grad, axis, *index, *value_grad, ctx.device_context());
+      } else if (index_type == framework::proto::VarType::INT64) {
+        cpu_gather_kernel<T, int64_t>(*result_grad, axis, *index, *value_grad,
+                                      ctx.device_context());
+      }
     }
   }
 };

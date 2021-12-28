@@ -86,28 +86,36 @@ class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
 
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto value_grad = ctx.Output<Tensor>(framework::GradVarName("Value"));
     auto index = ctx.Input<Tensor>("Index");
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
     // We need to know the shape of input matrix to determine the shape of grad
-    // matrix of input.
+    // matrix of value.
     auto input = ctx.Input<Tensor>("Input");
-    input_grad->Resize(input->dims());
-    input_grad->mutable_data<T>(ctx.GetPlace());
-    // Set to zero tensor.
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, T> functor;
-    functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
-            input_grad, static_cast<T>(0));
 
     const auto &index_type = index->type();
-    if (index_type == framework::proto::VarType::INT32) {
-      gpu_gather_kernel<T, int32_t>(
-          *result_grad, axis, *index, *input_grad,
-          ctx.device_context());  // the gradient of scatter is gather
-    } else if (index_type == framework::proto::VarType::INT64) {
-      gpu_gather_kernel<T, int64_t>(*result_grad, axis, *index, *input_grad,
-                                    ctx.device_context());
+    if (input_grad) {
+      framework::TensorCopy(*result_grad, ctx.GetPlace(), input_grad);
+      if (index_type == framework::proto::VarType::INT32) {
+        gpu_scatter_input_grad_kernel<T, int32_t>(
+            *result_grad, axis, *index, *input_grad, ctx.device_context());
+      } else {
+        gpu_scatter_input_grad_kernel<T, int64_t>(
+            *result_grad, axis, *index, *input_grad, ctx.device_context());
+      }
+    }
+    if (value_grad) {
+      value_grad->Resize(input->dims());
+      value_grad->mutable_data<T>(ctx.GetPlace());
+      if (index_type == framework::proto::VarType::INT32) {
+        gpu_gather_kernel<T, int32_t>(
+            *result_grad, axis, *index, *value_grad,
+            ctx.device_context());  // the gradient of scatter is gather
+      } else if (index_type == framework::proto::VarType::INT64) {
+        gpu_gather_kernel<T, int64_t>(*result_grad, axis, *index, *value_grad,
+                                      ctx.device_context());
+      }
     }
   }
 };

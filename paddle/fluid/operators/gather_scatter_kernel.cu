@@ -175,11 +175,65 @@ void gpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
       self, dim, index, src, "scatter_mul_gpu", reduce_mul, ctx);
 }
 
+template <typename tensor_t, typename index_t>
+__global__ void ScatterInputGradGPUKernel(
+    tensor_t* grad_data, int dim, const index_t* index_data,
+    int64_t inner_dim_size, int select_dim_size, int grad_select_dim_size,
+    int64_t outer_dim_size, int64_t numel) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= numel) return;
+  int64_t i, j, k;
+  i = tid / (select_dim_size * outer_dim_size);
+  int64_t remind = tid % (select_dim_size * outer_dim_size);
+  j = remind / outer_dim_size;
+  k = remind % outer_dim_size;
+  index_t index = index_data[tid];
+  int64_t replace_index =
+      k + index * outer_dim_size + i * outer_dim_size * grad_select_dim_size;
+  grad_data[replace_index] = 0;
+}
+template <typename tensor_t, typename index_t>
+void gpu_scatter_input_grad_kernel(Tensor self, int dim, const Tensor& index,
+                                   Tensor grad,
+                                   const platform::DeviceContext& ctx) {
+  auto* index_data = index.data<index_t>();
+  auto* grad_data = grad.data<tensor_t>();
+
+  auto index_dims = index.dims();
+  auto grad_dims = grad.dims();
+  int64_t index_size = index.numel();
+
+  int64_t inner_dim_size = 1;
+  int64_t outer_dim_size = 1;
+  int select_dim_size = index_dims[dim];
+  int grad_select_dim_size = grad_dims[dim];
+  for (int64_t i = 0; i < dim; ++i) {
+    inner_dim_size *= index_dims[i];
+  }
+
+  for (int i = dim + 1; i < index_dims.size(); i++) {
+    outer_dim_size *= index_dims[i];
+  }
+
+  int64_t slice_size = 1;
+  for (int i = 1; i < grad_dims.size(); ++i) slice_size *= grad_dims[i];
+
+  int block = 512;
+  int64_t n = slice_size * index_size;
+  int64_t grid = (n + block - 1) / block;
+  auto stream =
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+
+  ScatterInputGradGPUKernel<tensor_t, index_t><<<grid, block, 0, stream>>>(
+      grad_data, dim, index_data, inner_dim_size, select_dim_size,
+      grad_select_dim_size, outer_dim_size, index_size);
+}
 namespace plat = paddle::platform;
 Instantiate_Template_Function(gpu_gather_kernel)
     Instantiate_Template_Function(gpu_scatter_assign_kernel)
         Instantiate_Template_Function(gpu_scatter_add_kernel)
             Instantiate_Template_Function(gpu_scatter_mul_kernel)
+                Instantiate_Template_Function(gpu_scatter_input_grad_kernel)
 
 }  // namespace operators
 }  // namespace paddle

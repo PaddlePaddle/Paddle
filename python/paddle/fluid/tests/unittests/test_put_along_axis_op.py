@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
-@skip_check_grad_ci("backward calculation has wrong logic in op test")
+
 class TestPutAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
@@ -34,12 +34,18 @@ class TestPutAlongAxisOp(OpTest):
         self.op_type = "put_along_axis"
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace opearion.
-        np.put_along_axis(self.xnp, self.index, self.value, self.axis)
-        self.target = self.xnp
+        self.xnp_result = copy.deepcopy(self.xnp)
+        np.put_along_axis(self.xnp_result, self.index, self.value, self.axis)
+        self.target = self.xnp_result
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.braodcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape)
+        self.value_broadcast = np.broadcast_to(self.value, self.braodcast_shape)
         self.inputs = {
             'Input': self.xnp,
-            'Index': self.index,
-            'Value': self.value
+            'Index': self.index_broadcast,
+            'Value': self.value_broadcast
         }
         self.attrs = {'Axis': self.axis, 'Reduce': self.reduce_op}
         self.outputs = {'Result': self.target}
@@ -48,7 +54,7 @@ class TestPutAlongAxisOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad()
+        self.check_grad(["Input"], "Result")
 
     def init_data(self):
         self.x_type = "float64"
@@ -59,6 +65,7 @@ class TestPutAlongAxisOp(OpTest):
         self.index = np.array([[[0]]]).astype(self.index_type)
         self.axis = 1
         self.axis_type = "int64"
+
 
 class TestPutAlongAxisAPI(unittest.TestCase):
     def setUp(self):
