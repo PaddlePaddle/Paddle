@@ -25,6 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 constexpr int kMULMKLDNNINT8 = 1;
+constexpr int kMULMKLDNNFP32 = 2;
 
 template <typename DeviceContext, typename T>
 class MulKernel : public framework::OpKernel<T> {
@@ -33,6 +34,7 @@ class MulKernel : public framework::OpKernel<T> {
     const Tensor* x = context.Input<Tensor>("X");
     const Tensor* y = context.Input<Tensor>("Y");
     Tensor* z = context.Output<Tensor>("Out");
+    std::cout << "### MulKernel is used " << __FILE__ << ":" << __LINE__ << std::endl;
     const Tensor x_matrix =
         x->dims().size() > 2
             ? framework::ReshapeToMatrix(
