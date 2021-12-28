@@ -888,7 +888,7 @@ static std::string GenerateGradNodeCreationContent(
     if (input.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
-          "egr::EagerUtils::unsafe_autograd_meta(%s);\n";
+          "egr::EagerUtils::nullable_autograd_meta(%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
 
@@ -902,7 +902,7 @@ static std::string GenerateGradNodeCreationContent(
     } else {
       const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
           "  egr::AutogradMeta& %s = "
-          "*egr::EagerUtils::unsafe_autograd_meta(%s);\n";
+          "*egr::EagerUtils::nullable_autograd_meta(%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_SINGLE_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
     }
@@ -999,11 +999,10 @@ static std::string GenerateGradNodeCreationContent(
           input_position);
 
       const char* ADD_EDGES_TEMPLATE =
-          "    if(%s) grad_node->AddEdges(*%s, %d);\n";
+          "    if(%s) grad_node->AddEdges(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
-
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1013,10 +1012,15 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
-      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(%s, %d);\n";
+      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
+    VLOG(6) << "Generated Call RetainGradForTensor";
+    const char* RETAIN_GRAD_TEMPLATE =
+        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+    grad_node_creation_str +=
+        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
   }
 
   // [GradOpNode] SetGradInMeta
@@ -1197,23 +1201,23 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (op_passing_outs_map[op_type].count(output_name)) {
       const std::string output_var_name = output_name + "Var";
 
-      // Pass Output from function argument,
+      // Pass Output from function argument(EagerTensor*/vector<EagerTensor*>&),
       // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
-            ", std::vector<egr::EagerTensor>& %s";
+            ", std::vector<egr::EagerTensor*>& %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
 
       } else {
-        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor& %s";
+        const char* FWD_NUM_ARG_TEMPLATE = ", egr::EagerTensor* %s";
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
       }
       const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(&%s) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
 
@@ -1315,6 +1319,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
+    // [Generation] Call RetainGradForTensor
     VLOG(6) << "Generated GradNode Creation codes";
   }
 

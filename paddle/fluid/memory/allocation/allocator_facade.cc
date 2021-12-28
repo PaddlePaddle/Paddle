@@ -879,9 +879,9 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
       ->Release(place);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
-    const platform::CUDAPlace& place, size_t size, const gpuStream_t& stream) {
+    const platform::Place& place, size_t size, const platform::Stream& stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
       platform::errors::Unimplemented(
@@ -896,12 +896,16 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
         "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
   }
 #endif
-
-  return std::shared_ptr<Allocation>(Alloc(place, size, stream));
+  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+  return std::shared_ptr<Allocation>(Alloc(place, size, s));
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
+#endif
 }
 
-AllocationPtr AllocatorFacade::Alloc(const platform::CUDAPlace& place,
-                                     size_t size, const gpuStream_t& stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
+                                     const gpuStream_t& stream) {
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
       platform::errors::Unimplemented(
@@ -917,11 +921,12 @@ AllocationPtr AllocatorFacade::Alloc(const platform::CUDAPlace& place,
   }
 #endif
 
+  platform::CUDAPlace p = BOOST_GET_CONST(platform::CUDAPlace, place);
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
-    return m_->GetAllocator(place, stream, /* create_if_not_found = */ true)
+    return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
         ->Allocate(size);
   } else {
-    return m_->GetAllocator(place, size)->Allocate(size);
+    return m_->GetAllocator(p, size)->Allocate(size);
   }
 }
 

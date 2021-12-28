@@ -56,7 +56,7 @@ void CUDAStream::Destroy() {
   CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
   Wait();
   WaitCallback();
-  if (stream_) {
+  if (stream_ && owned_stream_) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
 #else
@@ -90,6 +90,20 @@ void CUDAStream::Wait() const {
 #endif  // PADDLE_WITH_HIP
 
   PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
+}
+
+// Note: Can only be used under thread_local semantics.
+void CUDAStream::SetStream(gpuStream_t stream) {
+  if (owned_stream_ && stream_) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
+#endif
+  }
+  owned_stream_ = false;
+  stream_ = stream;
+  callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
 }
 
 CUDAStream* get_current_stream(int deviceId) {

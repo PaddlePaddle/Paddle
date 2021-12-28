@@ -104,35 +104,47 @@ TEST(InterceptorTest, PingPong) {
   std::string ip1 = "127.0.0.1:" + std::to_string(port1);
   std::cout << "ip0: " << ip0 << std::endl;
   std::cout << "ip1: " << ip1 << std::endl;
+  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank = {{0, 0},
+                                                                 {1, 1}};
 
-  int pid = fork();
-  if (pid == 0) {
-    auto msg_bus = std::make_shared<MessageBus>();
-    msg_bus->Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip0);
+  int exe_pid = fork();
+  if (exe_pid == 0) {
+    int pid = fork();
+    if (pid == 0) {
+      Carrier* carrier =
+          FleetExecutor::CreateCarrier(0, interceptor_id_to_rank);
+      carrier->SetCreatingFlag(false);
+      auto msg_bus = std::make_shared<MessageBus>();
+      carrier->SetMsgBus(msg_bus);
+      // NOTE: need Init msg_bus after carrier SetMsgBus
+      msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
+      Interceptor* a = carrier->SetInterceptor(
+          0, InterceptorFactory::Create("PingPong", 0, nullptr));
+      carrier->Barrier();
 
-    // TODO(liyurui): Remove singleton when move SendIntra into Carrier
-    Carrier& carrier = FleetExecutor::GetCarrier();
-    carrier.SetMsgBus(msg_bus);
+      InterceptorMessage msg;
+      a->Send(1, msg);
+      carrier->Wait();
+    } else {
+      Carrier* carrier =
+          FleetExecutor::CreateCarrier(1, interceptor_id_to_rank);
+      carrier->SetCreatingFlag(false);
+      auto msg_bus = std::make_shared<MessageBus>();
+      carrier->SetMsgBus(msg_bus);
+      msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
+      carrier->SetInterceptor(
+          1, InterceptorFactory::Create("PingPong", 1, nullptr));
+      carrier->Barrier();
 
-    Interceptor* a = carrier.SetInterceptor(
-        0, InterceptorFactory::Create("PingPong", 0, nullptr));
-    carrier.SetCreatingFlag(false);
-
-    InterceptorMessage msg;
-    a->Send(1, msg);
-    carrier.Wait();
+      carrier->Wait();
+      int status;
+      int ret = waitpid(pid, &status, 0);
+      CHECK_EQ(ret, pid);
+    }
   } else {
-    auto msg_bus = std::make_shared<MessageBus>();
-    msg_bus->Init({{0, 0}, {1, 1}}, {{0, ip0}, {1, ip1}}, ip1);
-
-    // TODO(liyurui): Remove singleton when move SendIntra into Carrier
-    Carrier& carrier = FleetExecutor::GetCarrier();
-    carrier.SetMsgBus(msg_bus);
-
-    carrier.SetInterceptor(1,
-                           InterceptorFactory::Create("PingPong", 1, nullptr));
-    carrier.SetCreatingFlag(false);
-    carrier.Wait();
+    int status;
+    int ret = waitpid(exe_pid, &status, 0);
+    CHECK_EQ(ret, exe_pid);
   }
 }
 
