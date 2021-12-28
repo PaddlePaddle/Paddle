@@ -137,7 +137,11 @@ void RecordEvent::OriginalConstruct(const std::string &name,
   *name_ = e->name();
 }
 
-RecordEvent::~RecordEvent() {
+void RecordEvent::End() {
+  if (UNLIKELY(finished_)) {
+    return;
+  }
+  finished_ = true;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed_) {

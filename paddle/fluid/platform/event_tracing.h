@@ -31,7 +31,8 @@ struct RecordInstantEvent {
 // CPU event tracing. A trace starts when an object of this clas is created and
 // stops when the object is destroyed.
 // Chrome Trace Viewer Format: Duration Event/Complte Event
-struct RecordEvent {
+class RecordEvent {
+ public:
   explicit RecordEvent(const std::string& name,
                        const EventRole role = EventRole::kOrdinary);
 
@@ -41,8 +42,13 @@ struct RecordEvent {
   RecordEvent(const std::string& name, const EventRole role,
               const std::string& attr);
 
-  ~RecordEvent();
+  // Stop event tracing explicitly before the object goes out of scope.
+  // Sometimes it's inconvenient to use RAII
+  void End();
 
+  ~RecordEvent() { End(); }
+
+ private:
   void OriginalConstruct(const std::string& name, const EventRole role,
                          const std::string& attr);
 
@@ -57,6 +63,7 @@ struct RecordEvent {
   // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
   std::string* attr_{nullptr};
+  bool finished_{false};
 };
 
 }  // namespace platform
