@@ -20,14 +20,14 @@ import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.static import sparsity
+from paddle import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
 paddle.enable_static()
 
 
-class TestASPHelper(unittest.TestCase):
+class TestASPStaticOptimize(unittest.TestCase):
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -87,7 +87,7 @@ class TestASPHelper(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.set_excluded_layers(program, ['fc_1', 'conv2d_0'])
+        sparsity.set_excluded_layers(['fc_1', 'conv2d_0'], program)
         ref = [
             False, False, False, False, True, False, True, False, False, False,
             True, False

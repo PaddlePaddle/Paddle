@@ -20,14 +20,14 @@ import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.static import sparsity
+from paddle import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
 paddle.enable_static()
 
 
-class TestASPHelperPruningBase(unittest.TestCase):
+class TestASPStaticPruningBase(unittest.TestCase):
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -84,3 +84,39 @@ class TestASPHelperPruningBase(unittest.TestCase):
                 self.assertTrue(
                     paddle.fluid.contrib.sparsity.check_sparsity(
                         mat.T, func_name=check_func_name, n=2, m=4))
+
+
+class TestASPStaticPruning1D(TestASPStaticPruningBase):
+    def test_1D_inference_pruning(self):
+        self.run_inference_pruning_test(
+            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
+
+    def test_1D_training_pruning(self):
+        self.run_training_pruning_test(
+            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
+
+
+class TestASPStaticPruning2DBest(TestASPStaticPruningBase):
+    def test_2D_best_inference_pruning(self):
+        self.run_inference_pruning_test(
+            'mask_2d_best', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+
+    def test_2D_best_training_pruning(self):
+        self.run_training_pruning_test(
+            'mask_2d_best', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+
+
+class TestASPStaticPruning2DGreedy(TestASPStaticPruningBase):
+    def test_2D_greedy_inference_pruning(self):
+        self.run_inference_pruning_test(
+            'mask_2d_greedy',
+            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+
+    def test_2D_greedy_training_pruning(self):
+        self.run_training_pruning_test(
+            'mask_2d_greedy',
+            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+
+
+if __name__ == '__main__':
+    unittest.main()

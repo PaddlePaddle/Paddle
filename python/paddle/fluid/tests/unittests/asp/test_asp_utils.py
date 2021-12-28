@@ -18,7 +18,7 @@ from __future__ import print_function
 import unittest
 import threading, time
 import paddle
-from paddle.static import sparsity
+from paddle import sparsity
 import numpy as np
 
 
@@ -219,3 +219,7 @@ class TestASPUtils(unittest.TestCase):
                 func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
                 n=2,
                 m=4))
+
+
+if __name__ == '__main__':
+    unittest.main()
