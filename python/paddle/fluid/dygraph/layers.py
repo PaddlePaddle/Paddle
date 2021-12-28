@@ -1176,11 +1176,18 @@ class Layer(object):
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if _buffers[name] is None or type(_buffers[
-                                name]) == core.VarBase:
+                        if (in_declarative_mode() and
+                                not framework.in_dygraph_mode() and
+                                _buffers[name] is None):
+                            raise RuntimeError(
+                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
+                                'not allowed to be set to Variable when self.{0} is None.'.
+                                format(name))
+                        elif _buffers[name] is None or type(
+                                getattr(self, name)) == core.VarBase:
                             _buffers[name] = assign(value)
                         else:
-                            assign(value, _buffers[name])
+                            assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
