@@ -1116,7 +1116,7 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
       AsyncCopy(x, y);
       y->Resize(out_dims);
     } else {
-      pten::Cast<Tx>(*dev_ctx, x, y->dtype(), x.dtype(), y);
+      pten::Cast<Tx>(*dev_ctx, x, y->dtype(), y);
     }
     return;
   }

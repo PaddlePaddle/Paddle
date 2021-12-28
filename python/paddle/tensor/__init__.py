@@ -162,8 +162,10 @@ from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
 from .math import max  # noqa: F401
+from .math import amax  # noqa: F401
 from .math import maximum  # noqa: F401
 from .math import min  # noqa: F401
+from .math import amin  # noqa: F401
 from .math import minimum  # noqa: F401
 from .math import mm  # noqa: F401
 from .math import divide  # noqa: F401
@@ -321,8 +323,10 @@ tensor_method_func  = [ #noqa
            'tanh_',
            'add_n',
            'max',
+           'amax',
            'maximum',
            'min',
+           'amin',
            'minimum',
            'fmax',
            'fmin',

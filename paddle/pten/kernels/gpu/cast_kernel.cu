@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/pten/kernels/cast_kernel.h"
 
 #include "paddle/pten/api/ext/dispatch.h"
@@ -84,7 +82,6 @@ template <typename T, typename ContextT>
 void Cast(const ContextT& dev_ctx,
           const DenseTensor& x,
           DataType out_dtype,
-          DataType in_dtype,
           DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
                        CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
