@@ -12,15 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/kernels/matmul_kernel.h"
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
-namespace pten {
-using NPUContext = paddle::platform::NPUDeviceContext;
-}  // namespace pten
-
-#endif  // PADDLE_WITH_ASCEND_CL
+PT_REGISTER_CTX_KERNEL(matmul,
+                       CPU,
+                       ALL_LAYOUT,
+                       pten::MatmulKernel,
+                       float,
+                       double,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}

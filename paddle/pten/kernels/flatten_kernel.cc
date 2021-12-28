@@ -43,7 +43,7 @@ void FlattenWithXShape(const ContextT& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, out);
-  functions::SetXShape(x, xshape);
+  funcs::SetXShape(x, xshape);
 }
 
 }  // namespace pten
