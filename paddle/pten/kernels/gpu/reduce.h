@@ -15,7 +15,7 @@
 #pragma once
 
 // CUDA and HIP use same api
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <algorithm>
 #include <cmath>
@@ -1277,3 +1277,5 @@ void Reduce(const GPUContext& dev_ctx,
   }
 }
 }  // namespace pten
+
+#endif

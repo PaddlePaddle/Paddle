@@ -20,25 +20,25 @@
 namespace pten {
 
 template <typename T, typename ContextT>
-void Mean(const ContextT& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out) {
+void MeanKernel(const ContextT& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T, typename ContextT>
-void Sum(const ContextT& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out) {
+void SumKernel(const ContextT& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               bool reduce_all,
+               DataType out_dtype,
+               DenseTensor* out) {
   pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -50,12 +50,12 @@ using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
 PT_REGISTER_CTX_KERNEL(
-    mean, GPU, ALL_LAYOUT, pten::Mean, float, double, bool, float16) {}
+    mean, GPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool, float16) {}
 
 PT_REGISTER_CTX_KERNEL(sum,
                        GPU,
                        ALL_LAYOUT,
-                       pten::Sum,
+                       pten::SumKernel,
                        bool,
                        float,
                        double,

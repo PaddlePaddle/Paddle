@@ -19,20 +19,20 @@
 namespace pten {
 
 template <typename T, typename ContextT>
-void Mean(const ContextT& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out);
+void MeanKernel(const ContextT& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim,
+                bool reduce_all,
+                DenseTensor* out);
 
 template <typename T, typename ContextT>
-void Sum(const ContextT& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out);
+void SumKernel(const ContextT& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               bool reduce_all,
+               DataType out_dtype,
+               DenseTensor* out);
 
 }  // namespace pten

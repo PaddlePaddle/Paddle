@@ -24,14 +24,6 @@ limitations under the License. */
 namespace pten {
 
 template <typename T>
-void Mean(const GPUContext& dev_ctx,
-          const DenseTensor& x,
-          const std::vector<int64_t>& dims,
-          bool keep_dim,
-          bool reduce_all,
-          DenseTensor* out);
-
-template <typename T>
 void Add(const GPUContext& dev_ctx,
          const DenseTensor& x,
          const DenseTensor& y,
@@ -58,15 +50,6 @@ void Multiply(const GPUContext& dev_ctx,
               const DenseTensor& y,
               int axis,
               DenseTensor* out);
-
-template <typename T>
-void Sum(const GPUContext& dev_ctx,
-         const DenseTensor& x,
-         const std::vector<int64_t>& dims,
-         bool keep_dim,
-         bool reduce_all,
-         DataType out_dtype,
-         DenseTensor* out);
 
 }  // namespace pten
 

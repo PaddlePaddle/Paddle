@@ -47,7 +47,7 @@ DenseTensor Mean(const ContextT& dev_ctx,
           dev_ctx.GetPlace()),
       std::move(out_meta));
   bool reduce_all = false;
-  Mean<T, ContextT>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
+  MeanKernel<T, ContextT>(dev_ctx, x, axis, keep_dim, reduce_all, &dense_out);
   return dense_out;
 }
 
@@ -67,7 +67,7 @@ DenseTensor Sum(const ContextT& dev_ctx,
   // so use default value(false) is OK.
   bool reduce_all = false;
 
-  Sum<T, ContextT>(
+  SumKernel<T, ContextT>(
       dev_ctx, x, axis, keep_dim, reduce_all, out_meta.dtype, &dense_out);
   return dense_out;
 }
