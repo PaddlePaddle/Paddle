@@ -16,7 +16,7 @@ import paddle.fluid.core as core
 import paddle.fluid.eager.eager_tensor_patch_methods as eager_tensor_patch_methods
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, EagerParamBase
+from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_eager_mode
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
 import copy
