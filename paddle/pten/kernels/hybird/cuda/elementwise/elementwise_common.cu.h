@@ -86,7 +86,7 @@ template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
       paddle::framework::Array<OutT *, NumOuts> outs,
-      OutType<OutT, NumOuts> src[VecSize],
+      ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
     OutT dst[NumOuts][VecSize];
