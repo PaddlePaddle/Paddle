@@ -378,6 +378,20 @@ class DenseTensor : public TensorBase,
 
      Will be adjusted/removed/moved in the near future
    */
+  explicit DenseTensor(const LoD& lod);
+
+  void set_lod(const LoD& lod);
+
+  LoD* mutable_lod();
+
+  /*
+   * Get the start offset and end offset of an  element from LoD.
+   */
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const;
+
+  size_t NumLevels() const;
+
+  size_t NumElements(size_t level = 0) const;
 };
 
 }  // namespace pten

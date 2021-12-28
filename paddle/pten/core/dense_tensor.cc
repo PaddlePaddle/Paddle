@@ -545,4 +545,54 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
+/* ------------------------------ */
+/*   From framework::LoDTensor    */
+/* ------------------------------ */
+
+DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
+
+void DenseTensor::set_lod(const LoD& lod) { meta_.lod = lod; }
+
+LoD* DenseTensor::mutable_lod() { return &meta_.lod; }
+
+std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
+                                                   size_t elem) const {
+  PADDLE_ENFORCE_LT(
+      level,
+      NumLevels(),
+      paddle::platform::errors::InvalidArgument(
+          "The input level of LoD is invalid, it should be less than LoD "
+          "size. The input level is %zu, the LoD size is %zu.",
+          level,
+          NumLevels()));
+
+  PADDLE_ENFORCE_LT(elem,
+                    NumElements(level),
+                    paddle::platform::errors::InvalidArgument(
+                        "The input element of LoD is invalid, it should be "
+                        "less than the number of elements in its level."
+                        "The input element is %zu, the number of elements in "
+                        "its level is %zu.",
+                        elem,
+                        NumElements(level)));
+
+  return std::make_pair((meta_.lod)[level][elem], (meta_.lod)[level][elem + 1]);
+}
+
+size_t DenseTensor::NumLevels() const { return meta_.lod.size(); }
+
+size_t DenseTensor::NumElements(size_t level) const {
+  PADDLE_ENFORCE_LT(
+      level,
+      NumLevels(),
+      paddle::platform::errors::InvalidArgument(
+          "The input level of LoD is invalid, it should be less than LoD "
+          "size. The input level is %zu, the LoD size is %zu.",
+          level,
+          NumLevels()));
+
+  // the last offset is the end of last element
+  return (meta_.lod)[level].size() - 1;
+}
+
 }  // namespace pten
