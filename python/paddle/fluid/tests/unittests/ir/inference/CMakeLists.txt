@@ -66,6 +66,7 @@ if (NOT WITH_MKLDNN AND NOT TENSORRT_FOUND AND NOT WITH_GPU)
   endforeach()
 
 set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 300)
+set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
