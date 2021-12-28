@@ -34,12 +34,14 @@ class TestFcGruFusePass(PassAutoScanTest):
         x_col = draw(st.sampled_from([1]))
         y_col = draw(st.sampled_from([1]))
         axis = draw(st.sampled_from([-1]))
-        activation = draw(st.sampled_from(['sigmoid', 'tanh']))
+        activation = draw(
+            st.sampled_from(['sigmoid', 'tanh', 'relu', 'identity']))
         is_reverse = draw(st.booleans())
         has_origin_mode = draw(st.booleans())
         origin_mode = False
-        gate_activation = draw(st.sampled_from(['sigmoid', 'tanh']))
-        batch_size = draw(st.integers(min_value=1, max_value=4))
+        gate_activation = draw(
+            st.sampled_from(['sigmoid', 'tanh', 'relu', 'identity']))
+        batch_size = draw(st.integers(min_value=1, max_value=64))
 
         def generate_input():
             shape = [batch_size, 128, 6, 120]
