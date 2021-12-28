@@ -14,30 +14,31 @@
 #pragma once
 
 #include <queue>
-#include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/device_event.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 
 namespace paddle {
 namespace framework {
 
-using Garbage = std::shared_ptr<memory::Allocation>;
-using GarbageQueue = std::deque<Garbage>;
-
-class InterpreterCoreGarbageCollector {
+class InterpreterCoreEventGarbageCollector
+    : public InterpreterCoreGarbageCollector {
  public:
-  InterpreterCoreGarbageCollector();
-  virtual ~InterpreterCoreGarbageCollector(){};
-  virtual void Add(Variable* var);
+  InterpreterCoreEventGarbageCollector();
+  ~InterpreterCoreEventGarbageCollector();
+
   virtual void Add(Variable* var, platform::DeviceEvent& event,
-                   const platform::DeviceContext* ctx);
-  DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
+                   const platform::DeviceContext* ctx) override;
 
- protected:
-  std::unique_ptr<GarbageQueue> garbages_;
-  int64_t max_memory_size_;
-  int64_t cur_memory_size_;
-  memory::SpinLock spinlock_;
+ private:
+  void Add(Garbage garbage, platform::DeviceEvent& event,
+           const platform::DeviceContext* ctx);
+  void Free(GarbageQueue* garbages, platform::DeviceEvent& event,
+            const platform::DeviceContext* ctx);
+  void Free(Garbage& garbage, platform::DeviceEvent& event,
+            const platform::DeviceContext* ctx);
+
+  std::unique_ptr<WorkQueue> queue_;
+  paddle::memory::SpinLock spinlock_;
 };
-
 }  // namespace framework
 }  // namespace paddle
