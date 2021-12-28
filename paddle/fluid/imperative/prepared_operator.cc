@@ -24,11 +24,13 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
+DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -195,6 +197,12 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
+
+  // added by liuxiandong for test
+  if (FLAGS_run_kp_kernel) {
+    std::cout << "****** FLAGS_use_kp  prepared_operator.cc *******";
+  }
+
 #ifdef PADDLE_WITH_XPU
   if (is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||

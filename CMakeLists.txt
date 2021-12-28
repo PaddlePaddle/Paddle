@@ -328,7 +328,7 @@ if(WITH_ROCM)
 endif(WITH_ROCM)
 
 if(WITH_XPU_KP)
-    include(xpu2)
+    include(xpu_kp)
 endif()
 
 if (NOT WITH_ROCM AND WITH_RCCL)

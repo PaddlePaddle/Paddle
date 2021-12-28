@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu1_op_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 
 namespace paddle {
@@ -27,6 +28,22 @@ bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
       get_xpu_version(BOOST_GET_CONST(platform::XPUPlace, type.place_).device);
   if (v == XPU2) {
     ops = get_kl2_ops();
+  }
+
+  if (ops.find(op_name) != ops.end() &&
+      ops[op_name].find(type) != ops[op_name].end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_xpu_kp_support_op(const std::string& op_name,
+                          const pOpKernelType& type) {
+  auto& ops = get_kl1_ops();
+  auto v =
+      get_xpu_version(BOOST_GET_CONST(platform::XPUPlace, type.place_).device);
+  if (v == XPU2) {
+    ops = get_kp_ops();
   }
 
   if (ops.find(op_name) != ops.end() &&
@@ -70,6 +87,31 @@ bool is_in_xpu_black_list(const std::string& op_name) {
     }
   }
   if (xpu_black_list.find(op_name) != xpu_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_in_xpu_kpwhite_list(const std::string& op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> xpu_kpwhite_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("XPU_KPWHITE_LIST") != nullptr) {
+        std::string ops(std::getenv("XPU_KPWHITE_LIST"));
+        tokenize(ops, ',', &xpu_kpwhite_list);
+      }
+      inited = true;
+      VLOG(3) << "XPU kpwhite List: ";
+      for (auto iter = xpu_kpwhite_list.begin(); iter != xpu_kpwhite_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (xpu_kpwhite_list.find(op_name) != xpu_kpwhite_list.end()) {
     return true;
   }
   return false;
