@@ -113,8 +113,12 @@ class MulOp : public framework::OperatorWithKernel {
       if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
           input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
         customized_type_value = kMULMKLDNNINT8;
-      } else if ( input_data_type == framework::DataTypeTrait<paddle::platform::bfloat16>::DataType() || input_data_type == framework::DataTypeTrait<float>::DataType()) {
-           customized_type_value = kMULMKLDNNFP32;
+      } else if (input_data_type ==
+                     framework::DataTypeTrait<
+                         paddle::platform::bfloat16>::DataType() ||
+                 input_data_type ==
+                     framework::DataTypeTrait<float>::DataType()) {
+        customized_type_value = kMULMKLDNNFP32;
       }
     }
 #endif
@@ -133,6 +137,12 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two
@@ -236,8 +246,7 @@ class MulGradOp : public framework::OperatorWithKernel {
     }
   }
 
-
-    framework::OpKernelType GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
@@ -253,8 +262,12 @@ class MulGradOp : public framework::OperatorWithKernel {
       if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
           input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
         customized_type_value = kMULMKLDNNINT8;
-      } else if ( input_data_type == framework::DataTypeTrait<paddle::platform::bfloat16>::DataType()  ) {
-           customized_type_value = 2;
+      } else if (input_data_type ==
+                     framework::DataTypeTrait<
+                         paddle::platform::bfloat16>::DataType() ||
+                 input_data_type ==
+                     framework::DataTypeTrait<float>::DataType()) {
+        customized_type_value = kMULMKLDNNFP32;
       }
     }
 #endif
@@ -262,7 +275,6 @@ class MulGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                    library, customized_type_value);
   }
-
 };
 
 template <typename T>
