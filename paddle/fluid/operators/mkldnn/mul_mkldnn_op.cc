@@ -476,8 +476,7 @@ class MulGradMKLDNNKernel : public MulMKLDNNKernel<XT, YT> {
                                 ? framework::ReshapeToMatrix(*y, y_num_col_dims)
                                 : static_cast<const Tensor &>(*y);
 
-    Tensor dout_matrix;
-    dout_matrix.ShareDataWith(*dout);
+    Tensor dout_matrix = *dout;
     dout_matrix.Resize(
         {framework::flatten_to_2d(x->dims(), x_num_col_dims)[0],
          framework::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
