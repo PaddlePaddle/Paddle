@@ -85,7 +85,7 @@ def poisson(x, name=None):
 
     .. math::
 
-        out_i ~ Poisson (x_i)
+        out_i \sim Poisson (lambda = x_i)
 
     Args:
         x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type 
@@ -100,13 +100,13 @@ def poisson(x, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.set_device('gpu')
-            paddle.seed(2021)
+            paddle.set_device('cpu')
+            paddle.seed(100)
 
             x = paddle.uniform([2,3], min=1.0, max=5.0)
             out = paddle.poisson(x)
-            # [[0., 5., 1.],
-            #  [4., 3., 0.]])
+            #[[2., 5., 0.],
+            # [5., 1., 3.]]
 
     """
 
@@ -980,3 +980,49 @@ def rand(shape, dtype=None, name=None):
 
     """
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
+
+
+def exponential_(x, lam=1.0, name=None):
+    """
+    This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
+
+    ``lam`` is :math:`\lambda` parameter of Exponential Distribution. 
+    
+    .. math::
+
+        f(x) = \lambda e^{-\lambda x}
+
+    Args:
+        x(Tensor):  Input tensor. The data type should be float32, float64.
+        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns: 
+        Tensor: Input Tensor ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_device('cpu')
+            paddle.seed(100)
+
+            x = paddle.empty([2,3])
+            x.exponential_()
+            # [[0.80643415, 0.23211166, 0.01169797],
+            #  [0.72520673, 0.45208144, 0.30234432]]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.exponential_(x, "lambda", lam)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
+
+    helper = LayerHelper("exponential", **locals())
+    helper.append_op(
+        type='exponential',
+        inputs={"X": x},
+        outputs={'Out': x},
+        attrs={"lambda": lam})
+    return x

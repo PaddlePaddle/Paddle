@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/distributed/fleet_executor/task_loop_thread_pool.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -47,7 +48,11 @@ class Carrier final {
   Carrier() = default;
   Carrier(int64_t rank,
           const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank)
-      : rank_(rank), interceptor_id_to_rank_(interceptor_id_to_rank) {}
+      : rank_(rank), interceptor_id_to_rank_(interceptor_id_to_rank) {
+    thread_num_ = 1;
+    thread_pool_.SetThreadNum(thread_num_);
+    thread_pool_.Start();
+  }
   ~Carrier();
   void Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
             framework::Scope* root_scope, framework::Scope* minibatch_scope,
@@ -56,6 +61,7 @@ class Carrier final {
 
   void Release();
   void Wait();
+  void WakeUp();
 
   // Enqueue a message to corresponding interceptor id
   bool EnqueueInterceptorMessage(const InterceptorMessage& interceptor_message);
@@ -67,12 +73,10 @@ class Carrier final {
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
 
-  void SetCreatingFlag(bool flag);
+  void SetCreatingFlag(bool flag) {}
   void SetMsgBus(const std::shared_ptr<MessageBus>& msg_bus) {
     msg_bus_ = msg_bus;
   }
-
-  std::condition_variable& GetCondVar();
 
   void Start();
 
@@ -80,18 +84,13 @@ class Carrier final {
 
   bool Send(const InterceptorMessage& msg);
 
-  // NOTE: This mutex will be used in interceptor's RunOps function.
-  // This mutex is used for avoiding forward ops and backward ops run
-  // simultaneously, which will lead to a random hang for some sync ops.
-  std::mutex run;
+  void Barrier();
 
  private:
   DISABLE_COPY_AND_ASSIGN(Carrier);
 
   // create each Interceptor
   void CreateInterceptors();
-
-  void HandleTmpMessages();
 
   int64_t GetRank(int64_t interceptor_id) const;
 
@@ -101,10 +100,6 @@ class Carrier final {
 
   std::vector<int64_t> source_interceptor_ids_;
 
-  std::vector<InterceptorMessage> message_tmp_{};
-  std::mutex tmp_message_mutex_;
-  bool creating_interceptors_{true};
-  std::mutex creating_flag_mutex_;
   bool is_init_{false};
 
   std::mutex running_mutex_;
@@ -118,6 +113,9 @@ class Carrier final {
   std::shared_ptr<MessageBus> msg_bus_;
   int64_t rank_;
   std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
+
+  int thread_num_;
+  TaskLoopThreadPool thread_pool_;
 };
 
 }  // namespace distributed
