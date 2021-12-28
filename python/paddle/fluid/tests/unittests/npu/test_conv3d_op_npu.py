@@ -182,69 +182,6 @@ class TestCase1(TestConv3DOp):
         self.filter_size = [6, f_c, 3, 3, 3]
 
 
-@unittest.skipIf(True, "tmp")
-class TestWithGroup1(TestConv3DOp):
-    def init_group(self):
-        self.groups = 3
-
-
-@unittest.skipIf(True, "tmp")
-class TestWithGroup2(TestCase1):
-    def init_group(self):
-        self.groups = 3
-
-
-@unittest.skipIf(True, "tmp")
-class TestWith1x1(TestConv3DOp):
-    def init_test_case(self):
-        self.pad = [0, 0, 0]
-        self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 4, 4, 4]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [120, f_c, 1, 1, 1]
-
-    def init_dilation(self):
-        self.dilations = [1, 1, 1]
-
-    def init_group(self):
-        self.groups = 3
-
-
-@unittest.skipIf(True, "tmp")
-class TestWithInput1x1Filter1x1(TestConv3DOp):
-    def init_test_case(self):
-        self.pad = [0, 0, 0]
-        self.stride = [1, 1, 1]
-        self.input_size = [40, 3, 1, 1, 1]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [120, f_c, 1, 1, 1]
-
-    def init_dilation(self):
-        self.dilations = [1, 1, 1]
-
-    def init_group(self):
-        self.groups = 3
-
-
-@unittest.skipIf(True, "tmp")
-class TestWithDilation(TestConv3DOp):
-    def init_test_case(self):
-        self.pad = [0, 0, 0]
-        self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 6, 6, 6]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [24, f_c, 2, 2, 2]
-
-    def init_dilation(self):
-        self.dilations = [2, 2, 2]
-
-    def init_group(self):
-        self.groups = 3
-
-
 # ---- test asymmetric padding ----
 
 
@@ -379,11 +316,6 @@ class TestConv3DOp_DiffDataInDiffDim(TestConv3DOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
-# create_test_padding_SAME_class(TestConv3DOp_DiffDataInDiffDim)
-# create_test_padding_VALID_class(TestConv3DOp_DiffDataInDiffDim)
-# create_test_channel_last_class(TestConv3DOp_DiffDataInDiffDim)
-
-
 class TestCase1_AsyPadding(TestConv3DOp_2):
     def init_test_case(self):
         self.stride = [1, 1, 1]
@@ -395,97 +327,6 @@ class TestCase1_AsyPadding(TestConv3DOp_2):
     def init_paddings(self):
         self.pad = [0, 0, 1, 0, 0, 2]
         self.padding_algorithm = "EXPLICIT"
-
-
-@unittest.skipIf(True, "tmp")
-class TestWithGroup1_AsyPadding(TestConv3DOp_2):
-    def init_group(self):
-        self.groups = 3
-
-    def init_paddings(self):
-        self.pad = [1, 1, 1, 0, 0, 2]
-        self.padding_algorithm = "EXPLICIT"
-
-
-@unittest.skipIf(True, "tmp")
-class TestWithGroup2_AsyPadding(TestConv3DOp_2):
-    def init_test_case(self):
-        self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3, 3]
-
-    def init_group(self):
-        self.groups = 3
-
-    def init_paddings(self):
-        self.pad = [1, 1, 0, 1, 0, 2]
-        self.padding_algorithm = "EXPLICIT"
-
-
-@unittest.skipIf(True, "tmp")
-class TestWith1x1_AsyPadding(TestConv3DOp_2):
-    def init_test_case(self):
-        self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 4, 4, 4]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [120, f_c, 1, 1, 1]
-
-    def init_dilation(self):
-        self.dilations = [1, 1, 1]
-
-    def init_group(self):
-        self.groups = 3
-
-    def init_paddings(self):
-        self.pad = [0, 0, 1, 0, 0, 2]
-        self.padding_algorithm = "EXPLICIT"
-
-
-@unittest.skipIf(True, "tmp")
-class TestWithDilation_AsyPadding(TestConv3DOp_2):
-    def init_test_case(self):
-        self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 6, 6, 6]
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [24, f_c, 2, 2, 2]
-
-    def init_dilation(self):
-        self.dilations = [2, 2, 2]
-
-    def init_group(self):
-        self.groups = 3
-
-    def init_paddings(self):
-        self.pad = [0, 0, 1, 0, 1, 0]
-        self.padding_algorithm = "EXPLICIT"
-
-
-# create_test_padding_SAME_class(TestConv3DOp_AsyPadding)
-# create_test_padding_SAME_class(TestWithGroup1_AsyPadding)
-# create_test_padding_SAME_class(TestWith1x1_AsyPadding)
-
-# create_test_padding_VALID_class(TestConv3DOp_AsyPadding)
-# create_test_padding_VALID_class(TestWithGroup1_AsyPadding)
-# create_test_padding_VALID_class(TestWith1x1_AsyPadding)
-
-# create_test_channel_last_class(TestConv3DOp_AsyPadding)
-# create_test_channel_last_class(TestWithGroup1_AsyPadding)
-# create_test_channel_last_class(TestWith1x1_AsyPadding)
-
-# create_test_channel_last_class(TestConv3DOp_AsyPadding)
-# create_test_channel_last_class(TestWithGroup1_AsyPadding)
-# create_test_channel_last_class(TestWith1x1_AsyPadding)
-
-# create_test_fp16_class(TestConv3DOp_AsyPadding)
-# create_test_fp16_class(TestCase1_AsyPadding)
-# create_test_fp16_class(TestWithGroup1_AsyPadding)
-# create_test_fp16_class(TestWithGroup2_AsyPadding)
-# create_test_fp16_class(TestWith1x1_AsyPadding)
-# create_test_fp16_class(TestWithDilation_AsyPadding)
 
 
 # --------- test python API ---------------
