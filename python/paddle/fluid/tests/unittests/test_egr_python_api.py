@@ -476,5 +476,12 @@ class EagerGuardTestCase(unittest.TestCase):
             self.assertTrue(_in_eager_mode())
 
 
+class EagerGuardTestCase(unittest.TestCase):
+    def test__test_eager_guard(self):
+        tracer = paddle.fluid.dygraph.tracer.Tracer()
+        with _test_eager_guard(tracer):
+            self.assertTrue(_in_eager_mode())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -33,8 +33,10 @@ using add_kernel = void (*)(const DeviceContext&,
                             int,
                             DenseTensor*);
 
-using cast_kernel = void (*)(
-    const DeviceContext&, const DenseTensor&, DataType, DataType, DenseTensor*);
+using cast_kernel = void (*)(const DeviceContext&,
+                             const DenseTensor&,
+                             DataType,
+                             DenseTensor*);
 
 using divide_kernel = void (*)(const DeviceContext&,
                                const DenseTensor&,

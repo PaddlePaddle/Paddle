@@ -158,6 +158,7 @@ from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
+from .tensor.manipulation import take_along_axis  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
@@ -197,13 +198,16 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nansum  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
 from .tensor.math import max  # noqa: F401
 from .tensor.math import maximum  # noqa: F401
+from .tensor.math import amax  # noqa: F401
 from .tensor.math import min  # noqa: F401
 from .tensor.math import minimum  # noqa: F401
+from .tensor.math import amin  # noqa: F401
 from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
@@ -211,6 +215,7 @@ from .tensor.math import remainder  # noqa: F401
 from .tensor.math import mod  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
+from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
@@ -245,6 +250,8 @@ from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
 from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
+from .tensor.math import inner  # noqa: F401
+from .tensor.math import outer  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -396,6 +403,7 @@ __all__ = [  # noqa
            'mv',
            'in_dynamic_mode',
            'min',
+           'amin',
            'any',
            'slice',
            'normal',
@@ -438,6 +446,7 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
+           'amax',
            'logical_or',
            'bitwise_and',
            'bitwise_or',
@@ -500,6 +509,8 @@ __all__ = [  # noqa
            'lgamma',
            'lerp',
            'erfinv',
+           'inner',
+           'outer',
            'square',
            'divide',
            'ceil',
@@ -519,6 +530,7 @@ __all__ = [  # noqa
            'ones',
            'not_equal',
            'sum',
+           'nansum',
            'tile',
            'greater_equal',
            'isfinite',
@@ -596,4 +608,5 @@ __all__ = [  # noqa
            'moveaxis',
            'repeat_interleave',
            'clone',
+           'renorm',
 ]

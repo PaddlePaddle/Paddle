@@ -132,4 +132,4 @@ function main() {
 
 main $@
 
-rm -rf tmp_dir
+rm -rf $tmp_dir
