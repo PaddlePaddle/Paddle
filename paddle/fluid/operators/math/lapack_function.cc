@@ -316,7 +316,6 @@ template <>
 void lapackCholeskySolve<float>(char uplo, int n, int nrhs, float *a, int lda,
                                 float *b, int ldb, int *info) {
   platform::dynload::spotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
-
 }
 
 }  // namespace math

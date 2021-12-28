@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/operators/lstsq_op.h"
 #include "paddle/fluid/operators/qr_op.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 
 namespace paddle {
 namespace operators {
@@ -60,20 +61,20 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     TensorCopy(x, context.GetPlace(), &new_x);
     TensorCopy(y, context.GetPlace(), &new_y);
 
-    auto tmp_x = dito.Transpose(new_x);
-    auto tmp_y = dito.Transpose(new_y);
-    framework::TensorCopy(tmp_x, new_x.place(), &new_x);
-    framework::TensorCopy(tmp_y, new_y.place(), &new_y);
-
     // Prepare tau
     auto tau_dims_vec = framework::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     Tensor tau = dito.Fill(tau_dims_vec, 0);
+    auto tau_data = tau.mutable_data<T>(context.GetPlace());
+
+    auto tmp_x = dito.Transpose(new_x);
+    auto tmp_y = dito.Transpose(new_y);
+    framework::TensorCopy(tmp_x, new_x.place(), &new_x);
+    framework::TensorCopy(tmp_y, new_y.place(), &new_y);
 
     auto x_data = new_x.mutable_data<T>(context.GetPlace());
     auto y_data = new_y.mutable_data<T>(context.GetPlace());
-    auto tau_data = tau.mutable_data<T>(context.GetPlace());
 
     // step 1, compute QR factorization using geqrf
     BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, m, n, x_data, m,

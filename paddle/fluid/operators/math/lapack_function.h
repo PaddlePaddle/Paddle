@@ -58,8 +58,8 @@ void lapackGelss(int m, int n, int nrhs, T1 *a, int lda, T1 *b, int ldb, T2 *s,
                  int *info);
 
 template <typename T>
-void lapackCholeskySolve(char uplo, int n, int nrhs, T* a, int lda, T* b,
-                         int ldb, int* info);
+void lapackCholeskySolve(char uplo, int n, int nrhs, T *a, int lda, T *b,
+                         int ldb, int *info);
 
 }  // namespace math
 }  // namespace operators
