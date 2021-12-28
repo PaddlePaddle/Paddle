@@ -56,10 +56,15 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   // Because there exists the case that new parameter variables are not added to
   // the program in the analysis pass.
   bool reserve_cpu_weights = false;
-  bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
-                             argument->min_input_shape().size() > 0 &&
-                             argument->optim_input_shape().size() > 0) ||
-                            argument->tensorrt_tuned_dynamic_shape();
+  bool with_dynamic_shape = false;
+  if (argument->Has("max_input_shape") && argument->Has("min_input_shape") &&
+      argument->Has("optim_input_shape")) {
+    with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
+                          argument->min_input_shape().size() > 0 &&
+                          argument->optim_input_shape().size() > 0)
+  }
+  with_dynamic_shape =
+      with_dynamic_shape || argument->tensorrt_tuned_dynamic_shape();
   if (with_dynamic_shape) {
     reserve_cpu_weights = true;
   }
