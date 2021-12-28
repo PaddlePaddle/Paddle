@@ -28,8 +28,6 @@ set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
 
 # auto build kernel targets by cmake
-register_kernels(EXCLUDES flatten_kernel DEPS ${COMMON_KERNEL_DEPS})
-# TODO(chenweihang): auto parse compile deps by include headers later
-kernel_library(flatten_kernel DEPS ${COMMON_KERNEL_DEPS} copy_kernel unary)
+register_kernels(DEPS ${COMMON_KERNEL_DEPS})
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
