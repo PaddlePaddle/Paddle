@@ -1003,13 +1003,6 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
-
-      VLOG(6) << "Generated Call RetainGradForTensor";
-      const char* RETAIN_GRAD_TEMPLATE =
-          "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
-
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1023,6 +1016,11 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
+    VLOG(6) << "Generated Call RetainGradForTensor";
+    const char* RETAIN_GRAD_TEMPLATE =
+        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+    grad_node_creation_str +=
+        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
   }
 
   // [GradOpNode] SetGradInMeta

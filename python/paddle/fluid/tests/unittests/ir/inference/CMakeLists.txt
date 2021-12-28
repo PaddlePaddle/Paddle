@@ -7,6 +7,13 @@ string(REPLACE ".py" "" TEST_TRT_IR_PASSES "${TEST_TRT_IR_PASSES}")
 file(GLOB TEST_TRT_CONVERTER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_trt_convert_*.py")
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
+# Only for cpu(mkl + openblas)
+set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass")
+
+foreach(CPU_UT ${TEST_INFERENCE_CPU_UT})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${CPU_UT})
+endforeach()
+
 foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
@@ -53,6 +60,14 @@ if (WITH_MKLDNN AND TENSORRT_FOUND AND WITH_GPU)
   endforeach()
 endif()
 
+if (NOT WITH_MKLDNN AND NOT TENSORRT_FOUND AND NOT WITH_GPU)
+  foreach(target ${TEST_INFERENCE_CPU_UT})
+    py_test_modules(${target} MODULES ${target})
+  endforeach()
+
+set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 300)
+endif()
+
 if(WITH_GPU AND TENSORRT_FOUND)
 set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 120)
@@ -88,6 +103,9 @@ if (WITH_MKLDNN AND TENSORRT_FOUND AND WITH_GPU)
   set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
   set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
   set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_map_matmul_v2_to_matmul_pass PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 240)
 endif()
 
 if (WITH_MKLDNN)

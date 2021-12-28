@@ -158,6 +158,7 @@ from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
+from .tensor.manipulation import take_along_axis  # noqa: F401
 from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
@@ -203,8 +204,10 @@ from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
 from .tensor.math import max  # noqa: F401
 from .tensor.math import maximum  # noqa: F401
+from .tensor.math import amax  # noqa: F401
 from .tensor.math import min  # noqa: F401
 from .tensor.math import minimum  # noqa: F401
+from .tensor.math import amin  # noqa: F401
 from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
@@ -400,6 +403,7 @@ __all__ = [  # noqa
            'mv',
            'in_dynamic_mode',
            'min',
+           'amin',
            'any',
            'slice',
            'normal',
@@ -442,6 +446,7 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
+           'amax',
            'logical_or',
            'bitwise_and',
            'bitwise_or',

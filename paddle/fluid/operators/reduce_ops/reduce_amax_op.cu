@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,25 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-#pragma once
-
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
-
-namespace pten {
-
-template <typename T>
-void Matmul(const GPUContext& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            bool transpose_x,
-            bool transpose_y,
-            DenseTensor* out);
-
-}  // namespace pten
-
-#endif
+// reduce_max
+REGISTER_OP_CUDA_KERNEL(
+    reduce_amax,
+    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<double, kps::MaxFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int, kps::MaxFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int64_t, kps::MaxFunctor, kps::IdentityFunctor>);

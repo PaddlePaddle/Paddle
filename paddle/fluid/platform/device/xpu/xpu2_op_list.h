@@ -242,6 +242,7 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_mean_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_prod", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_sum_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
