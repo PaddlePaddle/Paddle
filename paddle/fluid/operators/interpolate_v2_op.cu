@@ -74,10 +74,9 @@ __global__ void KeNearestNeighborInterpFw(
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
 
-    int channel_id, out_img_idy, out_img_idx;
-    out_img_idy = out_id_w / (out_img_w * num_channels);
-    out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
-    channel_id = tid % num_channels;
+    int out_img_idy = out_id_w / (out_img_w * num_channels);
+    int out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
+    int channel_id = tid % num_channels;
 
     int in_img_idy = (align_corners)
                          ? static_cast<int>(ratio_h * out_img_idy + 0.5)
