@@ -24,7 +24,7 @@ from . import core
 
 __all__ = [
     'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
-    'IpuCompiledProgram', 'IpuStrategy'
+    'IpuCompiledProgram'
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
@@ -32,6 +32,7 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 DeviceType = core.DeviceType
+
 
 def _place_obj(place):
     p = core.Place()
@@ -484,36 +485,167 @@ class CompiledProgram(object):
         return place_list
 
 
-def IpuStrategy():
+def IpuConfig():
     """
-    The IpuStrategy allows the user to preciously control how to
-    build the IPU Program by setting the property.
+    Get the IPU configuration instance. 
 
+    Args:
+        None.
+        
     Returns:
-        IpuStrategy: An IpuStrategy object.
+        The IPU configuration instance.
 
-    Attrs:
-        num_ipus(int): Set the number of IPUs we need. Default 1.
-        is_training(bool): True for training, False inference. Default True.
-        batch_size(int): Used to make input batch size fixed to infer the shapes 
-            of all tensors in the pass. Default 1.
-        enable_manual_shard(bool): True enable graph sharding, otherwise disable. 
-            Default False.
-        need_avg_shard(bool): True enable auto graph sharding, otherwise disable. 
-            Default False.
-        enable_pipelining(bool): True enable data pipeline between subgraphs(requires 
-            enable_manual_shard=True), otherwise disable. Default False.
-        batches_per_step(int): Set batches per run in data pipelining mode. Default 1.
-        accumulationFactor(int): Specify the number of micro-batches to accumulate 
-            before applying the varUpdate. Default 1.
-        enable_fp16(bool): True enable float16 mode, otherwise disable. Default False.
+    Examples:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            ipu_config = static.IpuConfig()
     """
+
     if core.is_compiled_with_ipu():
         return core.IpuStrategy()
     else:
         raise RuntimeError(
-            "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
+            "Can not use IpuConfig() in non IPU compiled environment, please re-compile with WITH_IPU=ON."
         )
+
+
+def IpuGraphConfig(ipu_config,
+                   num_ipus=1,
+                   is_training=True,
+                   batch_size=1,
+                   enable_manual_shard=False,
+                   need_avg_shard=False):
+    """
+    Set graph configuration for IPUs. 
+
+    Args:
+        ipu_config (IpuConfig): The IPU configuration instance.
+        num_ipus (int, optional): Number of IPU devices. Default 1.
+        is_training (bool, optional): True is training graph, False is inference graph. Default True.
+        batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
+            if the batch-size in the graph is dynamic. 
+        enable_manual_shard (bool, optional): Enable graph sharding or not. Default False.  
+            Only if num_ipus > 1, enable_manual_shard is able to be set True.
+        need_avg_shard (bool, optional): Enable auto graph sharding or not. Default False.
+            Only if num_ipus > 1 and enable_manual_shard=True, need_avg_shard is able to be set True.
+        
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+            ipu_config = static.IpuConfig()
+            static.IpuGraphConfig(ipu_config,
+                                  num_ipus=1, 
+                                  is_training=True,
+                                  batch_size=1,
+                                  enable_manual_shard=False,
+                                  need_avg_shard=False)
+    """
+
+    ipu_config.num_ipus = num_ipus
+    ipu_config.is_training = is_training
+    ipu_config.batch_size = batch_size
+    ipu_config.enable_manual_shard = enable_manual_shard
+    if ipu_config.num_ipus == 1 and ipu_config.enable_manual_shard:
+        raise RuntimeError(
+            "Only if num_ipus > 1, enable_manual_shard is able to be set True.")
+    ipu_config.need_avg_shard = need_avg_shard
+    if ipu_config.enable_manual_shard != True and ipu_config.need_avg_shard:
+        raise RuntimeError(
+            "Only if enable_manual_shard=True, need_avg_shard is able to be set True."
+        )
+
+
+def IpuPipeliningConfig(ipu_config,
+                        enable_pipelining=False,
+                        batches_per_step=1,
+                        accumulationFactor=1):
+    """
+    Set pipelining configuration for IPUs. Used to optimize the throughput performance.
+
+    Args:
+        ipu_config (IpuConfig): The IPU configuration instance.
+        enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Default False.
+            Only if enable_manual_shard=True, enable_pipelining is able to be set True.
+        batches_per_step (int, optional): Set the batches per run in data pipelining mode. Default 1.
+            Only if enable_pipelining=True, batches_per_step is able to be set > 1.
+        accumulationFactor (int, optional): Specify the number of micro-batches to accumulate 
+            before applying the varUpdate. Default 1.
+        
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            ipu_config = static.IpuConfig()
+            static.IpuPipeliningConfig(ipu_config,
+                                       enable_pipelining=False,
+                                       batches_per_step=1,
+                                       accumulationFactor=1)
+    """
+
+    ipu_config.enable_pipelining = enable_pipelining
+    if ipu_config.enable_manual_shard != True and ipu_config.enable_pipelining:
+        raise RuntimeError(
+            "Only if enable_manual_shard=True, enable_pipelining is able to be set True."
+        )
+    ipu_config.batches_per_step = batches_per_step
+    if ipu_config.enable_pipelining != True and ipu_config.batches_per_step > 1:
+        raise RuntimeError(
+            "Only if enable_pipelining=True, batches_per_step is able to be set > 1."
+        )
+    ipu_config.accumulationFactor = accumulationFactor
+
+
+def IpuHalfConfig(ipu_config, enable_fp16=False):
+    """
+    Set Half configuration for IPUs. Used to optimize the performance.
+
+    Args:
+        ipu_config (IpuConfig): The IPU configuration instance.
+        enable_fp16 (bool, optional): Enable FLOAT16 mode or not. Default False.
+        
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            ipu_config = static.IpuConfig()
+            static.IpuHalfConfig(ipu_config, enable_fp16=False)
+    """
+
+    ipu_config.enable_fp16 = enable_fp16
 
 
 class IpuCompiledProgram(object):
@@ -529,9 +661,9 @@ class IpuCompiledProgram(object):
             The default is None.
         scope(Scope): the scope used to run this program, you can switch
             it to different scope. Default is :code:`paddle.static.global_scope()`
-        ipu_strategy(IpuStrategy): This argument is used to build the program with the
+        ipu_config(IpuConfig): This argument is used to build the program with the
             specified options, such as training or inference mode, batch size in popart,
-            dtype, etc. For more details, please refer to :`IpuStrategy()`.
+            dtype, etc. For more details, please refer to :code:`paddle.static.IpuConfig`.
 
     Returns:
         IpuCompiledProgram
@@ -549,13 +681,18 @@ class IpuCompiledProgram(object):
             a = static.data(name='data', shape=[None, 1], dtype='int32')
             b = a + 1
             main_prog = static.default_main_program()
-            ipu_strategy = static.IpuStrategy()
+            
+            ipu_config = static.IpuConfig()
+            static.IpuGraphConfig(ipu_config, num_ipus=1, is_training=True, batch_size=1)
+            static.IpuPipeliningConfig(ipu_config, enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+            static.IpuHalfConfig(ipu_config, enable_fp16=False)
+            
             ipu_compiled_program = static.IpuCompiledProgram(
                 main_prog,
-                ipu_strategy=ipu_strategy)
+                ipu_config=ipu_config)
     """
 
-    def __init__(self, program, scope=None, ipu_strategy=None):
+    def __init__(self, program, scope=None, ipu_config=None):
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "Can not use this function since PaddlePaddle is not compiled with IPU"
@@ -579,10 +716,10 @@ class IpuCompiledProgram(object):
         else:
             self._scope = paddle.static.global_scope()
 
-        if ipu_strategy is not None:
-            self._ipu_strategy = ipu_strategy
+        if ipu_config is not None:
+            self._ipu_strategy = ipu_config
         else:
-            self._ipu_strategy = IpuStrategy()
+            self._ipu_strategy = core.IpuStrategy()
 
         self._backend = core.IpuBackend()
         self._backend.set_scope(self._scope)
@@ -601,7 +738,7 @@ class IpuCompiledProgram(object):
         to run the model on the ipu.
         
         Args:
-            feed_list(lsit): This parameter represents the input Tensors of the model.
+            feed_list(list): This parameter represents the input Tensors of the model.
 
             fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model.
@@ -623,10 +760,14 @@ class IpuCompiledProgram(object):
                 b = a + 1
                 main_prog = static.default_main_program()
 
-                ipu_strategy = static.IpuStrategy()
+                ipu_config = static.IpuConfig()
+                static.IpuGraphConfig(ipu_config, num_ipus=1, is_training=True, batch_size=1)
+                static.IpuPipeliningConfig(ipu_config, enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+                static.IpuHalfConfig(ipu_config, enable_fp16=False)
+                
                 program = static.IpuCompiledProgram(
                     main_prog,
-                    ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+                    ipu_config=ipu_config).compile([a.name], [b.name])
         """
         # feed and fetch doesn't have corresponding popart op, so we rm both here
         global_block = self._program.global_block()
