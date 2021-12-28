@@ -12,12 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-#include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/take_along_axis_op.h"
 
 namespace paddle {
@@ -36,7 +32,6 @@ class TakeAlongAxisCUDAKernel : public framework::OpKernel<T> {
     auto result = ctx.Output<Tensor>("Result");
     result->Resize(index->dims());
     result->mutable_data<T>(ctx.GetPlace());
-    
     const auto &index_type = index->type();
     if (index_type == framework::proto::VarType::INT32) {
       gpu_gather_kernel<T, int32_t>(*input, axis, *index, *result,

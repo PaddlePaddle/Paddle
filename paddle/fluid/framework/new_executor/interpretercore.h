@@ -26,8 +26,6 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -103,7 +101,7 @@ class InterpreterCore {
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
   std::vector<size_t> dependecy_count_;
-  std::atomic<size_t> op_run_number_{0};
+  std::atomic<size_t> unfinished_op_numer_{0};
   std::vector<std::vector<size_t>> input_var2op_info_;
 
   StreamAnalyzer stream_analyzer_;
@@ -111,6 +109,7 @@ class InterpreterCore {
   std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
+  std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;

@@ -40,7 +40,20 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Output(Result) of TakeAlongAxisOp should not be null."));
 
+    auto input_dim = ctx->GetInputDim("Input");
     auto index_dim = ctx->GetInputDim("Index");
+
+    PADDLE_ENFORCE_GT(input_dim.size(), 0,
+                      platform::errors::InvalidArgument(
+                          "Dimension of the input(Input) of TakeAlongAxisOp "
+                          "should be greater than 0.",
+                          input_dim));
+
+    PADDLE_ENFORCE_GT(index_dim.size(), 0,
+                      platform::errors::InvalidArgument(
+                          "Dimension of the input(Index) of TakeAlongAxisOp "
+                          "should be greater than 0.",
+                          index_dim));
 
     ctx->SetOutputDim("Result", index_dim);
   }
@@ -82,22 +95,16 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
-    ctx->ShareLoD("Input", /*-->*/ framework::GradVarName("Input"));
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Result")),
-                                   ctx.device_context());
-  }
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
-  }
+  return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                     ctx, framework::GradVarName("Result")),
+                                 ctx.device_context());
+} framework::OpKernelType GetKernelTypeForVar(
+    const std::string& var_name, const framework::Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const override {
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
 };
 
 template <typename T>

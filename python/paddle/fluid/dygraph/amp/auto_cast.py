@@ -71,7 +71,9 @@ AMP_RELATED_FLAGS_SETTING = {
 }
 
 PURE_FP16_WHITE_LIST = {' '}
-PURE_FP16_BLACK_LIST = {'lookup_table', 'lookup_table_v2'}
+PURE_FP16_BLACK_LIST = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -128,12 +130,10 @@ def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
-            if len(layer._sub_layers) is 0:
-
-                if (layer._dtype is 'float16') or isinstance(layer, (
-                        paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
-                    continue
-                layer.to(dtype='float16')
+            if (layer._dtype is 'float16') or isinstance(layer, (
+                    paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+                continue
+            layer._to_impl(dtype='float16', include_sublayers=False)
     return models
 
 

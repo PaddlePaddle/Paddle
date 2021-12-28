@@ -13,9 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -65,10 +69,13 @@ class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
     auto input = ctx.Input<Tensor>("Input");
     input_grad->Resize(input->dims());
     input_grad->mutable_data<T>(ctx.GetPlace());
-    auto input_grad_data = input_grad->data<T>();
-    for (int64_t i = 0; i < input_grad->numel(); ++i) {
-      *(input_grad_data + i) = 0;
-    }
+
+    // Set to zero tensor.
+    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> functor;
+    functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+            input_grad, static_cast<T>(0));
+
     const auto &index_type = index->type();
     if (index_type == framework::proto::VarType::INT32) {
       cpu_scatter_add_kernel<T, int32_t>(

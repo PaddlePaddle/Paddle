@@ -29,16 +29,6 @@ class TensorAssign {
 };
 static TensorAssign tensor_assign;
 
-class ReduceMul {
- public:
-  template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    *self_data *= *src_data;
-    // TODO(huangxu96) platform::CudaAtomicMul(*self_data, *src_data);
-  }
-};
-static ReduceMul reduce_mul;
-
 class ReduceAdd {
  public:
   template <
@@ -54,6 +44,16 @@ class ReduceAdd {
   }
 };
 static ReduceAdd reduce_add;
+
+class ReduceMul {
+ public:
+  template <typename tensor_t>
+  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
+    *self_data *= *src_data;
+    // TODO(huangxu96) platform::CudaAtomicMul(*self_data, *src_data);
+  }
+};
+static ReduceMul reduce_mul;
 
 template <typename tensor_t, typename index_t, typename func_t,
           bool is_scatter_like = true>
@@ -154,41 +154,32 @@ void gpu_gather_kernel(Tensor self, int dim, const Tensor& index, Tensor result,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_assign_kernel(Tensor self, int dim, const Tensor& index,
                                Tensor src, const platform::DeviceContext& ctx) {
-  VLOG(3) << "start scatter assign kernel";
-
   gpu_gather_scatter_functor<tensor_t, index_t,
                              /*is_scatter_like=*/true>()(
       self, dim, index, src, "scatter_assign_gpu", tensor_assign, ctx);
-  VLOG(3) << "<<<< Done gpu_scatter_add_kernel <<<<<";
 }
 
 template <typename tensor_t, typename index_t>
 void gpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
                             Tensor src, const platform::DeviceContext& ctx) {
-  VLOG(3) << "start scatter add kernel";
-
   gpu_gather_scatter_functor<tensor_t, index_t,
                              /*is_scatter_like=*/true>()(
       self, dim, index, src, "scatter_add_gpu", reduce_add, ctx);
-  VLOG(3) << "<<<< Done gpu_scatter_add_kernel <<<<<";
 }
 
 template <typename tensor_t, typename index_t>
 void gpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
                             Tensor src, const platform::DeviceContext& ctx) {
-  VLOG(3) << "start scatter mul kernel";
-
   gpu_gather_scatter_functor<tensor_t, index_t,
                              /*is_scatter_like=*/true>()(
       self, dim, index, src, "scatter_mul_gpu", reduce_mul, ctx);
-  VLOG(3) << "<<<< Done gpu_scatter_mul_kernel <<<<<";
 }
 
 namespace plat = paddle::platform;
 Instantiate_Template_Function(gpu_gather_kernel)
-Instantiate_Template_Function(gpu_scatter_assign_kernel)
-Instantiate_Template_Function(gpu_scatter_add_kernel)
-Instantiate_Template_Function(gpu_scatter_mul_kernel)
+    Instantiate_Template_Function(gpu_scatter_assign_kernel)
+        Instantiate_Template_Function(gpu_scatter_add_kernel)
+            Instantiate_Template_Function(gpu_scatter_mul_kernel)
 
 }  // namespace operators
 }  // namespace paddle

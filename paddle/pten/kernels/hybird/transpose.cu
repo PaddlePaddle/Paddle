@@ -14,9 +14,8 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/pten/backends/cuda/cuda_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/math/cast_func.h"
 #include "paddle/pten/kernels/hybird/transpose.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -52,9 +51,9 @@ __global__ void TransposeNormalKernel(const T* in_ptr,
 }
 
 template <typename T>
-struct TransposeNormal<CUDAContext, T> {
+struct TransposeNormal<GPUContext, T> {
   // for dims >= 7 situation
-  void operator()(const CUDAContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const pten::DenseTensor& in,
                   pten::DenseTensor* out,
                   const std::vector<int64_t>& axis) {
@@ -106,7 +105,7 @@ struct TransposeNormal<CUDAContext, T> {
 
 // define transpose normal
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
-  template struct TransposeNormal<CUDAContext, TYPE>
+  template struct TransposeNormal<GPUContext, TYPE>
 
 DEFINE_GPU_TRANS_NORMAL(bool);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
