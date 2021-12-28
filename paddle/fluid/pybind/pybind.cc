@@ -1298,6 +1298,11 @@ PYBIND11_MODULE(core_noavx, m) {
 #endif
            })
       .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
+      .def("get_id_to_index",
+           [](SelectedRows &self) {
+             auto id_to_index = self.id_to_index();
+             return id_to_index;
+           })
       .def("rows", [](SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
