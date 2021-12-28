@@ -1,55 +1,47 @@
 repos:
--   repo: https://github.com/Lucas-C/pre-commit-hooks.git
-    sha: v1.0.1
-    hooks:
-    -   id: remove-crlf
-        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
--   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
-    sha: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
-    hooks:
-    -   id: yapf
-        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    sha: 5bf6c09bfa1297d3692cadd621ef95f1284e33c0
+    rev: v4.1.0
     hooks:
-    -   id: check-added-large-files
-    -   id: check-merge-conflict
-    -   id: check-symlinks
-    -   id: detect-private-key
-        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+    -   id: trailing-whitespace
     -   id: end-of-file-fixer
--   repo: local
+    -   id: check-docstring-first
+    -   id: check-json
+    -   id: check-added-large-files
+    -   id: check-yaml
+    -   id: debug-statements
+    -   id: name-tests-test
+    -   id: double-quote-string-fixer
+    -   id: requirements-txt-fixer
+-   repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
     hooks:
-    -   id: clang-format-with-version-check
-        name: clang-format
-        description: Format files with ClangFormat.
-        entry: bash ./tools/codestyle/clang_format.hook -i
-        language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
--   repo: local
+    -   id: flake8
+        additional_dependencies: [flake8-typing-imports==1.7.0]
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.5.7
     hooks:
-    -   id: cpplint-cpp-source
-        name: cpplint
-        description: Check C++ code style using cpplint.py.
-        entry: bash ./tools/codestyle/cpplint_pre_commit.hook
-        language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
--   repo: local
+    -   id: autopep8
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.6.0
     hooks:
-    -   id: pylint-doc-string
-        name: pylint
-        description: Check python docstring style using docstring_checker.
-        entry: bash ./tools/codestyle/pylint_pre_commit.hook
-        language: system
-        files: \.(py)$
--   repo: local
+    -   id: reorder-python-imports
+        args: [--py3-plus]
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v2.29.1
     hooks:
-    -   id: copyright_checker
-        name: copyright_checker
-        entry: python ./tools/codestyle/copyright.hook
-        language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py|sh)$
-        exclude: |
-            (?x)^(
-                paddle/utils/.*
-            )$
+    -   id: pyupgrade
+        args: [--py36-plus]
+-   repo: https://github.com/asottile/add-trailing-comma
+    rev: v2.2.1
+    hooks:
+    -   id: add-trailing-comma
+        args: [--py36-plus]
+-   repo: https://github.com/asottile/setup-cfg-fmt
+    rev: v1.20.0
+    hooks:
+    -   id: setup-cfg-fmt
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.930
+    hooks:
+    -   id: mypy
+        additional_dependencies: [types-all]
