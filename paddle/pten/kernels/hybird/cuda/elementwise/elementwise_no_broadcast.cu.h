@@ -65,7 +65,7 @@ __device__ void VectorizedElementwiseKernelImpl(
     int data_offset,
     Functor func) {
   InT args[Arity][VecSize];
-  OutType<OutT, NumOuts> result[VecSize];
+  ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -77,7 +77,7 @@ __device__ void VectorizedElementwiseKernelImpl(
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT,
-                             OutType<OutT, NumOuts>,
+                             ConditionalT<OutT, NumOuts>,
                              VecSize,
                              Functor,
                              Arity,

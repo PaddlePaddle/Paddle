@@ -208,7 +208,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
     int block_offset,
     Functor func) {
   InT args[Arity][VecSize];
-  OutType<OutT, NumOuts> result[VecSize];
+  ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -224,7 +224,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT,
-                             OutType<OutT, NumOuts>,
+                             ConditionalT<OutT, NumOuts>,
                              VecSize,
                              Functor,
                              Arity,
@@ -455,7 +455,7 @@ void LaunchBroadcastElementwiseCudaKernel(
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));
-  PADDLE_ENFORCE_EQ(kArity,
+  PADDLE_ENFORCE_LE(kArity,
                     ElementwiseType::kTernary,
                     paddle::platform::errors::InvalidArgument(
                         "Currently only broadcast of ternary is supported "

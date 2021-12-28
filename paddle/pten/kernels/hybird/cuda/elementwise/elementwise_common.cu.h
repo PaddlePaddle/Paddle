@@ -27,7 +27,7 @@ enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
-using OutType =
+using ConditionalT =
     typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
 
 template <typename InT,
