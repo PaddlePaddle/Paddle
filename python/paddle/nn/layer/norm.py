@@ -101,8 +101,11 @@ class _InstanceNormBase(Layer):
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(self.scale.shape[0],
-                                                    self._epsilon)
+        if self.scale == None:
+            num_features = 0
+        else:
+            num_features = self.scale.shape[0]
+        return 'num_features={}, epsilon={}'.format(num_features, self._epsilon)
 
 
 class InstanceNorm1D(_InstanceNormBase):
