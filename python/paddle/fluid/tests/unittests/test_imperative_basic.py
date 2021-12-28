@@ -312,7 +312,7 @@ class TestImperative(unittest.TestCase):
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp
+            y = paddle.add(l0(x), tmp)
             o = l1(y)
             o.backward()
 
@@ -330,7 +330,7 @@ class TestImperative(unittest.TestCase):
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp
+            y = paddle.add(l0(x), tmp)
             o = l1(y)
             o.backward()
 
@@ -351,7 +351,7 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(tmp.stop_gradient)
                 self.assertTrue(tmp2.stop_gradient is False)
             x = paddle.to_tensor(data)
-            y = l0(x) + tmp2
+            y = paddle.add(l0(x), tmp2)
             o = l1(y)
             o.backward()
 
@@ -374,7 +374,7 @@ class TestImperative(unittest.TestCase):
                 tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs.append(tmp)
-            ret = fluid.layers.sums(inputs)
+            ret = paddle.add_n(inputs)
             loss = fluid.layers.reduce_sum(ret)
             loss.backward()
         with fluid.dygraph.guard():
@@ -415,7 +415,7 @@ class TestImperative(unittest.TestCase):
             except Exception as e:
                 assert type(e) == core.EnforceNotMet
 
-    def test_empty_grad(self):
+    def func_test_empty_grad(self):
         with fluid.dygraph.guard():
             x = np.ones([2, 2], np.float32)
             new_var = paddle.to_tensor(x)
@@ -438,6 +438,11 @@ class TestImperative(unittest.TestCase):
                 new_variable.gradient()
             except Exception as e:
                 assert type(e) == ValueError
+
+    def test_empty_grad(self):
+        with _test_eager_guard():
+            self.func_test_empty_grad()
+        self.func_test_empty_grad()
 
     def test_set_persistable(self):
         with fluid.dygraph.guard():

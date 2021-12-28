@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle.fluid.core as core
-import paddle.fluid.eager.eager_tensor_patch_methods as eager_tensor_patch_methods
 import paddle
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_eager_mode
@@ -310,7 +309,7 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
             self.assertTrue(np.array_equal(tensor.numpy(), arr))
             print("Test copy_")
             tensor.copy_(tensor1, True)
-            self.assertEqual(tensor.persistable, True)
+            self.assertEqual(tensor.persistable, False)
             self.assertEqual(tensor.shape, [4, 16])
             self.assertEqual(tensor.dtype, core.VarDesc.VarType.FP32)
             self.assertTrue(np.array_equal(tensor.numpy(), arr1))
