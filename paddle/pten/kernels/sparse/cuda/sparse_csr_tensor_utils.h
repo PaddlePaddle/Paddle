@@ -36,6 +36,16 @@ template <typename T>
 void SparseCsrToDense(const CUDAContext& dev_ctx,
                       const SparseCsrTensor& src,
                       DenseTensor* dst);
+
+template <typename T>
+void SparseCooToCsr(const CUDAContext& dev_ctx,
+                    const SparseCooTensor& src,
+                    SparseCsrTensor* dst);
+
+template <typename T>
+void SparseCsrToCoo(const CUDAContext& dev_ctx,
+                    const SparseCsrTensor& src,
+                    SparseCooTensor* dst);
 }  // namespace pten
 
 #endif

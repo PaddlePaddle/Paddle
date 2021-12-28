@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/kernels/sparse/cpu/sparse_csr_tensor_utils.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/tensor_meta.h"
@@ -64,12 +65,6 @@ void SparseCooToCsr(const CPUContext& dev_ctx,
                     paddle::platform::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D matrix"));
   const int64_t non_zero_num = src.nnz();
-  const auto cpu_alloc =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
-  DenseTensorMeta crows_meta(DataType::INT64,
-                             paddle::framework::make_ddim({dense_dims[0] + 1}),
-                             DataLayout::NCHW);
 
   dst->Resize(src.dims(), non_zero_num);
   int64_t* csr_crows_data = dst->mutable_non_zero_crows();
@@ -82,23 +77,26 @@ void SparseCooToCsr(const CPUContext& dev_ctx,
   const int64_t* src_cols_data = src_rows_data + non_zero_num;
   const T* src_values_data = src_values.data<T>();
 
-  // 1. call src.coalesced() for distinct and sort the indices
-  // 2. transform the src to dst
+  // TODO(zhangkahuo): call src.coalesced() to distinct and sort the indices
+  // before transform the src to dst
   if (non_zero_num <= 0) return;
-  int offset = 1;
-  csr_crows_data[0] = 0;
-  csr_cols_data[0] = src_cols_data[0];
-  csr_values_data[0] = src_values_data[0];
-  for (int64_t i = 1, j = 1; i < non_zero_num; i++) {
-    csr_cols_data[i] = src_cols_data[i];
-    csr_values_data[i] = src_values_data[i];
-    if (src_rows_data[i] == src_rows_data[i - 1]) {
-    } else {
-      csr_crows_data[j++] = offset;
+  for (int i = 0; i <= src_rows_data[0]; i++) {
+    csr_crows_data[i] = 0;
+  }
+  for (int64_t i = 1; i < non_zero_num; i++) {
+    for (int j = src_rows_data[i - 1]; j < src_rows_data[i]; j++) {
+      csr_crows_data[j + 1] = i;
     }
-    offset += 1;
   }
   csr_crows_data[dense_dims[0]] = non_zero_num;
+  auto place = BOOST_GET_CONST(paddle::platform::CPUPlace, dev_ctx.GetPlace());
+  paddle::memory::Copy(place,
+                       csr_cols_data,
+                       place,
+                       src_cols_data,
+                       sizeof(int64_t) * non_zero_num);
+  paddle::memory::Copy(
+      place, csr_values_data, place, src_values_data, sizeof(T) * non_zero_num);
 }
 
 template <typename T>
@@ -123,10 +121,17 @@ void SparseCsrToCoo(const CPUContext& dev_ctx,
   for (int i = 0; i < dense_dim[0]; i++) {
     for (int j = csr_crows_data[i]; j < csr_crows_data[i + 1]; j++) {
       coo_rows_data[j] = i;
-      coo_cols_data[j] = csr_cols_data[j];
-      coo_values_data[j] = csr_values_data[j];
     }
   }
+
+  auto place = BOOST_GET_CONST(paddle::platform::CPUPlace, dev_ctx.GetPlace());
+  paddle::memory::Copy(place,
+                       coo_cols_data,
+                       place,
+                       csr_cols_data,
+                       sizeof(int64_t) * non_zero_num);
+  paddle::memory::Copy(
+      place, coo_values_data, place, csr_values_data, sizeof(T) * non_zero_num);
 }
 
 template <typename T>
