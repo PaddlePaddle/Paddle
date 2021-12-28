@@ -447,9 +447,10 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
 
     def test_constructor_with_kwargs(self):
         print("Test_constructor_with_kwargs")
+        paddle.set_device("cpu")
         place_list = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            place_list.append(core.CUDAPlace(0))
+        # if core.is_compiled_with_cuda():
+        #     place_list.append(core.CUDAPlace(0))
         with _test_eager_guard():
             for p in place_list:
                 self.constructor_with_kwargs(p)
