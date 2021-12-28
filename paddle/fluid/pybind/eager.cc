@@ -461,13 +461,13 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     case (Py_ssize_t)3: {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
       if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-        VLOG(6) << "Calling case3's initializer.";
+        VLOG(6) << "Calling case3's or case4's initializer.";
         AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
                                      args_num);
         return 0;
       } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
                                                    p_eager_tensor_type))) {
-        VLOG(6) << "Calling case6's initializer.";
+        VLOG(6) << "Calling case5's or case6's initializer.";
         AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
                                     args_num);
         return 0;
