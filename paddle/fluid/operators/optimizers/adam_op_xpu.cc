@@ -139,11 +139,8 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       Tensor xpu_beta2_pow;
       if (beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
-        paddle::framework::TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx,
-                                      &xpu_beta1_pow);
-        paddle::framework::TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx,
-                                      &xpu_beta2_pow);
-        dev_ctx.Wait();
+        TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx, &xpu_beta1_pow);
+        TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx, &xpu_beta2_pow);
         beta1_pow_ptr = xpu_beta1_pow.template data<float>();
         beta2_pow_ptr = xpu_beta2_pow.template data<float>();
       }
@@ -191,8 +188,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
 
         PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                           platform::errors::External(
-                              "XPU API return wrong value[%d], please check "
-                              "where Baidu Kunlun Card is properly installed.",
+                              "XPU API return wrong value[%d],",
                               r));
         }
       }else if (grad_var->IsType<framework::SelectedRows>()) {
@@ -233,7 +229,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           beta2_pow.place() == platform::CPUPlace()) {
         framework::TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx, &xpu_beta1_pow);
         framework::TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx, &xpu_beta2_pow);
-        dev_ctx.Wait();
         beta1_pow_ptr = xpu_beta1_pow.template data<T>();
         beta2_pow_ptr = xpu_beta2_pow.template data<T>();
       }
@@ -242,21 +237,16 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       const T* grad_data = grad_tensor.template data<T>();
       int row_count = grad_merge.rows().size();
       int rows[row_count];
-      int *xpu_rows = nullptr;
-      int ret = xpu_malloc(reinterpret_cast<void**>(&xpu_rows), row_count * sizeof(int));
-      PADDLE_ENFORCE_EQ(
-              ret, xpu::SUCCESS,
-              platform::errors::External(
-                  "XPU malloc occur error in adam error code ", ret,
-                  XPUAPIErrorMsg[ret]));
-
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      int *xpu_rows = RAII_GUARD.alloc_l3_or_gm<int>(row_count);
       std::vector<int64_t> merge_rows(grad_merge.rows().begin(), grad_merge.rows().end());
       for (size_t i = 0; i < grad_merge.rows().size(); ++i) {
            rows[i] =  static_cast<int>(merge_rows[i]);
       }
       xpu_wait(dev_ctx.x_context()->xpu_stream);
-      ret = xpu_memcpy((void*)xpu_rows, (void*)rows, row_count * sizeof(int), XPU_HOST_TO_DEVICE);
-
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                 xpu_rows, platform::CPUPlace(), rows,
+                 row_count * sizeof(int));
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
       auto ori_rows = param.numel() / row_numel;
 
@@ -271,47 +261,45 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           beta1, beta2, epsilon, ori_rows,
           xpu_rows, row_numel, grad_merge.rows().size(), lazy_mode);
 
-       xpu_wait(dev_ctx.x_context()->xpu_stream);
+      xpu_wait(dev_ctx.x_context()->xpu_stream);
 
-         if (!use_global_beta_pow) {
-            // update in cpu and then copy to xpu
-            if (beta1_pow.place() == platform::CPUPlace() &&
-                beta2_pow.place() == platform::CPUPlace()) {
-              const float* beta1_pow_p = beta1_pow.template data<float>();
-              beta1_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
-                  beta1 * beta1_pow_p[0];
-              const float* beta2_pow_p = beta2_pow.template data<float>();
-              beta2_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
-                  beta2 * beta2_pow_p[0];
-              xpu_wait(dev_ctx.x_context()->xpu_stream);
-            } else {
-              float* beta1_pow_out_p =
-                  beta1_pow_out->mutable_data<float>(ctx.GetPlace());
-              float* beta2_pow_out_p =
-                  beta2_pow_out->mutable_data<float>(ctx.GetPlace());
-              int r =
-                  xpu::scale(dev_ctx.x_context(), beta1_pow_ptr, beta1_pow_out_p,
-                             beta1_pow.numel(), false, beta1, 0.0f);
-              PADDLE_ENFORCE_EQ(
-                  r, xpu::SUCCESS,
-                  platform::errors::External(
-                      "XPU kernel scale occur error in adam error code ", r,
-                      XPUAPIErrorMsg[r]));
-              r = xpu::scale(dev_ctx.x_context(), beta2_pow_ptr, beta2_pow_out_p,
-                             beta2_pow.numel(), false, beta2, 0.0f);
-              PADDLE_ENFORCE_EQ(
-                  r, xpu::SUCCESS,
-                  platform::errors::External(
-                      "XPU kernel scale occur error in adam error code ", r,
-                      XPUAPIErrorMsg[r]));
-            }
-            PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                  platform::errors::External(
-                      "XPU API return wrong value[%d], please check "
-                      "where Baidu Kunlun Card is properly installed.",
-                      r));
+      if (!use_global_beta_pow) {
+        // update in cpu and then copy to xpu
+        if (beta1_pow.place() == platform::CPUPlace() &&
+            beta2_pow.place() == platform::CPUPlace()) {
+          const float* beta1_pow_p = beta1_pow.template data<float>();
+          beta1_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow_p[0];
+          const float* beta2_pow_p = beta2_pow.template data<float>();
+          beta2_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow_p[0];
+          xpu_wait(dev_ctx.x_context()->xpu_stream);
+        } else {
+          float* beta1_pow_out_p =
+              beta1_pow_out->mutable_data<float>(ctx.GetPlace());
+          float* beta2_pow_out_p =
+              beta2_pow_out->mutable_data<float>(ctx.GetPlace());
+          int r =
+              xpu::scale(dev_ctx.x_context(), beta1_pow_ptr, beta1_pow_out_p,
+                         beta1_pow.numel(), false, beta1, 0.0f);
+          PADDLE_ENFORCE_EQ(
+              r, xpu::SUCCESS,
+              platform::errors::External(
+                  "XPU kernel scale occur error in adam error code ", r,
+                  XPUAPIErrorMsg[r]));
+          r = xpu::scale(dev_ctx.x_context(), beta2_pow_ptr, beta2_pow_out_p,
+                         beta2_pow.numel(), false, beta2, 0.0f);
+          PADDLE_ENFORCE_EQ(
+              r, xpu::SUCCESS,
+              platform::errors::External(
+                  "XPU kernel scale occur error in adam error code ", r,
+                  XPUAPIErrorMsg[r]));
+        }
+        PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+              platform::errors::External(
+                  "XPU API return wrong value[%d],",
+                  r));
       }
-      xpu_free(xpu_rows);
     } else {
       PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
                                   "Variable type not supported by adam_op"));
