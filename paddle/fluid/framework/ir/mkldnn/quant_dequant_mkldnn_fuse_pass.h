@@ -35,18 +35,18 @@ class QuantDequantMkldnnFusePass : public FusePassBase {
 
   void GatherInfoFromFake(ir::Graph* graph, Scope* scope,
                           std::unordered_set<std::string> fake_dequantize_types,
-                          std::unordered_map<std::string, std::vector<float>>
+                          std::unordered_map<std::string, std::vector<float>>&
                               weight_thresholds) const;
 
   void GatherInputScalesFromFake(
       ir::Graph* graph, Scope* scope,
       std::unordered_set<std::string> fake_quantize_types,
-      std::unordered_map<std::string, std::pair<int, std::vector<float>>>
+      std::unordered_map<std::string, std::pair<int, std::vector<float>>>&
           var_quant_scales) const;
 
   void GatherOutputScalesFromAttr(
       ir::Graph* graph,
-      std::unordered_map<std::string, std::pair<int, std::vector<float>>>
+      std::unordered_map<std::string, std::pair<int, std::vector<float>>>&
           var_quant_scales) const;
 
   void RemoveFakeOps(
@@ -55,7 +55,7 @@ class QuantDequantMkldnnFusePass : public FusePassBase {
       std::unordered_set<std::string> fake_quantize_dequantize_types) const;
 
   void DequantizeWeights(ir::Graph* graph, Scope* scope,
-                         std::unordered_map<std::string, std::vector<float>>
+                         std::unordered_map<std::string, std::vector<float>>&
                              weight_thresholds) const;
 
   void UpdateActivations(ir::Graph* graph) const;

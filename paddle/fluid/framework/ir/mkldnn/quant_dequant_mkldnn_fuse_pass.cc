@@ -16,7 +16,6 @@
 #include <string>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -55,7 +54,7 @@ void QuantDequantMkldnnFusePass::MarkSkipQuantizedOps(
 void QuantDequantMkldnnFusePass::GatherInfoFromFake(
     ir::Graph* graph, Scope* scope,
     std::unordered_set<std::string> fake_dequantize_types,
-    std::unordered_map<std::string, std::vector<float>> weight_thresholds)
+    std::unordered_map<std::string, std::vector<float>>& weight_thresholds)
     const {
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -65,15 +64,19 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
       auto* op_desc = op_node->Op();
       auto x_var_name = op_desc->Input("X")[0];
       if (op_desc->HasAttr("max_range")) {
-        float max_range = BOOST_GET_CONST(float, op_desc->GetAttr("max_range"));
+        const float max_range =
+            BOOST_GET_CONST(float, op_desc->GetAttr("max_range"));
         weight_thresholds[x_var_name].push_back(127 * 127 / max_range);
       } else {
         auto scale_name = op_desc->Input("Scales")[0];
-        // scope->FindVar(scale_name)判空？
-        const LoDTensor& scale_tensor =
-            scope->FindVar(scale_name)->Get<LoDTensor>();
-        const float* scale_data = scale_tensor.data<float>();
-        for (int i = 0; i < scale_tensor.numel(); i++) {
+        auto* var = scope->FindVar(scale_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            var, "The Scales variable of dequantize op is not found.");
+
+        auto* scale_tensor = var->GetMutable<LoDTensor>();
+        auto scale_data =
+            scale_tensor->mutable_data<float>(platform::CPUPlace());
+        for (int i = 0; i < scale_tensor->numel(); i++) {
           weight_thresholds[x_var_name].push_back(scale_data[i]);
         }
       }
@@ -84,7 +87,7 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
 void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
     ir::Graph* graph, Scope* scope,
     std::unordered_set<std::string> fake_quantize_types,
-    std::unordered_map<std::string, std::pair<int, std::vector<float>>>
+    std::unordered_map<std::string, std::pair<int, std::vector<float>>>&
         var_quant_scales) const {
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -93,7 +96,8 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
     if (op_node->Name() == "fake_quantize_dequantize_moving_average_abs_max" ||
         fake_quantize_types.count(op_node->Name())) {
       auto* op_desc = op_node->Op();
-      int bit_length = BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
+      const int bit_length =
+          BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
       PADDLE_ENFORCE_EQ(bit_length, 8, platform::errors::InvalidArgument(
                                            "Unsupported number quantization "
                                            "bits: %d, only 8 is supported now.",
@@ -102,7 +106,11 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
       auto x_var_name = op_desc->Input("X")[0];
       auto scale_name = op_desc->Input("InScale")[0];
       auto out_var_name = op_desc->Output("Out")[0];
-      auto* scale_tensor = scope->FindVar(scale_name)->GetMutable<LoDTensor>();
+      auto* var = scope->FindVar(scale_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var, "The InScale variable of quantize op is not found.");
+
+      auto* scale_tensor = var->GetMutable<LoDTensor>();
       auto scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());
       float scale = 1.0 / scale_data[0];
 
@@ -123,7 +131,7 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
 
 void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
     ir::Graph* graph,
-    std::unordered_map<std::string, std::pair<int, std::vector<float>>>
+    std::unordered_map<std::string, std::pair<int, std::vector<float>>>&
         var_quant_scales) const {
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -131,7 +139,7 @@ void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
 
     auto* op_desc = op_node->Op();
     if (op_desc->HasAttr("out_threshold")) {
-      float attr_scale =
+      const float attr_scale =
           BOOST_GET_CONST(float, op_desc->GetAttr("out_threshold"));
       if (attr_scale == 0.0) continue;
       float scale = 1.0 / attr_scale;
@@ -180,6 +188,10 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
       }
     }
 
+    PADDLE_ENFORCE_NOT_NULL(fake_quant_in,
+                            "The input var of quantize op is not found.");
+    PADDLE_ENFORCE_NOT_NULL(fake_quant_out,
+                            "The output var of quantize op is not found.");
     std::string input_act_name = fake_quant_in->Var()->Name();
     std::string output_act_name = fake_quant_out->Var()->Name();
     auto outlinks = fake_quant_out->outputs;
@@ -215,6 +227,10 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
       }
     }
 
+    PADDLE_ENFORCE_NOT_NULL(fake_dequant_in,
+                            "The input var of dequantize op is not found.");
+    PADDLE_ENFORCE_NOT_NULL(fake_dequant_out,
+                            "The output var of dequantize op is not found.");
     std::string input_act_name = fake_dequant_in->Var()->Name();
     std::string output_act_name = fake_dequant_out->Var()->Name();
     auto outlinks = fake_dequant_out->outputs;
@@ -246,65 +262,160 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
 
 void QuantDequantMkldnnFusePass::DequantizeWeights(
     ir::Graph* graph, Scope* scope,
-    std::unordered_map<std::string, std::vector<float>> weight_thresholds)
+    std::unordered_map<std::string, std::vector<float>>& weight_thresholds)
     const {
   auto is_int8_weights = [&](Node* op_node, Scope* scope,
                              std::string weight_name) -> bool {
     auto* op_desc = op_node->Op();
     auto var_name = op_desc->Input(weight_name)[0];
-    std::cout << "var_name: " << var_name << std::endl;
-    if (scope->FindVar(var_name) == nullptr) {
-      std::cout << "eeeeeeeeeeeeeee" << std::endl;
-      return false;
+    auto* var = scope->FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            "The input persistable var of %s op is not found.",
+                            op_desc->Type());
+
+    auto* weight_tensor = var->GetMutable<LoDTensor>();
+    auto weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+    bool is_int8 = true;
+    for (int i = 0; i < weight_tensor->numel(); i++) {
+      if (weight_data[i] - static_cast<int>(weight_data[i]) != 0) {
+        is_int8 = false;
+        break;
+      }
     }
-    auto* weight_tensor = scope->FindVar(var_name)->GetMutable<LoDTensor>();
-    return weight_tensor->type() == framework::proto::VarType::INT8;
+    return is_int8;
   };
 
-  auto dequantize_op_weights = [&](Node* op_node, Scope* scope,
-                                   std::string weight_name,
-                                   std::string output_name) {
+  auto transpose_weight = [&](Tensor* input) {
+    const auto input_dims = input->dims();
+    std::vector<int> orders;
+    for (int i = input_dims.size() - 1; i >= 0; i--) {
+      orders.push_back(i);
+    }
+
+    Tensor trans_tensor;
+    trans_tensor.Resize(input_dims);
+    float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
+    float* in_data = input->mutable_data<float>(platform::CPUPlace());
+
+    auto in_dims = input->dims();
+    auto out_dims = trans_tensor.dims();
+    int num_axes = in_dims.size();
+    int count = 1;
+    for (int i = 0; i < num_axes; i++) {
+      count *= in_dims[i];
+    }
+
+    std::vector<int> old_steps(
+        {static_cast<int>(in_dims[1] * in_dims[2] * in_dims[3]),
+         static_cast<int>(in_dims[2] * in_dims[3]),
+         static_cast<int>(in_dims[3]), 1});
+    std::vector<int> new_steps(
+        {static_cast<int>(out_dims[1] * out_dims[2] * out_dims[3]),
+         static_cast<int>(out_dims[2] * out_dims[3]),
+         static_cast<int>(out_dims[3]), 1});
+
+    for (int i = 0; i < count; ++i) {
+      int old_idx = 0;
+      int idx = i;
+      for (int j = 0; j < num_axes; ++j) {
+        int order = orders[j];
+        old_idx += (idx / new_steps[j]) * old_steps[order];
+        idx %= new_steps[j];
+      }
+      trans_data[i] = in_data[old_idx];
+    }
+
+    for (int i = 0; i < input->numel(); i++) {
+      in_data[i] = trans_data[i];
+    }
+  };
+
+  auto dequantize_op_weights = [&](
+      Node* op_node, Scope* scope, std::string weight_name,
+      std::string output_name,
+      std::unordered_map<std::string, std::vector<float>>& weight_thresholds) {
     auto* op_desc = op_node->Op();
-    auto weight_var_name = op_desc->Input(weight_name)[0];
-    auto output_var_name = op_desc->Output(output_name)[0];
+    std::string weight_var_name = op_desc->Input(weight_name)[0];
+    std::string output_var_name = op_desc->Output(output_name)[0];
     std::vector<float> scales = weight_thresholds[output_var_name];
     auto* weight_tensor =
         scope->FindVar(weight_var_name)->GetMutable<LoDTensor>();
+    const auto weight_dims = weight_tensor->dims();
 
-    int size = scales.size();
-    if (size == 1 || size == weight_tensor->dims()[0]) {
+    const int size = scales.size();
+    if (size == 1 || size == weight_dims[0]) {
+      auto weight_data =
+          weight_tensor->mutable_data<float>(platform::CPUPlace());
+      for (int i = 0; i < weight_tensor->numel(); i++) {
+        weight_data[i] /= 127;
+      }
+
+      transpose_weight(weight_tensor);
+
+      if (size == 1) {
+        for (int i = 0; i < weight_tensor->numel(); i++) {
+          weight_data[i] *= scales[0];
+        }
+      } else {
+        int step = 1;
+        for (int i = 1; i < weight_dims.size(); i++) {
+          step *= weight_dims[i];
+        }
+
+        for (int i = 0; i < size; i++) {
+          int begin = i * step;
+          for (int j = begin; j < begin + step; j++) {
+            weight_data[j] *= scales[i];
+          }
+        }
+      }
+
+      transpose_weight(weight_tensor);
+    } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
       auto weight_data =
           weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
         weight_data[i] /= 127;
       }
-      // } else if (weight_tensor->dims().size() > 1 && scales.size() ==
-      // weight_tensor->dims()[1]) {
 
+      int step_n = 1;
+      for (int i = 1; i < weight_dims.size(); i++) {
+        step_n *= weight_dims[i];
+      }
+      int step_c = step_n / size;
+      for (int i = 0; i < weight_dims[0]; i++) {
+        int begin_n = i * step_n;
+        for (int j = begin_n; j < begin_n + step_n; j++) {
+          for (int k = 0; k < size; k++) {
+            int begin_c = k * step_c;
+            for (int m = begin_c; m < begin_c + step_c; m++) {
+              weight_data[m] *= scales[k];
+            }
+          }
+        }
+      }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The size of weight scales vector (%d) does not "
           "match the dimensions (%d) of the weights tensor %s.",
           size, weight_tensor->dims().size(), weight_var_name));
     }
+
+    weight_tensor->Resize(weight_dims);
   };
 
-  std::cout << "scope11111: " << static_cast<void*>(scope) << std::endl;
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
-    std::cout << "8888888888" << std::endl;
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
-      std::cout << "9999999999" << std::endl;
       if (is_int8_weights(op_node, scope, "Filter")) {
-        std::cout << "95555555555" << std::endl;
-        dequantize_op_weights(op_node, scope, "Filter", "Output");
+        dequantize_op_weights(op_node, scope, "Filter", "Output",
+                              weight_thresholds);
       }
     } else if (op_node->Name() == "mul" || op_node->Name() == "matmul" ||
                op_node->Name() == "matmul_v2") {
-      std::cout << "qqqqqqqqq" << std::endl;
       if (is_int8_weights(op_node, scope, "Y")) {
-        dequantize_op_weights(op_node, scope, "Y", "Out");
+        dequantize_op_weights(op_node, scope, "Y", "Out", weight_thresholds);
       }
     }
   }
@@ -320,10 +431,11 @@ void QuantDequantMkldnnFusePass::UpdateActivations(ir::Graph* graph) const {
       if (!op_desc->HasAttr("fuse_activation")) {
         std::string activation;
         if (op_desc->HasAttr("fuse_relu")) {
-          bool fuse_relu = BOOST_GET_CONST(bool, op_desc->GetAttr("fuse_relu"));
+          const bool fuse_relu =
+              BOOST_GET_CONST(bool, op_desc->GetAttr("fuse_relu"));
           if (fuse_relu) activation = "relu";
         } else if (op_desc->HasAttr("fuse_brelu")) {
-          bool fuse_brelu =
+          const bool fuse_brelu =
               BOOST_GET_CONST(bool, op_desc->GetAttr("fuse_relu"));
           if (fuse_brelu) {
             activation = "relu6";
@@ -354,6 +466,7 @@ void QuantDequantMkldnnFusePass::RemoveCtrlVars(ir::Graph* graph) const {
 }
 
 void QuantDequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
+  VLOG(3) << "Convert paddle slim quantized model to mkldnn quantized model.";
   const std::string pattern_name = "quant_dequant_mkldnn_fuse_pass";
   FusePassBase::Init(pattern_name, graph);
 
@@ -373,24 +486,24 @@ void QuantDequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
       var_quant_scales;
 
   auto* scope = param_scope();
-  std::cout << "scope: " << static_cast<void*>(scope) << std::endl;
-
   MarkSkipQuantizedOps(graph, skip_ops);
-  std::cout << "11111111" << std::endl;
   GatherInfoFromFake(graph, scope, fake_dequantize_types, weight_thresholds);
-  std::cout << "2222222" << std::endl;
+  for (auto iter = weight_thresholds.begin(); iter != weight_thresholds.end();
+       ++iter) {
+    std::cout << iter->first << std::endl;
+  }
+  std::cout << "111111" << std::endl;
   GatherInputScalesFromFake(graph, scope, fake_quantize_types,
                             var_quant_scales);
-  std::cout << "333333333" << std::endl;
   GatherOutputScalesFromAttr(graph, var_quant_scales);
-  std::cout << "444444444" << std::endl;
+  for (auto iter = var_quant_scales.begin(); iter != var_quant_scales.end();
+       ++iter) {
+    std::cout << iter->first << std::endl;
+  }
   RemoveFakeOps(graph, fake_quantize_types, fake_dequantize_types,
                 fake_quantize_dequantize_types);
-  std::cout << "555555555" << std::endl;
   DequantizeWeights(graph, scope, weight_thresholds);
-  std::cout << "666666666" << std::endl;
   UpdateActivations(graph);
-  std::cout << "77777777" << std::endl;
   RemoveCtrlVars(graph);
 }
 
