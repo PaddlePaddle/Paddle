@@ -171,8 +171,6 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     int batch_count = BatchCount(*x);
     int solution_stride = MatrixStride(*solution);
 
-    VLOG(0) << "solution_stride : " << solution_stride;
-
     for (auto i = 0; i < batch_count; ++i) {
       auto* x_input = &x_vector[i * x_stride];
       auto* y_input = &y_vector[i * y_stride];
@@ -201,13 +199,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           info, 0,
           platform::errors::PreconditionNotMet(
-              "current info is not 0, computation failed. "
-              "= 0:  successful exit."
-              "< 0:  if INFO = -i, the i-th argument had an illegal value."
-              "> 0:  if INFO = i, the QR algorithm failed to compute all the "
-              "eigenvalues, and no eigenvectors have been computed; "
-              "elements i+1:N of WR and WI contain eigenvalues which "
-              "have converged."));
+              "For batch [%d]: Lapack info is not zero but [%d]", i, info));
 
       if (rank_working_ptr) {
         *rank_working_ptr = static_cast<int64_t>(rank_32);
@@ -216,11 +208,10 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-void BatchedOrmqr(const platform::CUDADeviceContext& dev_ctx, bool left,
-                  bool transpose, int batch_size, int m, int n, int k, T* a,
-                  int a_stride, T* tau, int tau_stride, T* other,
-                  int other_stride);
+template <typename DeviceContext, typename T>
+void BatchedOrmqr(const DeviceContext& dev_ctx, bool left, bool transpose,
+                  int batch_size, int m, int n, int k, T* a, int a_stride,
+                  T* tau, int tau_stride, T* other, int other_stride);
 
 }  // namespace operators
 }  // namespace paddle

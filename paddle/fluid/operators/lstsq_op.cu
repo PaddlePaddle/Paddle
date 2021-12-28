@@ -36,9 +36,6 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    // Tensor input_x_trans = dito.Transpose(x);
-    // auto *x_vector = input_x_trans.data<T>();
-
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     int dim_size = x_dims.size();
@@ -79,12 +76,13 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     auto tau_data = tau.mutable_data<T>(context.GetPlace());
 
     // step 1, compute QR factorization using geqrf
-    BatchedGeqrf<T>(dev_ctx, batch_count, m, n, x_data, m, tau_data, x_stride,
-                    tau_stride);
+    BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, m, n, x_data, m,
+                                   tau_data, x_stride, tau_stride);
 
     // Step 2, B <- Q^H B
-    BatchedOrmqr<T>(dev_ctx, true, true, batch_count, m, n, k, x_data, x_stride,
-                    tau_data, tau_stride, y_data, y_stride);
+    BatchedOrmqr<DeviceContext, T>(dev_ctx, true, true, batch_count, m, n, k,
+                                   x_data, x_stride, tau_data, tau_stride,
+                                   y_data, y_stride);
 
     auto trans_r = dito.Transpose(new_x);
     auto trans_b = dito.Transpose(new_y);
@@ -101,10 +99,10 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <>
-void BatchedOrmqr<float>(const platform::CUDADeviceContext& dev_ctx, bool left,
-                         bool transpose, int batch_size, int m, int n, int k,
-                         float* a, int a_stride, float* tau, int tau_stride,
-                         float* other, int other_stride) {
+void BatchedOrmqr<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& dev_ctx, bool left, bool transpose,
+    int batch_size, int m, int n, int k, float* a, int a_stride, float* tau,
+    int tau_stride, float* other, int other_stride) {
   int lwork = 0;
   auto side = left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
   auto trans = transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -123,11 +121,11 @@ void BatchedOrmqr<float>(const platform::CUDADeviceContext& dev_ctx, bool left,
     float* a_working_ptr = &a[i * a_stride];
     float* tau_working_ptr = &tau[i * tau_stride];
     float* other_working_ptr = &other[i * other_stride];
-    // compute orggr
+    // compute ormgr
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSormqr(
         handle, side, trans, m, n, k, a_working_ptr, lda, tau_working_ptr,
         other_working_ptr, ldc, workspace_ptr, lwork, info_d));
-    // Do we need synchronized here?
+
     // check the error info
     int info_h;
     memory::Copy(platform::CPUPlace(), &info_h,
@@ -136,15 +134,15 @@ void BatchedOrmqr<float>(const platform::CUDADeviceContext& dev_ctx, bool left,
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
+            "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
 }
 
 template <>
-void BatchedOrmqr<double>(const platform::CUDADeviceContext& dev_ctx, bool left,
-                          bool transpose, int batch_size, int m, int n, int k,
-                          double* a, int a_stride, double* tau, int tau_stride,
-                          double* other, int other_stride) {
+void BatchedOrmqr<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& dev_ctx, bool left, bool transpose,
+    int batch_size, int m, int n, int k, double* a, int a_stride, double* tau,
+    int tau_stride, double* other, int other_stride) {
   int lwork = 0;
   auto side = left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
   auto trans = transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -163,11 +161,11 @@ void BatchedOrmqr<double>(const platform::CUDADeviceContext& dev_ctx, bool left,
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     double* other_working_ptr = &other[i * other_stride];
-    // compute orggr
+    // compute ormgr
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDormqr(
         handle, side, trans, m, n, k, a_working_ptr, lda, tau_working_ptr,
         other_working_ptr, ldc, workspace_ptr, lwork, info_d));
-    // Do we need synchronized here?
+
     // check the error info
     int info_h;
     memory::Copy(platform::CPUPlace(), &info_h,
@@ -176,20 +174,15 @@ void BatchedOrmqr<double>(const platform::CUDADeviceContext& dev_ctx, bool left,
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
+            "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
 }
 
 }  // namespace operators
 }  // namespace paddle
 
-// using complex64 = paddle::platform::complex<float>;
-// using complex128 = paddle::platform::complex<double>;
-
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     lstsq, ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, double>);  //,
-// ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, complex64>,
-// ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, complex128>);
+    ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, double>);
