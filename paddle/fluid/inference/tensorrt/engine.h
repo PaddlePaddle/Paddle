@@ -256,11 +256,11 @@ class TensorRTEngine {
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
       if (with_dynamic_shape_) {
         // need new profile if it's not the first
-        if (profile_num_ > 0) {
-          infer_context_[tid]->setOptimizationProfile(profile_num_);
+        if (cur_profile_num_ > 0) {
+          infer_context_[tid]->setOptimizationProfile(cur_profile_num_);
         }
-        profile_index_[tid] = profile_num_;
-        ++profile_num_;
+        profile_index_[tid] = cur_profile_num_;
+        ++cur_profile_num_;
       }
     }
     return infer_context_[tid].get();
@@ -596,7 +596,7 @@ class TensorRTEngine {
 
   int device_id_;
   int max_profile_num_{1};
-  int profile_num_{0};
+  int cur_profile_num_{0};
   std::unordered_map<std::thread::id, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;

@@ -266,6 +266,11 @@ void TensorRTEngine::FreezeNetwork() {
                          "you configurations related to paddle-TensorRT."));
 
   binding_num_ = infer_engine_->getNbBindings();
+  // reset status for dynamic shape clone
+  if (max_profile_num_ > 1) {
+    infer_context_.clear();
+    cur_profile_num_ = 0;
+  }
 
   GetEngineInfo();
 }
