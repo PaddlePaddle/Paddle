@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/platform/miopen_desc.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -137,7 +137,7 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
     int find_count;
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionForwardAlgorithm(
               args.handle, args.idesc.desc(), args.x->data<T>(),
               args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
@@ -154,7 +154,7 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
 
   static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
             args.handle, args.wdesc.desc(), args.idesc.desc(),
             args.cdesc.desc(), args.odesc.desc(), &workspace_size));
@@ -179,7 +179,7 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
     int find_count;
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionBackwardDataAlgorithm(
               args.handle, args.odesc.desc(), args.o->data<T>(),
               args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
@@ -196,7 +196,7 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
 
   static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
             args.handle, args.odesc.desc(), args.wdesc.desc(),
             args.cdesc.desc(), args.idesc.desc(), &workspace_size));
@@ -221,7 +221,7 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
     int find_count;
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionBackwardWeightsAlgorithm(
               args.handle, args.odesc.desc(), args.o->data<T>(),
               args.idesc.desc(), args.x->data<T>(), args.cdesc.desc(),
@@ -238,7 +238,7 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
 
   static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionBackwardWeightsGetWorkSpaceSize(
             args.handle, args.odesc.desc(), args.idesc.desc(),
             args.cdesc.desc(), args.wdesc.desc(), &workspace_size));

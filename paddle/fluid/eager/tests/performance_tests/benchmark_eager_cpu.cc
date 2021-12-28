@@ -14,6 +14,7 @@
 
 // Eager Dygraph
 
+#include <paddle/fluid/framework/op_registry.h>
 #include <chrono>
 
 #include "gtest/gtest.h"
@@ -25,15 +26,15 @@
 
 #include "paddle/fluid/imperative/tracer.h"
 
-#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
+#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
 
-// TODO(jiabin): remove nolint here!!!
-using namespace egr;  // NOLINT
+using namespace egr;            // NOLINT
+using namespace egr_utils_api;  // NOLINT
 
 // Disable pten path
 DECLARE_bool(run_pten_kernel);
@@ -42,11 +43,11 @@ TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
 
 TEST(Benchmark, EagerScaleCPU) {
   // Prepare Device Contexts
-  egr::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-    egr::EagerTensor tensor = EagerUtils::CreateTensorWithValue(
+    egr::EagerTensor tensor = CreateTensorWithValue(
         ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, 5.0, true);
     RetainGradForTensor(tensor);
@@ -78,20 +79,20 @@ TEST(Benchmark, EagerScaleCPU) {
 
 TEST(Benchmark, EagerIntermediateMatmulCPU) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = paddle::framework::make_ddim({2, 2});
-    egr::EagerTensor X = EagerUtils::CreateTensorWithValue(
+    egr::EagerTensor X = CreateTensorWithValue(
         ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, 1.0, true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = paddle::framework::make_ddim({2, 2});
-    egr::EagerTensor Y = EagerUtils::CreateTensorWithValue(
+    egr::EagerTensor Y = CreateTensorWithValue(
         ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, 2.0, true);
     RetainGradForTensor(Y);
@@ -122,7 +123,7 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
 
 TEST(Benchmark, EagerIntermediateMLPCPU) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
   paddle::imperative::SetCurrentTracer(tracer);
@@ -130,7 +131,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
   for (const std::string& mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX =
         paddle::framework::make_ddim({MLP_M, MLP_N});
-    egr::EagerTensor X = EagerUtils::CreateTensorWithValue(
+    egr::EagerTensor X = CreateTensorWithValue(
         ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
         pten::DataLayout::NCHW, MLP_X_VAL, true);
     RetainGradForTensor(X);
@@ -140,13 +141,13 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
       paddle::framework::DDim ddimW =
           paddle::framework::make_ddim({MLP_N, MLP_K});
-      egr::EagerTensor W = EagerUtils::CreateTensorWithValue(
+      egr::EagerTensor W = CreateTensorWithValue(
           ddimW, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
           pten::DataLayout::NCHW, MLP_W_VAL, true);
       RetainGradForTensor(W);
 
       paddle::framework::DDim ddimB = paddle::framework::make_ddim({MLP_K});
-      egr::EagerTensor B = EagerUtils::CreateTensorWithValue(
+      egr::EagerTensor B = CreateTensorWithValue(
           ddimB, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
           pten::DataLayout::NCHW, MLP_B_VAL, true);
       RetainGradForTensor(B);
@@ -178,3 +179,8 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
     }
   }
 }
+
+USE_OP(scale);
+USE_OP(elementwise_add);
+USE_OP(matmul_v2);
+USE_OP(reduce_sum);

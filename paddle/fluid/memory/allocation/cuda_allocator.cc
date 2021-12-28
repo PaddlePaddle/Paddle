@@ -25,8 +25,8 @@
 
 #include <string>
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -37,8 +37,8 @@ void CUDAAllocator::FreeImpl(Allocation* allocation) {
       BOOST_GET_CONST(platform::CUDAPlace, allocation->place()), place_,
       platform::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
-  platform::RecordedCudaFree(allocation->ptr(), allocation->size(),
-                             place_.device);
+  platform::RecordedGpuFree(allocation->ptr(), allocation->size(),
+                            place_.device);
   delete allocation;
 }
 
@@ -46,13 +46,13 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
 
   void* ptr;
-  auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
+  auto result = platform::RecordedGpuMalloc(&ptr, size, place_.device);
   if (LIKELY(result == gpuSuccess)) {
     return new Allocation(ptr, size, platform::Place(place_));
   }
 
   size_t avail, total, actual_avail, actual_total;
-  bool is_limited = platform::RecordedCudaMemGetInfo(
+  bool is_limited = platform::RecordedGpuMemGetInfo(
       &avail, &total, &actual_avail, &actual_total, place_.device);
   size_t allocated = total - avail;
 

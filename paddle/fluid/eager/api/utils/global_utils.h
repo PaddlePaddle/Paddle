@@ -17,7 +17,7 @@
 
 #include <atomic>
 #include <memory>
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/imperative/tracer.h"
 
 namespace egr {
 
@@ -34,29 +34,49 @@ class UniqueNameGenerator {
 };
 
 // Global
+// TODO(jiabin): Now we are using imperative tracer, move it here when we
+// deprecate imperative.
+
 class Controller {
  public:
   static Controller& Instance() { return *controller_; }
-  const paddle::platform::Place& GetExpectedPlace() const {
-    return *expected_place_.get();
+  paddle::platform::Place GetExpectedPlace() const {
+    return tracer_->ExpectedPlace();
   }
   void SetExpectedPlace(const paddle::platform::Place& place) {
-    expected_place_ = std::make_shared<paddle::platform::Place>(place);
+    tracer_->SetExpectedPlace(place);
   }
-  void SetAMPLevel(int level) { amp_level_ = level; }
-  int GetAMPLevel() const { return amp_level_; }
-  bool HasGrad() const { return has_grad_; }
+  void SetAMPLevel(paddle::imperative::AmpLevel level) {
+    tracer_->SetAmpLevel(level);
+  }
+  paddle::imperative::AmpLevel GetAMPLevel() const {
+    return tracer_->GetAmpLevel();
+  }
+  bool HasGrad() const { return tracer_->HasGrad(); }
+  void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
   std::string GenerateUniqueName(std::string key = "eager_tmp") {
-    return generator_->Generate(key);
+    return tracer_->GenerateUniqueName(key);
   }
+  const std::shared_ptr<paddle::imperative::Tracer>& GetCurrentTracer() {
+    return tracer_;
+  }
+  void SetCurrentTracer(
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    tracer_ = tracer;
+    VLOG(6) << "Set current tracer for Controller: " << tracer_;
+  }
+
+  bool InEagerMode() const { return in_eager_mode_; }
+
+  void SetInEagerMode(bool in_eager_mode) { in_eager_mode_ = in_eager_mode; }
 
  private:
   Controller() = default;
   static Controller* controller_;
-  std::shared_ptr<paddle::platform::Place> expected_place_ = nullptr;
-  int amp_level_ = 0;
-  bool has_grad_ = true;
-  std::unique_ptr<UniqueNameGenerator> generator_{new UniqueNameGenerator()};
+  std::shared_ptr<paddle::imperative::Tracer> tracer_{
+      new paddle::imperative::Tracer()};
+  // TODO(jiabin): remove when we don't need imperative.
+  bool in_eager_mode_{false};
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 

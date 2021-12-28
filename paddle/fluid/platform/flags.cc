@@ -434,7 +434,7 @@ PADDLE_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
 
 /**
  * Memory related FLAG
@@ -662,8 +662,9 @@ PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
                              "The maximum time for get host by name time");
 #endif

@@ -30,6 +30,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
+constexpr const char* kTaskCompletion = "TaskCompletion";
 
 namespace paddle {
 namespace framework {
@@ -48,8 +49,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
   gc_.reset(new InterpreterCoreGarbageCollector());
 
-  exception_notifier_ = main_thread_blocker_.RegisterEvent(
-      kExceptionCaught, [this]() { return exception_holder_.IsCaught(); });
+  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
+  completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
   if (FLAGS_new_executor_use_local_scope) {
@@ -69,6 +70,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
+
+  exception_notifier_->UnregisterEvent();
+  completion_notifier_->UnregisterEvent();
 
   async_work_queue_.reset(nullptr);
 }
@@ -398,13 +402,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     instr_node.DeviceContext().Wait();
-#if defined(PADDLE_WITH_CUDA)
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
-    VLOG(4) << "Operator(" << op->Type()
-            << "): context wait and get last error";
-#endif
-#if defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op->Type()
             << "): context wait and get last error";
 #endif
@@ -423,7 +422,7 @@ void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-  op_run_number_ = 0;
+  unfinished_op_numer_ = vec_instr.size();
 
   exception_holder_.Clear();
 
@@ -439,14 +438,9 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(4) << "Exception caught " << exception_holder_.Type();
+    async_work_queue_->Cancel();
     exception_holder_.ReThrow();
   }
-
-  PADDLE_ENFORCE_EQ(
-      op_run_number_.load(), vec_instr.size(),
-      platform::errors::Fatal(
-          "Required op_run_number == %d, but received op_run_number = %d.",
-          vec_instr.size(), op_run_number_.load()));
 }
 
 void InterpreterCore::RunNextInstructions(
@@ -514,7 +508,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(op->Type());
+    platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
 
     try {
@@ -544,8 +538,15 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
       return;
     }
 
+    VLOG(4) << "unfinished_op_numer_: " << unfinished_op_numer_;
+    if (UNLIKELY(unfinished_op_numer_.fetch_sub(1, std::memory_order_relaxed) ==
+                 1)) {
+      if (completion_notifier_ != nullptr) {
+        completion_notifier_->NotifyEvent();
+      }
+    }
+
     interpreter::RecordEvent(instr_node, place_);
-    op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
     RunNextInstructions(instr_node, &ready_ops);
   }
