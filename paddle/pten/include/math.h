@@ -17,10 +17,9 @@ limitations under the License. */
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/cpu/conj_kernel.h"
+#include "paddle/pten/kernels/complex_kernel.h"
 #include "paddle/pten/kernels/cpu/math.h"
-#include "paddle/pten/kernels/cuda/conj_kernel.h"
-#include "paddle/pten/kernels/cuda/math.h"
+#include "paddle/pten/kernels/gpu/math.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
 namespace pten {

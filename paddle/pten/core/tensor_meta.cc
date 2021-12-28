@@ -27,7 +27,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
-                                 const std::vector<std::vector<size_t>>& lod)
+                                 const LoD& lod)
     : dims(dims), dtype(dtype), layout(layout), lod(lod) {}
 
 bool DenseTensorMeta::valid() const noexcept {
@@ -38,10 +38,4 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
-  bool ret = true;
-  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
-         (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
-         (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
-}
 }  // namespace pten

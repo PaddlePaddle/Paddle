@@ -113,6 +113,9 @@ function main() {
         infrt_gen_and_build ${parallel_number}
         test_infrt
         ;;
+      build_only)
+        infrt_gen_and_build ${parallel_number}
+        ;;
       *)
         print_usage
         exit 1
@@ -129,4 +132,4 @@ function main() {
 
 main $@
 
-rm -rf tmp_dir
+rm -rf $tmp_dir

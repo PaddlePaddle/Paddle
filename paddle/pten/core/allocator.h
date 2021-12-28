@@ -55,27 +55,45 @@ class RawAllocator {
 class Allocation final {
  public:
   using Place = paddle::platform::Place;
-  using DeleterFnPtr = void (*)(void*);
+  using DeleterFnPtr = void (*)(Allocation*);
 
   Allocation() = default;
-  Allocation(Allocation&&) = default;
-  Allocation& operator=(Allocation&&) = default;
 
+  // Don't own resources, only provide access.
   Allocation(void* data, const Place& place) : data_(data), place_(place) {}
 
-  Allocation(void* data,
-             void* ctx,
-             DeleterFnPtr ctx_deleter,
-             const Place& place)
-      : data_(data), ctx_(ctx, ctx_deleter), place_(place) {}
+  // Own resources.
+  Allocation(void* data, void* ctx, DeleterFnPtr deleter, const Place& place)
+      : data_(data), ctx_(ctx), deleter_(deleter), place_(place) {}
 
+  Allocation(Allocation&& other) { swap(*this, other); }
+  Allocation& operator=(Allocation&& other) {
+    // Exchange them explicitly to avoid moving is equivalent
+    // to copying.
+    swap(*this, other);
+    return *this;
+  }
+  ~Allocation() { Clear(); }
+
+  void* ptr() const noexcept { return data_; }
   void* operator->() const noexcept { return data_; }
-  operator bool() const noexcept { return data_ || ctx_.Get(); }
+  operator bool() const noexcept { return data_ || ctx_; }
   const Place& place() const noexcept { return place_; }
 
   void Clear() {
-    ctx_.Clear();
+    if (deleter_) {
+      deleter_(this);
+    }
+    ctx_ = nullptr;
+    deleter_ = nullptr;
     data_ = nullptr;
+  }
+
+  DeleterFnPtr deleter() const noexcept { return deleter_; }
+
+  template <typename T>
+  T* CastContextWithoutCheck() const noexcept {
+    return static_cast<T*>(ctx_);
   }
 
   /// \brief Statically cast the void pointer of the context object to
@@ -85,69 +103,43 @@ class Allocation final {
   /// \param expected_deleter The destructor passed in to enhance type
   /// safety checking.
   template <typename T>
-  T* CastContext(DeleterFnPtr expected_deleter) const noexcept {
-    if (ctx_.deleter() != expected_deleter) {
-      return nullptr;
-    }
-    return static_cast<T*>(ctx_.Get());
+  T* CastContext(DeleterFnPtr expected_deleter) const {
+    PADDLE_ENFORCE_EQ(
+        deleter_ == expected_deleter,
+        true,
+        paddle::platform::errors::InvalidArgument(
+            "The deleter of the allocation does not match, so the pointer "
+            "cannot be safely removed."));
+    return CastContextWithoutCheck<T>();
   }
 
- public:
-  class Context {
-   public:
-    Context() = default;
-    Context(void* ctx, DeleterFnPtr deleter) noexcept : ctx_(ctx),
-                                                        deleter_(deleter) {}
-    Context(Context&& other) noexcept {
-      // Exchange them explicitly to avoid moving is equivalent
-      // to copying.
-      swap(*this, other);
-    }
-    Context& operator=(Context&& other) noexcept {
-      swap(*this, other);
-      return *this;
-    }
-    ~Context() { Clear(); }
-    void Clear() {
-      if (deleter_) {
-        deleter_(ctx_);
-      }
-      ctx_ = nullptr;
-      deleter_ = nullptr;
-    }
-    void* Get() const noexcept { return ctx_; }
-    DeleterFnPtr deleter() const noexcept { return deleter_; }
-    void* Release() noexcept {
-      deleter_ = nullptr;
-      return ctx_;
-    }
-    friend void swap(Context& a, Context& b) noexcept;
-
-   private:
-    void* ctx_{nullptr};
-    DeleterFnPtr deleter_{nullptr};
-  };
-
  private:
+  friend void swap(Allocation& a, Allocation& b) noexcept;
   void* data_{nullptr};
-  Context ctx_;
+  void* ctx_{nullptr};
+  DeleterFnPtr deleter_{nullptr};
   // TODO(Shixiaowei02): Enum needs to be used instead to reduce
   // the construction overhead by more than 50%.
   Place place_;
 };
 
-inline void swap(Allocation::Context& a, Allocation::Context& b) noexcept {
+inline void swap(Allocation& a, Allocation& b) noexcept {
+  ::std::swap(a.data_, b.data_);
   ::std::swap(a.ctx_, b.ctx_);
   ::std::swap(a.deleter_, b.deleter_);
+  ::std::swap(a.place_, b.place_);
 }
 
 /// \brief Context compatible allocator interface. This allocator is
 /// mainly used for general data structures such as Tensor. The raw
 /// allocator is more universal and efficient.
 class Allocator {
+  using Place = paddle::platform::Place;
+
  public:
   virtual ~Allocator() = default;
   virtual Allocation Allocate(size_t bytes_size) = 0;
+  virtual const Place& place() = 0;
 };
 
 inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
