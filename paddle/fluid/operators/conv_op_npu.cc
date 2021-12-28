@@ -395,9 +395,6 @@ template <typename T>
 class NPUConv3dKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "NPUConv3dKernel";
-    LOG(WARNING) << "op type: " << ctx.Type();
-
     Tensor* input = const_cast<Tensor*>(ctx.Input<Tensor>("Input"));
     Tensor* filter = const_cast<Tensor*>(ctx.Input<Tensor>("Filter"));
     Tensor* output = ctx.Output<Tensor>("Output");
@@ -409,16 +406,6 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
-
-    // LOG(WARNING) << "data_format: " << data_format;
-
-    // LOG(WARNING) << "input->layout(): " << input->layout();
-    // LOG(WARNING) << "filter->layout(): " << filter->layout();
-    // LOG(WARNING) << "output->layout(): " << output->layout();
-
-    // LOG(WARNING) << "input->dims(): " << input->dims();
-    // LOG(WARNING) << "filter->dims(): " << filter->dims();
-    // LOG(WARNING) << "output->dims(): " << output->dims();
 
     PADDLE_ENFORCE_EQ(data_format, "NCDHW",
                       platform::errors::Unimplemented(
@@ -445,10 +432,6 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
       output->set_layout(DataLayout::kNCDHW);
     }
 
-    // LOG(WARNING) << "input->layout(): " << input->layout();
-    // LOG(WARNING) << "filter->layout(): " << filter->layout();
-    // LOG(WARNING) << "output->layout(): " << output->layout();
-
     // update padding and dilation
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
@@ -471,20 +454,8 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
 
     Tensor input_tensor, output_tensor;
 
-    // LOG(WARNING) << "input_tensor.layout(): " << input_tensor.layout();
-    // LOG(WARNING) << "output_tensor.layout(): " << output_tensor.layout();
-
-    // LOG(WARNING) << "input_tensor.dims(): " << input_tensor.dims();
-    // LOG(WARNING) << "output_tensor.dims(): " << output_tensor.dims();
-
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
-
-    // LOG(WARNING) << "input_tensor.layout(): " << input_tensor.layout();
-    // LOG(WARNING) << "output_tensor.layout(): " << output_tensor.layout();
-
-    // LOG(WARNING) << "input_tensor.dims(): " << input_tensor.dims();
-    // LOG(WARNING) << "output_tensor.dims(): " << output_tensor.dims();
 
     if (channel_last) {
       input_tensor.set_layout(DataLayout::kNDHWC);
@@ -522,9 +493,6 @@ template <typename T>
 class NPUConv3dGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "NPUConv3dGradKernel";
-    LOG(WARNING) << "op type: " << ctx.Type();
-
     Tensor* input = const_cast<Tensor*>(ctx.Input<Tensor>("Input"));
     Tensor* filter = const_cast<Tensor*>(ctx.Input<Tensor>("Filter"));
     Tensor* output_grad = const_cast<Tensor*>(
@@ -539,18 +507,6 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
-
-    // LOG(WARNING) << "data_format: " << data_format;
-
-    // LOG(WARNING) << "input->layout(): " << input->layout();
-    // LOG(WARNING) << "filter->layout(): " << filter->layout();
-    // LOG(WARNING) << "output_grad->layout(): " << output_grad->layout();
-    // if (input_grad) {
-    //   LOG(WARNING) << "input_grad->layout(): " << input_grad->layout();
-    // }
-    // if (filter_grad) {
-    //   LOG(WARNING) << "filter_grad->layout(): " << filter_grad->layout();
-    // }
 
     const bool channel_last = data_format == "NDHWC";
 
@@ -576,16 +532,6 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    // LOG(WARNING) << "input->layout(): " << input->layout();
-    // LOG(WARNING) << "filter->layout(): " << filter->layout();
-    // LOG(WARNING) << "output_grad->layout(): " << output_grad->layout();
-    // if (input_grad) {
-    //   LOG(WARNING) << "input_grad->layout(): " << input_grad->layout();
-    // }
-    // if (filter_grad) {
-    //   LOG(WARNING) << "filter_grad->layout(): " << filter_grad->layout();
-    // }
-
     // update padding and dilation
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
@@ -607,10 +553,6 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
     std::vector<int> dilations_vec(5, 1);
 
     Tensor input_tensor, output_grad_tensor;
-
-    // LOG(WARNING) << "input_tensor.layout(): " << input_tensor.layout();
-    // LOG(WARNING) << "output_grad_tensor.layout(): "
-    //              << output_grad_tensor.layout();
 
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
@@ -658,18 +600,12 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
 
       Tensor input_grad_tensor;
 
-      // LOG(WARNING) << "input_grad_tensor.layout(): "
-      //              << input_grad_tensor.layout();
-
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNDHWC);
       } else {
         input_grad_tensor.set_layout(DataLayout::kNCDHW);
       }
-
-      // LOG(WARNING) << "input_grad_tensor.layout(): "
-      //              << input_grad_tensor.layout();
 
       const auto& runner =
           NpuOpRunner("Conv3DBackpropInputD", {*filter, output_grad_tensor},
