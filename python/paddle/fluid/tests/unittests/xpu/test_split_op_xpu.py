@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ class TestSplitOp_2(XPUOpTest):
         self.use_xpu = True
         self.use_mkldnn = False
         self.initDefaultParameters()
-        self.inputs = {'X': self.x,}
+        self.inputs = {'X': self.x}
         self.attrs = {
             'axis': self.axis,
             'sections': self.sections,
