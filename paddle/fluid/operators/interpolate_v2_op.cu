@@ -63,11 +63,10 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
     const size_t out_img_w, const size_t output_h, const size_t output_w,
     const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+    const bool align_corners) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-
   int in_img_size = in_img_h * in_img_w;
   int out_img_size = out_img_h * out_img_w;
 
@@ -76,15 +75,9 @@ __global__ void KeNearestNeighborInterpFw(
     int out_id_w = tid % output_w;
 
     int channel_id, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
-      channel_id = out_id_w / out_img_size;
-      out_img_idy = (out_id_w % out_img_size) / out_img_w;
-      out_img_idx = tid % out_img_w;
-    } else {
-      out_img_idy = out_id_w / (out_img_w * num_channels);
-      out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
-      channel_id = tid % num_channels;
-    }
+    out_img_idy = out_id_w / (out_img_w * num_channels);
+    out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
+    channel_id = tid % num_channels;
 
     int in_img_idy = (align_corners)
                          ? static_cast<int>(ratio_h * out_img_idy + 0.5)
@@ -93,13 +86,8 @@ __global__ void KeNearestNeighborInterpFw(
                          ? static_cast<int>(ratio_w * out_img_idx + 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
 
-    if (data_layout == DataLayout::kNCHW) {
-      out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
-                    in_img_idy * in_img_w + in_img_idx];
-    } else {
-      out[tid] = in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
-                    in_img_idx * num_channels + channel_id];
-    }
+    out[tid] = in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
+                  in_img_idx * num_channels + channel_id];
   }
 }
 
@@ -1230,7 +1218,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
           T><<<config.block_per_grid, config.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
           input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-          out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+          out_chw, c, ratio_h, ratio_w, align_corners);
     }
   } else if ("bilinear" == interp_method) {
     dim3 thread_num = config.thread_per_block;
