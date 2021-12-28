@@ -111,7 +111,7 @@ class Variable {
   };
 
   // pointers to a PlaceholderImpl object indeed.
-  std::shared_ptr<Placeholder> holder_ = nullptr;
+  std::shared_ptr<Placeholder> holder_;
 };
 
 inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
