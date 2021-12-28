@@ -446,7 +446,8 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
     const auto& tensor = variable.Get<framework::LoDTensor>();
     // check input dtype before ReMakePtenDenseTensor
     PADDLE_ENFORCE(
-        (arg_def.dtype == pten::TransToPtenDataType(tensor.type())),
+        ((arg_def.dtype == pten::TransToPtenDataType(tensor.type())) ||
+         (arg_def.dtype == pten::DataType::ALL_DTYPE)),
         paddle::platform::errors::InvalidArgument(
             "The type of input data is diffrent from the type of the "
             "argument's definition in kernel."));
@@ -462,7 +463,8 @@ void ReMakePtenDenseTensorFromVar(const framework::Variable& variable,
     // by xiaowei's advice
     const auto& tensor = variable.Get<framework::SelectedRows>();
     PADDLE_ENFORCE(
-        (arg_def.dtype == pten::TransToPtenDataType(tensor.value().type())),
+        ((arg_def.dtype == pten::TransToPtenDataType(tensor.value().type())) ||
+         (arg_def.dtype == pten::DataType::ALL_DTYPE)),
         paddle::platform::errors::InvalidArgument(
             "The type of input data is diffrent from the type of the "
             "argument's definition in kernel."));
