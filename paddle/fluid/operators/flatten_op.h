@@ -134,7 +134,8 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Flatten<T>(dev_ctx, *pt_x.get(), start_axis, stop_axis, pt_out.get());
+    pten::Flatten<T, DeviceContext>(dev_ctx, *pt_x.get(), start_axis, stop_axis,
+                                    pt_out.get());
   }
 };
 
