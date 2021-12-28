@@ -143,7 +143,7 @@ def reset_excluded_layers(main_program=None):
 
             # Need to set excluded layers before calling decorate
             sparsity.set_excluded_layers(["linear_0"])
-            sparsity.reset_excluded_layers(main_program)
+            sparsity.reset_excluded_layers()
 
             optimizer = sparsity.decorate(optimizer)
 
@@ -164,7 +164,7 @@ def reset_excluded_layers(main_program=None):
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
-                sparsity.set_excluded_layers(main_program, ["my_second_fc"])
+                sparsity.set_excluded_layers(["my_second_fc"], main_program)
                 # Now the weights of "my_second_fc" would not be included in Automatic SParsity's workflow.
 
             # Reset excluded_layers, all FC layers would be included into Automatic SParsity's workflow.
@@ -215,7 +215,7 @@ def decorate(optimizer):
 
             # Need to set excluded layers before calling decorate
             sparsity.set_excluded_layers(["linear_0"])
-            sparsity.reset_excluded_layers(main_program)
+            sparsity.reset_excluded_layers()
 
             optimizer = sparsity.decorate(optimizer)
 
@@ -296,11 +296,11 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
             # Need to set excluded layers before calling decorate
             sparsity.set_excluded_layers(["linear_0"])
-            sparsity.reset_excluded_layers(main_program)
+            sparsity.reset_excluded_layers()
 
             optimizer = sparsity.decorate(optimizer)
             # Must call `sparsity.decorate` first before calling `sparsity.prune_model`
-            sparsity.prune_model(main_program, mask_algo='mask_2d_best')
+            sparsity.prune_model(my_layer, mask_algo='mask_2d_best')
 
             # Static Graph
             paddle.enable_static()
@@ -318,7 +318,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
-                sparsity.set_excluded_layers(main_program, ["need_dense_fc"])
+                sparsity.set_excluded_layers(["need_dense_fc"], main_program)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 optimizer = paddle.static.amp.decorate(optimizer )
@@ -572,7 +572,7 @@ class ASPHelper(object):
 
     @classmethod
     def _get_program_asp_info(cls, main_program):
-        if not main_program in cls.__asp_info:
+        if main_program not in cls.__asp_info:
             cls.__asp_info[main_program] = ProgramASPInfo()
         return cls.__asp_info[main_program]
 
