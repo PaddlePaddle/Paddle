@@ -14,23 +14,32 @@
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/dot_kernel.h"
 
 namespace pten {
 
-template <typename T, typename ContextT>
-DenseTensor Dot(const ContextT& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& y) {
-  auto out_meta = DotInferMeta(x.meta(), y.meta());
-  pten::DenseTensor dense_out(
+template <typename T, typename Context>
+void MatmulKernel(const Context& context,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  bool transpose_x,
+                  bool transpose_y,
+                  DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Matmul(const Context& context,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   bool transpose_x,
+                   bool transpose_y) {
+  auto out_meta = MatmulInferMeta(x.meta(), y.meta(), transpose_x, transpose_y);
+  DenseTensor dense_out(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
+          context.GetPlace()),
       std::move(out_meta));
-  Dot<T, ContextT>(dev_ctx, x, y, &dense_out);
+  MatmulKernel<T, Context>(context, x, y, transpose_x, transpose_y, &dense_out);
   return dense_out;
 }
 
