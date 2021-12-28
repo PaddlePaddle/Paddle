@@ -960,6 +960,7 @@ function assert_api_spec_approvals() {
     fi
 }
 
+
 function assert_file_diff_approvals() {
     /bin/bash ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
     if [ "$file_approval_error" != 0 ];then
@@ -967,15 +968,68 @@ function assert_file_diff_approvals() {
     fi
 }
 
-
 function check_coverage() {
     if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
-        /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage_new.sh
     else
         echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
     fi
 }
 
+function cp_coverage_message_to_cfs() {
+    cast_type=$1
+    cd ${PADDLE_ROOT}/build
+    if [[ "$cast_type" == "single" ]];then
+        coverage_diff_file='coverage-diff-multi.info'
+        python_coverage_diff_file='python-coverage-diff-multi.info'
+        failed_case_file='failed_case_multi.txt'
+    else
+        coverage_diff_file='coverage-diff-single.info'
+        python_coverage_diff_file='python-coverage-diff-single.info'
+        failed_case_file='failed_case_single.txt'
+    fi
+    if [ ! -f "/home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/${coverage_diff_file}" ];then
+        /bin/cp -rf coverage-diff.info /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/coverage-diff-$cast_type.info 2>/dev/null || :
+        /bin/cp -rf python-coverage-diff.info /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/python-coverage-diff-$cast_type.info 2>/dev/null || :
+        /bin/cp -rf failed_case.txt /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/failed_case_$cast_type.txt 2>/dev/null || :
+    else
+        # C++ 
+        # 1. single muiti coverage-diff.info is 0
+        /bin/cp -rf /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/${coverage_diff_file} . 2>/dev/null || :
+        /bin/cp -rf /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/${python_coverage_diff_file} . 2>/dev/null || :
+        /bin/cp -rf /home/data/cfs/coverage-test/${GIT_PR_ID}/${GIT_COMMIT_ID}/${failed_case_file} . 2>/dev/null || :
+        if [ -s coverage-diff.info ] && [ -s ${coverage_diff_file} ];then #c++ all not empty
+            mv coverage-diff.info coverage-diff.tmp
+            lcov -a coverage-diff.tmp -a ${coverage_diff_file} -o coverage-diff.info
+        elif [ ! -s coverage-diff.info ] && [ -s ${coverage_diff_file} ];then #coverage_diff_file not empty
+            mv -f ${coverage_diff_file} coverage-diff.info
+        fi
+        genhtml -o coverage-diff -t 'Diff Coverage' --no-function-coverage --no-branch-coverage coverage-diff.info || true
+        # python
+        if [ -s python-coverage-diff.info ] && [ -s ${python_coverage_diff_file} ];then #python all not empty
+            mv python-coverage-diff.info python-coverage-diff.tmp
+            lcov -a python-coverage-diff.tmp -a ${python_coverage_diff_file} -o python-coverage-diff.info
+        elif [ ! -s python-coverage-diff.info ] && [ -s ${python_coverage_diff_file} ];then #python-coverage_diff_file not empty
+            mv -f ${python_coverage_diff_file} python-coverage-diff.info
+        fi
+        genhtml -o python-coverage-diff -t 'Python Diff Coverage' --no-function-coverage --no-branch-coverage --ignore-errors source python-coverage-diff.info || true 
+        
+        assert_diff_coverage
+        cat ${failed_case_file} failed_case.txt
+    fi
+}
+
+function assert_diff_coverage() {
+    echo "Assert Diff Coverage"
+    python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
+    if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
+        python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+    fi
+    if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
+        echo "exit 9" > /tmp/paddle_coverage.result
+        exit 9
+    fi 
+}
 
 function single_test() {
     TEST_NAME=$1
@@ -1346,7 +1400,8 @@ set +x
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-
+        
+        
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -1459,9 +1514,444 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
+        
 set -ex
     fi
 }
+
+function classify_case_base_coverage() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    classify unit tests ...
+    ========================================
+EOF
+set -x
+        precison_cases=""
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            if [[ -f "ut_list" ]]; then
+                set +x
+                echo "PREC length: "`wc -l ut_list`
+                precision_cases=`cat ut_list`
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
+                set -x
+            fi
+        fi 
+set +x
+        EXIT_CODE=0;
+        test_cases=$(ctest -N -V) # get all test cases
+        # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
+        single_card_tests_high_parallel='^job$'             # cases list which would run 24 job each time with single GPU
+        single_card_tests_secondary_high_parallel='^job$'   # cases list which would run 15 job each time with single GPU
+        single_card_tests_third_high_parallel='^job$'       # cases list which would run 12 job each time with single GPU
+        single_card_tests_forth_high_parallel='^job$'       # cases list which would run 7 job each time with single GPU
+        single_card_tests_fifth_high_parallel='^job$'       # cases list which would run 4 job each time with single GPU  
+        single_card_tests_lowest_parallel='^job$'           # cases list which would run 2 job each time with single GPU  
+        single_card_tests_non_parallel='^job$'              # cases list which would run 4 job each time with single GPU
+        single_card_tests='^job$'                           # all cases list which would take single GPU
+        
+        multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_non_parallel='^job$'            # cases list which would run 3 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests='^job$' 
+
+        exclusive_tests_high_parallel='^job$'               # cases list which would run 7 job exclusively(with all GPUs)
+        exclusive_tests_medium_parallel='^job$'             # cases list which would run 4 job exclusively(with all GPUs)
+        exclusive_tests_non_parallel='^job$'                # cases list which would run 2 job exclusively(with all GPUs)
+        exclusive_tests='^job$' 
+
+        is_exclusive=''           # indicate whether the case is exclusive type
+        is_multicard=''           # indicate whether the case is multiple GPUs type
+        is_nightly=''             # indicate whether the case will only run at night
+
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
+        high_parallel_job=$(echo $output | cut -d ";" -f 1)
+        secondary_high_parallel_job=$(echo $output | cut -d ";" -f 2)
+        third_high_parallel_job=$(echo $output | cut -d ";" -f 3)
+        fourth_high_parallel_job=$(echo $output | cut -d ";" -f 4)
+        fifth_high_parallel_job=$(echo $output | cut -d ";" -f 5)
+        sixth_high_parallel_job=$(echo $output | cut -d ";" -f 6)
+        lowest_high_parallel_job=$(echo $output | cut -d ";" -f 7)
+        non_parallel_job=$(echo $output | cut -d ";" -f 8)
+        
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                    # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                    # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
+                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                    read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                    continue
+                fi
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+                if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
+                    echo $testcase" will only run at night."
+                    continue
+                fi
+                if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]]; then
+                    will_test="false"
+                    for case in $precision_cases; do
+                        if [[ $testcase == $case ]]; then
+                            will_test="true"
+                            break
+                        fi
+                    done
+                    if [[ $will_test == "false" ]]; then
+                        echo $testcase" won't run in PRECISION_TEST mode."
+                        continue
+                    fi
+                fi
+
+                if [[ "$is_multicard" == "" ]]; then
+                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                fi
+                if [[ "$is_exclusive" != "" ]]; then
+                    if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        exclusive_tests_high_parallel="$exclusive_tests_high_parallel|^$testcase$"
+                    elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        exclusive_tests_medium_parallel="$exclusive_tests_medium_parallel|^$testcase$"
+                    else
+                        exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
+                    fi
+                    exclusive_tests="$exclusive_tests|^$testcase$"
+                elif [[ "$is_multicard" != "" ]]; then
+                    if [[ $(echo $high_parallel_job$fourth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        multiple_card_tests_medium_parallel="$multiple_card_tests_medium_parallel|^$testcase$"
+                    else
+                        multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
+                    fi
+                    multiple_card_tests="$multiple_card_tests|^$testcase$"
+                else
+                    if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
+                    elif [[ $(echo $secondary_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_secondary_high_parallel="$single_card_tests_secondary_high_parallel|^$testcase$"
+                    elif [[ $(echo $third_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_third_high_parallel="$single_card_tests_third_high_parallel|^$testcase$"           
+                    elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_forth_high_parallel="$single_card_tests_forth_high_parallel|^$testcase$"
+                    elif [[ $(echo $sixth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_fifth_high_parallel="$single_card_tests_fifth_high_parallel|^$testcase$"               
+                    elif [[ $(echo $lowest_high_parallel_job| grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_lowest_parallel="$single_card_tests_lowest_parallel|^$testcase$"
+                    else
+                        single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
+                    fi
+                    single_card_tests="$single_card_tests|^$testcase$"
+                fi
+                is_exclusive=''
+                is_multicard=''
+                is_nightly=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+
+
+        echo "single_card_tests_high_parallel=$single_card_tests_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
+        echo "single_card_tests_secondary_high_parallel=$single_card_tests_secondary_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
+        echo "single_card_tests_third_high_parallel=$single_card_tests_third_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
+        echo "single_card_tests_forth_high_parallel=$single_card_tests_forth_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
+        echo "single_card_tests_fifth_high_parallel=$single_card_tests_fifth_high_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
+        echo "single_card_tests_lowest_parallel=$single_card_tests_lowest_parallel" >> ${PADDLE_ROOT}/build/single_case.txt
+        echo "single_card_tests_non_parallel=$single_card_tests_non_parallel" >> ${PADDLE_ROOT}/build/single_case.txt 
+        echo "$single_card_tests" > ${PADDLE_ROOT}/build/single_card_tests.txt 
+
+        echo "multiple_card_tests_medium_parallel=$multiple_card_tests_medium_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "multiple_card_tests_non_parallel=$multiple_card_tests_non_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "$multiple_card_tests" > ${PADDLE_ROOT}/build/multiple_card_tests.txt 
+        
+        echo "exclusive_tests_high_parallel=$exclusive_tests_high_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "exclusive_tests_medium_parallel=$exclusive_tests_medium_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "exclusive_tests_non_parallel=$exclusive_tests_non_parallel" >> ${PADDLE_ROOT}/build/multi_case.txt
+        echo "$exclusive_tests" > ${PADDLE_ROOT}/build/exclusive_tests.txt
+
+        echo "collect case finish!!"
+    fi 
+}
+
+function parallel_test_base_gpu_single() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    pip install hypothesis
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests in parallel way ...
+    ========================================
+EOF
+
+set -x
+        # set trt_convert ut to run 15% cases.
+        export TEST_NUM_PERCENT_CASES=0.15
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
+        fi
+set +x
+        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        EXIT_CODE=0;
+        declare -A case_card_num_dic
+        case_card_num_dic=(['single_card_tests_high_parallel']=24 ['single_card_tests_secondary_high_parallel']=15 ['single_card_tests_third_high_parallel']=12 ['single_card_tests_forth_high_parallel']=7 ['single_card_tests_fifth_high_parallel']=4 ['single_card_tests_lowest_parallel']=2 ['single_card_tests_non_parallel']=4)
+        ut_actual_total_startTime_s=`date +%s`
+        while read line
+        do
+            caseKey=`echo $line | awk -F "=" '{print $1}'`   
+            caseValue=`echo $line | awk -F "=" '{print $2}'`
+            parallel_num=${case_card_num_dic[$caseKey]}
+            card_test $caseValue 1 $parallel_num  
+        done < ${PADDLE_ROOT}/build/single_case.txt
+        retry_ut_coverage
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_single_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi
+    ut_total_endTime_s=`date +%s`
+    echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
+    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        
+}
+
+function parallel_test_base_gpu_multi() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    pip install hypothesis
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests in parallel way ...
+    ========================================
+EOF
+
+set -x
+        # set trt_convert ut to run 15% cases.
+        export TEST_NUM_PERCENT_CASES=0.15
+set +x
+        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        EXIT_CODE=0;
+        declare -A case_card_num_dic
+        case_card_num_dic=(['multiple_card_tests_medium_parallel']=4 ['multiple_card_tests_non_parallel']=3 ['exclusive_tests_high_parallel']=7 ['exclusive_tests_medium_parallel']=4 ['exclusive_tests_non_parallel']=2)
+        ut_actual_total_startTime_s=`date +%s`
+        while read line
+        do
+            caseKey=`echo $line | awk -F "=" '{print $1}'`   
+            caseValue=`echo $line | awk -F "=" '{print $2}'`
+            parallel_num=${case_card_num_dic[$caseKey]}
+            if [[ "$caseKey" =~ ^exclusive* ]];then
+                card_test $caseValue -1 $parallel_num
+            else
+                card_test $caseValue 2 $parallel_num
+            fi
+        done < ${PADDLE_ROOT}/build/multi_case.txt
+        retry_ut_coverage
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi
+}
+
+function retry_ut_coverage() {
+    collect_failed_tests
+    rm -f $tmp_dir/*
+    exec_times=0
+    retry_unittests_record=''
+    retry_time=4
+    exec_time_array=('first' 'second' 'third' 'fourth')
+    parallel_failed_tests_exec_retry_threshold=120
+    exec_retry_threshold=30
+    is_retry_execuate=0
+    rerun_ut_startTime_s=`date +%s`
+    single_card_tests=$(cat ${PADDLE_ROOT}/build/single_card_tests.txt)
+    multiple_card_tests=$(cat ${PADDLE_ROOT}/build/multiple_card_tests.txt)
+    exclusive_tests=$(cat ${PADDLE_ROOT}/build/exclusive_tests.txt)
+    if [ -n "$failed_test_lists" ];then
+        if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+            bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+        fi
+        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+        need_retry_ut_arr=(${need_retry_ut_str})
+        need_retry_ut_count=${#need_retry_ut_arr[@]}
+        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+        while ( [ $exec_times -lt $retry_time ] )
+            do
+                if [[ "${exec_times}" == "0" ]] ;then
+                    if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                        is_retry_execuate=0
+                    else
+                        is_retry_execuate=1
+                    fi
+                elif [[ "${exec_times}" == "1" ]] ;then
+                    read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    need_retry_ut_arr=(${need_retry_ut_str})
+                    need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                    if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                        is_retry_execuate=0
+                    else
+                        is_retry_execuate=1
+                    fi
+                fi
+                if [[ "$is_retry_execuate" == "0" ]];then
+                    set +e
+                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                    set -e
+                    if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "2" ]];then
+                        if [[ "${failed_test_lists}" == "" ]];then
+                            break
+                        else
+                            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        fi
+                    fi
+                    echo "========================================="
+                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                    echo "========================================="
+                    echo "The following unittest will be re-run:"
+                    echo "${retry_unittests}"                    
+                    for line in ${retry_unittests[@]} ;
+                        do
+                            read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
+                            read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
+                            read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
+
+                            if [[ "$tmp_one_tmp" != ""  ]]; then
+                                if [[ "$one_card_retry" == "" ]]; then
+                                    one_card_retry="^$line$"
+                                else
+                                    one_card_retry="$one_card_retry|^$line$"
+                                fi
+                            elif [[ "$tmp_mul_tmp" != "" ]]; then
+                                if [[ "$multiple_card_retry" == "" ]]; then
+                                    multiple_card_retry="^$line$"
+                                else
+                                    multiple_card_retry="$multiple_card_retry|^$line$"
+                                fi
+                            else
+                                if [[ "$exclusive_retry" == "" ]];then
+                                    exclusive_retry="^$line$"
+                                else
+                                    exclusive_retry="$exclusive_retry|^$line$"
+                                fi
+                            fi
+
+                        done
+                    if [[ "$one_card_retry" != "" ]]; then
+                        card_test "$one_card_retry" 1 4
+                    fi
+                    if [[ "$multiple_card_retry" != "" ]]; then
+                        card_test "$multiple_card_retry" 2
+                    fi
+                    if [[ "$exclusive_retry" != "" ]]; then
+                        card_test "$exclusive_retry" -1
+                    fi
+                    echo "exec_times: $exec_times"
+                    exec_times=$[$exec_times+1]
+                    failed_test_lists=''
+                    collect_failed_tests
+                    echo "failed_test_lists: $failed_test_lists"
+                    rm -f $tmp_dir/*
+                    one_card_retry=''
+                    multiple_card_retry=''
+                    exclusive_retry='' 
+                else 
+                    break
+                fi 
+            done
+        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+    fi
+    rerun_ut_endTime_s=`date +%s`
+    echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+}
+
+function save_ut_retry_result() {
+    if [ "$SYSTEM" == "Darwin" ]; then
+        exec_retry_threshold_count=10
+    else
+        exec_retry_threshold_count=80
+    fi
+    if [[ "$is_retry_execuate" != "0" ]]  && [[ "${exec_times}" == "0" ]] ;then
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        echo "========================================="
+        echo "There are more than ${exec_retry_threshold_count} failed unit tests in parallel test, so no unit test retry!!!"
+        echo "========================================="
+        echo "The following tests FAILED: "
+        echo "${failed_test_lists_ult}"
+        echo "${failed_test_lists_ult}" >> ${PADDLE_ROOT}/build/failed_case.txt
+        exit 8;
+    elif [[ "$is_retry_execuate" != "0" ]] && [[ "${exec_times}" == "1" ]];then
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        echo "========================================="
+        echo "There are more than 10 failed unit tests, so no unit test retry!!!"
+        echo "========================================="
+        echo "The following tests FAILED: "
+        echo "${failed_test_lists_ult}"
+        echo "${failed_test_lists_ult}" >> ${PADDLE_ROOT}/build/failed_case.txt
+        exit 8;
+    else
+        retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
+        if [ -z "${retry_unittests_record_judge}" ];then
+            echo "========================================"
+            echo "There are failed tests, which have been successful after re-run:"
+            echo "========================================"
+            echo "The following tests have been re-ran:"
+            echo "${retry_unittests_record}"
+            echo "${retry_unittests_record}" >> ${PADDLE_ROOT}/build/failed_case.txt
+        else
+            failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+            echo "========================================"
+            echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re" >> ${PADDLE_ROOT}/build/failed_case.txt
+            exit 8;
+        fi
+    fi
+}
+
+
 
 function show_ut_retry_result() {
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -1493,6 +1983,7 @@ function show_ut_retry_result() {
             echo "There are failed tests, which have been successful after re-run:"
             echo "========================================"
             echo "The following tests have been re-ran:"
+            echo "${retry_unittests_record}" >> ${PADDLE_ROOT}/build/failed_case.txt
             echo "${retry_unittests_record}"
         else
             failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
@@ -2592,11 +3083,27 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        classify_case_base_coverage
+        ;;
+      gpu_cicheck_coverage_single)
+        check_approvals_of_unittest 1
+        parallel_test_base_gpu_single
+        #parallel_test
+        check_coverage
+        cp_coverage_message_to_cfs 'single'
+        check_change_of_unittest ${PYTHON_ABI:-""}
+        ;; 
+      gpu_cicheck_coverage_multi)
+        parallel_test_base_gpu_multi
+        check_coverage
+        cp_coverage_message_to_cfs 'multi'
+        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
         parallel_test
         check_coverage
+        assert_diff_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       ci_preciseTest)
@@ -2678,16 +3185,19 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
+        assert_diff_coverage
         ;;
       check_rocm_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
+        assert_diff_coverage
         ;;
       check_npu_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
+        assert_diff_coverage
         ;;
       reuse_so_cicheck_py35)
         reuse_so_cache
