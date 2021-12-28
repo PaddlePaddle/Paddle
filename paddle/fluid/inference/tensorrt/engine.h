@@ -253,6 +253,9 @@ class TensorRTEngine {
           infer_engine_,
           platform::errors::InvalidArgument(
               "You should build engine first and then set the context."));
+      // We may see trt warning: Profile 0 has been chosen by another
+      // IExecutionContext...
+      // It's ok. We will set it later.
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
       if (with_dynamic_shape_) {
         // need new profile if it's not the first
@@ -267,10 +270,13 @@ class TensorRTEngine {
   }
 
   int GetProfileIndex() {
-    // re-think!!!
-    std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
-    return profile_index_[tid];
+    if (max_profile_num_ > 1) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      const std::thread::id tid = std::this_thread::get_id();
+      return profile_index_[tid];
+    } else {
+      return 0;
+    }
   }
 
   int GetBindingsOffset() {

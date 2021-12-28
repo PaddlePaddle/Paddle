@@ -530,7 +530,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
-          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
+          engine->engine()->getBindingIndex(output_maps[output_index].c_str()) +
+          binding_offset;
       std::vector<int> ddim;
 
       if (!engine->with_dynamic_shape()) {
