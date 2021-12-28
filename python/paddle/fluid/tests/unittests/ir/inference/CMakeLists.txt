@@ -8,7 +8,7 @@ file(GLOB TEST_TRT_CONVERTER RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_trt_co
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
 # Only for cpu(mkl + openblas)
-set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass")
+set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
 
 foreach(CPU_UT ${TEST_INFERENCE_CPU_UT})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${CPU_UT})
