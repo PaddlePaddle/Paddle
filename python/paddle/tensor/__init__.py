@@ -117,6 +117,7 @@ from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
 from .manipulation import as_complex  # noqa: F401
+from .manipulation import take_along_axis  # noqa: F401
 from .manipulation import as_real  # noqa: F401
 from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
@@ -464,6 +465,7 @@ tensor_method_func  = [ #noqa
            'angle',
            'moveaxis',
            'repeat_interleave',
+           'take_along_axis',
            'exponential_',
 ]
 
