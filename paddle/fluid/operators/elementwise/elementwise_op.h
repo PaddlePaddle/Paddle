@@ -118,6 +118,12 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
+    // if dims rank is larger than 5 we fallback to native kernel because oneDNN
+    // is always choosing reference implementation which is extremely slow
+    const bool isXLoDTensor = ctx.InputVar("X")->IsType<framework::LoDTensor>();
+    if (isXLoDTensor && ctx.Input<framework::Tensor>("X")->dims().size() > 5)
+      return framework::OpKernelType(input_data_type, ctx.GetPlace());
+
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
