@@ -1802,10 +1802,23 @@ def amax(x, axis=None, keepdim=False, name=None):
             x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
                                   [0.9, 0.9, 0.6, 0.7]], 
                                  dtype='float64', stop_gradient=False)
+            # There are 5 maximum elements: 
+            # 1) amax evenly distributes gradient between these equal values, 
+            #    thus the corresponding gradients are 1/5=0.2;
+            # 2) while max propagates gradient to all of them, 
+            #    thus the corresponding gradient are 1.
             result1 = paddle.amax(x)
             result1.backward()
             print(result1, x.grad) 
             #[0.9], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+
+            x.clear_grad()
+            result1_max = paddle.max(x)
+            result1_max.backward()
+            print(result1_max, x.grad) 
+            #[0.9], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
+
+            ###############################
 
             x.clear_grad()
             result2 = paddle.amax(x, axis=0)
@@ -1901,10 +1914,23 @@ def amin(x, axis=None, keepdim=False, name=None):
             x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1],
                                   [0.1, 0.1, 0.6, 0.7]], 
                                  dtype='float64', stop_gradient=False)
+            # There are 5 minimum elements: 
+            # 1) amin evenly distributes gradient between these equal values, 
+            #    thus the corresponding gradients are 1/5=0.2;
+            # 2) while min propagates gradient to all of them, 
+            #    thus the corresponding gradient are 1.
             result1 = paddle.amin(x)
             result1.backward()
             print(result1, x.grad) 
             #[0.1], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+
+            x.clear_grad()
+            result1_min = paddle.min(x)
+            result1_min.backward()
+            print(result1_min, x.grad) 
+            #[0.1], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
+
+            ###############################
 
             x.clear_grad()
             result2 = paddle.amin(x, axis=0)
