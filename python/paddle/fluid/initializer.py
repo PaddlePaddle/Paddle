@@ -1148,13 +1148,14 @@ def _global_bias_initializer():
 
 def calculate_gain(nonlinearity, param=None):
     """
-    Get the recommended gain value of some nonlinearity function.
+    Get the recommended ``gain`` value of some nonlinearity function. ``gain`` value can be used in some 
+    ``paddle.nn.initializer`` api to adjust the initialization value.
 
     Args:
-        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, which is one of 
-        "linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose" , 1.0 will be returned.
+        nonlinearity(str): name of nonlinearity activation function. If it is a linear function, such as: 
+            `linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose` , 1.0 will be returned.
         param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to 
-        'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
+            'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
 
     Returns:
         A float value, which is the recommended gain for this nonlinearity function.
