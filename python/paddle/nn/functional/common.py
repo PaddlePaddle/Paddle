@@ -1763,7 +1763,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         seed = default_main_program().random_seed
 
     if in_dygraph_mode():
-        remapped_label, sampled_class_center = core.ops.class_center_sample(
+        remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0)

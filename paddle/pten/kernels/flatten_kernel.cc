@@ -13,14 +13,11 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/flatten_kernel.h"
-#include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/cpu/utils.h"
-#include "paddle/pten/kernels/functions/common_shape.h"
-#include "paddle/pten/kernels/gpu/utils.h"
-#include "paddle/pten/kernels/xpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 
 namespace pten {
 
@@ -46,7 +43,7 @@ void FlattenWithXShape(const ContextT& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   Flatten<T, ContextT>(dev_ctx, x, start_axis, stop_axis, out);
-  functions::SetXShape(x, xshape);
+  funcs::SetXShape(x, xshape);
 }
 
 }  // namespace pten

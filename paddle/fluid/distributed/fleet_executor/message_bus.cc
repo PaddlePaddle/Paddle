@@ -105,21 +105,53 @@ bool MessageBus::Send(int64_t dst_rank,
   return true;
 }
 
-void MessageBus::TestConnection() {
-  InterceptorMessage ctrl_msg;
-  ctrl_msg.set_ctrl_message(true);
-  ctrl_msg.set_src_id(rank_);
-  for (const auto& dst_rank_pair : rank_to_addr_) {
-    int64_t dst_rank = dst_rank_pair.first;
-    if (dst_rank != rank_) {
-      ctrl_msg.set_dst_id(dst_rank);
-      VLOG(3) << "Send control message bus from rank " << rank_ << " to rank "
-              << dst_rank;
-      while (!Send(dst_rank, ctrl_msg)) {
+void MessageBus::IncreaseBarrierCount() {
+  VLOG(3) << "IncreaseBarrierCount";
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    ++count_;
+    cv_.notify_one();
+  }
+  VLOG(3) << "End IncreaseBarrierCount";
+}
+
+void MessageBus::Barrier() {
+  // gather to root
+  if (rank_ != 0) {
+    InterceptorMessage ctrl_msg;
+    ctrl_msg.set_ctrl_message(true);
+    ctrl_msg.set_src_id(rank_);
+    ctrl_msg.set_dst_id(0);
+    VLOG(3) << "Barrier Gather ctrl message from " << rank_ << " to 0";
+    while (!Send(0, ctrl_msg)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+  } else {
+    VLOG(3) << "Barrier 0 wait others rank ready";
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] {
+      return count_ == static_cast<int>(rank_to_addr_.size() - 1);
+    });
+    count_ = 0;
+  }
+
+  // scatter from root
+  if (rank_ == 0) {
+    for (int i = 1; i < static_cast<int>(rank_to_addr_.size()); ++i) {
+      InterceptorMessage ctrl_msg;
+      ctrl_msg.set_ctrl_message(true);
+      ctrl_msg.set_src_id(0);
+      ctrl_msg.set_dst_id(i);
+      VLOG(3) << "Barrier Scatter ctrl message from 0 to " << i;
+      while (!Send(i, ctrl_msg)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       }
-      VLOG(3) << "Message bus has connected to rank: " << dst_rank << ".";
     }
+  } else {
+    VLOG(3) << "Barrier " << rank_ << " wait others rank ready";
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return count_ == 1; });
+    count_ = 0;
   }
 }
 
@@ -151,7 +183,6 @@ void MessageBus::ListenPort() {
     interval += 500;
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
-  TestConnection();
 #else
   LOG(WARNING)
       << "Fleet executor's ListenPort() is a fake function when Paddle is "

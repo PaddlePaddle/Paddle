@@ -115,10 +115,13 @@ TEST(InterceptorTest, PingPong) {
           FleetExecutor::CreateCarrier(0, interceptor_id_to_rank);
       carrier->SetCreatingFlag(false);
       auto msg_bus = std::make_shared<MessageBus>();
-      msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
       carrier->SetMsgBus(msg_bus);
+      // NOTE: need Init msg_bus after carrier SetMsgBus
+      msg_bus->Init(0, {{0, ip0}, {1, ip1}}, ip0);
       Interceptor* a = carrier->SetInterceptor(
           0, InterceptorFactory::Create("PingPong", 0, nullptr));
+      carrier->Barrier();
+
       InterceptorMessage msg;
       a->Send(1, msg);
       carrier->Wait();
@@ -127,10 +130,12 @@ TEST(InterceptorTest, PingPong) {
           FleetExecutor::CreateCarrier(1, interceptor_id_to_rank);
       carrier->SetCreatingFlag(false);
       auto msg_bus = std::make_shared<MessageBus>();
-      msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
       carrier->SetMsgBus(msg_bus);
+      msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
       carrier->SetInterceptor(
           1, InterceptorFactory::Create("PingPong", 1, nullptr));
+      carrier->Barrier();
+
       carrier->Wait();
       int status;
       int ret = waitpid(pid, &status, 0);

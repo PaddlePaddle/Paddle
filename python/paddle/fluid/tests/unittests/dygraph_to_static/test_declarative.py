@@ -379,5 +379,34 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
             net.forward.outputs
 
 
+class CallNonForwardFuncNet(paddle.nn.Layer):
+    def __init__(self):
+        super(CallNonForwardFuncNet, self).__init__()
+        self.sub = CallNonForwardFuncSubNet()
+
+    @paddle.jit.to_static
+    def forward(self):
+        return self.sub.func()
+
+
+class CallNonForwardFuncSubNet(paddle.nn.Layer):
+    def __init__(self):
+        super(CallNonForwardFuncSubNet, self).__init__()
+        self.a = paddle.to_tensor([1, 2])
+
+    def func(self):
+        x = self.a * 2
+        return x
+
+
+class TestCallNonForwardFunc(unittest.TestCase):
+    def test_call_non_forward(self):
+        paddle.disable_static()
+        net = CallNonForwardFuncNet()
+        out = net()
+        self.assertEqual(out.numpy().tolist(), [2, 4])
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

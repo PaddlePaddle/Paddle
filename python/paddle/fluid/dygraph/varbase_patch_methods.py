@@ -233,7 +233,7 @@ def monkey_patch_varbase():
             if grad_tensor is not None:
                 assert isinstance(
                     grad_tensor, paddle.
-                    Tensor), "The type of grad_tensot must be paddle.Tensor"
+                    Tensor), "The type of grad_tensor must be paddle.Tensor"
                 assert grad_tensor.shape == self.shape, \
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
