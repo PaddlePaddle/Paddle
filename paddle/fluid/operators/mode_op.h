@@ -115,15 +115,15 @@ class ModeCPUKernel : public framework::OpKernel<T> {
       getMode<T, int64_t>(input_height, input_width, in_dims.size(), input,
                           output_data, indices_data);
     } else {
-      std::vector<int> trans;
+      std::vector<int> trans_axis;
       for (int i = 0; i < axis; i++) {
-        trans.emplace_back(i);
+        trans_axis.emplace_back(i);
       }
-      trans.push_back(in_dims.size() - 1);
+      trans_axis.push_back(in_dims.size() - 1);
       for (int i = axis + 1; i < in_dims.size() - 1; i++) {
-        trans.emplace_back(i);
+        trans_axis.emplace_back(i);
       }
-      trans.emplace_back(axis);
+      trans_axis.emplace_back(axis);
 
       if (!keepdim) {
         std::vector<int> tmp_out_shape;
@@ -134,47 +134,47 @@ class ModeCPUKernel : public framework::OpKernel<T> {
         for (int i = axis + 1; i < in_dims.size(); i++) {
           tmp_out_shape.emplace_back(in_dims[i]);
         }
-        framework::DDim tmp_out_dims = framework::make_ddim(tmp_out_shape);
-        output->Resize(tmp_out_dims);
-        indices->Resize(tmp_out_dims);
+        framework::DDim tmp_out_dim = framework::make_ddim(tmp_out_shape);
+        output->Resize(tmp_out_dim);
+        indices->Resize(tmp_out_dim);
       }
 
       // get the trans input_dims, out_dims
-      framework::DDim trans_dims(in_dims);
-      framework::DDim trans_out_dims(in_dims);
+      framework::DDim trans_shape(in_dims);
+      framework::DDim trans_out_shape(in_dims);
 
-      for (size_t i = 0; i < trans.size(); i++) {
-        trans_dims[i] = in_dims[trans[i]];
-        trans_out_dims[i] = in_dims[trans[i]];
+      for (size_t i = 0; i < trans_axis.size(); i++) {
+        trans_shape[i] = in_dims[trans_axis[i]];
+        trans_out_shape[i] = in_dims[trans_axis[i]];
       }
-      trans_out_dims[in_dims.size() - 1] = 1;
+      trans_out_shape[in_dims.size() - 1] = 1;
 
-      framework::Tensor trans_inp;
-      trans_inp.mutable_data<T>(trans_dims, context.GetPlace());
-      int ndims = trans.size();
+      framework::Tensor trans_input;
+      trans_input.mutable_data<T>(trans_shape, context.GetPlace());
+      int ndims = trans_axis.size();
       auto& dev_context =
           context.template device_context<platform::CPUDeviceContext>();
 
       // transpose the input value
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_context, *input,
-                                                  &trans_inp, trans);
+                                                  &trans_input, trans_axis);
 
       const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
-      const int64_t input_width = trans_dims[trans_dims.size() - 1];
+          framework::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+      const int64_t input_width = trans_shape[trans_shape.size() - 1];
       framework::Tensor tmp_out;
-      T* t_out = tmp_out.mutable_data<T>(trans_out_dims, context.GetPlace());
+      T* t_out = tmp_out.mutable_data<T>(trans_out_shape, context.GetPlace());
       framework::Tensor tmp_indices;
-      auto* t_ind =
-          tmp_indices.mutable_data<int64_t>(trans_out_dims, context.GetPlace());
+      auto* t_ind = tmp_indices.mutable_data<int64_t>(trans_out_shape,
+                                                      context.GetPlace());
 
-      getMode<T, int64_t>(input_height, input_width, in_dims.size(), &trans_inp,
-                          t_out, t_ind);
+      getMode<T, int64_t>(input_height, input_width, in_dims.size(),
+                          &trans_input, t_out, t_ind);
       // transpose back
       TransCompute<platform::CPUDeviceContext, int64_t>(
-          ndims, dev_context, tmp_indices, indices, trans);
+          ndims, dev_context, tmp_indices, indices, trans_axis);
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_context, tmp_out,
-                                                  output, trans);
+                                                  output, trans_axis);
       if (!keepdim) {
         output->Resize(out_dims);
         indices->Resize(out_dims);
@@ -246,36 +246,36 @@ class ModeGradCPUKernel : public framework::OpKernel<T> {
       }
     } else {
       // can not assign grad to input_grad, must do the transpose
-      std::vector<int> trans;
+      std::vector<int> trans_axis;
       for (int i = 0; i < axis; i++) {
-        trans.emplace_back(i);
+        trans_axis.emplace_back(i);
       }
-      trans.emplace_back(out_dims.size() - 1);
+      trans_axis.emplace_back(out_dims.size() - 1);
       for (int i = axis + 1; i < out_dims.size() - 1; i++) {
-        trans.emplace_back(i);
+        trans_axis.emplace_back(i);
       }
-      trans.emplace_back(axis);
-      framework::DDim trans_dims(out_dims);
-      framework::DDim trans_in_dims(in_dims);
-      for (size_t i = 0; i < trans.size(); i++) {
-        trans_dims[i] = out_dims[trans[i]];
-        trans_in_dims[i] = in_dims[trans[i]];
+      trans_axis.emplace_back(axis);
+      framework::DDim trans_shape(out_dims);
+      framework::DDim trans_in_shape(in_dims);
+      for (size_t i = 0; i < trans_axis.size(); i++) {
+        trans_shape[i] = out_dims[trans_axis[i]];
+        trans_in_shape[i] = in_dims[trans_axis[i]];
       }
       // transpose the out_grad, indices
       framework::Tensor trans_dO;
-      trans_dO.mutable_data<T>(trans_dims, context.GetPlace());
+      trans_dO.mutable_data<T>(trans_shape, context.GetPlace());
       framework::Tensor trans_ind;
-      trans_ind.mutable_data<int64_t>(trans_dims, context.GetPlace());
-      int ndims = trans.size();
+      trans_ind.mutable_data<int64_t>(trans_shape, context.GetPlace());
+      int ndims = trans_axis.size();
       auto& dev_context =
           context.template device_context<platform::CPUDeviceContext>();
 
       if (keepdim) {
         // Do transpose
         TransCompute<platform::CPUDeviceContext, T>(
-            ndims, dev_context, *out_grad, &trans_dO, trans);
+            ndims, dev_context, *out_grad, &trans_dO, trans_axis);
         TransCompute<platform::CPUDeviceContext, int64_t>(
-            ndims, dev_context, *indices, &trans_ind, trans);
+            ndims, dev_context, *indices, &trans_ind, trans_axis);
       } else {
         framework::Tensor out_grad_tmp;
         framework::Tensor indices_tmp;
@@ -290,17 +290,17 @@ class ModeGradCPUKernel : public framework::OpKernel<T> {
         indices_tmp.Resize(out_dims);
         // Do transpose
         TransCompute<platform::CPUDeviceContext, T>(
-            ndims, dev_context, out_grad_tmp, &trans_dO, trans);
+            ndims, dev_context, out_grad_tmp, &trans_dO, trans_axis);
         TransCompute<platform::CPUDeviceContext, int64_t>(
-            ndims, dev_context, indices_tmp, &trans_ind, trans);
+            ndims, dev_context, indices_tmp, &trans_ind, trans_axis);
       }
       const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
-      const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
+          framework::slice_ddim(trans_in_shape, 0, trans_in_shape.size() - 1));
+      const int64_t input_width = trans_in_shape[trans_in_shape.size() - 1];
 
       // Assign the out_grad to tranpose input_grad
       framework::Tensor tmp_out;
-      T* t_out = tmp_out.mutable_data<T>(trans_in_dims, context.GetPlace());
+      T* t_out = tmp_out.mutable_data<T>(trans_in_shape, context.GetPlace());
       memset(t_out, 0, x_grad->numel() * sizeof(T));
 
       ModeAssign<T, int64_t>(input_height, input_width, in_dims.size(),
@@ -308,7 +308,7 @@ class ModeGradCPUKernel : public framework::OpKernel<T> {
 
       // Transpose back
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_context, tmp_out,
-                                                  x_grad, trans);
+                                                  x_grad, trans_axis);
     }
   }
 };

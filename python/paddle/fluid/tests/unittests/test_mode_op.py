@@ -64,7 +64,7 @@ class TestModeOp(OpTest):
         self.op_type = "mode"
         self.dtype = np.float64
         np.random.seed(666)
-        self.input_data = np.ceil(np.random.rand(2, 10, 7) * 1000)
+        self.input_data = np.random.rand(2, 64, 1)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'axis': self.axis}
@@ -88,7 +88,7 @@ class TestModeOpLastdim(OpTest):
         self.op_type = "mode"
         self.dtype = np.float64
         np.random.seed(666)
-        self.input_data = np.ceil(np.random.rand(2, 1, 3, 2, 10) * 1000)
+        self.input_data = np.random.rand(2, 1, 1, 2, 30)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'axis': self.axis}

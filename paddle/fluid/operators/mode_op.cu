@@ -113,15 +113,15 @@ class ModeOpCUDAKernel : public framework::OpKernel<T> {
       getModebySort<T>(dev_ctx, input, input_width, input_height, output_data,
                        indices_data);
     } else {
-      std::vector<int> trans;
+      std::vector<int> trans_axis;
       for (int i = 0; i < axis; i++) {
-        trans.emplace_back(i);
+        trans_axis.emplace_back(i);
       }
-      trans.emplace_back(in_dims.size() - 1);
+      trans_axis.emplace_back(in_dims.size() - 1);
       for (int i = axis + 1; i < in_dims.size() - 1; i++) {
-        trans.emplace_back(i);
+        trans_axis.emplace_back(i);
       }
-      trans.emplace_back(axis);
+      trans_axis.emplace_back(axis);
 
       if (!keepdim) {
         std::vector<int> tmp_out_shape;
@@ -132,43 +132,43 @@ class ModeOpCUDAKernel : public framework::OpKernel<T> {
         for (int i = axis + 1; i < in_dims.size(); i++) {
           tmp_out_shape.emplace_back(in_dims[i]);
         }
-        framework::DDim tmp_out_dims = framework::make_ddim(tmp_out_shape);
-        output->Resize(tmp_out_dims);
-        indices->Resize(tmp_out_dims);
+        framework::DDim tmp_out_dim = framework::make_ddim(tmp_out_shape);
+        output->Resize(tmp_out_dim);
+        indices->Resize(tmp_out_dim);
       }
 
-      framework::DDim trans_dims(in_dims);
-      framework::DDim trans_out_dims(in_dims);
-      for (int i = 0; i < trans.size(); i++) {
-        trans_dims[i] = in_dims[trans[i]];
-        trans_out_dims[i] = in_dims[trans[i]];
+      framework::DDim trans_shape(in_dims);
+      framework::DDim trans_out_shape(in_dims);
+      for (int i = 0; i < trans_axis.size(); i++) {
+        trans_shape[i] = in_dims[trans_axis[i]];
+        trans_out_shape[i] = in_dims[trans_axis[i]];
       }
-      trans_out_dims[in_dims.size() - 1] = 1;
+      trans_out_shape[in_dims.size() - 1] = 1;
 
       // second step, tranpose the input
       framework::Tensor trans_input;
-      trans_input.mutable_data<T>(trans_dims, ctx.GetPlace());
-      int ndims = trans.size();
+      trans_input.mutable_data<T>(trans_shape, ctx.GetPlace());
+      int ndims = trans_axis.size();
       const auto& dev_ctx = ctx.cuda_device_context();
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, *input,
-                                                   &trans_input, trans);
+                                                   &trans_input, trans_axis);
       framework::Tensor trans_ind;
       int64_t* trans_ind_data =
-          trans_ind.mutable_data<int64_t>(trans_out_dims, ctx.GetPlace());
+          trans_ind.mutable_data<int64_t>(trans_out_shape, ctx.GetPlace());
       framework::Tensor trans_out;
       T* trans_out_data =
-          trans_out.mutable_data<T>(trans_out_dims, ctx.GetPlace());
+          trans_out.mutable_data<T>(trans_out_shape, ctx.GetPlace());
 
       const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
-      const int64_t input_width = trans_dims[trans_dims.size() - 1];
+          framework::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+      const int64_t input_width = trans_shape[trans_shape.size() - 1];
       getModebySort<T>(dev_ctx, &trans_input, input_width, input_height,
                        trans_out_data, trans_ind_data);
       // last step, tranpose back the indices and output
       TransCompute<platform::CUDADeviceContext, int64_t>(
-          ndims, dev_ctx, trans_ind, indices, trans);
+          ndims, dev_ctx, trans_ind, indices, trans_axis);
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, trans_out,
-                                                   output, trans);
+                                                   output, trans_axis);
       if (!keepdim) {
         output->Resize(out_dims);
         indices->Resize(out_dims);
