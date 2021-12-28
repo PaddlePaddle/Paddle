@@ -14,22 +14,31 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+namespace paddle {
+namespace distributed {
 
-namespace pten {
+class TaskLoop;
 
-template <typename T>
-void Matmul(const GPUContext& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            bool transpose_x,
-            bool transpose_y,
-            DenseTensor* out);
+class TaskLoopThread {
+ public:
+  TaskLoopThread();
+  ~TaskLoopThread();
 
-}  // namespace pten
+  TaskLoop* StartLoop();
 
-#endif
+ private:
+  void Loop();
+
+  bool start_;
+  TaskLoop* loop_;
+  std::thread thread_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+};
+
+}  // namespace distributed
+}  // namespace paddle

@@ -174,7 +174,7 @@ void BasicEngine::PrepareGradAccumulators(
       if (!var) continue;
 
       bool find_grad_node_of_var = false;
-      if (var->HasGradNode()) {
+      if (grad_pending_nodes.size()) {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
         // grad_node of grad_var.
@@ -240,7 +240,7 @@ void BasicEngine::PrepareGradAccumulators(
         }
       }
 
-      if (!var->HasGradNode() || !find_grad_node_of_var) {
+      if (!grad_pending_nodes.size() || !find_grad_node_of_var) {
         auto& accumulator = accumulators_[var.get()];
         if (!accumulator) {
           if (FLAGS_sort_sum_gradient) {
@@ -438,15 +438,15 @@ void BasicEngine::Execute() {
             continue;
           }
 
+          const auto& grad_pending_nodes = shared_cur_node->GradPendingNodes();
           std::unordered_map<VariableWrapper*,
                              std::unique_ptr<GradientAccumulator>>::iterator
               iter;
           bool flag_find_grad = false;
-          if (var->HasGradNode()) {
+          if (grad_pending_nodes.size()) {
             VLOG(10) << "Find gradient of var (" << var->Name()
                      << ") with grad_node.";
-            for (auto& grad_pending_node :
-                 shared_cur_node->GradPendingNodes()) {
+            for (auto& grad_pending_node : grad_pending_nodes) {
               const auto& iter_grad_node =
                   accumulators_with_grad_node_.find(grad_pending_node);
               if (iter_grad_node != accumulators_with_grad_node_.end()) {
@@ -458,10 +458,11 @@ void BasicEngine::Execute() {
               }
             }
             if (!flag_find_grad) {
-              VLOG(6) << "Cannot find gradient of variable " << var->Name();
+              VLOG(6) << "Cannot find gradient of variable " << var->Name()
+                      << " in accumulators_with_grad_node_";
             }
           }
-          if (!var->HasGradNode() || !flag_find_grad) {
+          if (!grad_pending_nodes.size() || !flag_find_grad) {
             VLOG(10) << "Find gradient of var (" << var->Name()
                      << ") with no grad_node.";
             iter = accumulators_.find(var.get());

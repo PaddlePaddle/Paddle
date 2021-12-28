@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 
+#include "paddle/pten/api/ext/dispatch.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
+
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/float16.h"
+
 namespace pten {
-namespace detail {
 
 template <typename InT, typename OutT, int VecSize>
 __global__ void VecCastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
@@ -74,6 +78,40 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   }
 }
 
-}  // namespace detail
+template <typename T, typename ContextT>
+void Cast(const ContextT& dev_ctx,
+          const DenseTensor& x,
+          DataType out_dtype,
+          DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
+                       CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
+                     }));
+}
 
 }  // namespace pten
+
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)     \
+  PT_REGISTER_CTX_KERNEL(cast,                              \
+                         GPU,                               \
+                         ALL_LAYOUT,                        \
+                         pten::Cast,                        \
+                         float,                             \
+                         double,                            \
+                         int,                               \
+                         int64_t,                           \
+                         int16_t,                           \
+                         bool,                              \
+                         uint8_t,                           \
+                         paddle::platform::float16,         \
+                         paddle::platform::complex<float>,  \
+                         paddle::platform::complex<double>, \
+                         ##__VA_ARGS__) {                   \
+    kernel->OutputAt(0).SetDataType(                        \
+        paddle::experimental::DataType::UNDEFINED);         \
+  }
+
+#if !defined(PADDLE_WITH_HIP)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
+#else
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
+#endif

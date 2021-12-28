@@ -38,6 +38,7 @@ namespace distributed {
 
 class TaskNode;
 class Carrier;
+class TaskLoop;
 
 class Interceptor {
  public:
@@ -50,15 +51,13 @@ class Interceptor {
 
   virtual ~Interceptor();
 
-  void Join();
-
   // register interceptor handle
   void RegisterMsgHandle(MsgHandle handle);
 
   void Handle(const InterceptorMessage& msg);
 
   // return the interceptor id
-  int64_t GetInterceptorId() const;
+  int64_t GetInterceptorId() const { return interceptor_id_; }
 
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
   void EnqueueRemoteInterceptorMessage(
@@ -77,6 +76,7 @@ class Interceptor {
     gc_ = gc;
   }
   void RegisterCarrier(Carrier* carrier) { carrier_ = carrier; }
+  void RegisterTaskLoop(TaskLoop* loop) { loop_ = loop; }
 
   TaskNode* GetTaskNode() const { return node_; }
 
@@ -101,28 +101,16 @@ class Interceptor {
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
   Carrier* carrier_;
+  TaskLoop* loop_;
 
  private:
-  // pool the local mailbox, parse the Message
-  void PoolTheMailbox();
-
-  // fetch all Message from remote mailbox to local mailbox
-  // return true if remote mailbox not empty, otherwise return false
-  bool FetchRemoteMailbox();
+  void LoopOnce();
 
   // interceptor handle which process message
   MsgHandle handle_{nullptr};
 
-  // interceptor runs PoolTheMailbox() function to poll local mailbox
-  std::thread interceptor_thread_;
-
-  // remote mailbox, written by EnqueueRemoteMessage()
-  // read by FetchRemoteMailbox()
-  framework::BlockingQueue<InterceptorMessage> remote_mailbox_;
-
-  // local mailbox, written by FetchRemoteMailbox()
-  // read by PoolTheMailbox()
-  std::deque<InterceptorMessage> local_mailbox_;
+  std::mutex mutex_;
+  std::deque<InterceptorMessage> messages_;
 
   int64_t already_run_times_{0};
   int64_t used_slot_nums_{0};

@@ -14,13 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#include <cstdint>
+#include <memory>
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+namespace paddle {
+namespace platform {
 
-namespace pten {
-using NPUContext = paddle::platform::NPUDeviceContext;
-}  // namespace pten
+using StreamId = uint64_t;
+class Stream final {
+ public:
+  explicit Stream(StreamId id) : id_(id) {}
+  StreamId id() const { return id_; }
 
-#endif  // PADDLE_WITH_ASCEND_CL
+ private:
+  StreamId id_;
+};
+
+}  // namespace platform
+}  // namespace paddle
