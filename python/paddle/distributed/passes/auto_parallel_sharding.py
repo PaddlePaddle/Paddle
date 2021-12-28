@@ -691,5 +691,4 @@ class ShardingInfo(object):
         for param, usage in param_usage.items():
             if usage > 0:
                 broadcast_vars.add(param)
-                print("param [{}] use in fp32 format".format(param))
         return broadcast_vars, param_usage
