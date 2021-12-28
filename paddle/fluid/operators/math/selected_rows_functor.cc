@@ -493,7 +493,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
                   const framework::SelectedRows& input,
                   framework::SelectedRows* output,
                   const bool sorted_result = false) {
-    
+
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
@@ -526,14 +526,12 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     int n = input_width;
     for (size_t i = 0; i < input_rows.size(); i++) {
           size_t out_i = rows_to_id[input_rows[i]];
-          auto r = xpu::add(context.x_context(), &input_data[i * input_width],  
+          auto r = xpu::add(context.x_context(), &input_data[i * input_width],
 					  &out_data[out_i * input_width], &out_data[out_i * input_width], n);
 	  PADDLE_ENFORCE_EQ(
 		r, XPU_SUCCESS,
 		platform::errors::External(
-		    "XPU API return wrong value[%d %s], please check whether "
-		    "Baidu Kunlun Card is properly installed.",
-		    r, XPUAPIErrorMsg[r]));
+		    "XPU API return wrong value[%d %s], ", r, XPUAPIErrorMsg[r]));
      }
 
   }
@@ -612,17 +610,15 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
 	    int n = input_width;
         for (size_t i = 0; i < input_rows.size(); i++) {
           size_t out_i = rows_to_id[input_rows[i]];
-          auto r = xpu::add(context.x_context(), &input_data[i * input_width],  
+          auto r = xpu::add(context.x_context(), &input_data[i * input_width],
 					  &out_data[out_i * input_width], &out_data[out_i * input_width], n);
 	    PADDLE_ENFORCE_EQ(
 		r, XPU_SUCCESS,
 		platform::errors::External(
-		    "XPU API return wrong value[%d %s], please check whether "
-		    "Baidu Kunlun Card is properly installed.",
-		    r, XPUAPIErrorMsg[r]));
+		    "XPU API return wrong value[%d %s], ", r, XPUAPIErrorMsg[r]));
         }
       }
-    
+
   }
 };
 
