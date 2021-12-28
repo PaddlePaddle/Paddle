@@ -64,7 +64,8 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
                           argument->optim_input_shape().size() > 0);
   }
   with_dynamic_shape =
-      with_dynamic_shape || argument->tensorrt_tuned_dynamic_shape();
+      with_dynamic_shape || (argument->Has("tensorrt_tuned_dynamic_shape") &&
+                             argument->tensorrt_tuned_dynamic_shape());
   if (with_dynamic_shape) {
     reserve_cpu_weights = true;
   }
