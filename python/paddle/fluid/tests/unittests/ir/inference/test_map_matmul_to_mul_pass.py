@@ -55,6 +55,10 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
         def teller1(program_config, predictor_config):
+            if predictor_config.use_gpu():
+                # On 3080, the results of MatMul and Mul are different
+                return True
+
             if predictor_config.tensorrt_engine_enabled():
                 # On 3080, the results of MatMul and Mul are different
                 return True
