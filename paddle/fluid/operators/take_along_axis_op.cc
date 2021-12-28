@@ -95,7 +95,6 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
-    ctx->ShareLoD("Input", /*-->*/ framework::GradVarName("Input"));
   }
 
  protected:

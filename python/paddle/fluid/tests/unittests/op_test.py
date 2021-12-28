@@ -1643,6 +1643,7 @@ class OpTest(unittest.TestCase):
                         "out_dtype": core.VarDesc.VarType.FP32
                     })
                 outputs = {output_names[0]: cast_outputs}
+
             outputs_valid = {}
             for output_name in output_names:
                 outputs_valid[output_name] = self._find_var_in_dygraph(
@@ -1752,6 +1753,7 @@ class OpTest(unittest.TestCase):
         scope = core.Scope()
         block = prog.global_block()
         self._append_ops(block)
+
         inputs = self._get_inputs(block)
         outputs = self._get_outputs(block)
         feed_dict = self.feed_var(inputs, place)

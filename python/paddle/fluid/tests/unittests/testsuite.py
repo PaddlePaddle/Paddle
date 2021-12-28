@@ -143,6 +143,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
 
 def append_loss_ops(block, output_names):
     mean_inputs = list(map(block.var, output_names))
+
     if len(mean_inputs) == 1:
         loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])
         op = block.append_op(
@@ -160,6 +161,7 @@ def append_loss_ops(block, output_names):
             op.desc.infer_var_type(block.desc)
             op.desc.infer_shape(block.desc)
             avg_sum.append(cur_avg_loss)
+
         loss_sum = block.create_var(dtype=avg_sum[0].dtype, shape=[1])
         op_sum = block.append_op(
             inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum')

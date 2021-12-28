@@ -80,7 +80,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    def test_api_static(self):
+    def test_api_static_cast1(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', self.shape)
@@ -95,8 +95,24 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         for out in res:
             self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
 
-    def test_api_dygraph(self):
+    def test_api_dygraph_case1(self):
         paddle.disable_static(self.place[0])
+        self.x_np
+        x_tensor = paddle.to_tensor(self.x_np)
+        self.index = paddle.to_tensor(self.index_np)
+        out = paddle.take_along_axis(x_tensor, self.index, self.axis)
+        out_ref = np.array(
+            np.take_along_axis(self.x_np, self.index_np, self.axis))
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        paddle.enable_static()
+
+    def test_api_dygraph_case2(self):
+        paddle.disable_static(self.place[0])
+        self.shape = [2, 2]
+        self.index_shape = [2, 2]
+        self.index_np = np.array([[0, 0], [1, 0]]).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+
         x_tensor = paddle.to_tensor(self.x_np)
         self.index = paddle.to_tensor(self.index_np)
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
