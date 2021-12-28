@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ast import Index
 
 import paddle
 import paddle.fluid as fluid
