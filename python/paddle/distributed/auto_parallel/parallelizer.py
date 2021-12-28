@@ -38,6 +38,7 @@ from .process_group import get_world_process_groups
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
+from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
 from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from .cluster import Cluster
@@ -125,7 +126,7 @@ class AutoParallelizer:
                     parameter_list,
                     no_grad_set,
                     callbacks,
-                    distop_context=self._dist_context.dist_op_context)
+                    dist_context=self._dist_context.dist_op_context)
             complete_backward_annotation(
                 main_program, dist_context=self._dist_context)
 

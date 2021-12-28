@@ -25,6 +25,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext, Di
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
 from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op
+from .utils import set_dist_op_desc_original_id
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
 
@@ -211,7 +212,6 @@ class Partitioner(object):
                                              **koutputs)
 
             elif is_backward_op(op):
-                print(str(op))
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_backward_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, forward_op_id2forward_op)
@@ -366,8 +366,9 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
 def _get_dist_op_backward_implement(backward_op, dist_context,
                                     forward_op_id2forward_op):
     dist_op_context = dist_context.dist_op_context
-    if backward_op.desc.id() in dist_op_context.gradopidx2opidx:
-        forward_op_id = dist_op_context.gradopidx2opidx[backward_op.desc.id()]
+    if backward_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+        forward_op_id = dist_op_context.grad_op_id_to_op_id[backward_op.desc.id(
+        )]
         forward_op = forward_op_id2forward_op[forward_op_id]
         forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
             forward_op)
