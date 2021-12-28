@@ -16,7 +16,7 @@ import paddle.fluid.core as core
 import paddle.fluid.eager.eager_tensor_patch_methods as eager_tensor_patch_methods
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, EagerParamBase
+from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_eager_mode
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
 import copy
@@ -451,6 +451,29 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         res4 = self.func_base_to_variable(value)
         self.assertTrue(np.array_equal(res1, res2))
         self.assertTrue(np.array_equal(res3, res4))
+
+    def test_backward_with_single_tensor(self):
+        arr4 = np.random.rand(4, 16, 16, 32).astype('float32')
+        egr_tensor12 = core.eager.EagerTensor(arr4, core.CPUPlace())
+        egr_tensor12.retain_grads()
+        arr = np.ones([4, 16, 16, 32]).astype('float32')
+        self.assertEqual(egr_tensor12.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor12.name)
+        self.assertEqual(egr_tensor12.shape, [4, 16, 16, 32])
+        self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor12.stop_gradient, True)
+        self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
+        self.assertTrue(np.array_equal(egr_tensor12.numpy(), arr4))
+        self.assertTrue(np.array_equal(egr_tensor12.gradient(), None))
+        egr_tensor12.backward()
+        self.assertTrue(np.array_equal(egr_tensor12.gradient(), arr))
+
+
+class EagerGuardTestCase(unittest.TestCase):
+    def test__test_eager_guard(self):
+        tracer = paddle.fluid.dygraph.tracer.Tracer()
+        with _test_eager_guard(tracer):
+            self.assertTrue(_in_eager_mode())
 
 
 if __name__ == "__main__":

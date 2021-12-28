@@ -47,12 +47,14 @@ class Variable {
     if (!holder_) {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
+      VLOG(6) << "holder is: " << &holder_;
       PADDLE_ENFORCE_EQ(
           holder_->Type(), VarTypeTrait<T>::kId,
           platform::errors::InvalidArgument(
               "The Variable type must be %s, but the type it holds is %s.",
               ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
     }
+    VLOG(6) << "holder is: " << holder_;
     return static_cast<T*>(holder_->Ptr());
   }
 
@@ -111,7 +113,7 @@ class Variable {
   };
 
   // pointers to a PlaceholderImpl object indeed.
-  std::shared_ptr<Placeholder> holder_;
+  std::shared_ptr<Placeholder> holder_ = nullptr;
 };
 
 inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
