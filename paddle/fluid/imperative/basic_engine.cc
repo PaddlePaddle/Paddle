@@ -173,27 +173,11 @@ void BasicEngine::PrepareGradAccumulators(
     for (const auto& var : pair.second) {
       if (!var) continue;
 
-      if (!var->HasGradNode()) {
-        auto& accumulator = accumulators_[var.get()];
-        if (!accumulator) {
-          if (FLAGS_sort_sum_gradient) {
-            accumulator.reset(new SortedGradientAccumulator(var.get()));
-          } else {
-            accumulator.reset(new EagerGradientAccumulator(var.get()));
-          }
-        }
-
-        accumulator->IncreaseRefCnt();
-
-        VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
-                << var.get()
-                << ") that don't have grad node  with reference count "
-                << accumulator->RefCnt();
-      } else {
+      bool find_grad_node_of_var = false;
+      if (grad_pending_nodes.size()) {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
         // grad_node of grad_var.
-        bool find_grad_node_of_var = false;
         for (auto& grad_pending_node : grad_pending_nodes) {
           PADDLE_ENFORCE_NOT_NULL(
               grad_pending_node,
@@ -245,11 +229,33 @@ void BasicEngine::PrepareGradAccumulators(
             break;
           }
         }
-        PADDLE_ENFORCE_EQ(
-            find_grad_node_of_var, true,
-            platform::errors::NotFound(
-                "No grad node corresponding to grad Tensor (%s) was found.",
-                var->Name()));
+        if (!find_grad_node_of_var) {
+          // Special case: `set_value` is inplace op, and it can change
+          // the var with `stop_gradient=True` to the var with
+          // `stop_gradient=False `.
+          // This inplace var has grad_node (the inplace op), but it
+          // isn't the input of grad_pending_op.
+          VLOG(6) << "No grad node corresponding to grad Tensor ("
+                  << var->Name() << ") was found.";
+        }
+      }
+
+      if (!grad_pending_nodes.size() || !find_grad_node_of_var) {
+        auto& accumulator = accumulators_[var.get()];
+        if (!accumulator) {
+          if (FLAGS_sort_sum_gradient) {
+            accumulator.reset(new SortedGradientAccumulator(var.get()));
+          } else {
+            accumulator.reset(new EagerGradientAccumulator(var.get()));
+          }
+        }
+
+        accumulator->IncreaseRefCnt();
+
+        VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
+                << var.get()
+                << ") that don't have grad node  with reference count "
+                << accumulator->RefCnt();
       }
     }
   }
@@ -432,23 +438,15 @@ void BasicEngine::Execute() {
             continue;
           }
 
+          const auto& grad_pending_nodes = shared_cur_node->GradPendingNodes();
           std::unordered_map<VariableWrapper*,
                              std::unique_ptr<GradientAccumulator>>::iterator
               iter;
-          if (!var->HasGradNode()) {
-            VLOG(10) << "Find gradient of var (" << var->Name()
-                     << ") with no grad_node.";
-            iter = accumulators_.find(var.get());
-            PADDLE_ENFORCE_EQ(
-                iter != accumulators_.end(), true,
-                platform::errors::NotFound(
-                    "Cannot find gradient of variable %s", var->Name()));
-          } else {
-            bool flag_find_grad = false;
+          bool flag_find_grad = false;
+          if (grad_pending_nodes.size()) {
             VLOG(10) << "Find gradient of var (" << var->Name()
                      << ") with grad_node.";
-            for (auto& grad_pending_node :
-                 shared_cur_node->GradPendingNodes()) {
+            for (auto& grad_pending_node : grad_pending_nodes) {
               const auto& iter_grad_node =
                   accumulators_with_grad_node_.find(grad_pending_node);
               if (iter_grad_node != accumulators_with_grad_node_.end()) {
@@ -459,8 +457,17 @@ void BasicEngine::Execute() {
                 }
               }
             }
+            if (!flag_find_grad) {
+              VLOG(6) << "Cannot find gradient of variable " << var->Name()
+                      << " in accumulators_with_grad_node_";
+            }
+          }
+          if (!grad_pending_nodes.size() || !flag_find_grad) {
+            VLOG(10) << "Find gradient of var (" << var->Name()
+                     << ") with no grad_node.";
+            iter = accumulators_.find(var.get());
             PADDLE_ENFORCE_EQ(
-                flag_find_grad, true,
+                iter != accumulators_.end(), true,
                 platform::errors::NotFound(
                     "Cannot find gradient of variable %s", var->Name()));
           }

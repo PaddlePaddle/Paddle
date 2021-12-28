@@ -21,6 +21,16 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
+#endif
+
 namespace pten {
 namespace tests {
 

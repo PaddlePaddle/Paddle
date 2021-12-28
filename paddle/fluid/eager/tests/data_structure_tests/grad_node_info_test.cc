@@ -58,7 +58,7 @@ TEST(GradNodeInfo, GradNodeBase) {
   auto auto_grad0 = std::make_shared<egr::AutogradMeta>(edge0);
   egr::Edge edge1(grad_test_node1, 3, 4);
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(edge1);
-  grad_test_node0->AddEdges((*auto_grad0.get()), 0);
+  grad_test_node0->AddEdges(auto_grad0.get(), 0);
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().first,
            size_t(1));
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().second,

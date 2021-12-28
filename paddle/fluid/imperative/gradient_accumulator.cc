@@ -125,6 +125,23 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
+#ifdef PADDLE_WITH_MLU
+  void operator()(const platform::MLUPlace& place) {
+    // TODO(fwg): SUPPORT it
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#else
+  void operator()(const platform::MLUPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+#endif
+
 #ifdef PADDLE_WITH_ASCEND_CL
   void operator()(const platform::NPUPlace& place) {
     // TODO(zhiqiu): SUPPORT it
@@ -150,6 +167,13 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
   // there is NO blas in CUDAPinnedPlace
   void operator()(const platform::CUDAPinnedPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+  // there is NO support in IPUPlace
+  void operator()(const platform::IPUPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
