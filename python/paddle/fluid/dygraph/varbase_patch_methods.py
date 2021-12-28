@@ -306,7 +306,7 @@ def monkey_patch_varbase():
 
         """
         if _in_eager_mode():
-            if self.grad is None:
+            if not self.grad._is_initialized():
                 return None
             # TODO(wanghuancoder) support SELECTED_ROWS
             return self.grad.numpy()
@@ -766,7 +766,7 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def clear_gradient(self, set_to_zero=True):
         if set_to_zero:
-            self.zero_grads()
+            self._zero_grads()
         else:
             self._clear_gradient()
 

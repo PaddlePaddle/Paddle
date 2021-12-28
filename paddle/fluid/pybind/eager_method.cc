@@ -160,7 +160,7 @@ static PyObject* eager_tensor_retain_grads(EagerTensorObject* self,
 static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
                                               PyObject* args,
                                               PyObject* kwargs) {
-  EAGER_TRY
+  EAGER_SYNC_TRY
   VLOG(4) << "ClearGradient " << self->eager_tensor.name();
 
   egr::EagerTensor grad;
@@ -182,6 +182,8 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
   }
 
   if (grad.initialized()) {
+    VLOG(4) << "Gradient of " << self->eager_tensor.name()
+            << " is initialized, will be released.";
     auto dense_tensor =
         std::dynamic_pointer_cast<pten::DenseTensor>(grad.impl());
     dense_tensor->release();
@@ -191,8 +193,8 @@ static PyObject* eager_tensor__clear_gradient(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_tensor_zero_grads(EagerTensorObject* self,
-                                         PyObject* args, PyObject* kwargs) {
+static PyObject* eager_tensor__zero_grads(EagerTensorObject* self,
+                                          PyObject* args, PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->eager_tensor.name();
 
@@ -238,7 +240,7 @@ PyMethodDef variable_methods[] = {
     {"_clear_gradient",
      (PyCFunction)(void (*)(void))eager_tensor__clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"zero_grads", (PyCFunction)(void (*)(void))eager_tensor_zero_grads,
+    {"_zero_grads", (PyCFunction)(void (*)(void))eager_tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
