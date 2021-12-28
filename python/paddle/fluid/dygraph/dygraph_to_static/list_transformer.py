@@ -216,7 +216,10 @@ class ListTransformer(gast.NodeTransformer):
         except AttributeError:
             return False
         value_node = node.value
-        if isinstance(value_node, gast.List):
+        if isinstance(value_node, gast.List) or \
+                (isinstance(value_node, gast.Call) and \
+                 isinstance(value_node.func, gast.Name) and \
+                 value_node.func.id == 'list'):
             self.list_name_to_updated[target_id] = False
             self.list_nodes.add(node)
             return True
