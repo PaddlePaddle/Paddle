@@ -227,6 +227,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(slice, MKLDNN, paddle::platform::CPUPlace,
                    ops::SliceMKLDNNKernel<float>,
+                   ops::SliceMKLDNNKernel<int8_t>,
+                   ops::SliceMKLDNNKernel<uint8_t>,
                    ops::SliceMKLDNNKernel<paddle::platform::bfloat16>);
 
 namespace ops = paddle::operators;

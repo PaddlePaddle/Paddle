@@ -19,6 +19,81 @@
 namespace paddle {
 namespace operators {
 
+static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
+                                      const std::string input_name) {
+  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis =
+      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
+  auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+
+  // if mkldnn reshape+transpose+matmul fuse activated
+  if (!shape.empty() && !axis.empty()) {
+    PADDLE_ENFORCE_GE(
+        shape.size(), 2,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_LE(
+        shape.size(), 4,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_EQ(
+        shape.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
+            "must be equal.",
+            input_name, input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative, 1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name, num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i, dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name, i, dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+    // if "-1" is present then one of reshape dims must be infered
+    auto it_negative = std::find(shape.begin(), shape.end(), -1);
+    if (it_negative != shape.end()) {
+      int64_t dim_product = 1;
+      for (int i = 0; i < dim.size(); i++) {
+        dim_product *= dim.at(i);
+      }
+
+      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                              std::multiplies<int>());
+      int index = std::distance(shape.begin(), it_negative);
+      shape[index] = dim_product / shape_product;
+    }
+
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return dim;
+}
+
 class MatMulV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -30,9 +105,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
     std::vector<int64_t> dims_x =
-        paddle::framework::vectorize(ctx->GetInputDim("X"));
+        framework::vectorize(GetDimForInput(*ctx, "X"));
     std::vector<int64_t> dims_y =
-        paddle::framework::vectorize(ctx->GetInputDim("Y"));
+        framework::vectorize(GetDimForInput(*ctx, "Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x, 0,
@@ -119,9 +194,32 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                                             "received %d",
                                             reshape_out_size));
 
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
+      // -1);
+      // PADDLE_ENFORCE_LE(num_negative, 1,
+      //                   platform::errors::InvalidArgument(
+      //                       "The max number of -1 in fused_reshape_Out is 1 "
+      //                       "but received %d.",
+      //                       num_negative));
+
+      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
+      // if (it_zero != reshape_out.end()) {
+      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
+      //     if (reshape_out[i] == 0) {
+      //       PADDLE_ENFORCE_LT(
+      //           i, ddim_out.size(),
+      //           platform::errors::InvalidArgument(
+      //               "The index of 0 in fused_reshape_Out ",
+      //               "should be less than output dim size, ",
+      //               "but the index is %d and output dim size is %d", i,
+      //               ddim_out.size()));
+      //       reshape_out[i] = ddim_out.at(i);
+      //     }
+      //   }
+      // }
 
       // if "-1" is present then one of reshape dims must be infered
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
@@ -214,6 +312,22 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              R"DOC(Shape of fused reshape of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              R"DOC(Axis of fused transpose of `X` input.)DOC")
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
+        .SetDefault({})
         .AsExtra();
     AddComment(
         R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 

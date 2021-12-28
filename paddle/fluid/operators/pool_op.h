@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
 
@@ -203,13 +202,14 @@ class PoolKernel : public framework::OpKernel<T> {
         } else if (pooling_type == "avg") {
           std::vector<int> reduce_dim;
           int reduce_num = getReduceNum(*in_x, out, data_format, &reduce_dim);
-
           if (reduce_num > 0 &&
               adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
             auto stream = dev_ctx.stream();
-            TensorReduceFunctorImpl<T, T, CustomMean>(*in_x, out, reduce_dim,
-                                                      stream);
+            TensorReduceFunctorImpl<T, T, kps::AddFunctor,
+                                    kps::DivideFunctor<T>>(
+                *in_x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim,
+                stream);
 #else  // for cpu
             paddle::operators::math::Pool2dFunctor<
                 DeviceContext, paddle::operators::math::AvgPool<T>, T>

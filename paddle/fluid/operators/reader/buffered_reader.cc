@@ -161,14 +161,14 @@ void BufferedReader::ReadAsync(size_t i) {
         platform::SetDeviceId(
             BOOST_GET_CONST(platform::CUDAPlace, place_).device);
 #ifdef PADDLE_WITH_HIP
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             hipEventRecord(events_[i].get(), compute_stream_));
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             hipStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #else
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             cudaEventRecord(events_[i].get(), compute_stream_));
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #endif
 
@@ -199,19 +199,12 @@ void BufferedReader::ReadAsync(size_t i) {
             memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
                          cuda_pinned_place, cuda_pinned_ptr, size,
                          stream_.get());
-#ifdef PADDLE_WITH_HIP
-            PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_.get()));
-#else
-            PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
-#endif
+
+            platform::GpuStreamSync(stream_.get());
           }
           cuda[i].set_lod(cpu[i].lod());
         }
-#ifdef PADDLE_WITH_HIP
-        PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_.get()));
-#else
-        PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
-#endif
+        platform::GpuStreamSync(stream_.get());
       }
     }
 #endif

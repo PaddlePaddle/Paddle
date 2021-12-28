@@ -110,8 +110,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                           const std::vector<std::string>& outputs,
                           const std::vector<std::string>& attrs) {
   VLOG(1) << "Custom Operator: Start run KernelFunc.";
-  std::vector<paddle::Tensor> custom_ins;
-  std::vector<std::vector<paddle::Tensor>> custom_vec_ins;
+  std::vector<paddle::experimental::Tensor> custom_ins;
+  std::vector<std::vector<paddle::experimental::Tensor>> custom_vec_ins;
   for (auto& in_name : inputs) {
     VLOG(1) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {
@@ -120,7 +120,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_NE(vec_x.empty(), true,
                         platform::errors::NotFound(
                             "Input vector<tensor> (%s) is empty.", in_name));
-      std::vector<paddle::Tensor> custom_vec_in;
+      std::vector<paddle::experimental::Tensor> custom_vec_in;
       for (size_t i = 0; i < vec_x.size(); ++i) {
         auto* x = vec_x[i];
         PADDLE_ENFORCE_NOT_NULL(
@@ -132,7 +132,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "The %d-th tensor in input vector<tensor> (%s) "
                               "is not initialized.",
                               i, in_name));
-        paddle::Tensor custom_t;
+        paddle::experimental::Tensor custom_t;
         custom_t.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
         custom_vec_in.emplace_back(custom_t);
       }
@@ -144,7 +144,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
-      paddle::Tensor custom_in;
+      paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
       custom_ins.emplace_back(custom_in);
     }
@@ -207,14 +207,14 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "Tensors.",
                 vec_true_outs.size(), outs.size()));
         for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          experimental::MovesStorage(
+          experimental::MovesSharedStorage(
               std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl())
                   .get(),
               vec_true_outs.at(j));
         }
       } else {
         auto* true_out = ctx.Output<Tensor>(out_name);
-        experimental::MovesStorage(
+        experimental::MovesSharedStorage(
             std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl())
                 .get(),
             true_out);
