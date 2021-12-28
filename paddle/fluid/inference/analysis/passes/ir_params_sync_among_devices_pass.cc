@@ -61,7 +61,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       argument->Has("optim_input_shape")) {
     with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
                           argument->min_input_shape().size() > 0 &&
-                          argument->optim_input_shape().size() > 0)
+                          argument->optim_input_shape().size() > 0);
   }
   with_dynamic_shape =
       with_dynamic_shape || argument->tensorrt_tuned_dynamic_shape();
