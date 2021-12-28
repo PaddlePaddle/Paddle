@@ -24,24 +24,37 @@ using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
-__global__ void KeNearestNeighborInterpFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
-  int nthreads = output_h * output_w;
+__global__ void KeNearestNeighborInterpFw(const T* in,                // 1
+                                          const size_t in_img_h,      // 2
+                                          const size_t in_img_w,      // 3
+                                          const size_t input_h,       // 4
+                                          const size_t input_w,       // 5
+                                          T* out,                     // 6
+                                          const size_t out_img_h,     // 7
+                                          const size_t out_img_w,     // 8
+                                          const size_t output_h,      // 9
+                                          const size_t output_w,      // 10
+                                          const size_t num_channels,  // 11
+                                          const float ratio_h,
+                                          const float ratio_w,
+                                          const bool align_corners,
+                                          const DataLayout data_layout) {
+  int nthreads = output_h * output_w;  // n * c * out_h * out_w 覆盖所有点
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  for (; tid < nthreads; tid += stride) {
-    int out_id_h = tid / output_w;
-    int out_id_w = tid % output_w;
-    int in_img_size = input_w / num_channels;
-    int out_img_size = output_w / num_channels;
 
+  int in_img_size = in_img_h * in_img_w;     // 一张输入img的点个数
+  int out_img_size = out_img_h * out_img_w;  // 一张输出img的点个数
+
+  for (; tid < nthreads; tid += stride) {
+    // 1
+    int out_id_h = tid / output_w;  // batch的全局id
+    int out_id_w = tid % output_w;  // 一个batch内的唯一id
+
+    // 2
     int channel_id, out_img_idy, out_img_idx;
     if (data_layout == DataLayout::kNCHW) {
-      channel_id = out_id_w / out_img_size;
+      channel_id = out_id_w / out_img_size;  // 每个batch中每一channel的id
       out_img_idy = (out_id_w % out_img_size) / out_img_w;
       out_img_idx = tid % out_img_w;
     } else {
@@ -50,6 +63,7 @@ __global__ void KeNearestNeighborInterpFw(
       channel_id = tid % num_channels;
     }
 
+    // 3 不必改，插值公式
     int in_img_idy = (align_corners)
                          ? static_cast<int>(ratio_h * out_img_idy + 0.5)
                          : static_cast<int>(ratio_h * out_img_idy);
@@ -57,6 +71,7 @@ __global__ void KeNearestNeighborInterpFw(
                          ? static_cast<int>(ratio_w * out_img_idx + 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
 
+    // 4
     if (data_layout == DataLayout::kNCHW) {
       out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
                     in_img_idy * in_img_w + in_img_idx];
@@ -1051,6 +1066,64 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
 }
 
 template <typename T>
+__global__ void KeNearestNeighborInterpNCHWFw(const T* in,                // 1
+                                              const size_t in_img_h,      // 2
+                                              const size_t in_img_w,      // 3
+                                              const size_t num_batchs,    // 4
+                                              T* out,                     // 6
+                                              const size_t out_img_h,     // 7
+                                              const size_t out_img_w,     // 8
+                                              const size_t num_channels,  // 11
+                                              const float ratio_h,
+                                              const float ratio_w,
+                                              const bool align_corners) {
+  int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  int nc_id = threadIdx.z + blockIdx.z * blockDim.z;
+  int nc_stride = blockDim.z * gridDim.z;
+  int nc = num_batchs * num_channels;
+
+  // nearest_sampling by multiple read in_addr and write to out_addr
+  int in_img_idx = (align_corners)
+                       ? static_cast<int>(ratio_w * out_img_idx + 0.5)
+                       : static_cast<int>(ratio_w * out_img_idx);
+  int in_img_idy = (align_corners)
+                       ? static_cast<int>(ratio_h * out_img_idy + 0.5)
+                       : static_cast<int>(ratio_h * out_img_idy);
+
+  int in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+  int in_index_stride = nc_stride * in_img_h * in_img_w;
+
+  int out_index = (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
+  int out_index_stride = nc_stride * out_img_h * out_img_w;
+
+  while (nc_id < nc) {
+    out[out_index] = in[in_index];
+    // printf("((%d * %d + %d) * %d + %d)   nc_id: %d, in_index: %d, out_index:
+    // %d - in_img_idx: %d, in_img_idy: %d, in[]: %1.f - out_img_idx: %d,
+    // out_img_idy: %d, out[]: %1.f\n",
+    //       nc_id, in_img_h, in_img_idy, in_img_w, in_img_idx,
+    //       nc_id,in_index,out_index,  in_img_idx,in_img_idy,in[in_index],
+    //       out_img_idx,out_img_idy,out[out_index]);
+    // printf("nc_id: %d, in_index: %d, out_index: %d - in_img_idx: %d,
+    // in_img_idy: %d, in[]: %1.f - out_img_idx: %d, out_img_idy: %d, out[]:
+    // %1.f\n",
+    //       nc_id,in_index,out_index,  in_img_idx,in_img_idy,in[in_index],
+    //       out_img_idx,out_img_idy,out[out_index]);
+
+    // printf("out_img_idx: %d=(%d+%d*%d), out_img_idy: %d=(%d+%d*%d), nc_id:
+    // %d=(%d+%d*%d), out_index: %d, out[out_index]: %d \n",
+    //         out_img_idx,threadIdx.x, blockIdx.x, blockDim.x,
+    //         out_img_idy,threadIdx.y, blockIdx.y, blockDim.y,
+    //         nc_id,threadIdx.z, blockIdx.z, blockDim.z,
+    //         out_index,out[out_index]);
+    in_index += in_index_stride;
+    out_index += out_index_stride;
+    nc_id += nc_stride;
+  }
+}
+
+template <typename T>
 static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
                                  const Tensor& input, Tensor* output) {
   auto* input_data = input.data<T>();
@@ -1168,6 +1241,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
                               : static_cast<float>(new_scale_w);
   }
+  // printf("scale_h: %f ratio_h: %f \n", scale_h, ratio_h);
 
   int64_t in_hw = in_h * in_w;
   int64_t out_hw = out_h * out_w;
@@ -1179,12 +1253,81 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
+  // printf("in_h, in_w: %d, %d ", in_h, in_w);
+  // printf(" out_h, out_w: %d, %d ", out_h, out_w);
+  // printf(" ratio_h/w: %f, %f ", ratio_h, ratio_w);
+  // printf(" align_corners: %b \n");
+  // printf("config: bx,by,bz: %d, %d, %d - tx,ty,tz: %d, %d, %d\n",
+  //     config.block_per_grid.x, config.block_per_grid.y,
+  //     config.block_per_grid.z,
+  //     config.thread_per_block.x, config.thread_per_block.y,
+  //     config.thread_per_block.z);
+
   if ("nearest" == interp_method) {
-    KeNearestNeighborInterpFw<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-        out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+    // KeNearestNeighborInterpFw<
+    //       T><<<config.block_per_grid, config.thread_per_block, 0,
+    //           ctx.cuda_device_context().stream()>>>(
+    //       input_data,   // 1 输入数据
+    //       in_h,         // 2
+    //       in_w,         // 3
+    //       n,            // 4 batch
+    //       in_chw,       // 5 c * in_h * in_w
+    //       output_data,   // 6 输出尺寸
+    //       out_h,         // 7
+    //       out_w,         // 8
+    //       n,             // 9
+    //       out_chw,       // 10 c * out_h * out_w  一个batch中点个数
+    //       c,             // 11 channel
+    //       ratio_h,       // 系数，与地址无关
+    //       ratio_w,       // 系数，与地址无关
+    //       align_corners,  // FALSE
+    //       data_layout);   // nchw
+
+    if (data_layout == DataLayout::kNCHW) {
+      // get launch 3D config
+      platform::GpuLaunchConfig config_3d = platform::GetCpuLaunchConfig3D(
+          ctx.cuda_device_context(), n * c, out_h, out_w);
+
+      // printf("config: grid: %d, %d, %d - block: %d, %d, %d\n",
+      // config_3d.block_per_grid.x, config_3d.block_per_grid.y,
+      // config_3d.block_per_grid.z,
+      // config_3d.thread_per_block.x, config_3d.thread_per_block.y,
+      // config_3d.thread_per_block.z);
+
+      KeNearestNeighborInterpNCHWFw<
+          T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
+               ctx.cuda_device_context().stream()>>>(
+          input_data,   // 1 输入数据
+          in_h,         // 2
+          in_w,         // 3
+          n,            // 4 batch
+          output_data,  // 6 输出尺寸
+          out_h,        // 7
+          out_w,        // 8
+          c,            // 11 channel
+          ratio_h,      // 系数，与地址无关
+          ratio_w,      // 系数，与地址无关
+          align_corners);
+    } else {
+      KeNearestNeighborInterpFw<
+          T><<<config.block_per_grid, config.thread_per_block, 0,
+               ctx.cuda_device_context().stream()>>>(
+          input_data,     // 1 输入数据
+          in_h,           // 2
+          in_w,           // 3
+          n,              // 4 batch
+          in_chw,         // 5 c * in_h * in_w
+          output_data,    // 6 输出尺寸
+          out_h,          // 7
+          out_w,          // 8
+          n,              // 9
+          out_chw,        // 10 c * out_h * out_w  一个batch中点个数
+          c,              // 11 channel
+          ratio_h,        // 系数，与地址无关
+          ratio_w,        // 系数，与地址无关
+          align_corners,  // FALSE
+          data_layout);   // nchw
+    }
   } else if ("bilinear" == interp_method) {
     dim3 thread_num = config.thread_per_block;
 #ifdef WITH_NV_JETSON
