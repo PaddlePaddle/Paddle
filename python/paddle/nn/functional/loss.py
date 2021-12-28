@@ -1710,6 +1710,22 @@ def cross_entropy(input,
                     ignore_weight_mask,
                     dtype=label.dtype) * label  # ignored position will be 0
 
+                if len(paddle.nonzero(valid_label < 0)) > 0:
+                    invalid_label = paddle.gather_nd(
+                        valid_label, paddle.nonzero(valid_label < 0))
+                    raise ValueError(
+                        "Target({}) is out of class_dimension's lower bound({})".
+                        format(invalid_label[0], 0))
+                # TODO: Temporarily use paddle.nonzero instead of paddle.max 
+                # to detect and find out possible illegal label values
+                if len(paddle.nonzero(valid_label >= input.shape[axis])) > 0:
+                    invalid_label = paddle.gather_nd(
+                        valid_label,
+                        paddle.nonzero(valid_label >= input.shape[axis]))
+                    raise ValueError(
+                        "Target({}) is out of class_dimension's upper bound({})".
+                        format(invalid_label[0], input.shape[axis] - 1))
+
                 ignore_weight_mask = paddle.cast(
                     ignore_weight_mask, out.dtype)  # convert from 0 to 0.0
 
@@ -1832,6 +1848,22 @@ def cross_entropy(input,
             valid_label = paddle.cast(
                 ignore_weight_mask,
                 dtype=label.dtype) * label  # ignored position will be 0
+
+            if len(paddle.nonzero(valid_label < 0)) > 0:
+                invalid_label = paddle.gather_nd(
+                    valid_label, paddle.nonzero(valid_label < 0))
+                raise ValueError(
+                    "Target({}) is out of class_dimension's lower bound({})".
+                    format(invalid_label[0], 0))
+            # TODO: Temporarily use paddle.nonzero instead of paddle.max 
+            # to detect and find out possible illegal label values
+            if len(paddle.nonzero(valid_label >= input.shape[axis])) > 0:
+                invalid_label = paddle.gather_nd(
+                    valid_label,
+                    paddle.nonzero(valid_label >= input.shape[axis]))
+                raise ValueError(
+                    "Target({}) is out of class_dimension's upper bound({})".
+                    format(invalid_label[0], input.shape[axis] - 1))
 
             ignore_weight_mask = paddle.cast(ignore_weight_mask,
                                              out.dtype)  # convert from 0 to 0.0
