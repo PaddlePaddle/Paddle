@@ -40,6 +40,7 @@ extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+extern PyTypeObject* g_framework_tensor_pytype;
 
 int TensorDtype2NumpyDtype(pten::DataType dtype) {
   switch (dtype) {
@@ -302,6 +303,18 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return place;
+}
+
+framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+  if (PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    return ::pybind11::handle(obj).cast<framework::Tensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "EagerTensor, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
