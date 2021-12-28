@@ -203,8 +203,10 @@ from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
 from .tensor.math import max  # noqa: F401
 from .tensor.math import maximum  # noqa: F401
+from .tensor.math import amax  # noqa: F401
 from .tensor.math import min  # noqa: F401
 from .tensor.math import minimum  # noqa: F401
+from .tensor.math import amin  # noqa: F401
 from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
@@ -400,6 +402,7 @@ __all__ = [  # noqa
            'mv',
            'in_dynamic_mode',
            'min',
+           'amin',
            'any',
            'slice',
            'normal',
@@ -442,6 +445,7 @@ __all__ = [  # noqa
            'roll',
            'batch',
            'max',
+           'amax',
            'logical_or',
            'bitwise_and',
            'bitwise_or',
