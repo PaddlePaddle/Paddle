@@ -98,5 +98,100 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
         self.run_test()
 
 
+class TrtConvertNearestInterpV2WithOutSizeTest(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+    def sample_program_configs(self):
+        def generate_input():
+            return np.ones([1, 3, 32, 32]).astype(np.float32)
+
+        def generate_out_size_input():
+            return np.ones([2]).astype(np.int32)
+
+        ops_config = [{
+            "op_type": "nearest_interp_v2",
+            "op_inputs": {
+                "X": ["input_data"],
+                "OutSize": ["out_size_data"]
+            },
+            "op_outputs": {
+                "Out": ["interp_output_data"]
+            },
+            "op_attrs": {
+                "data_layout": "NCHW",
+                "interp_method": "nearest",
+                "align_corners": False,
+                "scale": [2., 2.],
+                "out_h": 0,
+                "out_w": 0
+            }
+        }]
+
+        ops = self.generate_op_config(ops_config)
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "input_data": TensorConfig(data_gen=generate_input),
+                "out_size_data": TensorConfig(data_gen=generate_out_size_input)
+            },
+            outputs=["interp_output_data"])
+
+        yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            return 1, 2
+
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-2
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-2
+
+    def add_skip_trt_case(self):
+        def teller1(program_config, predictor_config):
+            if self.trt_param.precision == paddle_infer.PrecisionType.Float32 or self.trt_param.precision == paddle_infer.PrecisionType.Half:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "TRT currently does not support dynamic output sizes.")
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
+
+
 if __name__ == "__main__":
     unittest.main()
