@@ -116,22 +116,65 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
     }
 
     if (dy) {
-      dy->mutable_data<T>(place);
+      if (y->dims().size() == 2 && y->dims()[1] == 1 && out->dims().size() == 2) {
+        dy->mutable_data<T>(place);
 
-      Tensor neg_out(y->type());
-      neg_out.mutable_data<T>(y->dims(), place);
-      const auto& runner_neg_out = NpuOpRunner("Neg", {*out}, {neg_out}, {});
-      runner_neg_out.Run(stream);
+        LOG(WARNING) << "dy->dims(): " << dy->dims();
+        LOG(WARNING) << "y->dims(): " << y->dims();
+        LOG(WARNING) << "out->dims(): " << out->dims();
+        LOG(WARNING) << "dout->dims(): " << dout->dims();
 
-      Tensor y_grad_w(y->type());
-      y_grad_w.mutable_data<T>(y->dims(), place);
-      const auto& runner_y_grad_w =
-          NpuOpRunner("Div", {neg_out, *y}, {y_grad_w}, {});
-      runner_y_grad_w.Run(stream);
+        Tensor neg_out(y->type());
+        neg_out.mutable_data<T>(out->dims(), place);
+        const auto& runner_neg_out = NpuOpRunner("Neg", {*out}, {neg_out}, {});
+        runner_neg_out.Run(stream);
 
-      const auto& runner_y_grad =
-          NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
-      runner_y_grad.Run(stream);
+        Tensor y_grad_w(y->type());
+        y_grad_w.mutable_data<T>(out->dims(), place);
+        const auto& runner_y_grad_w =
+            NpuOpRunner("Div", {neg_out, *y}, {y_grad_w}, {});
+        runner_y_grad_w.Run(stream);
+
+        Tensor dy_tmp(dy->type());
+        dy_tmp.Resize(out->dims());
+        dy_tmp.mutable_data<T>(place);
+
+        const auto& runner_y_grad =
+            NpuOpRunner("Mul", {y_grad_w, *dout}, {dy_tmp}, {});
+        runner_y_grad.Run(stream);
+
+        std::vector<int> axes;
+        axes = {1};
+        framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                                {"axes", axes}};
+        const auto &runner =
+            NpuOpRunner("ReduceSumD", {dy_tmp}, {*dy}, attr_input);
+        runner.Run(stream);
+
+      }
+      else {
+        dy->mutable_data<T>(place);
+
+        LOG(WARNING) << "dy->dims(): " << dy->dims();
+        LOG(WARNING) << "y->dims(): " << y->dims();
+        LOG(WARNING) << "out->dims(): " << out->dims();
+        LOG(WARNING) << "dout->dims(): " << dout->dims();
+
+        Tensor neg_out(y->type());
+        neg_out.mutable_data<T>(y->dims(), place);
+        const auto& runner_neg_out = NpuOpRunner("Neg", {*out}, {neg_out}, {});
+        runner_neg_out.Run(stream);
+
+        Tensor y_grad_w(y->type());
+        y_grad_w.mutable_data<T>(y->dims(), place);
+        const auto& runner_y_grad_w =
+            NpuOpRunner("Div", {neg_out, *y}, {y_grad_w}, {});
+        runner_y_grad_w.Run(stream);
+
+        const auto& runner_y_grad =
+            NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
+        runner_y_grad.Run(stream);
+      }
     }
   }
 };

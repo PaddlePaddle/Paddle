@@ -198,6 +198,37 @@ class TestFloatStatus(unittest.TestCase):
 
         paddle.enable_static()
 
+# ------------------------------------------------
+# Special Case for NPU
+# ------------------------------------------------
+
+class TestElementwiseDiv_SpecialCase(TestElementwiseDiv):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "elementwise_div"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [110, 2]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [110, 1]).astype(self.dtype)
+        out = np.divide(x, y)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.attrs = {}
+        self.outputs = {'Out': out}
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            max_relative_error=0.007,
+            no_grad_set=set("Y"))
+
 
 if __name__ == '__main__':
     unittest.main()
