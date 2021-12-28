@@ -449,11 +449,10 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           return 0;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "We support construct tensor from numpy value or tensor with "
-              "python args and kwargs by this initializer. "
+              "We support construct tensor from numpy value or tensor "
+              "with python args and kwargs by this initializer, "
               "please check your input first and make sure you are on the "
-              "right "
-              "way."));
+              "right way."));
         }
       }
     }
@@ -474,12 +473,10 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         return 0;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "We only support construct tensor from numpy value or tensor "
-            "with "
-            "python args by this initializer, "
+            "We support construct tensor from numpy value or tensor "
+            "with python args and kwargs by this initializer, "
             "please check your input first and make sure you are on the "
-            "right "
-            "way."));
+            "right way."));
       }
     }
     case (Py_ssize_t)4: {
@@ -495,8 +492,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "We support construct tensor from numpy value or tensor with "
               "python args and kwargs by this initializer. "
               "please check your input first and make sure you are on the "
-              "right "
-              "way."));
+              "right way."));
         }
       } else {  // four position args, remainting arguments are kwargs
         PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
@@ -511,8 +507,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "We support construct tensor from numpy value or tensor with "
               "python args and kwargs by this initializer. "
               "please check your input first and make sure you are on the "
-              "right "
-              "way."));
+              "right way."));
         }
       }
     }
@@ -549,11 +544,10 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           return 0;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "We only support construct tensor from numpy value or dtype with "
-              "python args by this initializer, "
+              "We support construct tensor from numpy value or tensor "
+              "with python args and kwargs by this initializer, "
               "please check your input first and make sure you are on the "
-              "right "
-              "way."));
+              "right way."));
         }
       } else {  // five position args, remainting arguments are kwargs
         PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
@@ -567,8 +561,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "We support construct tensor from numpy value or tensor with "
               "python args and kwargs by this initializer. "
               "please check your input first and make sure you are on the "
-              "right "
-              "way."));
+              "right way."));
         }
       }
     }
