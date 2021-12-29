@@ -66,9 +66,9 @@ class HeterContext {
 #endif
 #ifdef PADDLE_WITH_PSCORE
   std::vector<std::vector<paddle::distributed::VALUE*>> value_ptr_;
-  std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>>
+  std::vector<std::vector<std::vector<paddle::distributed::VALUE*>>>
       value_dim_ptr_;
-  std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>>
+  std::vector<std::vector<std::vector<paddle::distributed::VALUE*>>>
       device_dim_ptr_;
 #endif
   std::vector<std::vector<FeatureValue>> device_values_;
