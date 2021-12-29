@@ -81,7 +81,6 @@ class SharedStorage : public pten::Storage {
   void Clear() override {
     data_ = nullptr;
     size_ = 0;
-    offset_ = 0;
   }
 
   size_t size() const noexcept override { return size_; }
