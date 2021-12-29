@@ -23,6 +23,8 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
+DECLARE_string(allocator_strategy);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -84,7 +86,10 @@ class Allocator;
 class Allocation {
  public:
   inline Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), size_(size), place_(place) {}
+      : ptr_(ptr), base_ptr_(ptr), size_(size), place_(place) {}
+  inline Allocation(void* ptr, void* base_ptr, size_t size,
+                    platform::Place place)
+      : ptr_(ptr), base_ptr_(base_ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -97,6 +102,15 @@ class Allocation {
   // we might need to make `ptr_` field as a protected field, and add a virtual
   // method like `defragmentation` to change `ptr_`.
   inline void* ptr() const { return ptr_; }
+
+  inline void* base_ptr() const {
+    PADDLE_ENFORCE_EQ(FLAGS_allocator_strategy, "auto_growth",
+                      paddle::platform::errors::Unimplemented(
+                          "base_ptr() is only implemented for auto_growth "
+                          "strategy, not support %s strategy",
+                          FLAGS_allocator_strategy));
+    return base_ptr_;
+  }
 
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.
@@ -126,6 +140,7 @@ class Allocation {
 
  private:
   void* ptr_;
+  void* base_ptr_;  // the point that directly requested from system
   size_t size_;
   platform::Place place_;
 

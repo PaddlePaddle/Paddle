@@ -22,6 +22,7 @@
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
@@ -57,6 +58,7 @@ class EagerTensor final {
   explicit EagerTensor(const std::shared_ptr<pten::TensorBase>& tensor_impl)
       : tensor_(std::make_shared<paddle::experimental::Tensor>(tensor_impl)),
         var_(paddle::framework::Variable()) {}
+
   EagerTensor(const EagerTensor&) = default;
   EagerTensor(EagerTensor&&) = default;
 
@@ -152,12 +154,47 @@ class EagerTensor final {
    */
   bool initialized() const { return tensor_->initialized(); }
 
+  bool safe_initialized() const {
+    return initialized() || var_.IsInitialized();
+  }
+
   /**
    * @description: Reset the Tensor implementation
    * @param None
    * @return {void}
    */
   void reset() { tensor_->reset(); }
+
+  /**
+ * @brief Transfer the current Tensor to the specified device and return.
+ *
+ * @param place, the target place of which the tensor will copy to.
+ * @return Tensor
+ */
+  // TODO(chenweihang): replace Backend by new Place
+  EagerTensor copy_to(pten::Backend backend, bool blocking) const {
+    if (Var().IsInitialized()) {
+      const_cast<EagerTensor*>(this)->SyncToTensor();
+    }
+    return EagerTensor(tensor_->copy_to(backend, blocking));
+  }
+
+  /**
+ * @brief Transfer the source Tensor to current Tensor.
+ *
+ * @param src, the source Tensor to be copied.
+ * @param blocking, Should we copy this in sync way.
+ * @return void
+ */
+  void copy_(const EagerTensor& src, const bool blocking) {
+    if (src.Var().IsInitialized()) {
+      const_cast<EagerTensor*>(&src)->SyncToTensor();
+    }
+    if (Var().IsInitialized()) {
+      SyncToTensor();
+    }
+    tensor_->copy_(*(src.tensor_.get()), blocking);
+  }
 
   /* Part 6: Operator overloading */
   EagerTensor& operator=(const EagerTensor& x) & {
@@ -266,6 +303,16 @@ class EagerTensor final {
   }
 
  private:
+  /**
+  * @description: Use a pten::Tensor pointer to construct a EagerTensor, never
+  * public this!!!!.
+  * @param {pten::Tensor} tensor
+  * @return {EagerTensor}
+  */
+  explicit EagerTensor(const paddle::experimental::Tensor& tensor)
+      : tensor_(std::make_shared<paddle::experimental::Tensor>(tensor)),
+        var_(paddle::framework::Variable()) {}
+
   std::shared_ptr<paddle::experimental::Tensor> tensor_ = nullptr;
   paddle::framework::Variable var_;
 };

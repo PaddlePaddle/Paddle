@@ -71,7 +71,9 @@ AMP_RELATED_FLAGS_SETTING = {
 }
 
 PURE_FP16_WHITE_LIST = {' '}
-PURE_FP16_BLACK_LIST = {'lookup_table', 'lookup_table_v2'}
+PURE_FP16_BLACK_LIST = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -128,12 +130,12 @@ def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
-            if len(layer._sub_layers) is 0:
-
-                if (layer._dtype is 'float16') or isinstance(layer, (
-                        paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
-                    continue
-                layer.to(dtype='float16')
+            if (layer._dtype is 'float16') or isinstance(
+                    layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
+                            paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
+                            paddle.nn.LayerNorm)):
+                continue
+            layer._to_impl(dtype='float16', include_sublayers=False)
     return models
 
 
@@ -217,6 +219,13 @@ def amp_guard(enable=True,
             'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
+
+    if tracer._expected_place.is_gpu_place():
+        prop = paddle.device.cuda.get_device_capability()
+        if prop[0] < 7:
+            warnings.warn(
+                "AMP only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
+                % (paddle.device.cuda.get_device_name(), prop[0], prop[1]))
 
     if level == 'O1':
         amp_level = AMP_LEVEL.O1

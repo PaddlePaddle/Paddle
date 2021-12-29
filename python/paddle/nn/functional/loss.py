@@ -1320,7 +1320,7 @@ def margin_cross_entropy(logits,
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dygraph_mode():
-        softmax, loss = core.ops.margin_cross_entropy(
+        softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
             scale, 'return_softmax', return_softmax)
@@ -1720,8 +1720,8 @@ def cross_entropy(input,
                     raise ValueError(
                         "input's class_dimension({}) must equal to "
                         "weight's class_dimension({}) "
-                            "when weight is provided"\
-                        .format(input.shape[axis], weight.shape[-1]))
+                        "when weight is provided" \
+                            .format(input.shape[axis], weight.shape[-1]))
 
                 ignore_weight_mask = paddle.cast((label != ignore_index),
                                                  out.dtype)
@@ -1732,7 +1732,7 @@ def cross_entropy(input,
                                                         axis)
                 if axis != -1 and axis != valid_label.ndim - 1:
                     temp_perm = list(range(axis % valid_label.ndim)) \
-                                + list(range((axis % valid_label.ndim + 1) , valid_label.ndim)) \
+                                + list(range((axis % valid_label.ndim + 1), valid_label.ndim)) \
                                 + [axis % valid_label.ndim]
                     weight_gather = _C_ops.gather_nd(
                         weight, valid_label.transpose(temp_perm))
@@ -1834,8 +1834,8 @@ def cross_entropy(input,
         else:
             if input.shape[axis] != weight.shape[-1]:
                 raise ValueError("input's class_dimension({}) must equal to "
-                        "weight's class_dimension({}) "
-                            "when weight is provided"\
+                                 "weight's class_dimension({}) "
+                                 "when weight is provided" \
                                  .format(input.shape[axis], weight.shape[-1]))
 
             valid_label = paddle.where(label == ignore_index,
@@ -2051,3 +2051,100 @@ def sigmoid_focal_loss(logit,
         loss = paddle.sum(loss, name=name)
 
     return loss
+
+
+def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
+    r"""
+    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
+    and is typically used for learning nonlinear embeddings or semi-supervised learning.
+
+    The loss function for :math:`n`-th sample in the mini-batch is
+
+    .. math::
+        l_n = \begin{cases}
+            x_n, & \text{if}\; y_n = 1,\\
+            \max \{0, \Delta - x_n\}, & \text{if}\; y_n = -1,
+        \end{cases}
+
+    and the total loss functions is
+
+    .. math::
+        \ell(x, y) = \begin{cases}
+            \operatorname{mean}(L), & \text{if reduction} = \text{'mean';}\\
+            \operatorname{sum}(L),  & \text{if reduction} = \text{'sum'.}
+        \end{cases}
+
+    where :math:`L = \{l_1,\dots,l_N\}^\top`.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64.
+            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+        margin (float, optional): Specifies the hyperparameter margin to be used.
+            The value determines how large the input need to be to calculate in
+            hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
+            Default = 1.0
+        reduction (str, optional): Indicate how to average the loss by batch_size.
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64. The sum operationoperates over all the elements.
+
+        label: N-D Tensor, same shape as the input. tensor elements should containing 1 or -1, the data type is float32 or float64.
+
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
+
+    Returns:
+        Tensor. The tensor variable storing the hinge_embedding_loss of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+            # label elements in {1., -1.}
+            label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
+
+            loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='none')
+            print(loss)
+            # Tensor([[0., -2., 0.],
+            #         [0., -1., 2.],
+            #         [1., 1., 1.]])
+
+            loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='mean')
+            print(loss)
+            # Tensor([0.22222222])
+    """
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
+            "but received {}.".format(reduction))
+
+    if not paddle.fluid.framework.in_dygraph_mode():
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'hinge_embedding_loss')
+        check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                                 'hinge_embedding_loss')
+
+    zero_ = paddle.zeros([1], dtype=input.dtype)
+    loss = paddle.where(label == 1., input, zero_) + \
+           paddle.where(label == -1., paddle.nn.functional.relu(margin - input), zero_)
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss

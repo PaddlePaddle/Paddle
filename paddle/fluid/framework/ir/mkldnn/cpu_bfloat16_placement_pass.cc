@@ -71,10 +71,31 @@ void CPUBfloat16PlacementPass::RemoveOrphanedOperators(
   gpd(graph, handler);
 }
 
+void CPUBfloat16PlacementPass::RemoveUnsupportedOperators(
+    ir::Graph* graph, int* bfloat16_operators) const {
+  // now quantize is supported FP32 only, so try to find
+  // bfloat16 operator that input type is not FP32
+  GraphPatternDetector gpd;
+  patterns::UnsupportedBfloat16 unsupported_bfloat16_pattern{
+      gpd.mutable_pattern(), "unsupported_bfloat16"};
+  unsupported_bfloat16_pattern();
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    GET_IR_NODE_FROM_SUBGRAPH(prev_out, prev_out, unsupported_bfloat16_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(op, op, unsupported_bfloat16_pattern);
+    if ((prev_out->Var()->GetDataType() != proto::VarType::FP32)) {
+      op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
+      bfloat16_operators--;
+    }
+  };
+  gpd(graph, handler);
+}
+
 void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph) const {
   int bfloat16_operators = 0;
   SetMkldnnDataType(graph, &bfloat16_operators);
   RemoveOrphanedOperators(graph, &bfloat16_operators);
+  RemoveUnsupportedOperators(graph, &bfloat16_operators);
   PrettyLogDetail("---    marked %d operators to bfloat16 ",
                   bfloat16_operators);
 }

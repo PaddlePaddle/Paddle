@@ -18,6 +18,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -61,15 +62,16 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  Carrier carrier(0, {{0, 0}, {1, 0}});
 
-  Carrier& carrier = Carrier::Instance();
+  auto msg_bus = std::make_shared<MessageBus>();
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
+  carrier.SetMsgBus(msg_bus);
 
   // FIXME: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a =
-      new TaskNode(0, ops, 0, 0, 2, 2);  // role, ops, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 0, 0);
+      new TaskNode(0, ops, 0, 0, 2, 0);  // role, ops, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 2, 0);
 
   // a->b
   node_a->AddDownstreamTask(1);
@@ -82,8 +84,6 @@ TEST(ComputeInterceptor, Compute) {
   a->SetPlace(place);
   a->SetMicroBatchScope(scopes);
 
-  carrier.SetCreatingFlag(false);
-
   // start
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
@@ -91,12 +91,8 @@ TEST(ComputeInterceptor, Compute) {
   msg.set_dst_id(0);
   carrier.EnqueueInterceptorMessage(msg);
 
-  // stop
-  InterceptorMessage stop;
-  stop.set_message_type(STOP);
-  stop.set_src_id(-1);
-  stop.set_dst_id(0);
-  carrier.EnqueueInterceptorMessage(stop);
+  carrier.Wait();
+  carrier.Release();
 }
 
 }  // namespace distributed
