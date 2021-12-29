@@ -84,17 +84,11 @@ class TestHuberLossOp(XPUOpTest):
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'],
-            'Out',
-            max_relative_error=0.008,
-            no_grad_set=set("residual"))
+            self.place, ['Y'], 'Out', no_grad_set=set("residual"))
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            max_relative_error=0.008,
-            no_grad_set=set('residual'))
+            self.place, ['X'], 'Out', no_grad_set=set('residual'))
 
 
 def TestHuberLossOp1(TestHuberLossOp):
