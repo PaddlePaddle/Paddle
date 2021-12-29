@@ -185,8 +185,8 @@ def _append_gradient_merge_backward_op(
 
         _remove_op_role_var(param, grad)
 
-    param_gradientmerge_var_map = {}
-    params_grad_list = []
+    param_to_gradient_merge = {}
+    new_params_to_grads = []
     # step2: create gradient_merge var and init with 0
     # and update op_role_var
     for param, grad in params_grads:
@@ -198,7 +198,7 @@ def _append_gradient_merge_backward_op(
             shape=param_var.shape,
             dtype=param_var.dtype,
             persistable=True)
-        param_gradientmerge_var_map[param_name] = gradient_merge_var
+        param_to_gradient_merge[param_name] = gradient_merge_var
 
         startup_gradient_merge_var = startup_block.create_var(
             name=param_name + "@GRAD@GradientMerge",
@@ -224,15 +224,15 @@ def _append_gradient_merge_backward_op(
                    'use_mkldnn': False})
         _add_gm_op_role_var(new_grad_op, param, gradient_merge_var,
                             cond_var_name)
-        params_grad_list.append([param, gradient_merge_var])
-    return params_grad_list, param_gradientmerge_var_map
+        new_params_to_grads.append([param, gradient_merge_var])
+    return new_params_to_grads, param_to_gradient_merge
 
 
 def _create_cond_block_and_update_optimizer(
         main_program,
         cond_var,
-        new_params_grads: List[Tuple[Any, Any]],
-        param_gradientmerge_var_map: Dict[str, Any],
+        new_params_to_grads: List[Tuple[Any, Any]],
+        param_to_gradient_merge: Dict[str, Any],
         optimize_ops_desc: List[Any],
         k_steps,
         avg):
@@ -244,7 +244,7 @@ def _create_cond_block_and_update_optimizer(
         cur_block._set_forward_block_idx(cur_block_idx)
         op_maker = core.op_proto_and_checker_maker
         if avg:
-            for param, new_grad in new_params_grads:
+            for param, new_grad in new_params_to_grads:
                 # grad /= k_steps
                 cur_block.append_op(
                     type='scale',
@@ -265,20 +265,20 @@ def _create_cond_block_and_update_optimizer(
 
             #update input/output
             for input_name in new_op_desc.input_arg_names():
-                if input_name in new_params_grads:
+                if input_name in new_params_to_grads:
                     new_op_desc._rename_input(input_name,
-                                              new_params_grads[input_name])
+                                              new_params_to_grads[input_name])
 
             for output_name in new_op_desc.output_arg_names():
-                if output_name in new_params_grads:
+                if output_name in new_params_to_grads:
                     new_op_desc._rename_output(output_name,
-                                               new_params_grads[output_name])
+                                               new_params_to_grads[output_name])
 
             # update op_role_var
             if new_op_desc.has_attr(op_maker.kOpRoleVarAttrName()):
                 var_attr = new_op_desc.attr(op_maker.kOpRoleVarAttrName())
                 param_name = var_attr[0]
-                grad_var = param_gradientmerge_var_map[param_name]
+                grad_var = param_to_gradient_merge[param_name]
                 new_op_desc._set_attr(op_maker.kOpRoleVarAttrName(),
                                       [param_name, grad_var.name])
 
@@ -293,7 +293,7 @@ def _create_cond_block_and_update_optimizer(
         cur_block._sync_with_cpp()
 
         # clear gradient_merge_vars
-        for param, new_grad in new_params_grads:
+        for param, new_grad in new_params_to_grads:
             layers.fill_constant(
                 shape=new_grad.shape,
                 dtype=new_grad.dtype,
@@ -317,12 +317,12 @@ def parse_program(main_program, startup_program, params_grads, k_steps, avg,
     main_program._rollback()
 
     # 3 append gradient merge backward op to main_program
-    new_params_grads, param_gradientmerge_var_map = _append_gradient_merge_backward_op(
+    new_params_to_grads, param_to_gradient_merge = _append_gradient_merge_backward_op(
         main_program, startup_program, params_grads, cond_var.name)
 
     # 4 create ConditionalBlock and append gradient merge optimizer ops
     _create_cond_block_and_update_optimizer(
-        main_program, cond_var, new_params_grads, param_gradientmerge_var_map,
+        main_program, cond_var, new_params_to_grads, param_to_gradient_merge,
         optimize_ops_desc, k_steps, avg)
 
 
