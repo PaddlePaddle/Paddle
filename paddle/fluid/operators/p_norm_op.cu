@@ -125,24 +125,15 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
           *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
     } else {
-      framework::Tensor tmp_x;
-      tmp_x.mutable_data<T>(xdim, ctx.GetPlace());
-      std::vector<const framework::Tensor*> ins = {in_x};
-      std::vector<framework::Tensor*> outs = {&tmp_x};
-      auto func = UnsignedPowFunctor<MT, T>(porder);
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T, T>>(
+          *in_x, out_norm, UnsignedPowFunctor<T, T>(porder), reduce_axis,
+          stream);
 
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
-                                          UnsignedPowFunctor<MT, T>>(
-          cuda_ctx, ins, &outs, func);
-      framework::Tensor tmp_y;
-      tmp_y.mutable_data<T>(ndim, ctx.GetPlace());
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          tmp_x, &tmp_y, kps::IdentityFunctor<T>(), reduce_axis, stream);
-      const framework::Tensor* tmp_norm = &tmp_y;
-      ins = {tmp_norm};
-      outs = {out_norm};
+      const framework::Tensor* tmp_norm = out_norm;
+      std::vector<const framework::Tensor*> ins = {tmp_norm};
+      std::vector<framework::Tensor*> outs = {out_norm};
       auto func_inverse = UnsignedPowFunctor<MT, T>(1. / porder);
 
       LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
