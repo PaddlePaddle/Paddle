@@ -1491,15 +1491,11 @@ std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
   auto push_dense_timer = std::make_shared<CostTimer>("push_dense_put");
   // auto dense_data = _dense_matrix_obj_pool.get();
   auto dense_data = std::make_shared<std::vector<float>>();
-  // auto timer3 = std::make_shared<CostTimer>("push_dense_new_task");
   auto async_task = new DenseAsyncTask(dense_data, table_id, push_timer);
   size_t request_call_num = _server_channels.size();
 
-  // auto timer2 = std::make_shared<CostTimer>("push_dense_cal_dim");
   uint32_t num_per_shard =
       dense_dim_per_shard(accessor->fea_dim(), request_call_num);
-  // VLOG(0) << "push dense dims: " << num_per_shard << " " << request_call_num
-  // << " " << accessor->update_dim();
 
   // 将region数据拷贝到转置矩阵中
   async_task->data()->resize(num_per_shard * request_call_num *
