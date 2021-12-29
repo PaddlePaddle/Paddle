@@ -50,7 +50,7 @@ class DeviceTracer {
     uint64_t start_ns;
     uint64_t end_ns;
     int64_t device_id;
-    int64_t thread_id;
+    uint64_t thread_id;
   };
 
   struct MemRecord {
@@ -68,7 +68,7 @@ class DeviceTracer {
     uint64_t end_ns;
     size_t bytes;
     Place place;
-    int64_t thread_id;
+    uint64_t thread_id;
     std::string alloc_in;
     std::string free_in;
   };
@@ -105,7 +105,7 @@ class DeviceTracer {
 
   virtual void AddCPURecords(const std::string& anno, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,
-                             int64_t thread_id) = 0;
+                             uint64_t thread_id) = 0;
   virtual void AddActiveKindRecords(const std::string& anno, uint64_t start_ns,
                                     uint64_t end_ns, int64_t device_id,
                                     uint64_t thread_id,
@@ -115,7 +115,7 @@ class DeviceTracer {
                                 size_t bytes, const Place& place,
                                 const std::string& alloc_in,
                                 const std::string& free_in,
-                                int64_t thread_id) = 0;
+                                uint64_t thread_id) = 0;
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.

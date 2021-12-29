@@ -115,7 +115,7 @@ int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv, "mlir demo");
 
   mlir::MLIRContext *context = infrt::Global::getMLIRContext();
-  context->allowUnregisteredDialects();
+  // context->allowUnregisteredDialects();
   auto &registry = context->getDialectRegistry();
   infrt::RegisterCinnDialects(registry);
 

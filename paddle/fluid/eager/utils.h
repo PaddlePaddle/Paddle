@@ -116,6 +116,8 @@ class EagerUtils {
 
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* nullable_autograd_meta(const egr::EagerTensor& target);
+  static std::vector<AutogradMeta*> nullable_autograd_meta(
+      const std::vector<egr::EagerTensor>& targets);
   static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
       const std::vector<egr::EagerTensor>& targets);
@@ -149,6 +151,8 @@ class EagerUtils {
       egr::EagerTensor* tensor);
   static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
       std::vector<egr::EagerTensor>* tensors);
+  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+      const std::vector<egr::EagerTensor*>& tensors);
 
   static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
       const egr::EagerTensor& tensor);
@@ -163,6 +167,9 @@ class EagerUtils {
   static std::vector<egr::EagerTensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerTensor>>& outs);
   static egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& outs);
+
+  static void CheckAndRetainGrad(const egr::EagerTensor& tensor);
+  static void CheckAndRetainGrad(const std::vector<egr::EagerTensor>& tensors);
 };
 
 }  // namespace egr

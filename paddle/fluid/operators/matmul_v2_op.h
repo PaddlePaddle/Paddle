@@ -28,10 +28,10 @@ limitations under the License. */
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/linalg.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
 
 namespace paddle {
@@ -39,24 +39,14 @@ namespace operators {
 
 using framework::Tensor;
 
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  template <typename U>
-  HOSTDEVICE inline U operator()(const U& x) const {
-    return x;
-  }
-};
-
 template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduce<T, T, cub::Sum, IdentityFunctor>(*input, output, reduce_dims,
-                                                static_cast<T>(0), cub::Sum(),
-                                                IdentityFunctor(), stream);
+  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      *input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, true, false, ctx)
@@ -394,8 +384,8 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
 
     // call new kernel
-    pten::Matmul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
-                    pt_out.get());
+    pten::MatmulKernel<T>(dev_ctx, *pt_x, *pt_y, trans_x, trans_y,
+                          pt_out.get());
   }
 };
 

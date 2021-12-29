@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce.h"
 #endif
 
 namespace paddle {
@@ -547,6 +547,25 @@ class ReduceOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    if (Type() == "reduce_sum") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            {"Out"});
+      }
+    }
+    if (Type() == "reduce_mean") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+      }
+    }
+    // TODO(chentianyu03): support other cases after selected rows added
+    return framework::KernelSignature("reduce.unregistered", {}, {}, {});
+  }
 };
 
 class ReduceOpUseInputPlace : public ReduceOp {
@@ -682,22 +701,28 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     auto out_dtype = context.Attr<int>("out_dtype");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
-    std::vector<int> reduce_dims =
-        GetReduceDim(dims, input->dims().size(), reduce_all);
-    int reduce_num = 1;
-    for (int i = 0; i < input->dims().size(); i++) {
-      reduce_num *= (input->dims())[i];
-    }
-    gpuStream_t stream = context.cuda_device_context().stream();
+    auto& dev_ctx = context.cuda_device_context();
+
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp, TransformOp>(
-              *input, output, reduce_dims, reduce_num, stream));
+      output->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(out_dtype));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, T>>(
-          *input, output, TransformOp<T, T>(reduce_num), reduce_dims, stream);
+      output->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(input->type()));
     }
+
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
+    std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
+
+    auto pt_out_dtype = pten::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+
+    pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), reduce_all,
+                                           dims_int64, false, pt_out_dtype,
+                                           pt_out.get());
   }
 };
 #endif

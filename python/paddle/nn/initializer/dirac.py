@@ -27,14 +27,17 @@ class Dirac(Initializer):
     as many channels are reserved as possible.
 
     In this initialize method, elements in the middle of convolution kernels will
-    be set to 1 . The formula can be described as:
+    be set to 1 . The formula can be described as follow.
 
-    $ Assuming:  N=min(in\_channels, out\_channels)$
+    .. math::
 
-    $ X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N$
+        X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N
+    
+    where, ``N`` is the minimum value of ``in_channels`` and ``out_channels``
 
     Args:
-        groups(int): 0-dimension of the Tensor will be divided by groups, each group has the same value.
+        groups(int, optional): 0-dimension of the Tensor will be divided by groups, 
+            each group has the same value. Default: 1.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -46,7 +49,7 @@ class Dirac(Initializer):
 
             import paddle
             
-            #1.For kernel_size is uneven number:
+            #1. For kernel_size is uneven number:
             
             attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
             conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)

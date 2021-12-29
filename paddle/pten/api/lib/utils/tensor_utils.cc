@@ -390,6 +390,50 @@ void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
 }
 
 void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           pten::DenseTensor* dst) {
+  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  meta->dims = src.dims();
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataLayout&>(meta->layout) =
+      pten::TransToPtenDataLayout(src.layout());
+
+  auto* shared_storage = static_cast<SharedStorage*>(
+      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
+  PADDLE_ENFORCE_NOT_NULL(
+      shared_storage,
+      platform::errors::NotFound(
+          "Target DenseTensor's shared storage is nullptr."));
+
+  if (src.IsInitialized()) {
+    shared_storage->ResetAllocation(src.Holder(), src.offset());
+  }
+}
+
+void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
+                           pten::DenseTensor* dst) {
+  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  meta->dims = src.dims();
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
+  // Since the type of DenseTensorMeta is const, const_cast must be used
+  const_cast<DataLayout&>(meta->layout) =
+      pten::TransToPtenDataLayout(src.layout());
+
+  auto* shared_storage = static_cast<SharedStorage*>(
+      pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
+  PADDLE_ENFORCE_NOT_NULL(
+      shared_storage,
+      platform::errors::NotFound(
+          "Target DenseTensor's shared storage is nullptr."));
+
+  if (src.IsInitialized()) {
+    shared_storage->ResetAllocation(src.Holder(), src.offset());
+  }
+}
+
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
                            const pten::TensorArgDef& arg_def,
                            pten::DenseTensor* dst) {
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
