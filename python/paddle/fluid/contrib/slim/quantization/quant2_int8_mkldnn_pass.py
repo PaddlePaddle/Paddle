@@ -62,7 +62,9 @@ class Quant2Int8MkldnnPass(object):
         self._ops_to_quantize = _ops_to_quantize
         self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
             [-1])
-        self._scale_immutable_ops = ['transpose2', 'reshape2', 'pool2d']
+        self._scale_immutable_ops = [
+            'transpose2', 'reshape2', 'pool2d', 'slice'
+        ]
         self._scale_ops = ['scale']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._pool_ops = ['pool2d']
@@ -241,7 +243,10 @@ class Quant2Int8MkldnnPass(object):
             waiting_for_scale = set()
             for op in graph.all_op_nodes():
                 if op.name() in self._scale_immutable_ops:
-                    input_name = op.input("X")[0]
+                    if op.name() == 'slice':
+                        input_name = op.input("Input")[0]
+                    else:
+                        input_name = op.input("X")[0]
                     output_name = op.output("Out")[0]
                     tensor_names = [input_name, output_name]
 
@@ -405,6 +410,9 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'seq_concat_fc_fuse_pass')
         graph = self._apply_pass(graph, 'squared_mat_sub_fuse_pass')
         graph = self._apply_pass(graph, 'is_test_pass')
+        graph = self._apply_pass(graph, 'map_matmul_v2_to_mul_pass')
+        graph = self._apply_pass(graph, 'map_matmul_v2_to_matmul_pass')
+        graph = self._apply_pass(graph, 'map_matmul_to_mul_pass')
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
@@ -421,7 +429,9 @@ class Quant2Int8MkldnnPass(object):
                                  ['use_gpu', 'use_fc_padding'], [False, False])
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
         if self._is_fc_quantized(graph):
+            # Disabled due to topology-dependent speed-up
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
+            graph = self._apply_pass(graph, 'fc_act_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
@@ -633,6 +643,8 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph,
                                  'reshape_transpose_matmul_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales, self._get_data_layout(graph)])

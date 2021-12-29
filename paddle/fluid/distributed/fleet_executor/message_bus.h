@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -39,47 +40,39 @@ class Carrier;
 // A singleton MessageBus
 class MessageBus final {
  public:
-  static MessageBus& Instance() {
-    static MessageBus msg_bus;
-    return msg_bus;
-  }
+  MessageBus() = default;
+  ~MessageBus();
 
-  void Init(const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
+  void Init(int64_t rank,
             const std::unordered_map<int64_t, std::string>& rank_to_addr,
             const std::string& addr);
 
   bool IsInit() const;
 
   // called by Interceptor, send InterceptorMessage to dst
-  bool Send(const InterceptorMessage& interceptor_message);
+  bool Send(int64_t dst_rank, const InterceptorMessage& interceptor_message);
 
-  ~MessageBus();
-
-  DISABLE_COPY_AND_ASSIGN(MessageBus);
+  void IncreaseBarrierCount();
+  void Barrier();
 
  private:
-  MessageBus() = default;
+  DISABLE_COPY_AND_ASSIGN(MessageBus);
 
   // function keep listen the port and handle the message
   void ListenPort();
 
-  // check whether the dst is the same rank or different rank with src
-  bool IsSameRank(int64_t src_id, int64_t dst_id);
+  const std::string& GetAddr(int64_t rank) const;
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
   // send the message inter rank (dst is different rank with src)
-  bool SendInterRank(const InterceptorMessage& interceptor_message);
+  bool SendInterRank(int64_t dst_rank,
+                     const InterceptorMessage& interceptor_message);
 #endif
 
-  // send the message intra rank (dst is the same rank with src)
-  bool SendIntraRank(const InterceptorMessage& interceptor_message);
-
   bool is_init_{false};
-  std::once_flag once_flag_;
 
-  // handed by above layer, save the info mapping interceptor id to rank id
-  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
+  int64_t rank_;
 
   // handed by above layer, save the info mapping rank id to addr
   std::unordered_map<int64_t, std::string> rank_to_addr_;
@@ -93,6 +86,11 @@ class MessageBus final {
   // brpc server
   brpc::Server server_;
 #endif
+
+  // for barrier
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  int count_{0};
 };
 
 }  // namespace distributed

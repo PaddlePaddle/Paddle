@@ -157,6 +157,17 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     params_grads = parallelizer._apply_serial_passes_and_backward(
         complete_train_program, startup_program, loss)
 
+    parallelizer._apply_serial_forward_pass(complete_train_program,
+                                            startup_program)
+
+    params_grads = parallelizer._generate_backward(
+        complete_train_program,
+        startup_program,
+        loss,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None)
+
     # logical partition
     partitioner = Partitioner(dist_context, rank_id)
     auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads = partitioner.partition(

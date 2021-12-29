@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -21,14 +22,19 @@ namespace operators {
 
 namespace {
 
-template <typename T>
-__global__ void SGDKernel(const T* g, const T* p, const T* learning_rate,
-                          const int num, T* p_out) {
-  T lr = learning_rate[0];
+template <typename T, typename MT>
+__global__ void SGDKernelMT(const T* param, const T* grad,
+                            const T* learning_rate, const int num, T* param_out,
+                            const MT* master_param, MT* master_param_out) {
+  MT lr = static_cast<MT>(learning_rate[0]);
   CUDA_KERNEL_LOOP(i, num) {
-    T g_data = g[i];
-    T p_data = p[i];
-    p_out[i] = p_data - lr * g_data;
+    MT p_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
+    MT g_data = static_cast<MT>(grad[i]);
+    p_data = p_data - lr * g_data;
+    param_out[i] = static_cast<T>(p_data);
+    if (master_param_out) {
+      master_param_out[i] = p_data;
+    }
   }
 }
 
@@ -63,30 +69,48 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           paddle::framework::ToTypeName(param_var->Type())));
+    using paddle::framework::Tensor;
+    using MPDType = typename details::MPTypeTrait<T>::Type;
 
     auto* param = ctx.Input<framework::Tensor>("Param");
     auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
     auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
     auto* grad_var = ctx.InputVar("Grad");
+
+    const bool multi_precision = ctx.Attr<bool>("multi_precision");
+    const Tensor* master_param = nullptr;
+    Tensor* master_param_out = nullptr;
+    if (multi_precision) {
+      bool has_master =
+          ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
+      PADDLE_ENFORCE_EQ(has_master, true,
+                        platform::errors::InvalidArgument(
+                            "The Input(MasterParam) and Output(MasterParamOut) "
+                            "should not be null when "
+                            "the attr `multi_precision` is true"));
+      master_param = ctx.Input<framework::Tensor>("MasterParam");
+      master_param_out = ctx.Output<framework::Tensor>("MasterParamOut");
+    }
+    const MPDType* master_in_data =
+        multi_precision ? master_param->data<MPDType>() : nullptr;
+    MPDType* master_out_data =
+        multi_precision
+            ? master_param_out->mutable_data<MPDType>(ctx.GetPlace())
+            : nullptr;
+
     // Actually, all tensors are LoDTensor except SelectedRows.
     if (grad_var->IsType<framework::LoDTensor>()) {
-      param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
-      // LOG(ERROR) << "grad";
-      // LOG(ERROR) << ctx.op().Input("Grad");
-      auto* grad_data = grad->data<T>();
-      // LOG(ERROR) << "param";
-      auto* param_data = param->data<T>();
-      // LOG(ERROR) << "fin";
-      auto* param_out_data = param_out->data<T>();
 
       int block = 512;
       int grid = (param->numel() + block - 1) / block;
 
-      SGDKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-          grad_data, param_data, learning_rate->data<T>(), param->numel(),
-          param_out_data);
+      SGDKernelMT<
+          T, MPDType><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+          param->data<T>(), grad->data<T>(), learning_rate->data<T>(),
+          param->numel(), param_out->mutable_data<T>(ctx.GetPlace()),
+          master_in_data, master_out_data);
 
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.

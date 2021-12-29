@@ -62,14 +62,7 @@ void* Tensor::mutable_data(const platform::Place& place,
           "The Tensor's shape is [",
           dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(
-        requested_size, size,
-        platform::errors::InvalidArgument(
-            "The requested memory size is less than the memory size of Tensor. "
-            "But received requested memory size is %d, "
-            "memory size of Tensor is %d.",
-            requested_size, size));
+  if (requested_size && (requested_size > size)) {
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
@@ -91,14 +84,9 @@ void* Tensor::mutable_data(const platform::Place& place,
   return mutable_data(place, type_, requested_size);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void* Tensor::mutable_data(const platform::CUDAPlace& place,
+void* Tensor::mutable_data(const platform::Place& place,
                            proto::VarType::Type type,
-                           const gpuStream_t& stream) {
-  if (!FLAGS_use_stream_safe_cuda_allocator) {
-    return mutable_data(place, type);
-  }
-
+                           const platform::Stream& stream) {
   type_ = type;
   PADDLE_ENFORCE_GE(
       numel(), 0,
@@ -118,7 +106,6 @@ void* Tensor::mutable_data(const platform::CUDAPlace& place,
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
-#endif
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();

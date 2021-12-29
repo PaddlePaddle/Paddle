@@ -332,6 +332,10 @@ class TransformerDecoder(nn.Layer):
     """
     TransformerDecoder is a stack of N decoder layers.
     """
+<<<<<<< HEAD
+=======
+
+>>>>>>> 63323bb249ca299eb0267826c9774ea6989c3c24
     def __init__(self, decoder_layers, num_layers, norm=None, hidden_size=None):
         super(TransformerDecoder, self).__init__()
 
@@ -594,6 +598,10 @@ class TransformerDecoderLayer(nn.Layer):
     The transformer decoder layer.
     It contains multiheadattention and some linear layers.
     """
+<<<<<<< HEAD
+=======
+
+>>>>>>> 63323bb249ca299eb0267826c9774ea6989c3c24
     def __init__(self,
                  d_model,
                  nhead,
@@ -722,6 +730,10 @@ class GPTEmbeddings(nn.Layer):
     """
     Include embeddings from word, position and token_type embeddings
     """
+<<<<<<< HEAD
+=======
+
+>>>>>>> 63323bb249ca299eb0267826c9774ea6989c3c24
     def __init__(self,
                  vocab_size,
                  hidden_size=768,
@@ -790,6 +802,10 @@ class GPTModel(nn.Layer):
     """
     The base model of gpt.
     """
+<<<<<<< HEAD
+=======
+
+>>>>>>> 63323bb249ca299eb0267826c9774ea6989c3c24
     def __init__(self,
                  vocab_size=50304,
                  hidden_size=1024,
@@ -906,6 +922,10 @@ class GPTForPretraining(nn.Layer):
     The pretraining model of GPT.
     It returns some logits and cached_kvs.
     """
+<<<<<<< HEAD
+=======
+
+>>>>>>> 63323bb249ca299eb0267826c9774ea6989c3c24
     def __init__(
             self,
             gpt,
@@ -951,6 +971,7 @@ class GPTPretrainingCriterion(nn.Layer):
     Criterion for GPT.
     It calculates the final loss.
     """
+
     def __init__(self):
         super(GPTPretrainingCriterion, self).__init__()
         self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
@@ -961,23 +982,4 @@ class GPTPretrainingCriterion(nn.Layer):
         loss_mask = loss_mask.reshape([-1])
         masked_lm_loss = paddle.sum(masked_lm_loss.reshape([-1]) * loss_mask)
         total_loss = masked_lm_loss / loss_mask.sum()
-        pp_total_loss = None
-        loss = total_loss
-        if "pp" in _global_parallel_strategy:
-            total_loss = total_loss
-            masked_lm_loss.persistable = True
-            total_loss.persistable = True
-            total_loss.persistable = True
-            pp_total_loss = paddle.fluid.layers.fill_constant([1, ], "float32",
-                                                              0.0)
-            pp_total_loss.persistable = True
-            block = paddle.static.default_main_program().global_block()
-            acc_steps = 1
-            tmp = total_loss / acc_steps
-            block.append_op(
-                type="elementwise_add",
-                inputs={"X": [pp_total_loss],
-                        "Y": [tmp]},
-                outputs={"Out": [pp_total_loss]})
-            loss = pp_total_loss
-        return loss
+        return total_loss

@@ -73,7 +73,7 @@ template <>
 __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        float16 val, int delta,
                                                        int width) {
-  return float16(__shfl_down_sync(mask, static_cast<half>(val),
+  return float16(__shfl_down_sync(mask, val.to_half(),
                                   static_cast<unsigned>(delta), width));
 }
 
@@ -103,7 +103,7 @@ CudaShuffleDownSync(unsigned mask, paddle::platform::complex<double> val,
 template <>
 __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
-  return float16(__shfl_xor_sync(mask, static_cast<half>(val), width));
+  return float16(__shfl_xor_sync(mask, val.to_half(), width));
 }
 
 template <>

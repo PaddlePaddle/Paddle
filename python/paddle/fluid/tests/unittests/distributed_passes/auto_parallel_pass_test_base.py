@@ -30,6 +30,7 @@ sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
 
+
 class AutoPallelPassTestBase(DistPassTestBase):
     def setUp(self):
         paddle.enable_static()
@@ -62,12 +63,12 @@ class AutoPallelPassTestBase(DistPassTestBase):
 
     def check_main(self, gpus=None, **kwargs):
         no_pass_rets = self._distributed_launch(
-            apply_pass=False, gpus=gpus, **kwargs)
+            model=None, apply_pass=False, gpus=gpus, **kwargs)
         pass_rets = self._distributed_launch(
-            apply_pass=True, gpus=gpus, **kwargs)
+            model=None, apply_pass=True, gpus=gpus, **kwargs)
         self.check_results(no_pass_rets, pass_rets)
 
-    def _run_gpu_main(self, apply_pass, dump_file, **kwargs):
+    def _run_gpu_main(self, model, apply_pass, dump_file, **kwargs):
         gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
         place = paddle.CUDAPlace(gpu_id)
         scope = paddle.static.Scope()
@@ -81,8 +82,8 @@ class AutoPallelPassTestBase(DistPassTestBase):
                 with paddle.fluid.unique_name.guard():
                     main_prog, startup_prog, inputs, outputs, reader = self.get_model(
                         place, **kwargs)
-                    inputs = self._to_var_names(main_prog, inputs)
-                    outputs = self._to_var_names(main_prog, outputs)
+                    inputs = self._to_var_names(inputs)
+                    outputs = self._to_var_names(outputs)
 
         all_fetch_values = []
         exe = paddle.static.Executor(place)
@@ -100,7 +101,8 @@ class AutoPallelPassTestBase(DistPassTestBase):
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
 
-    def get_gpt_model(self, strategy, place, batch_size, sequence_len, vocab_size):
+    def get_gpt_model(self, strategy, place, batch_size, sequence_len,
+                      vocab_size):
         modeling.init_global()
         if strategy == "dp":
             modeling._global_parallel_strategy = "dp"
@@ -111,7 +113,9 @@ class AutoPallelPassTestBase(DistPassTestBase):
         elif strategy == "pp":
             modeling._global_parallel_strategy = "pp"
             modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-            modeling.PP_MESH_LIST = [auto.ProcessMesh(mesh=[0]), auto.ProcessMesh(mesh=[1])]
+            modeling.PP_MESH_LIST = [
+                auto.ProcessMesh(mesh=[0]), auto.ProcessMesh(mesh=[1])
+            ]
         else:
             raise ValueError("'get_gpt_model' only support dp, mp and pp.")
 
@@ -133,21 +137,24 @@ class AutoPallelPassTestBase(DistPassTestBase):
 
         if modeling._global_parallel_strategy == "dp":
             auto.shard_tensor(
-                tokens, 
+                tokens,
                 dist_attr={
-                    "process_mesh":modeling._global_process_mesh, 
-                    "dims_mapping":[0, -1]})
+                    "process_mesh": modeling._global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif modeling._global_parallel_strategy == "pp":
             auto.shard_tensor(
-                tokens, 
+                tokens,
                 dist_attr={
-                    "process_mesh":modeling.PP_MESH_LIST[0], 
-                    "dims_mapping":[-1, -1]})
+                    "process_mesh": modeling.PP_MESH_LIST[0],
+                    "dims_mapping": [-1, -1]
+                })
             auto.shard_tensor(
-                attention_mask, 
+                attention_mask,
                 dist_attr={
-                    "process_mesh":modeling.PP_MESH_LIST[0], 
-                    "dims_mapping":[-1, -1, -1, -1]})
+                    "process_mesh": modeling.PP_MESH_LIST[0],
+                    "dims_mapping": [-1, -1, -1, -1]
+                })
 
         gpt = GPTModel(
             vocab_size=1000,

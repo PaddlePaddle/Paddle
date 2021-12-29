@@ -153,7 +153,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     parallelizer = AutoParallelizer(fleet)
     parallelizer._dist_context = dist_context
 
-    # # serial forward & backward completion
+    # serial forward & backward completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
 
@@ -198,10 +198,10 @@ def check_empty_program_runtime(cost):
 
 def check_empty_program_memory(cost):
     for mem in cost.peak_mem:
-        if mem > 0:
+        if mem > 1:
             return False
     for mem in cost.static_mem:
-        if mem > 0:
+        if mem > 1:
             return False
     return True
 

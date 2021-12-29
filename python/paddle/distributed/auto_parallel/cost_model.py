@@ -11,14 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
+
 import json
 import queue
 import copy
 from enum import Enum
+
+import numpy as np
+
 import paddle
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
 from paddle.fluid import core
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 SUCC = 0  # successor
 PRED = 1  # predecessor
@@ -136,6 +140,8 @@ class TensorCostNode(CostNode):
             self.dtype_factor *= 4
         elif node.dtype == paddle.int64:
             self.dtype_factor *= 8
+        elif node.dtype == paddle.uint8:
+            self.dtype_factor = 1
         else:
             raise NotImplementedError("{} not counted".format(node.dtype))
         self.batch_size = None

@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/functions/eigen/common.h"
+#include "paddle/pten/kernels/hybird/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -174,10 +174,24 @@ void set_constant_with_place<platform::NPUPinnedPlace>(
 }
 
 template <>
+void set_constant_with_place<platform::IPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
+}
+
+template <>
+void set_constant_with_place<platform::MLUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>

@@ -44,6 +44,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nll_loss", {"X", "Label", "Weight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
+    {"repeat_interleave", {"X", "RepeatsTensor"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
     {"psroi_pool", {"X", "ROIs", "RoisNum"}},
@@ -57,6 +58,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
+    {"merged_momentum",
+     {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
@@ -71,6 +74,12 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"adamw",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
+    {"lamb",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
+    {"sparse_attention",
+     {"Q", "K", "V", "Offset", "Columns", "KeyPaddingMask", "AttnMask"}},
+    {"sgd", {"Param", "LearningRate", "Grad", "MasterParam"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -107,10 +116,9 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
-    {"lamb",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"run_program", {"DOut"}},
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
@@ -118,4 +126,81 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"adamw",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
+    {"sgd", {"ParamOut", "MasterParamOut"}},
+    {"lamb",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+};
+
+// NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
+// generated in C++ automatically.
+// However, some OPs need to pass the outputs from Python instead of generating
+// them in C++. There are mainly 2 reasons for that,
+// (1) Optimizer OPs need to update the input param in-place, like sgd.
+//     So they need to pass the output which is same as input param.
+// (2) Very few python APIs has out in their arguments, like fill_constant.
+//     So they need to pass the python output to C++.
+//     Actually, this is not a good design, since it may break the SSA graph,
+//     especially in declarative mode.
+// For those OPs, we need to manually specify the outs need to pass in this map.
+std::map<std::string, std::set<std::string>> op_passing_outs_map = {
+    {"sgd", {"ParamOut", "MasterParamOut"}},
+    {"adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+    {"adamw",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+    {"lamb",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
+    {"average_accumulates",
+     {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
+      "out_old_num_accumulates", "out_num_updates"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
+    {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
+    {"accuracy", {"Correct", "Total"}},
+    {"fill_constant", {"Out"}},
+    {"recv_v2", {"Out"}},
+    {"partial_recv", {"Out"}},
+    {"matmul", {"Out"}},
+    {"c_broadcast", {"Out"}},
+    {"c_sync_calc_stream", {"Out"}},
+    {"c_sync_comm_stream", {"Out"}},
+    {"c_reduce_sum", {"Out"}},
+    {"c_reduce_max", {"Out"}},
+    {"c_reduce_min", {"Out"}},
+    {"c_reduce_prod", {"Out"}},
+    {"c_reduce", {"Out"}},
+    {"c_scatter", {"Out"}},
+    {"barrier", {"Out"}},
+    {"fake_quantize_dequantize_moving_average_abs_max",
+     {"Out", "OutScale", "OutAccum", "OutState"}},
+    {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
+    {"fake_channel_wise_quantize_dequantize_abs_max", {"Out", "OutScale"}},
+    {"check_finite_and_unscale", {"Out", "FoundInfinite"}},
+    {"update_loss_scaling",
+     {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
+    {"moving_average_abs_max_scale",
+     {"Out", "OutScale", "OutAccum", "OutState"}},
+    {"rnn", {"DropoutState"}},
+    {"run_program", {"Out", "DOut", "OutScope"}},
+    {"clear_float_status", {"FloatStatusOut"}},
+    {"get_float_status", {"FloatStatusOut"}},
+};
+
+// NOTE(pangyoki): Tensor View Strategy.
+// In this case, a new output varbase will be created, and this varbase will
+// reuse the input varbase's allocation.
+// It's a map. The key of outer map is the view op name, the value is
+// a pair which implies the mapping relationship between the input and
+// output varbase.
+std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
+    {"squeeze2", {"X", "Out"}},  // "X" -> "Out"
+    {"unsqueeze2", {"X", "Out"}},
+    {"reshape2", {"X", "Out"}},
+    {"flatten_contiguous_range", {"X", "Out"}},
 };

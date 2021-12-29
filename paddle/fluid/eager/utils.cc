@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
 #include "paddle/pten/api/all.h"
@@ -23,6 +24,9 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
+
+PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, true,
+                            "retain grad for all tensor");
 
 namespace egr {
 /**
@@ -50,8 +54,27 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
     const std::vector<egr::EagerTensor>& targets) {
   std::vector<AutogradMeta*> metas;
+  metas.reserve(targets.size());
   for (const egr::EagerTensor& t : targets) {
-    metas.push_back(unsafe_autograd_meta(t));
+    metas.emplace_back(unsafe_autograd_meta(t));
+  }
+  return metas;
+}
+
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    const egr::EagerTensor& target) {
+  auto* p_autograd_meta = target.get_autograd_meta();
+  if (!p_autograd_meta) return nullptr;
+
+  return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const std::vector<egr::EagerTensor>& targets) {
+  std::vector<AutogradMeta*> metas;
+  metas.reserve(targets.size());
+  for (const egr::EagerTensor& t : targets) {
+    metas.emplace_back(nullable_autograd_meta(t));
   }
   return metas;
 }
@@ -123,6 +146,42 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
     const_cast<EagerTensor*>(&(tensors[i]))
         ->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
     res.emplace_back(new EagerTensor(tensors[i]));
+  }
+  return res;
+}
+
+static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
+    egr::EagerTensor* tensor) {
+  if (tensor->initialized() || tensor->Var().IsInitialized()) {
+    tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
+  }
+  return std::shared_ptr<egr::EagerTensor>(tensor,
+                                           [&](egr::EagerTensor* ptr) {});
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    egr::EagerTensor* tensor) {
+  return {TrySyncToVar(tensor)};
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    std::vector<egr::EagerTensor>* tensors) {
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors->size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(TrySyncToVar(&(*tensors)[i]));
+  }
+  return res;
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    const std::vector<egr::EagerTensor*>& tensors) {
+  std::vector<std::shared_ptr<EagerTensor>> res;
+  size_t num = tensors.size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    res.emplace_back(TrySyncToVar(tensors[i]));
   }
   return res;
 }
@@ -202,6 +261,23 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
     ret.emplace_back(t.recover(grad_node));
   }
   return ret;
+}
+
+void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
+  VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
+  if (FLAGS_retain_grad_for_all_tensor) {
+    egr::egr_utils_api::RetainGradForTensor(tensor);
+  }
+}
+
+void EagerUtils::CheckAndRetainGrad(
+    const std::vector<egr::EagerTensor>& tensors) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    for (auto& tensor : tensors) {
+      VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
+      egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
 }
 
 }  // namespace egr

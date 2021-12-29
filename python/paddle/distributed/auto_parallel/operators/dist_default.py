@@ -178,11 +178,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
         main_block._sync_with_cpp()
-        # print("11111111111:")
-        # print("***id:", dist_op_desc.id())
-        # print("***original_id:", dist_op_desc.original_id())
-        # print("***dist attr:", ctx._dist_ops_for_program.keys())
-        # print_program_with_dist_attr(dist_op_context.get_dst_main_program(), ctx)
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
         # we need insert gradient allreduce for the gradient of parameter in its output
