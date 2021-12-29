@@ -240,8 +240,8 @@ class EagerTensor final {
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
           if (tensor_dense) {
-            paddle::experimental::MovesStorage(tensor_dense.get(),
-                                               framework_tensor);
+            paddle::experimental::MovesSharedStorage(tensor_dense.get(),
+                                                     framework_tensor);
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
                 "Unrecognized egr::EagerTensor type, only "
@@ -297,8 +297,8 @@ class EagerTensor final {
   template <typename LEGACY_TYPE, typename TYPE>
   void SetImplWithLegacyTensor() {
     const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
-    this->set_impl(
-        std::move(paddle::experimental::MakePtenDenseTensor(framework_tensor)));
+    paddle::experimental::ReMakePtenDenseTensor(
+        framework_tensor, static_cast<pten::DenseTensor*>(this->impl().get()));
     var_.Clear();
   }
 
