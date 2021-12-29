@@ -1094,7 +1094,7 @@ class Layer(object):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
-                if in_declarative_mode() and not framework.in_dygraph_mode():
+                if in_declarative_mode():
                     return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
@@ -1104,7 +1104,7 @@ class Layer(object):
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                if in_declarative_mode() and not framework.in_dygraph_mode():
+                if in_declarative_mode():
                     return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
@@ -1176,9 +1176,7 @@ class Layer(object):
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if (in_declarative_mode() and
-                                not framework.in_dygraph_mode() and
-                                _buffers[name] is None):
+                        if in_declarative_mode() and _buffers[name] is None:
                             raise RuntimeError(
                                 'In Dy2stat, self.{0} is a buffer and self.{0} is '
                                 'not allowed to be set to Variable when self.{0} is None.'.
