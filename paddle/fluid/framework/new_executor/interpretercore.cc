@@ -42,7 +42,7 @@ constexpr const char* kTaskCompletion = "TaskCompletion";
 namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
-static constexpr size_t kHostNumThreads = 2;
+static constexpr size_t kHostNumThreads = 4;
 
 bool IsInterpretercoreFastGCEnabled() {
   return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
@@ -458,11 +458,16 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
-    // NOTE(xiongkun) Why we reset ? 
-    // The caught exception may be EOFExcetion, under this situation, we need make async_work_queue_ available, so we need reset.
+    // NOTE(xiongkun) Why we reset ?
+    // The caught exception may be EOFExcetion, under this situation, we need
+    // make async_work_queue_ available, so we need reset.
     async_work_queue_->Cancel();
-    async_work_queue_.reset(
-        new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
+    async_work_queue_.reset(new interpreter::AsyncWorkQueue(
+        kHostNumThreads, &main_thread_blocker_));
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(), 0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
     exception_holder_.ReThrow();
   }
 }
