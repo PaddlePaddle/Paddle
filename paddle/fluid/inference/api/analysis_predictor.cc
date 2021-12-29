@@ -409,13 +409,15 @@ void AnalysisPredictor::MkldnnPreSet(
 void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
-  auto dev_ctx = static_cast<platform::MKLDNNDeviceContext *>(
-      (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()));
-
   if (config_.mkldnn_cache_capacity_ > 0 &&
-      dev_ctx->GetCachedObjectsNumber() > 0) {
+      static_cast<platform::MKLDNNDeviceContext *>(
+          (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
+              ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
-      auto shape_blob_size = dev_ctx->GetShapeBlobSize();
+      auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
+                                 (&platform::DeviceContextPool::Instance())
+                                     ->Get(platform::CPUPlace()))
+                                 ->GetShapeBlobSize();
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
