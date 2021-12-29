@@ -1775,7 +1775,8 @@ def amax(x, axis=None, keepdim=False, name=None):
         while max propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64,
+            the dimension is no more than 4.
         axis(int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
@@ -1887,7 +1888,8 @@ def amin(x, axis=None, keepdim=False, name=None):
         while min propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
+        x(Tensor): A tensor, the data type is float32, float64, int32, int64, 
+            the dimension is no more than 4.
         axis(int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,

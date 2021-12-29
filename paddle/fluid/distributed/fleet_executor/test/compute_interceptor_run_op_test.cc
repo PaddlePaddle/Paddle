@@ -84,8 +84,6 @@ TEST(ComputeInterceptor, Compute) {
   a->SetPlace(place);
   a->SetMicroBatchScope(scopes);
 
-  carrier.SetCreatingFlag(false);
-
   // start
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
