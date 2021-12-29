@@ -31,11 +31,12 @@ void Reduce(const DeviceContext& dev_ctx,
             DataType out_dtype,
             DenseTensor* out) {
   // If the dims has full dim, set the reduce_all is True
-  const auto& input_dim_size = x.dims().size();
+  const int& input_dim_size = x.dims().size();
   std::set<int> dims_set(dims.begin(), dims.end());
   bool full_dim = true;
-  for (auto i = 0; i < input_dim_size; ++i) {
-    if (dims_set.find(i) == dims_set.end()) {
+  for (int i = 0; i < input_dim_size; ++i) {
+    if (dims_set.find(i) == dims_set.end() &&
+        dims_set.find(i - input_dim_size) == dims_set.end()) {
       full_dim = false;
       break;
     }
@@ -59,7 +60,7 @@ void Reduce(const DeviceContext& dev_ctx,
         pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
 
     // cast x tensor to out_dtype
-    pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype, x.dtype(), &tmp_tensor);
+    pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
