@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+PT_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+
 namespace paddle {
 namespace tests {
 
