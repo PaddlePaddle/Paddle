@@ -130,7 +130,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("affine_channel"))
@@ -148,7 +148,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -196,6 +196,13 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle ConvAffineChannel fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
+
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_affine_channel_fuse_pass is enabled, "
+                                 "it's wrong if data_format of conv is not "
+                                 "NCHW.";
+    }
 
     // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
@@ -282,7 +289,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("affine_channel"))
       .AddInput("X")
@@ -299,7 +306,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
@@ -347,6 +354,12 @@ void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle ConvBN fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_eltwiseadd_affine_channel_fuse_pass is "
+                                 "enabled, it's wrong if data_format of conv "
+                                 "is not NCHW.";
+    }
     // OPERATORS
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_ac_pattern);
     // BIAS inputs

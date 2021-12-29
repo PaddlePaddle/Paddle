@@ -32,6 +32,9 @@ XPUOpMap& get_kl2_ops() {
       {"adamw", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"adam", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"argsort", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
+                                pOpKernelType(vartype::INT64, XPUPlace()),
+                                pOpKernelType(vartype::FP32, XPUPlace())})},
       {"assign_value",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"batch_norm_grad",
@@ -194,6 +197,9 @@ XPUOpMap& get_kl2_ops() {
       {"layer_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"layer_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                    pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"leaky_relu_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"leaky_relu", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"less_equal", XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                                    pOpKernelType(vartype::INT32, XPUPlace()),
                                    pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -239,6 +245,7 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_mean_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_prod", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_sum_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -259,6 +266,8 @@ XPUOpMap& get_kl2_ops() {
       {"scale", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::FP16, XPUPlace()),
                               pOpKernelType(vartype::INT64, XPUPlace())})},
+      {"scatter", XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
+                                pOpKernelType(vartype::FP32, XPUPlace())})},
       {"shape", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::INT64, XPUPlace())})},
       {"slice_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
@@ -318,6 +327,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"transpose", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                   pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"top_k_v2", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"unsqueeze2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -339,6 +349,7 @@ XPUOpMap& get_kl2_ops() {
       {"where", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                               pOpKernelType(vartype::INT64, XPUPlace()),
                               pOpKernelType(vartype::FP32, XPUPlace())})},
+
       // AddMore
   };
 

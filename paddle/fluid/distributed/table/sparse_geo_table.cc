@@ -46,5 +46,46 @@ int32_t SparseGeoTable::push_sparse(const uint64_t* keys, const float* values,
   return 0;
 }
 
+int32_t SparseGeoTable::initialize_value() {
+  auto common = _config.common();
+  shard_values_.reserve(task_pool_size_);
+
+  for (int x = 0; x < task_pool_size_; ++x) {
+    auto shard = std::make_shared<ValueBlock>(
+        value_names_, value_dims_, value_offsets_, value_idx_,
+        initializer_attrs_, common.entry());
+
+    shard_values_.emplace_back(shard);
+  }
+
+  auto accessor = _config.accessor();
+  std::vector<uint64_t> feasigns;
+
+  for (size_t x = 0; x < accessor.fea_dim(); ++x) {
+    if (x % _shard_num == _shard_idx) {
+      feasigns.push_back(x);
+    }
+  }
+
+  VLOG(3) << "has " << feasigns.size() << " ids need to be pre inited";
+
+  auto buckets = bucket(feasigns.size(), 10);
+  for (int x = 0; x < 10; ++x) {
+    auto bucket_feasigns = buckets[x + 1] - buckets[x];
+    std::vector<uint64_t> ids(bucket_feasigns);
+    std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
+              ids.begin());
+
+    std::vector<uint32_t> fres;
+    fres.resize(ids.size(), 1);
+
+    auto pull_value = PullSparseValue(ids, fres, param_dim_);
+    std::vector<float> pulls;
+    pulls.resize(bucket_feasigns * param_dim_);
+    pull_sparse(pulls.data(), pull_value);
+  }
+  return 0;
+}
+
 }  // namespace distributed
 }  // namespace paddle
