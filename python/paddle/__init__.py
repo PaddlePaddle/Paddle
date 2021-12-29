@@ -462,7 +462,6 @@ __all__ = [  # noqa
            'multiplex',
            'CUDAPlace',
            'NPUPlace',
-           'MLUPlace',
            'empty',
            'shape',
            'real',
