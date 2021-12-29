@@ -228,8 +228,8 @@ void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
 
   config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
-  config.EnableTensorRtEngine(1 << 30, 1, 1,
-                              AnalysisConfig::Precision::kFloat32, true, true);
+  config.EnableTensorRtEngine(
+      1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, false, false);
   if (delete_conv_bn) {
     config.pass_builder()->DeletePass("conv_bn_fuse_pass");
   }
