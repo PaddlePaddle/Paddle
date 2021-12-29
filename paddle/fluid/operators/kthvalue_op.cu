@@ -166,7 +166,7 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
                           indices)) {
         return;
       } else {
-        LOG(INFO) << "KthvalueOP: Some errors happened when use cub sorting";
+        throw "KthvalueOP: Error when use cub sortin";
       }
     } else {
       std::vector<int> trans;
@@ -222,7 +222,7 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
         }
         return;
       } else {
-        LOG(INFO) << "KthvalueOP: Some errors happened when use cub sorting";
+        throw "KthvalueOP: Error when use cub sorting";
       }
     }
   }

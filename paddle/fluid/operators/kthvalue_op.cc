@@ -32,11 +32,14 @@ class KthvalueOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("X");
     const int& dim_size = input_dims.size();
     int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        (axis < dim_size) && (axis >= (-1 * dim_size)), true,
-        paddle::platform::errors::InvalidArgument(
-            "the axis of kthvalue must be [-%d, %d), but you set axis is %d",
-            dim_size, dim_size, axis));
+    PADDLE_ENFORCE_LT(axis, dim_size,
+                      paddle::platform::errors::InvalidArgument(
+                          "the axis must be [-%d, %d), but received %d .",
+                          dim_size, dim_size, axis));
+    PADDLE_ENFORCE_GE(axis, -dim_size,
+                      paddle::platform::errors::InvalidArgument(
+                          "the axis must be [-%d, %d), but received %d .",
+                          dim_size, dim_size, axis));
     if (axis < 0) axis += dim_size;
     int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
     PADDLE_ENFORCE_GE(
@@ -73,11 +76,9 @@ class KthvalueOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
