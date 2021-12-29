@@ -13,14 +13,17 @@
 # limitations under the License
 
 import os
+import copy
 import paddle
 import threading
 import numpy as np
 import warnings
 import logging
+from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.framework.io import _to_LodTensor
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 
 
@@ -990,7 +993,9 @@ def set_grad_var_shape(program, dist_context):
     block = program.global_block()
     vars = block.vars
     for op in block.ops:
-        if op.type == "sum":
+        if op.type in [
+                "sum", "check_finite_and_unscale", "update_loss_scaling"
+        ]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -1001,6 +1006,15 @@ def set_grad_var_shape(program, dist_context):
                 forward_var_name = var_name[:var_name.find("@GRAD")]
                 if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
                     forward_var_name = op.input_arg_names[0]
+                elif op.type == "matmul_v2_grad":
+                    forward_var_name = None
+                    for output_name in op.output_names:
+                        if var_name in op.output(output_name):
+                            assert "@GRAD" in output_name
+                            input_name = output_name[:output_name.find("@GRAD")]
+                            assert len(op.input(input_name)) == 1
+                            forward_var_name = op.input(input_name)[0]
+                    assert forward_var_name is not None
 
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
@@ -1036,6 +1050,23 @@ def set_grad_var_shape(program, dist_context):
 
                 if list(grad_var.shape) != ref_shape:
                     grad_var.desc.set_shape(ref_shape)
+
+
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
+
+def is_forward_op(op):
+    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
+    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
+    op_role = int(op.attr('op_role'))
+    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1 or
+                                             op_role == ref_role2)
+
+
+def is_backward_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
 
 
 def update_op_dims_mapping_by_default_dist_impl(dist_op):
@@ -1172,3 +1203,148 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
             changed = True
 
     return changed
+
+
+def get_all_distributed_main_program(serial_program_info, dist_context,
+                                     parallelizer):
+    "Get all distributed main programs by dist_context."
+    from .dist_context import DistributedOperatorContext, DistributedContext
+    cluster = serial_program_info.cluster
+    copied_parallelizer = copy.deepcopy(parallelizer)
+    all_dist_main_program = []
+    ranks = paddle.distributed.get_world_size() if cluster is None else len(
+        cluster.get_all_devices("GPU"))
+    for rank_id in range(ranks):
+        used_dist_context = copy.deepcopy(dist_context)
+        used_dist_context._dist_op_context = DistributedOperatorContext()
+        _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
+            rank_id, used_dist_context)
+        all_dist_main_program.append(dist_main_program)
+
+    return all_dist_main_program
+
+
+class SerialProgramInfo:
+    def __init__(self,
+                 train_program,
+                 satrtup_program,
+                 loss,
+                 optimizer,
+                 cluster=None):
+        self._train_program = train_program
+        self._startup_program = satrtup_program
+        self._loss = loss
+        self._optimizer = optimizer
+        self._cluster = cluster
+
+    @property
+    def train_program(self):
+        return self._train_program
+
+    @property
+    def startup_program(self):
+        return self._startup_program
+
+    @property
+    def loss(self):
+        return self._loss
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @property
+    def cluster(self):
+        return self._cluster
+
+
+def get_standalone_cost_data(distributed_programs):
+    def _compute_runtime(op_cost, op, vars):
+        runtime = 0
+        try:
+            runtime = float(op_cost["op_time"])
+        except:
+            return runtime
+        op_config = op_cost["config"]
+        total_static_input_size = 0
+        total_actual_input_size = 0
+        parsed_info = op_config.split("\n")
+        variable = "(Variable)"
+        for info in parsed_info:
+            variable = "(Variable)" if "(Variable)" in info else "(list<Variable>"
+            if variable in info:
+                arg_name_lower = info[:info.find(variable) - 1]
+                shape_left_boundary = info.find("[")
+                shape_right_boundary = info.find("]")
+                assert shape_left_boundary > 0 and shape_right_boundary > 0 and shape_right_boundary > shape_left_boundary, "Get shape failed."
+                shape = info[shape_left_boundary + 1:
+                             shape_right_boundary].split(",")
+                shape = list(map(lambda x: int(x.strip()), shape))
+                dtype_factor = 1
+                total_static_input_size += reduce(lambda x, y: x * y, shape)
+                if op.type == "c_embedding":
+                    arg_name_lower = "w" if arg_name_lower == "weight" else "ids"
+                for arg_name in op.input_names:
+                    if arg_name.lower() == arg_name_lower:
+                        for var_name in op.input(arg_name):
+                            var = vars[var_name]
+                            total_actual_input_size += reduce(
+                                lambda x, y: x * y, var.shape)
+                        break
+        assert total_static_input_size > 0 and total_actual_input_size > 0, "Get input size failed."
+
+        actual_runtime = total_actual_input_size / total_static_input_size * runtime
+        return actual_runtime
+
+    import paddle.cost_model as cm
+    cost_model = cm.CostModel()
+    cost_model.static_cost_data()
+    DEFAULT_MULTIPLE = 2
+    OP_NAME_MAPPING = {
+        "c_embedding": "embedding",
+        "matmul_v2": "matmul",
+        "transpose2": "transpose",
+        "reshape2": "reshape",
+        "unsqueeze2": "unsqueeze",
+        "reduce_sum": "sum",
+        "elementwise_div": "divide"
+    }
+
+    standalone_cost_data = []
+    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    for distributed_program in distributed_programs:
+        cost_data = {}
+        vars = distributed_program.global_block().vars
+        for op in distributed_program.global_block().ops:
+            runtime = 0
+            if op.type in not_enum_ops:
+                cost_data[op.desc.id()] = runtime
+                continue
+            dtype = str(vars[op.input_arg_names[0]]
+                        .dtype) if op.input_arg_names else "float32"
+            if int(op.attr('op_role')) == int(OpRole.Backward):
+                if "_grad" in op.type:
+                    forward_op_name = op.type[:-5]
+                    if forward_op_name in OP_NAME_MAPPING.keys():
+                        forward_op_name = OP_NAME_MAPPING[forward_op_name]
+                    op_cost = cost_model.get_static_op_time(
+                        forward_op_name, forward=False, dtype=dtype)
+                    if op_cost:
+                        runtime = _compute_runtime(op_cost, op, vars)
+                    else:
+                        op_cost = cost_model.get_static_op_time(
+                            forward_op_name, dtype=dtype)
+                        if op_cost:
+                            runtime = 2 * _compute_runtime(op_cost, op, vars)
+            elif int(op.attr('op_role')) == int(OpRole.Forward):
+                op_name = OP_NAME_MAPPING[
+                    op.type] if op.type in OP_NAME_MAPPING.keys() else op.type
+                op_cost = cost_model.get_static_op_time(op_name)
+                if op_cost:
+                    runtime = _compute_runtime(op_cost, op, vars)
+
+            cost_data[op.desc.id()] = runtime
+
+        standalone_cost_data.append(cost_data)
+
+    return standalone_cost_data

@@ -47,12 +47,14 @@ if(WIN32)
     endif()
 
     add_custom_target(eager_codegen
-      COMMAND "${eager_generator_path}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
+      COMMAND "${eager_generator_path}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
       DEPENDS ${EAGER_CODEGEN_DEPS}
       VERBATIM)
 else()
     add_custom_target(eager_codegen
-          COMMAND "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/op_list.txt"
+          COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind"
+                "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" 
+                "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
           DEPENDS eager_generator
           VERBATIM)
 endif()

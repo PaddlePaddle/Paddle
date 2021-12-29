@@ -72,6 +72,11 @@ void MovesSharedStorage(pten::DenseTensor* src,
  * the overhead caused by frequent construction and destruction of the
  * DenseTensor.
  */
+void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
+                           pten::DenseTensor* dst);
+
+void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
+                           pten::DenseTensor* dst);
 
 void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
                            const pten::TensorArgDef& arg_def,

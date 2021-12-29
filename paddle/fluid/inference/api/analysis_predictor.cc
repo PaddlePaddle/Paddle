@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -110,6 +111,14 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
                 pt.data.length());
+  } else if (platform::is_ipu_place(place)) {
+#ifdef PADDLE_WITH_IPU
+    std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
+                pt.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with WITH_IPU, should not reach here."));
+#endif
   } else if (platform::is_gpu_place(place)) {
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
                       platform::errors::InvalidArgument(
@@ -294,6 +303,14 @@ bool AnalysisPredictor::CreateExecutor() {
                                         "engine), but Paddle was not compiled "
                                         "with LITE_WITH_NNADAPTER."));
     }
+  } else if (config_.use_ipu()) {
+#ifdef PADDLE_WITH_IPU
+    place_ = paddle::platform::IPUPlace();
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use IPU forward propagation, but Paddle was not compiled "
+        "with WITH_IPU."));
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -643,6 +660,13 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
+  argument_.SetUseIpu(config_.use_ipu_);
+  argument_.SetIpuDeviceNum(config_.ipu_device_num());
+  argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
+  argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
+  argument_.SetIpuBatchSize(config_.ipu_batch_size_);
+  argument_.SetIpuNeedAvgShard(config_.ipu_need_avg_shard_);
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
@@ -916,6 +940,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_ipu_place(place_)) {
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
+    // IpuBackend.
+    res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
       // Currently, Paddle-Lite's XPU user interface only supports the transfer
@@ -950,6 +978,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
+    res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_ipu_place(place_)) {
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
+    // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
@@ -1011,6 +1043,20 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
   return true;
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
+  if (stream != nullptr) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+    dev_ctx->SetThreadLocalStream(stream);
+  }
+  return ZeroCopyRun();
+}
+#endif
 
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
@@ -1536,4 +1582,25 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   return preds_[idx - 1].get();
 }
 }  // namespace services
+
+namespace experimental {
+
+// Note: Can only be used under thread_local semantics.
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+}  // namespace experimental
 }  // namespace paddle_infer

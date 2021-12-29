@@ -18,29 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-template <typename Tx, typename Ty = Tx>
-struct SquareTransformer {
-  HOSTDEVICE explicit inline SquareTransformer(int n) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x) * static_cast<Ty>(x);
-  }
-
-  HOSTDEVICE inline Ty operator()(const Tx* x) const {
-    return static_cast<Ty>(x[0]) * static_cast<Ty>(x[0]);
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct SquareSum {
-  using Transformer = SquareTransformer<Tx, Ty>;
-
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
-  }
-};
 
 template <>
 class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
@@ -97,8 +74,10 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
     }
     Tensor tmp = context.AllocateTmpTensor<float, platform::CUDADeviceContext>(
         {1}, dev_ctx);
-    TensorReduceFunctorImpl<platform::float16, float, SquareSum>(
-        *input, &tmp, reduce_dims, dev_ctx.stream());
+    TensorReduceFunctorImpl<platform::float16, float, kps::AddFunctor,
+                            kps::SquareFunctor<platform::float16, float>>(
+        *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
+        reduce_dims, dev_ctx.stream());
     auto tmp_eigen = EigenVector<float>::Flatten(tmp);
     auto x_norm = tmp_eigen.sqrt();
 

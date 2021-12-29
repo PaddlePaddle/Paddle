@@ -16,6 +16,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
+#endif
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/ipu/ipu_backend.h"
 #endif
@@ -57,6 +61,23 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
         "Paddle can't use XPU device since it's not compiled with XPU,"
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
+  } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+    auto* default_dev_ctx = static_cast<platform::MLUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto& desired_dev_ctx =
+        static_cast<const platform::MLUDeviceContext&>(dev_ctx);
+    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+      return Alloc(place, size);
+    } else {
+      return allocation::MLUDeviceContextAllocatorPool::Instance().Alloc(
+          desired_dev_ctx, size);
+    }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use MLU device since it's not compiled with MLU,"
+        "Please recompile or reinstall Paddle with MLU support."));
+#endif
   } else {
     return Alloc(place, size);
   }
@@ -85,6 +106,8 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::CUDA;
   } else if (platform::is_xpu_place(place)) {
     return platform::DeviceType::XPU;
+  } else if (platform::is_mlu_place(place)) {
+    return platform::DeviceType::MLU;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported place %s to convert into platform::DeviceType.", place));
@@ -99,7 +122,8 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU, WITH_XPU, WITH_IPU or WITH_ASCEND_CL option or check "
+        "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
+        "or check "
         "that your train process set the correct device id if you use "
         "Executor.",
         place));
@@ -162,6 +186,14 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
                                           "re-compile with WITH_XPU option."));
+#endif
+    } else if (platform::is_mlu_place(p)) {
+#ifdef PADDLE_WITH_MLU
+      EmplaceDeviceContext<MLUDeviceContext, MLUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("MLUPlace is not supported. Please "
+                                          "re-compile with WITH_MLU option."));
 #endif
     } else if (platform::is_ipu_place(p)) {
 #ifdef PADDLE_WITH_IPU
@@ -454,6 +486,26 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
 #ifndef PADDLE_WITH_HIP
   InitCuSolverContext();
 #endif
+}
+
+void CUDAContext::SetStream(gpuStream_t stream) {
+  if (stream_->raw_stream() != stream) {
+    CUDADeviceGuard guard(place_.device);
+    DestoryCuDNNContext();
+    DestoryCuBlasContext();
+#ifndef PADDLE_WITH_HIP
+    DestoryCuSolverContext();
+#endif
+
+    stream_->SetStream(stream);
+
+    InitEigenContext();
+    InitCuBlasContext();
+    InitCuDNNContext();
+#ifndef PADDLE_WITH_HIP
+    InitCuSolverContext();
+#endif
+  }
 }
 
 CUDAContext::~CUDAContext() {
@@ -817,6 +869,15 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   return num_entries;
 }
 
+// TODO(jczaja): Replace with C++20 equivalents when applicable
+#ifdef _WIN32
+#define likely(expr) (expr)
+#define unlikely(expr) (expr)
+#else
+#define likely(expr) (__builtin_expect(!!(expr), 1))
+#define unlikely(expr) (__builtin_expect(!!(expr), 0))
+#endif
+
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
@@ -829,7 +890,10 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find ShapeBlob for current mkldnn session id firstly
   auto map_it = pMap->find(sid);
-  if (map_it == pMap->end()) {
+  // (jczaja): After first iteration of model's execution we
+  // should have all elements cached (mostly) so failures are unlikely (less
+  // likely for dynamic shapes)
+  if (unlikely(map_it == pMap->end())) {
     VLOG(2) << "GetBlob: sid=" << sid << ", miss sid\n";
     return nullptr;
   }
@@ -837,7 +901,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current input shape secondly
   auto sBlob_it = sBlob->find(tls().cur_input_shape_str);
-  if (sBlob_it == sBlob->end()) {
+  if (unlikely(sBlob_it == sBlob->end())) {
     VLOG(2) << "GetBlob: sid=" << tls().cur_input_shape_str
             << ", miss input_shape_str\n";
     return nullptr;
@@ -847,7 +911,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   // Find Blob via name
   auto key_it = pBlob->find(name);
 
-  if (key_it == pBlob->end()) {
+  if (unlikely(key_it == pBlob->end())) {
     VLOG(2) << "GetBlob sid=" << sid << ", miss blob=" << name << "\n";
     return nullptr;
   }
