@@ -27,9 +27,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/event_tracing.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.pb.h"
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -126,43 +126,6 @@ struct MemEvenRecorder {
   MemEvenRecorder() {}
   DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
 };
-
-struct RecordEvent {
-  explicit RecordEvent(const std::string& name,
-                       const EventRole role = EventRole::kOrdinary);
-
-  explicit RecordEvent(const char* name,
-                       const EventRole role = EventRole::kOrdinary);
-
-  RecordEvent(const std::string& name, const EventRole role,
-              const std::string& attr);
-
-  ~RecordEvent();
-
-  void OriginalConstruct(const std::string& name, const EventRole role,
-                         const std::string& attr);
-
-  bool is_enabled_{false};
-  bool is_pushed_{false};
-  // Event name
-  std::string* name_{nullptr};
-  const char* shallow_copy_name_{nullptr};
-  uint64_t start_ns_;
-  // Need to distinguish name by op type, block_id, program_id and perhaps
-  // different kernel invocations within an op.
-  // std::string full_name_;
-  EventRole role_{EventRole::kOrdinary};
-  std::string* attr_{nullptr};
-};
-
-/*class RecordRPCEvent {
- public:
-  explicit RecordRPCEvent(const std::string& name);
-  ~RecordRPCEvent() {}
-
- private:
-  std::unique_ptr<RecordEvent> event_;
-};*/
 
 struct RecordBlock {
   explicit RecordBlock(int block_id);
