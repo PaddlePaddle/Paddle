@@ -208,7 +208,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
     int block_offset,
     Functor func) {
   InT args[Arity][VecSize];
-  OutType<OutT, NumOuts> result[VecSize];
+  ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
@@ -224,7 +224,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT,
-                             OutType<OutT, NumOuts>,
+                             ConditionalT<OutT, NumOuts>,
                              VecSize,
                              Functor,
                              Arity,
@@ -458,17 +458,16 @@ void LaunchBroadcastElementwiseCudaKernel(
   PADDLE_ENFORCE_LE(kArity,
                     3,
                     paddle::platform::errors::InvalidArgument(
-                        "Currently only broadcast of binary is supported and "
-                        "verified, but received %d.",
+                        "Currently only broadcast of ternary is supported "
+                        "and verified, but received %d.",
                         kArity));
-  PADDLE_ENFORCE_EQ(
-      outs->size(),
-      NumOuts,
-      paddle::platform::errors::InvalidArgument(
-          "Number of outputs shall equal to number of functions, "
-          "but number of outputs is %d, number of functions is %d.",
-          outs->size(),
-          NumOuts));
+  PADDLE_ENFORCE_EQ(outs->size(),
+                    NumOuts,
+                    paddle::platform::errors::InvalidArgument(
+                        "Number of outputs shall equal to number of functions, "
+                        "but number of outputs is %d, of functions is %d.",
+                        outs->size(),
+                        NumOuts));
   int in_vec_size = 4;
   int out_vec_size = 4;
   if (NumOuts > 1) {

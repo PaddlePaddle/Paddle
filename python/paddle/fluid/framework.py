@@ -81,10 +81,13 @@ core._disable_eager_mode()
 
 
 @signature_safe_contextmanager
-def _test_eager_guard():
+def _test_eager_guard(tracer=None):
     core._enable_eager_mode()
     _C_ops.switch_to_eager_ops()
-    core._switch_tracer(_dygraph_tracer_)
+    if tracer is None:
+        core._set_eager_tracer(_dygraph_tracer_)
+    else:
+        core._set_eager_tracer(tracer)
     try:
         yield
     finally:
