@@ -88,6 +88,38 @@ void EmptyEagerTensorInitializer(
   }
 }
 
+void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
+                                        const framework::Tensor& src,
+                                        const paddle::platform::Place& place,
+                                        const std::string& name) {
+  self->eager_tensor.set_name(name);
+  if (place == src.place()) {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    self->eager_tensor.set_impl(dense_tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(
+                src.place()),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    auto temp = egr::EagerTensor(dense_tensor);
+    self->eager_tensor.set_impl(
+        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
+  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
+      ->SetPersistable(false);
+}
+
 void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
                                    const py::object& array,
                                    bool zero_copy = false) {
@@ -155,69 +187,6 @@ void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
   }
 }
 
-// initialize EagerTensor by EagerTensor or framework::Tensor (mix args and
-// kwargs) automatically
-void AutoInitEagerTensorByTensor(
-    EagerTensorObject* py_tensor_ptr,
-    std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
-    bool flag_kwargs, Py_ssize_t args_num, bool init_by_egr_tensor = true) {
-  // key_word lists: [value, place, name]
-  std::unordered_map<std::string, Py_ssize_t> kw_order_map{
-      {"value", 1}, {"place", 2}, {"name", 3}};
-
-  paddle::platform::Place place =
-      egr::Controller::Instance().GetExpectedPlace();
-  std::string act_name = "";
-
-  if (kw_order_map["place"] <= args_num) {
-    place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
-  } else {
-    if (flag_kwargs && kws_map["place"] != NULL) {
-      place = CastPyArg2Place(kws_map["place"], 0);
-    }
-  }
-
-  if (kw_order_map["name"] <= args_num) {
-    act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 2), 2);
-  } else {
-    if (flag_kwargs) {
-      if (kws_map["name"] == NULL) {
-        act_name =
-            egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-      } else {
-        act_name = CastPyArg2AttrString(kws_map["name"], 0);
-      }
-    } else {
-      act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-    }
-  }
-
-  if (init_by_egr_tensor) {
-    egr::EagerTensor src_tensor;
-    if (kw_order_map["value"] <= args_num) {
-      src_tensor = CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
-    } else {
-      if (flag_kwargs && kws_map["value"] != NULL) {
-        src_tensor = CastPyArg2EagerTensor(kws_map["value"], 0);
-      }
-    }
-    InitEagerTensorWithEagerTensor(py_tensor_ptr, src_tensor, place, act_name);
-  } else {
-    // init by framework tensor
-    framework::Tensor src_tensor;
-    if (kw_order_map["value"] <= args_num) {
-      src_tensor = CastPyArg2FrameworkTensor(PyTuple_GET_ITEM(args, 0), 0);
-    } else {
-      if (flag_kwargs && kws_map["value"] != NULL) {
-        src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
-      }
-    }
-    InitEagerTensorWithFrameworkTensor(py_tensor_ptr, src_tensor, place,
-                                       act_name);
-  }
-}
-
 // initialize EagerTensor by PyArray (mix args and kwargs) automatically
 void AutoInitEagerTensorByPyArray(
     EagerTensorObject* py_tensor_ptr,
@@ -269,7 +238,13 @@ void AutoInitEagerTensorByPyArray(
   }
 
   if (kw_order_map["name"] <= args_num) {
-    act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
+    PyObject* name_obj = PyTuple_GET_ITEM(args, 4);
+    if (name_obj == Py_None) {
+      act_name =
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    } else {
+      act_name = CastPyArg2AttrString(name_obj, 4);
+    }
   } else {
     if (flag_kwargs) {
       if (kws_map["name"] == NULL) {
@@ -299,36 +274,73 @@ void AutoInitEagerTensorByPyArray(
   InitEagerTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
 }
 
-void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
-                                        const framework::Tensor& src,
-                                        const paddle::platform::Place& place,
-                                        const std::string& name) {
-  self->eager_tensor.set_name(name);
-  if (place == src.place()) {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    self->eager_tensor.set_impl(dense_tensor);
-    VLOG(4) << "Same place, do ShareDataWith";
+// initialize EagerTensor by EagerTensor or framework::Tensor (mix args and
+// kwargs) automatically
+void AutoInitEagerTensorByTensor(
+    EagerTensorObject* py_tensor_ptr,
+    std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
+    bool flag_kwargs, Py_ssize_t args_num, bool init_by_egr_tensor = true) {
+  // key_word lists: [value, place, name]
+  std::unordered_map<std::string, Py_ssize_t> kw_order_map{
+      {"value", 1}, {"place", 2}, {"name", 3}};
+
+  paddle::platform::Place place =
+      egr::Controller::Instance().GetExpectedPlace();
+  std::string act_name = "";
+
+  if (kw_order_map["place"] <= args_num) {
+    place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
   } else {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(
-                src.place()),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    auto temp = egr::EagerTensor(dense_tensor);
-    self->eager_tensor.set_impl(
-        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
-    VLOG(4) << "Different place, do TensorCopy";
+    if (flag_kwargs && kws_map["place"] != NULL) {
+      place = CastPyArg2Place(kws_map["place"], 0);
+    }
   }
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
-  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
-      ->SetPersistable(false);
+
+  if (kw_order_map["name"] <= args_num) {
+    PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
+    if (name_obj == Py_None) {
+      act_name =
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    } else {
+      act_name = CastPyArg2AttrString(name_obj, 2);
+    }
+  } else {
+    if (flag_kwargs) {
+      if (kws_map["name"] == NULL) {
+        act_name =
+            egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+      } else {
+        act_name = CastPyArg2AttrString(kws_map["name"], 0);
+      }
+    } else {
+      act_name =
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    }
+  }
+
+  if (init_by_egr_tensor) {
+    egr::EagerTensor src_tensor;
+    if (kw_order_map["value"] <= args_num) {
+      src_tensor = CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+    } else {
+      if (flag_kwargs && kws_map["value"] != NULL) {
+        src_tensor = CastPyArg2EagerTensor(kws_map["value"], 0);
+      }
+    }
+    InitEagerTensorWithEagerTensor(py_tensor_ptr, src_tensor, place, act_name);
+  } else {
+    // init by framework tensor
+    framework::Tensor src_tensor;
+    if (kw_order_map["value"] <= args_num) {
+      src_tensor = CastPyArg2FrameworkTensor(PyTuple_GET_ITEM(args, 0), 0);
+    } else {
+      if (flag_kwargs && kws_map["value"] != NULL) {
+        src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
+      }
+    }
+    InitEagerTensorWithFrameworkTensor(py_tensor_ptr, src_tensor, place,
+                                       act_name);
+  }
 }
 
 /** We should have init function with signature:

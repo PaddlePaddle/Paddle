@@ -532,12 +532,65 @@ class EagerTensorPropertiesTestCase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(egr_tensor19.numpy(), egr_tensor4.numpy()))
 
+        # init eager tensor by framework tensor
+        x = np.random.rand(3, 3).astype('float32')
+        t = paddle.fluid.Tensor()
+        t.set(x, paddle.fluid.CPUPlace())
+        egr_tensor20 = core.eager.EagerTensor(value=t)
+        self.assertEqual(egr_tensor20.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor20.name)
+        self.assertEqual(egr_tensor20.shape, [3, 3])
+        self.assertEqual(egr_tensor20.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor20.stop_gradient, True)
+        self.assertTrue(
+            egr_tensor20.place._equals(
+                paddle.fluid.framework._current_expected_place()))
+        self.assertTrue(np.array_equal(egr_tensor20.numpy(), x))
+
+        egr_tensor21 = core.eager.EagerTensor(value=t, place=place)
+        self.assertEqual(egr_tensor21.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor21.name)
+        self.assertEqual(egr_tensor21.shape, [3, 3])
+        self.assertEqual(egr_tensor21.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor21.stop_gradient, True)
+        self.assertTrue(egr_tensor21.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor21.numpy(), x))
+
+        egr_tensor22 = core.eager.EagerTensor(t, place=place)
+        self.assertEqual(egr_tensor22.persistable, False)
+        self.assertTrue("generated_tensor" in egr_tensor22.name)
+        self.assertEqual(egr_tensor22.shape, [3, 3])
+        self.assertEqual(egr_tensor22.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor22.stop_gradient, True)
+        self.assertTrue(egr_tensor22.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor22.numpy(), x))
+
+        egr_tensor23 = core.eager.EagerTensor(
+            t, place, name="from_framework_tensor")
+        self.assertEqual(egr_tensor23.persistable, False)
+        self.assertTrue("from_framework_tensor" in egr_tensor23.name)
+        self.assertEqual(egr_tensor23.shape, [3, 3])
+        self.assertEqual(egr_tensor23.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor23.stop_gradient, True)
+        self.assertTrue(egr_tensor23.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor23.numpy(), x))
+
+        egr_tensor24 = core.eager.EagerTensor(
+            value=t, place=place, name="from_framework_tensor")
+        self.assertEqual(egr_tensor24.persistable, False)
+        self.assertTrue("from_framework_tensor" in egr_tensor24.name)
+        self.assertEqual(egr_tensor24.shape, [3, 3])
+        self.assertEqual(egr_tensor24.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(egr_tensor24.stop_gradient, True)
+        self.assertTrue(egr_tensor24.place._equals(place))
+        self.assertTrue(np.array_equal(egr_tensor24.numpy(), x))
+
     def test_constructor_with_kwargs(self):
         print("Test_constructor_with_kwargs")
         paddle.set_device("cpu")
         place_list = [core.CPUPlace()]
-        # if core.is_compiled_with_cuda():
-        #     place_list.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda():
+            place_list.append(core.CUDAPlace(0))
         with _test_eager_guard():
             for p in place_list:
                 self.constructor_with_kwargs(p)
