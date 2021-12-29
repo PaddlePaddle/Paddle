@@ -87,7 +87,7 @@ class HBMMemoryPool : public managed {
       out << "show: " << x->show << " clk: " << x->clk << " slot: " << x->slot
           << " lr: " << x->lr << " mf_dim: " << x->mf_size
           << " mf_size: " << x->mf_size << " mf:";
-      for (int i = 0; i < x->mf_dim + 1; ++i) {
+      for (int i = 0; i < x->mf_size + 1; ++i) {
         out << " " << x->mf[i];
       }
       out << "\n";
