@@ -508,7 +508,6 @@ class TestElementwiseAddOpInt64(XPUOpTest):
         self.init_dtype()
         self.init_input_output()
         self.init_axis()
-        self.init_max_relative_error()
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
@@ -534,9 +533,6 @@ class TestElementwiseAddOpInt64(XPUOpTest):
 
     def init_axis(self):
         self.axis = -1
-
-    def init_max_relative_error(self):
-        self.max_relative_error = 0.006
 
 
 class TestElementwiseAddOp_scalarINT64(TestElementwiseAddOpInt64):
