@@ -19,9 +19,10 @@ import numpy as np
 from numpy.matrixlib import defmatrix
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, OpTestTool
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestMulOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
