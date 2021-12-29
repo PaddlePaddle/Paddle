@@ -219,14 +219,14 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #ifdef PADDLE_WITH_XPU_KP
   bool use_xpu_kp_kernel_rt =
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_kp_support_op(type_, expected_kernel_key);
+      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
   bool use_xpu_kp_kernel_debug =
-      paddle::platform::is_in_xpu_kpwhite_list(type_);
+      paddle::platform::is_in_xpu_kpwhite_list(op.Type());
   if (is_xpu_place(expected_kernel_key.place_) &&
       (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
     expected_kernel_key.library_type_ = LibraryType::kKP;
     kernel_iter = kernels.find(expected_kernel_key);
-    VLOG(3) << "using XPU KP kernel: " << type_
+    VLOG(3) << "using XPU KP kernel: " << op.Type()
             << ", using_kernel_key:" << expected_kernel_key;
   }
 #endif
