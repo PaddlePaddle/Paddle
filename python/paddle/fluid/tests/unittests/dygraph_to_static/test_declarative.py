@@ -431,7 +431,7 @@ class SetBuffersNet2(paddle.nn.Layer):
         return self.b
 
 
-class TestCallNonForwardFunc(unittest.TestCase):
+class TestSetBuffers(unittest.TestCase):
     def test_set_buffers1(self):
         paddle.disable_static()
         net = SetBuffersNet1()
