@@ -967,8 +967,8 @@ def einsum(equation, *operands):
     return einsum_internal(equation, operands)
 
 class Einsum(Layer):
-    r"""A wrapper class of `paddle.einsum` that facilitates the function to be
-    used in a training scenario.
+    r"""A wrapper class of `paddle.einsum` that facilitates its usage in a
+    training scenario.
 
     User needs to understand the difference between this wrapper and 
     `paddle.einsum` to decide which one to use in different occasions.
@@ -1027,3 +1027,4 @@ if __name__ == '__main__':
     ein = Einsum()
     ein('ij->', x)
     ein('ij,ij', x, x)
+    
