@@ -47,14 +47,7 @@ extern void *cusparse_dso_handle;
 #define CUSPARSE_ROUTINE_EACH(__macro) \
   __macro(cusparseCreate);             \
   __macro(cusparseSetStream);          \
-  __macro(cusparseCreateCsr);          \
-  __macro(cusparseCreateCoo);          \
-  __macro(cusparseCreateDnMat);        \
   __macro(cusparseCreateMatDescr);     \
-  __macro(cusparseSpMM_bufferSize);    \
-  __macro(cusparseSpMM);               \
-  __macro(cusparseDestroySpMat);       \
-  __macro(cusparseDestroyDnMat);       \
   __macro(cusparseDestroy);            \
   __macro(cusparseSnnz);               \
   __macro(cusparseDnnz);               \
@@ -66,6 +59,13 @@ CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
 // APIs available after CUDA 11.2
 #if CUDA_VERSION >= 11020
 #define CUSPARSE_ROUTINE_EACH_11020(__macro) \
+  __macro(cusparseCreateCsr);                \
+  __macro(cusparseCreateCoo);                \
+  __macro(cusparseCreateDnMat);              \
+  __macro(cusparseSpMM_bufferSize);          \
+  __macro(cusparseSpMM);                     \
+  __macro(cusparseDestroySpMat);             \
+  __macro(cusparseDestroyDnMat);             \
   __macro(cusparseCooSetPointers);           \
   __macro(cusparseCsrSetPointers);           \
   __macro(cusparseDenseToSparse_bufferSize); \
