@@ -150,7 +150,8 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(elementwise_add, ops::ElementwiseAddXPUKernel<float>,
-                       ops::ElementwiseAddXPUKernel<paddle::platform::float16>);
+                       ops::ElementwiseAddXPUKernel<paddle::platform::float16>,
+                       ops::ElementwiseAddXPUKernel<int64_t>);
 REGISTER_OP_XPU_KERNEL(
     elementwise_add_grad, ops::ElementwiseAddGradXPUKernel<float>,
     ops::ElementwiseAddGradXPUKernel<paddle::platform::float16>);

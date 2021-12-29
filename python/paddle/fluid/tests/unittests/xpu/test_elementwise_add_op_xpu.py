@@ -502,5 +502,192 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_addFP16(
         self.axis = 2
 
 
+class TestElementwiseAddOpInt64(XPUOpTest):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_axis()
+        self.init_max_relative_error()
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        pass
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def init_axis(self):
+        self.axis = -1
+
+    def init_max_relative_error(self):
+        self.max_relative_error = 0.006
+
+
+class TestElementwiseAddOp_scalarINT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOp_scalar2INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOp_VectorINT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_broadcast_0INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+class TestElementwiseAddOp_broadcast_1INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestElementwiseAddOp_broadcast_2INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1, 100)
+
+
+class TestElementwiseAddOp_broadcast_3INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestElementwiseAddOp_broadcast_4INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+class TestElementwiseAddOp_broadcast_5INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOp_broadcast_6INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOp_broadcast_7INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
+        self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOp_rowwise_add_0INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestElementwiseAddOp_rowwise_add_1INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 1).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestElementwiseAddOp_channelwise_addINT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_commonuse_add1INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 100).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_commonuse_add2INT64(TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_xsize_lessthan_ysize_addINT64(
+        TestElementwiseAddOpInt64):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 12).astype(self.dtype)
+        self.y = np.random.rand(2, 3, 10, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 2
+
+
 if __name__ == '__main__':
     unittest.main()
