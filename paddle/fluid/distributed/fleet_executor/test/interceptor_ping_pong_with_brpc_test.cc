@@ -118,6 +118,7 @@ TEST(InterceptorTest, PingPong) {
     carrier->SetMsgBus(msg_bus);
     Interceptor* a = carrier->SetInterceptor(
         0, InterceptorFactory::Create("PingPong", 0, nullptr));
+    msg_bus->Barrier();
     InterceptorMessage msg;
     a->Send(1, msg);
     carrier->Wait();
@@ -129,6 +130,7 @@ TEST(InterceptorTest, PingPong) {
     msg_bus->Init(1, {{0, ip0}, {1, ip1}}, ip1);
     carrier->SetInterceptor(1,
                             InterceptorFactory::Create("PingPong", 1, nullptr));
+    msg_bus->Barrier();
     carrier->Wait();
   }
 }

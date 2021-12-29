@@ -68,7 +68,6 @@ void FleetExecutor::Init(
     interceptor_ids.insert(interceptor_id);
   }
   carrier_id_to_interceptor_ids.emplace(0, interceptor_ids);
-  runtime_graph_->SetCarrierIdToInterceptorIds(carrier_id_to_interceptor_ids);
   runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
   runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
   runtime_graph_->SetCarrierIdToInterceptorIds(carrier_id_to_interceptor_ids);
