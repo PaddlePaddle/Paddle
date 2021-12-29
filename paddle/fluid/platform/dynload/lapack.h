@@ -67,14 +67,6 @@ extern "C" void cgeev_(char *jobvl, char *jobvr, int *n, std::complex<float> *a,
                        int *info);
 
 // gels
-extern "C" void zgels_(char *trans, int *m, int *n, int *nrhs,
-                       std::complex<double> *a, int *lda,
-                       std::complex<double> *b, int *ldb,
-                       std::complex<double> *work, int *lwork, int *info);
-extern "C" void cgels_(char *trans, int *m, int *n, int *nrhs,
-                       std::complex<float> *a, int *lda, std::complex<float> *b,
-                       int *ldb, std::complex<float> *work, int *lwork,
-                       int *info);
 extern "C" void dgels_(char *trans, int *m, int *n, int *nrhs, double *a,
                        int *lda, double *b, int *ldb, double *work, int *lwork,
                        int *info);
@@ -83,14 +75,6 @@ extern "C" void sgels_(char *trans, int *m, int *n, int *nrhs, float *a,
                        int *info);
 
 // gelsd
-extern "C" void zgelsd_(int *m, int *n, int *nrhs, std::complex<double> *a,
-                        int *lda, std::complex<double> *b, int *ldb, double *s,
-                        double *rcond, int *rank, std::complex<double> *work,
-                        int *lwork, double *rwork, int *iwork, int *info);
-extern "C" void cgelsd_(int *m, int *n, int *nrhs, std::complex<float> *a,
-                        int *lda, std::complex<float> *b, int *ldb, float *s,
-                        float *rcond, int *rank, std::complex<float> *work,
-                        int *lwork, float *rwork, int *iwork, int *info);
 extern "C" void dgelsd_(int *m, int *n, int *nrhs, double *a, int *lda,
                         double *b, int *ldb, double *s, double *rcond,
                         int *rank, double *work, int *lwork, int *iwork,
@@ -100,14 +84,6 @@ extern "C" void sgelsd_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
                         float *work, int *lwork, int *iwork, int *info);
 
 // gelsy
-extern "C" void zgelsy_(int *m, int *n, int *nrhs, std::complex<double> *a,
-                        int *lda, std::complex<double> *b, int *ldb, int *jpvt,
-                        double *rcond, int *rank, std::complex<double> *work,
-                        int *lwork, double *rwork, int *info);
-extern "C" void cgelsy_(int *m, int *n, int *nrhs, std::complex<float> *a,
-                        int *lda, std::complex<float> *b, int *ldb, int *jpvt,
-                        float *rcond, int *rank, std::complex<float> *work,
-                        int *lwork, float *rwork, int *info);
 extern "C" void dgelsy_(int *m, int *n, int *nrhs, double *a, int *lda,
                         double *b, int *ldb, int *jpvt, double *rcond,
                         int *rank, double *work, int *lwork, int *info);
@@ -116,14 +92,6 @@ extern "C" void sgelsy_(int *m, int *n, int *nrhs, float *a, int *lda, float *b,
                         float *work, int *lwork, int *info);
 
 // gelss
-extern "C" void zgelss_(int *m, int *n, int *nrhs, std::complex<double> *a,
-                        int *lda, std::complex<double> *b, int *ldb, double *s,
-                        double *rcond, int *rank, std::complex<double> *work,
-                        int *lwork, double *rwork, int *info);
-extern "C" void cgelss_(int *m, int *n, int *nrhs, std::complex<float> *a,
-                        int *lda, std::complex<float> *b, int *ldb, float *s,
-                        float *rcond, int *rank, std::complex<float> *work,
-                        int *lwork, float *rwork, int *info);
 extern "C" void dgelss_(int *m, int *n, int *nrhs, double *a, int *lda,
                         double *b, int *ldb, double *s, double *rcond,
                         int *rank, double *work, int *lwork, int *info);
@@ -180,20 +148,12 @@ extern void *lapack_dso_handle;
   __macro(sgeev_);                   \
   __macro(zgeev_);                   \
   __macro(cgeev_);                   \
-  __macro(zgels_);                   \
-  __macro(cgels_);                   \
   __macro(dgels_);                   \
   __macro(sgels_);                   \
-  __macro(zgelsd_);                  \
-  __macro(cgelsd_);                  \
   __macro(dgelsd_);                  \
   __macro(sgelsd_);                  \
-  __macro(zgelsy_);                  \
-  __macro(cgelsy_);                  \
   __macro(dgelsy_);                  \
   __macro(sgelsy_);                  \
-  __macro(zgelss_);                  \
-  __macro(cgelss_);                  \
   __macro(dgelss_);                  \
   __macro(sgelss_);                  \
   __macro(zpotrs_);                  \

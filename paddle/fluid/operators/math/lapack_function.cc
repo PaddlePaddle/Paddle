@@ -126,29 +126,6 @@ void lapackEig<platform::complex<float>, float>(
 }
 
 template <>
-void lapackGels<platform::complex<double>>(
-    char trans, int m, int n, int nrhs, platform::complex<double> *a, int lda,
-    platform::complex<double> *b, int ldb, platform::complex<double> *work,
-    int lwork, int *info) {
-  platform::dynload::zgels_(
-      &trans, &m, &n, &nrhs, reinterpret_cast<std::complex<double> *>(a), &lda,
-      reinterpret_cast<std::complex<double> *>(b), &ldb,
-      reinterpret_cast<std::complex<double> *>(work), &lwork, info);
-}
-
-template <>
-void lapackGels<platform::complex<float>>(char trans, int m, int n, int nrhs,
-                                          platform::complex<float> *a, int lda,
-                                          platform::complex<float> *b, int ldb,
-                                          platform::complex<float> *work,
-                                          int lwork, int *info) {
-  platform::dynload::cgels_(
-      &trans, &m, &n, &nrhs, reinterpret_cast<std::complex<float> *>(a), &lda,
-      reinterpret_cast<std::complex<float> *>(b), &ldb,
-      reinterpret_cast<std::complex<float> *>(work), &lwork, info);
-}
-
-template <>
 void lapackGels<double>(char trans, int m, int n, int nrhs, double *a, int lda,
                         double *b, int ldb, double *work, int lwork,
                         int *info) {
@@ -161,32 +138,6 @@ void lapackGels<float>(char trans, int m, int n, int nrhs, float *a, int lda,
                        float *b, int ldb, float *work, int lwork, int *info) {
   platform::dynload::sgels_(&trans, &m, &n, &nrhs, a, &lda, b, &ldb, work,
                             &lwork, info);
-}
-
-template <>
-void lapackGelsd<platform::complex<double>, double>(
-    int m, int n, int nrhs, platform::complex<double> *a, int lda,
-    platform::complex<double> *b, int ldb, double *s, double rcond, int *rank,
-    platform::complex<double> *work, int lwork, double *rwork, int *iwork,
-    int *info) {
-  platform::dynload::zgelsd_(
-      &m, &n, &nrhs, reinterpret_cast<std::complex<double> *>(a), &lda,
-      reinterpret_cast<std::complex<double> *>(b), &ldb, s, &rcond, rank,
-      reinterpret_cast<std::complex<double> *>(work), &lwork, rwork, iwork,
-      info);
-}
-
-template <>
-void lapackGelsd<platform::complex<float>, float>(
-    int m, int n, int nrhs, platform::complex<float> *a, int lda,
-    platform::complex<float> *b, int ldb, float *s, float rcond, int *rank,
-    platform::complex<float> *work, int lwork, float *rwork, int *iwork,
-    int *info) {
-  platform::dynload::cgelsd_(
-      &m, &n, &nrhs, reinterpret_cast<std::complex<float> *>(a), &lda,
-      reinterpret_cast<std::complex<float> *>(b), &ldb, s, &rcond, rank,
-      reinterpret_cast<std::complex<float> *>(work), &lwork, rwork, iwork,
-      info);
 }
 
 template <>
@@ -207,28 +158,6 @@ void lapackGelsd<float>(int m, int n, int nrhs, float *a, int lda, float *b,
 }
 
 template <>
-void lapackGelsy<platform::complex<double>, double>(
-    int m, int n, int nrhs, platform::complex<double> *a, int lda,
-    platform::complex<double> *b, int ldb, int *jpvt, double rcond, int *rank,
-    platform::complex<double> *work, int lwork, double *rwork, int *info) {
-  platform::dynload::zgelsy_(
-      &m, &n, &nrhs, reinterpret_cast<std::complex<double> *>(a), &lda,
-      reinterpret_cast<std::complex<double> *>(b), &ldb, jpvt, &rcond, rank,
-      reinterpret_cast<std::complex<double> *>(work), &lwork, rwork, info);
-}
-
-template <>
-void lapackGelsy<platform::complex<float>, float>(
-    int m, int n, int nrhs, platform::complex<float> *a, int lda,
-    platform::complex<float> *b, int ldb, int *jpvt, float rcond, int *rank,
-    platform::complex<float> *work, int lwork, float *rwork, int *info) {
-  platform::dynload::cgelsy_(
-      &m, &n, &nrhs, reinterpret_cast<std::complex<float> *>(a), &lda,
-      reinterpret_cast<std::complex<float> *>(b), &ldb, jpvt, &rcond, rank,
-      reinterpret_cast<std::complex<float> *>(work), &lwork, rwork, info);
-}
-
-template <>
 void lapackGelsy<double>(int m, int n, int nrhs, double *a, int lda, double *b,
                          int ldb, int *jpvt, double rcond, int *rank,
                          double *work, int lwork, double *rwork, int *info) {
@@ -242,28 +171,6 @@ void lapackGelsy<float>(int m, int n, int nrhs, float *a, int lda, float *b,
                         int lwork, float *rwork, int *info) {
   platform::dynload::sgelsy_(&m, &n, &nrhs, a, &lda, b, &ldb, jpvt, &rcond,
                              rank, work, &lwork, info);
-}
-
-template <>
-void lapackGelss<platform::complex<double>, double>(
-    int m, int n, int nrhs, platform::complex<double> *a, int lda,
-    platform::complex<double> *b, int ldb, double *s, double rcond, int *rank,
-    platform::complex<double> *work, int lwork, double *rwork, int *info) {
-  platform::dynload::zgelss_(
-      &m, &n, &nrhs, reinterpret_cast<std::complex<double> *>(a), &lda,
-      reinterpret_cast<std::complex<double> *>(b), &ldb, s, &rcond, rank,
-      reinterpret_cast<std::complex<double> *>(work), &lwork, rwork, info);
-}
-
-template <>
-void lapackGelss<platform::complex<float>, float>(
-    int m, int n, int nrhs, platform::complex<float> *a, int lda,
-    platform::complex<float> *b, int ldb, float *s, float rcond, int *rank,
-    platform::complex<float> *work, int lwork, float *rwork, int *info) {
-  platform::dynload::cgelss_(
-      &m, &n, &nrhs, reinterpret_cast<std::complex<float> *>(a), &lda,
-      reinterpret_cast<std::complex<float> *>(b), &ldb, s, &rcond, rank,
-      reinterpret_cast<std::complex<float> *>(work), &lwork, rwork, info);
 }
 
 template <>
