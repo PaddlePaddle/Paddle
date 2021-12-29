@@ -40,6 +40,9 @@ class TestSelectedRows(unittest.TestCase):
         # compare height
         self.assertEqual(10, selected_rows.height())
 
+        # compare get_id_to_index
+        id_to_index = selected_rows.get_id_to_index()
+
         # compare tensor
         self.assertAlmostEqual(2.0,
                                selected_rows.get_tensor()._get_float_element(0))
