@@ -544,6 +544,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     case (Py_ssize_t)1:
     case (Py_ssize_t)2:
     case (Py_ssize_t)3: {
+      // 1 to 3 position args, remainting arguments are kwargs
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
       if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
         VLOG(6) << "Calling case3's or case4's initializer.";
@@ -574,37 +575,20 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       return 0;
     }
     case (Py_ssize_t)4: {
-      if (!flag_kwargs) {
-        PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-        if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-          VLOG(6) << "Calling case3's initializer.";
-          AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
-                                       flag_kwargs, args_num);
-          return 0;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "We support construct tensor from numpy value or tensor with "
-              "python args and kwargs by this initializer. "
-              "please check your input first and make sure you are on the "
-              "right way."));
-        }
-      } else {  // four position args, remainting arguments are kwargs
-        PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-        if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-          VLOG(6) << "Calling case3's or case4's initializer";
-          AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
-                                       flag_kwargs, args_num);
-          return 0;
-        } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
-                                                     p_eager_tensor_type))) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "We support construct tensor from numpy value or tensor with "
-              "python args and kwargs by this initializer. "
-              "please check your input first and make sure you are on the "
-              "right way."));
-        }
+      // 4 position args, remainting arguments are kwargs
+      PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
+      if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
+        VLOG(6) << "Calling case3's or case4's initializer.";
+        AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
+                                     args_num);
+        return 0;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "We support construct tensor from numpy value or tensor with "
+            "python args and kwargs by this initializer. "
+            "please check your input first and make sure you are on the "
+            "right way."));
       }
-      return 0;
     }
     case (Py_ssize_t)5: {
       if (!flag_kwargs) {
@@ -634,6 +618,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               dtype, dims, var_type);
           return 0;
         } else if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
+          VLOG(6) << "Calling case3's initializer.";
           AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
                                        flag_kwargs, args_num);
           return 0;
