@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/kernels/cpu/conj_kernel.h"
+#include "paddle/pten/kernels/complex_kernel.h"
 #include "paddle/pten/kernels/cuda/math.h"
 #include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
@@ -26,8 +26,8 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename DeviceContext, typename T>
-void ReduceSumForMatmulGrad(const DeviceContext& ctx,
+template <typename Context, typename T>
+void ReduceSumForMatmulGrad(const Context& ctx,
                             const DenseTensor& input,
                             DenseTensor* output,
                             const std::vector<int64_t>& reduce_dims) {
@@ -36,7 +36,7 @@ void ReduceSumForMatmulGrad(const DeviceContext& ctx,
   TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
       input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
 #else
-  ReduceKernelImpl<DeviceContext, T, T, pten::eigen::SumFunctor>(
+  ReduceKernelImpl<Context, T, T, pten::eigen::SumFunctor>(
       ctx, input, output, reduce_dims, true, false);
 #endif
 }
@@ -44,7 +44,7 @@ void ReduceSumForMatmulGrad(const DeviceContext& ctx,
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
 static DenseTensor FoldInitDims(const DenseTensor& input) {
-  auto output = input;
+  DenseTensor output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
     output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
@@ -55,8 +55,8 @@ static DenseTensor FoldInitDims(const DenseTensor& input) {
 // Reshape a rank-3 tensor from P x M x N to M x (P * N).
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
-template <typename DeviceContext, typename T>
-static DenseTensor FoldHeadAndLastDims(const DeviceContext& context,
+template <typename Context, typename T>
+static DenseTensor FoldHeadAndLastDims(const Context& context,
                                        const DenseTensor& input) {
   auto in_dims = input.dims();
   if (in_dims.size() != 3) {
@@ -65,14 +65,14 @@ static DenseTensor FoldHeadAndLastDims(const DeviceContext& context,
   DenseTensor output = EmptyLike(input);
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
+  math::Transpose<Context, T, 3> trans;
   trans(context, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
   return output;
 }
 
-template <typename DeviceContext, typename T>
-void MatMul(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+void MatMul(const Context& context,
             const DenseTensor& a,
             bool trans_a,
             const DenseTensor& b,
@@ -80,7 +80,7 @@ void MatMul(const DeviceContext& dev_ctx,
             DenseTensor* out,
             bool flag = false) {
   out->mutable_data<T>();
-  auto blas = paddle::operators::math::GetBlas<DeviceContext, T>(dev_ctx);
+  auto blas = paddle::operators::math::GetBlas<Context, T>(context);
   auto mat_dim_a =
       paddle::operators::math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
   auto mat_dim_b =
@@ -162,8 +162,8 @@ static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
 }
 
-template <typename DeviceContext, typename T>
-void CalcInputGrad(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+void CalcInputGrad(const Context& context,
                    const DenseTensor& a,
                    bool trans_a,
                    bool is_fold_init_dims_a,
@@ -176,23 +176,23 @@ void CalcInputGrad(const DeviceContext& dev_ctx,
   bool need_combine =
       (a.dims().size() == 3 || b.dims().size() == 3) && out->dims().size() == 2;
   if (!need_combine) {
-    MatMul<DeviceContext, T>(dev_ctx, a, trans_a, b, trans_b, out, flag);
+    MatMul<Context, T>(context, a, trans_a, b, trans_b, out, flag);
   } else {
-    MatMul<DeviceContext, T>(
-        dev_ctx,
+    MatMul<Context, T>(
+        context,
         is_fold_init_dims_a ? FoldInitDims(a)
-                            : FoldHeadAndLastDims<DeviceContext, T>(dev_ctx, a),
+                            : FoldHeadAndLastDims<Context, T>(context, a),
         trans_a,
         is_fold_init_dims_b ? FoldInitDims(b)
-                            : FoldHeadAndLastDims<DeviceContext, T>(dev_ctx, b),
+                            : FoldHeadAndLastDims<Context, T>(context, b),
         trans_b,
         out,
         flag);
   }
 }
 
-template <typename T, typename DevCtx>
-void MatmulGrad(const DevCtx& dev_ctx,
+template <typename T, typename Context>
+void MatmulGrad(const Context& context,
                 const DenseTensor& x,
                 const DenseTensor& y,
                 const DenseTensor& out_grad,
@@ -200,10 +200,6 @@ void MatmulGrad(const DevCtx& dev_ctx,
                 bool transpose_y,
                 DenseTensor* dx,
                 DenseTensor* dy) {
-  // for complex
-  DenseTensor x_conj = pten::Conj<T>(dev_ctx, x);
-  DenseTensor y_conj = pten::Conj<T>(dev_ctx, y);
-
   // get dims
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -215,10 +211,10 @@ void MatmulGrad(const DevCtx& dev_ctx,
 
   // Case1 : x's or y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
-    if (dx) dx->mutable_data<T>(ctx.GetPlace());
-    if (dy) dy->mutable_data<T>(ctx.GetPlace());
+    if (dx) dx->mutable_data<T>();
+    if (dy) dy->mutable_data<T>();
     if (out_grad.numel() == 1) {
-      DotGradFunction<DeviceContext, T>()(&x, &y, &out_grad, dx, dy, ctx);
+      DotGradFunction<Context, T>()(&x, &y, &out_grad, dx, dy, ctx);
       return;
     }
   }
@@ -233,38 +229,46 @@ void MatmulGrad(const DevCtx& dev_ctx,
         x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2, y_dims.cbegin());
   }
 
+  // for complex
+  DenseTensor x_conj;
+  DenseTensor y_conj;
+
   // Case2: no broadcast or no batch size, it aims to speed and it is same as
   // matmul in old version.
   if (!is_broadcast) {
     ReshapeXYOutIntoMatrixSequence(&x, &y, &out_grad, transpose_x, transpose_y);
-    framework::DDim dx_dims;
+    DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x.dims()) {
         dx->Resize(x.dims());
       }
+
+      y_conj = Conj<T>(context, y);
     }
 
-    framework::DDim dy_dims;
+    DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
       if (dy_dims != y.dims()) {
         dy->Resize(y.dims());
       }
+
+      x_conj = Conj<T>(context, x);
     }
 
     if (transpose_x && transpose_y) {
-      CalcInputGrad(dev_ctx, y_conj, true, true, out_grad, true, false, dx);
-      CalcInputGrad(dev_ctx, out_grad, true, true, x_conj, true, false, dy);
+      CalcInputGrad(context, y_conj, true, true, out_grad, true, false, dx);
+      CalcInputGrad(context, out_grad, true, true, x_conj, true, false, dy);
     } else if (transpose_x) {
-      CalcInputGrad(dev_ctx, y_conj, false, false, out_grad, true, false, dx);
-      CalcInputGrad(dev_ctx, x_conj, false, false, out_grad, false, true, dy);
+      CalcInputGrad(context, y_conj, false, false, out_grad, true, false, dx);
+      CalcInputGrad(context, x_conj, false, false, out_grad, false, true, dy);
     } else if (transpose_y) {
-      CalcInputGrad(dev_ctx, out_grad, false, false, y_conj, false, true, dx);
-      CalcInputGrad(dev_ctx, out_grad, true, true, x_conj, false, true, dy);
+      CalcInputGrad(context, out_grad, false, false, y_conj, false, true, dx);
+      CalcInputGrad(context, out_grad, true, true, x_conj, false, true, dy);
     } else {
-      CalcInputGrad(dev_ctx, out_grad, false, false, y_conj, true, false, dx);
-      CalcInputGrad(dev_ctx, x_conj, true, true, out_grad, false, true, dy);
+      CalcInputGrad(context, out_grad, false, false, y_conj, true, false, dx);
+      CalcInputGrad(context, x_conj, true, true, out_grad, false, true, dy);
     }
 
     if (dx) {
@@ -283,91 +287,95 @@ void MatmulGrad(const DevCtx& dev_ctx,
     // So we should avoid the case in reality.
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
+    x_conj = Conj<T>(context, x);
+    y_conj = Conj<T>(context, y);
+
     DenseTensor dx_help, dy_help;
+
     if (transpose_x) {
       if (transpose_y) {
         // X'Y': dA = Y'G', dB = G'X'
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &y_conj,
-                                           &out_grad,
-                                           y_dims,
-                                           dout_dims,
-                                           &dx_help,
-                                           true,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &y_conj,
+                                     &out_grad,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     true,
+                                     true);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &out_grad,
-                                           &x_conj,
-                                           dout_dims,
-                                           x_dims,
-                                           &dy_help,
-                                           true,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &out_grad,
+                                     &x_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     true);
       } else {
         // X'Y: dX = YG', dY = XG
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &y_conj,
-                                           &out_grad,
-                                           y_dims,
-                                           dout_dims,
-                                           &dx_help,
-                                           false,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &y_conj,
+                                     &out_grad,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &x_conj,
-                                           &out_grad,
-                                           x_dims,
-                                           dout_dims,
-                                           &dy_help,
-                                           false,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &x_conj,
+                                     &out_grad,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     false,
+                                     false);
       }
     } else {
       if (transpose_y) {
         // XY': dX = GY, dY = G'X
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &out_grad,
-                                           &y_conj,
-                                           dout_dims,
-                                           y_dims,
-                                           &dx_help,
-                                           false,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &out_grad,
+                                     &y_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     false);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &out_grad,
-                                           &x_conj,
-                                           dout_dims,
-                                           x_dims,
-                                           &dy_help,
-                                           true,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &out_grad,
+                                     &x_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
       } else {
         // XY: dX = GY', dY = X'G
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &out_grad,
-                                           &y_conj,
-                                           dout_dims,
-                                           y_dims,
-                                           &dx_help,
-                                           false,
-                                           true,
-                                           ctx);
+          MatMulFunction<Context, T>(context,
+                                     &out_grad,
+                                     &y_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     true,
+                                     ctx);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &x_conj,
-                                           &out_grad,
-                                           x_dims,
-                                           dout_dims,
-                                           &dy_help,
-                                           true,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &x_conj,
+                                     &out_grad,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
       }
     }
 
@@ -404,8 +412,8 @@ void MatmulGrad(const DevCtx& dev_ctx,
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &dx_help, dx, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
     }
@@ -413,8 +421,8 @@ void MatmulGrad(const DevCtx& dev_ctx,
       if (dy_reduce_dims.empty()) {
         *dy = std::move(dy_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &dy_help, dy, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
     }
@@ -422,8 +430,8 @@ void MatmulGrad(const DevCtx& dev_ctx,
   }
 }
 
-template <typename T, typename DevCtx>
-void MatmulDoubleGrad(const DevCtx& dev_ctx,
+template <typename T, typename Context>
+void MatmulDoubleGrad(const Context& context,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& dout,
@@ -439,19 +447,27 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
   std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
-  DenseTensor x_conj = pten::Conj<T>(dev_ctx, x);
-  DenseTensor y_conj = pten::Conj<T>(dev_ctx, y);
-  DenseTensor dout_conj = pten::Conj<T>(dev_ctx, dout);
-
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
   int ndim = dout_dims.size();
 
   // Case1 : x's or y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
-    DotDoubleGradFunction<DeviceContext, T>()(
-        dev_ctx, &x, &y, dx, dy, &dout, ddx, ddy, ddout);
+    DotDoubleGradFunction<Context, T>()(
+        context, &x, &y, dx, dy, &dout, ddx, ddy, ddout);
     return;
+  }
+
+  DenseTensor x_conj;
+  DenseTensor y_conj;
+  DenseTensor dout_conj;
+
+  if (dx || dy) {
+    dout_conj = Conj<T>(context, douts);
+  }
+  if (ddout) {
+    x_conj = Conj<T>(context, x);
+    y_conj = Conj<T>(context, y);
   }
 
   bool is_broadcast = true;
@@ -502,10 +518,10 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
         if (transpose_x && transpose_y) {
           // dy = dout' * ddx'
           CalcInputGrad(
-              dev_ctx, dout_conj, true, true, ddx_mat, true, false, dy, false);
+              context, dout_conj, true, true, ddx_mat, true, false, dy, false);
         } else if (transpose_x) {
           // dy = ddx * dout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         ddx_mat,
                         false,
                         false,
@@ -517,16 +533,16 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
         } else if (transpose_y) {
           // dy = dout' * ddx
           CalcInputGrad(
-              dev_ctx, dout_conj, true, true, ddx_mat, false, true, dy, false);
+              context, dout_conj, true, true, ddx_mat, false, true, dy, false);
         } else {
           // dy = ddx' * dout
           CalcInputGrad(
-              dev_ctx, ddx_mat, true, true, dout_conj, false, true, dy, false);
+              context, ddx_mat, true, true, dout_conj, false, true, dy, false);
         }
       }
 
       if (ddout) {
-        CalcInputGrad(dev_ctx,
+        CalcInputGrad(context,
                       ddx_mat,
                       transpose_x,
                       true,
@@ -548,10 +564,10 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
         if (transpose_x && transpose_y) {
           // dx = ddy' * dout'
           CalcInputGrad(
-              dev_ctx, ddy_mat, true, true, dout_conj, true, false, dx, false);
+              context, ddy_mat, true, true, dout_conj, true, false, dx, false);
         } else if (transpose_x) {
           // dx = ddy * dout'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         ddy_mat,
                         false,
                         false,
@@ -562,7 +578,7 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_y) {
           // dx = dout * ddy
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         dout_conj,
                         false,
                         false,
@@ -573,7 +589,7 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
                         false);
         } else {
           // dx = dout * ddy'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         dout_conj,
                         false,
                         false,
@@ -586,7 +602,7 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
       }
 
       if (ddout) {
-        CalcInputGrad(dev_ctx,
+        CalcInputGrad(context,
                       x_conj,
                       transpose_x,
                       true,
@@ -627,82 +643,82 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
     if (transpose_x) {
       if (transpose_y) {
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           ddy,
-                                           &dout_conj,
-                                           y_dims,
-                                           dout_dims,
-                                           &dx_help,
-                                           true,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     ddy,
+                                     &dout_conj,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     true,
+                                     true);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &dout_conj,
-                                           ddx,
-                                           dout_dims,
-                                           x_dims,
-                                           &dy_help,
-                                           true,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &dout_conj,
+                                     ddx,
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     true);
       } else {
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           ddy,
-                                           &dout_conj,
-                                           y_dims,
-                                           dout_dims,
-                                           &dx_help,
-                                           false,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     ddy,
+                                     &dout_conj,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           ddx,
-                                           &dout_conj,
-                                           x_dims,
-                                           dout_dims,
-                                           &dy_help,
-                                           false,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     ddx,
+                                     &dout_conj,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     false,
+                                     false);
       }
     } else {
       if (transpose_y) {
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &dout_conj,
-                                           ddy,
-                                           dout_dims,
-                                           y_dims,
-                                           &dx_help,
-                                           false,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &dout_conj,
+                                     ddy,
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     false);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &dout_conj,
-                                           ddx,
-                                           dout_dims,
-                                           x_dims,
-                                           &dy_help,
-                                           true,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &dout_conj,
+                                     ddx,
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
       } else {
         if (dx)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &dout_conj,
-                                           ddy,
-                                           dout_dims,
-                                           y_dims,
-                                           &dx_help,
-                                           false,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &dout_conj,
+                                     ddy,
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         if (dy)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           ddx,
-                                           &dout_conj,
-                                           x_dims,
-                                           dout_dims,
-                                           &dy_help,
-                                           true,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     ddx,
+                                     &dout_conj,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
       }
     }
 
@@ -739,8 +755,8 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &dx_help, dx, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
     }
@@ -748,37 +764,37 @@ void MatmulDoubleGrad(const DevCtx& dev_ctx,
       if (dy_reduce_dims.empty()) {
         *dy = std::move(dy_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &dy_help, dy, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
     }
 
     if (ddout) {
       // Calculate the gradient of OutputGrad(Out)
-      MatMulFunction<DeviceContext, T>(dev_ctx,
-                                       ddx,
-                                       &y_conj,
-                                       x_dims,
-                                       y_dims,
-                                       ddout,
-                                       transpose_x,
-                                       transpose_y);
-      MatMulFunction<DeviceContext, T>(dev_ctx,
-                                       &x_conj,
-                                       ddy,
-                                       x_dims,
-                                       y_dims,
-                                       ddout,
-                                       transpose_x,
-                                       transpose_y,
-                                       true);
+      MatMulFunction<Context, T>(context,
+                                 ddx,
+                                 &y_conj,
+                                 x_dims,
+                                 y_dims,
+                                 ddout,
+                                 transpose_x,
+                                 transpose_y);
+      MatMulFunction<Context, T>(context,
+                                 &x_conj,
+                                 ddy,
+                                 x_dims,
+                                 y_dims,
+                                 ddout,
+                                 transpose_x,
+                                 transpose_y,
+                                 true);
     }
   }
 }
 
-template <typename T, typename DevCtx>
-void MatmulTripleGrad(const DevCtx& dev_ctx,
+template <typename T, typename Context>
+void MatmulTripleGrad(const Context& context,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& dout,
@@ -799,12 +815,6 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
   std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
-  DenseTensor x_conj = pten::Conj<T>(dev_ctx, x);
-  DenseTensor y_conj = pten::Conj<T>(dev_ctx, y);
-  DenseTensor dout_conj = pten::Conj<T>(dev_ctx, dout);
-  DenseTensor ddx_conj = pten::Conj<T>(dev_ctx, ddx);
-  DenseTensor ddy_conj = pten::Conj<T>(dev_ctx, ddy);
-
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
   int ndim = dout_dims.size();
@@ -812,21 +822,37 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
   // Case1 : x's and y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
     VLOG(3) << "========  MatMulV2TripleGradKernel, Compute ====== Case 1";
-    DotTripleGradFunction<DeviceContext, T>()(dev_ctx,
-                                              &x,
-                                              &y,
-                                              &ddx,
-                                              &ddy,
-                                              d_dx,
-                                              d_dy,
-                                              &dout,
-                                              d_ddout,
-                                              out_d_x,
-                                              out_d_y,
-                                              out_d_dout,
-                                              out_d_ddx,
-                                              out_d_ddy);
+    DotTripleGradFunction<Context, T>()(context,
+                                        &x,
+                                        &y,
+                                        &ddx,
+                                        &ddy,
+                                        d_dx,
+                                        d_dy,
+                                        &dout,
+                                        d_ddout,
+                                        out_d_x,
+                                        out_d_y,
+                                        out_d_dout,
+                                        out_d_ddx,
+                                        out_d_ddy);
     return;
+  }
+
+  DenseTensor x_conj;
+  DenseTensor y_conj;
+  DenseTensor dout_conj;
+  DenseTensor ddx_conj;
+  DenseTensor ddy_conj;
+
+  if (out_d_dout) {
+    ddx_conj = Conj<T>(context, ddx);
+    ddy_conj = Conj<T>(context, ddy);
+  }
+  if (out_d_ddx || out_d_ddy) {
+    x_conj = Conj<T>(context, x);
+    y_conj = Conj<T>(context, y);
+    dout_conj = Conj<T>(context, dout);
   }
 
   bool is_broadcast = true;
@@ -905,7 +931,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (out_d_y) {
         if (transpose_x && transpose_y) {
           // out_d_y = d_ddout' * ddx'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         true,
                         true,
@@ -916,7 +942,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_x) {
           // out_d_y = ddx * d_ddout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         ddx_conj,
                         false,
                         false,
@@ -927,7 +953,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_y) {
           // out_d_y = d_ddout' * ddx
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         true,
                         true,
@@ -938,7 +964,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else {
           // out_d_y = ddx' * d_ddout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         ddx_conj,
                         true,
                         true,
@@ -952,7 +978,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (out_d_x) {
         if (transpose_x && transpose_y) {
           // out_d_x = ddy' * d_ddout'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         ddy_conj,
                         true,
                         true,
@@ -963,7 +989,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_x) {
           // out_d_x = ddy * d_ddout'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         ddy_conj,
                         false,
                         false,
@@ -974,7 +1000,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_y) {
           // out_d_x = d_ddout * ddy
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         false,
                         false,
@@ -985,7 +1011,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else {
           // out_d_x = d_ddout * ddy'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         false,
                         false,
@@ -1014,7 +1040,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (out_d_ddx) {
         if (transpose_x && transpose_y) {
           // out_d_ddx1 = y' * d_ddout'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         y_conj,
                         true,
                         true,
@@ -1025,7 +1051,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddx_flag);
         } else if (transpose_x) {
           // out_d_ddx1 = y * d_ddout'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         y_conj,
                         false,
                         false,
@@ -1036,7 +1062,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddx_flag);
         } else if (transpose_y) {
           // out_d_ddx1 = d_ddout * y
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         false,
                         false,
@@ -1047,7 +1073,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddx_flag);
         } else {
           // out_d_ddx1 = d_ddout * y'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         false,
                         false,
@@ -1064,7 +1090,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (out_d_ddy) {
         if (transpose_x && transpose_y) {
           // out_d_ddy1 = d_ddout' * x'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         true,
                         true,
@@ -1075,7 +1101,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_x) {
           // out_d_ddy1 = x * d_ddout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         x_conj,
                         false,
                         false,
@@ -1086,7 +1112,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else if (transpose_y) {
           // out_d_ddy1 = d_ddout' * x
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_ddout_mat,
                         true,
                         true,
@@ -1097,7 +1123,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         false);
         } else {
           // out_d_ddy1 = x' * d_ddout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         x_conj,
                         true,
                         true,
@@ -1135,7 +1161,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (out_d_ddx) {
         if (transpose_x && transpose_y) {
           // out_d_ddx2 = D_DY' * DOut'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_dy_mat,
                         true,
                         true,
@@ -1146,7 +1172,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddx_flag);
         } else if (transpose_x) {
           // out_d_ddx2 = D_DY * Dout'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_dy_mat,
                         false,
                         false,
@@ -1157,7 +1183,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddx_flag);
         } else if (transpose_y) {
           // out_d_ddx2 = Dout * D_DY
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         dout_conj,
                         false,
                         false,
@@ -1168,7 +1194,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddx_flag);
         } else {
           // out_d_ddx2 = Dout * D_DY'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         dout_conj,
                         false,
                         false,
@@ -1189,7 +1215,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
 
       // compute d_dout2
       if (out_d_dout) {
-        CalcInputGrad(dev_ctx,
+        CalcInputGrad(context,
                       d_dx_mat,
                       transpose_x,
                       true,
@@ -1204,7 +1230,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (out_d_ddy) {
         if (transpose_x && transpose_y) {
           // out_d_ddy2 = dout' * d_dx'
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         dout_conj,
                         true,
                         true,
@@ -1215,7 +1241,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddy_flag);
         } else if (transpose_x) {
           // out_d_ddy2 = d_dx * dout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_dx_mat,
                         false,
                         false,
@@ -1226,7 +1252,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddy_flag);
         } else if (transpose_y) {
           // out_d_ddy2 = dout' * d_dx
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         dout_conj,
                         true,
                         true,
@@ -1237,7 +1263,7 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
                         d_ddy_flag);
         } else {
           // out_d_ddy2 = d_dx' * dout
-          CalcInputGrad(dev_ctx,
+          CalcInputGrad(context,
                         d_dx_mat,
                         true,
                         true,
@@ -1294,78 +1320,78 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (transpose_y) {
         // dX = ddY' d_ddout’, dY = d_ddout’ ddX'
         if (out_d_x)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &ddy_conj,
-                                           d_ddout,
-                                           y_dims,
-                                           dout_dims,
-                                           &out_dx_help,
-                                           true,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &ddy_conj,
+                                     d_ddout,
+                                     y_dims,
+                                     dout_dims,
+                                     &out_dx_help,
+                                     true,
+                                     true);
         if (out_d_y)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           d_ddout,
-                                           &ddx_conj,
-                                           dout_dims,
-                                           x_dims,
-                                           &out_dy_help,
-                                           true,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     d_ddout,
+                                     &ddx_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &out_dy_help,
+                                     true,
+                                     true);
       } else {
         // dX = ddY d_ddout', dY = ddX d_ddout
         if (out_d_x)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &ddy_conj,
-                                           d_ddout,
-                                           y_dims,
-                                           dout_dims,
-                                           &out_dx_help,
-                                           false,
-                                           true);
+          MatMulFunction<Context, T>(context,
+                                     &ddy_conj,
+                                     d_ddout,
+                                     y_dims,
+                                     dout_dims,
+                                     &out_dx_help,
+                                     false,
+                                     true);
         if (out_d_y)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           &ddx_conj,
-                                           d_ddout,
-                                           x_dims,
-                                           dout_dims,
-                                           &out_dy_help,
-                                           false,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     &ddx_conj,
+                                     d_ddout,
+                                     x_dims,
+                                     dout_dims,
+                                     &out_dy_help,
+                                     false,
+                                     false);
       }
     } else {
       if (transpose_y) {
         // dX = d_ddout ddY, dY = d_ddout’ ddX
         if (out_d_x)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           d_ddout,
-                                           &ddy_conj,
-                                           dout_dims,
-                                           y_dims,
-                                           &out_dx_help,
-                                           false,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     d_ddout,
+                                     &ddy_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &out_dx_help,
+                                     false,
+                                     false);
         if (out_d_y)
-          MatMulFunction<DeviceContext, T>(dev_ctx,
-                                           d_ddout,
-                                           &ddx_conj,
-                                           dout_dims,
-                                           x_dims,
-                                           &out_dy_help,
-                                           true,
-                                           false);
+          MatMulFunction<Context, T>(context,
+                                     d_ddout,
+                                     &ddx_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &out_dy_help,
+                                     true,
+                                     false);
       } else {
         // dX = d_ddout ddY', dY = ddX' d_ddout
         if (out_d_x)
-          MatMulFunction<DeviceContext, T>(d_ddout,
-                                           &ddy_conj,
-                                           dout_dims,
-                                           y_dims,
-                                           &out_dx_help,
-                                           false,
-                                           true,
-                                           context);
+          MatMulFunction<Context, T>(d_ddout,
+                                     &ddy_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &out_dx_help,
+                                     false,
+                                     true,
+                                     context);
         if (out_d_y)
-          MatMulFunction<DeviceContext, T>(
+          MatMulFunction<Context, T>(
               &ddx_conj, d_ddout, x_dims, dout_dims, &out_dy_help, true, false);
       }
     }
@@ -1405,8 +1431,8 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (dx_reduce_dims.empty()) {
         *out_d_x = std::move(out_dx_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &out_dx_help, out_d_x, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &out_dx_help, out_d_x, dx_reduce_dims);
       }
       out_d_x->Resize(x.dims());
     }
@@ -1415,120 +1441,120 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
       if (dy_reduce_dims.empty()) {
         *out_d_y = std::move(out_dy_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &out_dy_help, out_d_y, dy_reduce_dims, context);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &out_dy_help, out_d_y, dy_reduce_dims, context);
       }
       out_d_y->Resize(y.dims());
     }
 
     // compute d_dout
     if (out_d_dout) {
-      MatMulFunction<DeviceContext, T>(dev_ctx,
-                                       d_dx,
-                                       &ddy_conj,
-                                       x_dims,
-                                       y_dims,
-                                       out_d_dout,
-                                       transpose_x,
-                                       transpose_y);
-      MatMulFunction<DeviceContext, T>(dev_ctx,
-                                       &ddx_conj,
-                                       d_dy,
-                                       x_dims,
-                                       y_dims,
-                                       out_d_dout,
-                                       transpose_x,
-                                       transpose_y,
-                                       true);
+      MatMulFunction<Context, T>(context,
+                                 d_dx,
+                                 &ddy_conj,
+                                 x_dims,
+                                 y_dims,
+                                 out_d_dout,
+                                 transpose_x,
+                                 transpose_y);
+      MatMulFunction<Context, T>(context,
+                                 &ddx_conj,
+                                 d_dy,
+                                 x_dims,
+                                 y_dims,
+                                 out_d_dout,
+                                 transpose_x,
+                                 transpose_y,
+                                 true);
     }
     // compute d_ddx
     if (out_d_ddx) {
       if (transpose_x && transpose_y) {
         // out_d_ddx1 = y' * d_ddout'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &y_conj,
-                                         d_ddout,
-                                         y_dims,
-                                         dout_dims,
-                                         &out_d_ddx_help,
-                                         true,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   &y_conj,
+                                   d_ddout,
+                                   y_dims,
+                                   dout_dims,
+                                   &out_d_ddx_help,
+                                   true,
+                                   true);
         // out_d_ddx2 = D_DY' * DOut'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_dy,
-                                         &dout_conj,
-                                         y_dims,
-                                         dout_dims,
-                                         &out_d_ddx_help,
-                                         true,
-                                         true,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   d_dy,
+                                   &dout_conj,
+                                   y_dims,
+                                   dout_dims,
+                                   &out_d_ddx_help,
+                                   true,
+                                   true,
+                                   true);
       } else if (transpose_x) {
         // out_d_ddx1 = y * d_ddout'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &y_conj,
-                                         d_ddout,
-                                         y_dims,
-                                         dout_dims,
-                                         &out_d_ddx_help,
-                                         false,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   &y_conj,
+                                   d_ddout,
+                                   y_dims,
+                                   dout_dims,
+                                   &out_d_ddx_help,
+                                   false,
+                                   true);
         // out_d_ddx2 = D_DY * Dout'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_dy,
-                                         &dout_conj,
-                                         y_dims,
-                                         dout_dims,
-                                         &out_d_ddx_help,
-                                         false,
-                                         true,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   d_dy,
+                                   &dout_conj,
+                                   y_dims,
+                                   dout_dims,
+                                   &out_d_ddx_help,
+                                   false,
+                                   true,
+                                   true);
       } else if (transpose_y) {
         // out_d_ddx1 = d_ddout * y
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_ddout,
-                                         &y_conj,
-                                         dout_dims,
-                                         y_dims,
-                                         &out_d_ddx_help,
-                                         false,
-                                         false);
+        MatMulFunction<Context, T>(context,
+                                   d_ddout,
+                                   &y_conj,
+                                   dout_dims,
+                                   y_dims,
+                                   &out_d_ddx_help,
+                                   false,
+                                   false);
         // out_d_ddx2 = Dout * D_DY
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &dout_conj,
-                                         d_dy,
-                                         dout_dims,
-                                         y_dims,
-                                         &out_d_ddx_help,
-                                         false,
-                                         false,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   &dout_conj,
+                                   d_dy,
+                                   dout_dims,
+                                   y_dims,
+                                   &out_d_ddx_help,
+                                   false,
+                                   false,
+                                   true);
       } else {
         // out_d_ddx1 = d_ddout * y'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_ddout,
-                                         &y_conj,
-                                         dout_dims,
-                                         y_dims,
-                                         &out_d_ddx_help,
-                                         false,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   d_ddout,
+                                   &y_conj,
+                                   dout_dims,
+                                   y_dims,
+                                   &out_d_ddx_help,
+                                   false,
+                                   true);
         // out_d_ddx2 = Dout * D_DY'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &dout_conj,
-                                         d_dy,
-                                         dout_dims,
-                                         y_dims,
-                                         &out_d_ddx_help,
-                                         false,
-                                         true,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   &dout_conj,
+                                   d_dy,
+                                   dout_dims,
+                                   y_dims,
+                                   &out_d_ddx_help,
+                                   false,
+                                   true,
+                                   true);
       }
       if (dx_reduce_dims.empty()) {
         *out_d_ddx = std::move(out_d_ddx_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &out_d_ddx_help, out_d_ddx, dx_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &out_d_ddx_help, out_d_ddx, dx_reduce_dims);
       }
       out_d_ddx->Resize(x.dims());
     }
@@ -1537,91 +1563,91 @@ void MatmulTripleGrad(const DevCtx& dev_ctx,
     if (out_d_ddy) {
       if (transpose_x && transpose_y) {
         // out_d_ddy1 = d_ddout' * x'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_ddout,
-                                         &x_conj,
-                                         dout_dims,
-                                         x_dims,
-                                         &out_d_ddy_help,
-                                         true,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   d_ddout,
+                                   &x_conj,
+                                   dout_dims,
+                                   x_dims,
+                                   &out_d_ddy_help,
+                                   true,
+                                   true);
         // out_d_ddy2 = dout' * d_dx'
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &dout_conj,
-                                         d_dx,
-                                         dout_dims,
-                                         x_dims,
-                                         &out_d_ddy_help,
-                                         true,
-                                         true,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   &dout_conj,
+                                   d_dx,
+                                   dout_dims,
+                                   x_dims,
+                                   &out_d_ddy_help,
+                                   true,
+                                   true,
+                                   true);
       } else if (transpose_x) {
         // out_d_ddy1 = x * d_ddout
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &x_conj,
-                                         d_ddout,
-                                         x_dims,
-                                         dout_dims,
-                                         &out_d_ddy_help,
-                                         false,
-                                         false);
+        MatMulFunction<Context, T>(context,
+                                   &x_conj,
+                                   d_ddout,
+                                   x_dims,
+                                   dout_dims,
+                                   &out_d_ddy_help,
+                                   false,
+                                   false);
         // out_d_ddy2 = d_dx * dout
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_dx,
-                                         &dout_conj,
-                                         x_dims,
-                                         dout_dims,
-                                         &out_d_ddy_help,
-                                         false,
-                                         false,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   d_dx,
+                                   &dout_conj,
+                                   x_dims,
+                                   dout_dims,
+                                   &out_d_ddy_help,
+                                   false,
+                                   false,
+                                   true);
       } else if (transpose_y) {
         // out_d_ddy1 = d_ddout' * x
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_ddout,
-                                         &x_conj,
-                                         dout_dims,
-                                         x_dims,
-                                         &out_d_ddy_help,
-                                         true,
-                                         false);
+        MatMulFunction<Context, T>(context,
+                                   d_ddout,
+                                   &x_conj,
+                                   dout_dims,
+                                   x_dims,
+                                   &out_d_ddy_help,
+                                   true,
+                                   false);
         // out_d_ddy2 = dout' * d_dx
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &dout_conj,
-                                         d_dx,
-                                         dout_dims,
-                                         x_dims,
-                                         &out_d_ddy_help,
-                                         true,
-                                         false,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   &dout_conj,
+                                   d_dx,
+                                   dout_dims,
+                                   x_dims,
+                                   &out_d_ddy_help,
+                                   true,
+                                   false,
+                                   true);
       } else {
         // out_d_ddy1 = x' * d_ddout
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         &x_conj,
-                                         d_ddout,
-                                         x_dims,
-                                         dout_dims,
-                                         &out_d_ddy_help,
-                                         true,
-                                         false);
+        MatMulFunction<Context, T>(context,
+                                   &x_conj,
+                                   d_ddout,
+                                   x_dims,
+                                   dout_dims,
+                                   &out_d_ddy_help,
+                                   true,
+                                   false);
         // out_d_ddy2 = d_dx' * dout
-        MatMulFunction<DeviceContext, T>(dev_ctx,
-                                         d_dx,
-                                         &dout_conj,
-                                         x_dims,
-                                         dout_dims,
-                                         &out_d_ddy_help,
-                                         true,
-                                         false,
-                                         true);
+        MatMulFunction<Context, T>(context,
+                                   d_dx,
+                                   &dout_conj,
+                                   x_dims,
+                                   dout_dims,
+                                   &out_d_ddy_help,
+                                   true,
+                                   false,
+                                   true);
       }
 
       if (dy_reduce_dims.empty()) {
         *out_d_ddy = std::move(out_d_ddy_help);
       } else {
-        ReduceSumForMatmulGrad<DeviceContext, T>(
-            dev_ctx, &out_d_ddy_help, out_d_ddy, dy_reduce_dims);
+        ReduceSumForMatmulGrad<Context, T>(
+            context, &out_d_ddy_help, out_d_ddy, dy_reduce_dims);
       }
       out_d_ddy->Resize(y.dims());
     }
