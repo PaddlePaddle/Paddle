@@ -24,24 +24,26 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename DeviceContext, typename T, typename VType>
-void fill_(const DeviceContext& context, DenseTensor* tensor, VType val) {
+template <typename Context, typename T, typename VType>
+void Fill(const Context& context, DenseTensor* tensor, VType val) {
   tensor->mutable_data<T>();
   auto t = pten::EigenVector<T>::Flatten(*tensor);
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(val));
 }
 
-template <typename T, typename ContextT>
-void Full(const ContextT& dev_ctx,
-          const ScalarArray& shape,
-          const Scalar& val,
-          DenseTensor* out) {
+template <typename T, typename Context>
+void FullKernel(const Context& context,
+                const ScalarArray& shape,
+                const Scalar& val,
+                DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
-  fill_<ContextT, T>(dev_ctx, out, val.to<T>());
+  Fill<Context, T>(context, out, val.to<T>());
 }
 
-template <typename T, typename ContextT>
-void FullLike(const ContextT& dev_ctx, const Scalar& val, DenseTensor* out) {
+template <typename T, typename Context>
+void FullLikeKernel(const Context& context,
+                    const Scalar& val,
+                    DenseTensor* out) {
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
@@ -66,7 +68,7 @@ void FullLike(const ContextT& dev_ctx, const Scalar& val, DenseTensor* out) {
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-  fill_<ContextT, T>(dev_ctx, out, value);
+  Fill<Context, T>(context, out, value);
 }
 
 }  // namespace pten

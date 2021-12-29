@@ -54,37 +54,4 @@ DenseTensor EmptyLike(
   return dense_out;
 }
 
-template <typename T, typename ContextT>
-DenseTensor Full(const ContextT& dev_ctx,
-                 const ScalarArray& shape,
-                 const Scalar& val,
-                 DataType dtype = DataType::FLOAT32,
-                 Backend backend = Backend::CPU,  // Is backend needed here?
-                 DataLayout layout = DataLayout::NCHW) {
-  auto out_meta = CreateInferMeta(shape, dtype, layout);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  Full<T, ContextT>(dev_ctx, shape, val, &dense_out);
-  return dense_out;
-}
-
-template <typename T, typename ContextT>
-DenseTensor FullLike(
-    const ContextT& dev_ctx,
-    const DenseTensor& x,
-    const Scalar& val,
-    DataType dtype = DataType::UNDEFINED,
-    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
-    DataLayout layout = DataLayout::UNDEFINED) {
-  auto out_meta = CreateLikeInferMeta(x.meta(), dtype, layout);
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(out_meta));
-  FullLike<T, ContextT>(dev_ctx, val, &dense_out);
-  return dense_out;
-}
-
 }  // namespace pten
