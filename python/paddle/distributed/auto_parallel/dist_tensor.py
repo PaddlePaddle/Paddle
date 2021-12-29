@@ -13,12 +13,134 @@
 # limitations under the License
 
 import copy
+import paddle
 from paddle.fluid import core
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import get_tensor_dist_attr_field_keys
 
 
 class DistributedTensor:
+    """
+    DistributedTensor represents the distribution of tensor on the process group and 
+    local tensors can be created by DistributedTensor.
+    Only support even sharding now and uneven sharding will be supported in the future.
+    Local tensor information can be obtained from the DistributedTensor instance object, 
+    or obtained by the static methods provided by DistributedTensor, 
+    including shard (i.e. the index in the serial tensor), offsets, and sizes.
+    """
+
+    @staticmethod
+    def validate_dist_attr(sizes,
+                           dims_mapping,
+                           topology,
+                           processes,
+                           rank=None,
+                           shard_sizes=None):
+        if not (instance(sizes, [list, tuple]) and
+                all(map(lambda x: isinstance(x, int) and x > 0, sizes))):
+            raise ValueError(
+                "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".
+                format(sizes))
+        if not (instance(dims_mapping, [list, tuple]) and all(
+                map(lambda x: isinstance(x, int) and x >= -1, dims_mapping))):
+            raise ValueError(
+                "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}".
+                format(dims_mapping))
+        if not (instance(processes, [list, tuple]) and
+                all(map(lambda x: isinstance(x, int) and x >= 0, processes))):
+            raise ValueError(
+                "The processes must be list or tuple and item in processes must be integer, but got {}".
+                format(processes))
+        if not (instance(topology, [list, tuple]) and
+                all(map(lambda x: isinstance(x, int) and x > 0, topology))):
+            raise ValueError(
+                "The topology must be list or tuple and item in topology must be non-negative integer, but got {}".
+                format(topology))
+        if rank is not None and not (instance(rank, int) and rank >= 0):
+            raise ValueError("The rank must >= 0, but got {}".format(rank))
+
+        # NOTE: Only support even sharding now
+        if shard_sizes is not None:
+            raise ValueError("Only support even sharding now.")
+
+    @staticmethod
+    def get_local_sizes(global_sizes,
+                        dims_mapping,
+                        topology,
+                        processes,
+                        rank=None,
+                        shard_sizes=None):
+        DistributedTensor.validate_dist_attr(
+            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+
+        local_sizes = []
+        dims_mapping = dist_attr.dims_mapping
+        topology = dist_attr.process_mesh.topology
+
+        # for even sharding, the local sizes of every rank are equal
+        for idx, item in enumerate(global_sizes):
+            if dims_mapping[idx] == -1:
+                local_sizes.append(item)
+            else:
+                local_sizes.append(item // topology[dims_mapping[idx]])
+
+        return local_sizes
+
+    @staticmethod
+    def get_local_offsets(global_sizes,
+                          dims_mapping,
+                          topology,
+                          processes,
+                          rank,
+                          shard_sizes=None):
+        local_sizes = DistributedTensor.get_local_sizes(
+            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        local_offsets = []
+        rank_relatvie = processes.index(rank)
+        coordinate = _linear_idx2coordinate(topology, rank_relatvie)
+
+        for i in range(len(global_sizes)):
+            if dims_mapping[i] == -1:
+                local_offsets.append(0)
+            else:
+                local_offsets.append(coordinate[dims_mapping[i]] *
+                                     local_sizes[i])
+        return local_offsets
+
+    @staticmethod
+    def get_global_sizes(local_sizes,
+                         dims_mapping,
+                         topology,
+                         processes,
+                         rank=None,
+                         shard_sizes=None):
+        DistributedTensor.validate_dist_attr(
+            local_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        global_sizes = []
+        for idx, item in enumerate(local_sizes):
+            if dims_mapping[idx] == -1:
+                global_sizes.append(item)
+            else:
+                global_sizes.append(item * topology[dims_mapping[idx]])
+        return global_sizes
+
+    @staticmethod
+    def get_local_shard(global_sizes,
+                        dims_mapping,
+                        topology,
+                        processes,
+                        rank,
+                        shard_sizes=None):
+        local_offsets = DistributedTensor.get_local_offsets(
+            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        assert len(local_sizes) == len(
+            local_offsets
+        ), "The length of local_sizes must be equal to local_offsets, but got {} and {}.".format(
+            len(local_sizes), len(local_offsets))
+
+        local_shard = zip(local_offsets, local_sizes)
+        return local_shard
+
     def __init__(self, serial_tensor, dist_attr=None):
         self._serial_tensor = serial_tensor
         self._dist_attr = None
@@ -65,6 +187,87 @@ class DistributedTensor:
             if self.dist_attr.dims_mapping.count(i) > 1:
                 return False
         return True
+
+    def get_local_sizes(self, rank=None):
+        rank = paddle.distributed.get_rank() if rank is None else rank
+        local_sizes = None
+        if rank in self._local_sizes_map.keys():
+            local_sizes = self._local_sizes_map[rank]
+        else:
+            global_sizes = self.serial_tensor.shape
+            dims_mapping = self.dist_attr.dims_mapping
+            shard_sizes = self.dist_attr.shard_sizes
+            processes = self.dist_attr.process_mesh.processes
+            topology = self.dist_attr.process_mesh.topology
+            local_sizes = DistributedTensor.get_local_sizes(
+                global_sizes, dims_mapping, topology, processes, rank,
+                shard_size)
+            self._local_sizes_map[rank] = local_sizes
+
+        return local_sizes
+
+    def get_local_offsets(self, rank=None):
+        rank = paddle.distributed.get_rank() if rank is None else rank
+        local_offsets = None
+        if rank in self._local_offsets_map.keys():
+            local_offsets = self._local_offsets_map[rank]
+        else:
+            global_sizes = self.serial_tensor.shape
+            dims_mapping = self.dist_attr.dims_mapping
+            shard_sizes = self.dist_attr.shard_sizes
+            processes = self.dist_attr.process_mesh.processes
+            topology = self.dist_attr.process_mesh.topology
+            local_offsets = DistributedTensor.get_local_offsets(
+                global_sizes, dims_mapping, topology, processes, rank,
+                shard_size)
+            self._local_offsets_map[rank] = local_offsets
+
+        return local_offsets
+
+    def get_global_sizes(self):
+        return self.serial_tensor.shape
+
+    def get_local_shard(self, rank=None):
+        rank = paddle.distributed.get_rank() if rank is None else rank
+        local_shard = None
+        if rank in self._local_shard_map.keys():
+            local_shard = self._local_shard_map[rank]
+        else:
+            global_sizes = self.serial_tensor.shape
+            dims_mapping = self.dist_attr.dims_mapping
+            shard_sizes = self.dist_attr.shard_sizes
+            processes = self.dist_attr.process_mesh.processes
+            topology = self.dist_attr.process_mesh.topology
+            local_shard = DistributedTensor.get_local_shard(
+                global_sizes, dims_mapping, topology, processes, rank,
+                shard_size)
+            self._local_shard_map[rank] = local_shard
+
+        return local_shard
+
+    def new_local_tensor(self, block, rank, *args, **kwargs):
+        if not isinstance(block, core.framework.Block):
+            raise TypeError("The block must be Block, but got {}.".format(
+                type(block)))
+
+        # copy serial tensor attribute
+        for key in self.serial_tensor.__dict__:
+            # TODO: Check the copied attribute from serial tensor whether valid
+            if key != "shape" and key != "name":
+                kwargs[key] = self.serial_tensor.__dict__[key]
+        kwargs["shape"] = self.get_local_sizes()
+        local_tensor = block.create_var(*args, **kwargs)
+
+        # TODO: Set original id when set original_id is approved
+        # local_tensor.desc.set_original_id(self.serial_tensor.desc.id())
+        self._local_tensor_map[rank] = local_tensor
+        return local_tensor
+
+    def get_local_tensor(self, rank=None):
+        rank = paddle.distributed.get_rank() if rank is None else rank
+        assert rank in self._local_tensor_map, "The rank {} local tensor has not been created.".format(
+            rank)
+        return self._local_tensor_map[rank]
 
     def __deepcopy__(self, memo):
         cls = self.__class__
