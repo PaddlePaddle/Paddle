@@ -92,10 +92,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddAttr<BlockDesc*>("global_block",
                         "(BlockDesc *)"
-                        "The global block of executed program desc.")
-        AddAttr<int64_t>("start_op_index",
-                         "(int64_t)"
-                         "The index of the op to start execution");
+                        "The global block of executed program desc.");
+    AddAttr<int64_t>("start_op_index",
+                     "(int64_t)"
+                     "The index of the op to start execution");
     AddAttr<int64_t>("end_op_index",
                      "(int64_t)"
                      "The index of the op to stop execution");
