@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+// Note: Here the DataLayout is public api for external users, the prefix `k`
+// maybe confuse users, so we use all uppercase names
 enum class DataLayout {
   UNDEFINED = 0,
   // TODO(chenweihang): keep ANY for compatibility, remove it later
@@ -26,13 +28,18 @@ enum class DataLayout {
   NCHW,
   MKLDNN,
   NUM_DATA_LAYOUTS,
-  // See Note [ Why we need ALL in baisc kernel key member? ]
+  // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_LAYOUT = UNDEFINED,
   // Note: Unify pten DataLayout and fluid::framework::DataLayout,
   // for compatible with fluid DataLayout, here need prefix `k`
+  // Note: The original `kAnyLayout (enum value 2)` is a strange design.
+  // `kAnyLayout` originally cannot represent any kind of Layout,
+  // at the same time, it can also represent any Layout.
+  // Strictly, it means "default" or "undefined" layout,
+  // and should not be mixed with other meaningful layouts.
+  kAnyLayout = ANY,
   kNHWC = NHWC,
   kNCHW = NCHW,
-  kAnyLayout = ANY,
   kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
 };
 

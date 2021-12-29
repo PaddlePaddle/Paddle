@@ -33,9 +33,8 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src) {
-  pten::DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
-                             src.dims(),
-                             pten::TransToPtenDataLayout(src.layout())};
+  pten::DenseTensorMeta meta{
+      pten::TransToPtenDataType(src.type()), src.dims(), src.layout()};
   auto shared_storage =
       pten::make_intrusive<SharedStorage>(src.Holder(), src.offset());
   return std::make_unique<pten::DenseTensor>(std::move(shared_storage),
@@ -44,9 +43,8 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::LoDTensor& src) {
-  pten::DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
-                             src.dims(),
-                             pten::TransToPtenDataLayout(src.layout())};
+  pten::DenseTensorMeta meta{
+      pten::TransToPtenDataType(src.type()), src.dims(), src.layout()};
   SetLoD(&meta.lod, src.lod());
   auto shared_storage =
       pten::make_intrusive<SharedStorage>(src.Holder(), src.offset());
@@ -58,9 +56,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& tensor,
     const pten::TensorArgDef& arg_def) {
-  pten::DenseTensorMeta meta{arg_def.dtype,
-                             tensor.dims(),
-                             pten::TransToPtenDataLayout(tensor.layout())};
+  pten::DenseTensorMeta meta{arg_def.dtype, tensor.dims(), tensor.layout()};
 
   if (tensor.IsInitialized() &&
       tensor.place() == pten::TransToFluidPlace(arg_def.backend)) {
@@ -81,7 +77,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const pten::TensorArgDef& arg_def) {
   pten::DenseTensorMeta meta{arg_def.dtype,
                              tensor.dims(),
-                             pten::TransToPtenDataLayout(tensor.layout()),
+                             tensor.layout(),
                              pten::TransToPtenLoD(tensor.lod())};
 
   if (tensor.IsInitialized() &&
@@ -374,8 +370,7 @@ void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataType&>(meta->dtype) = arg_def.dtype;
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataLayout&>(meta->layout) =
-      pten::TransToPtenDataLayout(src.layout());
+  const_cast<DataLayout&>(meta->layout) = src.layout();
 
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
@@ -396,8 +391,7 @@ void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataLayout&>(meta->layout) =
-      pten::TransToPtenDataLayout(src.layout());
+  const_cast<DataLayout&>(meta->layout) = src.layout();
 
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
@@ -418,8 +412,7 @@ void ReMakePtenDenseTensor(const paddle::framework::Tensor& src,
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataType&>(meta->dtype) = pten::TransToPtenDataType(src.type());
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataLayout&>(meta->layout) =
-      pten::TransToPtenDataLayout(src.layout());
+  const_cast<DataLayout&>(meta->layout) = src.layout();
 
   auto* shared_storage = static_cast<SharedStorage*>(
       pten::CompatibleDenseTensorUtils::UnsafeGetMutableStorage(dst));
@@ -441,8 +434,7 @@ void ReMakePtenDenseTensor(const paddle::framework::LoDTensor& src,
   // Since the type of DenseTensorMeta is const, const_cast must be used
   const_cast<DataType&>(meta->dtype) = arg_def.dtype;
   // Since the type of DenseTensorMeta is const, const_cast must be used
-  const_cast<DataLayout&>(meta->layout) =
-      pten::TransToPtenDataLayout(src.layout());
+  const_cast<DataLayout&>(meta->layout) = src.layout();
   SetLoD(&(meta->lod), src.lod());
 
   auto* shared_storage = static_cast<SharedStorage*>(

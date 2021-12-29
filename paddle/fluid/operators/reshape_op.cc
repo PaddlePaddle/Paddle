@@ -385,8 +385,7 @@ class ReshapeKernel {
     // We can't MakePtenDenseTensor for case 2, so we solve this case by
     // creating a temporary tensor here:
     pten::DenseTensorMeta meta{pten::TransToPtenDataType(in->type()),
-                               in->dims(),
-                               pten::TransToPtenDataLayout(in->layout())};
+                               in->dims(), in->layout()};
     auto pt_out_tmp = std::make_shared<pten::DenseTensor>(
         pten::make_intrusive<paddle::experimental::SharedStorage>(
             ctx.GetPlace()),
