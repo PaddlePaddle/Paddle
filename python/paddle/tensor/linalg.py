@@ -23,7 +23,6 @@ import paddle
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
-import paddle
 
 __all__ = []
 
@@ -2503,3 +2502,107 @@ def eigvalsh(x, UPLO='L', name=None):
         attrs={'UPLO': UPLO,
                'is_test': is_test})
     return out_value
+
+
+def lstsq(x, y, rcond=1e-15, driver=None, name=None):
+    device = paddle.device.get_device()
+    if device == "cpu":
+        if driver not in (None, "gels", "gelss", "gelsd", "gelsy"):
+            raise ValueError(
+                "Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {}".
+                format(driver))
+        driver = "gelsy" if driver is None else driver
+    elif "gpu" in device:
+        if driver not in (None, "gels"):
+            raise ValueError(
+                "Only support valid driver is 'gels' or None for CUDA inputs. But got {}".
+                format(driver))
+        driver = "gels" if driver is None else driver
+    else:
+        raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
+
+    if in_dygraph_mode():
+        solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
+                                                       "driver", driver)
+        if x.shape[-2] > x.shape[-1]:
+            matmul_out = _varbase_creator(dtype=x.dtype)
+            _C_ops.matmul(x, solution, matmul_out, 'trans_x', False, 'trans_y',
+                          False)
+            minus_out = _C_ops.elementwise_sub(matmul_out, y)
+            pow_out = _C_ops.pow(minus_out, 'factor', 2)
+            residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
+                                          False, 'reduce_all', False)
+        else:
+            residuals = paddle.empty(shape=[0], dtype=x.dtype)
+
+        if driver == "gels":
+            rank = paddle.empty(shape=[0], dtype=paddle.int32)
+            singular_values = paddle.empty(shape=[0], dtype=x.dtype)
+        elif driver == "gelsy":
+            singular_values = paddle.empty(shape=[0], dtype=x.dtype)
+
+        return solution, residuals, rank, singular_values
+
+    helper = LayerHelper('lstsq', **locals())
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lstsq')
+    check_variable_and_dtype(
+        y, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lstsq')
+
+    solution = helper.create_variable_for_type_inference(dtype=x.dtype)
+    residuals = helper.create_variable_for_type_inference(dtype=x.dtype)
+    rank = helper.create_variable_for_type_inference(dtype=paddle.int32)
+    singular_values = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='lstsq',
+        inputs={'X': x,
+                'Y': y},
+        outputs={
+            'Solution': solution,
+            'Rank': rank,
+            'SingularValues': singular_values
+        },
+        attrs={'rcond': rcond,
+               'driver': driver})
+
+    matmul_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    minus_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    pow_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matmul_v2',
+        inputs={'X': x,
+                'Y': solution},
+        outputs={'Out': matmul_out},
+        attrs={
+            'trans_x': False,
+            'trans_y': False,
+        })
+
+    helper.append_op(
+        type='elementwise_sub',
+        inputs={'X': matmul_out,
+                'Y': y},
+        outputs={'Out': minus_out})
+
+    helper.append_op(
+        type='pow',
+        inputs={'X': minus_out},
+        outputs={'Out': pow_out},
+        attrs={'factor': 2})
+
+    helper.append_op(
+        type='reduce_sum',
+        inputs={'X': pow_out},
+        outputs={'Out': residuals},
+        attrs={'dim': [-2],
+               'keep_dim': False,
+               'reduce_all': False})
+
+    if driver == "gels":
+        rank = paddle.static.data(name='rank', shape=[0])
+        singular_values = paddle.static.data(name='singular_values', shape=[0])
+    elif driver == "gelsy":
+        singular_values = paddle.static.data(name='singular_values', shape=[0])
+
+    return solution, residuals, rank, singular_values
