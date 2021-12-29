@@ -31,13 +31,9 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 template <typename T>
 using Vector = framework::Vector<T>;
-#else
-template <typename T>
-using Vector = framework::CPUVector<T>;
-#endif
 
 template <typename T>
 class FilterByInstagKernel : public framework::OpKernel<T> {

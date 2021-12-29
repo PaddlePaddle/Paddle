@@ -105,6 +105,11 @@ class CastOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(tensor->type(), tensor_place);
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("cast", {"X"}, {"out_dtype"}, {"Out"});
+  }
 };
 
 }  // namespace operators

@@ -84,14 +84,9 @@ void* Tensor::mutable_data(const platform::Place& place,
   return mutable_data(place, type_, requested_size);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void* Tensor::mutable_data(const platform::CUDAPlace& place,
+void* Tensor::mutable_data(const platform::Place& place,
                            proto::VarType::Type type,
-                           const gpuStream_t& stream) {
-  if (!FLAGS_use_stream_safe_cuda_allocator) {
-    return mutable_data(place, type);
-  }
-
+                           const platform::Stream& stream) {
   type_ = type;
   PADDLE_ENFORCE_GE(
       numel(), 0,
@@ -103,7 +98,9 @@ void* Tensor::mutable_data(const platform::CUDAPlace& place,
 
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
-      holder_->size() < size + offset_) {
+      holder_->size() < size + offset_ ||
+      !(platform::is_gpu_place(place) &&
+        memory::InSameStream(holder_, stream))) {
     holder_.reset();
     holder_ = memory::AllocShared(place, size, stream);
     offset_ = 0;
@@ -111,7 +108,6 @@ void* Tensor::mutable_data(const platform::CUDAPlace& place,
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
-#endif
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();

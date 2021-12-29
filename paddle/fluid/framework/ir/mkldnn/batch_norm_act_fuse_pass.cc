@@ -67,12 +67,6 @@ FuseBatchNormActOneDNNPass::FuseBatchNormActOneDNNPass() {
       .AddAttr("epsilon")
       .IsNumGE(0.0f)
       .IsNumLE(0.001f)
-      .End()
-      .AddAttr("trainable_statistics")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("is_test")
-      .IsBoolEQ(true)
       .End();
 
   AddOpCompat(OpCompat("relu"))
@@ -114,21 +108,19 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_act_pattern);
 
     auto *bn_op = batch_norm->Op();
-    if (bn_op->HasAttr("use_mkldnn")) {
+    if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("use_mkldnn")),
+          !BOOST_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
           platform::errors::PreconditionNotMet(
-              "The BatchNorm+Act fusion may happen only when oneDNN library "
-              "is used."));
+              "The BatchNorm+Act fusion may happen only when mean and variance "
+              "are not calculated by current batch statistics."));
     }
 
-    auto *act_op = act->Op();
-    if (act_op->HasAttr("use_mkldnn")) {
+    if (bn_op->HasAttr("is_test")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("use_mkldnn")),
+          BOOST_GET_CONST(bool, bn_op->GetAttr("is_test")),
           platform::errors::PreconditionNotMet(
-              "The BatchNorm+Act fusion may happen only when oneDNN library "
-              "is used."));
+              "The BatchNorm+Act fusion may happen only during inference."));
     }
 
     bn_op->SetAttr("use_mkldnn", true);

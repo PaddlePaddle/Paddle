@@ -69,8 +69,6 @@ TEST(ComputeInterceptor, Compute) {
   carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
   carrier.SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
 
-  carrier.SetCreatingFlag(false);
-
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);
   // test run three times

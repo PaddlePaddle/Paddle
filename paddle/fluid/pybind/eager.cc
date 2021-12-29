@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
@@ -41,6 +42,7 @@ namespace py = ::pybind11;
 
 PyTypeObject* p_eager_tensor_type;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_framework_tensor_pytype;
 
 PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
@@ -72,6 +74,17 @@ void EmptyEagerTensorInitializer(
             pten::DenseTensorMeta(pten::TransToPtenDataType(dtype),
                                   paddle::framework::make_ddim(dims)));
     self->eager_tensor.set_impl(dense_tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "We only support LoDTensor to be constructed by this initializer, "
+        "please check your var type first and make sure you are going to "
+        "construct LoDTensor."));
+  }
+
+  if (!autograd_meta->GetMutableGradNode()) {
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation for it.";
+    autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
   }
 }
 
@@ -142,27 +155,19 @@ void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
   }
 }
 
-// initialize EagerTensor by EagerTensor (mix args and kwargs) automatically
+// initialize EagerTensor by EagerTensor or framework::Tensor (mix args and
+// kwargs) automatically
 void AutoInitEagerTensorByTensor(
     EagerTensorObject* py_tensor_ptr,
     std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
-    bool flag_kwargs, Py_ssize_t args_num) {
+    bool flag_kwargs, Py_ssize_t args_num, bool init_by_egr_tensor = true) {
   // key_word lists: [value, place, name]
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{
       {"value", 1}, {"place", 2}, {"name", 3}};
 
-  egr::EagerTensor src_tensor;
   paddle::platform::Place place =
       egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
-
-  if (kw_order_map["value"] <= args_num) {
-    src_tensor = CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
-  } else {
-    if (flag_kwargs && kws_map["value"] != NULL) {
-      src_tensor = CastPyArg2EagerTensor(kws_map["value"], 0);
-    }
-  }
 
   if (kw_order_map["place"] <= args_num) {
     place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
@@ -188,7 +193,29 @@ void AutoInitEagerTensorByTensor(
     }
   }
 
-  InitEagerTensorWithEagerTensor(py_tensor_ptr, src_tensor, place, act_name);
+  if (init_by_egr_tensor) {
+    egr::EagerTensor src_tensor;
+    if (kw_order_map["value"] <= args_num) {
+      src_tensor = CastPyArg2EagerTensor(PyTuple_GET_ITEM(args, 0), 0);
+    } else {
+      if (flag_kwargs && kws_map["value"] != NULL) {
+        src_tensor = CastPyArg2EagerTensor(kws_map["value"], 0);
+      }
+    }
+    InitEagerTensorWithEagerTensor(py_tensor_ptr, src_tensor, place, act_name);
+  } else {
+    // init by framework tensor
+    framework::Tensor src_tensor;
+    if (kw_order_map["value"] <= args_num) {
+      src_tensor = CastPyArg2FrameworkTensor(PyTuple_GET_ITEM(args, 0), 0);
+    } else {
+      if (flag_kwargs && kws_map["value"] != NULL) {
+        src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
+      }
+    }
+    InitEagerTensorWithFrameworkTensor(py_tensor_ptr, src_tensor, place,
+                                       act_name);
+  }
 }
 
 // initialize EagerTensor by PyArray (mix args and kwargs) automatically
@@ -272,6 +299,38 @@ void AutoInitEagerTensorByPyArray(
   InitEagerTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
 }
 
+void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
+                                        const framework::Tensor& src,
+                                        const paddle::platform::Place& place,
+                                        const std::string& name) {
+  self->eager_tensor.set_name(name);
+  if (place == src.place()) {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    self->eager_tensor.set_impl(dense_tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(
+                src.place()),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    auto temp = egr::EagerTensor(dense_tensor);
+    self->eager_tensor.set_impl(
+        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
+  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
+      ->SetPersistable(false);
+}
+
 /** We should have init function with signature:
    * 1.
    * def __init__ ()
@@ -284,7 +343,7 @@ void AutoInitEagerTensorByPyArray(
    * ** persistable: bool)
    * 3. (multi-place)
    * (should have at least one parameter, one parameter equals to case 4, zero
- * parameter equals to case 1)
+   * parameter equals to case 1)
    * def __init__ (
    * ** value: ndarray,
    * ** place: paddle::platform::Place,
@@ -300,9 +359,15 @@ void AutoInitEagerTensorByPyArray(
    * ** tensor: EagerTensor)
    * 6. (multi-place)
    * (should have at least one parameter, one parameter equals to case 5, zero
- * parameter equals to case 1.)
+   * parameter equals to case 1.)
    * def __init__ (
    * ** tensor: EagerTensor,
+   * ** place: paddle::platform::Place,
+   * ** name: std::string)
+   * 7. (multi-place) (should have at least one parameter, one parameter similar
+   * to case 5, zero parameter equals to case 1.)
+   * def __init__ (
+   * ** tensor: FrameworkTensor,
    * ** place: paddle::platform::Place,
    * ** name: std::string)
    *  **/
@@ -391,6 +456,14 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args,
                                         flag_kwargs, args_num);
             return 0;
+          } else if (PyObject_IsInstance(kw_value,
+                                         reinterpret_cast<PyObject*>(
+                                             g_framework_tensor_pytype))) {
+            VLOG(6) << "Calling case7's initializer.";
+            AutoInitEagerTensorByTensor(
+                py_tensor_ptr, kws_map, args, flag_kwargs, args_num,
+                /* false means not init by egr tensor*/ false);
+            return 0;
           }
         } else if (kw_dtype != NULL &&
                    PyObject_IsInstance(kw_dtype, reinterpret_cast<PyObject*>(
@@ -471,6 +544,14 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
                                     args_num);
         return 0;
+      } else if (PyObject_IsInstance(
+                     arg0_ptr,
+                     reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+        VLOG(6) << "Calling case7's initializer.";
+        AutoInitEagerTensorByTensor(
+            py_tensor_ptr, kws_map, args, flag_kwargs, args_num,
+            /* false means not init by egr tensor*/ false);
+        return 0;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We support construct tensor from numpy value or tensor "
@@ -478,6 +559,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             "please check your input first and make sure you are on the "
             "right way."));
       }
+      return 0;
     }
     case (Py_ssize_t)4: {
       if (!flag_kwargs) {
@@ -510,6 +592,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "right way."));
         }
       }
+      return 0;
     }
     case (Py_ssize_t)5: {
       if (!flag_kwargs) {
