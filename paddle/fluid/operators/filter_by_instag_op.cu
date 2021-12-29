@@ -103,7 +103,7 @@ __global__ void copy_grad_kernel(
     return;
   }
   T* dst = x1_grad_data + map_data[idx * 3 + 1] * x1_embed_size;  
-  const T* src_start = out_grad_data + map_data[idx * 3];
+  const T* src_start = out_grad_data + map_data[idx * 3] * x1_embed_size;
   const T* src_end = out_grad_data + (map_data[idx * 3] + map_data[idx * 3 + 2]) * x1_embed_size;
   for (const T* j = src_start; j != src_end; dst++, j++) {
     *dst = *j;
@@ -152,7 +152,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       x2_lods.push_back(0);
       const size_t instag_num_per_ins = x2->dims()[1];
       for (size_t i = 0; i < x2_lods_size; i++) {
-        x2_lods.push_back(x2_lods.back() + instag_num_per_ins);
+        x2_lods.push_back(i + 1);
       }
     }
     const size_t* x2_lods_data = x2_lods.CUDAData(context.GetPlace());
@@ -175,7 +175,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x1_lods.push_back(0);
         const size_t feasign_num_per_ins = x1->dims()[1];
         for (int i = 0; i < x1->dims()[0]; i++) {
-          x1_lods.push_back(x1_lods.back() + feasign_num_per_ins);
+          x1_lods.push_back(i + 1);
         }
       }
     }
@@ -267,14 +267,14 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       copy_kernel<<<grid_dim_2, block_dim_2, 0, current_stream>>>(N, out_data, x1_data, map_data, x1_embed_size);
       cudaStreamSynchronize(current_stream);
     } else {
-      Vector<size_t> map_lods(3,0);
+      Vector<size_t> map_lods(2,0);
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
       map_data_ptr[0] = 0;
       map_data_ptr[1] = 1;
       map_data_ptr[2] = 1;
       map_lods[0] = 0;
       map_lods[1] = 1;
-      map_lods[1] = 1;
+      out_lods.push_back(1);
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
       map->set_lod(map_lod_info);
