@@ -27,9 +27,9 @@ namespace paddle {
 namespace distributed {
 
 // TODO(zhaocaibei123): configure
-bool FLAGS_pslib_create_value_when_push = false;
-int FLAGS_pslib_table_save_max_retry = 3;
-bool FLAGS_pslib_enable_create_feasign_randomly = false;
+bool FLAGS_pserver_create_value_when_push = false;
+int FLAGS_pserver_table_save_max_retry = 3;
+bool FLAGS_pserver_enable_create_feasign_randomly = false;
 
 int32_t MemorySparseTable::initialize() {
   _shards_task_pool.resize(_task_pool_size);
@@ -142,7 +142,7 @@ int32_t MemorySparseTable::load(const std::string& path,
         LOG(ERROR) << "MemorySparseTable load failed, retry it! path:"
                    << channel_config.path << " , retry_num=" << retry_num;
       }
-      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry) {
+      if (retry_num > paddle::distributed::FLAGS_pserver_table_save_max_retry) {
         LOG(ERROR) << "MemorySparseTable load failed reach max limit!";
         exit(-1);
       }
@@ -213,7 +213,7 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
                    << file_list[file_start_idx + i]
                    << " , retry_num=" << retry_num;
       }
-      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry) {
+      if (retry_num > paddle::distributed::FLAGS_pserver_table_save_max_retry) {
         LOG(ERROR) << "MemorySparseTable load failed reach max limit!";
         exit(-1);
       }
@@ -293,7 +293,7 @@ int32_t MemorySparseTable::save(const std::string& dirname,
       if (is_write_failed) {
         _afs_client.remove(channel_config.path);
       }
-      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry) {
+      if (retry_num > paddle::distributed::FLAGS_pserver_table_save_max_retry) {
         LOG(ERROR) << "MemorySparseTable save prefix failed reach max limit!";
         exit(-1);
       }
@@ -424,13 +424,11 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
                 size_t data_size = value_size - mf_value_size;
                 if (itr == local_shard.end()) {
                   // ++missed_keys;
-                  if (FLAGS_pslib_create_value_when_push) {
+                  if (FLAGS_pserver_create_value_when_push) {
                     memset(data_buffer, 0, sizeof(float) * data_size);
                   } else {
                     auto& feature_value = local_shard[key];
                     feature_value.resize(data_size);
-                    // float* data_ptr =
-                    // const_cast<float*>(feature_value.data());
                     float* data_ptr = feature_value.data();
                     _value_accesor->create(&data_buffer_ptr, 1);
                     memcpy(data_ptr, data_buffer_ptr,
@@ -497,7 +495,7 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
               VLOG(0) << "sparse table push_sparse: " << key << "not found!";
-              if (FLAGS_pslib_enable_create_feasign_randomly &&
+              if (FLAGS_pserver_enable_create_feasign_randomly &&
                   !_value_accesor->create_value(1, update_data)) {
                 continue;
               }
@@ -511,7 +509,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             }
 
             auto& feature_value = itr.value();
-            // float* value_data = const_cast<float*>(feature_value.data());
             float* value_data = feature_value.data();
             size_t value_size = feature_value.size();
 
@@ -574,7 +571,7 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
             const float* update_data = values[push_data_idx];
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
-              if (FLAGS_pslib_enable_create_feasign_randomly &&
+              if (FLAGS_pserver_enable_create_feasign_randomly &&
                   !_value_accesor->create_value(1, update_data)) {
                 continue;
               }
@@ -587,7 +584,6 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               itr = local_shard.find(key);
             }
             auto& feature_value = itr.value();
-            // float* value_data = const_cast<float*>(feature_value.data());
             float* value_data = feature_value.data();
             size_t value_size = feature_value.size();
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
@@ -598,7 +594,6 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               _value_accesor->update(&data_buffer_ptr, &update_data, 1);
               if (_value_accesor->need_extend_mf(data_buffer)) {
                 feature_value.resize(value_col);
-                // value_data = const_cast<float*>(feature_value.data());
                 value_data = feature_value.data();
                 _value_accesor->create(&value_data, 1);
               }
