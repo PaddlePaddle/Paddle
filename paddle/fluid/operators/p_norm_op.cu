@@ -160,7 +160,10 @@ struct AbsMaxAndMinGradFunctor {
 };
 
 template <typename T>
-struct PNormPostGradFunctor {
+struct PNormGradFunctor {
+  HOSTDEVICE explicit inline PNormGradFunctor(float porder) {
+    this->porder = porder;
+  }
   template <typename DeviceContext, typename X, typename Y, typename DX,
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
@@ -168,10 +171,13 @@ struct PNormPostGradFunctor {
     auto ones = dx->constant(static_cast<T>(1.));
     auto negs = dx->constant(static_cast<T>(-1.));
     auto zeros = dx->constant(static_cast<T>(0.));
-    auto positives = (*x) > zeros;
-    dx->device(place) = (*dx) * dy->broadcast(dim) * y->broadcast(dim) *
-                        positives.select(ones, negs);
+    auto ord_y = static_cast<T>(1. - this->porder);
+    auto ord_x = static_cast<T>(this->porder - 1.);
+    dx->device(place) = (*x).pow(ord_x) * dy->broadcast(dim) *
+                        (*y).pow(ord_y).broadcast(dim) *
+                        ((*x) > zeros).select(ones, negs);
   }
+  float porder;
 };
 
 template <typename DeviceContext, typename T, typename AttrType = T>
@@ -198,26 +204,13 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
       math::SetConstant<DeviceContext, T> set_zero;
       set_zero(cuda_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {
+      AbsMaxAndMinGradFunctor<T> functor;
       LaunchReduceGradKernel<DeviceContext, T, AbsMaxAndMinGradFunctor<T>>(
-          ctx, in_x, in_norm, in_norm_dy, out_dx, dims, reduce_all);
+          ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
     } else {
-      framework::Tensor tmp_norm;
-      tmp_norm.mutable_data<T>(in_norm->dims(), ctx.GetPlace());
-      std::vector<const framework::Tensor*> ins = {in_norm};
-      std::vector<framework::Tensor*> outs = {&tmp_norm};
-      auto pow_functor = PowFunctor<T>(1. - porder);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T,
-                                          PowFunctor<T>>(cuda_ctx, ins, &outs,
-                                                         pow_functor);
-      ins = {in_x};
-      outs = {out_dx};
-      auto unsigned_pow = UnsignedPowFunctor<T>(porder - 1.);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T,
-                                          UnsignedPowFunctor<T>>(
-          cuda_ctx, ins, &outs, unsigned_pow);
-      const framework::Tensor* tmp_norm_const = &tmp_norm;
-      LaunchReduceGradKernel<DeviceContext, T, PNormPostGradFunctor<T>>(
-          ctx, in_x, tmp_norm_const, in_norm_dy, out_dx, dims, reduce_all);
+      auto functor = PNormGradFunctor<T>(porder);
+      LaunchReduceGradKernel<DeviceContext, T, PNormGradFunctor<T>>(
+          ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
     }
   }
 };
