@@ -501,9 +501,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
 
     framework::SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
-    std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
-    framework::Vector<int64_t> merge_rows(merge_rows_cpu);
-
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
     auto input_width = input.value().dims()[1];
 
     out.set_rows(merge_rows);
@@ -512,9 +510,13 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
         framework::make_ddim(
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
-
-    math::SetConstant<platform::XPUDeviceContext, T> constant_functor;
-    constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
+    int r = xpu::constant<T>(context.x_context(), out.mutable_value()->data<T>(),
+                        merge_rows.size() * input_width, static_cast<T>(0.f));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU constant op return"
+                                   " wrong value[%d %s].",
+                                   r, XPUAPIErrorMsg[r]));
 
     std::unordered_map<int64_t, size_t> rows_to_id;
       for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -575,10 +577,9 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
 
-      std::vector<int64_t> merge_rows_cpu(merged_row_set.begin(),
+      std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                       merged_row_set.end());
 
-      framework::Vector<int64_t> merge_rows(merge_rows_cpu);
       if (sorted_result) {
         std::sort(merge_rows.begin(), merge_rows.end());
       }
@@ -590,8 +591,13 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
 		    {static_cast<int64_t>(merged_row_set.size()), input_width}),
 		context.GetPlace());
 
-      math::SetConstant<platform::XPUDeviceContext, T> constant_functor;
-      constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
+      int r = xpu::constant<T>(context.x_context(), out.mutable_value()->data<T>(),
+                        merge_rows.size() * input_width, static_cast<T>(0.f));
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External("XPU constant op return"
+                                   " wrong value[%d %s].",
+                                   r, XPUAPIErrorMsg[r]));
 
       float* out_data = reinterpret_cast<float*>(out.mutable_value()->data<T>());
 

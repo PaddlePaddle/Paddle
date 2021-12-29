@@ -163,7 +163,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           const float* beta2_pow_p = beta2_pow.template data<float>();
           beta2_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
               beta2 * beta2_pow_p[0];
-          xpu_wait(dev_ctx.x_context()->xpu_stream);
         } else {
           float* beta1_pow_out_p =
               beta1_pow_out->mutable_data<float>(ctx.GetPlace());
@@ -218,7 +217,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         merge_func(ctx.template device_context<platform::XPUDeviceContext>(), *grad,
                    &tmp_grad_merge, true);
 
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
         grad_merge_ptr = &tmp_grad_merge;
       }
       const T* beta1_pow_ptr = beta1_pow.template data<T>();
@@ -243,7 +241,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < grad_merge.rows().size(); ++i) {
            rows[i] =  static_cast<int>(merge_rows[i]);
       }
-      xpu_wait(dev_ctx.x_context()->xpu_stream);
       memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
                  xpu_rows, platform::CPUPlace(), rows,
                  row_count * sizeof(int));
@@ -261,7 +258,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           beta1, beta2, epsilon, ori_rows,
           xpu_rows, row_numel, grad_merge.rows().size(), lazy_mode);
 
-      xpu_wait(dev_ctx.x_context()->xpu_stream);
 
       if (!use_global_beta_pow) {
         // update in cpu and then copy to xpu
@@ -273,7 +269,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           const float* beta2_pow_p = beta2_pow.template data<float>();
           beta2_pow_out->mutable_data<float>(platform::CPUPlace())[0] =
               beta2 * beta2_pow_p[0];
-          xpu_wait(dev_ctx.x_context()->xpu_stream);
         } else {
           float* beta1_pow_out_p =
               beta1_pow_out->mutable_data<float>(ctx.GetPlace());
@@ -300,6 +295,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                   "XPU API return wrong value[%d],",
                   r));
       }
+      xpu_wait(dev_ctx.x_context()->xpu_stream);
     } else {
       PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
                                   "Variable type not supported by adam_op"));
