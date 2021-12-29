@@ -1020,7 +1020,7 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
     first_op_index_bp = len(heter_block_bp.ops)
 
     # get op device
-    current_device = _get_sub_program_device(heter_program):
+    current_device = _get_sub_program_device(heter_program)
 
     if stage_id <= len(block_var_detail) - 1:
         static_var = insert_communicate_op(program, config, heter_block,
