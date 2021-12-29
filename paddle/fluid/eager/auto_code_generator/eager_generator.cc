@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
