@@ -66,25 +66,25 @@ class LinalgLstsqTestCase(unittest.TestCase):
         res_rank = results[2].numpy()
         res_singular_values = results[3].numpy()
 
-        if (np.abs(res_solution - self._output_solution) < 1e-6).any():
+        if (np.abs(res_solution - self._output_solution) < 1e-5).any():
             pass
         else:
             raise RuntimeError("Check LSTSQ solution dygraph Failed")
 
         if x.shape[-2] > x.shape[-1]:
-            if (np.abs(res_residuals - self._output_residuals) < 1e-6).any():
+            if (np.abs(res_residuals - self._output_residuals) < 1e-5).any():
                 pass
             else:
                 raise RuntimeError("Check LSTSQ residuals dygraph Failed")
 
         if self.driver in ("gelsy", "gelsd", "gelss"):
-            if (np.abs(res_rank - self._output_rank) < 1e-6).any():
+            if (np.abs(res_rank - self._output_rank) < 1e-5).any():
                 pass
             else:
                 raise RuntimeError("Check LSTSQ rank dygraph Failed")
 
         if self.driver in ("gelsd", "gelss"):
-            if (np.abs(res_singular_values - self._output_sg_values) < 1e-6
+            if (np.abs(res_singular_values - self._output_sg_values) < 1e-5
                 ).any():
                 pass
             else:
@@ -111,25 +111,25 @@ class LinalgLstsqTestCase(unittest.TestCase):
                 feed={"x": self._input_data_1,
                       "y": self._input_data_2},
                 fetch_list=[results])
-            if (np.abs(fetches[0] - self._output_solution) < 1e-6).any():
+            if (np.abs(fetches[0] - self._output_solution) < 1e-5).any():
                 pass
             else:
                 raise RuntimeError("Check LSTSQ solution static Failed")
 
             if x.shape[-2] > x.shape[-1]:
-                if (np.abs(fetches[1] - self._output_residuals) < 1e-6).any():
+                if (np.abs(fetches[1] - self._output_residuals) < 1e-5).any():
                     pass
                 else:
                     raise RuntimeError("Check LSTSQ residuals static Failed")
 
             if self.driver in ("gelsy", "gelsd", "gelss"):
-                if (np.abs(fetches[2] - self._output_rank) < 1e-6).any():
+                if (np.abs(fetches[2] - self._output_rank) < 1e-5).any():
                     pass
                 else:
                     raise RuntimeError("Check LSTSQ rank static Failed")
 
             if self.driver in ("gelsd", "gelss"):
-                if (np.abs(fetches[3] - self._output_sg_values) < 1e-6).any():
+                if (np.abs(fetches[3] - self._output_sg_values) < 1e-5).any():
                     pass
                 else:
                     raise RuntimeError(
@@ -186,8 +186,8 @@ class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
         self.dtype = 'float32'
         self.rcond = 1e-15
         self.driver = None
-        self._input_shape_1 = (2, 10, 3)
-        self._input_shape_2 = (2, 10, 4)
+        self._input_shape_1 = (2, 3, 10)
+        self._input_shape_2 = (2, 3, 4)
 
 
 class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
@@ -213,8 +213,8 @@ class LinalgLstsqTestCaseLarge2(LinalgLstsqTestCase):
         self.dtype = 'float32'
         self.rcond = 1e-15
         self.driver = "gelss"
-        self._input_shape_1 = (500, 600)
-        self._input_shape_2 = (500, 300)
+        self._input_shape_1 = (50, 600)
+        self._input_shape_2 = (50, 300)
 
 
 if __name__ == '__main__':

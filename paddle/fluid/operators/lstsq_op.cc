@@ -103,14 +103,12 @@ class LstsqOp : public framework::OperatorWithKernel {
 class LstsqOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(Tensor), A real-valued tensor with shape (*, m, n). "
-        "The accepted datatype is one of float32, float64");
-    AddInput(
-        "Y",
-        "(Tensor), A real-valued tensor with shape (*, m, k). "
-        "The accepted datatype is one of float32, float64");
+    AddInput("X",
+             "(Tensor), A real-valued tensor with shape (*, m, n). "
+             "The accepted datatype is one of float32, float64");
+    AddInput("Y",
+             "(Tensor), A real-valued tensor with shape (*, m, k). "
+             "The accepted datatype is one of float32, float64");
     AddAttr<float>(
         "rcond",
         "(float, default 0.0), A float value used to determine the effective "
