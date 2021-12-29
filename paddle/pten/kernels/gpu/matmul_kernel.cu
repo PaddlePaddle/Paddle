@@ -12,28 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/kernels/matmul_kernel.h"
 
-#ifdef PADDLE_WITH_XPU
-
-#include "paddle/pten/backends/xpu/xpu_context.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-namespace pten {
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
-void Reshape(const XPUContext& dev_ctx,
-             const DenseTensor& x,
-             const ScalarArray& shape,
-             DenseTensor* out);
-
-void ReshapeWithXShape(const XPUContext& dev_ctx,
-                       const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
-
-}  // namespace pten
-
-#endif
+PT_REGISTER_CTX_KERNEL(matmul,
+                       GPU,
+                       ALL_LAYOUT,
+                       pten::MatmulKernel,
+                       float,
+                       double,
+                       paddle::platform::float16,
+                       paddle::platform::complex<float>,
+                       paddle::platform::complex<double>) {}

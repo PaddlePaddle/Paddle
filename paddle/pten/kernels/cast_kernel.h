@@ -22,7 +22,6 @@ template <typename T, typename ContextT>
 void Cast(const ContextT& dev_ctx,
           const DenseTensor& x,
           DataType out_dtype,
-          DataType in_dtype,
           DenseTensor* out);
 
 }  // namespace pten

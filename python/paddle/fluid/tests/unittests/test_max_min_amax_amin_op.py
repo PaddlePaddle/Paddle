@@ -25,7 +25,7 @@ from op_test import OpTest
 paddle.enable_static()
 
 
-class TestMaxMinAPI(unittest.TestCase):
+class TestMaxMinAmaxAminAPI(unittest.TestCase):
     def setUp(self):
         self.init_case()
         self.cal_np_out_and_gradient()
@@ -36,38 +36,54 @@ class TestMaxMinAPI(unittest.TestCase):
         self.x_np = np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])
         self.shape = [2, 4]
         self.dtype = 'float64'
-        self.axis = None
+        self.axis = 0
         self.keepdim = False
 
-    # If there are multiple minimum or maximum elements, max/min/ is non-derivable,
+    # If there are multiple minimum or maximum elements, max/min/amax/amin is non-derivable,
     # its gradient check is not supported by unittest framework, 
     # thus we calculate the gradient by numpy function.
     def cal_np_out_and_gradient(self):
         def _cal_np_out_and_gradient(func):
-            if func is 'max':
+            if func is 'amax':
+                out = np.amax(self.x_np, axis=self.axis, keepdims=self.keepdim)
+            elif func is 'amin':
+                out = np.amin(self.x_np, axis=self.axis, keepdims=self.keepdim)
+            elif func is 'max':
                 out = np.max(self.x_np, axis=self.axis, keepdims=self.keepdim)
             elif func is 'min':
                 out = np.min(self.x_np, axis=self.axis, keepdims=self.keepdim)
             else:
-                print('This unittest only test max/min, but now is', func)
+                print('This unittest only test amax/amin/max/min, but now is',
+                      func)
             self.np_out[func] = out
             grad = np.zeros(self.shape)
-            out_b = np.broadcast_to(out, self.shape)
+            out_b = np.broadcast_to(out.view(), self.shape)
             grad[self.x_np == out_b] = 1
+            if func in ['amax', 'amin']:
+                grad_sum = grad.sum(self.axis).reshape(out.shape)
+                grad_b = np.broadcast_to(grad_sum, self.shape)
+                grad /= grad_sum
+
             self.np_grad[func] = grad
 
         self.np_out = dict()
         self.np_grad = dict()
+        _cal_np_out_and_gradient('amax')
+        _cal_np_out_and_gradient('amin')
         _cal_np_out_and_gradient('max')
         _cal_np_out_and_gradient('min')
 
     def _choose_paddle_func(self, func, x):
-        if func is 'max':
+        if func is 'amax':
+            out = paddle.amax(x, self.axis, self.keepdim)
+        elif func is 'amin':
+            out = paddle.amin(x, self.axis, self.keepdim)
+        elif func is 'max':
             out = paddle.max(x, self.axis, self.keepdim)
         elif func is 'min':
             out = paddle.min(x, self.axis, self.keepdim)
         else:
-            print('This unittest only test max/min, but now is', func)
+            print('This unittest only test amax/amin/max/min, but now is', func)
         return out
 
     # We check the output between paddle API and numpy in static graph.
@@ -86,6 +102,8 @@ class TestMaxMinAPI(unittest.TestCase):
                               fetch_list=[out])
                 self.assertTrue((np.array(res[0]) == self.np_out[func]).all())
 
+        _test_static_graph('amax')
+        _test_static_graph('amin')
         _test_static_graph('max')
         _test_static_graph('min')
 
@@ -104,12 +122,14 @@ class TestMaxMinAPI(unittest.TestCase):
             self.assertEqual(np.allclose(self.np_grad[func], x.grad), True)
             paddle.enable_static()
 
+        _test_dygraph('amax')
+        _test_dygraph('amin')
         _test_dygraph('max')
         _test_dygraph('min')
 
 
-# test multiple minimum or maximum elements
-class TestMaxMinAPI2(TestMaxMinAPI):
+    # test two minimum or maximum elements
+class TestMaxMinAmaxAminAPI2(TestMaxMinAmaxAminAPI):
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])
         self.shape = [2, 4]
@@ -119,7 +139,7 @@ class TestMaxMinAPI2(TestMaxMinAPI):
 
 
 # test different axis
-class TestMaxMinAPI3(TestMaxMinAPI):
+class TestMaxMinAmaxAminAPI3(TestMaxMinAmaxAminAPI):
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])
         self.shape = [2, 4]
@@ -129,7 +149,7 @@ class TestMaxMinAPI3(TestMaxMinAPI):
 
 
 # test keepdim = True
-class TestMaxMinAPI4(TestMaxMinAPI):
+class TestMaxMinAmaxAminAPI4(TestMaxMinAmaxAminAPI):
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])
         self.shape = [2, 4]
@@ -139,11 +159,21 @@ class TestMaxMinAPI4(TestMaxMinAPI):
 
 
 # test axis is tuple
-class TestMaxMinAPI5(TestMaxMinAPI):
+class TestMaxMinAmaxAminAPI5(TestMaxMinAmaxAminAPI):
     def init_case(self):
         self.x_np = np.array(
             [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype(np.int32)
         self.shape = [2, 2, 2]
         self.dtype = 'int32'
         self.axis = (0, 1)
+        self.keepdim = False
+
+
+# test multiple minimum or maximum elements
+class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.array([[0.2, 0.9, 0.9, 0.9], [0.9, 0.9, 0.2, 0.2]])
+        self.shape = [2, 4]
+        self.dtype = 'float64'
+        self.axis = None
         self.keepdim = False

@@ -11,23 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+namespace paddle {
+namespace framework {
 
-namespace pten {
+class InterpreterCoreFastGarbageCollector
+    : public InterpreterCoreGarbageCollector {
+ public:
+  virtual void Add(Variable* var) override;
 
-template <typename T>
-void Matmul(const CPUContext& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            bool transpose_x,
-            bool transpose_y,
-            DenseTensor* out);
-
-}  // namespace pten
+ private:
+  void Add(Garbage garbage);
+};
+}  // namespace framework
+}  // namespace paddle

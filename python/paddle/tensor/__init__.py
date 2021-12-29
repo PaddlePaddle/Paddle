@@ -39,6 +39,7 @@ from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
+from .linalg import cov  # noqa: F401
 from .linalg import norm  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
@@ -117,6 +118,7 @@ from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
 from .manipulation import tensordot  # noqa: F401
 from .manipulation import as_complex  # noqa: F401
+from .manipulation import take_along_axis  # noqa: F401
 from .manipulation import as_real  # noqa: F401
 from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
@@ -162,8 +164,10 @@ from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
 from .math import max  # noqa: F401
+from .math import amax  # noqa: F401
 from .math import maximum  # noqa: F401
 from .math import min  # noqa: F401
+from .math import amin  # noqa: F401
 from .math import minimum  # noqa: F401
 from .math import mm  # noqa: F401
 from .math import divide  # noqa: F401
@@ -261,6 +265,7 @@ from .einsum import einsum  # noqa: F401
 tensor_method_func  = [ #noqa
            'matmul',
            'dot',
+           'cov',
            'norm',
            'cond',
            'transpose',
@@ -322,8 +327,10 @@ tensor_method_func  = [ #noqa
            'tanh_',
            'add_n',
            'max',
+           'amax',
            'maximum',
            'min',
+           'amin',
            'minimum',
            'fmax',
            'fmin',
@@ -350,6 +357,7 @@ tensor_method_func  = [ #noqa
            'clip_',
            'trace',
            'kron',
+           'kthvalue',
            'isfinite',
            'isinf',
            'isnan',
@@ -461,7 +469,7 @@ tensor_method_func  = [ #noqa
            'angle',
            'moveaxis',
            'repeat_interleave',
-           'kthvalue',
+           'take_along_axis',
            'exponential_',
 ]
 
