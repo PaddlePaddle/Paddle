@@ -49,6 +49,10 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnDpotrf_bufferSize); \
   __macro(cusolverDnSpotrf);            \
   __macro(cusolverDnDpotrf);            \
+  __macro(cusolverDnSpotrs);            \
+  __macro(cusolverDnDpotrs);            \
+  __macro(cusolverDnCpotrs);            \
+  __macro(cusolverDnZpotrs);            \
   __macro(cusolverDnSsyevd_bufferSize); \
   __macro(cusolverDnDsyevd_bufferSize); \
   __macro(cusolverDnCheevd_bufferSize); \
@@ -64,6 +68,8 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 #define CUSOLVER_ROUTINE_EACH_R1(__macro) \
   __macro(cusolverDnSpotrfBatched);       \
   __macro(cusolverDnDpotrfBatched);       \
+  __macro(cusolverDnSpotrsBatched);       \
+  __macro(cusolverDnDpotrsBatched);       \
   __macro(cusolverDnSgesvdj_bufferSize);  \
   __macro(cusolverDnSgeqrf_bufferSize);   \
   __macro(cusolverDnDgeqrf_bufferSize);   \

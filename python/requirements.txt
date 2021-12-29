@@ -1,5 +1,5 @@
 requests>=2.20.0
-numpy>=1.20 ; python_version>="3.5"
+numpy>=1.13
 protobuf>=3.1.0
 Pillow
 six
