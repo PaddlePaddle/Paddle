@@ -58,8 +58,8 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
                           size_t(batch_count * m * n * sizeof(T)));
     new_y.mutable_data<T>(context.GetPlace(),
                           size_t(batch_count * m_y * n_y * sizeof(T)));
-    TensorCopy(x, context.GetPlace(), &new_x);
-    TensorCopy(y, context.GetPlace(), &new_y);
+    framework::TensorCopy(x, context.GetPlace(), &new_x);
+    framework::TensorCopy(y, context.GetPlace(), &new_y);
 
     // Prepare tau
     auto tau_dims_vec = framework::vectorize<int>(x_dims);

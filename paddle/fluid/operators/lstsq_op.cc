@@ -20,14 +20,6 @@
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
-static DDim UDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 1] = k;
-  return framework::make_ddim(x_vec);
-}
-
 class LstsqOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -36,8 +28,6 @@ class LstsqOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "LstsqOp");
 
     OP_INOUT_CHECK(ctx->HasOutput("Solution"), "Output", "Solution", "LstsqOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Residuals"), "Output", "Residuals",
-                   "LstsqOp");
     OP_INOUT_CHECK(ctx->HasOutput("Rank"), "Output", "Rank", "LstsqOp");
     OP_INOUT_CHECK(ctx->HasOutput("SingularValues"), "Output", "SingularValues",
                    "LstsqOp");
@@ -85,7 +75,6 @@ class LstsqOp : public framework::OperatorWithKernel {
             "but got x's row dimention [%d] and y's row dimention [%d]",
             x_dims[x_rank - 2], y_dims[y_rank - 2]));
 
-    ctx->SetOutputDim("Residuals", framework::make_ddim(batch_dims_vec));
     ctx->SetOutputDim("Rank", framework::make_ddim(batch_dims_vec));
 
     batch_dims_vec.emplace_back(
@@ -137,8 +126,6 @@ class LstsqOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("gels");
     AddOutput("Solution",
               "(Tensor), The output Solution tensor with shape (*, n, k).");
-    AddOutput("Residuals",
-              "(Tensor), The output Residuals tensor with shape (*).");
     AddOutput("Rank", "(Tensor), The output Rank tensor with shape (*).");
     AddOutput(
         "SingularValues",
