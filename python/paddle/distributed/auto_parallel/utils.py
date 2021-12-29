@@ -1003,7 +1003,9 @@ def set_grad_var_shape(program, dist_context):
 
             for var_name in op.output_arg_names:
 
-                assert "@GRAD" in var_name
+                if "@GRAD" not in var_name:
+                    continue
+
                 forward_var_name = var_name[:var_name.find("@GRAD")]
                 if op.type in [
                         "c_allreduce_sum", "c_identity", "scale", "cast"

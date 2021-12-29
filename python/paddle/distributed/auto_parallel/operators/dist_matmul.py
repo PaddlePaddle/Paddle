@@ -38,6 +38,7 @@ from ..utils import _get_comm_group, _get_corresponding_rank
 def copy_op_with_new_input_output(block, src_op, **kwargs):
     dist_op_desc = block.desc.append_op()
     dist_op_desc.copy_from(src_op.desc)
+    dist_op_desc.set_original_id(src_op.desc.id())
     for input_name in src_op.desc.input_names():
         assert input_name in kwargs
         dist_op_desc.set_input(input_name, kwargs[input_name])
@@ -355,7 +356,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
 
 def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
-
+    # print("****_init_param_sync:", Weight_var.name)
+    # print("****_init_param_sync:", dist_op_context.already_init_sync_vars)
     assert Weight_var.name not in dist_op_context.already_init_sync_vars
     assert startup_block.has_var(Weight_var.name)
     dist_op_context.already_init_sync_vars.add(Weight_var.name)
@@ -678,7 +680,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_op, matmul_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and op_dist_attr.is_recompute is False:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -840,7 +842,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
-
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
             rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
@@ -968,7 +969,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and op_dist_attr.is_recompute is False:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -1242,7 +1243,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
-
+        # print("***col matmul src_op:", src_op)
+        # print("***col matmul args:", kwargs)
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
             rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
@@ -1381,7 +1383,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(matmul_v2_op, matmulv2_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and op_dist_attr.is_recompute is False:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 
@@ -1541,7 +1543,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
-
+        # print("***row matmul src_op:", src_op)
+        # print("***row matmul args:", kwargs)
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
             rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
@@ -1665,7 +1668,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # init param sync
-        if Weight_var.is_parameter:
+        if Weight_var.is_parameter and op_dist_attr.is_recompute is False:
             _init_param_sync(Weight_var, dist_op_context, startup_block, ctx,
                              rank_id)
 

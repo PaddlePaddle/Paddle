@@ -29,7 +29,7 @@ from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_corresponding_rank
+from ..utils import _get_comm_group, _get_corresponding_rank, print_program_with_dist_attr
 
 
 class DistributedDefault(DistributedOperatorImplContainer):
@@ -86,6 +86,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(src_op.desc)
+        dist_op_desc.set_original_id(src_op.desc.id())
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
@@ -170,13 +171,18 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
+        dist_op_desc.set_original_id(backward_op.desc.id())
         for input_name in backward_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
         main_block._sync_with_cpp()
-
+        # print("11111111111:")
+        # print("***id:", dist_op_desc.id())
+        # print("***original_id:", dist_op_desc.original_id())
+        # print("***dist attr:", ctx._dist_ops_for_program.keys())
+        # print_program_with_dist_attr(dist_op_context.get_dst_main_program(), ctx)
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
         # we need insert gradient allreduce for the gradient of parameter in its output
@@ -216,10 +222,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             backward_op.desc.input(input_name)
                         ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(
                             backward_op.desc.input(input_name))
-
-                        assert varname + "@GRAD" in backward_op.desc.output_arg_names(
-                        ), "parameter's grad [{}] not found in the grad op's output".format(
-                            varname + "@GRAD")
+                        # print("***backward op:", backward_op)
+                        # assert varname + "@GRAD" in backward_op.desc.output_arg_names(
+                        # ), "parameter's grad [{}] not found in the grad op's output".format(
+                        #     varname + "@GRAD")
                         assert len(
                             backward_op.desc.output(input_name + "@GRAD")
                         ) == 1, "parameter grad of grad op should be length 1, but got [{}]".format(

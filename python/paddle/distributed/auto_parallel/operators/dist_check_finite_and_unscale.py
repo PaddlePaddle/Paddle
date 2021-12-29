@@ -109,6 +109,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
+        dist_op_desc.set_original_id(backward_op.desc.id())
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
         main_block._sync_with_cpp()

@@ -128,6 +128,7 @@ class Partitioner(object):
                     output_vars[0])
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
+            new_op_desc.set_original_id(op.desc.id())
             new_op_desc._rename_output(output_vars[0],
                                        temp_varname_map[output_vars[0]])
             new_op_desc._set_attr("shape",
@@ -198,8 +199,9 @@ class Partitioner(object):
                     self._serial2dist_varname_mapping[
                         serial_output_varname] = new_varname
 
+            op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             # partition op
-            if is_forward_op(op):
+            if is_forward_op(op) or op_dist_attr.is_recompute:
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_forward_impl = _get_dist_op_forward_implement(
                     op, self._dist_context)
@@ -363,8 +365,8 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
 def _get_dist_op_backward_implement(backward_op, dist_context,
                                     forward_op_id2forward_op):
     dist_op_context = dist_context.dist_op_context
-    if backward_op.desc.id() in dist_op_context.gradopidx2opidx:
-        forward_op_id = dist_op_context.gradopidx2opidx[backward_op.desc.id()]
+    if backward_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+        forward_op_id = dist_op_context.grad_op_id_to_op_id[backward_op.desc.id()]
         forward_op = forward_op_id2forward_op[forward_op_id]
         forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
             forward_op)
@@ -378,9 +380,9 @@ def _get_dist_op_backward_implement(backward_op, dist_context,
     # NOTE trick for dist ops that only have backward implement 
     if backward_op.type in BACKWARD_ONLY_DIST_OPS:
         op_dist_attr = dist_context.get_op_dist_attr_for_program(backward_op)
-        assert op_dist_attr.impl_idx >= 0
-        return get_distributed_operator_impl_container(
-            backward_op.type).get_impl(op_dist_attr.impl_idx)
+        dist_op = get_distributed_operator_impl_container(backward_op.type)
+        if dist_op and op_dist_attr.impl_idx >= 0:
+            return dist_op.get_impl(op_dist_attr.impl_idx)
 
     dist_op = get_distributed_operator_impl_container("default")
     return dist_op.get_impl(0)

@@ -181,6 +181,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         # create op
         new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
+        new_op_desc.set_original_id(src_op.desc.id())
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
         new_op_desc.set_input('X', [X_var.name])
@@ -345,6 +346,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         # create op
         new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
+        new_op_desc.set_original_id(src_op.desc.id())
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
         new_op_desc.set_input('X', [X_var.name])

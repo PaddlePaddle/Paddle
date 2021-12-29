@@ -95,16 +95,16 @@ class AutoParallelizer:
                     if suffix in attr_name:
                         op._remove_attr(attr_name)
 
-    def _apply_serial_forward_pass(self, main_program, startup_program):
+    # def _apply_serial_forward_pass(self, main_program, startup_program):
 
-        # apply amp forward pass
-        if self._dist_strategy.amp:
-            config = copy.deepcopy(self._dist_strategy.amp_configs)
-            config["dist_context"] = self._dist_context
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp_forward",
-                                              config)
-            auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                         self._pass_context)
+        # # apply amp forward pass
+        # if self._dist_strategy.amp:
+        #     config = copy.deepcopy(self._dist_strategy.amp_configs)
+        #     config["dist_context"] = self._dist_context
+        #     auto_parallel_amp_pass = new_pass("auto_parallel_amp_forward",
+        #                                       config)
+        #     auto_parallel_amp_pass.apply([main_program], [startup_program],
+        #                                  self._pass_context)
 
         # # apply recompute forward pass
         # if self._dist_strategy.recompute:
@@ -125,13 +125,26 @@ class AutoParallelizer:
                 parameter_list,
                 no_grad_set,
                 callbacks,
-                distop_context=self._dist_context.dist_op_context)
+                dist_op_context=self._dist_context.dist_op_context)
         complete_backward_annotation(
             main_program, dist_context=self._dist_context)
-        # apply recompute backward pass
+
+        # apply amp pass
+        if self._dist_strategy.amp:
+            config = copy.deepcopy(self._dist_strategy.amp_configs)
+            config["loss"] = loss
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            auto_parallel_amp_pass = new_pass("auto_parallel_amp",
+                                              config)
+            auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                         self._pass_context)
+
+        # apply recompute pass
         if self._dist_strategy.recompute:
             # assert auto_parallel_recompute_pass
             config = copy.deepcopy(self._dist_strategy.recompute_configs)
+            config["loss"] = loss
             config["dist_context"] = self._dist_context
             config["parameter_list"] = copy.deepcopy(parameter_list)
             config["no_grad_set"] = copy.deepcopy(no_grad_set)
@@ -139,16 +152,6 @@ class AutoParallelizer:
                                                     config)
             auto_parallel_recompute_pass.apply(
                 [main_program], [startup_program], self._pass_context)
-
-        # apply amp forward pass
-        if self._dist_strategy.amp:
-            config = copy.deepcopy(self._dist_strategy.amp_configs)
-            config["dist_context"] = self._dist_context
-            config["params_grads"] = params_grads
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp_backward",
-                                              config)
-            auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                         self._pass_context)
 
         return params_grads
 
@@ -192,8 +195,8 @@ class AutoParallelizer:
             self._dist_context = copy.deepcopy(dist_context)
 
         # serial forward pass
-        self._apply_serial_forward_pass(completed_main_program,
-                                        self._startup_program)
+        # self._apply_serial_forward_pass(completed_main_program,
+        #                                 self._startup_program)
 
         # serial backward pass
         params_grads = self._generate_backward(

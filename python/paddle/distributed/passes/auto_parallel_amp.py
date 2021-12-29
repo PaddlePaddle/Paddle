@@ -16,178 +16,331 @@ import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
-from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists, _keep_fp32_input, _keep_fp32_output, _valid_types, find_true_post_op, find_true_prev_op, find_op_index, _is_in_black_varnames, _dtype_to_str, _rename_arg
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
+from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr
+from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.distributed.auto_parallel.process_group import get_world_process_groups
+from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _keep_fp32_output, find_op_index
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 
-from collections import OrderedDict
-import numpy as np
-
-BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
-# FIXME
 global_process_mesh = get_world_process_groups().ranks
 
 
-def _mark_black_white_ops(main_prog, amp_lists):
-    """
-    this function is modified from paddle.fluid.contrib.mixed_precision
+class AMPState(object):
+    def __init__(self, block):
+        self._block = block
+        self._op_fp16_dict = {}   # op_id --> True/False. 'True' means that the current op is in fp16 mode.
+        self._var_name_dict = {}  # fwd_op_id --> {old_name: cast_name}
 
-    """
-    block = main_prog.global_block()
-    block._sync_with_cpp()
-    ops = block.ops
-    white_op_set = set()
-    black_op_set = set()
-    # TODO just parse forward ops
-    for op in ops:
+    def _is_fp16_op(self, op_id):
+        return self._op_fp16_dict.get(op_id, None)
 
-        if op.type == 'create_py_reader' or op.type == 'read':
-            continue
+    def _build_stats(self, amp_lists, dist_context):
+        ops = self._block.ops
+        dist_op_context = dist_context.dist_op_context
+        for op in ops:
+            if int(op.attr('op_role')) == int(OpRole.Forward):
+                self._mark_black_white_ops(amp_lists)
+            elif int(op.attr('op_role')) == int(OpRole.Backward):
+                if op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+                    fwd_op_id = dist_op_context.grad_op_id_to_op_id[op.desc.id()]
+                    if self._is_fp16_op(fwd_op_id) == True:
+                        self._op_fp16_dict[op.desc.id()] = True
+                    elif self._is_fp16_op(fwd_op_id) == False:
+                        self._op_fp16_dict[op.desc.id()] = False
+            elif int(op.attr('op_role')) == int(OpRole.Optimize):
+                break
 
-        if amp_lists.black_varnames is not None and _is_in_black_varnames(
-                op, amp_lists):
-            black_op_set.add(op)
-            continue
+    def _mark_black_white_ops(self, amp_lists):
+        """
+        this function is modified from paddle.fluid.contrib.mixed_precision
+        """
+        self._block._sync_with_cpp()
+        ops = self._block.ops
 
-        if op.type in amp_lists.black_list:
-            black_op_set.add(op)
-        elif op.type in amp_lists.white_list:
-            white_op_set.add(op)
-        elif op.type in amp_lists.gray_list:
-            is_black_op = False
-            is_white_op = False
-            for in_name in op.input_names:
-                # if this op has inputs
-                if in_name:
-                    for in_var_name in op.input(in_name):
-                        in_var = block.var(in_var_name)
-                        # this in_var isn't the output of other op
-                        if in_var.op is None:
-                            continue
-                        elif in_var.op is op:
-                            prev_op = find_true_prev_op(ops, op, in_var_name)
-                            if prev_op is None:
+        for op in ops:
+            if int(op.attr('op_role')) == int(OpRole.Backward):
+                break
+            if op.type == 'create_py_reader' or op.type == 'read':
+                continue
+            if amp_lists.black_varnames is not None and _is_in_black_varnames(
+                    op, amp_lists):
+                self._op_fp16_dict[op.desc.id()] = False
+                continue
+            if op.type in amp_lists.black_list:
+                self._op_fp16_dict[op.desc.id()] = False
+            elif op.type in amp_lists.white_list:
+                self._op_fp16_dict[op.desc.id()] = True
+            elif op.type in amp_lists.gray_list:
+                is_black_op = False
+                is_white_op = False
+                for in_name in op.input_names:
+                    # if this op has inputs
+                    if in_name:
+                        for in_var_name in op.input(in_name):
+                            in_var = self._block.var(in_var_name)
+                            # this in_var isn't the output of other op
+                            if in_var.op is None:
                                 continue
-                        else:
-                            prev_op = in_var.op
-                        # if it's one of inputs
-                        if prev_op in black_op_set or \
-                                prev_op.type in amp_lists.black_list:
-                            is_black_op = True
-                        elif prev_op in white_op_set or \
-                                prev_op.type in amp_lists.white_list:
-                            is_white_op = True
-            if is_black_op:
-                black_op_set.add(op)
-            elif is_white_op:
-                white_op_set.add(op)
+                            elif in_var.op is op:
+                                prev_op = find_true_prev_op(ops, op, in_var_name)
+                                if prev_op is None:
+                                    continue
+                            else:
+                                prev_op = in_var.op
+                            # if it's one of inputs
+                            if self._is_fp16_op(prev_op.desc.id()) == False or \
+                                    prev_op.type in amp_lists.black_list:
+                                is_black_op = True
+                            elif self._is_fp16_op(prev_op.desc.id()) == True or \
+                                    prev_op.type in amp_lists.white_list:
+                                is_white_op = True
+                if is_black_op:
+                    self._op_fp16_dict[op.desc.id()] = False
+                elif is_white_op:
+                    self._op_fp16_dict[op.desc.id()] = True
+                else:
+                    pass
+            else:
+                # For numerical safe, we apply fp32 computation on ops that
+                # are not determined which list they should stay.
+                self._op_fp16_dict[op.desc.id()] = False
+
+    def _insert_cast_ops_forward(self, dist_context):
+        ops = self._block.ops
+        idx = 0
+        while idx < len(ops):
+            op = ops[idx]
+            num_cast_ops = 0
+            if int(op.attr('op_role')) == int(OpRole.Backward):
+                break
+            if self._is_fp16_op(op.desc.id()) == False:
+                num_cast_ops = self._insert_cast_op_forward(
+                    op, idx, core.VarDesc.VarType.FP16,
+                    core.VarDesc.VarType.FP32, dist_context)
+            elif self._is_fp16_op(op.desc.id()) == True:
+                num_cast_ops = self._insert_cast_op_forward(
+                    op, idx, core.VarDesc.VarType.FP32,
+                    core.VarDesc.VarType.FP16, dist_context)
             else:
                 pass
-        else:
-            # For numerical safe, we apply fp32 computation on ops that
-            # are not determined which list they should stay.
-            black_op_set.add(op)
-    return white_op_set, black_op_set
+            idx += num_cast_ops + 1
+        self._block._sync_with_cpp()
 
-
-def _insert_cast_ops(main_program, black_op_set, white_op_set, dist_context):
-
-    block = main_program.global_block()
-    ops = block.ops
-
-    idx = 0
-    while idx < len(ops):
-        op = ops[idx]
+    def _insert_cast_op_forward(self, op, idx, src_dtype, dst_dtype, dist_context):
+        """
+        only for forward cast
+        modified from paddle.fluid.contrib.mixed_precision
+        """
         num_cast_ops = 0
-        if op in black_op_set:
-            num_cast_ops = _insert_cast_op(
-                block, op, idx, core.VarDesc.VarType.FP16,
-                core.VarDesc.VarType.FP32, dist_context)
-        elif op in white_op_set:
-            num_cast_ops = _insert_cast_op(
-                block, op, idx, core.VarDesc.VarType.FP32,
-                core.VarDesc.VarType.FP16, dist_context)
-        else:
-            pass
 
-        idx += num_cast_ops + 1
-
-
-def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, dist_context):
-    """
-    modified from paddle.fluid.contrib.mixed_precision
-    """
-    num_cast_ops = 0
-
-    # TODO only for forward cast
-    for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(op,
-                                                                       in_name):
-            continue
-        for in_var_name in op.input(in_name):
-            in_var = block._find_var_recursive(in_var_name)
-            if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
+        for in_name in op.input_names:
+            var_name_dict = {}
+            if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(op,
+                                                                        in_name):
                 continue
-            if in_var.dtype == src_dtype:
-                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
-                out_var = block.vars.get(cast_name)
-                consume_op_attr = dist_context.get_op_dist_attr_for_program(op)
-                assert consume_op_attr is not None
-                if out_var is None or out_var.dtype != dest_dtype:
-
-                    # NOTE we make the cast op and var's dist attr as the op that consume the
-                    # cast var instead of the op which generates the var
-                    ref_mesh = consume_op_attr.process_mesh
-                    ref_mapping = consume_op_attr.get_input_dims_mapping(
-                        in_var.name)
-                    assert ref_mapping is not None
-
-                    out_var = block.create_var(
-                        name=cast_name,
-                        dtype=dest_dtype,
-                        persistable=False,
-                        stop_gradient=in_var.stop_gradient)
-                    out_var_dist_attr = set_var_dist_attr(dist_context, out_var,
-                                                          ref_mapping, ref_mesh)
-
-                    cast_op = block._insert_op_without_sync(
-                        idx,
-                        type="cast",
-                        inputs={"X": in_var},
-                        outputs={"Out": out_var},
-                        attrs={
-                            "in_dtype": in_var.dtype,
-                            "out_dtype": out_var.dtype,
-                        })
-                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                        cast_op, ref_mesh, ref_mapping, dist_context)
-
-                    num_cast_ops += 1
-                else:
-                    out_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                _rename_arg(op, in_var.name, out_var.name)
-                consume_op_attr.set_input_dist_attr(out_var.name,
-                                                    out_var_dist_attr)
-            else:
-                if op.has_attr('in_dtype'):
-                    op._set_attr('in_dtype', dest_dtype)
-
-    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
-        for out_name in op.output_names:
-            if _keep_fp32_output(op, out_name):
-                continue
-            for out_var_name in op.output(out_name):
-                out_var = block.var(out_var_name)
-                if out_var.type not in _valid_types:
+            for in_var_name in op.input(in_name):
+                in_var = self._block._find_var_recursive(in_var_name)
+                if in_var.type not in _valid_types or in_var.dtype == dst_dtype:
                     continue
-                if out_var.dtype == core.VarDesc.VarType.FP32:
-                    out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
-                    if op.has_attr('out_dtype'):
-                        op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
-    return num_cast_ops
+                if in_var.dtype == src_dtype:
+                    cast_name = in_var.name + '.cast_' + _dtype_to_str(dst_dtype)
+                    out_var = self._block.vars.get(cast_name)
+                    var_name_dict[in_var.name] = cast_name
+                    consume_op_attr = dist_context.get_op_dist_attr_for_program(op)
+                    assert consume_op_attr is not None
+                    if out_var is None or out_var.dtype != dst_dtype:
+                        # NOTE we make the cast op and var's dist attr as the op that consume the
+                        # cast var instead of the op which generates the var
+                        in_var_dist_attr = consume_op_attr.get_input_dist_attr(in_var.name)
+                        assert in_var_dist_attr is not None
+                        ref_mesh = in_var_dist_attr.process_mesh
+                        ref_mapping = in_var_dist_attr.dims_mapping
+                        consume_op_attr.set_input_dist_attr(cast_name, in_var_dist_attr)
+
+                        out_var = self._block.create_var(
+                            name=cast_name,
+                            dtype=dst_dtype,
+                            persistable=False,
+                            stop_gradient=in_var.stop_gradient)
+                        set_var_dist_attr(dist_context, out_var, ref_mapping, ref_mesh)
+
+                        cast_op = self._block._insert_op_without_sync(
+                            idx,
+                            type="cast",
+                            inputs={"X": in_var},
+                            outputs={"Out": out_var},
+                            attrs={
+                                "in_dtype": in_var.dtype,
+                                "out_dtype": out_var.dtype,
+                            })
+                        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                            cast_op, ref_mesh, ref_mapping, dist_context)
+                        num_cast_ops += 1
+                    else:
+                        in_var_dist_attr = consume_op_attr.get_input_dist_attr(in_var.name)
+                        consume_op_attr.set_input_dist_attr(cast_name, in_var_dist_attr)
+                    _rename_arg(op, in_var.name, cast_name)
+                else:
+                    if op.has_attr('in_dtype'):
+                        op._set_attr('in_dtype', dst_dtype)
+        self._var_name_dict[op.desc.id()] = var_name_dict
+
+        if src_dtype == core.VarDesc.VarType.FP32 and dst_dtype == core.VarDesc.VarType.FP16:
+            for out_name in op.output_names:
+                if _keep_fp32_output(op, out_name):
+                    continue
+                for out_var_name in op.output(out_name):
+                    out_var = self._block.var(out_var_name)
+                    if out_var.type not in _valid_types:
+                        continue
+                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                        if op.has_attr('out_dtype'):
+                            op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+        return num_cast_ops
+
+    def _insert_cast_ops_backward(self, dist_context):
+        self._block._sync_with_cpp()
+        ops = self._block.ops
+
+        loss_op = get_loss_op(self._block)
+        loss_op_index = find_op_index(self._block.desc, loss_op.desc)
+
+        idx = loss_op_index + 1
+        while idx < len(ops):
+            num_cast_ops = 0
+            grad_op = ops[idx]
+            dist_op_context = dist_context.dist_op_context
+            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+                if self._is_fp16_op(grad_op.desc.id()) == False:  # fp32
+                    num_cast_ops = self._insert_cast_op_backward(
+                        grad_op, idx, core.VarDesc.VarType.FP16,
+                        core.VarDesc.VarType.FP32, dist_context)
+                elif self._is_fp16_op(grad_op.desc.id()) == True: # fp16
+                    num_cast_ops = self._insert_cast_op_backward(
+                        grad_op, idx, core.VarDesc.VarType.FP32,
+                        core.VarDesc.VarType.FP16, dist_context)
+            elif grad_op.type == "sum":
+                in_var_name = grad_op.desc.input_arg_names()[0]
+                src_dtype = self._block.var(in_var_name).dtype
+                for in_var_name in grad_op.desc.input_arg_names():
+                    assert src_dtype == self._block.var(in_var_name).dtype
+                out_var_name = grad_op.desc.output_arg_names()[0]
+                out_var = self._block.var(out_var_name)
+                if out_var.dtype != src_dtype:
+                    out_var.desc.set_dtype(src_dtype)
+            elif int(grad_op.attr('op_role')) == 257:
+                pass
+            else:
+                raise ValueError("'{}' op is not supported in the complete amp pass.".format(grad_op.type))
+            idx += num_cast_ops + 1
+
+        self._block._sync_with_cpp()
+
+    def _insert_cast_op_backward(self, grad_op, idx, src_dtype, dst_dtype, dist_context):
+        """ only for backward cast """
+
+        def _keep_fp32_input(op, in_name):
+            op_type = op.type
+            if op_type in ['layer_norm_grad']:
+                return in_name not in {'X', 'Y@GRAD'}
+            return False
+
+        def _keep_fp32_output(op, out_name):
+            op_type = op.type
+            if op_type in ['layer_norm_grad']:
+                return out_name != 'X@GRAD'
+            return False
+
+        num_cast_ops = 0
+        dist_op_context = dist_context.dist_op_context
+        fwd_op_id = dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()]
+
+        for in_name in grad_op.input_names:
+            if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(grad_op, in_name):
+                for in_var_name in grad_op.input(in_name):
+                    in_var = self._block._find_var_recursive(in_var_name)
+                    assert in_var.dtype == core.VarDesc.VarType.FP32
+                continue
+
+            for in_var_name in grad_op.input(in_name):
+                in_var = self._block._find_var_recursive(in_var_name)
+                if in_var.dtype == src_dtype:
+                    consume_op_attr = dist_context.get_op_dist_attr_for_program(grad_op)
+                    if in_var_name in self._var_name_dict[fwd_op_id]:
+                        # NOTE: if in_var of consume grad_op has been casted before,
+                        # it should be renamed and reset dist_attr.
+                        cast_name = self._var_name_dict[fwd_op_id][in_var_name]
+                        grad_op.desc._rename_input(in_var_name, cast_name)
+                        in_var_dist_attr = consume_op_attr.get_input_dist_attr(in_var_name)
+                        consume_op_attr.set_input_dist_attr(cast_name, in_var_dist_attr)
+                    else:
+                        assert in_var.dtype == dst_dtype
+
+        for out_name in grad_op.output_names:
+            if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_output(grad_op, out_name):
+                for out_var_name in grad_op.output(out_name):
+                    out_var = self._block._find_var_recursive(out_var_name)
+                    assert out_var.dtype == core.VarDesc.VarType.FP32
+                continue
+
+            for out_var_name in grad_op.output(out_name):
+                out_var = self._block._find_var_recursive(out_var_name)
+                out_var_name_prefix = out_var_name[:out_var_name.find("@")]
+                fwd_var = self._block._find_var_recursive(out_var_name_prefix)
+                # NOTE: the out_var's dtype of consume grad_op should equal to the fwd_var's dtype
+                if out_var.dtype != fwd_var.dtype:
+                    out_var.desc.set_dtype(fwd_var.dtype)
+
+                if out_var.dtype == src_dtype:
+                    if out_var_name_prefix in self._var_name_dict[fwd_op_id]:
+                        # NOTE: if out_var of consume grad_op has been casted before,
+                        # it should be renamed and reset dist_attr, then we insert cast op to
+                        # convert the cast_var to original out_var
+                        consume_op_attr = dist_context.get_op_dist_attr_for_program(grad_op)
+                        fwd_cast_name = self._var_name_dict[fwd_op_id][out_var_name_prefix]
+                        cast_name = fwd_cast_name + "@GRAD"
+                        cast_var = self._block.vars.get(cast_name)
+                        if cast_var is None or cast_var.dtype != dst_dtype:
+                            grad_op.desc._rename_output(out_var_name, cast_name)
+                            out_var_dist_attr = consume_op_attr.get_output_dist_attr(out_var_name)
+                            ref_mesh = out_var_dist_attr.process_mesh
+                            ref_mapping = out_var_dist_attr.dims_mapping
+                            consume_op_attr.set_output_dist_attr(cast_name, out_var_dist_attr)
+                            assert ref_mapping is not None
+                            cast_var = self._block.create_var(
+                                name=cast_name,
+                                shape=out_var.shape,
+                                dtype=dst_dtype,
+                                persistable=False,
+                                stop_gradient=out_var.stop_gradient)
+                            set_var_dist_attr(dist_context, cast_var, ref_mapping, ref_mesh)
+
+                            cast_op = self._block._insert_op(
+                                idx + 1,
+                                type="cast",
+                                inputs={"X": cast_var},
+                                outputs={"Out": out_var},
+                                attrs={
+                                    "in_dtype": cast_var.dtype,
+                                    "out_dtype": out_var.dtype,
+                                    "op_role": OpRole.Backward
+                                })
+                            cast_op._remove_attr("op_role_var")
+                            cast_op._remove_attr("op_namescope")
+                            cast_op._remove_attr("with_quant_attr")
+                            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                                cast_op, ref_mesh, ref_mapping, dist_context)
+                            num_cast_ops += 1
+                else:
+                    assert out_var.dtype == dst_dtype
+
+        return num_cast_ops
 
 
 def _update_backward_cast_ops(params_grads, dist_context):
@@ -203,12 +356,8 @@ def _update_backward_cast_ops(params_grads, dist_context):
     for p, g in params_grads:
         op = g.op
         if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
-            role = op.attr('op_role')
-            if role & int(BACKWARD) and op.has_attr('op_role_var'):
+            if int(op.attr('op_role')) == int(OpRole.Backward) and op.has_attr('op_role_var'):
                 op._remove_attr("op_role_var")
-            else:
-                raise ValueError("The cast op {0} must be in BACKWARD role "
-                                 "and have op_role_var attr.".format(op))
 
             post_ops = find_true_post_op(main_block.ops, op, g.name)
             if post_ops:
@@ -263,13 +412,6 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'check_finite_and_unscale')
 
-    ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(grads[0])
-    ref_mesh = ref_dist_attr.process_mesh
-    for g in grads:
-        g_dist_attr = dist_context.get_tensor_dist_attr_for_program(g)
-        assert g_dist_attr is not None
-        assert ref_mesh == g_dist_attr.process_mesh
-
     found_inf = main_block.create_var(
         name=unique_name.generate_with_ignorable_key(".".join(
             ['find_infinite_scale', 'tmp'])),
@@ -278,11 +420,11 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         type=core.VarDesc.VarType.LOD_TENSOR,
         persistable=False,
         stop_gradient=False)
-    set_var_dist_attr(dist_context, found_inf, [-1], ref_mesh)
+    set_var_dist_attr(dist_context, found_inf, [-1], global_process_mesh)
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
-    attrs = {'op_role': BACKWARD}
+    attrs = {'op_role': OpRole.Backward}
     new_op = main_block.append_op(
         type='check_finite_and_unscale',
         inputs=inputs,
@@ -290,8 +432,9 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         attrs=attrs)
 
     new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = ref_mesh
-    new_op_dist_attr.impl_idx = 0
+    new_op_dist_attr.process_mesh = global_process_mesh
+    if len(global_process_mesh) > 1:
+        new_op_dist_attr.impl_idx = 0
     for g in grads:
         g_dist_attr = dist_context.get_tensor_dist_attr_for_program(g)
         assert g_dist_attr is not None
@@ -303,62 +446,22 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
     return grads, found_inf
 
 
-# TODO (JZ-LIANG) merge forward & backward pass 
-# NOTE we add the "auto_parallel" prefix to the pass in order to 
-# indicate that this pass should obey some constrains by auto_parallel
-# for example all ops and vars should has dist attr before and after pass
-# should use dist op instead of custom comm op 
-@register_pass("auto_parallel_amp_forward")
-class AMPForwardPass(PassBase):
+@register_pass("auto_parallel_amp")
+class AMPPass(PassBase):
     def __init__(self):
-        super(AMPForwardPass, self).__init__()
+        super(AMPPass, self).__init__()
+        self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("custom_white_list", None)
-        self.set_attr("custom_white_list", None)
+        self.set_attr("custom_black_list", None)
         self.set_attr("custom_black_varnames", None)
-
-    def _check_self(self):
-        if self.get_attr("dist_context") is None:
-            return False
-        return True
-
-    def _check_conflict(self, other_pass):
-        return True
-
-    # NOTE: why AMPForwardPass can override apply_single_impl instead of 
-    # apply_impl? AMP is an optimization pass for serial program, 
-    # in distributed scenario, all ranks should have the same modification.
-    def _apply_single_impl(self, main_program, startup_program, context):
-
-        self._dist_context = self.get_attr("dist_context")
-        amp_lists = AutoMixedPrecisionLists(
-            set(self.get_attr("custom_white_list")),
-            set(self.get_attr("custom_black_list")),
-            set(self.get_attr("custom_black_varnames")))
-
-        white_op_set, black_op_set = _mark_black_white_ops(main_program,
-                                                           amp_lists)
-
-        _insert_cast_ops(main_program, black_op_set, white_op_set,
-                         self._dist_context)
-
-        main_program.global_block()._sync_with_cpp()
-
-
-@register_pass("auto_parallel_amp_backward")
-class AMPBackwardPass(PassBase):
-    def __init__(self):
-        super(AMPBackwardPass, self).__init__()
-        self.set_attr(
-            "init_loss_scaling",
-            32768.0, )
+        self.set_attr("init_loss_scaling", 32768.0)
         self.set_attr("incr_every_n_steps", 1000)
         self.set_attr("decr_every_n_nan_or_inf", 2)
         self.set_attr("incr_ratio", 2.0)
         self.set_attr("decr_ratio", 0.8)
         self.set_attr("use_dynamic_loss_scaling", False)
         self.set_attr("params_grads", [])
-        self.set_attr("dist_context", None)
         self._loss_scaling = None
         self._num_good_steps = None
         self._num_bad_steps = None
@@ -388,12 +491,21 @@ class AMPBackwardPass(PassBase):
     # apply_impl? AMP is an optimization pass for serial program, 
     # in distributed scenario, all ranks should have the same modification.
     def _apply_single_impl(self, main_program, startup_program, context):
-
-        # backward
         self._dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
 
+        amp_lists = AutoMixedPrecisionLists(
+            set(self.get_attr("custom_white_list")),
+            set(self.get_attr("custom_black_list")),
+            set(self.get_attr("custom_black_varnames")))
+
+        block = main_program.global_block()
+        amp_state = AMPState(block)
+        amp_state._build_stats(amp_lists, self._dist_context)
+
         with paddle.static.program_guard(main_program, startup_program):
+            amp_state._insert_cast_ops_forward(self._dist_context)
+            amp_state._insert_cast_ops_backward(self._dist_context)
             self._init_amp_var()
             self._scale_loss()
             _update_backward_cast_ops(params_grads, self._dist_context)
@@ -405,8 +517,6 @@ class AMPBackwardPass(PassBase):
 
             if self.get_attr("use_dynamic_loss_scaling"):
                 self._update_loss_scaling(grads, found_inf)
-
-        main_program.global_block()._sync_with_cpp()
 
     def _init_amp_var(self):
         self._loss_scaling = paddle.static.create_global_var(
@@ -441,8 +551,10 @@ class AMPBackwardPass(PassBase):
 
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
-        loss_op = get_loss_op(main_block)
-        loss = main_block.var(loss_op.output_arg_names[0])
+        loss = self.get_attr("loss")
+        assert loss is not None
+        loss_op = loss.op
+        loss_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(loss_op)
 
         if loss.dtype != core.VarDesc.VarType.FP32:
             loss = loss.astype('float32')
@@ -453,17 +565,14 @@ class AMPBackwardPass(PassBase):
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
             # forward
+            ref_mesh = loss_op_dist_attr.process_mesh
             self._scaled_loss = main_block.create_var(
                 name=unique_name.generate("scaled_loss"),
                 shape=loss.shape,
                 dtype=loss.dtype,
                 persistable=loss.persistable)
             set_var_dist_attr(self._dist_context, self._scaled_loss, [-1],
-                              global_process_mesh)
-
-            ref_dist_attr = self._dist_context.get_op_dist_attr_for_program(
-                loss_op)
-            ref_mesh = ref_dist_attr.process_mesh
+                              ref_mesh)
 
             OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
             elementwise_mul_op = main_block._insert_op(
@@ -476,8 +585,7 @@ class AMPBackwardPass(PassBase):
             loss_op._set_attr(OP_ROLE_KEY,
                               core.op_proto_and_checker_maker.OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_op, global_process_mesh, [-1],
-                self._dist_context)
+                elementwise_mul_op, ref_mesh, [-1], self._dist_context)
 
             # backward
             first_backward_op = main_block.ops[loss_op_idx + 2]
@@ -489,11 +597,11 @@ class AMPBackwardPass(PassBase):
                 dtype=loss.dtype,
                 persistable=loss.persistable)
             set_var_dist_attr(self._dist_context, self._scaled_loss_grad, [-1],
-                              global_process_mesh)
+                              ref_mesh)
+
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name,
                                              self._scaled_loss_grad.name)
-
             main_block._sync_with_cpp()
             elementwise_mul_grad_op_desc = main_block.desc._insert_op(
                 loss_op_idx + 3)
@@ -515,8 +623,7 @@ class AMPBackwardPass(PassBase):
             elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_grad_op, global_process_mesh, [-1],
-                self._dist_context)
+                elementwise_mul_grad_op, ref_mesh, [-1], self._dist_context)
 
         else:
             self._scaled_loss = loss
@@ -534,7 +641,8 @@ class AMPBackwardPass(PassBase):
         for e in grads:
             check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                      'update_loss_scaling')
-            assert self._loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
+            assert self._loss_scaling.dtype == e.dtype, \
+                "The dtype of prev_loss_scaling should be equal to the dtype of x."
 
         inputs = {
             'X': grads,
@@ -557,7 +665,7 @@ class AMPBackwardPass(PassBase):
             'incr_ratio': self.get_attr("incr_ratio"),
             'decr_ratio': self.get_attr("decr_ratio"),
             'stop_update': self.get_attr("stop_update"),
-            'op_role': BACKWARD
+            'op_role': OpRole.Backward
         }
 
         new_op = main_block.append_op(
@@ -566,16 +674,10 @@ class AMPBackwardPass(PassBase):
             outputs=outputs,
             attrs=attrs)
 
-        ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-            grads[0])
-        ref_mesh = ref_dist_attr.process_mesh
-        for g in grads:
-            g_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(g)
-            assert g_dist_attr is not None
-            assert ref_mesh == g_dist_attr.process_mesh
-
         new_op_dist_attr = OperatorDistributedAttribute()
-        new_op_dist_attr.process_mesh = ref_mesh
+        new_op_dist_attr.process_mesh = global_process_mesh
+        if len(global_process_mesh) > 1:
+            new_op_dist_attr.impl_idx = 0
         for g in grads:
             g_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(g)
             assert g_dist_attr is not None

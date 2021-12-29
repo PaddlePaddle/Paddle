@@ -24,6 +24,11 @@ import numpy as np
 from collections import OrderedDict
 from dist_pass_test_base import DistPassTestBase
 
+import paddle.distributed.fleet as fleet
+import paddle.distributed.auto_parallel as auto
+sys.path.append("..")
+import auto_parallel_gpt_model as modeling
+from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
 
 class AutoPallelPassTestBase(DistPassTestBase):
     def setUp(self):
@@ -51,7 +56,9 @@ class AutoPallelPassTestBase(DistPassTestBase):
         raise NotImplementedError()
 
     def apply_no_passes(self):
-        raise NotImplementedError()
+        dist_strategy = fleet.DistributedStrategy()
+        dist_strategy.semi_auto = True
+        fleet.init(is_collective=True, strategy=dist_strategy)
 
     def check_main(self, gpus=None, **kwargs):
         no_pass_rets = self._distributed_launch(
@@ -92,3 +99,109 @@ class AutoPallelPassTestBase(DistPassTestBase):
                 all_fetch_values.append(fetch_values)
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
+
+    def get_gpt_model(self, strategy, place, batch_size, sequence_len, vocab_size):
+        modeling.init_global()
+        if strategy == "dp":
+            modeling._global_parallel_strategy = "dp"
+            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        elif strategy == "mp":
+            modeling._global_parallel_strategy = "mp"
+            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        elif strategy == "pp":
+            modeling._global_parallel_strategy = "pp"
+            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+            modeling.PP_MESH_LIST = [auto.ProcessMesh(mesh=[0]), auto.ProcessMesh(mesh=[1])]
+        else:
+            raise ValueError("'get_gpt_model' only support dp, mp and pp.")
+
+        tokens = paddle.static.data(
+            name="tokens", shape=[batch_size, sequence_len], dtype='int64')
+        position_ids = paddle.static.data(
+            name="position_ids",
+            shape=[batch_size, sequence_len],
+            dtype='int64')
+        attention_mask = paddle.static.data(
+            name="attention_mask",
+            shape=[batch_size, 1, sequence_len, sequence_len],
+            dtype='float32')
+        labels = paddle.static.data(
+            name="labels", shape=[batch_size, sequence_len], dtype='int64')
+        loss_mask = paddle.static.data(
+            name="loss_mask", shape=[batch_size, sequence_len], dtype='float32')
+        data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
+
+        if modeling._global_parallel_strategy == "dp":
+            auto.shard_tensor(
+                tokens, 
+                dist_attr={
+                    "process_mesh":modeling._global_process_mesh, 
+                    "dims_mapping":[0, -1]})
+        elif modeling._global_parallel_strategy == "pp":
+            auto.shard_tensor(
+                tokens, 
+                dist_attr={
+                    "process_mesh":modeling.PP_MESH_LIST[0], 
+                    "dims_mapping":[-1, -1]})
+            auto.shard_tensor(
+                attention_mask, 
+                dist_attr={
+                    "process_mesh":modeling.PP_MESH_LIST[0], 
+                    "dims_mapping":[-1, -1, -1, -1]})
+
+        gpt = GPTModel(
+            vocab_size=1000,
+            hidden_size=64,
+            num_hidden_layers=2,
+            num_attention_heads=8,
+            intermediate_size=256,
+            hidden_act="gelu",
+            hidden_dropout_prob=0.0,
+            attention_probs_dropout_prob=0.0,
+            max_position_embeddings=1024,
+            type_vocab_size=1,
+            initializer_range=0.02,
+            pad_token_id=0,
+            eos_token_id=7,
+            bos_token_id=0,
+            eol_token_id=3)
+
+        model = GPTForPretraining(
+            gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02)
+        preds = model(tokens, position_ids, attention_mask)
+        criterion = GPTPretrainingCriterion()
+        loss = criterion(preds, labels, loss_mask)
+
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None)
+        optimizer = fleet.distributed_optimizer(optimizer)
+        startup_program = paddle.static.default_startup_program()
+        _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
+            loss, startup_program)
+
+        def gen_data():
+            np.random.seed(2021)
+            for _ in range(10):
+                tokens = []
+                position_ids = []
+                attention_mask = []
+                labels = []
+                loss_mask = []
+                for _ in range(batch_size):
+                    tokens.append(
+                        np.random.randint(
+                            vocab_size, size=sequence_len))
+                    position_ids.append(np.arange(sequence_len))
+                    attention_mask.append([np.tril(np.ones(sequence_len))])
+                    labels.append(
+                        np.random.randint(
+                            vocab_size, size=sequence_len))
+                    loss_mask.append(np.ones(sequence_len))
+
+                yield tokens, position_ids, attention_mask, labels, loss_mask
+
+        return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data

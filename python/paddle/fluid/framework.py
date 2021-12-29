@@ -2554,6 +2554,10 @@ class Operator(object):
         if dist_op is not None:
             attrs_str += ", {name} = {value}".format(
                 name="dist_attr", value=dist_op)
+            attrs_str += ", {name} = {value}".format(
+                name="id", value=self.desc.id())
+            attrs_str += ", {name} = {value}".format(
+                name="original_id", value=self.desc.original_id())
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
