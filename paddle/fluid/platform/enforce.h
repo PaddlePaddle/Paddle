@@ -752,6 +752,10 @@ inline const char* GetErrorMsgUrl(T status) {
       break;
     case platform::proto::ApiType::CUFFT:
       return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
+    case platform::proto::ApiType::CUSPARSE:
+      return "https://docs.nvidia.com/cuda/cusparse/"
+             "index.html#cusparseStatus_t";
+      break;
     default:
       return "Unknown type of External API, can't get error message URL!";
       break;
@@ -886,15 +890,15 @@ inline bool is_error(cublasStatus_t stat) {
   return stat != CUBLAS_STATUS_SUCCESS;
 }
 
-/*************** CUSPARSE ERROR ***************/
-inline bool is_error(cusparseStatus_t stat) {
-  return stat != CUSPARSE_STATUS_SUCCESS;
-}
-
 inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
   std::ostringstream sout;
   sout << "CUBLAS error(" << stat << "). " << GetExternalErrorMsg(stat);
   return sout.str();
+}
+
+/*************** CUSPARSE ERROR ***************/
+inline bool is_error(cusparseStatus_t stat) {
+  return stat != CUSPARSE_STATUS_SUCCESS;
 }
 
 inline std::string build_nvidia_error_msg(cusparseStatus_t stat) {

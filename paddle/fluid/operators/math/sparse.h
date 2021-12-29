@@ -107,6 +107,8 @@ inline SparseT<DeviceContext, T> GetSparse(const DeviceContext& dev_ctx) {
 }  // namespace operators
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 11020
 #include "paddle/fluid/operators/math/sparse_impl.cu.h"
+#endif
 #endif
