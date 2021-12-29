@@ -115,30 +115,16 @@ struct MinFunctor {
   }
 };
 
-// Float mul grad
 template <typename T>
-struct MulGradFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
-};
-
-// Complex mul grad
-template <typename T>
-struct MulGradFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& a,
-      const paddle::platform::complex<T>& b) const {
-    paddle::platform::complex<T> b_conj(b.real, -b.imag);
-    return a * b_conj;
-  }
-};
+using Complex = paddle::platform::complex<T>;
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
-  paddle::framework::Array<OutT, 2> outs;
   inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(InT a, InT b,
                                                                  InT c) {
     // dx = dout / y
     // dy = - dout * out / y
+    paddle::framework::Array<OutT, 2> outs;
     outs[0] = a / c;
     outs[1] = -a * b / c;
     return outs;
@@ -146,14 +132,12 @@ struct DivGradXYFunctor {
 };
 
 template <typename InT, typename OutT>
-struct DivGradXYFunctor<paddle::platform::complex<InT>,
-                        paddle::platform::complex<OutT>> {
-  paddle::framework::Array<paddle::platform::complex<OutT>, 2> outs;
-  inline HOSTDEVICE paddle::framework::Array<paddle::platform::complex<OutT>, 2>
-  operator()(paddle::platform::complex<InT> a, paddle::platform::complex<InT> b,
-             paddle::platform::complex<InT> c) {
-    paddle::platform::complex<InT> c_conj(c.real, -c.imag);
-    paddle::platform::complex<InT> out_div_y_conj((b / c).real, -(b / c).imag);
+struct DivGradXYFunctor<Complex<InT>, Complex<OutT>> {
+  inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
+      Complex<InT> a, Complex<InT> b, Complex<InT> c) {
+    paddle::framework::Array<Complex<OutT>, 2> outs;
+    Complex<InT> c_conj(c.real, -c.imag);
+    Complex<InT> out_div_y_conj((b / c).real, -(b / c).imag);
     outs[0] = a / c_conj;
     outs[1] = -a * out_div_y_conj;
     return outs;
@@ -168,11 +152,10 @@ struct DivGradFunctor {
 
 // Complex div grad
 template <typename T>
-struct DivGradFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& a,
-      const paddle::platform::complex<T>& b) const {
-    paddle::platform::complex<T> b_conj(b.real, -b.imag);
+struct DivGradFunctor<Complex<T>> {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
+                                          const Complex<T>& b) const {
+    Complex<T> b_conj(b.real, -b.imag);
     return a / b_conj;
   }
 };
@@ -187,12 +170,11 @@ struct DivGradYFunctor {
 
 // Complex mul and div
 template <typename T>
-struct DivGradYFunctor<paddle::platform::complex<T>> {
-  inline HOSTDEVICE paddle::platform::complex<T> operator()(
-      const paddle::platform::complex<T>& a,
-      const paddle::platform::complex<T>& b,
-      const paddle::platform::complex<T>& c) const {
-    paddle::platform::complex<T> out_div_y_conj((b / c).real, -(b / c).imag);
+struct DivGradYFunctor<Complex<T>> {
+  inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
+                                          const Complex<T>& b,
+                                          const Complex<T>& c) const {
+    Complex<T> out_div_y_conj((b / c).real, -(b / c).imag);
     return -a * out_div_y_conj;
   }
 };

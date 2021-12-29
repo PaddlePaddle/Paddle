@@ -30,20 +30,11 @@ static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
                                                        const T* dout,
                                                        int64_t size, T* dx,
                                                        T* dy) {
-  //   for (int i = blockIdx.x * blockDim.x + threadIdx.x;
-  //     i < size; i += blockDim.x * gridDim.x) {
-  //   T o = dout[i];
-  //   dx[i] = o / y[i];
-  //   dy[i] = -o * out[i] / y[i];
-  // }
-
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
-    T o = dout[col];
-    dx[col] = o / y[col];
-    dy[col] = -o * out[col] / y[col];
-    col += blockDim.x * gridDim.x;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
+       i += blockDim.x * gridDim.x) {
+    T o = dout[i];
+    dx[i] = o / y[i];
+    dy[i] = -o * out[i] / y[i];
   }
 }
 
@@ -56,16 +47,14 @@ SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<float>>(
     const paddle::platform::complex<float>* dout, int64_t size,
     paddle::platform::complex<float>* dx,
     paddle::platform::complex<float>* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
-    paddle::platform::complex<float> o = dout[col];
-    paddle::platform::complex<float> y_conj(y[col].real, -y[col].imag);
-    paddle::platform::complex<float> out_div_y_conj((out[col] / y[col]).real,
-                                                    -(out[col] / y[col]).imag);
-    dx[col] = o / y_conj;
-    dy[col] = -dout[col] * out_div_y_conj;
-    col += blockDim.x * gridDim.x;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
+       i += blockDim.x * gridDim.x) {
+    paddle::platform::complex<float> o = dout[i];
+    paddle::platform::complex<float> y_conj(y[i].real, -y[i].imag);
+    paddle::platform::complex<float> out_div_y_conj((out[i] / y[i]).real,
+                                                    -(out[i] / y[i]).imag);
+    dx[i] = o / y_conj;
+    dy[i] = -dout[i] * out_div_y_conj;
   }
 }
 
@@ -78,16 +67,14 @@ SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<double>>(
     const paddle::platform::complex<double>* dout, int64_t size,
     paddle::platform::complex<double>* dx,
     paddle::platform::complex<double>* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  while (col < size) {
-    paddle::platform::complex<double> o = dout[col];
-    paddle::platform::complex<double> y_conj(y[col].real, -y[col].imag);
-    paddle::platform::complex<double> out_div_y_conj((out[col] / y[col]).real,
-                                                     -(out[col] / y[col]).imag);
-    dx[col] = o / y_conj;
-    dy[col] = -o * out_div_y_conj;
-    col += blockDim.x * gridDim.x;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
+       i += blockDim.x * gridDim.x) {
+    paddle::platform::complex<double> o = dout[i];
+    paddle::platform::complex<double> y_conj(y[i].real, -y[i].imag);
+    paddle::platform::complex<double> out_div_y_conj((out[i] / y[i]).real,
+                                                     -(out[i] / y[i]).imag);
+    dx[i] = o / y_conj;
+    dy[i] = -dout[i] * out_div_y_conj;
   }
 }
 
@@ -98,8 +85,7 @@ void reduce_functor(const framework::ExecutionContext& ctx,
   const auto& dev_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
   if (dst->dims() == out->dims()) {
-    // dst->ShareDataWith(*src);
-    framework::TensorCopy(*src, ctx.GetPlace(), dev_ctx, dst);
+    dst->ShareDataWith(*src);
     return;
   }
   int axis = ctx.Attr<int>("axis");
@@ -140,9 +126,9 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
     std::vector<const framework::Tensor*> ins = {dout, out, y};
     std::vector<framework::Tensor*> outs = {&tmp_dx, &tmp_dy};
     auto functor = DivGradXYFunctor<T, T>();
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kTernary, T, T,
-                                         decltype(functor), 2>(
-        dev_ctx, ins, &outs, axis, functor);
+    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T,
+                                decltype(functor), 2>(dev_ctx, ins, &outs, axis,
+                                                      functor);
 
     if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
       dx->ShareDataWith(tmp_dx);
