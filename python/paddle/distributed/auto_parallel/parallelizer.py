@@ -153,7 +153,6 @@ class AutoParallelizer:
     def _apply_post_optimization_passed(self, main_program, startup_program,
                                         rank, params_grads):
 
-        # apply amp forward pass
         if self._dist_strategy.sharding:
             config = copy.deepcopy(self._dist_strategy.sharding_configs)
             config["dist_context"] = self._dist_context
@@ -163,10 +162,6 @@ class AutoParallelizer:
                                                    config)
             auto_parallel_sharding_pass.apply(
                 [main_program], [startup_program], self._pass_context)
-
-        # apply recompute forward pass
-        if self._dist_strategy.gradient_merge:
-            pass
 
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
         completed_main_program = None

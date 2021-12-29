@@ -101,7 +101,7 @@ class ShardingPass(PassBase):
             if group is not None:
                 self.dp_groups.add(group)
 
-        # TODO allow more than one dp groups in network, support more general distribution 
+        # TODO(JZ-LIANG) allow more than one dp groups in network, support more general distribution 
         # genetated by auto search
         if len(self.dp_groups) != 1:
             raise NotImplementedError(
@@ -136,7 +136,7 @@ class ShardingPass(PassBase):
             else:
                 sharding_group = dp_group
 
-            # TODO when support multiple dp groups in future, should group param and bind them to corresponding dp group
+            # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
             params_in_group = [p for p, g in params_grads]
             assert len(params_in_group) == len(set(
                 params_in_group)), "found duplicated param in params_grads"
@@ -192,7 +192,7 @@ class ShardingPass(PassBase):
         if self.stage < 2:
             return
 
-        # TODO support calculate global norm with tensor parallelism
+        # TODO (JZ-LIANG) support calculate global norm with tensor parallelism
         is_clip_grad_by_global_norm = False
         for idx, op in list(enumerate(main_block.ops)):
             if not _is_gradient_clip_op(op):
@@ -350,7 +350,7 @@ class ShardingPass(PassBase):
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
 
-        main_block._sync_with_cpp
+        main_block._sync_with_cpp()
 
     def _shard_parameter(self, main_block, startup_block):
 
@@ -603,7 +603,7 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
             process_mesh = dist_attr.process_mesh
             input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
             mesh_shape = process_mesh.topology
-            # TODO replace with specific batch size dimension
+            # TODO(JZ-LIANG) replace with specific batch size dimension
             batch_size_axis = input_dim_mapping[0]
             if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                 group_ranks = _get_comm_group(process_mesh.processes,
