@@ -456,7 +456,7 @@ void LaunchBroadcastElementwiseCudaKernel(
                         ins.size(),
                         kArity));
   PADDLE_ENFORCE_LE(kArity,
-                    ElementwiseType::kTernary,
+                    3,
                     paddle::platform::errors::InvalidArgument(
                         "Currently only broadcast of ternary is supported "
                         "and verified, but received %d.",
