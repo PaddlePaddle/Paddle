@@ -2481,6 +2481,8 @@ function main() {
         ;;
       build_pr_dev)
         build_pr_and_develop 
+        rm -rf ${PADDLE_ROOT}/build/paddle
+        rm -rf ${PADDLE_ROOT}/build/third_party
         ;;
       build_and_check)
         set +e
