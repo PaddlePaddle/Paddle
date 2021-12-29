@@ -54,9 +54,9 @@ def get_programs(annotated_func):
 
     rank_id = 3
     dist_strategy = fleet.DistributedStrategy()
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-    test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog = partitioner.transpile_forward(
-        complete_train_program, start_program)
+    partitioner = Partitioner(dist_context, rank_id)
+    test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog, _ = partitioner.partition(
+        complete_train_program, start_program, [])
 
     return complete_train_program, start_program, test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog, dist_context
 

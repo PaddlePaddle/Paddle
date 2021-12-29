@@ -17,8 +17,8 @@ limitations under the License. */
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/enforce.h"  // import LIKELY
+#include "paddle/fluid/platform/macros.h"   // import DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/port.h"
 #ifdef _POSIX_C_SOURCE
 #include <time.h>
@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// Get current time in nanoseconds
+// Get system-wide realtime clock in nanoseconds
 inline uint64_t PosixInNsec() {
 #ifdef _POSIX_C_SOURCE
   struct timespec tp;
@@ -45,13 +45,13 @@ class ThreadId {
  public:
   ThreadId();
 
-  uint64_t MainTid() const { return std_tid_; }
+  uint64_t MainTid() const { return SysTid(); }
 
   uint64_t StdTid() const { return std_tid_; }
 
   uint32_t CuptiTid() const { return cupti_tid_; }
 
-  uint64_t SysTid() const { return sys_tid_; }
+  uint64_t SysTid() const { return sys_tid_ != 0 ? sys_tid_ : std_tid_; }
 
  private:
   uint64_t std_tid_ = 0;    // std::hash<std::thread::id>

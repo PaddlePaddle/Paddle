@@ -85,8 +85,8 @@ static void IndexIncreaseFromDims(const int ndim,
   }
 }
 
-template <typename DeviceContext, typename T>
-void MatMulFunction(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+void MatMulFunction(const Context& context,
                     const DenseTensor& X,
                     const DenseTensor& Y,
                     const std::vector<std::int64_t>& x_dims,
@@ -102,7 +102,7 @@ void MatMulFunction(const DeviceContext& dev_ctx,
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  auto blas = paddle::operators::math::GetBlas<DeviceContext, T>(dev_ctx);
+  auto blas = paddle::operators::math::GetBlas<Context, T>(context);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();
@@ -472,8 +472,8 @@ void MatMulFunction(const DeviceContext& dev_ctx,
   }
 }
 
-template <typename DeviceContext, typename T>
-void MatMulFunction(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+void MatMulFunction(const Context& context,
                     const DenseTensor& X,
                     const DenseTensor& Y,
                     DenseTensor* Out,
@@ -482,17 +482,17 @@ void MatMulFunction(const DeviceContext& dev_ctx,
                     bool flag = false) {
   const std::vector<std::int64_t> x_dims = vectorize(X.dims());
   const std::vector<std::int64_t> y_dims = vectorize(Y.dims());
-  MatMulFunction<DeviceContext, T>(
-      dev_ctx, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
+  MatMulFunction<Context, T>(
+      context, X, Y, x_dims, y_dims, Out, trans_x, trans_y, flag);
 }
 
-template <typename T, typename DevCtx>
-void Matmul(const DevCtx& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            bool transpose_x,
-            bool transpose_y,
-            DenseTensor* out) {
+template <typename T, typename Context>
+void MatmulKernel(const Context& context,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  bool transpose_x,
+                  bool transpose_y,
+                  DenseTensor* out) {
   PADDLE_ENFORCE_NE(paddle::framework::product(x.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
@@ -503,7 +503,7 @@ void Matmul(const DevCtx& dev_ctx,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(Y) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  MatMulFunction<DevCtx, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
+  MatMulFunction<Context, T>(context, x, y, out, transpose_x, transpose_y);
 }
 
 }  // namespace pten

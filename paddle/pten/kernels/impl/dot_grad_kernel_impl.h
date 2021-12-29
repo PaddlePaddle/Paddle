@@ -18,8 +18,6 @@ limitations under the License. */
 #include "paddle/pten/kernels/hybird/eigen/common.h"
 
 #include "paddle/pten/kernels/complex_kernel.h"
-// #include "paddle/pten/kernels/empty_kernel.h"
-#include "paddle/pten/kernels/creation.h"
 
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/complex_functors.h"

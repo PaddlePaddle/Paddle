@@ -384,8 +384,8 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
 
     // call new kernel
-    pten::Matmul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
-                    pt_out.get());
+    pten::MatmulKernel<T>(dev_ctx, *pt_x, *pt_y, trans_x, trans_y,
+                          pt_out.get());
   }
 };
 

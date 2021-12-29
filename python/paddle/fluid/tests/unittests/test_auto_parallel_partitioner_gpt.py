@@ -35,6 +35,7 @@ from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_pr
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.auto_parallel.process_group import new_process_group
 
@@ -790,9 +791,9 @@ class GPTPretrainingCriterion(nn.Layer):
         return loss
 
 
-def gpt_pretrain_forward(train_program, start_program):
+def gpt_pretrain_forward(train_program, startup_program):
     with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
+                              startup_program), utils.unique_name.guard():
         batch_size = 16
         sequence_len = 512
         input_ids = static.data(
@@ -848,7 +849,19 @@ def gpt_pretrain_forward(train_program, start_program):
 
         loss = criterion(preds, labels, loss_mask)
 
-    return train_program, start_program, loss
+    return train_program, startup_program, loss
+
+
+class FakeStrategy(object):
+    def __init__(self):
+        self.amp = False
+        self.recompute = False
+
+
+class FakeFleet(object):
+    def __init__(self):
+        self.user_defined_optimizer = None
+        self._user_defined_strategy = FakeStrategy()
 
 
 class TestGPTPartitioner(unittest.TestCase):
@@ -861,38 +874,41 @@ class TestGPTPartitioner(unittest.TestCase):
             mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         train_program = static.Program()
-        start_program = static.Program()
-        dist_context = DistributedContext()
+        startup_program = static.Program()
+        parallelizer = AutoParallelizer(FakeFleet())
+        dist_context = parallelizer._dist_context
+
         dist_context.process_mesh = _global_process_mesh
-        train_program, start_program, loss = gpt_pretrain_forward(train_program,
-                                                                  start_program)
+        train_program, startup_program, loss = gpt_pretrain_forward(
+            train_program, startup_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
+
+        # serial forward pass
+        parallelizer._apply_serial_forward_pass(complete_train_program,
+                                                startup_program)
+
+        # serial backward pass
+        params_grads = parallelizer._generate_backward(
+            complete_train_program,
+            startup_program,
+            loss,
+            parameter_list=None,
+            no_grad_set=None,
+            callbacks=None)
+
         rank_id = 3
-        dist_strategy = fleet.DistributedStrategy()
-        partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-        auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-            complete_train_program, start_program)
-        dist_params_grads = partitioner.apply_backward(
-            loss, complete_train_program, start_program,
-            auto_parallel_main_prog, auto_parallel_startup_prog)
+        partitioner = Partitioner(dist_context, rank_id)
+        auto_parallel_main_prog, auto_parallel_startup_prog, params_grads = partitioner.partition(
+            complete_train_program, startup_program, params_grads)
 
         with open("./test_auto_parallel_partitioner_serial_main_new.txt",
                   "w") as fw:
             fw.write(str(train_program))
         with open("./test_auto_parallel_partitioner_serial_startup_new.txt",
                   "w") as fw:
-            fw.write(str(start_program))
+            fw.write(str(startup_program))
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
-        opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                             auto_parallel_main_prog,
-                                             auto_parallel_startup_prog)
         from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
         set_default_distributed_context(dist_context)
         with open("./test_auto_parallel_partitioner_main_new.txt1", "w") as fw:
@@ -927,7 +943,7 @@ class TestGPTPartitioner(unittest.TestCase):
                                complete_train_program, weights, 0, 1))
 
         all_params = sorted(
-            [param.name for param in start_program.all_parameters()])
+            [param.name for param in startup_program.all_parameters()])
         allreduce_grads = [
             'layer_norm_5.tmp_2', 'layer_norm_5.tmp_2', 'layer_norm_5.tmp_2',
             'layer_norm_6.tmp_2', 'layer_norm_7.tmp_2', 'layer_norm_7.tmp_2',

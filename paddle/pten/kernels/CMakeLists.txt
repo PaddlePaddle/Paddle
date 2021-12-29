@@ -17,9 +17,6 @@ if(WITH_MKLDNN)
   # mkldnn will be deprecated and use the new name dnnl
   add_subdirectory(dnnl)
 endif()
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
@@ -31,19 +28,6 @@ set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
 
 # auto build kernel targets by cmake
-register_kernels(EXCLUDES flatten_kernel dot_grad_kernel DEPS ${COMMON_KERNEL_DEPS})
-# TODO(chenweihang): auto parse compile deps by include headers later
-set(FLATTEN_DEPS ${COMMON_KERNEL_DEPS} utils_cpu unary)
-set(DOTGRAD_DEPS ${COMMON_KERNEL_DEPS} complex_kernel)
-if(WITH_GPU OR WITH_ROCM)
-  set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_gpu)
-elseif(WITH_XPU)
-  set(FLATTEN_DEPS ${FLATTEN_DEPS} utils_xpu)
-endif()
-kernel_library(flatten_kernel DEPS ${FLATTEN_DEPS})
-kernel_library(dot_grad_kernel DEPS ${DOTGRAD_DEPS})
-
-get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
-message(STATUS "PTEN_KERNELS: ${pten_kernels}")
+register_kernels(DEPS ${COMMON_KERNEL_DEPS})
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})

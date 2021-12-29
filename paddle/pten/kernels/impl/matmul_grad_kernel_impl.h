@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/kernels/complex_kernel.h"
-#include "paddle/pten/kernels/cuda/math.h"
 #include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
