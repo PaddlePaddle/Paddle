@@ -2865,6 +2865,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         inputs={"Input": arr,
                 "Index": indices,
                 "Value": values},
-        attrs={"Axis": axis},
+        attrs={"Axis": axis,
+               "Reduce": reduce},
         outputs={"Result": arr})
     return arr

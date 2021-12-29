@@ -91,15 +91,15 @@ class PutAlongAxisGradOpKernel : public framework::OpKernel<T> {
     auto index = ctx.Input<Tensor>("Index");
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
-    // We need to know the shape of input matrix to determine the shape of grad
-    // matrix of value.
-    auto input = ctx.Input<Tensor>("Input");
     const auto &index_type = index->type();
 
     if (input_grad) {
       framework::TensorCopy(*result_grad, ctx.GetPlace(), input_grad);
       if (index_type == framework::proto::VarType::INT32) {
         cpu_scatter_input_grad_kernel<T, int32_t>(
+            // Here passing an unused argument *result_grad, because it's
+            // convenient to instantiate a bunch of template function with the
+            // same arguments list.
             *result_grad, axis, *index, *input_grad, ctx.device_context());
       } else {
         cpu_scatter_input_grad_kernel<T, int64_t>(
@@ -108,14 +108,11 @@ class PutAlongAxisGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (value_grad) {
-      value_grad->Resize(input->dims());
+      value_grad->Resize(index->dims());
       value_grad->mutable_data<T>(ctx.GetPlace());
       if (index_type == framework::proto::VarType::INT32) {
-        cpu_gather_kernel<T, int32_t>(
-            // Here passing an unused argument *result_grad, because it's
-            // convenient to instantiate a bunch of template function with the
-            // same arguments list.
-            *result_grad, axis, *index, *value_grad, ctx.device_context());
+        cpu_gather_kernel<T, int32_t>(*result_grad, axis, *index, *value_grad,
+                                      ctx.device_context());
       } else if (index_type == framework::proto::VarType::INT64) {
         cpu_gather_kernel<T, int64_t>(*result_grad, axis, *index, *value_grad,
                                       ctx.device_context());

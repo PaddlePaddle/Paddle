@@ -54,11 +54,11 @@ class TestPutAlongAxisOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Input"], "Result")
+        self.check_grad(["Input", "Value"], "Result")
 
     def init_data(self):
         self.x_type = "float64"
-        self.x_shape = (5, 5, 5)
+        self.x_shape = (10, 10, 10)
         self.value_type = "float64"
         self.value = np.array([99]).astype(self.value_type)
         self.index_type = "int32"

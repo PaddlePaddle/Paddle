@@ -117,6 +117,7 @@ class PutAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput(framework::GradVarName("Result"), this->OutputGrad("Result"));
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Value"), this->InputGrad("Value"));
     op->SetAttrMap(this->Attrs());
   }
 };

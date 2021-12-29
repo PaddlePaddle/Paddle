@@ -90,9 +90,6 @@ class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
     auto index = ctx.Input<Tensor>("Index");
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
-    // We need to know the shape of input matrix to determine the shape of grad
-    // matrix of value.
-    auto input = ctx.Input<Tensor>("Input");
 
     const auto &index_type = index->type();
     if (input_grad) {
@@ -106,7 +103,7 @@ class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
     if (value_grad) {
-      value_grad->Resize(input->dims());
+      value_grad->Resize(index->dims());
       value_grad->mutable_data<T>(ctx.GetPlace());
       if (index_type == framework::proto::VarType::INT32) {
         gpu_gather_kernel<T, int32_t>(
