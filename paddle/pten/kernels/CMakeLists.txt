@@ -28,6 +28,7 @@ set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} pten_api_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
 
 # auto build kernel targets by cmake
 register_kernels(DEPS ${COMMON_KERNEL_DEPS})
