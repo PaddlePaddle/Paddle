@@ -251,6 +251,8 @@ from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
+from .stat import quantile  # noqa: F401
+
 from .to_string import set_printoptions  # noqa: F401
 
 from .array import array_length  # noqa: F401
@@ -429,6 +431,7 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'quantile',
            'is_complex',
            'is_integer',
            'rank',
