@@ -302,6 +302,12 @@ inline void TensorFromVector(const std::vector<bool>& src,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
+                 src_place, src_ptr, size);
+  }
+#endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
     //  1. vector -> npu pinned tensor

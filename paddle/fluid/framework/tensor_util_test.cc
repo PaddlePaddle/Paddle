@@ -277,6 +277,24 @@ TEST(TensorToVector, Tensor_bool) {
     }
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  {
+    std::vector<bool> src_vec = {
+        false, true, false, true, false, true, false, true, false,
+    };
+    paddle::framework::Tensor xpu_tensor;
+    paddle::platform::XPUPlace place(0);
+    paddle::platform::XPUDeviceContext xpu_ctx(place);
+    paddle::framework::TensorFromVector<bool>(src_vec, xpu_ctx, &xpu_tensor);
+
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(xpu_tensor, xpu_ctx, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
+  }
+#endif
 #ifdef PADDLE_WITH_ASCEND_CL
   {
     std::vector<bool> src_vec = {
