@@ -52,7 +52,7 @@ class TestExponentialFamily(unittest.TestCase):
                 rtol=config.RTOL.get(config.DEFAULT_DTYPE),
                 atol=config.ATOL.get(config.DEFAULT_DTYPE))
 
-    def test_entropy_expection(self):
+    def test_entropy_exception(self):
         with paddle.static.program_guard(self.program):
             with self.assertRaises(NotImplementedError):
                 paddle.distribution.ExponentialFamily.entropy(
