@@ -17,6 +17,8 @@
 #include <memory>
 #include <vector>
 
+#include "paddle/fluid/platform/macros.h"
+
 namespace paddle {
 namespace distributed {
 
@@ -37,6 +39,8 @@ class TaskLoopThreadPool {
   std::vector<TaskLoop*> GetAllLoops();
 
  private:
+  DISABLE_COPY_AND_ASSIGN(TaskLoopThreadPool);
+
   bool start_;
   int thread_num_;
   std::vector<std::unique_ptr<TaskLoopThread>> threads_;

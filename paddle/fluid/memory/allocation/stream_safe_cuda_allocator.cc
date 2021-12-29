@@ -118,6 +118,7 @@ bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
 Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   ProcessUnfreedAllocations();
+  VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
   try {
     underlying_allocation = underlying_allocator_->Allocate(size);
@@ -150,10 +151,12 @@ void StreamSafeCUDAAllocator::FreeImpl(Allocation* allocation) {
                               "StreamSafeCUDAAllocation*",
                               allocation));
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   if (stream_safe_cuda_allocation->CanBeFreed()) {
+    VLOG(9) << "Directly delete allocation";
     delete stream_safe_cuda_allocation;
   } else {
-    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
+    VLOG(9) << "Put into unfreed_allocation list";
     unfreed_allocations_.emplace_back(stream_safe_cuda_allocation);
   }
 }
