@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -169,7 +171,7 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
   //                    v4 --
 
   OpDesc add_op;
-  add_op.SetType("add");
+  add_op.SetType("elementwise_add");
   OpDesc mul_op;
   mul_op.SetType("mul");
   OpDesc relu_op;
@@ -259,7 +261,7 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
 
   // previous op (mul, add, relu) should all removed
   ASSERT_FALSE(CheckNodeExisted(nodes, "mul"));
-  ASSERT_FALSE(CheckNodeExisted(nodes, "add"));
+  ASSERT_FALSE(CheckNodeExisted(nodes, "elementwise_add"));
   ASSERT_FALSE(CheckNodeExisted(nodes, "relu"));
 
   // After search, there should has just one cinn subgraph
@@ -277,7 +279,7 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
-  ASSERT_TRUE(CheckNodeExisted(subnodes, "add"));
+  ASSERT_TRUE(CheckNodeExisted(subnodes, "elementwise_add"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
   ASSERT_EQ(CountNode(subnodes, "feed"), 2);
   ASSERT_EQ(CountNode(subnodes, "fetch"), 1);
@@ -529,8 +531,136 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   }
 }
 
+std::unique_ptr<Graph> BuildGraphWithNoNeedBufferInput() {
+  ProgramDesc prog;
+  auto g = std::make_unique<Graph>(prog);
+
+  // fake1 --> v1 --                 --> v4 --> relu_grad --> v6
+  //           v2 -- | --> add_grad |
+  //           v3 --                 --> v5 --> fake2
+
+  OpDesc fake1_op;
+  fake1_op.SetType("fake1");
+  OpDesc add_grad_op;
+  add_grad_op.SetType("elementwise_add_grad");
+  add_grad_op.SetInput(::paddle::framework::GradVarName("Out"), {"var1"});
+  add_grad_op.SetInput("X", {"var2"});
+  add_grad_op.SetInput("Y", {"var3"});
+  OpDesc relu_grad_op;
+  relu_grad_op.SetType("relu_grad");
+  OpDesc fake2_op;
+  fake2_op.SetType("fake2");
+
+  VarDesc var1("var1");
+  VarDesc var2("var2");
+  VarDesc var3("var3");
+  VarDesc var4("var4");
+  VarDesc var5("var5");
+  VarDesc var6("var6");
+
+  ir::Node* fake1 = g->CreateOpNode(&fake1_op);
+  ir::Node* add_grad = g->CreateOpNode(&add_grad_op);
+  ir::Node* relu_grad = g->CreateOpNode(&relu_grad_op);
+  ir::Node* fake2 = g->CreateOpNode(&fake2_op);
+
+  ir::Node* v1 = g->CreateVarNode(&var1);
+  ir::Node* v2 = g->CreateVarNode(&var2);
+  ir::Node* v3 = g->CreateVarNode(&var3);
+  ir::Node* v4 = g->CreateVarNode(&var4);
+  ir::Node* v5 = g->CreateVarNode(&var5);
+  ir::Node* v6 = g->CreateVarNode(&var6);
+
+  // fill op node
+  fake1->outputs = {v1};
+  add_grad->inputs = {v1, v2, v3};
+  add_grad->outputs = {v4, v5};
+  relu_grad->inputs = {v4};
+  relu_grad->outputs = {v6};
+  fake2->inputs = {v5};
+
+  // fill variable node
+  v1->inputs = {fake1};
+  v1->outputs = {add_grad};
+
+  v2->outputs = {add_grad};
+  v3->outputs = {add_grad};
+
+  v4->inputs = {add_grad};
+  v4->outputs = {relu_grad};
+  v5->inputs = {add_grad};
+  v5->outputs = {fake2};
+
+  v6->inputs = {relu_grad};
+
+  return g;
+}
+
+TEST(BuildCinnPassTest, NoNeedBufferInput) {
+  auto g = BuildGraphWithNoNeedBufferInput();
+
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
+  pass->Apply(g.get());
+
+  // After search, the graph should as following
+  // fake1 --> v1 --                     --> v6
+  //           v2 -- | -->kCinnLaunchOp |
+  //           v3 --                     --> v5 --> fake2
+  const auto& nodes = g->Nodes();
+  ASSERT_EQ(nodes.size(), static_cast<size_t>(8));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
+
+  // A new op named kCinnLaunchOp should be added and
+  // its input arguments are set correctly
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+  ASSERT_EQ(CountNode(nodes, kCinnLaunchOp), 1);
+  auto* cinn_op_node = GetNode(nodes, kCinnLaunchOp);
+  ASSERT_EQ(cinn_op_node->Op()->Input(operators::kX),
+            std::vector<std::string>({"var1"}));
+  auto& no_need_buffer_x = cinn_op_node->Op()->Input(operators::kNoNeedBufferX);
+  ASSERT_EQ(std::unordered_set<std::string>(no_need_buffer_x.begin(),
+                                            no_need_buffer_x.end()),
+            std::unordered_set<std::string>({"var2", "var3"}));
+
+  // previous op (add_grad, relu_grad) should be removed
+  ASSERT_FALSE(CheckNodeExisted(nodes, "add_grad"));
+  ASSERT_FALSE(CheckNodeExisted(nodes, "relu_grad"));
+
+  // previous op (fake1, fake2) should be preserved
+  ASSERT_TRUE(CheckNodeExisted(nodes, "fake1"));
+  ASSERT_TRUE(CheckNodeExisted(nodes, "fake2"));
+
+  // After search, there should has just one cinn subgraph
+  // feed --> v1 --                                     --> v6 --> fetch
+  // feed --> v2 -- | -->add_grad --> v4 --> relu_grad |
+  // feed --> v3 --                                     --> v5 --> fetch
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
+
+  const auto& subnodes = subgraph.Nodes();
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(13));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes));
+
+  ASSERT_TRUE(CheckNodeExisted(subnodes, "elementwise_add_grad"));
+  ASSERT_TRUE(CheckNodeExisted(subnodes, "relu_grad"));
+  ASSERT_EQ(CountNode(subnodes, "feed"), 3);
+  ASSERT_EQ(CountNode(subnodes, "fetch"), 2);
+  const auto& no_need_buffer_feeds =
+      subgraph.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  ASSERT_EQ(no_need_buffer_feeds.size(), 2);
+  ASSERT_EQ(no_need_buffer_feeds,
+            std::unordered_set<std::string>({"var2", "var3"}));
+}
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
 
 USE_PASS(build_cinn_pass);
+USE_OP(mul);
+USE_OP(relu);
+USE_OP(elementwise_add);
+USE_OP(relu_grad);
+USE_OP(elementwise_add_grad);

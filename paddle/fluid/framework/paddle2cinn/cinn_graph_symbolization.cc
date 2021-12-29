@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -42,20 +43,30 @@ using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 
 namespace utils {
 
-OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
+OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
+    const Tensor& tensor, bool skip_trans_type = false) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
     info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
-  auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
-  info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
+  if (skip_trans_type) {
+    // info.type is Unk in default and cinn will
+    // not use the type of this feed tensor normally
+    VLOG(4) << "A feed tenosr does not set type";
+  } else {
+    auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
+    info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
+  }
+
   return info;
 }
 }  // namespace utils
 
 FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
+  const auto& no_need_buffer_feeds =
+      graph_.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
   FeedInfoMap feed_map;
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
@@ -67,7 +78,10 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
                           feed_name.c_str()));
 
     VLOG(4) << "Get feed info from input: " << feed_name;
-    feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+    // if this feed declared as no need buffer then we can not access
+    // its type so passing skip_trans_type=true here
+    feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(
+        *tensor, no_need_buffer_feeds.count(feed_name) > 0);
 
     PADDLE_ENFORCE_NE(
         feed_map[feed_name].shape.size(), 0UL,

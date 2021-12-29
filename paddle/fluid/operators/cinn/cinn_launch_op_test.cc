@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -75,6 +76,8 @@ std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
   y_node->inputs = {feed_op_node_y};
   y_node->outputs = {elementwise_add_node};
   out_node->inputs = {elementwise_add_node};
+  g->GetOrInit<std::unordered_set<std::string>>(
+      framework::paddle2cinn::kNoNeedBufferFeeds);
   return g;
 }
 
