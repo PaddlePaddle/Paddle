@@ -28,6 +28,7 @@ import paddle.compat as cpt
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_sub_program_device
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
@@ -936,7 +937,7 @@ def find_heter_ops(program, default_device="cpu"):
 
 
 def create_heter_program(program, config, heter_program, program_block_ops_list,
-                         heter_ops, block_var_detail, current_device, stage_id):
+                         heter_ops, block_var_detail, stage_id):
     # This function mainly includes the following contents:
     # 1. For every heter block:
     #     a) copy heter device op from origin program
@@ -1017,6 +1018,9 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
                             str(heter_block.idx))
 
     first_op_index_bp = len(heter_block_bp.ops)
+
+    # get op device
+    current_device = _get_sub_program_device(heter_program):
 
     if stage_id <= len(block_var_detail) - 1:
         static_var = insert_communicate_op(program, config, heter_block,

@@ -28,7 +28,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_vars_name_in_block
 
 
-def split_heter_worker_ops_pass(program, config, stage_id, device):
+def split_heter_worker_ops_pass(program, config, stage_id):
     """
     split heter worker program from origin-program
     1. find heter op (located on different device)
@@ -48,7 +48,7 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     heter_program = framework.Program()
     create_heter_program(program, config, heter_program, program_block_ops,
-                         heter_ops, block_vars_detail, device, stage_id)
+                         heter_ops, block_vars_detail, stage_id)
     return heter_program
 
 
