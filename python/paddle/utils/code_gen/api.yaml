@@ -15,8 +15,16 @@
     func : CastInferMeta
   kernel :
     func : cast
-    param : [x, out_dtype, x.dtype()]
+    param : [x, out_dtype]
     data_type : x
+
+- api : conj
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : conj
 
 - api : divide
   args : (const Tensor& x, const Tensor& y)
@@ -171,11 +179,3 @@
   args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place, layout)
-
-- api : conj
-  args : (const Tensor& x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : conj
