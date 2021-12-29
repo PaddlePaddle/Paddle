@@ -126,7 +126,7 @@ class AutoParallelizer:
                     parameter_list,
                     no_grad_set,
                     callbacks,
-                    dist_context=self._dist_context.dist_op_context)
+                    distop_context=self._dist_context.dist_op_context)
             complete_backward_annotation(
                 main_program, dist_context=self._dist_context)
 

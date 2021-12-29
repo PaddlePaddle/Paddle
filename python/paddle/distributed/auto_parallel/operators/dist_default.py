@@ -172,6 +172,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
+        # Refer to the related dist op
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         for input_name in backward_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
