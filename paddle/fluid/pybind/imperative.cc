@@ -1804,6 +1804,7 @@ void BindImperative(py::module *m_ptr) {
         
         Args:
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
             blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
               asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
 
@@ -1824,6 +1825,40 @@ void BindImperative(py::module *m_ptr) {
               y = x.cuda(1)
               print(y.place)        # CUDAPlace(1)
        )DOC")
+      .def("uva",
+           [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
+             auto *self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             const auto &data_numel = self_tensor->numel();
+             float *data_ptr = self_tensor->data<float>();
+
+             // Reallocate the pageable memory to the page-locked memory
+             // const size_t& memory_block = 1000000000;
+             const size_t &need_allocate_size =
+                 data_numel * framework::SizeOfType(self_tensor->type());
+             VLOG(4) << "Mapped memory to page-locked memory";
+             auto result = cudaHostRegister(data_ptr, need_allocate_size,
+                                            cudaHostRegisterMapped);
+             if (result != 0) {
+               VLOG(0) << "failed allocate:" << need_allocate_size
+                       << ", error code:" << result;
+             }
+
+             // Get device pointer from the function of cudaHostGetDevicePointer
+             void *cuda_device_pointer = nullptr;
+             cudaHostGetDevicePointer(
+                 reinterpret_cast<void **>(&cuda_device_pointer),
+                 reinterpret_cast<void *>(data_ptr), 0);
+             VLOG(4) << "Get device pointer";
+
+             // Reset the memory with device pointer
+             std::shared_ptr<memory::allocation::Allocation> holder(
+                 new memory::allocation::Allocation(
+                     cuda_device_pointer, need_allocate_size,
+                     platform::CUDAPlace(device_id)));
+             self_tensor->ResetHolderWithType(holder, self_tensor->type());
+           },
+           py::arg("device_id") = 0, py::return_value_policy::reference)
       .def("_share_memory",
            [](const std::shared_ptr<imperative::VarBase> &self) {
 #ifndef _WIN32
