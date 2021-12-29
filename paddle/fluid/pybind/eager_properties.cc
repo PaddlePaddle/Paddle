@@ -75,6 +75,7 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
     return ToPyObject(accumulation_grad_node->Grad());
   } else {
+    VLOG(6) << "Get grad for tensor: " << self->eager_tensor.name();
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor);
     return ToPyObject(meta->Grad());
   }

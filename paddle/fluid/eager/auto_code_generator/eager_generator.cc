@@ -971,11 +971,16 @@ static std::string GenerateGradNodeCreationContent(
         iter.GetGradInsFwdSlotnameMap();
     for (auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
+      std::string full_reserved = "false";
+      if (fwd_outputs_name_pos_map.find(tensor_wrapper_name) ==
+          fwd_outputs_name_pos_map.end()) {
+        full_reserved = "true";
+      }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "    grad_node->SetTensorWrapper%s(%s);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
-                                  tensor_wrapper_name, tensor_wrapper_name);
+          "    grad_node->SetTensorWrapper%s(%s, %s);\n";
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name, tensor_wrapper_name,
+          full_reserved);
     }
   }
   grad_node_creation_str += "\n";
@@ -1016,11 +1021,6 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
-    VLOG(6) << "Generated Call RetainGradForTensor";
-    const char* RETAIN_GRAD_TEMPLATE =
-        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-    grad_node_creation_str +=
-        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
   }
 
   // [GradOpNode] SetGradInMeta
@@ -1047,6 +1047,12 @@ static std::string GenerateGradNodeCreationContent(
         "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
     grad_node_creation_str +=
         paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
+
+    VLOG(6) << "Generated Call RetainGradForTensor";
+    const char* RETAIN_GRAD_TEMPLATE =
+        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+    grad_node_creation_str +=
+        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
   }
   VLOG(6) << "Generated SetGradIn/OutMeta";
 
@@ -1770,6 +1776,7 @@ static std::string GenerateGradNodeHeaderContents(
 
       std::string tensor_wrapper_arg_str;
       std::string tensor_wrapper_body_str;
+      std::string full_reserved_str = "full_reserved";
       if (duplicable_tensors.count(tensor_wrapper_name)) {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
             "const std::vector<egr::EagerTensor>& %s";
@@ -1802,17 +1809,18 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, true /*full_reserved*/);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name);
+            tensor_wrapper_name, full_reserved_str);
       }
-
+      std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "   void SetTensorWrapper%s(%s) {\n     %s\n   }\n";
+          "   void SetTensorWrapper%s(%s, %s) {\n     %s\n   }\n";
       set_tensor_wrappers_str += paddle::string::Sprintf(
           SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name,
-          tensor_wrapper_arg_str, tensor_wrapper_body_str);
+          tensor_wrapper_arg_str, full_reserved_signature_str,
+          tensor_wrapper_body_str);
     }
   }
   VLOG(6) << "Generated TensorWrapper";

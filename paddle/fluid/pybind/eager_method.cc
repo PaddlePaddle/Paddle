@@ -41,10 +41,12 @@ extern PyTypeObject* p_eager_tensor_type;
 static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_SYNC_TRY
-  if (!self->eager_tensor.initialized()) {
-    Py_INCREF(Py_None);
-    return Py_None;
-  }
+  PADDLE_ENFORCE_EQ(
+      self->eager_tensor.initialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor data of %s is Empty that indicates we have null tensor for "
+          "now, please check if it has no data and initialize it first.",
+          self->eager_tensor.name()));
   auto tensor_dims = self->eager_tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->eager_tensor.type());
   auto sizeof_dtype = pten::DataTypeSize(self->eager_tensor.type());
