@@ -28,7 +28,7 @@ limitations under the License. */
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/include/core.h"
-#include "paddle/pten/include/linalg.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
@@ -384,8 +384,8 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
 
     // call new kernel
-    pten::Matmul<T>(dev_ctx, *pt_x.get(), *pt_y.get(), trans_x, trans_y,
-                    pt_out.get());
+    pten::MatmulKernel<T>(dev_ctx, *pt_x, *pt_y, trans_x, trans_y,
+                          pt_out.get());
   }
 };
 

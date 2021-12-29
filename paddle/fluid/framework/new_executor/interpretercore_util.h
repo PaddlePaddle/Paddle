@@ -60,13 +60,13 @@ class AsyncWorkQueue {
     // for execute host Kernel
     group_options.emplace_back(/*num_threads*/ host_num_threads,
                                /*allow_spinning*/ true,
-                               /*track_task*/ true,
+                               /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
     // for launch device Kernel
     group_options.emplace_back(/*num_threads*/ 1,
                                /*allow_spinning*/ true,
-                               /*track_task*/ true,
+                               /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
     queue_group_ = CreateWorkQueueGroup(group_options);
