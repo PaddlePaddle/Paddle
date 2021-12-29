@@ -14,7 +14,6 @@
 
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
-#include <thrust/async/copy.h>
 #include <cstring>
 #include <random>
 #include <string>
