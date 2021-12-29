@@ -24,6 +24,12 @@ namespace pten {
 namespace kps = paddle::operators::kernel_primitives;
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 
+/* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
+   for supporting multiple-output feature in elementwise system.*/
+template <class T, int Num>
+using ConditionalT =
+    typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
+
 template <typename InT,
           typename OutT,
           int VecSize,
@@ -73,6 +79,41 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
                                     OutT *result) {
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
         result, args[0], args[1], args[2], func);
+  }
+};
+
+template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
+struct ElementwiseWriteDataCaller {
+  __device__ __forceinline__ void operator()(
+      paddle::framework::Array<OutT *, NumOuts> outs,
+      ConditionalT<OutT, NumOuts> src[VecSize],
+      int block_offset,
+      int num) {
+    OutT dst[NumOuts][VecSize];
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+#pragma unroll
+      for (int j = 0; j < NumOuts; ++j) {
+        dst[j][i] = (src[i])[j];
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < NumOuts; ++i) {
+      kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+          outs[i] + block_offset, dst[i], num);
+    }
+  }
+};
+
+template <typename OutT, int VecSize, bool IsBoundary>
+struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
+  __device__ __forceinline__ void operator()(
+      paddle::framework::Array<OutT *, 1> outs,
+      OutT src[VecSize],
+      int block_offset,
+      int num) {
+    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+        outs[0] + block_offset, src, num);
   }
 };
 

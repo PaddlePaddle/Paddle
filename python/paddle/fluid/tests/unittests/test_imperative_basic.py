@@ -24,6 +24,7 @@ from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
 
 
 class MyLayer(fluid.Layer):
@@ -180,12 +181,12 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
-    def test_functional_dygraph_context(self):
+    def functional_dygraph_context(self):
         self.assertFalse(fluid.dygraph.enabled())
         fluid.enable_dygraph()
         self.assertTrue(fluid.dygraph.enabled())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        var_inp = fluid.dygraph.base.to_variable(np_inp)
+        var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out1 = out.numpy()
@@ -195,7 +196,7 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(fluid.dygraph.enabled())
         with fluid.dygraph.guard():
             self.assertTrue(fluid.dygraph.enabled())
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            var_inp = paddle.to_tensor(np_inp)
             mlp = MLP(input_size=2)
             out = mlp(var_inp)
             dy_out2 = out.numpy()
@@ -205,7 +206,12 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_out1, dy_out2))
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
-    def test_functional_paddle_imperative_dygraph_context(self):
+    def test_functional_dygraph_context(self):
+        with _test_eager_guard():
+            self.functional_dygraph_context()
+        self.functional_dygraph_context()
+
+    def functional_paddle_imperative_dygraph_context(self):
         self.assertFalse(paddle.in_dynamic_mode())
         paddle.disable_static()
         self.assertTrue(paddle.in_dynamic_mode())
@@ -231,23 +237,53 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_out1, dy_out2))
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
-    def test_isinstance(self):
+    def test_functional_paddle_imperative_dygraph_context(self):
+        with _test_eager_guard():
+            self.functional_paddle_imperative_dygraph_context()
+        self.functional_paddle_imperative_dygraph_context()
+
+    def func_isinstance(self):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))
         with fluid.dygraph.guard():
-            var_base = fluid.dygraph.base.to_variable(np.array([3, 4, 5]))
-            self.assertTrue(isinstance(var_base, core.VarBase))
-            self.assertTrue(isinstance(var_base, fluid.Variable))
+            if fluid.framework._in_eager_mode():
+                var_base = paddle.to_tensor(np.array([3, 4, 5]))
+                self.assertTrue(isinstance(var_base, core.eager.EagerTensor))
+            else:
+                var_base = paddle.to_tensor(np.array([3, 4, 5]))
+                self.assertTrue(isinstance(var_base, core.VarBase))
+                self.assertTrue(isinstance(var_base, fluid.Variable))
 
-    def test_create_VarBase(self):
+    def test_isinstance(self):
+        with _test_eager_guard():
+            self.func_isinstance()
+        self.func_isinstance()
+
+    def func_create_varbase(self):
         x = np.ones([2, 2], np.float32)
         y = np.zeros([3, 3], np.float32)
         t = fluid.Tensor()
         t.set(x, fluid.CPUPlace())
-        with fluid.dygraph.guard():
+        if _in_eager_mode():
+            # TODO(jiabin): Support Kwargs and uncomment these tests
+            # egr_tmp = fluid.core.eager.EagerTensor(value=x, place=fluid.core.CPUPlace())
+            egr_tmp2 = fluid.core.eager.EagerTensor(y, fluid.core.CPUPlace())
+            egr_tmp3 = paddle.to_tensor(x)
+            egr_tmp4 = fluid.core.eager.EagerTensor(y)
+            # egr_tmp5 = fluid.core.eager.EagerTensor(value=x)
+            # TODO(jiabin): Support it when we merge LoDTensor with DenseTensor
+            egr_tmp6 = fluid.core.eager.EagerTensor(t)
+
+            # self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
+            self.assertTrue(np.array_equal(y, egr_tmp2.numpy()))
+            self.assertTrue(np.array_equal(x, egr_tmp3.numpy()))
+            self.assertTrue(np.array_equal(y, egr_tmp4.numpy()))
+            # self.assertTrue(np.array_equal(x, egr_tmp5.numpy()))
+            self.assertTrue(np.array_equal(x, egr_tmp6.numpy()))
+        else:
             tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
             tmp2 = fluid.core.VarBase(y, fluid.core.CPUPlace())
-            tmp3 = fluid.dygraph.base.to_variable(x)
+            tmp3 = paddle.to_tensor(x)
             tmp4 = fluid.core.VarBase(y)
             tmp5 = fluid.core.VarBase(value=x)
             tmp6 = fluid.core.VarBase(t)
@@ -259,6 +295,12 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
             self.assertTrue(np.array_equal(x, tmp6.numpy()))
 
+    def test_create_varbase(self):
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                self.func_create_varbase()
+            self.func_create_varbase()
+
     def test_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
@@ -269,7 +311,7 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
-            x = fluid.dygraph.to_variable(data)
+            x = paddle.to_tensor(data)
             y = l0(x) + tmp
             o = l1(y)
             o.backward()
@@ -287,7 +329,7 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
-            x = fluid.dygraph.to_variable(data)
+            x = paddle.to_tensor(data)
             y = l0(x) + tmp
             o = l1(y)
             o.backward()
@@ -308,7 +350,7 @@ class TestImperative(unittest.TestCase):
                     tmp2 = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
                 self.assertTrue(tmp2.stop_gradient is False)
-            x = fluid.dygraph.to_variable(data)
+            x = paddle.to_tensor(data)
             y = l0(x) + tmp2
             o = l1(y)
             o.backward()
@@ -317,12 +359,19 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(tmp2._grad_ivar() is not None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
+    def test_paddle_imperative_is_grad_enabled(self):
+        with fluid.dygraph.guard():
+            with paddle.set_grad_enabled(False):
+                self.assertTrue(paddle.is_grad_enabled() is False)
+                with paddle.set_grad_enabled(True):
+                    self.assertTrue(paddle.is_grad_enabled())
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
             inputs = []
             for _ in range(10):
-                tmp = fluid.dygraph.base.to_variable(x)
+                tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs.append(tmp)
             ret = fluid.layers.sums(inputs)
@@ -331,7 +380,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             inputs2 = []
             for _ in range(10):
-                tmp = fluid.dygraph.base.to_variable(x)
+                tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs2.append(tmp)
             ret2 = fluid.layers.sums(inputs2)
@@ -369,7 +418,7 @@ class TestImperative(unittest.TestCase):
     def test_empty_grad(self):
         with fluid.dygraph.guard():
             x = np.ones([2, 2], np.float32)
-            new_var = fluid.dygraph.base.to_variable(x)
+            new_var = paddle.to_tensor(x)
             try:
                 new_var.gradient()
             except Exception as e:
@@ -393,7 +442,7 @@ class TestImperative(unittest.TestCase):
     def test_set_persistable(self):
         with fluid.dygraph.guard():
             x = np.ones([2, 2], np.float32)
-            new_var = fluid.dygraph.base.to_variable(x)
+            new_var = paddle.to_tensor(x)
             self.assertFalse(new_var.persistable)
             new_var.persistable = True
             self.assertTrue(new_var.persistable)
@@ -406,7 +455,7 @@ class TestImperative(unittest.TestCase):
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
         with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            var_inp = paddle.to_tensor(np_inp)
             var_inp.stop_gradient = False
             l = MyLayer()
             x = l(var_inp)[0]
@@ -416,7 +465,7 @@ class TestImperative(unittest.TestCase):
             dy_grad = l._x_for_debug.gradient()
 
         with fluid.dygraph.guard():
-            var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            var_inp2 = paddle.to_tensor(np_inp)
             var_inp2.stop_gradient = False
             l2 = MyLayer()
             x2 = l2(var_inp2)[0]
@@ -448,7 +497,7 @@ class TestImperative(unittest.TestCase):
     def test_mlp(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            var_inp = paddle.to_tensor(np_inp)
             mlp = MLP(input_size=2)
             out = mlp(var_inp)
             dy_out = out.numpy()
@@ -456,7 +505,7 @@ class TestImperative(unittest.TestCase):
             dy_grad = mlp._linear1.weight.gradient()
 
         with fluid.dygraph.guard():
-            var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            var_inp2 = paddle.to_tensor(np_inp)
             mlp2 = MLP(input_size=2)
             out2 = mlp2(var_inp2)
             dy_out2 = out2.numpy()
@@ -634,8 +683,8 @@ class TestImperative(unittest.TestCase):
 
         # dynamic graph
         with fluid.dygraph.guard():
-            inp1 = fluid.dygraph.to_variable(np_inp1)
-            inp2 = fluid.dygraph.to_variable(np_inp2)
+            inp1 = paddle.to_tensor(np_inp1)
+            inp2 = paddle.to_tensor(np_inp2)
             if np.sum(np_inp1) < np.sum(np_inp2):
                 x = fluid.layers.elementwise_add(inp1, inp2)
             else:
@@ -685,7 +734,7 @@ class TestImperative(unittest.TestCase):
         np_inp = np_inp.reshape((1, 4, 3))
         np_inp = np_inp.astype(np.float32)
         with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            var_inp = paddle.to_tensor(np_inp)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
             simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn.forward(var_inp)
@@ -696,7 +745,7 @@ class TestImperative(unittest.TestCase):
             dy_grad_i2h = simple_rnn._cell._i2h_w.gradient()
 
         with fluid.dygraph.guard():
-            var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            var_inp2 = paddle.to_tensor(np_inp)
             var_inp2 = fluid.layers.reshape(var_inp2, shape=[1, 4, 3])
             simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
@@ -731,7 +780,7 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_grad_h2h2, static_grad_h2h))
         self.assertTrue(np.allclose(dy_grad_i2h2, static_grad_i2h))
 
-    def test_layer_attrs(self):
+    def func_layer_attrs(self):
         layer = fluid.dygraph.Layer("test")
         layer.test_attr = 1
         self.assertFalse(hasattr(layer, "whatever"))
@@ -751,60 +800,90 @@ class TestImperative(unittest.TestCase):
         my_layer.l1 = None
         self.assertEqual(len(my_layer.sublayers()), 0)
 
+    def test_layer_attrs(self):
+        with _test_eager_guard():
+            self.func_layer_attrs()
+        self.func_layer_attrs()
+
 
 class TestDygraphUtils(unittest.TestCase):
-    def test_append_activation_in_dygraph_exception(self):
+    def func_append_activation_in_dygraph_exception(self):
         with new_program_scope():
             np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
             a = fluid.layers.data("a", [10, 20])
             func = dygraph_utils._append_activation_in_dygraph
             self.assertRaises(AssertionError, func, a, act="sigmoid")
 
-    def test_append_activation_in_dygraph1(self):
+    def test_append_activation_in_dygraph_exception(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph_exception()
+        self.func_append_activation_in_dygraph_exception()
+
+    def func_append_activation_in_dygraph1(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_activation_in_dygraph
         with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res1 = func(a, act="hard_sigmoid")
             res2 = fluid.layers.hard_sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph2(self):
+    def test_append_activation_in_dygraph1(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph1()
+        self.func_append_activation_in_dygraph1()
+
+    def func_append_activation_in_dygraph2(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_activation_in_dygraph
         with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph3(self):
+    def test_append_activation_in_dygraph2(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph2()
+        self.func_append_activation_in_dygraph2()
+
+    def func_append_activation_in_dygraph3(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         helper = LayerObjectHelper(fluid.unique_name.generate("test"))
         func = helper.append_activation
         with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph_use_mkldnn(self):
+    def test_append_activation_in_dygraph3(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph3()
+        self.func_append_activation_in_dygraph3()
+
+    def func_append_activation_in_dygraph_use_mkldnn(self):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(
             fluid.unique_name.generate("test"), act="relu", use_mkldnn=True)
         func = helper.append_activation
         with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res1 = func(a)
             res2 = fluid.layers.relu(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+    def test_append_activation_in_dygraph_use_mkldnn(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph_use_mkldnn()
+        self.func_append_activation_in_dygraph_use_mkldnn()
+
+    def func_append_activation_in_dygraph_global_use_mkldnn(self):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
         func = helper.append_activation
         with fluid.dygraph.guard(fluid.core.CPUPlace()):
-            a = fluid.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             fluid.set_flags({'FLAGS_use_mkldnn': True})
             try:
                 res1 = func(a)
@@ -813,38 +892,67 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.relu(a)
         self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_bias_in_dygraph_exception(self):
+    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+        with _test_eager_guard():
+            self.func_append_activation_in_dygraph_global_use_mkldnn()
+        self.func_append_activation_in_dygraph_global_use_mkldnn()
+
+    def func_append_bias_in_dygraph_exception(self):
         with new_program_scope():
             np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
             a = fluid.layers.data("a", [10, 20])
             func = dygraph_utils._append_bias_in_dygraph
             self.assertRaises(AssertionError, func, a)
 
-    def test_append_bias_in_dygraph(self):
+    def test_append_bias_in_dygraph_exception(self):
+        with _test_eager_guard():
+            self.func_append_bias_in_dygraph_exception()
+        self.func_append_bias_in_dygraph_exception()
+
+    def func_append_bias_in_dygraph(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_bias_in_dygraph
         with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+            a = paddle.to_tensor(a_np)
             res1 = func(a, bias=a)
-            res2 = a + a
+            res2 = paddle.add(a, a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_bias_in_dygraph(self):
+        with _test_eager_guard():
+            self.func_append_bias_in_dygraph()
+        self.func_append_bias_in_dygraph()
 
 
 class TestDygraphGuardWithError(unittest.TestCase):
-    def test_without_guard(self):
+    def func_without_guard(self):
         with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(np.zeros([10, 10]))
+            x = paddle.to_tensor(np.zeros([10, 10]))
         with self.assertRaisesRegexp(TypeError,
                                      "Please use `with fluid.dygraph.guard()"):
             y = fluid.layers.matmul(x, x)
 
+    def test_without_guard(self):
+        with _test_eager_guard():
+            self.func_without_guard()
+        self.func_without_guard()
+
 
 class TestMetaclass(unittest.TestCase):
-    def test_metaclass(self):
+    def func_metaclass(self):
         self.assertEqual(type(MyLayer).__name__, 'type')
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
-        self.assertEqual(
-            type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
+        if core._in_eager_mode():
+            self.assertEqual(
+                type(paddle.fluid.core.eager.EagerTensor).__name__, 'type')
+        else:
+            self.assertEqual(
+                type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
+
+    def test_metaclass(self):
+        with _test_eager_guard():
+            self.func_metaclass()
+        self.func_metaclass()
 
 
 if __name__ == '__main__':

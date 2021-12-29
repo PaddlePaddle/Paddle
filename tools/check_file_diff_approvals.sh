@@ -107,11 +107,11 @@ for API_FILE in ${API_FILES[*]}; do
       # You can use http://caius.github.io/github_id/ to find Github user id.
       # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, dingjiaweiww 23093488, juncaipeng 52520497, zhangting2020 26615455, Shixiaowei02 39303645, Heeenrrry 28379894,XieYunshen 32428676, Dong Daxiang 35550832, phlrain 43953930, qili93 16605440.
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
-          echo_line="You must have one RD (wanghuancoder, luotao1 or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
-          check_approval 1 6836917 46782768 26922892
+          echo_line="You must have one RD (wanghuancoder, luotao1, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
+          check_approval 1 6836917 46782768 26922892 16605440
       elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-          echo_line="You must have one RD (lanxianghit (Recommend), phlrain or luotao1) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
-          check_approval 1 6836917 47554610 43953930
+          echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1 or qili93) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
+          check_approval 1 6836917 47554610 43953930 16605440
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
           echo_line="You must have one RD (phlrain) and one TPM (dingjiaweiww) and one QA (kolinwei) approval for python/requirements.txt, which manages the third-party python package.\n"
           check_approval 3 43953930 23093488 22165420
@@ -188,8 +188,8 @@ done
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
 HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1) approval for the usage of const_cast.\n"
-    check_approval 1 46782768 12538138 6836917 22561442 6888866
+    echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for the usage of const_cast.\n"
+    check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
 fi
 
 HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "boost::get" || true`
@@ -213,8 +213,8 @@ fi
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder or luotao1) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
-    check_approval 1 22165420 6836917 46661762 26922892
+    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1 or qili93) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+    check_approval 1 22165420 6836917 46661762 26922892 16605440
   fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
@@ -222,6 +222,41 @@ if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (Superjomn (Recommend), Shixiaowei02, luotao1) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
     check_approval 1 328693 6836917 39303645
   fi
+
+HAS_MODIFIED_ALLOCATION=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/memory/allocation" || true`
+if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by zhiqiu and Shixiaowei02 for paddle/fluid/memory/allocation.\nIt is being modularized and refactored. Thanks!\n"
+    check_approval 2 6888866 39303645
+  fi
+
+HAS_MODIFIED_TENSOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/tensor" || true`
+if [ "${HAS_MODIFIED_TENSOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by jim19930609 and chenwhql for paddle/fluid/memory/tensor.\nIt is being modularized and refactored. Thanks!\n"
+    check_approval 2 22561442 22334008
+  fi
+
+HAS_MODIFIED_LOD_TENSOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/lod_tensor" || true`
+if [ "${HAS_MODIFIED_TENSOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by jim19930609 and chenwhql for paddle/fluid/memory/lod_tensor.\nIt is being modularized and refactored. Thanks!\n"
+    check_approval 2 22561442 22334008
+  fi
+
+ALLOCSHARED_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -E "*\.(h|cc)" || true`
+if [ "${ALLOCSHARED_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for TEST_FILE in ${ALLOCSHARED_FILE_CHANGED};
+    do
+        HAS_SKIP_CHECK_ALLOC_CI=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep "AllocShared" || true`
+        if [ "${HAS_SKIP_CHECK_ALLOC_CI}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${HAS_SKIP_CHECK_ALLOC_CI}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="memory::AllocShared is not recommended, because it is being modularized and refactored. Please use memory::Alloc here. Otherwise, please request zhiqiu and Shixiaowei02 review and approve.\n"
+        check_approval 2 6888866 39303645
+    fi
+fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
@@ -291,8 +326,8 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), zhiqiu or luotao1 or lanxianghit) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
-        check_approval 1 6836917 6888866 47554610 7913861
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), zhiqiu or luotao1 or lanxianghit or qili93) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
+        check_approval 1 6836917 6888866 47554610 7913861 16605440
     fi
 fi
 
@@ -322,8 +357,8 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
-        check_approval 1 26615455 6836917 43953930
+        echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain, qili93) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
+        check_approval 1 26615455 6836917 43953930 16605440
     fi
 fi
 

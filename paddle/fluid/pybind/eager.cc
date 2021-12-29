@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
@@ -41,6 +42,7 @@ namespace py = ::pybind11;
 
 PyTypeObject* p_eager_tensor_type;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_framework_tensor_pytype;
 
 PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
@@ -72,6 +74,17 @@ void EmptyEagerTensorInitializer(
             pten::DenseTensorMeta(pten::TransToPtenDataType(dtype),
                                   paddle::framework::make_ddim(dims)));
     self->eager_tensor.set_impl(dense_tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "We only support LoDTensor to be constructed by this initializer, "
+        "please check your var type first and make sure you are going to "
+        "construct LoDTensor."));
+  }
+
+  if (!autograd_meta->GetMutableGradNode()) {
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation for it.";
+    autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
   }
 }
 
@@ -142,6 +155,37 @@ void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
   }
 }
 
+void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
+                                        const framework::Tensor& src,
+                                        const paddle::platform::Place& place,
+                                        const std::string& name) {
+  self->eager_tensor.set_name(name);
+  if (place == src.place()) {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    self->eager_tensor.set_impl(dense_tensor);
+    VLOG(4) << "Same place, do ShareDataWith";
+  } else {
+    std::shared_ptr<pten::DenseTensor> dense_tensor =
+        std::make_shared<pten::DenseTensor>(
+            pten::make_intrusive<paddle::experimental::SharedStorage>(
+                src.place()),
+            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
+                                  src.dims()));
+    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
+    auto temp = egr::EagerTensor(dense_tensor);
+    self->eager_tensor.set_impl(
+        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+    VLOG(4) << "Different place, do TensorCopy";
+  }
+  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
+  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
+      ->SetPersistable(false);
+}
 // TODO(jiabin): We have to do some ugly work, refactor this method using
 // PyArg_ParseTuple()，PyArg_ParseTupleAndKeywords() and PyArg_Parse() later to
 // support kwargs.
@@ -173,6 +217,11 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
    * 6. (multi-place) (must have first 2 parameter)
    * def __init__ (
    * ** tensor: EagerTensor,
+   * ** place: paddle::platform::Place,
+   * ** name: std::string)
+   * 7. (multi-place) (must have first 2 parameter)
+   * def __init__ (
+   * ** tensor: FrameworkTensor,
    * ** place: paddle::platform::Place,
    * ** name: std::string)
    *  **/
@@ -224,6 +273,15 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
             egr::Controller::Instance().GetExpectedPlace(),
             egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
         return 0;
+      } else if (PyObject_IsInstance(
+                     arg0_ptr,
+                     reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+        VLOG(6) << "Calling case7's initializer.";
+        auto src_tensor = CastPyArg2FrameworkTensor(arg0_ptr, 0);
+        InitEagerTensorWithFrameworkTensor(
+            py_tensor_ptr, src_tensor, src_tensor.place(),
+            egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
+        return 0;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We only support construct tensor from numpy value or tensor with "
@@ -263,6 +321,17 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
             py_tensor_ptr, src_tensor, place,
             egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
         return 0;
+      } else if (PyObject_IsInstance(
+                     arg0_ptr,
+                     reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+        VLOG(6) << "Calling case7's initializer.";
+        auto src_tensor = CastPyArg2FrameworkTensor(arg0_ptr, 0);
+        paddle::platform::Place place =
+            CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
+        InitEagerTensorWithFrameworkTensor(
+            py_tensor_ptr, src_tensor, place,
+            egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
+        return 0;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We only support construct tensor from numpy value or tensor with "
@@ -270,6 +339,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
             "please check your input first and make sure you are on the right "
             "way."));
       }
+      return 0;
     }
     case (Py_ssize_t)3: {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
@@ -309,6 +379,24 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
         InitEagerTensorWithEagerTensor(py_tensor_ptr, src_tensor, place,
                                        act_name);
         return 0;
+      } else if (PyObject_IsInstance(
+                     arg0_ptr,
+                     reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+        VLOG(6) << "Calling case7's initializer.";
+        auto src_tensor = CastPyArg2FrameworkTensor(arg0_ptr, 0);
+        paddle::platform::Place place =
+            CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
+        std::string act_name = "";
+        PyObject* name_obj = PyTuple_GET_ITEM(args, 2);
+        if (name_obj == Py_None) {
+          act_name = egr::Controller::Instance().GenerateUniqueName(
+              "generated_tensor");
+        } else {
+          act_name = CastPyArg2AttrString(name_obj, 2);
+        }
+        InitEagerTensorWithFrameworkTensor(py_tensor_ptr, src_tensor, place,
+                                           act_name);
+        return 0;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We only support construct tensor from numpy value or tensor with "
@@ -316,6 +404,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwds) {
             "please check your input first and make sure you are on the right "
             "way."));
       }
+      return 0;
     }
     case (Py_ssize_t)4: {
       VLOG(6) << "Calling case3's initializer.";

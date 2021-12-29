@@ -103,7 +103,9 @@ enum DeviceType {
   XPU = 2,
   NPU = 3,
   IPU = 4,
-  MAX_DEVICE_TYPES = 5,
+  MLU = 5,
+
+  MAX_DEVICE_TYPES = 6,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -113,6 +115,7 @@ constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
+constexpr DeviceType kMLU = DeviceType::MLU;
 
 class DeviceContext {
  public:
@@ -165,7 +168,13 @@ template <>
 struct DefaultDeviceContextType<platform::IPUPlace> {
   using TYPE = IPUDeviceContext;
 };
+#endif
 
+#ifdef PADDLE_WITH_MLU
+class MLUDeviceContext;
+
+template <>
+struct DefaultDeviceContextType<platform::MLUPlace>;
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -324,6 +333,8 @@ class CUDAContext {
     stream_.reset(new_stream_ptr);
     return old_stream_ptr;
   }
+
+  void SetStream(gpuStream_t stream);
 
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
@@ -605,6 +616,11 @@ class CUDADeviceContext : public DeviceContext {
       return default_ctx_;
     }
     return thread_ctx_.at(this);
+  }
+
+  // Note: Can only be used under thread_local semantics.
+  void SetThreadLocalStream(const gpuStream_t stream) {
+    thread_ctx_.at(this)->SetStream(stream);
   }
 
  private:
