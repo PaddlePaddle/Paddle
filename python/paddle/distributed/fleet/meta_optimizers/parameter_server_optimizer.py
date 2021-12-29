@@ -133,9 +133,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 if self.role_maker._is_heter_worker():
                     # for heter worker
                     stage_id = self.role_maker._get_stage_id()
-                    device = self.role_maker._heter_device_type().lower()
                     _main = heter_worker.split_heter_worker_ops_pass(
-                        _main, compiled_config, stage_id, device)
+                        _main, compiled_config, stage_id)
+
                 else:
                     # for default worker
                     _main = heter_worker.split_trainer_ops_pass(_main,
