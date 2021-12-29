@@ -118,7 +118,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
-        set_dist_op_desc_original_id(new_op_desc, backward_op.desc, ctx)
+        set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
         main_block._sync_with_cpp()
