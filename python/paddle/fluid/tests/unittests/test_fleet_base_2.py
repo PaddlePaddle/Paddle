@@ -70,7 +70,6 @@ class TestFleetBase(unittest.TestCase):
             fluid.default_main_program())
 
         fleet.init_worker()
-
         fleet.fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
         fleet.fleet.save(
             dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
