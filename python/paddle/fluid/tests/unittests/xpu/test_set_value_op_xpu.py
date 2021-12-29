@@ -226,8 +226,6 @@ class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
 
 
 # 1.3 item is Ellipsis
-
-
 class TestSetValueItemEllipsis1(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:, ..., 1:] = self.value
