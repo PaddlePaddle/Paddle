@@ -16,6 +16,10 @@ set_source_files_properties(common_graph_table.cc PROPERTIES COMPILE_FLAGS ${DIS
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
+#third_party/libmct/src/extern_libmct/libmct/include/
+set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/")
+include_directories(${PADDLE_LIB_THIRD_PARTY_PATH}libmct/src/extern_libmct/libmct/include)
+
 set(EXTERN_DEP "")
 if(WITH_HETERPS)
     set(TABLE_SRC common_sparse_table.cc ssd_sparse_table.cc common_dense_table.cc sparse_geo_table.cc barrier_table.cc common_graph_table.cc)
