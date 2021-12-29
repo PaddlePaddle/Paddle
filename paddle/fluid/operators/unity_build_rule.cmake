@@ -178,7 +178,6 @@ register_unity_group(cc
     minus_op.cc
     mish_op.cc
     mul_op.cc
-    mkldnn/mul_mkldnn_op.cc
     multinomial_op.cc
     multiplex_op.cc
     mv_op.cc
