@@ -125,13 +125,14 @@ struct AMaxOrAMinGradFunctor {
     HANDLE_AXIS_DIM(3, 2);
     HANDLE_AXIS_DIM(4, 2);
     HANDLE_AXIS_DIM(4, 3);
-    HANDLE_AXIS_DIM(5, 2);
-    HANDLE_AXIS_DIM(5, 3);
-    HANDLE_AXIS_DIM(5, 4);
-    HANDLE_AXIS_DIM(6, 2);
-    HANDLE_AXIS_DIM(6, 3);
-    HANDLE_AXIS_DIM(6, 4);
-    HANDLE_AXIS_DIM(6, 5);
+    // comments for accelerating compiling temporarily.
+    // HANDLE_AXIS_DIM(5, 2);
+    // HANDLE_AXIS_DIM(5, 3);
+    // HANDLE_AXIS_DIM(5, 4);
+    // HANDLE_AXIS_DIM(6, 2);
+    // HANDLE_AXIS_DIM(6, 3);
+    // HANDLE_AXIS_DIM(6, 4);
+    // HANDLE_AXIS_DIM(6, 5);
   }
 };
 
