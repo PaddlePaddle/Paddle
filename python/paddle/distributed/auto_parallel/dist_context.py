@@ -409,7 +409,7 @@ class DistributedOperatorContext:
     def get_cur_src_op(self):
         return self._cur_src_op
 
-    def prepare_forward_context(self, src_op):
+    def prepare_context(self, src_op):
 
         self.set_cur_src_op(src_op)
 
@@ -418,6 +418,7 @@ class DistributedOperatorContext:
         for input_name in src_op.desc.input_names():
             varnames = []
             for varname in src_op.desc.input(input_name):
+                assert varname in self._varname_mapping
                 varnames.append(self._varname_mapping[varname])
             kinputs[input_name] = varnames
 
@@ -426,29 +427,8 @@ class DistributedOperatorContext:
         for output_name in src_op.desc.output_names():
             varnames = []
             for varname in src_op.desc.output(output_name):
+                assert varname in self._varname_mapping
                 varnames.append(self._varname_mapping[varname])
-            koutputs[output_name] = varnames
-
-        return kinputs, koutputs
-
-    def prepare_backward_context(self, backward_op):
-
-        self.set_cur_src_op(backward_op)
-
-        # build input varname mapping
-        kinputs = {}
-        for input_name in backward_op.desc.input_names():
-            varnames = []
-            for varname in backward_op.desc.input(input_name):
-                varnames.append(varname)
-            kinputs[input_name] = varnames
-
-        # build output varname mapping
-        koutputs = {}
-        for output_name in backward_op.desc.output_names():
-            varnames = []
-            for varname in backward_op.desc.output(output_name):
-                varnames.append(varname)
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
