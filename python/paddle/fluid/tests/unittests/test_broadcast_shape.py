@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
 
 
@@ -29,6 +28,14 @@ class TestBroadcastShape(unittest.TestCase):
     def test_error(self):
         self.assertRaises(ValueError, paddle.broadcast_shape, [2, 1, 3],
                           [3, 3, 1])
+
+
+class TestBroadcastShapeStatic(TestBroadcastShape):
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self) -> None:
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

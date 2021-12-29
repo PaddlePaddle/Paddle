@@ -1492,7 +1492,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
                              'logsumexp')
 
     helper = LayerHelper('logsumexp', **locals())
-    attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all':reduce_all}
+    attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
@@ -3054,6 +3054,30 @@ def any(x, axis=None, keepdim=False, name=None):
         attrs=attrs)
     return out
 
+
+def _broadcast_shape_impl(x_shape, y_shape):
+    x_num, y_num = len(x_shape), len(y_shape)
+    diff_shape = [1] * abs(x_num - y_num)
+
+    if x_num > y_num:
+        y_shape = diff_shape + y_shape
+    else:
+        x_shape = diff_shape + x_shape
+
+    out_shape = []
+    error_msg = "Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = {} and the shape of Y = {}. Received [{}] in X is not equal to [{}] in Y at i:{}."
+    for i, (x, y) in enumerate(zip(x_shape, y_shape)):
+        if not (x == y or x <= 1 or y <= 1):
+            raise ValueError(error_msg.format(x_shape, y_shape, x, y, i))
+        if (x > 1 or y > 1) or (x == 1 and y==1):
+            out_shape.append(max(x, y))
+        else:
+            out_shape.append(-1)
+
+    return out_shape
+
+
+
 def broadcast_shape(x_shape, y_shape):
     """
     The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
@@ -3078,8 +3102,18 @@ def broadcast_shape(x_shape, y_shape):
             # ValueError (terminated with error message).
 
     """
+    if in_dygraph_mode():
+        return core.broadcast_shape(x_shape, y_shape)
 
-    return core.broadcast_shape(x_shape, y_shape)
+    def check_type(shape, name):
+        error_msg = "Require type({}) shall be list[int]|tuple[int], but receive {}".format(name, shape)
+        assert isinstance(shape, (list, tuple)), error_msg
+        for val in shape:
+            assert isinstance(val, int), error_msg
+
+    check_type(x_shape)
+    check_type(y_shape)
+    return _broadcast_shape_impl(x_shape, y_shape)
 
 def conj(x, name=None):
     r"""
@@ -3457,10 +3491,10 @@ def rad2deg(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
             helper.append_op(
-                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+                    type='cast', inputs={'X': x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
         out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
         helper.append_op(
-            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': rad2deg_scale})
+            type='scale', inputs={'X': out_cast}, outputs={'Out': out}, attrs={'scale': rad2deg_scale})
         return out
 
 def deg2rad(x, name=None):
@@ -3510,10 +3544,10 @@ def deg2rad(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             out_cast = helper.create_variable_for_type_inference(dtype=paddle.float32)
             helper.append_op(
-                    type='cast', inputs={'X':x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
+                    type='cast', inputs={'X': x}, outputs={'Out': out_cast}, attrs={'in_dtype': x.dtype,'out_dtype': paddle.float32})
         out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
         helper.append_op(
-            type='scale', inputs={'X':out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
+            type='scale', inputs={'X': out_cast}, outputs={'Out': out}, attrs={'scale': deg2rad_scale})
         return out
 
 def gcd(x, y, name=None):
