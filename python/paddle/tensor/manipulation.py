@@ -2815,7 +2815,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
         and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along. 
-        reduce (string | optinal) : The reduce operation, default is 'assign', support 'add' and 'multiply'.
+        reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
     Returns : 
         Tensor: The indexed element, same dtype with arr
     
@@ -2860,6 +2860,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     values = paddle.broadcast_to(values, broadcast_shape)
     helper = LayerHelper('put_along_axis', **locals())
     dtype = helper.input_dtype()
+    result = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="put_along_axis",
         inputs={"Input": arr,
@@ -2867,5 +2868,5 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
                 "Value": values},
         attrs={"Axis": axis,
                "Reduce": reduce},
-        outputs={"Result": arr})
-    return arr
+        outputs={"Result": result})
+    return result

@@ -37,8 +37,6 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
     auto index = ctx.Input<Tensor>("Index");
     auto reduce_op = ctx.Attr<std::string>("Reduce");
     auto result = ctx.Output<Tensor>("Result");
-    result->Resize(index->dims());
-    result->mutable_data<T>(ctx.GetPlace());
 
     const platform::DeviceContext &device_ctx = ctx.device_context();
     const auto &index_type = index->type();
@@ -67,14 +65,16 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
                                               device_ctx);
       }
     } else {
-      platform::errors::InvalidArgument(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "can not suppor reduce_op: (%s) for scatter kernel, only "
-          "support reduce op: 'add‘, 'assign', 'multiply', the defalut reduce "
+          "support reduce op: 'add‘, 'assign', 'mul' and 'multiply', the "
+          "defalut reduce "
           "op is 'assign' ",
-          reduce_op);
+          reduce_op));
       return;
     }
-    *result = *input;  // inplace opeartion
+
+    framework::TensorCopy(*input, ctx.GetPlace(), result);
   }
 };
 

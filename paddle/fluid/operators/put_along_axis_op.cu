@@ -37,8 +37,6 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
     auto reduce_op = ctx.Attr<std::string>("Reduce");
     auto result = ctx.Output<Tensor>("Result");
     const platform::DeviceContext &device_ctx = ctx.device_context();
-    result->Resize(index->dims());
-    result->mutable_data<T>(ctx.GetPlace());
 
     const auto &index_type = index->type();
     if (reduce_op == "add") {
@@ -66,14 +64,15 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
                                               device_ctx);
       }
     } else {
-      platform::errors::InvalidArgument(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "can not suppor reduce_op: (%s) for scatter kernel : %s, only "
-          "support reduce op: 'add‘, 'assign', 'multiply', the defalut reduce "
+          "support reduce op: 'add‘, 'assign', 'mul' and 'multiply', the "
+          "defalut reduce "
           "op is assign ",
-          reduce_op);
+          reduce_op));
       return;
     }
-    *result = *input;  // inplace opeartion
+    framework::TensorCopy(*input, ctx.GetPlace(), result);
   }
 };
 

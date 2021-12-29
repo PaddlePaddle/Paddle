@@ -228,7 +228,6 @@ void gpu_scatter_input_grad_kernel(Tensor self, int dim, const Tensor& index,
       grad_data, dim, index_data, inner_dim_size, select_dim_size,
       grad_select_dim_size, outer_dim_size, index_size);
 }
-namespace plat = paddle::platform;
 Instantiate_Template_Function(gpu_gather_kernel)
     Instantiate_Template_Function(gpu_scatter_assign_kernel)
         Instantiate_Template_Function(gpu_scatter_add_kernel)
