@@ -743,7 +743,6 @@ def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
                     input_name = _get_forward_varname_from_grad_varname(
                         output_name)
                 else:
-                    print("***grad_op:", grad_op)
                     assert grad_op.type in [
                         "scale", "cast", "c_identity", "c_allreduce_sum"
                     ]

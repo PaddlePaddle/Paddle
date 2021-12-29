@@ -25,6 +25,7 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
@@ -35,10 +36,10 @@ from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
 
-def copy_op_with_new_input_output(block, src_op, **kwargs):
+def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
     dist_op_desc = block.desc.append_op()
     dist_op_desc.copy_from(src_op.desc)
-    dist_op_desc.set_original_id(src_op.desc.id())
+    set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
     for input_name in src_op.desc.input_names():
         assert input_name in kwargs
         dist_op_desc.set_input(input_name, kwargs[input_name])
@@ -254,7 +255,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             new_kwargs = copy.deepcopy(kwargs)
             new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
             matmul_op_desc = copy_op_with_new_input_output(
-                main_block, backward_op, **new_kwargs)
+                ctx, main_block, backward_op, **new_kwargs)
         else:
             # col parallel: matmul + allreduce
             assert Y_var_dim_mapping[0] < 0
@@ -282,7 +283,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 new_kwargs['X@GRAD'] = [intermediate_var_0.name]
 
             matmul_op_desc = copy_op_with_new_input_output(
-                main_block, backward_op, **new_kwargs)
+                ctx, main_block, backward_op, **new_kwargs)
 
             # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad
             if has_x_grad:
@@ -305,8 +306,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                                   X_grad_dist_attr, ctx)
     else:
         # replicate
-        matmul_op_desc = copy_op_with_new_input_output(main_block, backward_op,
-                                                       **kwargs)
+        matmul_op_desc = copy_op_with_new_input_output(ctx, main_block,
+                                                       backward_op, **kwargs)
 
     main_block._sync_with_cpp()
 
@@ -356,8 +357,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
 
 def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
-    # print("****_init_param_sync:", Weight_var.name)
-    # print("****_init_param_sync:", dist_op_context.already_init_sync_vars)
+
     assert Weight_var.name not in dist_op_context.already_init_sync_vars
     assert startup_block.has_var(Weight_var.name)
     dist_op_context.already_init_sync_vars.add(Weight_var.name)
@@ -448,7 +448,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             y_dims_mapping), "now just support x dims > y dims"
         if len(y_dims_mapping) != 2:
             return False
-
         if len(x_dims_mapping) == len(y_dims_mapping) and len(
                 x_dims_mapping) == 4:
             if x_dims_mapping[:2] != y_dims_mapping[:2]:
@@ -840,6 +839,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
+
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
             rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
@@ -1243,8 +1243,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
-        # print("***col matmul src_op:", src_op)
-        # print("***col matmul args:", kwargs)
+
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
             rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,
@@ -1542,8 +1541,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
-        # print("***row matmul src_op:", src_op)
-        # print("***row matmul args:", kwargs)
+
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
             rank_id = _get_corresponding_rank(ctx, op_dist_attr.process_mesh,

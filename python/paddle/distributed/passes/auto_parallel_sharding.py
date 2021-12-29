@@ -94,19 +94,19 @@ class ShardingPass(PassBase):
 
     def _collective_data_parallel_groups(self, main_block):
         for op in main_block.ops:
-            if op.type in _skip_ops:
+            if op.type in _skip_ops or (not _is_forward_op(op)):
                 continue
             group = _inference_data_parallel_group_for_operator(
                 self.global_rank, op, self._dist_context)
             if group is not None:
                 self.dp_groups.add(group)
 
-        # TODO(JZ-LIANG) allow more than one dp groups in network, support more general distribution 
+        # TODO allow more than one dp groups in network, support more general distribution 
         # genetated by auto search
         if len(self.dp_groups) != 1:
             raise NotImplementedError(
                 "So far Only and Exactly one data parallel group in network are supported, but got [{}] different data parallel groups".
-                format(len(groups)))
+                format(len(self.dp_groups)))
 
     def _build_sharding_infos(self, params_grads):
 
@@ -136,7 +136,7 @@ class ShardingPass(PassBase):
             else:
                 sharding_group = dp_group
 
-            # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
+            # TODO when support multiple dp groups in future, should group param and bind them to corresponding dp group
             params_in_group = [p for p, g in params_grads]
             assert len(params_in_group) == len(set(
                 params_in_group)), "found duplicated param in params_grads"
@@ -192,7 +192,7 @@ class ShardingPass(PassBase):
         if self.stage < 2:
             return
 
-        # TODO (JZ-LIANG) support calculate global norm with tensor parallelism
+        # TODO support calculate global norm with tensor parallelism
         is_clip_grad_by_global_norm = False
         for idx, op in list(enumerate(main_block.ops)):
             if not _is_gradient_clip_op(op):
@@ -202,9 +202,33 @@ class ShardingPass(PassBase):
                 break
         if not is_clip_grad_by_global_norm:
             return
-
+    
+        removed_op_type= ['elementwise_mul', 'squared_l2_norm', 'clip_by_norm']
         removed_op_idx = set()
         removed_tmp_var = set()
+
+        for idx, op in list(enumerate(main_block.ops)):
+            if not _is_gradient_clip_op(op):
+                continue
+                
+            if op.type in removed_op_type:
+                input_name = op.input("X")[0]
+                param_name = input_name[:input_name.find("@GRAD")]
+                if not self._is_parameter_in_local_shard(param_name):
+                    removed_op_idx.add(idx)
+                    if op.type in ['squared_l2_norm', 'clip_by_norm']:
+                        for output_name in op.output_arg_names:
+                            removed_tmp_var.add(output_name)
+
+        for idx, op in reversed(list(enumerate(main_block.ops))):
+            if not _is_gradient_clip_op(op):
+                continue
+            if idx in removed_op_idx:
+                main_block._remove_op(idx, sync=False)
+
+        for varname in removed_tmp_var:
+            main_block._remove_var(varname, sync=False)
+
         for idx, op in list(enumerate(main_block.ops)):
             if not _is_gradient_clip_op(op):
                 continue
@@ -218,7 +242,7 @@ class ShardingPass(PassBase):
                 sum_op_output = op.desc.output_arg_names()[0]
                 for i, sharding_info in enumerate(self.sharding_infos):
                     new_op = main_block._insert_op(
-                        idx + i,
+                        idx + i + 1,
                         type='c_allreduce_sum',
                         inputs={'X': [sum_op_output]},
                         outputs={'Out': [sum_op_output]},
@@ -235,21 +259,6 @@ class ShardingPass(PassBase):
                         new_op, dist_attr.process_mesh, dist_attr.dims_mapping,
                         self._dist_context)
                 break
-            for input_name in op.input_arg_names:
-                param_name = input_name[:input_name.find("@GRAD")]
-                if not self._is_parameter_in_local_shard(param_name):
-                    removed_op_idx.add(idx)
-                    for output_name in op.output_arg_names:
-                        removed_tmp_var.add(output_name)
-
-        for idx, op in reversed(list(enumerate(main_block.ops))):
-            if not _is_gradient_clip_op(op):
-                continue
-            if idx in removed_op_idx:
-                main_block._remove_op(idx, sync=False)
-
-        for varname in removed_tmp_var:
-            main_block._remove_var(varname, sync=False)
 
         main_block._sync_with_cpp()
 
@@ -350,7 +359,7 @@ class ShardingPass(PassBase):
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
 
-        main_block._sync_with_cpp()
+        main_block._sync_with_cpp
 
     def _shard_parameter(self, main_block, startup_block):
 
@@ -424,12 +433,13 @@ class ShardingPass(PassBase):
                         startup_block._remove_op(idx, sync=False)
                     continue
 
-                if op.type != "c_broadcast" and output_name in not_used_param_nane:
+                if op.type != "c_broadcast" and output_name in param_usage and sharding_info.get_var_rank(output_name) != sharding_info.local_rank: 
                     startup_block._remove_op(idx, sync=False)
 
-            for varname in not_used_param_nane:
-                main_block._remove_var(varname, sync=False)
-                startup_block._remove_var(varname, sync=False)
+            for param_name in param_usage:
+                if sharding_info.get_var_rank(param_name) != sharding_info.local_rank:
+                    main_block._remove_var(param_name, sync=False)
+                    startup_block._remove_var(param_name, sync=False)
 
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
@@ -593,6 +603,8 @@ def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
 
     return block.var(base_name).is_parameter
 
+def _is_forward_op(op):
+    return op.attr("op_role") == 0
 
 def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
@@ -603,7 +615,7 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
             process_mesh = dist_attr.process_mesh
             input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
             mesh_shape = process_mesh.topology
-            # TODO(JZ-LIANG) replace with specific batch size dimension
+            # TODO replace with specific batch size dimension
             batch_size_axis = input_dim_mapping[0]
             if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                 group_ranks = _get_comm_group(process_mesh.processes,

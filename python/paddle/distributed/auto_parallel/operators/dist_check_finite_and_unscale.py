@@ -20,7 +20,8 @@ from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
-from paddle.distributed.auto_parallel.utils import set_var_dist_attr
+from ..utils import set_var_dist_attr
+from ..utils import set_dist_op_desc_original_id
 from ..process_group import new_process_group
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.process_group import get_world_process_groups
@@ -109,7 +110,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         # replicate op in dist program
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
-        dist_op_desc.set_original_id(backward_op.desc.id())
+        set_dist_op_desc_original_id(new_op_desc, backward_op.desc, ctx)
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
         main_block._sync_with_cpp()

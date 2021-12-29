@@ -24,7 +24,7 @@ from paddle.distributed.auto_parallel.operators.common import get_distributed_op
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
-from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_recompute_op
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_recompute_op, set_dist_op_desc_original_id
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
@@ -128,7 +128,6 @@ class Partitioner(object):
                     output_vars[0])
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            new_op_desc.set_original_id(op.desc.id())
             new_op_desc._rename_output(output_vars[0],
                                        temp_varname_map[output_vars[0]])
             new_op_desc._set_attr("shape",

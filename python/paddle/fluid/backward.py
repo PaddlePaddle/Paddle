@@ -1052,7 +1052,7 @@ def _append_backward_ops_(block,
                           callbacks=None,
                           input_grad_names_set=None,
                           op_path_dict=None,
-                          dist_op_context=None):
+                          dist_context=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -1110,10 +1110,10 @@ def _append_backward_ops_(block,
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
         # Build the mapping between the forward op and bacckward op (Only for auto parallel)
-        if dist_op_context is not None:
+        if dist_context is not None:
             for op_desc in grad_op_desc:
-                assert op_desc.id() not in dist_op_context.grad_op_id_to_op_id
-                dist_op_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
+                assert op_desc.id() not in dist_context.grad_op_id_to_op_id
+                dist_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1199,11 +1199,11 @@ def _append_backward_ops_(block,
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
         # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
-        if dist_op_context is not None:
-            if op_desc.id() in dist_op_context.grad_op_id_to_op_id:
-                dist_op_context.grad_op_id_to_op_id[new_op_desc.id(
-                )] = dist_op_context.grad_op_id_to_op_id[op_desc.id()]
-                dist_op_context.grad_op_id_to_op_id.pop(op_desc.id())
+        if dist_context is not None:
+            if op_desc.id() in dist_context.grad_op_id_to_op_id:
+                dist_context.grad_op_id_to_op_id[new_op_desc.id(
+                )] = dist_context.grad_op_id_to_op_id[op_desc.id()]
+                dist_context.grad_op_id_to_op_id.pop(op_desc.id())
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
@@ -1415,7 +1415,7 @@ def append_backward(loss,
                     no_grad_set=None,
                     callbacks=None,
                     checkpoints=None,
-                    dist_op_context=None):
+                    dist_context=None):
     """
     :api_attr: Static Graph
 
@@ -1631,7 +1631,7 @@ def append_backward(loss,
                 callbacks,
                 input_grad_names_set=input_grad_names_set,
                 op_path_dict=op_path_dict,
-                dist_op_context=dist_op_context, )
+                dist_context=dist_context, )
 
     grad_info_map = dict()
 
