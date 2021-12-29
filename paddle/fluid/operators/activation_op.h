@@ -1020,6 +1020,107 @@ struct AtanGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+template <typename T>
+struct Acosh {
+  HOSTDEVICE T operator()(const T& val) const { return acosh(val); }
+};
+
+template <>
+struct Acosh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(acosh(static_cast<float>(val)));
+  }
+};
+
+// Acosh(x) = acosh(x)
+template <typename T>
+struct AcoshFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Acosh<T>());
+  }
+};
+
+// acosh'(x) =  1/sqrt(x^2 - 1)
+template <typename T>
+struct AcoshGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * static_cast<T>(1) / (x * x - static_cast<T>(1)).sqrt();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct Asinh {
+  HOSTDEVICE T operator()(const T& val) const { return asinh(val); }
+};
+
+template <>
+struct Asinh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(asinh(static_cast<float>(val)));
+  }
+};
+
+// Asinh(x) = asinh(x)
+template <typename T>
+struct AsinhFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Asinh<T>());
+  }
+};
+
+// asinh'(x) =  1/sqrt(x^2 + 1)
+template <typename T>
+struct AsinhGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * static_cast<T>(1) / (x.square() + static_cast<T>(1)).sqrt();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct Atanh {
+  HOSTDEVICE T operator()(const T& val) const { return atanh(val); }
+};
+
+template <>
+struct Atanh<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(atanh(static_cast<float>(val)));
+  }
+};
+
+// Atanh(x) = atanh(x)
+template <typename T>
+struct AtanhFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Atanh<T>());
+  }
+};
+
+// atanh'(x) =  1/(1 - x^2)
+template <typename T>
+struct AtanhGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (static_cast<T>(1) - x.square());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -1561,6 +1662,36 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct LogitFunctor {
+  template <typename Device, typename X, typename Out, typename P>
+  void operator()(Device d, X x, Out out, P p, float eps) const {
+    // logit(x) = ln(x/(1-x))
+    auto tmp_x =
+        (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
+
+    if (!eps) {
+      out.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
+                          .select(p.constant(static_cast<T>(NAN)),
+                                  (tmp_x / (static_cast<T>(1) - tmp_x)).log());
+    } else {
+      out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
+    }
+  }
+};
+
+template <typename T>
+struct LogitGradFunctor {
+  template <typename Device, typename X, typename dOut, typename dX, typename P>
+  void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
+    // logit(x)' = 1/(x*(1-x))
+    dx.device(d) =
+        (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
+            .select(p.constant(static_cast<T>(0)),
+                    dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
+  }
 };
 
 template <typename T>
@@ -2599,6 +2730,49 @@ class PowGradKernel
   }
 };
 
+template <typename DeviceContext, typename T>
+class LogitKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* in = context.Input<framework::Tensor>("X");
+    auto eps = context.Attr<float>("eps");
+    out->mutable_data<T>(in->place());
+
+    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_p = framework::EigenVector<T>::Flatten(*out);
+
+    LogitFunctor<T> functor;
+    functor(place, eigen_in, eigen_out, eigen_p, eps);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LogitGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* dout =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto eps = context.Attr<float>("eps");
+    dx->mutable_data<T>(dout->place());
+
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_dout = framework::EigenVector<T>::Flatten(*dout);
+    auto eigen_dx = framework::EigenVector<T>::Flatten(*dx);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_p = framework::EigenVector<T>::Flatten(*x);
+
+    LogitGradFunctor<T> functor;
+    functor(place, eigen_x, eigen_dout, eigen_dx, eigen_p, eps);
+  }
+};
+
 template <typename T>
 struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
@@ -2646,6 +2820,9 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(asin, Asin, AsinFunctor, AsinGradFunctor);                          \
   __macro(sinh, Sinh, SinhFunctor, SinhGradFunctor);                          \
   __macro(cosh, Cosh, CoshFunctor, CoshGradFunctor);                          \
+  __macro(asinh, Asinh, AsinhFunctor, AsinhGradFunctor);                      \
+  __macro(acosh, Acosh, AcoshFunctor, AcoshGradFunctor);                      \
+  __macro(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);                      \
   __macro(round, Round, RoundFunctor, ZeroGradFunctor);                       \
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
   __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                      \

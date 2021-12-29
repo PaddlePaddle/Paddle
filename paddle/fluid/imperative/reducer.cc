@@ -48,9 +48,19 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
-    framework::VisitDataTypeSmall(
+#ifdef PADDLE_WITH_HIP
+    if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unsupport BF16 in DataParallel for now"));
+    }
+    framework::VisitDataTypeForHIP(
         dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
                     tensor, nranks, context));
+#else
+    framework::VisitDataType(dtype_,
+                             DivNRanksForAllReduce<platform::CPUDeviceContext>(
+                                 tensor, nranks, context));
+#endif
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -200,70 +210,6 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
   switch (type) {
     case framework::proto::VarType::FP32:
       SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
-          context, p_dense_contents, p_dense_tensors);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type (%s) is not supported when it splits tensors for "
-          "allreduce.",
-          framework::DataTypeToString(type)));
-  }
-}
-#endif
-
-// NOTE(liubo48): Only implement operators::math::SplitFunctor for npu now.
-// If later the operators::StridedMemcpyWithAxis0 is supported,
-// then this specific SplitTensorsForAllReduce can be removed.
-#ifdef PADDLE_WITH_ASCEND_CL
-template <>
-void SplitTensorsForAllReduce<platform::NPUDeviceContext, float>(
-    const platform::NPUDeviceContext &context,
-    framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors) {
-  auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
-  std::vector<framework::Tensor *> outs;
-  std::vector<const framework::Tensor *> shape_refer;
-
-  outs.reserve(p_dense_tensors->size());
-  shape_refer.reserve(p_dense_tensors->size());
-
-  for (auto &tensor : *p_dense_tensors) {
-    outs.emplace_back(&tensor);
-    shape_refer.emplace_back(&tensor);
-  }
-  operators::math::SplitFunctor<platform::NPUDeviceContext, float>
-      split_functor_;
-  split_functor_(context, *in, shape_refer, 0, &outs);
-}
-
-template <>
-void ConcatTensorsWithType<platform::NPUDeviceContext>(
-    const platform::NPUDeviceContext &context,
-    const std::vector<framework::Tensor> &dense_tensors_,
-    framework::Variable *p_dense_contents,
-    framework::proto::VarType::Type type) {
-  switch (type) {
-    case framework::proto::VarType::FP32:
-      ConcatTensorsForAllReduce<platform::NPUDeviceContext, float>(
-          context, dense_tensors_, p_dense_contents);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type (%s) is not supported when it concats tensors for "
-          "allreduce.",
-          framework::DataTypeToString(type)));
-  }
-}
-
-template <>
-void SplitTensorsWithType<platform::NPUDeviceContext>(
-    const platform::NPUDeviceContext &context,
-    framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors,
-    framework::proto::VarType::Type type) {
-  switch (type) {
-    case framework::proto::VarType::FP32:
-      SplitTensorsForAllReduce<platform::NPUDeviceContext, float>(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:

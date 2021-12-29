@@ -920,6 +920,119 @@ def dot(x, y, name=None):
     return out
 
 
+def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
+    """
+    Estimate the covariance matrix of the input variables, given data and weights.
+
+    A covariance matrix is a square matrix, indicate the covariance of each pair variables in the input matrix.
+    For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the covariance matrix 
+    element Cij is the covariance of xi and xj. The element Cii is the variance of xi itself.
+
+    Parameters:
+        x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
+        rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True
+        ddof(Bool, optional): If ddof=True will return the unbiased estimate, and ddof=False will return the simple average. Default: True
+        fweights(Tensor, optional): 1-D Tensor of integer frequency weights; The number of times each observation vector should be repeated. Default: None
+        aweights(Tensor, optional): 1-D Tensor of observation vector weights. How important of the observation vector, larger data means this element is more important. Default: None
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The covariance matrix Tensor of the variables.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+
+        xt = paddle.rand((3,4))
+        paddle.linalg.cov(xt)
+
+        '''
+        Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+            [[0.07918842, 0.06127326, 0.01493049],
+                [0.06127326, 0.06166256, 0.00302668],
+                [0.01493049, 0.00302668, 0.01632146]])
+        '''
+    """
+    op_type = 'cov'
+    if len(x.shape) > 2 or len(x.shape) < 1:
+        raise ValueError(
+            "Input(x) only support N-D (1<=N<=2) tensor in cov, but received "
+            "length of Input(input) is %s." % len(x.shape))
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cov')
+    nx = x
+    if len(x.shape) == 1:
+        nx = x.reshape((1, -1))
+    if not rowvar and nx.shape[0] != 1:
+        nx = nx.t()
+    w = None
+    observation_num = nx.shape[1]
+    if fweights is not None:
+        w = fweights.astype(nx.dtype)
+        if len(w.shape) > 1:
+            raise ValueError(
+                "Input(fweights) only support N-D (N<=1) tensor in cov, but received "
+                "shape of Input(input) is %s." % len(fweights.shape))
+        if fweights.shape[0] != observation_num:
+            raise ValueError(
+                "The number of Input(fweights) should equal to x's dim[1]: {}, but received "
+                "size of Input(fweights) is {}.".format(observation_num,
+                                                        fweights.shape[0]))
+        if fweights.min() < 0:
+            raise ValueError(
+                "The value of Input(fweights) cannot be negtive, but received "
+                "min of Input(fweights) is {}.".format(fweights.min()))
+        if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
+            raise ValueError("Input(fweights) must be integer ")
+
+    if aweights is not None:
+        aw = aweights.astype(nx.dtype)
+        if len(aw.shape) > 1:
+            raise ValueError(
+                "Input(aweights) only support N-D (N<=1) tensor in cov, but received "
+                "length of Input(input) is %s." % len(aweights.shape))
+        check_variable_and_dtype(aweights, 'dtype', ['float32', 'float64'],
+                                 'cov')
+        if aweights.shape[0] != observation_num:
+            raise ValueError(
+                "The number of Input(aweights) should equal to x's dim[1]: {}, but received "
+                "size of Input(aweights) is {}.".format(observation_num,
+                                                        aweights.shape[0]))
+        if aweights.min() < 0:
+            raise ValueError(
+                "The value of Input(aweights) cannot be negtive, but received "
+                "min of Input(aweights) is {}.".format(aweights.min()))
+        if w is not None:
+            w = w * aw
+        else:
+            w = aw
+
+    w_sum = paddle.to_tensor(observation_num, dtype=nx.dtype)
+    if fweights is not None or aweights is not None:
+        w_sum = w.sum()
+        if w_sum.item() == 0:
+            raise ValueError("The sum of weights is zero, can't be normalized.")
+
+    if w is not None:
+        nx_w = nx * w
+        avg = (nx_w).sum(axis=1) / w_sum
+    else:
+        avg = nx.sum(axis=1) / w_sum
+        nx_w = nx
+
+    if w is not None and aweights is not None and ddof == True:
+        norm_factor = w_sum - (w * aweights).sum() / w_sum
+    else:
+        norm_factor = w_sum - ddof
+    if norm_factor <= 0:
+        norm_factor = paddle.to_tensor(0, dtype=nx.dtype)
+    nx = nx - avg.unsqueeze(1)
+    xxt = paddle.mm(nx, nx_w.t().conj())
+    cov = paddle.divide(xxt, norm_factor).squeeze()
+    return cov
+
+
 def t(input, name=None):
     """
     Transpose <=2-D tensor.
@@ -1430,7 +1543,7 @@ def det(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.determinant(x)
+        return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
@@ -1485,7 +1598,7 @@ def slogdet(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.slogdeterminant(x)
+        return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
@@ -1633,7 +1746,7 @@ def matrix_power(x, n, name=None):
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
     if in_dygraph_mode():
-        return core.ops.matrix_power(x, "n", n)
+        return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
     check_type(n, 'n', int, 'matrix_power')
@@ -2385,6 +2498,56 @@ def triangular_solve(x,
             'transpose': transpose,
             'unitriangular': unitriangular
         })
+    return out
+
+
+def cholesky_solve(x, y, upper=False, name=None):
+    r"""
+    Solves a linear system of equations A @ X = B, given A's Cholesky factor matrix u and  matrix B.
+
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
+    is also batches.
+
+    Args:
+        x (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is 
+            zero or more batch dimensions. Its data type should be float32 or float64.
+        upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
+        name(str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The solution of the system of equations. Its data type is the same as that of `x`.
+
+    Examples:
+    .. code-block:: python
+
+        import paddle
+
+        u = paddle.to_tensor([[1, 1, 1], 
+                                [0, 2, 1],
+                                [0, 0,-1]], dtype="float64")
+        b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+        out = paddle.linalg.cholesky_solve(b, u, upper=True)
+
+        print(out)
+        # [-2.5, -7, 9.5]
+    """
+    if in_dygraph_mode():
+        return _C_ops.cholesky_solve(x, y, 'upper', upper)
+
+    helper = LayerHelper("cholesky_solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'cholesky_solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'cholesky_solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='cholesky_solve',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'upper': upper})
     return out
 
 

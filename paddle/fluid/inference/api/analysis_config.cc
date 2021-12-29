@@ -46,6 +46,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new XpuPassStrategy);
     } else if (use_npu_) {
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_ipu_) {
+      LOG(INFO) << "Create IPU IR passes";
+      pass_builder_.reset(new IpuPassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -136,6 +139,20 @@ void AnalysisConfig::EnableNpu(int device_id) {
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
+
+  Update();
+}
+void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
+                               int ipu_batches_per_step, int ipu_batch_size,
+                               bool ipu_need_avg_shard) {
+  enable_ir_optim_ = true;
+
+  use_ipu_ = true;
+  ipu_device_num_ = device_num;
+  ipu_enable_pipelining_ = ipu_enable_pipelining;
+  ipu_batches_per_step_ = ipu_batches_per_step;
+  ipu_batch_size_ = ipu_batch_size;
+  ipu_need_avg_shard_ = ipu_need_avg_shard;
 
   Update();
 }
@@ -233,12 +250,23 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(thread_local_stream_);
 
+  // ipu related
+  CP_MEMBER(use_ipu_);
+  CP_MEMBER(ipu_device_num_);
+  CP_MEMBER(ipu_enable_pipelining_);
+  CP_MEMBER(ipu_batches_per_step_);
+  CP_MEMBER(ipu_batch_size_);
+  CP_MEMBER(ipu_need_avg_shard_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     pass_builder_.reset(new GpuPassStrategy(
         *static_cast<GpuPassStrategy *>(other.pass_builder())));
+  } else if (use_ipu_) {
+    pass_builder_.reset(new IpuPassStrategy(
+        *static_cast<IpuPassStrategy *>(other.pass_builder())));
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
@@ -413,7 +441,8 @@ void AnalysisConfig::Update() {
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
-      ((use_npu() ^ pass_builder_->use_npu()))) {
+      ((use_npu() ^ pass_builder_->use_npu())) ||
+      ((use_ipu() ^ pass_builder_->use_ipu()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -421,6 +450,9 @@ void AnalysisConfig::Update() {
         // Append after the Affine_channel_conv_fuse pass.
         pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
       }
+    } else if (use_ipu()) {
+      VLOG(1) << "IpuPassStrategy has been used for new.";
+      pass_builder_.reset(new IpuPassStrategy);
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(), false,
@@ -441,6 +473,10 @@ void AnalysisConfig::Update() {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
           *static_cast<GpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_ipu()) {
+      VLOG(1) << "IpuPassStrategy has been used.";
+      pass_builder_.reset(new IpuPassStrategy(
+          *static_cast<IpuPassStrategy *>(pass_builder_.get())));
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(), false,
@@ -565,6 +601,13 @@ void AnalysisConfig::Update() {
         "with NPU-runtime."));
 #endif
   }
+  if (use_ipu_) {
+#ifndef PADDLE_WITH_IPU
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to enable the ipu "
+        "but did not have the option -DWITH_IPU compiled."));
+#endif
+  }
 
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
@@ -634,6 +677,13 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << npu_device_id_;
 
   ss << thread_local_stream_;
+
+  ss << use_ipu_;
+  ss << ipu_device_num_;
+  ss << ipu_enable_pipelining_;
+  ss << ipu_batches_per_step_;
+  ss << ipu_batch_size_;
+  ss << ipu_need_avg_shard_;
 
   return ss.str();
 }

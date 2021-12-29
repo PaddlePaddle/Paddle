@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/pten/core/convert_utils.h"
-
+#include "paddle/pten/core/kernel_alias_name.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
@@ -23,7 +23,7 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
-    return Backend::CUDA;
+    return Backend::GPU;
   } else {
     return Backend::UNDEFINED;
   }
@@ -84,7 +84,7 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
     case pten::Backend::CPU:
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDA:
+    case pten::Backend::GPU:
       return paddle::platform::CUDAPlace(
           paddle::platform::GetCurrentDeviceId());
 #endif
@@ -268,6 +268,14 @@ std::string DataType2String(DataType dtype) {
           static_cast<int>(dtype)));
       return "";
   }
+}
+
+const std::string& TransToPtenKernelName(const std::string& fluid_op_name) {
+  if (kernel_alias_name_map.find(fluid_op_name) !=
+      kernel_alias_name_map.end()) {
+    return kernel_alias_name_map.at(fluid_op_name);
+  }
+  return fluid_op_name;
 }
 
 }  // namespace pten

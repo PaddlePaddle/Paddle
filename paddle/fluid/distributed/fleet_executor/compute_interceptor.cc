@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -172,6 +174,11 @@ void ComputeInterceptor::RunOps() {
           << step_ + 1 << " time.";
   for (auto op : node_->ops()) {
     op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
+    if (gc_) {
+      framework::DeleteUnusedTensors(
+          *microbatch_scopes_[step_ % node_->max_run_times()], op,
+          node_->unused_vars(), gc_.get());
+    }
   }
 }
 
@@ -190,6 +197,7 @@ void ComputeInterceptor::Run() {
     if (is_last_ && (step_ % node_->max_run_times() == 0)) {
       VLOG(3) << "Interceptor " << GetInterceptorId()
               << " is stopping carrier.";
+      // FIXME(wangxi): with multi sink interceptor
       StopCarrier();
     }
   }

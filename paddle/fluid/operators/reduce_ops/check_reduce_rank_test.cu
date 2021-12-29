@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/pten/kernels/hybird/cuda/reduce/reduce_cuda_impl.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace details {
 
 TEST(test_reduce_rank_check, all) {
   using EnforceNotMet = paddle::platform::EnforceNotMet;
@@ -39,15 +39,15 @@ TEST(test_reduce_rank_check, all) {
       }
 
       if (is_valid) {
-        CheckReduceRankIsValid(reduce_rank, rank);
+        pten::kernels::details::CheckReduceRank(reduce_rank, rank);
       } else {
-        ASSERT_THROW(CheckReduceRankIsValid(reduce_rank, rank),
+        ASSERT_THROW(pten::kernels::details::CheckReduceRank(reduce_rank, rank),
                      paddle::platform::EnforceNotMet);
       }
     }
   }
 }
 
-}  // namespace detail
+}  // namespace details
 }  // namespace operators
 }  // namespace paddle
