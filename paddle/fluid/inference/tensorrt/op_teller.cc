@@ -736,7 +736,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
       if (!(out_h > 0 && out_w > 0)) {
         if (!scale.size() && !out_size) {
-          VLOG(3) << "Output size or scale factor must be required here.";
           return false;
         }
         if (out_size) {
