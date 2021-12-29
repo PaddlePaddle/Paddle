@@ -87,15 +87,6 @@ struct UnsignedPowFunctor {
   float porder;
 };
 
-template <typename Tx, typename Ty = Tx>
-struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(float porder) { this->porder = porder; }
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(inline_pow(x, static_cast<Tx>(porder)));
-  }
-  float porder;
-};
-
 template <typename DeviceContext, typename T>
 class PnormCUDAKernel : public framework::OpKernel<T> {
  public:
