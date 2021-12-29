@@ -79,31 +79,23 @@ SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<double>>(
 }
 
 template <typename T>
-void reduce_functor(const framework::ExecutionContext& ctx,
-                    const framework::Tensor* in, const framework::Tensor* out,
-                    framework::Tensor* src, framework::Tensor* dst) {
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  if (dst->dims() == out->dims()) {
-    dst->ShareDataWith(*src);
-    return;
-  }
-  int axis = ctx.Attr<int>("axis");
+void ReduceForDiv(const platform::CUDADeviceContext& dev_ctx, int axis,
+                  const framework::Tensor* in, const framework::Tensor* out,
+                  framework::Tensor* src, framework::Tensor* dst) {
   std::vector<int> reduce_dims = GetReduceDim(in->dims(), out->dims(), axis);
-  gpuStream_t stream = ctx.cuda_device_context().stream();
   TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
 }
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-default_elementwise_div_grad(const framework::ExecutionContext& ctx,
-                             const framework::Tensor* x,
-                             const framework::Tensor* y,
-                             const framework::Tensor* out,
-                             const framework::Tensor* dout,
-                             framework::Tensor* dx, framework::Tensor* dy) {
+DefaultElementwiseDivGrad(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y,
+                          const framework::Tensor* out,
+                          const framework::Tensor* dout, framework::Tensor* dx,
+                          framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
   auto* dout_data = dout->data<T>();
   dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
@@ -122,20 +114,31 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
       dx->clear();
       dx->mutable_data<T>(x->dims(), ctx.GetPlace());
     }
-    // dout.dims==out.dims
+
     std::vector<const framework::Tensor*> ins = {dout, out, y};
-    std::vector<framework::Tensor*> outs = {&tmp_dx, &tmp_dy};
+    std::vector<framework::Tensor*> outs;
+    if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
+      outs = {dx, dy};
+    } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+      outs = {&tmp_dx, dy};
+    } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
+      outs = {dx, &tmp_dy};
+    } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
+      outs = {&tmp_dx, &tmp_dy};
+    }
+
     auto functor = DivGradXYFunctor<T, T>();
     LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T,
                                 decltype(functor), 2>(dev_ctx, ins, &outs, axis,
                                                       functor);
 
-    if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
-      dx->ShareDataWith(tmp_dx);
-      dy->ShareDataWith(tmp_dy);
-    } else {
-      reduce_functor<T>(ctx, x, out, &tmp_dx, dx);
-      reduce_functor<T>(ctx, y, out, &tmp_dy, dy);
+    if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+      ReduceForDiv<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
+    } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
+      ReduceForDiv<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
+    } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
+      ReduceForDiv<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
+      ReduceForDiv<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
     }
   } else if (dx != nullptr && dy == nullptr) {
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
@@ -143,25 +146,35 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
       dx->clear();
       dx->mutable_data<T>(x->dims(), ctx.GetPlace());
     }
+
     std::vector<const framework::Tensor*> ins = {dout, y};
-    std::vector<framework::Tensor*> outs = {&tmp_dx};
+    std::vector<framework::Tensor*> outs;
+    if (dx->dims() != dout->dims()) {
+      outs = {&tmp_dx};
+    } else {
+      outs = {dx};
+    }
+
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         dev_ctx, ins, &outs, axis, DivGradFunctor<T>());
     if (dx->dims() != dout->dims()) {
-      reduce_functor<T>(ctx, x, out, &tmp_dx, dx);
-    } else {
-      dx->ShareDataWith(tmp_dx);
+      ReduceForDiv<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
     }
   } else if (dy != nullptr && dx == nullptr) {
     auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
+
     std::vector<const framework::Tensor*> ins = {dout, out, y};
-    std::vector<framework::Tensor*> outs = {&tmp_dy};
+    std::vector<framework::Tensor*> outs;
+    if (dy->dims() != dout->dims()) {
+      outs = {&tmp_dy};
+    } else {
+      outs = {dy};
+    }
+
     LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
         dev_ctx, ins, &outs, axis, DivGradYFunctor<T>());
     if (dy->dims() != dout->dims()) {
-      reduce_functor<T>(ctx, y, out, &tmp_dy, dy);
-    } else {
-      dy->ShareDataWith(tmp_dy);
+      ReduceForDiv<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
     }
   }
 }
@@ -169,11 +182,10 @@ default_elementwise_div_grad(const framework::ExecutionContext& ctx,
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
-elementwise_div_grad(const framework::ExecutionContext& ctx,
-                     const framework::Tensor* x, const framework::Tensor* y,
-                     const framework::Tensor* out,
-                     const framework::Tensor* dout, framework::Tensor* dx,
-                     framework::Tensor* dy) {
+ElementwiseDivGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
   dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
