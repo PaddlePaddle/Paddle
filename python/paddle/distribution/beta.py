@@ -78,29 +78,11 @@ class Beta(ExponentialFamily):
         if isinstance(beta, numbers.Real):
             beta = paddle.full(shape=[1], fill_value=beta)
 
-        alpha, beta = paddle.broadcast_tensors([alpha, beta])
+        self.alpha, self.beta = paddle.broadcast_tensors([alpha, beta])
 
-        self._dirichlet = Dirichlet(paddle.stack([alpha, beta], -1))
+        self._dirichlet = Dirichlet(paddle.stack([self.alpha, self.beta], -1))
 
         super(Beta, self).__init__(self._dirichlet._batch_shape)
-
-    @property
-    def alpha(self):
-        """Return alpha parameter of beta distribution.
-
-        Returns:
-            alpha parameter
-        """
-        return self._dirichlet.concentration[..., 0]
-
-    @property
-    def beta(self):
-        """Return beta parameter of beta distribution.
-
-        Returns:
-            beta parameter
-        """
-        return self._dirichlet.concentration[..., 1]
 
     @property
     def mean(self):
@@ -141,7 +123,7 @@ class Beta(ExponentialFamily):
         """sample from beta distribution with sample shape.
 
         Args:
-            shape (Tensor): sample shape.
+            shape (Sequence[int], optional): sample shape.
 
         Returns:
             sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.

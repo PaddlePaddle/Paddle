@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,6 +39,7 @@ class Exponential(paddle.distribution.ExponentialFamily):
     def _log_normalizer(self, x):
         return -paddle.log(-x)
 
+
 class DummyExpFamily(paddle.distribution.ExponentialFamily):
     """dummy class extend from exponential family
     """
@@ -55,6 +56,7 @@ class DummyExpFamily(paddle.distribution.ExponentialFamily):
 
     def _log_normalizer(self, x):
         return -paddle.log(-x)
+
 
 @paddle.distribution.register_kl(Exponential, Exponential)
 def _kl_exponential_exponential(p, q):

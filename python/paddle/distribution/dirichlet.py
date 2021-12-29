@@ -90,7 +90,7 @@ class Dirichlet(ExponentialFamily):
         """sample from dirichlet distribution.
 
         Args:
-            shape (Tensor, optional): sample shape. Defaults to empty tuple.
+            shape (Sequence[int], optional): sample shape. Defaults to empty tuple.
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         return _dirichlet(self.concentration.expand(self._extend_shape(shape)))

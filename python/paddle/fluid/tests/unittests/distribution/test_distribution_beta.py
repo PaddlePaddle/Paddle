@@ -98,7 +98,3 @@ class TestBeta(unittest.TestCase):
             self.assertTrue(
                 self._paddle_beta.sample(case.get('input')).shape ==
                 case.get('expect'))
-
-
-if __name__ == '__main__':
-    unittest.main()

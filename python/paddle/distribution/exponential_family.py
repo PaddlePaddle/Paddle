@@ -25,6 +25,7 @@ class ExponentialFamily(Distribution):
     form is defined below
 
     ExponentialFamily is derived from `paddle.distribution.Distribution`.
+    
     .. math::
 
         f_{F}(x; \theta) = \exp(\langle t(x), \theta\rangle - F(\theta) + k(x))

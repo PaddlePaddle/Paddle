@@ -117,7 +117,3 @@ class TestBeta(unittest.TestCase):
                                        fetch_list=self._paddle_beta.sample())
             self.assertTrue(data.shape,
                             np.broadcast_arrays(self.alpha, self.beta)[0].shape)
-
-
-if __name__ == '__main__':
-    unittest.main()

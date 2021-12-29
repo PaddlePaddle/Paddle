@@ -102,7 +102,3 @@ class TestDirichlet(unittest.TestCase):
             with self.assertRaises(ValueError):
                 paddle.distribution.Dirichlet(
                     paddle.squeeze(self.concentration))
-
-
-if __name__ == '__main__':
-    unittest.main()
