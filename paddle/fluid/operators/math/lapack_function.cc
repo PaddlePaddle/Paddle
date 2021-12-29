@@ -125,7 +125,6 @@ void lapackEig<platform::complex<float>, float>(
       reinterpret_cast<std::complex<float> *>(work), &lwork, rwork, info);
 }
 
-// Gels
 template <>
 void lapackGels<platform::complex<double>>(
     char trans, int m, int n, int nrhs, platform::complex<double> *a, int lda,
@@ -164,7 +163,6 @@ void lapackGels<float>(char trans, int m, int n, int nrhs, float *a, int lda,
                             &lwork, info);
 }
 
-// Gelsd
 template <>
 void lapackGelsd<platform::complex<double>, double>(
     int m, int n, int nrhs, platform::complex<double> *a, int lda,
@@ -208,7 +206,6 @@ void lapackGelsd<float>(int m, int n, int nrhs, float *a, int lda, float *b,
                              work, &lwork, iwork, info);
 }
 
-// Gelsy
 template <>
 void lapackGelsy<platform::complex<double>, double>(
     int m, int n, int nrhs, platform::complex<double> *a, int lda,
@@ -247,7 +244,6 @@ void lapackGelsy<float>(int m, int n, int nrhs, float *a, int lda, float *b,
                              rank, work, &lwork, info);
 }
 
-// Gelss
 template <>
 void lapackGelss<platform::complex<double>, double>(
     int m, int n, int nrhs, platform::complex<double> *a, int lda,

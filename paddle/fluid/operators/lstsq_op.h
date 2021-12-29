@@ -94,9 +94,8 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     framework::TensorCopy(x, context.GetPlace(), &new_x);
     framework::TensorCopy(y, context.GetPlace(), solution);
 
-    if (m < n) {
+    if (m < n)
       solution->Resize(UDDim(ori_solution_dim));
-    }
 
     Tensor input_x_trans = dito.Transpose(new_x);
     Tensor input_y_trans = dito.Transpose(*solution);
@@ -217,17 +216,15 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
           platform::errors::PreconditionNotMet(
               "For batch [%d]: Lapack info is not zero but [%d]", i, info));
 
-      if (rank_working_ptr) {
+      if (rank_working_ptr)
         *rank_working_ptr = static_cast<int>(rank_32);
-      }
     }
 
     Tensor tmp_s = dito.Transpose(*solution);
     framework::TensorCopy(tmp_s, solution->place(), solution);
 
-    if (m >= n) {
+    if (m >= n)
       solution->Resize(UDDim(ori_solution_dim));
-    }
   }
 };
 

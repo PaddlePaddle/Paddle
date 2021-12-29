@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 
 
 class LinalgLstsqTestCase(unittest.TestCase):
@@ -70,24 +69,18 @@ class LinalgLstsqTestCase(unittest.TestCase):
         if (np.abs(res_solution - self._output_solution) < 1e-6).any():
             pass
         else:
-            print("EXPECTED: \n", self._output_solution)
-            print("GOT     : \n", res_solution)
             raise RuntimeError("Check LSTSQ solution dygraph Failed")
 
         if x.shape[-2] > x.shape[-1]:
             if (np.abs(res_residuals - self._output_residuals) < 1e-6).any():
                 pass
             else:
-                print("EXPECTED: \n", self._output_residuals)
-                print("GOT     : \n", res_residuals)
                 raise RuntimeError("Check LSTSQ residuals dygraph Failed")
 
         if self.driver in ("gelsy", "gelsd", "gelss"):
             if (np.abs(res_rank - self._output_rank) < 1e-6).any():
                 pass
             else:
-                print("EXPECTED: \n", self._output_rank)
-                print("GOT     : \n", res_rank)
                 raise RuntimeError("Check LSTSQ rank dygraph Failed")
 
         if self.driver in ("gelsd", "gelss"):
@@ -95,8 +88,6 @@ class LinalgLstsqTestCase(unittest.TestCase):
                 ).any():
                 pass
             else:
-                print("EXPECTED: \n", self._output_sg_values)
-                print("GOT     : \n", res_singular_values)
                 raise RuntimeError("Check LSTSQ singular values dygraph Failed")
 
     def test_static(self):
@@ -123,32 +114,24 @@ class LinalgLstsqTestCase(unittest.TestCase):
             if (np.abs(fetches[0] - self._output_solution) < 1e-6).any():
                 pass
             else:
-                print("EXPECTED: \n", self._output_solution)
-                print("GOT     : \n", fetches[0])
                 raise RuntimeError("Check LSTSQ solution static Failed")
 
             if x.shape[-2] > x.shape[-1]:
                 if (np.abs(fetches[1] - self._output_residuals) < 1e-6).any():
                     pass
                 else:
-                    print("EXPECTED: \n", self._output_residuals)
-                    print("GOT     : \n", fetches[1])
                     raise RuntimeError("Check LSTSQ residuals static Failed")
 
             if self.driver in ("gelsy", "gelsd", "gelss"):
                 if (np.abs(fetches[2] - self._output_rank) < 1e-6).any():
                     pass
                 else:
-                    print("EXPECTED: \n", self._output_rank)
-                    print("GOT     : \n", fetches[2])
                     raise RuntimeError("Check LSTSQ rank static Failed")
 
             if self.driver in ("gelsd", "gelss"):
                 if (np.abs(fetches[3] - self._output_sg_values) < 1e-6).any():
                     pass
                 else:
-                    print("EXPECTED: \n", self._output_sg_values)
-                    print("GOT     : \n", fetches[3])
                     raise RuntimeError(
                         "Check LSTSQ singular values static Failed")
 
@@ -198,20 +181,11 @@ class LinalgLstsqTestCaseGelsyFloat32(LinalgLstsqTestCase):
         self._input_shape_2 = (8, 10)
 
 
-class LinalgLstsqTestCaseGelsdFloat64(LinalgLstsqTestCase):
-    def init_config(self):
-        self.dtype = 'float64'
-        self.rcond = 1e-15
-        self.driver = "gelsd"
-        self._input_shape_1 = (15, 10)
-        self._input_shape_2 = (15, 5)
-
-
 class LinalgLstsqTestCaseBatch1(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float32'
         self.rcond = 1e-15
-        self.driver = "gelsd"
+        self.driver = None
         self._input_shape_1 = (2, 10, 3)
         self._input_shape_2 = (2, 10, 4)
 

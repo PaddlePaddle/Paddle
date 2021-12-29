@@ -92,9 +92,7 @@ class LstsqOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (dtype != framework::proto::VarType::FP32 &&
-        dtype != framework::proto::VarType::FP64 &&
-        dtype != framework::proto::VarType::COMPLEX64 &&
-        dtype != framework::proto::VarType::COMPLEX128) {
+        dtype != framework::proto::VarType::FP64) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unsupported data type: %s!", dtype));
     }
@@ -107,14 +105,12 @@ class LstsqOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(Tensor), A complex-valued or real-valued tensor with shape (*, "
-        "m, n). The accepted datatype is one of float32, float64, complex64 "
-        "or complex128");
+        "(Tensor), A real-valued tensor with shape (*, m, n). "
+        "The accepted datatype is one of float32, float64");
     AddInput(
         "Y",
-        "(Tensor), A complex-valued or real-valued tensor with shape (*, "
-        "m, k). The accepted datatype is one of float32, float64, complex64 "
-        "or complex128");
+        "(Tensor), A real-valued tensor with shape (*, m, k). "
+        "The accepted datatype is one of float32, float64");
     AddAttr<float>(
         "rcond",
         "(float, default 0.0), A float value used to determine the effective "
@@ -140,14 +136,9 @@ This API processes Lstsq functor for general matrices.
 }  // namespace operators
 }  // namespace paddle
 
-using complex64 = paddle::platform::complex<float>;
-using complex128 = paddle::platform::complex<double>;
-
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstsq, ops::LstsqOp, ops::LstsqOpMaker)
 
 REGISTER_OP_CPU_KERNEL(
     lstsq, ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, complex64>,
-    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, complex128>);
+    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, double>);
