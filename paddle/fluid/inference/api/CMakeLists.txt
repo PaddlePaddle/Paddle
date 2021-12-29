@@ -65,10 +65,10 @@ if(WITH_TESTING)
 endif()
 
 if (NOT APPLE AND NOT WIN32)
-  cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc  DEPS paddle_inference_shared
+  cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS paddle_inference_shared
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 elseif (WIN32)
-  cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc  DEPS analysis_predictor benchmark ${inference_deps}
+  cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 endif()
 
