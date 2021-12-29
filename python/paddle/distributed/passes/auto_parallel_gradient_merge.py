@@ -302,7 +302,7 @@ def _create_cond_block_and_update_optimizer(
             new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
                                   op_maker.OpRole.Optimize)
 
-    layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+    layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
 
 
 def parse_program(main_program, startup_program, params_grads, k_steps, avg,
