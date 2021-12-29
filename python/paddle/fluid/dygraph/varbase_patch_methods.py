@@ -763,6 +763,9 @@ def monkey_patch_varbase():
         else:
             return None
 
+    def _set_grad_ivar(self, value):
+        self.grad = value
+
     @framework.dygraph_only
     def clear_gradient(self, set_to_zero=True):
         if set_to_zero:
@@ -790,6 +793,7 @@ def monkey_patch_varbase():
 
     if core._in_eager_mode():
         setattr(core.eager.EagerTensor, "_grad_ivar", _grad_ivar)
+        setattr(core.eager.EagerTensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.EagerTensor, "clear_gradient", clear_gradient)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
