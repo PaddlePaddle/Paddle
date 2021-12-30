@@ -217,4 +217,5 @@ __all__ = [     #noqa
            'instance_norm',
            'class_center_sample',
            'sparse_attention',
+           'fold',
 ]

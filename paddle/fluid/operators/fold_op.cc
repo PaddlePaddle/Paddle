@@ -46,7 +46,7 @@ class FoldOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         kernel_sizes.size(), 2,
         platform::errors::InvalidArgument(
-            "It is expected kernel_size equals to 4, but got size %d",
+            "It is expected kernel_size equals to 2, but got size %d",
             kernel_sizes.size()));
     PADDLE_ENFORCE_EQ(
         strides.size(), 2,
