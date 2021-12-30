@@ -1271,11 +1271,11 @@ class Layer(object):
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
-    def _state_dict_impl(self,
-                         destination=None,
-                         include_sublayers=True,
-                         structured_name_prefix="",
-                         include_non_persistable_buffer=False):
+    def _obtain_parameters_buffers(self,
+                                   destination=None,
+                                   include_sublayers=True,
+                                   structured_name_prefix="",
+                                   include_non_persistable_buffer=False):
         """
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -1308,7 +1308,16 @@ class Layer(object):
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer))
                     destination = destination_temp
+        return destination
 
+    def _state_dict_impl(self,
+                         destination=None,
+                         include_sublayers=True,
+                         structured_name_prefix="",
+                         include_non_persistable_buffer=False):
+        destination = self._obtain_parameters_buffers(
+            destination, include_sublayers, structured_name_prefix,
+            include_non_persistable_buffer)
         for state_dict_hook in self._state_dict_hooks.values():
             hook_result = state_dict_hook(destination)
             if hook_result is not None:
