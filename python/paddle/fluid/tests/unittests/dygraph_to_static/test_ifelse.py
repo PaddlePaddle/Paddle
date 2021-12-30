@@ -20,6 +20,7 @@ import unittest
 import paddle
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
 
 from ifelse_simple_func import *
 
@@ -410,14 +411,12 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         self.dyfunc = dyfunc_ifelse_ret_int4
 
     def test_ast_to_func(self):
-        with self.assertRaises(TypeError):
-            ProgramTranslator().enable(True)
-            static_func = paddle.jit.to_static(self.dyfunc)
-            out = static_func(self.x)
-
-    def __del__(self):
+        ProgramTranslator().enable(True)
+        with _switch_declarative_mode_guard_():
+            with self.assertRaises(TypeError):
+                static_func = paddle.jit.to_static(self.dyfunc)
+                out = static_func(self.x)
         ProgramTranslator().enable(False)
-        super(TestDy2StIfElseRetInt4, self).__del__()
 
 
 if __name__ == '__main__':
