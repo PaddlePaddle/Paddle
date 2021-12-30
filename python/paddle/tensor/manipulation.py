@@ -2871,6 +2871,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         outputs={"Result": result})
     return result
 
+
 @inplace_apis_in_dygraph_only
 def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     r"""
@@ -2883,10 +2884,10 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
         broadcast_shape_list = list(arr.shape)
         broadcast_shape_list[axis] = 1
         broadcast_shape = tuple(broadcast_shape_list)
-        
+
     indices = paddle.broadcast_to(indices, broadcast_shape)
     values = paddle.to_tensor(values) if not isinstance(
         values, paddle.Tensor) else values
     values = paddle.broadcast_to(values, broadcast_shape)
-    return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis,
-                                "Reduce", reduce)
+    return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
+                                  reduce)
