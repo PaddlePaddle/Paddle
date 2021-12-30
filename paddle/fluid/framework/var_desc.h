@@ -69,6 +69,12 @@ class VarDesc {
 
   explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
 
+  // Explicitly implement the copy constructor for auto parallel
+  VarDesc(const VarDesc &other)
+      : desc_(other.desc_),
+        attrs_(other.attrs_),
+        original_id_(other.original_id_) {}
+
   proto::VarDesc *Proto() { return &desc_; }
 
   const proto::VarDesc *Proto() const { return &desc_; }
@@ -153,16 +159,10 @@ class VarDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
-  // This thread-safe implementation seems to be redudent since the neural
-  // networks are usually constructed in a single thread.
-  static uint64_t GenerateId() {
-    static std::atomic<std::uint64_t> uid{0};
-    return ++uid;
-  }
-
-  // Note: the identity only used as a key for referring to its
-  // distributed attribute now.
+  // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
+  uint64_t OriginalId() const { return original_id_; }
+  void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -170,9 +170,23 @@ class VarDesc {
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks are usually constructed in a single thread.
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+
   proto::VarDesc desc_;
   AttributeMap attrs_;
+
+  // Note: the id_ is unique for all VarDesc (only for auto parallel).
   uint64_t id_ = GenerateId();
+  // Note: the orignal_id_ is used for referring to the original VarDesc
+  // that the current VarDesc is built from (only for auto parallel).
+  // The default original_id_ is same as the id_, which means the
+  // current VarDesc is not built from the other one.
+  uint64_t original_id_ = id_;
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);
