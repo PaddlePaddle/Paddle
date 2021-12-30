@@ -405,7 +405,7 @@ class DistributedContext:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_program" or k == "_serial_graph":
+            if k == "_serial_program" or k == "_serial_graph" or k == "_dist_startup_programs" or k == "_dist_main_programs":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
