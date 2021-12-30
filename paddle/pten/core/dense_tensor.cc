@@ -462,6 +462,35 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
   return mutable_data(place, type(), requested_size);
 }
 
+void* DenseTensor::mutable_data(const paddle::platform::Place& place,
+                                paddle::framework::proto::VarType::Type type,
+                                const paddle::platform::Stream& stream) {
+  set_type(type);
+  PADDLE_ENFORCE_GE(
+      numel(),
+      0,
+      paddle::platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(),
+          "] now"));
+  size_t size = numel() * SizeOf(dtype());
+
+  /* some versions of boost::variant don't have operator!= */
+  if (storage_ == nullptr || storage_->data_shared() == nullptr ||
+      !(storage_->data_shared()->place() == place) ||
+      storage_->data_shared()->size() < size + meta_.offset ||
+      !(paddle::platform::is_gpu_place(place) &&
+        paddle::memory::InSameStream(storage_->data_shared(), stream))) {
+    storage_->Clear();
+    storage_->set_data_shared(paddle::memory::AllocShared(place, size, stream));
+    meta_.offset = 0;
+  }
+  return reinterpret_cast<void*>(
+      reinterpret_cast<uintptr_t>(storage_->data_shared()->ptr()) +
+      meta_.offset);
+}
+
 /* @jim19930609: The following "mutable_data" only supports specific dtypes
    defined in OpProto. This part need another clean up once the data type across
    Fluid

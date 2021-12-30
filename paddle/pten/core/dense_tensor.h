@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/stream/stream.h"
 
 #include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/storage.h"
@@ -259,6 +260,10 @@ class DenseTensor : public TensorBase,
 
   void* mutable_data(const paddle::platform::Place& place,
                      size_t requested_size = 0);
+
+  void* mutable_data(const paddle::platform::Place& place,
+                     paddle::framework::proto::VarType::Type type,
+                     const paddle::platform::Stream& stream);
 
   /*! The internal of two tensors share the same memory block. */
   DenseTensor& ShareDataWith(const DenseTensor& src);

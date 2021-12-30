@@ -64,7 +64,7 @@ TEST(DEV_API, dot) {
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
   ASSERT_EQ(out.dtype(), DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), DataLayout::NCHW);
+  ASSERT_EQ(out.pten_layout(), DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   for (size_t i = 0; i < 9; i++) {
