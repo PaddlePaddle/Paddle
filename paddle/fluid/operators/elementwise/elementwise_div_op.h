@@ -111,39 +111,17 @@ struct DivDoubleDY {
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-DefaultElementwiseDivGrad(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y,
-                          const framework::Tensor* out,
-                          const framework::Tensor* dout, framework::Tensor* dx,
-                          framework::Tensor* dy) {
+ElementwiseDivGrad(const framework::ExecutionContext& ctx,
+                   const framework::Tensor* x, const framework::Tensor* y,
+                   const framework::Tensor* out, const framework::Tensor* dout,
+                   framework::Tensor* dx, framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
 
   ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
       ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-ElementwiseDivGrad(const framework::ExecutionContext& ctx,
-                   const framework::Tensor* x, const framework::Tensor* y,
-                   const framework::Tensor* out, const framework::Tensor* dout,
-                   framework::Tensor* dx, framework::Tensor* dy) {
-  DefaultElementwiseDivGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-}
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename DeviceContext, typename T>
-// cuda definition
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-DefaultElementwiseDivGrad(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y,
-                          const framework::Tensor* out,
-                          const framework::Tensor* dout, framework::Tensor* dx,
-                          framework::Tensor* dy);
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
@@ -168,11 +146,7 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-      ElementwiseDivGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-    } else {
-      DefaultElementwiseDivGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
-    }
+    ElementwiseDivGrad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
   }
 };
 

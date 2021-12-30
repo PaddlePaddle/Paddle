@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -24,177 +21,24 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-template <typename T>
-static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
-                                                       const T* out,
-                                                       const T* dout,
-                                                       int64_t size, T* dx,
-                                                       T* dy) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
-       i += blockDim.x * gridDim.x) {
-    T o = dout[i];
-    dx[i] = o / y[i];
-    dy[i] = -o * out[i] / y[i];
-  }
-}
-
-template <>
-__global__ void
-SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<float>>(
-    const paddle::platform::complex<float>* x,
-    const paddle::platform::complex<float>* y,
-    const paddle::platform::complex<float>* out,
-    const paddle::platform::complex<float>* dout, int64_t size,
-    paddle::platform::complex<float>* dx,
-    paddle::platform::complex<float>* dy) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
-       i += blockDim.x * gridDim.x) {
-    paddle::platform::complex<float> o = dout[i];
-    paddle::platform::complex<float> y_conj(y[i].real, -y[i].imag);
-    paddle::platform::complex<float> out_div_y_conj((out[i] / y[i]).real,
-                                                    -(out[i] / y[i]).imag);
-    dx[i] = o / y_conj;
-    dy[i] = -dout[i] * out_div_y_conj;
-  }
-}
-
-template <>
-__global__ void
-SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<double>>(
-    const paddle::platform::complex<double>* x,
-    const paddle::platform::complex<double>* y,
-    const paddle::platform::complex<double>* out,
-    const paddle::platform::complex<double>* dout, int64_t size,
-    paddle::platform::complex<double>* dx,
-    paddle::platform::complex<double>* dy) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
-       i += blockDim.x * gridDim.x) {
-    paddle::platform::complex<double> o = dout[i];
-    paddle::platform::complex<double> y_conj(y[i].real, -y[i].imag);
-    paddle::platform::complex<double> out_div_y_conj((out[i] / y[i]).real,
-                                                     -(out[i] / y[i]).imag);
-    dx[i] = o / y_conj;
-    dy[i] = -dout[i] * out_div_y_conj;
-  }
-}
-
-template <typename T>
-void ReduceForDiv(const platform::CUDADeviceContext& dev_ctx, int axis,
-                  const framework::Tensor* in, const framework::Tensor* out,
-                  framework::Tensor* src, framework::Tensor* dst) {
-  std::vector<int> reduce_dims = GetReduceDim(in->dims(), out->dims(), axis);
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
-}
-
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-DefaultElementwiseDivGrad(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y,
-                          const framework::Tensor* out,
-                          const framework::Tensor* dout, framework::Tensor* dx,
-                          framework::Tensor* dy) {
-  int axis = ctx.Attr<int>("axis");
-  auto* dout_data = dout->data<T>();
-  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  framework::Tensor tmp_dx;
-  tmp_dx.mutable_data<T>(dout->dims(), ctx.GetPlace());
-  framework::Tensor tmp_dy;
-  tmp_dy.mutable_data<T>(dout->dims(), ctx.GetPlace());
-  if (dx != nullptr && dy != nullptr) {
-    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
-    auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
-    // For inplace strategy, dx will be stored in addr of dout, which makes
-    // the result of dy wrong.
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), ctx.GetPlace());
-    }
-
-    std::vector<const framework::Tensor*> ins = {dout, out, y};
-    std::vector<framework::Tensor*> outs;
-    if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
-      outs = {dx, dy};
-    } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
-      outs = {&tmp_dx, dy};
-    } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
-      outs = {dx, &tmp_dy};
-    } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
-      outs = {&tmp_dx, &tmp_dy};
-    }
-
-    auto functor = DivGradXYFunctor<T, T>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T,
-                                decltype(functor), 2>(dev_ctx, ins, &outs, axis,
-                                                      functor);
-
-    if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
-      ReduceForDiv<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
-    } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
-      ReduceForDiv<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
-    } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
-      ReduceForDiv<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
-      ReduceForDiv<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
-    }
-  } else if (dx != nullptr && dy == nullptr) {
-    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), ctx.GetPlace());
-    }
-
-    std::vector<const framework::Tensor*> ins = {dout, y};
-    std::vector<framework::Tensor*> outs;
-    if (dx->dims() != dout->dims()) {
-      outs = {&tmp_dx};
-    } else {
-      outs = {dx};
-    }
-
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, axis, DivGradFunctor<T>());
-    if (dx->dims() != dout->dims()) {
-      ReduceForDiv<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
-    }
-  } else if (dy != nullptr && dx == nullptr) {
-    auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
-
-    std::vector<const framework::Tensor*> ins = {dout, out, y};
-    std::vector<framework::Tensor*> outs;
-    if (dy->dims() != dout->dims()) {
-      outs = {&tmp_dy};
-    } else {
-      outs = {dy};
-    }
-
-    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
-        dev_ctx, ins, &outs, axis, DivGradYFunctor<T>());
-    if (dy->dims() != dout->dims()) {
-      ReduceForDiv<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
-    }
-  }
-}
-
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
 ElementwiseDivGrad(const framework::ExecutionContext& ctx,
                    const framework::Tensor* x, const framework::Tensor* y,
                    const framework::Tensor* out, const framework::Tensor* dout,
                    framework::Tensor* dx, framework::Tensor* dy) {
-  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
-  auto size = x->numel();
-  dim3 grid_size =
-      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
-  SimpleElemwiseDivGradCUDAKernel<
-      T><<<grid_size, block_size, 0,
-           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-      x->data<T>(), y->data<T>(), out->data<T>(), dout->data<T>(), size,
-      dx->mutable_data<T>(ctx.GetPlace()), dy->mutable_data<T>(ctx.GetPlace()));
+  int axis = ctx.Attr<int>("axis");
+  const auto& dev_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  if (dx != nullptr && dy != nullptr) {
+    GetGradXYOut<T>(dev_ctx, axis, x, y, out, dout, dx, dy,
+                    DivGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    GetGradXOut<T>(dev_ctx, axis, x, y, dout, dx, DivGradXFunctor<T>());
+  } else if (dy != nullptr && dx == nullptr) {
+    GetGradYOut<T>(dev_ctx, axis, y, out, dout, dy, DivGradYFunctor<T>());
+  }
 }
 
 }  // namespace operators

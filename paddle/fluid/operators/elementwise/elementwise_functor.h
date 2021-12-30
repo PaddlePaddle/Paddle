@@ -120,8 +120,9 @@ using Complex = paddle::platform::complex<T>;
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
-  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(InT a, InT b,
-                                                                 InT c) {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(const InT a,
+                                                                 const InT b,
+                                                                 const InT c) {
     // dx = dout / y
     // dy = - dout * out / y
     paddle::framework::Array<OutT, 2> outs;
@@ -134,25 +135,25 @@ struct DivGradXYFunctor {
 template <typename InT, typename OutT>
 struct DivGradXYFunctor<Complex<InT>, Complex<OutT>> {
   inline HOSTDEVICE paddle::framework::Array<Complex<OutT>, 2> operator()(
-      Complex<InT> a, Complex<InT> b, Complex<InT> c) {
+      const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
     paddle::framework::Array<Complex<OutT>, 2> outs;
     Complex<InT> c_conj(c.real, -c.imag);
-    Complex<InT> out_div_y_conj((b / c).real, -(b / c).imag);
+    Complex<InT> out_div_c_conj((b / c).real, -(b / c).imag);
     outs[0] = a / c_conj;
-    outs[1] = -a * out_div_y_conj;
+    outs[1] = -a * out_div_c_conj;
     return outs;
   }
 };
 
 // Float div grad
 template <typename T>
-struct DivGradFunctor {
+struct DivGradXFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
 };
 
 // Complex div grad
 template <typename T>
-struct DivGradFunctor<Complex<T>> {
+struct DivGradXFunctor<Complex<T>> {
   inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
                                           const Complex<T>& b) const {
     Complex<T> b_conj(b.real, -b.imag);
@@ -174,8 +175,8 @@ struct DivGradYFunctor<Complex<T>> {
   inline HOSTDEVICE Complex<T> operator()(const Complex<T>& a,
                                           const Complex<T>& b,
                                           const Complex<T>& c) const {
-    Complex<T> out_div_y_conj((b / c).real, -(b / c).imag);
-    return -a * out_div_y_conj;
+    Complex<T> out_div_c_conj((b / c).real, -(b / c).imag);
+    return -a * out_div_c_conj;
   }
 };
 
