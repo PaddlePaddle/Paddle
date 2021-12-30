@@ -324,7 +324,6 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     // expected auto = T
     auto* output_grad_data = output_grad->data<T>();
     auto* loss_weight_data = loss_weight->data<float>();
-
     // expected auto = T
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
     thrust::device_ptr<T> x1_grad_data_ptr(x1_grad_data);
