@@ -43,7 +43,7 @@ class TensorRTDialect : public ::mlir::Dialect {
 using namespace mlir;  // NOLINT
 
 #define GET_OP_CLASSES
-#include "dialect/tensorrt/trt_ops.hpp.inc"
+#include "paddle/infrt/dialect/tensorrt/trt_ops.hpp.inc"
 #undef GET_OP_CLASSES
 
 }  // namespace trt

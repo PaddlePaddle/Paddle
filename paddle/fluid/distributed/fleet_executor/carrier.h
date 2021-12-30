@@ -73,7 +73,6 @@ class Carrier final {
   Interceptor* SetInterceptor(int64_t interceptor_id,
                               std::unique_ptr<Interceptor>);
 
-  void SetCreatingFlag(bool flag) {}
   void SetMsgBus(const std::shared_ptr<MessageBus>& msg_bus) {
     msg_bus_ = msg_bus;
   }

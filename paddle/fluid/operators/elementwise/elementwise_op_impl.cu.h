@@ -25,12 +25,6 @@ limitations under the License. */
 #include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/hybird/cuda/elementwise/elementwise.h"
 
-#ifdef __HIPCC__
-#define ELEMENTWISE_BLOCK_SIZE 256
-#else
-#define ELEMENTWISE_BLOCK_SIZE 512
-#endif
-
 namespace paddle {
 namespace operators {
 
