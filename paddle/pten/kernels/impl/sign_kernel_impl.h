@@ -22,8 +22,8 @@ limitations under the License. */
 
 namespace pten {
 
-template <typename T, typename ContextT>
-void Sign(const ContextT& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+template <typename T, typename Context>
+void Sign(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   out->mutable_data<T>();
   auto eigen_out = pten::EigenVector<T>::Flatten(*out);
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
