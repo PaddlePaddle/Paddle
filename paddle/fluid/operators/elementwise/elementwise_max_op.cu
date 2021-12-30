@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+// #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+// #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace paddle {
@@ -37,6 +37,119 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
   }
 };
 
+// template <typename T>
+// struct TernaryGreaterThanFunctor {
+//   inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+//     return a > b ? c : static_cast<T>(0);
+//   }
+// };
+// template <typename T>
+// struct TernaryLessEqualThanFunctor {
+//   inline HOSTDEVICE T operator()(const T& a, const T& b, const T& c) const {
+//     return (a < b || a == b) ? c : static_cast<T>(0);
+//   }
+// };
+
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE paddle::framework::Array<OutT, 2> operator()(
+      const InT& a,    // x
+      const InT& b,    // y
+      const InT& c) {  // dout
+    paddle::framework::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = a > b ? c : static_cast<InT>(0);
+    // dy = dout * (x <= y)
+    outs[1] = (a < b || a == b) ? c : static_cast<InT>(0);
+    return outs;
+  }
+};
+
+template <typename T>
+void ReduceWrapper(const platform::CUDADeviceContext& dev_ctx, int axis,
+                   const framework::Tensor* in, const framework::Tensor* out,
+                   framework::Tensor* src, framework::Tensor* dst) {
+  std::vector<int> reduce_dims = GetReduceDim(in->dims(), out->dims(), axis);
+  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
+}
+
+template <typename DeviceContext, typename T>
+void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
+                           const framework::Tensor* x,
+                           const framework::Tensor* y,
+                           const framework::Tensor* out,
+                           const framework::Tensor* dout, framework::Tensor* dx,
+                           framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  const auto& dev_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  framework::Tensor tmp_dx;
+  framework::Tensor tmp_dy;
+  tmp_dx.mutable_data<T>(dout->dims(), ctx.GetPlace());
+  tmp_dy.mutable_data<T>(dout->dims(), ctx.GetPlace());
+
+  if (dx != nullptr && dy != nullptr) {
+    dx->mutable_data<T>(ctx.GetPlace());
+    dy->mutable_data<T>(ctx.GetPlace());
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    std::vector<framework::Tensor*> outs;
+    if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
+      outs = {dx, dy};
+    } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+      outs = {&tmp_dx, dy};
+    } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
+      outs = {dx, &tmp_dy};
+    } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
+      outs = {&tmp_dx, &tmp_dy};
+    }
+    auto functor = MaxGradXYFunctor<T, T>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T,
+                                decltype(functor), 2>(dev_ctx, ins, &outs, axis,
+                                                      functor);
+    if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
+      ReduceWrapper<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
+    } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
+      ReduceWrapper<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
+    } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
+      ReduceWrapper<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
+      ReduceWrapper<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
+    }
+
+  } else if (dx != nullptr && dy == nullptr) {
+    dx->mutable_data<T>(ctx.GetPlace());
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    std::vector<framework::Tensor*> outs;
+    if (dx->dims() != dout->dims()) {
+      outs = {&tmp_dx};
+    } else {
+      outs = {dx};
+    }
+
+    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
+        dev_ctx, ins, &outs, axis, TernaryGreaterThanFunctor<T>());
+    if (dx->dims() != dout->dims()) {
+      ReduceWrapper<T>(dev_ctx, axis, x, out, &tmp_dx, dx);
+    }
+  } else if (dx == nullptr && dy != nullptr) {
+    dy->mutable_data<T>(ctx.GetPlace());
+    std::vector<const framework::Tensor*> ins = {x, y, dout};
+    std::vector<framework::Tensor*> outs;
+    if (dy->dims() != dout->dims()) {
+      outs = {&tmp_dy};
+    } else {
+      outs = {dy};
+    }
+
+    LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
+        dev_ctx, ins, &outs, axis, TernaryLessEqualThanFunctor<T>());
+    if (dy->dims() != dout->dims()) {
+      ReduceWrapper<T>(dev_ctx, axis, y, out, &tmp_dy, dy);
+    }
+  }
+}
+
+/*
 template <typename DeviceContext, typename T>
 void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
                            const framework::Tensor* x,
@@ -97,6 +210,7 @@ void DefaultElementMaxGrad(const framework::ExecutionContext& ctx,
     }
   }
 }
+*/
 
 template <typename T>
 class ElementwiseMaxGradKernel<platform::CUDADeviceContext, T>
