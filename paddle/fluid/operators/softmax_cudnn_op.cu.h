@@ -535,7 +535,8 @@ static void GetLaunchConfig(int high_dim, int mid_dim, int low_dim, dim3* grid,
   GetGridDim(high_dim, mid_dim, low_dim, *block, grid);
 }
 
-template <typename T, typename AccT, bool LogMode = false>
+template <typename T, typename AccT,
+          template <typename, typename> class Functor>
 __global__ void NormalSoftmaxForward(T* output, const T* input, int high_dim,
                                      int mid_dim, int low_dim) {
   using kMode = kps::details::ReduceMode;
@@ -571,10 +572,10 @@ __global__ void NormalSoftmaxForward(T* output, const T* input, int high_dim,
       }
 
       // 3. (log)softmax
+      Functor<AccT, T> functor(max_value, sum);
       for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
         int data_offset = input_offset + mid_id * mid_stride;
-        output[data_offset] = static_cast<T>(
-            std::exp(static_cast<AccT>(input[data_offset]) - max_value) / sum);
+        output[data_offset] = functor(static_cast<AccT>(input[data_offset]));
       }
     }
   }
@@ -588,12 +589,13 @@ void LaunchNormalSoftmaxForward(const platform::CUDADeviceContext& dev_ctx,
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxForward<T, AccT,
-                         LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
+    NormalSoftmaxForward<
+        T, AccT,
+        LogSoftmaxForwardFunctor><<<grid, block, 0, dev_ctx.stream()>>>(
         output_data, input_data, high_dim, mid_dim, low_dim);
   } else {
-    NormalSoftmaxForward<T, AccT,
-                         LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
+    NormalSoftmaxForward<
+        T, AccT, SoftmaxForwardFunctor><<<grid, block, 0, dev_ctx.stream()>>>(
         output_data, input_data, high_dim, mid_dim, low_dim);
   }
 }
