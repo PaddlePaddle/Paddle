@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace distributed {
@@ -66,6 +67,8 @@ class TaskLoop {
   }
 
  private:
+  DISABLE_COPY_AND_ASSIGN(TaskLoop);
+
   void AbortNotInLoopThread();
 
   static thread_local TaskLoop* thread_local_loop_;

@@ -80,8 +80,6 @@ TEST(AmplifierInterceptor, Amplifier) {
   carrier.SetInterceptor(4, InterceptorFactory::Create("Amplifier", 4, node_e));
   carrier.SetInterceptor(5, InterceptorFactory::Create("Compute", 5, node_f));
 
-  carrier.SetCreatingFlag(false);
-
   // start
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_READY);

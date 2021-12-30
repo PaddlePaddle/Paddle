@@ -140,13 +140,15 @@ static PyObject* eager_tensor_method_copy_(EagerTensorObject* self,
 static PyObject* eager_tensor_retain_grads(EagerTensorObject* self,
                                            PyObject* args, PyObject* kwargs) {
   EAGER_TRY
-  auto meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
-  if (!meta->GetMutableGradNode()) {
-    VLOG(6) << "Make grad node of tensor: " << self->eager_tensor.name()
-            << "become accumulation node";
-    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+  if (egr::Controller::Instance().HasGrad()) {
+    auto meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+    if (!meta->GetMutableGradNode()) {
+      VLOG(6) << "Make grad node of tensor: " << self->eager_tensor.name()
+              << "become accumulation node";
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+    }
+    egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
   }
-  egr::egr_utils_api::RetainGradForTensor(self->eager_tensor);
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
