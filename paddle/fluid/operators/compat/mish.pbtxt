@@ -1,9 +1,0 @@
-type: "mish"
-def {
-  inputs {
-    name: "X"
-  }
-  outputs {
-    name: "Out"
-  }
-}

@@ -75,7 +75,6 @@ Mish Activation Operator.
   }
 };
 
-// The operator to calculate gradients of a prelu operator.
 class MishGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -94,9 +93,17 @@ class MishGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
