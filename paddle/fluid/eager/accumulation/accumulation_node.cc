@@ -28,7 +28,9 @@
 
 static void CopyOrAddTensor(egr::EagerTensor* tensor,
                             const egr::EagerTensor& t) {
-  const_cast<egr::EagerTensor*>(&t)->SyncToTensor();
+  if (t.Var().IsInitialized()) {
+    const_cast<egr::EagerTensor*>(&t)->SyncToTensor();
+  }
   if (!tensor->defined() || !tensor->initialized()) {
     // Simply copy tensor->impl
     *tensor = t;
