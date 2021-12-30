@@ -36,6 +36,7 @@ from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
 
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import reshard
@@ -469,21 +470,31 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
-    dist_strategy = fleet.DistributedStrategy()
+    fleet._user_defined_strategy = fleet.DistributedStrategy()
+    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    parallelizer = AutoParallelizer(fleet)
+    parallelizer._dist_context = dist_context
 
     # auto completion
     complete_train_program = auto.complete_annotation(train_program,
                                                       dist_context)
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-    # logical partition
-    dist_train_program, dist_startup_prog = partitioner.transpile_forward(
-        complete_train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, complete_train_program, startup_program, dist_train_program,
-        dist_startup_prog)
-    optimizer = paddle.fluid.optimizer.AdamOptimizer()
-    opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                         dist_train_program, dist_startup_prog)
+    parallelizer._apply_serial_forward_pass(complete_train_program,
+                                            startup_program)
+    params_grads = parallelizer._generate_backward(
+        complete_train_program,
+        startup_program,
+        loss,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None)
+
+    partitioner = Partitioner(dist_context, rank_id)
+    dist_train_program, dist_startup_prog, dist_params_grads = partitioner.partition(
+        complete_train_program, startup_program, params_grads)
+
+    partitioned_optimize_ops = parallelizer._apply_optimize(
+        dist_train_program, dist_startup_prog, dist_params_grads)
+
     reshard(dist_train_program, dist_startup_prog, rank_id, dist_context)
     return dist_train_program, dist_startup_prog
 
@@ -529,7 +540,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 train_program, startup_program, dist_context, rank_id)
             # if rank_id == 0:
             #   print_program_with_dist_attr(dist_train_program, dist_context)
-            dist_programs[rank_id] = dist_train_program
+            dist_programs[rank_id] = [dist_train_program, None]
 
         rank_mapping = mapping(dist_programs, cluster)
 

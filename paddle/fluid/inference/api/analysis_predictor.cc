@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -579,9 +580,6 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE_EQ(config_.params_file().empty(), false,
-                      platform::errors::PreconditionNotMet(
-                          "Either model_dir or param_file should be set."));
     PADDLE_ENFORCE_EQ(config_.prog_file().empty(), false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
@@ -1043,6 +1041,20 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
+  if (stream != nullptr) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+    dev_ctx->SetThreadLocalStream(stream);
+  }
+  return ZeroCopyRun();
+}
+#endif
+
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   if (config_.use_gpu()) {
@@ -1120,7 +1132,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
   std::string filename;
   if (!config_.model_dir().empty()) {
     filename = config_.model_dir() + "/__model__";
-  } else if (!config_.prog_file().empty() && !config_.params_file().empty()) {
+  } else if (!config_.prog_file().empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
@@ -1567,4 +1579,25 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   return preds_[idx - 1].get();
 }
 }  // namespace services
+
+namespace experimental {
+
+// Note: Can only be used under thread_local semantics.
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
+#endif
+  return false;
+}
+}  // namespace experimental
 }  // namespace paddle_infer

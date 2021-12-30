@@ -17,7 +17,6 @@
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/kernels/hybird/cpu/elementwise.h"
 #include "paddle/pten/kernels/hybird/eigen/reduce.h"
-#include "paddle/pten/kernels/hybird/eigen/sign.h"
 #include "paddle/pten/kernels/hybird/general/elementwise_functor.h"
 #include "paddle/pten/kernels/hybird/general/reduce_impl.h"
 
@@ -29,19 +28,13 @@
 namespace pten {
 
 template <typename T>
-void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  eigen::Sign<CPUContext, T>(dev_ctx, x, out);
-}
-
-template <typename T>
 void Mean(const CPUContext& dev_ctx,
           const DenseTensor& x,
           const std::vector<int64_t>& dims,
           bool keep_dim,
           bool reduce_all,
-          DataType in_dtype,
-          DataType out_dtype,
           DenseTensor* out) {
+  auto out_dtype = x.dtype();
   pten::general::Reduce<CPUContext, T, pten::eigen::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -76,7 +69,6 @@ void Sum(const CPUContext& dev_ctx,
          const std::vector<int64_t>& dims,
          bool keep_dim,
          bool reduce_all,
-         DataType in_dtype,
          DataType out_dtype,
          DenseTensor* out) {
   pten::general::Reduce<CPUContext, T, pten::eigen::SumFunctor>(
@@ -99,7 +91,6 @@ using complex128 = ::paddle::platform::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::paddle::platform::bfloat16;
-PT_REGISTER_KERNEL(sign, CPU, ALL_LAYOUT, pten::Sign, float, double) {}
 PT_REGISTER_KERNEL(mean, CPU, ALL_LAYOUT, pten::Mean, float, double, bool) {}
 PT_REGISTER_KERNEL(add,
                    CPU,

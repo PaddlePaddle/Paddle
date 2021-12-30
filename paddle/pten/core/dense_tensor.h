@@ -62,9 +62,8 @@ class DenseTensor : public TensorBase,
   /// move constructor to support move semantics.
   DenseTensor(DenseTensor&& other) = default;
 
-  /// \brief We do not recommend deep copy of dense tensor because of its
-  /// efficiency and complexity across devices. The operation is disabled here.
-  DenseTensor(const DenseTensor& other) = delete;
+  /// \brief DenseTensor shallow copy constructor.
+  DenseTensor(const DenseTensor& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~DenseTensor() = default;
@@ -84,9 +83,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
-  const std::vector<std::vector<size_t>>& lod() const noexcept {
-    return meta_.lod;
-  }
+  const LoD& lod() const noexcept { return meta_.lod; }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
