@@ -79,11 +79,19 @@ class LoDTensor;
 
 class Tensor : public pten::DenseTensor {
  public:
+  using DenseTensor = pten::DenseTensor;
+  using DenseTensor::DenseTensor;
+
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
   std::vector<Tensor> Split(int64_t split_size, int64_t axis) const;
 
   std::vector<Tensor> Chunk(int64_t chunks, int64_t axis) const;
+
+  Tensor& Resize(const DDim& dims) {
+    meta_.dims = dims;
+    return *this;
+  }
 };
 
 }  // namespace framework

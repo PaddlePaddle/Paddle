@@ -139,12 +139,7 @@ T* DenseTensor::data() {
 }
 
 const void* DenseTensor::data() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(storage_->data()) + meta_.offset);
+  return reinterpret_cast<const void*>(data());
 }
 
 void* DenseTensor::data() {

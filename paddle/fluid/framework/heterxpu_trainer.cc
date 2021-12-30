@@ -338,7 +338,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         auto dev_id =
             BOOST_GET_CONST(platform::CUDAPlace, thread_tensor->place()).device;
         platform::CUDADeviceGuard guard(dev_id);
-        cudaMemset(thread_tensor->data<void>(), 0,
+        cudaMemset(thread_tensor->data(), 0,
                    thread_tensor->numel() * SizeOfType(thread_tensor->type()));
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -349,11 +349,11 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-        xpu::memset(xpu_ctx->x_context(), thread_tensor->data<void>(), 0,
+        xpu::memset(xpu_ctx->x_context(), thread_tensor->data(), 0,
                     thread_tensor->numel() * SizeOfType(thread_tensor->type()));
 #endif
       } else {
-        memset(thread_tensor->data<void>(), 0,
+        memset(thread_tensor->data(), 0,
                thread_tensor->numel() * SizeOfType(thread_tensor->type()));
       }
     }
@@ -365,7 +365,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       auto dev_id =
           BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()).device;
       platform::CUDADeviceGuard guard(dev_id);
-      cudaMemset(root_tensor->data<void>(), 0,
+      cudaMemset(root_tensor->data(), 0,
                  root_tensor->numel() * SizeOfType(root_tensor->type()));
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -376,11 +376,11 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-      xpu::memset(xpu_ctx->x_context(), root_tensor->data<void>(), 0,
+      xpu::memset(xpu_ctx->x_context(), root_tensor->data(), 0,
                   root_tensor->numel() * SizeOfType(root_tensor->type()));
 #endif
     } else {
-      memset(root_tensor->data<void>(), 0,
+      memset(root_tensor->data(), 0,
              root_tensor->numel() * SizeOfType(root_tensor->type()));
     }
   }
