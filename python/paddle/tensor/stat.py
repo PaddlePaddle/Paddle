@@ -436,6 +436,8 @@ def quantile(x, q, axis=None, keepdim=False):
     indices_below = paddle.floor(indices).astype(paddle.int32)
     indices_upper = paddle.ceil(indices).astype(paddle.int32)
     outputs = []
+
+    # TODO(chenjianye): replace the for-loop to directly take elements.
     for i in range(len(indices)):
         if (indices_upper[i] != indices_below[i]):
             tensor_below = paddle.take_along_axis(sorted_tensor,

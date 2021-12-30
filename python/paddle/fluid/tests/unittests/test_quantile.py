@@ -19,16 +19,6 @@ import numpy as np
 import paddle
 
 
-def np_quantile_multi_q(x, q, axis=None, keepdims=False):
-    if not isinstance(q, (list, tuple)):
-        return np.quantile(x, q, axis=axis, keepdims=keepdims)
-    else:
-        output = []
-        for q_num in q:
-            output.append(np.quantile(x, q_num, axis=axis, keepdims=keepdims))
-        return np.stack(output, 0)
-
-
 class TestQuantile(unittest.TestCase):
     def setUp(self):
         np.random.seed(678)
@@ -86,21 +76,20 @@ class TestQuantileMuitlpleQ(unittest.TestCase):
     def test_quantile(self):
         x = paddle.to_tensor(self.input_data)
         paddle_res = paddle.quantile(x, q=[0.3, 0.44], axis=-2)
-        np_res = np_quantile_multi_q(self.input_data, q=[0.3, 0.44], axis=-2)
+        np_res = np.quantile(self.input_data, q=[0.3, 0.44], axis=-2)
         self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
 
     def test_quantile_multiple_axis(self):
         x = paddle.to_tensor(self.input_data)
         paddle_res = paddle.quantile(x, q=[0.2, 0.67], axis=[1, -1])
-        np_res = np_quantile_multi_q(
-            self.input_data, q=[0.2, 0.67], axis=[1, -1])
+        np_res = np.quantile(self.input_data, q=[0.2, 0.67], axis=[1, -1])
         self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
 
     def test_quantile_multiple_axis_keepdim(self):
         x = paddle.to_tensor(self.input_data)
         paddle_res = paddle.quantile(
             x, q=[0.1, 0.2, 0.3], axis=[1, 2], keepdim=True)
-        np_res = np_quantile_multi_q(
+        np_res = np.quantile(
             self.input_data, q=[0.1, 0.2, 0.3], axis=[1, 2], keepdims=True)
         self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
 
