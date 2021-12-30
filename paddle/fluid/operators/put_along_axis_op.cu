@@ -47,7 +47,7 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
         gpu_scatter_add_kernel<T, int64_t>(*input, axis, *index, *value,
                                            device_ctx);
       }
-    } else if (reduce_op == "multiply") {
+    } else if (reduce_op == "multiply" || reduce_op == "mul") {
       if (index_type == framework::proto::VarType::INT32) {
         gpu_scatter_mul_kernel<T, int32_t>(*input, axis, *index, *value,
                                            device_ctx);

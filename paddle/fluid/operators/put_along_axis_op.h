@@ -38,30 +38,31 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
     auto reduce_op = ctx.Attr<std::string>("Reduce");
     auto result = ctx.Output<Tensor>("Result");
 
+    framework::TensorCopy(*input, ctx.GetPlace(), result);
     const platform::DeviceContext &device_ctx = ctx.device_context();
     const auto &index_type = index->type();
     if (reduce_op == "add") {
       if (index_type == framework::proto::VarType::INT32) {
-        cpu_scatter_add_kernel<T, int32_t>(*input, axis, *index, *value,
+        cpu_scatter_add_kernel<T, int32_t>(*result, axis, *index, *value,
                                            device_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        cpu_scatter_add_kernel<T, int64_t>(*input, axis, *index, *value,
+        cpu_scatter_add_kernel<T, int64_t>(*result, axis, *index, *value,
                                            device_ctx);
       }
     } else if (reduce_op == "multiply" || reduce_op == "mul") {
       if (index_type == framework::proto::VarType::INT32) {
-        cpu_scatter_mul_kernel<T, int32_t>(*input, axis, *index, *value,
+        cpu_scatter_mul_kernel<T, int32_t>(*result, axis, *index, *value,
                                            device_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        cpu_scatter_mul_kernel<T, int64_t>(*input, axis, *index, *value,
+        cpu_scatter_mul_kernel<T, int64_t>(*result, axis, *index, *value,
                                            device_ctx);
       }
     } else if (reduce_op == "assign") {
       if (index_type == framework::proto::VarType::INT32) {
-        cpu_scatter_assign_kernel<T, int32_t>(*input, axis, *index, *value,
+        cpu_scatter_assign_kernel<T, int32_t>(*result, axis, *index, *value,
                                               device_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        cpu_scatter_assign_kernel<T, int64_t>(*input, axis, *index, *value,
+        cpu_scatter_assign_kernel<T, int64_t>(*result, axis, *index, *value,
                                               device_ctx);
       }
     } else {
@@ -73,8 +74,6 @@ class PutAlongAxisOpKernel : public framework::OpKernel<T> {
           reduce_op));
       return;
     }
-
-    framework::TensorCopy(*input, ctx.GetPlace(), result);
   }
 };
 

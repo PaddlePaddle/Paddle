@@ -122,13 +122,16 @@ class PutAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(PutAlongAxisInplaceInferer, {"Input", "Result"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
                   ops::PutAlongAxisGradOpMaker<paddle::framework::OpDesc>,
-                  ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>);
+                  ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>,
+                  paddle::operators::PutAlongAxisInplaceInferer);
 
 REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp);
 

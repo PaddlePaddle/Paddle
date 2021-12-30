@@ -84,66 +84,106 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
     def test_api_static_case1(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
-            index = paddle.fluid.data('Index', self.index_shape, "int64")
-            value = paddle.fluid.data('Value', self.value_shape)
-            out = paddle.put_along_axis(x, index, value, self.axis)
-            exe = paddle.static.Executor(self.place[0])
-            res = exe.run(feed={
-                'X': self.x_feed,
-                'Value': self.value_np,
-                'Index': self.index_np
-            },
-                          fetch_list=[out])
 
-        np.put_along_axis(self.x_np, self.index_np, self.value_np, self.axis)
-        # numpy put_along_axis is an inplace opearion.
-        out_ref = self.x_np
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.fluid.data('X', self.shape)
+                index = paddle.fluid.data('Index', self.index_shape, "int64")
+                value = paddle.fluid.data('Value', self.value_shape)
+                out = paddle.put_along_axis(x, index, value, self.axis)
+                exe = paddle.static.Executor(self.place[0])
+                res = exe.run(feed={
+                    'X': self.x_feed,
+                    'Value': self.value_np,
+                    'Index': self.index_np
+                },
+                              fetch_list=[out])
 
-        for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.put_along_axis(self.x_np, self.index_np, self.value_np,
+                              self.axis)
+            # numpy put_along_axis is an inplace opearion.
+            out_ref = self.x_np
+
+            for out in res:
+                self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+
+        for place in self.place:
+            run(place)
 
     def test_api_dygraph_case1(self):
-        paddle.disable_static(self.place[0])
-        x_tensor = paddle.to_tensor(self.x_np)
-        index_tensor = paddle.to_tensor(self.index_np)
-        value_tensor = paddle.to_tensor(self.value_np)
-        out = paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
-                                    self.axis)
-        np.array(
-            np.put_along_axis(self.x_np, self.index_np, self.value_np,
-                              self.axis))
-        out_ref = self.x_np
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor = paddle.to_tensor(self.index_np)
+            value_tensor = paddle.to_tensor(self.value_np)
+            out = paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
+                                        self.axis)
+            np.array(
+                np.put_along_axis(self.x_np, self.index_np, self.value_np,
+                                  self.axis))
+            out_ref = self.x_np
+            self.assertEqual(
+                np.allclose(
+                    out.numpy(), out_ref, rtol=1e-03), True)
 
-        # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
-        paddle.put_along_axis(x_tensor, index_tensor, value_tensor, self.axis,
-                              'mul')
-        paddle.put_along_axis(x_tensor, index_tensor, value_tensor, self.axis,
-                              'add')
+            # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
+            paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
+                                  self.axis, 'mul')
+            paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
+                                  self.axis, 'add')
 
-        paddle.enable_static()
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
 
     def test_api_dygraph_case2(self):
-        paddle.disable_static(self.place[0])
-        self.shape = [2, 2]
-        self.index_shape = [2, 2]
-        self.index_np = np.array([[0, 0], [1, 0]]).astype('int64')
-        self.x_np = np.random.random(self.shape).astype(np.float32)
+        def run(place):
+            paddle.disable_static(place)
+            self.shape = [2, 2]
+            self.index_shape = [2, 2]
+            self.index_np = np.array([[0, 0], [1, 0]]).astype('int64')
+            self.x_np = np.random.random(self.shape).astype(np.float32)
 
-        x_tensor = paddle.to_tensor(self.x_np)
-        index_tensor = paddle.to_tensor(self.index_np)
-        value_tensor = paddle.to_tensor(self.value_np)
-        out = paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
-                                    self.axis)
-        np.array(
-            np.put_along_axis(self.x_np, self.index_np, self.value_np,
-                              self.axis))
-        out_ref = self.x_np
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor = paddle.to_tensor(self.index_np)
+            value_tensor = paddle.to_tensor(self.value_np)
+            out = paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
+                                        self.axis)
+            np.array(
+                np.put_along_axis(self.x_np, self.index_np, self.value_np,
+                                  self.axis))
+            out_ref = self.x_np
+            self.assertEqual(
+                np.allclose(
+                    out.numpy(), out_ref, rtol=1e-03), True)
 
-        paddle.enable_static()
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_inplace_dygraph_case3(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor = paddle.to_tensor(self.index_np)
+            value_tensor = paddle.to_tensor(self.value_np)
+
+            x_tensor.put_along_axis_(index_tensor, value_tensor, self.axis)
+
+            np.array(
+                np.put_along_axis(self.x_np, self.index_np, self.value_np,
+                                  self.axis))
+            out_ref = self.x_np
+
+            self.assertEqual(
+                np.allclose(
+                    x_tensor.numpy(), out_ref, rtol=1e-03), True)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":
