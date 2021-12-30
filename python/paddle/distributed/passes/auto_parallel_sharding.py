@@ -193,16 +193,6 @@ class ShardingPass(PassBase):
             return
 
         # TODO support calculate global norm with tensor parallelism
-        is_clip_grad_by_global_norm = False
-        for idx, op in list(enumerate(main_block.ops)):
-            if not _is_gradient_clip_op(op):
-                continue
-            if op.type == 'sum':
-                is_clip_grad_by_global_norm = True
-                break
-        if not is_clip_grad_by_global_norm:
-            return
-    
         removed_op_type= ['elementwise_mul', 'squared_l2_norm', 'clip_by_norm']
         removed_op_idx = set()
         removed_tmp_var = set()
