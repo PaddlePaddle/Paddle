@@ -204,7 +204,7 @@ class DenseTensor : public TensorBase,
  private:
   friend class CompatibleDenseTensorUtils;
 
- private:
+ protected:
   DenseTensorMeta meta_;
   intrusive_ptr<Storage> storage_;
 
@@ -338,7 +338,7 @@ class DenseTensor : public TensorBase,
     return *inplace_version_counter_;
   }
 
- private:
+ protected:
   std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 
 /* @jim19930609: This is a hack
@@ -378,6 +378,7 @@ class DenseTensor : public TensorBase,
 
      Will be adjusted/removed/moved in the near future
    */
+ public:
   explicit DenseTensor(const LoD& lod);
 
   void set_lod(const LoD& lod);
