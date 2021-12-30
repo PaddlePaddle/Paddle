@@ -20,7 +20,7 @@ import unittest
 import paddle
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
+# from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
 
 from ifelse_simple_func import *
 
@@ -412,16 +412,15 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
     def test_ast_to_func(self):
         ProgramTranslator().enable(True)
-        # Why need _switch_declarative_mode_guard_() here? 
+        with self.assertRaises(TypeError):
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
+        # Why need set `_in_declarative_mode_` here? 
         # In Dy2St we use `with _switch_declarative_mode_guard_()` to indicate 
         # that the code block is under @to_static, but in this UT 
         # an exception is thrown during Dy2St, making the `_in_declarative_mode_` 
-        # a wrong value. So We use with _switch_declarative_mode_guard_()` 
-        # here correct setting `_in_declarative_mode_`.
-        with _switch_declarative_mode_guard_():
-            with self.assertRaises(TypeError):
-                static_func = paddle.jit.to_static(self.dyfunc)
-                out = static_func(self.x)
+        # a wrong value. So We need set `_in_declarative_mode_` to False manually.
+        paddle.fluid.dygraph.base._in_declarative_mode_ = False
         ProgramTranslator().enable(False)
 
 
