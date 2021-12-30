@@ -53,10 +53,6 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         echo "========================================"
         exit 8;
     fi
-    if nvcc --version | grep 11.2; then
-        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-        exit 0;
-    fi
 fi
 set -e
 
@@ -523,22 +519,6 @@ set +e
 
 export FLAGS_call_stack_level=2
 
-if nvcc --version | grep 11.2; then
-    echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
-    export CUDA_VISIBLE_DEVICES=0
-    tmpfile=$tmp_dir/$RANDOM
-    inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
-    (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
-    wait;
-    collect_failed_tests
-    set -e
-    rm -f $tmp_dir/*
-    if [[ "$failed_test_lists" != "" ]]; then
-        unittests_retry
-        show_ut_retry_result
-    fi
-    exit 0;
-fi
 
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
     run_unittest_gpu $cpu_parallel_job 10
