@@ -76,6 +76,13 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2304(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 21100
+#define NCCL_RAND_ROUTINE_EACH_AFTER_21100(__macro) \
+  __macro(ncclRedOpCreatePreMulSum);                \
+  __macro(ncclRedOpDestroy);
+NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

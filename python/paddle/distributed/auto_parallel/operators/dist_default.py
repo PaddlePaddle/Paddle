@@ -15,7 +15,7 @@
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -66,7 +66,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         main_block = dist_op_context.get_dst_main_program().global_block()
         startup_block = dist_op_context.get_dst_startup_program().global_block()
         src_op = dist_op_context.get_cur_src_op()
-        varname_mapping = dist_op_context.get_varname_mapping()
         rank_id = dist_op_context.get_rank_id()
 
         # check validation of inputs / outputs
@@ -153,14 +152,39 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             str(backward_op))
         rank_id = dist_op_context.get_rank_id()
 
+        # check validation of inputs / outputs
+        for input_name in backward_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                backward_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in backward_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                backward_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
+
+        # replicate op in dist program
+        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc.copy_from(backward_op.desc)
+        for input_name in backward_op.desc.input_names():
+            dist_op_desc.set_input(input_name, kwargs[input_name])
+        for output_name in backward_op.desc.output_names():
+            dist_op_desc.set_output(output_name, kwargs[output_name])
+
+        main_block._sync_with_cpp()
+
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
         # we need insert gradient allreduce for the gradient of parameter in its output
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
-                if "@GRAD" not in varname and not main_block.var(
-                        varname).is_parameter:
+                if "@GRAD" not in varname and not is_parameter_related(
+                        varname, main_block):
 
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     process_mesh = dist_attr.process_mesh
@@ -186,8 +210,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             allreduce_vars = []
             for input_name in backward_op.desc.input_names():
                 for varname in backward_op.desc.input(input_name):
-                    if "@GRAD" not in varname and main_block.var(
-                            varname).is_parameter:
+                    if "@GRAD" not in varname and is_parameter_related(
+                            varname, main_block):
                         assert len(
                             backward_op.desc.input(input_name)
                         ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(

@@ -22,7 +22,7 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
 namespace paddle {
 namespace operators {

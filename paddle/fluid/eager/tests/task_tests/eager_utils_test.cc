@@ -60,7 +60,7 @@ TEST(EagerUtils, AutoGradMeta) {
   std::vector<AutogradMeta*> autograd_metas =
       EagerUtils::multi_autograd_meta(&ets);
   std::vector<AutogradMeta*> unsafe_autograd_metas =
-      EagerUtils::unsafe_autograd_meta(&ets);
+      EagerUtils::unsafe_autograd_meta(ets);
   CHECK_NOTNULL(unsafe_autograd_metas[0]);
   CHECK_NOTNULL(unsafe_autograd_metas[1]);
 

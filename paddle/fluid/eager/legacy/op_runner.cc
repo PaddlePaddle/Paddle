@@ -37,6 +37,7 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
                const paddle::framework::AttributeMap& attrs,
                const paddle::framework::AttributeMap& default_attrs,
                const paddle::platform::Place& place) {
+  VLOG(6) << "Get Opertor With Kernel";
   auto* op_kernel =
       dynamic_cast<const paddle::framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
@@ -44,11 +45,13 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
                      "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
+    VLOG(6) << "Run InferVarType";
     egr::legacy::TensorRuntimeInferVarTypeContext infer_var_type_ctx(
         ins, outs, attrs, default_attrs);
+    VLOG(9) << "Actual Run InferVarType";
     info.infer_var_type_(&infer_var_type_ctx);
   }
-
+  VLOG(6) << "Initialize output tensor";
   // Initialize output tensor
   for (auto& tensor_pair : outs) {
     for (auto& tensor : tensor_pair.second) {
@@ -77,10 +80,13 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
+  VLOG(6) << "Prepare Op";
   auto prepared_op = egr::legacy::PreparedOp::Prepare(
       ins, outs, *op_kernel, place, attrs, default_attrs);
+  VLOG(6) << "Prepare Data";
   auto tmp_ins_ptr =
       egr::legacy::PrepareData(*op_kernel, ins, prepared_op.kernel_type());
+  VLOG(6) << "Run Prepared Op";
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
@@ -130,16 +136,18 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
   }
 
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
+  VLOG(6) << "Check AMP status";
   NameTensorMap new_ins = ins;
-  if (amp_level == 1) {
+  if (amp_level == paddle::imperative::AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (amp_level == 2) {
+  } else if (amp_level == paddle::imperative::AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }
 
   try {
+    VLOG(6) << "Get Device id";
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       paddle::platform::SetDeviceId(
@@ -165,7 +173,7 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
           "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
     }
-
+    VLOG(6) << "Step in OpRunImpl";
     OpRunImpl(*op, new_ins, outs, attrs, *default_attrs, place);
   } catch (paddle::platform::EnforceNotMet& exception) {
     paddle::framework::AppendErrorOpHint(type, &exception);
@@ -182,7 +190,7 @@ void RunOp(const std::string& type, const NameTensorMap& ins,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Operator %s raises an unknown exception.", type));
   }
-
+  VLOG(6) << "Finish Run Op";
   // TODO(jiabin): Support this later
   // if (enable_program_desc_tracing_) {
   //   VLOG(5) << "Trace op " << type << " into ProgramDesc";

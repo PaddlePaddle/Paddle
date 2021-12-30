@@ -19,7 +19,7 @@
 #include <thread>  // NOLINT
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);

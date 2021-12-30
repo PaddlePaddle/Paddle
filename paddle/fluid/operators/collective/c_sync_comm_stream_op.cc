@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -67,11 +67,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+    platform::GpuStreamSync(stream);
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
     PADDLE_ENFORCE_EQ(is_npu_place(place), true,
