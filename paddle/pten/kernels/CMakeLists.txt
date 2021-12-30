@@ -25,9 +25,15 @@ endif()
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
 set(COMMON_KERNEL_DEPS dense_tensor kernel_context kernel_factory convert_utils)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas pten_transpose_gpu pten_transpose_cpu)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
 
 set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
+if(WITH_GPU or WITH_ROCM)
+  set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_gpu)
+else()
+  set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_cpu)
+endif()
 
 # auto build kernel targets by cmake
 register_kernels(EXCLUDES math_kernel DEPS ${COMMON_KERNEL_DEPS})

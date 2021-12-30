@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
@@ -2037,6 +2038,11 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
 }
 
 static void PrepareAttrMapForOps() {
+  // Handle "run_program_op"
+  static framework::ProgramDesc fake_prog;
+  operators_with_attrs["run_program"] = {};
+  operators_with_attrs["run_program"]["global_block"] =
+      fake_prog.MutableBlock(0);
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};
