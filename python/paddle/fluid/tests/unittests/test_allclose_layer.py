@@ -61,7 +61,7 @@ class TestAllcloseLayer(unittest.TestCase):
         # for corner case
         x = np.array([10.1, 10.1]).astype(dtype)
         y = np.array([10, 10]).astype(dtype)
-        result_c = exe.run(feed={'a': x, 'b': y}, fetch_list=[result_corner])
+        result_c, = exe.run(feed={'a': x, 'b': y}, fetch_list=[result_corner])
         corner_res = (dtype == 'float64')
         self.assertEqual(result_c[0], corner_res)
 
