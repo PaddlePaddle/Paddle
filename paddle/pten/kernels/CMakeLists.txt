@@ -29,7 +29,7 @@ set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
 
 set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
-if(WITH_GPU or WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM)
   set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_gpu)
 else()
   set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_cpu)
