@@ -123,10 +123,11 @@ def monkey_patch_eagertensor():
                 # [500.]
 
         """
-        if self.grad is None:
+        if self.grad._is_initialized():
+            return self.grad.numpy()
+        else:
             return None
         # TODO(wanghuancoder) support SELECTED_ROWS
-        return self.grad.numpy()
 
     if hasattr(core, "eager"):
         setattr(core.eager.EagerTensor, "__str__", __str__)
