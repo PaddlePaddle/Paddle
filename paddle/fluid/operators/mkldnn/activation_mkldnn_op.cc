@@ -201,7 +201,7 @@ using HardSwishMKLDNNFunctor =
 
 template <typename T>
 using MishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;    
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
 using SigmoidMKLDNNFunctor =

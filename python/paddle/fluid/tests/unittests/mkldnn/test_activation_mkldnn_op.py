@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.test_activation_op import TestActivation, Test
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
+
 class TestMKLDNNReluDim2(TestRelu):
     def setUp(self):
         super(TestMKLDNNReluDim2, self).setUp()
@@ -313,11 +314,12 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
     def init_dtype(self):
         self.dtype = np.float32
 
+
 class TestMKLDNNMish(TestActivation):
     def setUp(self):
         self.op_type = "mish"
         self.dtype = np.float32
-    
+
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = x * np.tanh(np.log(1 + np.exp(x)))
 

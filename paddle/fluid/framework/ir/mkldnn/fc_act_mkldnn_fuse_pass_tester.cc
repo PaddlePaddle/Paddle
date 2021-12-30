@@ -209,8 +209,7 @@ TEST(FuseFCActOneDNNPass, FuseWithMish) {
                      {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  test::CreateOp(&prog, "mish", {{"Input", "fc_y"}}, {{"Out", "act_y"}},
-                 false);
+  test::CreateOp(&prog, "mish", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;

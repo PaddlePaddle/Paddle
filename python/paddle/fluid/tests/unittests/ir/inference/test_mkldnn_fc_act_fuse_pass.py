@@ -155,5 +155,6 @@ class FCMishOneDnnFusePassTest(InferencePassTest):
         self.check_output()
         self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
 
+
 if __name__ == "__main__":
     unittest.main()
