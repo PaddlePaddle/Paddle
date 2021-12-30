@@ -74,41 +74,8 @@ def _remove_op_role_var(param, grad):
         'grad.op={} is not the backward op which produces the grad={}' \
         .format(op, grad.name)
 
-    block = grad.block
-    var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
-    if len(var_attr) == 0:
-        return
-
-    assert param.name in var_attr, \
-        'when using GradientMergeOptimizer, param={} must be in var_attr={}' \
-        .format(param.name, var_attr)
-    assert grad.name in var_attr, \
-        'when using GradientMergeOptimizer, grad={} must be in var_attr={}' \
-        .format(param.name, var_attr)
-
-    # remove (param, grad) from op_role_var
-    var_attr.remove(param.name)
-    var_attr.remove(grad.name)
-    if len(var_attr) > 1:
-        op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
-    else:
+    if op.has_attr(op_maker.kOpRoleVarAttrName()):
         op._remove_attr(op_maker.kOpRoleVarAttrName())
-
-
-def _add_gm_op_role_var(op, param, grad, cond_var_name):
-    grad.op = op
-    op_maker = core.op_proto_and_checker_maker
-    backward = op_maker.OpRole.Backward
-
-    # NOTE(wangxi). When distributed, we will insert grad_merge_all_reduce_op_handle
-    # in multi_devices_graph_pass, which will allreduce(grad) if cond is True, else
-    # do nothing.
-    # In this way, the gradient can be merged first, and then communicate when the
-    # condition is met, reducing the number of communications to increase the
-    # speed.
-    op._set_attr(GRAD_MERGE_COND_NAME, cond_var_name)
-    op._set_attr(op_maker.kOpRoleAttrName(), backward)
-    op._set_attr(op_maker.kOpRoleVarAttrName(), [param.name, grad.name])
 
 
 def _get_gm_cond_var(main_program, k_steps):
@@ -176,7 +143,6 @@ def _append_gradient_merge_backward_op(
     main_block = main_program.global_block()
     startup_block = startup_program.global_block()
 
-    #TODO(mapingshuo) support sparse embedding
     # step1: remove grad.op's op_role_var
     for param, grad in params_grads:
         assert (
@@ -188,7 +154,6 @@ def _append_gradient_merge_backward_op(
     param_to_gradient_merge = {}
     new_params_to_grads = []
     # step2: create gradient_merge var and init with 0
-    # and update op_role_var
     for param, grad in params_grads:
         param_name = param.name
         param_var = main_block.var(param_name)
@@ -222,8 +187,6 @@ def _append_gradient_merge_backward_op(
             outputs={'Out': gradient_merge_var},
             attrs={'axis': -1,
                    'use_mkldnn': False})
-        _add_gm_op_role_var(new_grad_op, param, gradient_merge_var,
-                            cond_var_name)
         new_params_to_grads.append([param, gradient_merge_var])
     return new_params_to_grads, param_to_gradient_merge
 
@@ -274,13 +237,9 @@ def _create_cond_block_and_update_optimizer(
                     new_op_desc._rename_output(output_name,
                                                new_params_to_grads[output_name])
 
-            # update op_role_var
+            # remove op_role_var
             if new_op_desc.has_attr(op_maker.kOpRoleVarAttrName()):
-                var_attr = new_op_desc.attr(op_maker.kOpRoleVarAttrName())
-                param_name = var_attr[0]
-                grad_var = param_to_gradient_merge[param_name]
-                new_op_desc._set_attr(op_maker.kOpRoleVarAttrName(),
-                                      [param_name, grad_var.name])
+                new_op_desc.remove_attr(op_maker.kOpRoleVarAttrName())
 
             # op's update Grad
             if new_op_desc.input("Grad"):

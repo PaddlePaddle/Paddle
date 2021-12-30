@@ -148,7 +148,7 @@ class TestGradientMergePass(DistPassTestBase):
                 avg_loss += pass_ret[0]
 
         for no_pass_ret, pass_ret in zip(no_pass_rets[0], pass_avg_ret_list):
-            print(f"=======>no_pass_ret={no_pass_ret}, pass_ret={pass_ret}")
+            print(f"no_pass_ret={no_pass_ret}, pass_ret={pass_ret}")
             self.assertTrue(
                 np.isclose(
                     no_pass_ret,
