@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import os
+import sys
 from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
@@ -34,10 +35,10 @@ paddle.enable_static()
 
 class TestFleetWithASPSharding(unittest.TestCase):
     def setUp(self):
-        # os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
-        # os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
-        # os.environ["PADDLE_TRAINERS_NUM"] = "1"
-        # os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
+        os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
 
         os.environ['FLAGS_enable_parallel_graph'] = "0"
         os.environ['FLAGS_fraction_of_gpu_memory_to_use'] = "0.1"
@@ -77,6 +78,9 @@ class TestFleetWithASPSharding(unittest.TestCase):
         return avg_cost, dist_strategy, input_x, input_y
 
     def test_with_asp_sharding(self):
+        if sys.platform == 'win32':
+            return
+        print(sys.platform)
         fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy, input_x, input_y = self.net(train_prog,
