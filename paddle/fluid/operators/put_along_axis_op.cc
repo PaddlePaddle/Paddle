@@ -27,22 +27,11 @@ class PutAlongAxisOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
-        platform::errors::InvalidArgument(
-            "Input(Input) of PutAlongAxisOpOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Index"), true,
-        platform::errors::InvalidArgument(
-            "Input(Index) of PutAlongAxisOpOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Value"), true,
-        platform::errors::InvalidArgument(
-            "Input(Value) of PutAlongAxisOpOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Result"), true,
-        platform::errors::InvalidArgument(
-            "Output(Result) of PutAlongAxisOpOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "PutAlongAxis");
+    OP_INOUT_CHECK(ctx->HasInput("Index"), "Input", "Index", "PutAlongAxis");
+    OP_INOUT_CHECK(ctx->HasInput("Value"), "Input", "Value", "PutAlongAxis");
+    OP_INOUT_CHECK(ctx->HasOutput("Result"), "Output", "Result",
+                   "PutAlongAxis");
 
     auto index_dim = ctx->GetInputDim("Index");
 
