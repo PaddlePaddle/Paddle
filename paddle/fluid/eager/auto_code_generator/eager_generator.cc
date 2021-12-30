@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
@@ -1003,13 +1004,6 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
-
-      VLOG(6) << "Generated Call RetainGradForTensor";
-      const char* RETAIN_GRAD_TEMPLATE =
-          "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
-
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1023,6 +1017,11 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
+    VLOG(6) << "Generated Call RetainGradForTensor";
+    const char* RETAIN_GRAD_TEMPLATE =
+        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+    grad_node_creation_str +=
+        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, input_name);
   }
 
   // [GradOpNode] SetGradInMeta
@@ -1849,19 +1848,15 @@ static std::string GenerateDygraphHFileIncludes() {
   return dygraph_forward_api_includes_str;
 }
 
-static void GenerateForwardHFile(const std::string& output_dir,
+static void GenerateForwardHFile(const std::string& dygraph_forward_api_path,
                                  const std::string& dygraph_forward_api_str) {
-  std::string dygraph_forward_api_path = output_dir + "/dygraph_forward_api.h";
   std::ofstream forward_header_stream(dygraph_forward_api_path, std::ios::out);
   forward_header_stream << dygraph_forward_api_str;
   forward_header_stream.close();
 }
 
-static void GenerateForwardDygraphFile(const std::string& output_dir,
+static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
                                        const std::string& fwd_function_str) {
-  std::string forwards_dir = output_dir + "/forwards/";
-  std::string forward_cc_filename = "dygraph_forward_functions.cc";
-  std::string forward_cc_path = forwards_dir + forward_cc_filename;
   const char* FORWARD_INCLUDE_TEMPLATE =
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
@@ -1878,11 +1873,8 @@ static void GenerateForwardDygraphFile(const std::string& output_dir,
   forward_cc_stream.close();
 }
 
-static void GenerateNodeHFile(const std::string& output_dir,
+static void GenerateNodeHFile(const std::string& node_h_path,
                               const std::string& grad_node_str) {
-  std::string nodes_dir = output_dir + "/nodes/";
-  std::string node_h_filename = "nodes.h";
-  std::string node_h_path = nodes_dir + node_h_filename;
   std::string node_h_include_str =
       "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
@@ -1894,11 +1886,8 @@ static void GenerateNodeHFile(const std::string& output_dir,
   node_h_stream.close();
 }
 
-static void GenerateNodeCCFile(const std::string& output_dir,
+static void GenerateNodeCCFile(const std::string& node_cc_path,
                                const std::string& grad_function_str) {
-  std::string nodes_dir = output_dir + "/nodes/";
-  std::string node_cc_filename = "nodes.cc";
-  std::string node_cc_path = nodes_dir + node_cc_filename;
   const char* NODE_CC_INCLUDE_TEMPLATE =
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/pten/api/all.h\"\n"
@@ -2028,21 +2017,32 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
   }
 
   VLOG(6) << "-------- GenerateDygraphForwardCCFile -------";
+  std::string forward_cc_path =
+      output_dir + "/forwards/dygraph_forward_functions.tmp.cc";
   fwd_function_str += "\n";
   fwd_function_str += GenerateCoreOpsReturnsInfo();
-  GenerateForwardDygraphFile(output_dir, fwd_function_str);
+  GenerateForwardDygraphFile(forward_cc_path, fwd_function_str);
 
   VLOG(6) << "-------- GenerateForwardHFile -------";
-  GenerateForwardHFile(output_dir, dygraph_forward_api_str);
+  std::string dygraph_forward_api_path =
+      output_dir + "/dygraph_forward_api.tmp.h";
+  GenerateForwardHFile(dygraph_forward_api_path, dygraph_forward_api_str);
 
   VLOG(6) << "-------- GenerateNodeHFile -------";
-  GenerateNodeHFile(output_dir, grad_node_h_str);
+  std::string node_h_path = output_dir + "/nodes/nodes.tmp.h";
+  GenerateNodeHFile(node_h_path, grad_node_h_str);
 
   VLOG(6) << "-------- GenerateNodeCCFile -------";
-  GenerateNodeCCFile(output_dir, grad_node_cc_str);
+  std::string node_cc_path = output_dir + "/nodes/nodes.tmp.cc";
+  GenerateNodeCCFile(node_cc_path, grad_node_cc_str);
 }
 
 static void PrepareAttrMapForOps() {
+  // Handle "run_program_op"
+  static framework::ProgramDesc fake_prog;
+  operators_with_attrs["run_program"] = {};
+  operators_with_attrs["run_program"]["global_block"] =
+      fake_prog.MutableBlock(0);
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};

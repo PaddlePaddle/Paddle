@@ -11,12 +11,6 @@ gather_srcs(infrt_src SRCS
     tensor.cc
     )
 
-foreach(cpp ${SRCS})
-  set(infrt_src
-    "${infrt_src};infrt/paddle/${cpp}"
-    CACHE INTERNAL "")
-endforeach()
-
 file(GLOB includes LIST_DIRECTORIES false RELATIVE ${CMAKE_SOURCE_DIR} *.h)
 
 foreach(header ${includes})

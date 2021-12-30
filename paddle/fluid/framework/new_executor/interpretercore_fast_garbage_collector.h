@@ -11,25 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+namespace paddle {
+namespace framework {
 
-namespace pten {
+class InterpreterCoreFastGarbageCollector
+    : public InterpreterCoreGarbageCollector {
+ public:
+  virtual void Add(Variable* var) override;
 
-template <typename T>
-void Matmul(const GPUContext& dev_ctx,
-            const DenseTensor& x,
-            const DenseTensor& y,
-            bool transpose_x,
-            bool transpose_y,
-            DenseTensor* out);
-
-}  // namespace pten
-
-#endif
+ private:
+  void Add(Garbage garbage);
+};
+}  // namespace framework
+}  // namespace paddle
