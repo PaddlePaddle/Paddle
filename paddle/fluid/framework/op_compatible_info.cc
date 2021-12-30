@@ -101,6 +101,7 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["trilinear_interp"] = {"1.6.0",
                                             OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["unfold"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["fold"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["unique"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["unique_with_counts"] = {"1.6.0",
                                               OpCompatibleType::DEFIN_NOT};

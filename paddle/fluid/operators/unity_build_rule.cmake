@@ -283,7 +283,8 @@ register_unity_group(cc
     tril_triu_op.cc
     truncated_gaussian_random_op.cc
     unbind_op.cc
-    unfold_op.cc)
+    unfold_op.cc
+    fold_op.cc)
 register_unity_group(cc
     smooth_l1_loss_op.cc
     uniform_random_batch_size_like_op.cc
@@ -522,6 +523,7 @@ register_unity_group(cu
     tril_triu_op.cu
     truncated_gaussian_random_op.cu
     unfold_op.cu
+    fold_op.cu
     arg_min_op.cu
     crop_tensor_op.cu)
 register_unity_group(cu
