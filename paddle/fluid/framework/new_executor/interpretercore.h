@@ -72,6 +72,10 @@ class InterpreterCore {
                const std::vector<framework::LoDTensor>& feed_tensors,
                bool prepare_feed);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void RecordStreamForGC(const Instruction& instr);
+#endif
+
   void CheckGC(const Instruction& instr);
 
   void RunInstructionAsync(size_t instr_id);

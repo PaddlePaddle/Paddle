@@ -18,6 +18,8 @@
 #include <mutex>
 #include <thread>
 
+#include "paddle/fluid/platform/macros.h"
+
 namespace paddle {
 namespace distributed {
 
@@ -31,6 +33,8 @@ class TaskLoopThread {
   TaskLoop* StartLoop();
 
  private:
+  DISABLE_COPY_AND_ASSIGN(TaskLoopThread);
+
   void Loop();
 
   bool start_;

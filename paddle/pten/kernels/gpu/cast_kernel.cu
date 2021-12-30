@@ -54,13 +54,10 @@ __global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
 }
 
 template <typename InT, typename OutT>
-void CastCUDAKernelImpl(const GPUContext& dev_ctx,
-                        const DenseTensor& x,
-                        DenseTensor* out) {
-  auto* in_data = x.data<InT>();
-  auto size = x.numel();
-  auto* out_data = out->mutable_data<OutT>();
-
+void CastCUDAKernelImplWithPtr(const GPUContext& dev_ctx,
+                               const InT* in_data,
+                               OutT* out_data,
+                               int64_t size) {
   paddle::platform::GpuLaunchConfig config =
       paddle::platform::GetGpuLaunchConfig1D(dev_ctx, size);
   int vec_size = paddle::platform::GetVectorizedSize<OutT>(out_data);
@@ -76,6 +73,16 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
                                 0,
                                 dev_ctx.stream()>>>(in_data, size, out_data);
   }
+}
+
+template <typename InT, typename OutT>
+void CastCUDAKernelImpl(const GPUContext& dev_ctx,
+                        const DenseTensor& x,
+                        DenseTensor* out) {
+  auto* in_data = x.data<InT>();
+  auto size = x.numel();
+  auto* out_data = out->mutable_data<OutT>();
+  CastCUDAKernelImplWithPtr(dev_ctx, in_data, out_data, size);
 }
 
 template <typename T, typename ContextT>

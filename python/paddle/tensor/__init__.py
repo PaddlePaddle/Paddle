@@ -39,9 +39,11 @@ from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
+from .linalg import cov  # noqa: F401
 from .linalg import norm  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
+from .linalg import lstsq  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
 from .linalg import cross  # noqa: F401
@@ -245,6 +247,8 @@ from .search import nonzero  # noqa: F401
 from .search import sort  # noqa: F401
 from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
+from .search import mode  # noqa: F401
+
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
@@ -263,9 +267,11 @@ from .einsum import einsum  # noqa: F401
 tensor_method_func  = [ #noqa
            'matmul',
            'dot',
+           'cov',
            'norm',
            'cond',
            'transpose',
+           'lstsq',
            'dist',
            't',
            'cross',
@@ -458,6 +464,7 @@ tensor_method_func  = [ #noqa
            'gcd',
            'lcm',
            'diff',
+           "mode",
            'lerp',
            'lerp_',
            'erfinv',
