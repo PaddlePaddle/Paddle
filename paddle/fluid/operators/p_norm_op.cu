@@ -76,13 +76,13 @@ struct AbsFunctor {
   }
 };
 
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct UnsignedPowFunctor {
   HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
     this->porder = porder;
   }
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(inline_pow(inline_abs(x), static_cast<Tx>(porder)));
+  HOSTDEVICE inline T operator()(const T& x) const {
+    return static_cast<T>(inline_pow(inline_abs(x), static_cast<T>(porder)));
   }
   float porder;
 };
@@ -105,7 +105,6 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.cuda_device_context().stream();
 
-    using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
           *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis, stream);
@@ -116,19 +115,18 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
           *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
     } else {
-      const auto& cuda_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T, T>>(
-          *in_x, out_norm, UnsignedPowFunctor<T, T>(porder), reduce_axis,
-          stream);
+      TensorReduceFunctorImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+          *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis, stream);
 
       const framework::Tensor* tmp_norm = out_norm;
       std::vector<const framework::Tensor*> ins = {tmp_norm};
       std::vector<framework::Tensor*> outs = {out_norm};
-      auto func_inverse = UnsignedPowFunctor<MT, T>(1. / porder);
+      auto func_inverse = UnsignedPowFunctor<T>(1. / porder);
+      const auto& cuda_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
 
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
-                                          UnsignedPowFunctor<MT, T>>(
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T,
+                                          UnsignedPowFunctor<T>>(
           cuda_ctx, ins, &outs, func_inverse);
     }
   }
@@ -140,13 +138,10 @@ struct AbsMaxAndMinGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    auto equals = ((*x).abs() == y->broadcast(dim));
     auto ones = dx->constant(static_cast<T>(1.));
-    auto negs = dx->constant(static_cast<T>(-1.));
     auto zeros = dx->constant(static_cast<T>(0.));
-    auto positives = (*x) > zeros;
-    dx->device(place) = dy->broadcast(dim) * equals.select(ones, zeros) *
-                        positives.select(ones, negs);
+    dx->device(place) = dy->broadcast(dim) * (*x).sign() *
+                        ((*x).abs() == y->broadcast(dim)).select(ones, zeros);
   }
 };
 
@@ -159,14 +154,10 @@ struct PNormGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    auto ones = dx->constant(static_cast<T>(1.));
-    auto negs = dx->constant(static_cast<T>(-1.));
-    auto zeros = dx->constant(static_cast<T>(0.));
-    auto ord_y = static_cast<T>(1. - this->porder);
-    auto ord_x = static_cast<T>(this->porder - 1.);
-    dx->device(place) = (*x).pow(ord_x) * dy->broadcast(dim) *
-                        (*y).pow(ord_y).broadcast(dim) *
-                        ((*x) > zeros).select(ones, negs);
+    dx->device(place) =
+        (*x).pow(static_cast<T>(this->porder - 1.)) * (*x).sign() *
+        dy->broadcast(dim) *
+        (*y).pow(static_cast<T>(1. - this->porder)).broadcast(dim);
   }
   float porder;
 };
