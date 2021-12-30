@@ -138,13 +138,13 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
   }
 }
 
-inline void Pipeline::Close() {
+void Pipeline::ShutDown() {
   VLOG(1) << "Pipeline close";
+  closed_.store(true);
   prefetch_queue_.Close();
-  closed_ = true;
 }
 
-inline void Pipeline::Reset() {
+void Pipeline::Reset() {
   // (TODO)Step1: reset dataset
   //
   // Step2: reopen pipeline

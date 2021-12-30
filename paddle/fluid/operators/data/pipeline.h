@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/operators/data/data_scope.h"
 
 namespace paddle {
 namespace operators {
@@ -58,6 +57,8 @@ class Pipeline {
   inline void Reset();
 
   void ReadNext(std::vector<Variable *> &out_vars);
+
+  void ShutDown();
 
  private:
   void copy_tensor(const framework::LoDTensor &lod_tensor,
@@ -127,11 +128,19 @@ class PipelineManager {
     }
   }
 
+  void ShutDown() {
+    auto iter = prog_id_to_pipeline_.begin();
+    for (; iter != prog_id_to_pipeline_.end(); iter++) {
+      iter->second.get()->ShutDown();
+    }
+    prog_id_to_pipeline_.clear();
+  }
+
   PipelineManager() { VLOG(1) << "PipelineManager init"; }
 
   ~PipelineManager() {
     VLOG(1) << "~PipelineManager";
-    prog_id_to_pipeline_.clear();
+    ShutDown();
   }
 };
 

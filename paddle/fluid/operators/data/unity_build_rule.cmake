@@ -7,12 +7,13 @@
 register_unity_group(cc
     pipeline.cc
     map_runner.cc
+    random_roi_generator.cc
     nvjpeg_decoder.cc
     dataloader_op.cc
     map_op.cc
-    batch_decode_op.cc)
+    batch_decode_random_crop_op.cc)
 
 register_unity_group(cu
     dataloader_op.cu.cc
     map_op.cu.cc
-    batch_decode_op.cu)
+    batch_decode_random_crop_op.cu)

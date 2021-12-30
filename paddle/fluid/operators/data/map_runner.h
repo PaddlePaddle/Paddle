@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/operators/data/data_scope.h"
 
 namespace paddle {
 namespace operators {
@@ -41,9 +40,6 @@ class MapRunner {
             const int64_t program_id,
             const Scope* scope,
             const platform::Place &place,
-            // int64_t start_op_index,
-            // int64_t end_op_index,
-            // int64_t program_id,
             const std::vector<std::string> &input_var_names,
             const std::vector<std::string> &output_var_names,
             const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
@@ -54,7 +50,7 @@ class MapRunner {
   //   Close();
   // }
 
-  void Shutdown();
+  void ShutDown();
 
   inline bool IsRunning() { return running_; }
 
@@ -76,6 +72,7 @@ class MapRunner {
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
   ThreadPool thread_pool_;
+  std::vector<std::future<bool>> results_;
   std::atomic<bool> running_;
 
   std::shared_ptr<BlockDesc> map_block_;
@@ -125,19 +122,28 @@ class MapRunnerManager {
       }
   }
 
-  void ShutdownMapRunner(int program_id) {
+  void ShutDownMapRunner(int program_id) {
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter != prog_id_to_runner_.end()) {
-      iter->second.get()->Shutdown();
+      iter->second.get()->ShutDown();
       prog_id_to_runner_.erase(iter);
     }
+  }
+
+  void ShutDown() {
+    auto iter = prog_id_to_runner_.begin();
+    for (; iter != prog_id_to_runner_.end(); iter++) {
+      iter->second.get()->ShutDown();
+      LOG(ERROR) << "MapRunnerManager prog_id " << iter->first << " shutdown finish";
+    }
+    prog_id_to_runner_.clear();
   }
 
   MapRunnerManager() { VLOG(1) << "MapRunnerManager init"; }
 
   ~MapRunnerManager() {
     VLOG(1) << "~MapRunnerManager";
-    prog_id_to_runner_.clear();
+    ShutDown();
   }
 };
 

@@ -65,6 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
+#include "paddle/fluid/operators/data/shutdown.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -680,6 +681,9 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
+
+  m.def("_shutdown_dataloader",
+        &paddle::operators::data::ShutDownDataLoader);
 
   BindImperative(&m);
 

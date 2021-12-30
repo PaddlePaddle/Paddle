@@ -14,11 +14,7 @@
 
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
-#include <ThreadPool.h>
-#include <string>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/operators/data/nvjpeg_decoder.h"
+#include "paddle/fluid/operators/data/batch_decode_random_crop_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
@@ -27,10 +23,11 @@ namespace data {
 
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
-static NvjpegDecoderThreadPool* decode_pool = nullptr;
+NvjpegDecoderThreadPool* decode_pool = nullptr;
+// std::seed_seq* rand_seq = nullptr;
 
 template <typename T>
-class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
+class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_threads = ctx.Attr<int>("num_threads");
@@ -41,6 +38,7 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     if (!decode_pool) {
       LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
       decode_pool = new NvjpegDecoderThreadPool(num_threads, mode);
+      // rand_seq = new std::seed_seq(static_cast<int>(time(0)));
     }
 
     const framework::LoDTensorArray* inputs =
@@ -49,6 +47,18 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
     auto* out = ctx.OutputVar("Out");
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
     out_array.resize(inputs->size());
+
+    auto aspect_ratio_min = ctx.Attr<float>("aspect_ratio_min");
+    auto aspect_ratio_max = ctx.Attr<float>("aspect_ratio_max");
+    AspectRatioRange aspect_ratio_range{aspect_ratio_min, aspect_ratio_max};
+
+    auto area_min = ctx.Attr<float>("area_min");
+    auto area_max = ctx.Attr<float>("area_max");
+    AreaRange area_range{area_min, area_max};
+
+    std::seed_seq rand_seq{static_cast<int64_t>(time(0))};
+    std::vector<int> rands(inputs->size());
+    rand_seq.generate(rands.begin(), rands.end());
 
     // auto* in_var = ctx.InputVar("X");
     // auto in_queue = in_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
@@ -78,6 +88,8 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
         .bit_stream = x_data,
         .bit_len = x_numel,
         .tensor = &out_array[i],
+        .roi_generator = new RandomROIGenerator(
+                                aspect_ratio_range, area_range, rands[i]),
         .place = ctx.GetPlace()
       };
       decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
@@ -115,6 +127,6 @@ class GPUBatchDecodeJpegKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(batch_decode, ops::data::GPUBatchDecodeJpegKernel<uint8_t>)
+REGISTER_OP_CUDA_KERNEL(batch_decode_random_crop, ops::data::GPUBatchDecodeRandomCropKernel<uint8_t>)
 
 #endif

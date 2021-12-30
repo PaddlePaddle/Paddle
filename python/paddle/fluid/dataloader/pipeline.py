@@ -20,10 +20,14 @@ import paddle.fluid as fluid
 from paddle import _C_ops
 from paddle.fluid import core, framework
 from paddle.fluid.layers.utils import _hash_with_id
+from ..multiprocess_utils import CleanupFuncRegistrar
 
 from collections.abc import Sequence, Mapping
 
 __all__ = ["Pipeline"]
+
+
+CleanupFuncRegistrar.register(core._shutdown_dataloader)
 
 
 class Pipeline:
@@ -108,13 +112,16 @@ class Pipeline:
         # try:
         import sys
         import time
+        # try:
         tic = time.time()
         _C_ops.dataloader(self._output_vars, *self._attrs)
         toc = time.time()
         print("_C_ops calling cost {}ms".format((toc - tic) * 1000.))
         sys.stdout.flush()
-        # except KeyboardInterrupt:
-        #     pass
+        # except:
+        #     print("_C_ops dataloader except enter")
+        #     sys.stdout.flush()
+        #     core._shutdown_dataloader()
 
         return {k: v for k, v in zip(self._out_names, self._output_vars)}
 

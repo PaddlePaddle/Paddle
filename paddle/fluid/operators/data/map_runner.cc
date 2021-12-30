@@ -108,19 +108,22 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
 }
 
 void MapRunner::StartMapThread(const Scope* scope) {
-  thread_pool_.enqueue([this, scope]() -> void {
+  results_.emplace_back(thread_pool_.enqueue([this, scope]() -> bool {
     auto& scope_ = scope->NewScope();
     framework::Executor executor(place_);
     while (running_.load()) {
       // Step 1: get input LoDTensor and share into Scope
+      // LOG(ERROR) << "MapThread Loop " << program_id_ << " start";
       bool success = ShareInputsIntoScope(&scope_);
       if (!success) {
-        Shutdown();
-        break;
+        ShutDown();
+        return false;
       }
+      LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
 
       // Step 2: run ops by executor without fetch
       executor.Run(*map_block_->Program(), &scope_, map_block_->ID(), false, true, std::vector<std::string>(), false, true);
+      LOG(ERROR) << "MapThread Loop " << program_id_ << " program run finish";
 
       // Step 3: fetch output variable to LoDTensor vector
       //        and push to output queue
@@ -146,8 +149,12 @@ void MapRunner::StartMapThread(const Scope* scope) {
           output_queues_[i]->Push(t_arr);
         }
       }
+      LOG(ERROR) << "MapThread Loop " << program_id_ << " push queue finish";
     }
-  });
+    scope->DeleteScope(&scope_);
+    LOG(ERROR) << "MapThread Loop " << program_id_ << " delete scope and return";
+    return true;
+  }));
 }
 
 void MapRunner::CheckOutputVarStatus(const Variable &var,
@@ -174,18 +181,28 @@ void MapRunner::CheckOutputVarStatus(const Variable &var,
   }
 }
 
-void MapRunner::Shutdown() {
-  VLOG(1) << "MapRunner shutdown";
+void MapRunner::ShutDown() {
+  VLOG(1) << "MapRunner shutdown " << program_id_;
   // close all output queue, op after this op can shutdown itself
+  LOG(ERROR) << "MapRunner ShutDown";
   for (auto queue :  output_queues_) {
     queue->Close();
   }
+  LOG(ERROR) << "MapRunner ShutDown queue closed " << program_id_;
+
+  running_.store(false);
+  LOG(ERROR) << "MapRunner ShutDown running false" << program_id_;
+
+  for (auto&& result: results_) {
+    LOG(ERROR) << "MapRunner get result " << program_id_;
+    result.get();
+    LOG(ERROR) << "MapRunner get result finish" << program_id_;
+  }
 
   // set running_ as false to exit map thread, then release thread pool
-  running_.store(false);
-
-  // FIXME: ThreadPool doesn't have shutdown method
-  delete &thread_pool_;
+  // // FIXME: ThreadPool doesn't have shutdown method
+  // delete &thread_pool_;
+  // LOG(ERROR) << "MapRunner ShutDown thread_pool_ deleted";
 }
 
 // initialization static variables out of MapRunnerManager

@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 
+#include "paddle/fluid/operators/data/random_roi_generator.h"
+
 namespace paddle {
 namespace operators {
 namespace data {
@@ -35,6 +37,7 @@ struct NvjpegDecodeTask {
   const uint8_t* bit_stream;
   size_t bit_len;
   framework::LoDTensor* tensor;
+  RandomROIGenerator* roi_generator;
   platform::Place place;
 };
 
@@ -44,15 +47,16 @@ class NvjpegDecoder {
 
     ~NvjpegDecoder();
 
-    void Run(const uint8_t* bit_stream, size_t bit_len,
-             framework::LoDTensor* out, platform::Place& place);
+    void Run(const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out, 
+             RandomROIGenerator* roi_generator, platform::Place& place);
 
   private:
     DISABLE_COPY_AND_ASSIGN(NvjpegDecoder);
 
-    void ParseOutputInfo(
+    void ParseDecodeParams(
         const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
-        nvjpegImage_t* out_image, platform::Place place);
+        RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
+        platform::Place place);
 
     void Decode(const uint8_t* bit_stream, size_t bit_len, nvjpegImage_t* out_image);
 
@@ -87,7 +91,7 @@ class NvjpegDecoderThreadPool {
 
     void WaitTillTasksCompleted();
 
-    void Shutdown();
+    void ShutDown();
 
   private:
     DISABLE_COPY_AND_ASSIGN(NvjpegDecoderThreadPool);

@@ -31,6 +31,7 @@ __all__ = [ #noqa
     'DeformConv2D',
     'read_file',
     'decode_jpeg',
+    'image_decode_random_crop',
     'random_flip',
     'roi_pool',
     'RoIPool',
@@ -920,7 +921,15 @@ def file_label_reader(file_root, batch_size, name=None):
     return out
 
 
-def image_decode(x, mode='unchanged', num_threads=2, name=None):
+def image_decode_random_crop(x,
+                             mode='unchanged',
+                             num_threads=2,
+                             aspect_ratio_min=3./4.,
+                             aspect_ratio_max=4./3.,
+                             area_min=0.08,
+                             area_max=1.,
+                             num_attempts=10,
+                             name=None):
     """
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
     Optionally converts the image to the desired format. 
@@ -931,6 +940,12 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
             of the JPEG image.
         mode (str): The read mode used for optionally converting the image. 
             Default: 'unchanged'.
+        num_threads (int): parallel thread number.
+        aspect_ratio_min (float): 
+        aspect_ratio_max (float): 
+        area_min (float): 
+        area_max (float): 
+        num_attempts (int):
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -954,19 +969,30 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.decode(x, "mode", mode)
+        return _C_ops.batch_decode_random_crop(
+                x, "mode", mode, "num_threads", num_threads,
+                "aspect_ratio_min", aspect_ratio_min,
+                "aspect_ratio_max", aspect_ratio_max,
+                "area_min", area_min, "area_max", area_max,
+                "num_attempts", num_attempts)
 
     inputs = {'X': x}
-    attrs = {"mode": mode, "num_threads": num_threads}
+    attrs = {"mode": mode,
+             "num_threads": num_threads,
+             "aspect_ratio_min": aspect_ratio_min,
+             "aspect_ratio_max", aspect_ratio_max,
+             "area_min", area_min
+             "area_max", area_max,
+             "num_attempts", num_attempts}
 
-    helper = LayerHelper("batch_decode", **locals())
+    helper = LayerHelper("batch_decode_random_crop", **locals())
     out = helper.create_variable(
-        name=unique_name.generate("image_decode"),
+        name=unique_name.generate("image_decode_random_crop"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=x.dtype)
     # out = helper.create_variable_for_type_inference('uint8')
     helper.append_op(
-        type="batch_decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
+        type="batch_decode_random_crop", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
     return out
 

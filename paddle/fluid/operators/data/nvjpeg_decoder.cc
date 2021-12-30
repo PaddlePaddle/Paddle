@@ -73,9 +73,10 @@ NvjpegDecoder::~NvjpegDecoder() {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(cuda_stream_));
 }
 
-void NvjpegDecoder::ParseOutputInfo(
+void NvjpegDecoder::ParseDecodeParams(
     const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
-    nvjpegImage_t* out_image, platform::Place place) {
+    RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
+    platform::Place place) {
   int components;
   nvjpegChromaSubsampling_t subsampling;
   int widths[NVJPEG_MAX_COMPONENT];
@@ -85,8 +86,8 @@ void NvjpegDecoder::ParseOutputInfo(
       platform::dynload::nvjpegGetImageInfo(handle_, bit_stream, bit_len,
                          &components, &subsampling, widths, heights));
 
-  int width = widths[0];
-  int height = heights[0];
+  int64_t width = static_cast<int64_t>(widths[0]);
+  int64_t height = static_cast<int64_t>(heights[0]);
 
   nvjpegOutputFormat_t output_format;
   int output_components;
@@ -115,7 +116,12 @@ void NvjpegDecoder::ParseOutputInfo(
 
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_, output_format));
 
-  std::vector<int64_t> out_shape = {output_components, height, width};
+  ROI roi;
+  roi_generator->GenerateRandomROI(width, height, &roi);
+
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(decode_params_, roi.x, roi.y, roi.w, roi.h));
+
+  std::vector<int64_t> out_shape = {output_components, roi.h, roi.w};
   out->Resize(framework::make_ddim(out_shape));
 
   // allocate memory and assign to out_image
@@ -144,10 +150,11 @@ void NvjpegDecoder::Decode(const uint8_t* bit_stream, size_t bit_len, nvjpegImag
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(cuda_stream_));
 }
 
-void NvjpegDecoder::Run(const uint8_t* bit_stream, size_t bit_len,
-                        framework::LoDTensor* out, platform::Place& place) {
+void NvjpegDecoder::Run(
+    const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
+    RandomROIGenerator* roi_generator, platform::Place& place) {
   nvjpegImage_t image;
-  ParseOutputInfo(bit_stream, bit_len, out, &image, place);
+  ParseDecodeParams(bit_stream, bit_len, out, roi_generator, &image, place);
   Decode(bit_stream, bit_len, &image);
 }
 
@@ -167,7 +174,7 @@ NvjpegDecoderThreadPool::NvjpegDecoderThreadPool(const int num_threads, const st
   }
 }
 
-NvjpegDecoderThreadPool::~NvjpegDecoderThreadPool() { Shutdown(); }
+NvjpegDecoderThreadPool::~NvjpegDecoderThreadPool() { ShutDown(); }
 
 void NvjpegDecoderThreadPool::AddTask(std::shared_ptr<NvjpegDecodeTask> task) {
   task_queue_.push_back(task);
@@ -193,7 +200,7 @@ void NvjpegDecoderThreadPool::WaitTillTasksCompleted() {
   running_ = false;
 }
 
-void NvjpegDecoderThreadPool::Shutdown() {
+void NvjpegDecoderThreadPool::ShutDown() {
   std::lock_guard<std::mutex> lock(mutex_);
 
   running_ = false;
@@ -229,7 +236,8 @@ void NvjpegDecoderThreadPool::ThreadLoop(const int thread_idx) {
     outstand_tasks_++;
     lock.unlock();
 
-    decoder->Run(task->bit_stream, task->bit_len, task->tensor, task->place);
+    decoder->Run(task->bit_stream, task->bit_len, task->tensor,
+                 task->roi_generator, task->place);
 
     lock.lock();
     outstand_tasks_--;

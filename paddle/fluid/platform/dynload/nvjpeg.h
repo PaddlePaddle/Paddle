@@ -48,6 +48,7 @@ extern void *nvjpeg_dso_handle;
   __macro(nvjpegBufferDeviceCreate);              \
   __macro(nvjpegBufferPinnedCreate);              \
   __macro(nvjpegDecodeParamsSetOutputFormat);     \
+  __macro(nvjpegDecodeParamsSetROI);              \
   __macro(nvjpegStateAttachPinnedBuffer);         \
   __macro(nvjpegStateAttachDeviceBuffer);         \
   __macro(nvjpegJpegStreamParse);                 \
