@@ -20,7 +20,6 @@ import unittest
 import paddle
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-# from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
 
 from ifelse_simple_func import *
 
