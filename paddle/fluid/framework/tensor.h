@@ -112,7 +112,7 @@ class Tensor {
 
   // TODO jakpiase format is deprecated and will be removed soon, supporting
   // both md and format is only temporary and shouldn't be relied on
-  inline mkldnn::memory::format_tag format() const {
+  inline dnnl::memory::format_tag format() const {
     // for now some ops are using format and some are using mem_desc, so
     // supporting both is needed
     return mem_desc_ ? platform::GetMKLDNNFormat(mem_desc_) : format_;

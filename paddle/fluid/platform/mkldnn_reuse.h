@@ -751,7 +751,7 @@ class ReductionMKLDNNHandler
         platform::errors::InvalidArgument("Wrong layout set for X tensor."));
 
     const auto y_md = memory::desc(y_tz, platform::MKLDNNGetDataType<T>(),
-                                   mkldnn::memory::format_tag::any);
+                                   dnnl::memory::format_tag::any);
 
     if (attr)
       this->AcquireForwardPrimitiveDescriptor(attr, algo, x->mem_desc(), y_md,
@@ -811,7 +811,7 @@ class ActivationMKLDNNHandler
                        "5, or 6, but now the dimension size is",
                        in_x->dims().size()));
 
-    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             algorithm, in_x->mem_desc(), alpha,
                                             beta);
   }
@@ -840,7 +840,7 @@ class ActivationMKLDNNHandler
                                  : ctx.Attr<float>("max");
     }
     
-    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             algorithm, in_x->mem_desc(), alpha,
                                             beta);
     this->AcquireBackwardPrimitiveDescriptor(algorithm, out_grad->mem_desc(),

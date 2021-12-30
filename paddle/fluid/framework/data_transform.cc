@@ -67,7 +67,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
         platform::MatchShapeToLayout(&out, lin, lout);
         paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
             lin);
-        mkldnn::memory::desc out_mem_desc(
+        dnnl::memory::desc out_mem_desc(
             vectorize(out.dims()), ToMKLDNNDataType(in.type()), out_format);
         out.set_mem_desc(out_mem_desc);
       } else {

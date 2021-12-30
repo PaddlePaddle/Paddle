@@ -152,7 +152,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   auto out_format =
       platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
-  mkldnn::memory::desc out_mem_desc(out_tz, in_type, out_format);
+  dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims
   out->set_mem_desc(out_mem_desc);

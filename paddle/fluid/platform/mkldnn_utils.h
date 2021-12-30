@@ -25,8 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-inline mkldnn::memory::format_tag GetMKLDNNFormat(
-    const mkldnn::memory::desc& mem_desc) {
+inline dnnl::memory::format_tag GetMKLDNNFormat(
+    const dnnl::memory::desc& mem_desc) {
   auto ndims = mem_desc.data.ndims;
   auto strides = mem_desc.data.format_desc.blocking.strides;
   auto inner_nblks = mem_desc.data.format_desc.blocking.inner_nblks;
@@ -34,62 +34,62 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   auto inner_idxs = mem_desc.data.format_desc.blocking.inner_idxs;
 
   if (ndims == 1) {
-    return mkldnn::memory::format_tag::x;
+    return dnnl::memory::format_tag::x;
   } else if (ndims == 2) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1]) {
-        return mkldnn::memory::format_tag::nc;
+        return dnnl::memory::format_tag::nc;
       } else {
-        return mkldnn::memory::format_tag::cn;
+        return dnnl::memory::format_tag::cn;
       }
     }
   } else if (ndims == 3) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2]) {
-        return mkldnn::memory::format_tag::ncw;
+        return dnnl::memory::format_tag::ncw;
       } else if (strides[1] >= strides[0] && strides[0] >= strides[2]) {
-        return mkldnn::memory::format_tag::ntc;
+        return dnnl::memory::format_tag::ntc;
       } else {
-        return mkldnn::memory::format_tag::nwc;
+        return dnnl::memory::format_tag::nwc;
       }
     }
   } else if (ndims == 4) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3]) {
-        return mkldnn::memory::format_tag::nchw;
+        return dnnl::memory::format_tag::nchw;
       } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
                  strides[1] >= strides[0]) {
-        return mkldnn::memory::format_tag::cdba;
+        return dnnl::memory::format_tag::cdba;
       } else {
-        return mkldnn::memory::format_tag::nhwc;
+        return dnnl::memory::format_tag::nhwc;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw16c;
+        return dnnl::memory::format_tag::nChw16c;
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw8c;
+        return dnnl::memory::format_tag::nChw8c;
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdb8a;
+          return dnnl::memory::format_tag::Acdb8a;
         }
       } else if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw4c;
+        return dnnl::memory::format_tag::nChw4c;
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdb16a;
+          return dnnl::memory::format_tag::Acdb16a;
         }
       }
     } else if (inner_nblks == 2) {
       if (inner_blks[0] == 16 && inner_blks[1] == 16) {
         if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return mkldnn::memory::format_tag::OIhw16i16o;
+          return dnnl::memory::format_tag::OIhw16i16o;
         }
       } else if (inner_blks[0] == 8 && inner_blks[1] == 8) {
         if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return mkldnn::memory::format_tag::OIhw8i8o;
+          return dnnl::memory::format_tag::OIhw8i8o;
         }
       }
     }
@@ -97,38 +97,38 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3] && strides[3] >= strides[4]) {
-        return mkldnn::memory::format_tag::ncdhw;
+        return dnnl::memory::format_tag::ncdhw;
       } else {
-        return mkldnn::memory::format_tag::ndhwc;
+        return dnnl::memory::format_tag::ndhwc;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdeb8a;
+          return dnnl::memory::format_tag::Acdeb8a;
         }
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::Abcde8a;
+          return dnnl::memory::format_tag::Abcde8a;
         }
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::aBcde8b;
+          return dnnl::memory::format_tag::aBcde8b;
         }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdeb16a;
+          return dnnl::memory::format_tag::Acdeb16a;
         }
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::Abcde16a;
+          return dnnl::memory::format_tag::Abcde16a;
         }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::aBcde16b;
+          return dnnl::memory::format_tag::aBcde16b;
         }
       }
     }
@@ -137,7 +137,7 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3] && strides[3] >= strides[4] &&
           strides[4] >= strides[5]) {
-        return mkldnn::memory::format_tag::abcdef;
+        return dnnl::memory::format_tag::abcdef;
       }
     }
   }
@@ -154,7 +154,7 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   // for (int i=0;i<inner_nblks;++i) {
   //   std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
   // }
-  return mkldnn::memory::format_tag::undef;
+  return dnnl::memory::format_tag::undef;
 }
 
 }  // namespace platform
@@ -163,7 +163,7 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
 namespace paddle {
 namespace framework {
 
-using MKLDNNDataType = mkldnn::memory::data_type;
+using MKLDNNDataType = dnnl::memory::data_type;
 
 inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
   static std::unordered_map<int, MKLDNNDataType> dict{
