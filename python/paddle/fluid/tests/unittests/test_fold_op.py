@@ -22,6 +22,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 
+paddle.enable_static()
+
 
 class TestFoldOp(OpTest):
     """
@@ -30,13 +32,13 @@ class TestFoldOp(OpTest):
 
     def init_data(self):
         self.batch_size = 3
-        self.input_channels = 5 * 2 * 2
-        self.length = 4
+        self.input_channels = 3 * 2 * 2
+        self.length = 12
         self.kernel_sizes = [2, 2]
         self.strides = [1, 1]
         self.paddings = [0, 0, 0, 0]
         self.dilations = [1, 1]
-        self.output_sizes = [3, 3]
+        self.output_sizes = [4, 5]
         input_shape = [self.batch_size, self.input_channels, self.length]
         self.x = np.random.rand(*input_shape).astype(np.float64)
 
@@ -109,10 +111,10 @@ class TestFoldAPI(TestFoldOp):
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
-    def test_dygraph(self):
+    def test_api(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input = fluid.dygraph.to_variable(self.inputs['X'])
+                input = paddle.to_tensor(self.x)
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
                 result = m(input)
@@ -130,55 +132,69 @@ class TestFoldOpError(unittest.TestCase):
 
             def test_input_shape():
                 # input_shpae must be 3-D
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = fold(x, output_sizes=(2, 3), kernel_sizes=(2, 2))
+                x = paddle.randn(shape=[2, 3, 6, 7], dtype="float32")
+                out = fold(x, output_sizes=[2, 3], kernel_sizes=[2, 2])
 
             def test_kernel_shape():
                 # kernel_size must be 2
-                x = fluid.data(name="x", shape=[2, 6, 6], dtype="float32")
-                out = fold(x, output_sizes=(2, 3), kernel_sizes=(2, 2, 3))
+                x = paddle.randn(shape=[2, 6, 6], dtype="float32")
+                out = fold(x, output_sizes=[2, 3], kernel_sizes=[2, 2, 3])
 
             def test_padding_shape():
                 # padding_size must be 2 or 4
-                x = fluid.data(name="x", shape=[2, 6, 6], dtype="float32")
-                out = fold(x, output_sizes=(2, 3), paddings=(2, 2, 3))
+                x = paddle.randn(shape=[2, 6, 6], dtype="float32")
+                out = fold(
+                    x,
+                    output_sizes=[2, 3],
+                    kernel_sizes=[2, 2],
+                    paddings=[2, 2, 3])
 
             def test_dilations_shape():
                 # dialtions_size must be 2 
-                x = fluid.data(name="x", shape=[2, 6, 6], dtype="float32")
-                out = fold(x, output_sizes=(2, 3), dilations=(2, 2, 3))
+                x = paddle.randn(shape=[2, 6, 6], dtype="float32")
+                out = fold(
+                    x,
+                    output_sizes=[2, 3],
+                    kernel_sizes=[2, 2],
+                    dilations=[2, 2, 3])
 
             def test_strides_shape():
                 # strids_size must be 2
-                x = fluid.data(name="x", shape=[2, 6, 6], dtype="float32")
-                out = fold(x, output_sizes=(2, 3), strides=(2, 2, 3))
+                x = paddle.randn(shape=[2, 6, 6], dtype="float32")
+                out = fold(
+                    x,
+                    output_sizes=[2, 3],
+                    kernel_sizes=[2, 2],
+                    strides=[2, 2, 3])
 
             def test_output_size():
                 # im_h * im_w must be L
-                x = fluid.data(name="x", shape=[2, 6, 6], dtype="float32")
-                out = fold(x, output_sizes=(6, 6), kernel_sizes=(2, 2))
+                x = paddle.randn(shape=[2, 6, 6], dtype="float32")
+                out = fold(
+                    x, output_sizes=[6, 6], kernel_sizes=[2, 2],
+                    strides=[1, 1])
 
             def test_block_h_w():
                 # test_block_h_w GT 0
-                x = fluid.data(name="x", shape=[2, 1, 1], dtype="float32")
-                out = fold(x, output_sizes=(1, 1), kernel_sizes=(2, 2))
+                x = paddle.randn(shape=[2, 1, 1], dtype="float32")
+                out = fold(
+                    x, output_sizes=[1, 1], kernel_sizes=[2, 2], strides=1)
 
             def test_GT_0():
-                x = fluid.data(name="x", shape=[2, 1, 1], dtype="float32")
+                x = paddle.randn(shape=[2, 1, 1], dtype="float32")
                 out = fold(
                     x,
-                    output_sizes=(0, 0),
-                    kernel_sizes=(0, 0),
+                    output_sizes=[0, 0],
+                    kernel_sizes=[0, 0],
                     dilations=0,
-                    paddings=0,
+                    paddings=[0, 0],
                     strides=0)
 
             self.assertRaises(AssertionError, test_input_shape)
-            self.assertRaises(ValueError, test_kernel_shape)
+            self.assertRaises(AssertionError, test_kernel_shape)
             self.assertRaises(ValueError, test_padding_shape)
-            self.assertRaises(ValueError, test_dilations_shape)
-            self.assertRaises(ValueError, test_strides_shape)
-            self.assertRaises(ValueError, test_block_h_w)
+            self.assertRaises(AssertionError, test_dilations_shape)
+            self.assertRaises(AssertionError, test_strides_shape)
             self.assertRaises(ValueError, test_output_size)
             self.assertRaises(ValueError, test_block_h_w)
             self.assertRaises(ValueError, test_GT_0)

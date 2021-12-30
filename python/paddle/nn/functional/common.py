@@ -1871,8 +1871,8 @@ def fold(x,
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert isinstance(strides, list) and (len(strides) == 2), \
-            "strides should either be an integer or a list of two integers"
+        assert isinstance(output_sizes, list) and (len(output_sizes) == 2), \
+            "output_sizes should either be an integer or a list of two integers"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]

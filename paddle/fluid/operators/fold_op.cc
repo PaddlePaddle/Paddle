@@ -116,11 +116,14 @@ class FoldOp : public framework::OperatorWithKernel {
     int output_channels = in_dims[1] / (kernel_width * kernel_height);
     out_dims.push_back(output_channels);
 
-    int blocks_height =
-        CalcOutputSize(in_dims[1], kernel_sizes[0], dilations[0], paddings[0],
-                       paddings[2], strides[0]);
-    int blocks_width = CalcOutputSize(in_dims[2], kernel_sizes[1], dilations[1],
-                                      paddings[1], paddings[3], strides[1]);
+    int blocks_height = (output_sizes[0] + 2 * paddings[0] -
+                         (dilations[0] * (kernel_sizes[0] - 1) + 1)) /
+                            strides[0] +
+                        1;
+    int blocks_width = (output_sizes[1] + 2 * paddings[1] -
+                        (dilations[1] * (kernel_sizes[1] - 1) + 1)) /
+                           strides[1] +
+                       1;
 
     // check output height and width
     PADDLE_ENFORCE_GT(
