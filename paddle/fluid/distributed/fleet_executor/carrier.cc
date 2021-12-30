@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global_map.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -27,16 +28,32 @@ namespace distributed {
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 
-void Carrier::Init(int64_t rank, std::shared_ptr<RuntimeGraph> runtime_graph,
-                   framework::Scope* root_scope,
-                   framework::Scope* minibatch_scope,
-                   const std::vector<framework::Scope*>& microbatch_scopes,
-                   const platform::Place& place) {
-  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
-                                         "Carrier is already init."));
+void Carrier::Init(
+    int64_t rank,
+    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
+    const std::unordered_set<int64_t>& interceptor_ids) {
   rank_ = rank;
-  runtime_graph_ = runtime_graph;
-  interceptor_id_to_rank_ = runtime_graph_->interceptor_id_to_rank();
+  interceptor_id_to_rank_ = interceptor_id_to_rank;
+  interceptor_ids_ = interceptor_ids;
+
+  // TODO(fleet_exe dev): thread pool
+  thread_num_ = 1;
+  thread_pool_.SetThreadNum(thread_num_);
+  thread_pool_.Start();
+}
+
+void Carrier::Init(
+    int64_t rank,
+    const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
+    const std::unordered_set<int64_t>& interceptor_ids,
+    const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
+    framework::Scope* root_scope, framework::Scope* minibatch_scope,
+    const std::vector<framework::Scope*>& microbatch_scopes,
+    const platform::Place& place) {
+  rank_ = rank;
+  interceptor_id_to_rank_ = interceptor_id_to_rank;
+  interceptor_ids_ = interceptor_ids;
+  interceptor_id_to_node_ = interceptor_id_to_node;
   minibatch_scope_ = minibatch_scope;
   microbatch_scopes_ = microbatch_scopes;
   place_ = place;
@@ -72,8 +89,6 @@ bool Carrier::EnqueueInterceptorMessage(
   return true;
 }
 
-void Carrier::Barrier() { msg_bus_->Barrier(); }
-
 Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
   PADDLE_ENFORCE_NE(iter, interceptor_idx_to_interceptor_.end(),
@@ -100,7 +115,8 @@ void Carrier::Start() {
                         "Using message bus since it has not been initialized. "
                         "Please invoke MessageBus::Init() before using it or "
                         "neccessary components are not ready."));
-
+  PADDLE_ENFORCE_EQ(is_init_, true, platform::errors::PreconditionNotMet(
+                                        "Using carrier before initialized."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
             << ".";
@@ -140,7 +156,9 @@ bool Carrier::Send(const InterceptorMessage& msg) {
   if (src_rank == dst_rank) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
-    return EnqueueInterceptorMessage(msg);
+    int64_t carrier_id = *GlobalMap<int64_t, int64_t>::Get(dst_id);
+    return GlobalMap<int64_t, Carrier>::Get(carrier_id)
+        ->EnqueueInterceptorMessage(msg);
   } else {
     PADDLE_ENFORCE_NOT_NULL(
         msg_bus_.get(),
@@ -174,6 +192,9 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
       loop, platform::errors::Fatal("thread task loop must not null"));
   interceptor->RegisterTaskLoop(loop);
 
+  // TODO(liyurui): Using struct InterceptorID replace int64_t
+  GlobalMap<int64_t, int64_t>::Create(interceptor_id, carrier_id_);
+
   auto* ptr = interceptor.get();
   interceptor_idx_to_interceptor_.insert(
       std::make_pair(interceptor_id, std::move(interceptor)));
@@ -199,15 +220,19 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 }
 
 void Carrier::CreateInterceptors() {
-  if (runtime_graph_->interceptor_id_to_node().empty()) return;
+  if (interceptor_ids_.empty()) return;
 
   auto gc = GetGC(place_);
 
   // create each Interceptor
   // no auto init since there is no config
-  for (const auto& item : runtime_graph_->interceptor_id_to_node()) {
-    int64_t interceptor_id = item.first;
-    TaskNode* task_node = item.second;
+  for (int64_t interceptor_id : interceptor_ids_) {
+    const auto& task_node_iter = interceptor_id_to_node_.find(interceptor_id);
+    PADDLE_ENFORCE_NE(
+        task_node_iter, interceptor_id_to_node_.end(),
+        platform::errors::NotFound("Can not find task node for interceptor %ld",
+                                   interceptor_id));
+    TaskNode* task_node = task_node_iter->second;
 
     PADDLE_ENFORCE_LT(
         task_node->run_at_offset(), task_node->run_per_steps(),
