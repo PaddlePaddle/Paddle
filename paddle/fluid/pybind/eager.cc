@@ -62,6 +62,13 @@ void EmptyEagerTensorInitializer(
     const std::vector<int>& dims = {},
     framework::proto::VarType::Type var_type =
         paddle::framework::proto::VarType::LOD_TENSOR) {
+  auto ddims = paddle::framework::make_ddim(dims);
+  PADDLE_ENFORCE_GE(
+      paddle::framework::product(ddims), 0,
+      paddle::platform::errors::InvalidArgument(
+          "Create Eager Tensor with dims contain minus num is ilegal"
+          "Please check your code and make sure you new a "
+          "eager tensor with fixed shape instead of using -1."));
   self->eager_tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
   autograd_meta->SetPersistable(persistable);
@@ -71,8 +78,7 @@ void EmptyEagerTensorInitializer(
     std::shared_ptr<pten::DenseTensor> dense_tensor =
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(dtype),
-                                  paddle::framework::make_ddim(dims)));
+            pten::DenseTensorMeta(pten::TransToPtenDataType(dtype), ddims));
     self->eager_tensor.set_impl(dense_tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
