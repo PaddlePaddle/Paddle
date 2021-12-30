@@ -54,8 +54,8 @@ def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
     else:
         if isinstance(axis, list):
             axis = tuple(axis)
-        r = np.linalg.norm(
-            x, ord=porder, axis=axis, keepdims=keepdims).astype(x.dtype)
+        r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+    r = r.astype(x.dtype)
 
     return r
 
@@ -151,6 +151,8 @@ class TestPnormOp(OpTest):
         porder = self.attrs["porder"]
         axis = self.attrs["axis"]
         asvector = self.attrs["asvector"]
+        x_dtype = x.dtype
+        x = x.astype(np.float32) if x.dtype == np.float16 else x
         if porder == 0:
             grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
@@ -170,7 +172,7 @@ class TestPnormOp(OpTest):
             numel *= s
         divisor = numel if asvector else x.shape[axis]
         numel /= divisor
-        return [grad.astype(x.dtype) * 1 / numel]
+        return [grad.astype(x_dtype) * 1 / numel]
 
 
 class TestPnormOp2(TestPnormOp):
@@ -241,6 +243,43 @@ class TestPnormOp6(TestPnormOp):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestPnormOpFP16(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.axis = 1
+        self.epsilon = 1e-12
+        self.porder = 2.0
+        self.keepdim = False
+        self.dtype = "float16"
+        self.asvector = False
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['X'], 'Out', user_defined_grads=self.gradient)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestPnormOpFP161(TestPnormOpFP16):
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.axis = -1
+        self.epsilon = 1e-12
+        self.porder = 2.0
+        self.keepdim = False
+        self.dtype = "float16"
+        self.asvector = True
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):

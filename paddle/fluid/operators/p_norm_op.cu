@@ -155,7 +155,7 @@ struct PNormGradFunctor {
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
     dx->device(place) =
-        (*x).pow(static_cast<T>(this->porder - 1.)) * (*x).sign() *
+        (*x).abs().pow(static_cast<T>(this->porder - 1.)) * (*x).sign() *
         dy->broadcast(dim) *
         (*y).pow(static_cast<T>(1. - this->porder)).broadcast(dim);
   }
